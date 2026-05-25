@@ -428,6 +428,8 @@ Rationale: reduces moving parts for Phase 1 while preserving clear ownership and
 
 - Use `arhamkhnz/next-shadcn-admin-dashboard` as base.
 - Keep boilerplate shell, theme presets, shadcn/ui, forms, tables, and responsive conventions.
+- **Implementation reference:** See `frontend-hardening-specification.md` for detailed boilerplate audit, strip/keep/adapt decisions, semantic token definitions, component TypeScript interfaces, and build sequence.
+- **Screen-level reference:** See `page-specifications.md` for detailed layout, states, microcopy, responsive behavior, and interaction specs per primary screen.
 - Frontend domain modules:
   - Operations Overview
   - Telemetry

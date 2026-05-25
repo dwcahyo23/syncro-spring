@@ -16,6 +16,10 @@ inputDocuments:
 **Author:** Yusuf
 **Date:** 2026-05-22
 
+**Implementation references:**
+- `frontend-hardening-specification.md` — boilerplate audit, semantic tokens, component TypeScript interfaces, strip/keep/adapt decisions, build sequence, zero new dependencies confirmation.
+- `page-specifications.md` — detailed layout, content sections, states, microcopy, responsive behavior, data refresh, and cross-screen patterns for Operations Overview, Machine Detail, Alert Detail, and System Health.
+
 ---
 
 <!-- UX design content will be appended sequentially through collaborative workflow steps -->
