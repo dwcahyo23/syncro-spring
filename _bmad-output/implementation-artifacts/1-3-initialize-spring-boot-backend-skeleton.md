@@ -1,6 +1,6 @@
 # Story 1.3: Initialize Spring Boot Backend Skeleton
 
-Status: in-progress
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -50,9 +50,10 @@ so that Syncro can expose `/api/v1` endpoints and integrate persistence/services
 
 ### Review Findings
 
-- [ ] [Review][Patch] Default profile embeds local endpoints and dev credentials [syncro/apps/backend/src/main/resources/application.yml:1]
-- [ ] [Review][Patch] Backend context test depends on live local PostgreSQL [syncro/apps/backend/src/test/java/com/syncro/SyncroBackendApplicationTests.java:1]
-- [ ] [Review][Patch] CSRF is globally disabled before auth mode is decided [syncro/apps/backend/src/main/java/com/syncro/config/SecurityConfig.java:1]
+- [x] [Review][Decision] Define CSRF policy for future authenticated API mutations — resolved by configuring CSRF to ignore `/api/v1/**` only, keeping CSRF defaults elsewhere. Evidence: syncro/apps/backend/src/main/java/com/syncro/config/SecurityConfig.java:11
+- [x] [Review][Patch] Default profile embeds local endpoints and dev credentials [syncro/apps/backend/src/main/resources/application.yml:1]
+- [x] [Review][Patch] Backend context test depends on live local PostgreSQL [syncro/apps/backend/src/test/java/com/syncro/SyncroBackendApplicationTests.java:1]
+- [x] [Review][Patch] CSRF is globally disabled before auth mode is decided [syncro/apps/backend/src/main/java/com/syncro/config/SecurityConfig.java:1]
 - [x] [Review][Defer] MQTT credentials are configured in backend but local EMQX MQTT auth is not enforced [syncro/infra/docker-compose.yml:71] — deferred, pre-existing/local infra auth story scope
 
 ## Dev Notes
@@ -250,6 +251,11 @@ cx/gpt-5.5
 - GREEN: `pwsh -NoProfile -File syncro/scripts/validate-syncro-baseline.ps1` passed.
 - GREEN: `mvn -f syncro/apps/backend/pom.xml test` passed with 2 tests.
 - GREEN: `mvn -f syncro/apps/backend/pom.xml spring-boot:run` booted successfully and `Invoke-RestMethod http://localhost:8080/api/v1/health` returned status `UP`.
+- GREEN: Review follow-up validation confirmed `application.yml` has env-only required placeholders, context test excludes live database auto-configuration, and CSRF is not globally disabled.
+- GREEN: `mvn -f syncro/apps/backend/pom.xml test` passed with 2 tests after review follow-up verification.
+- GREEN: `pwsh -NoProfile -File syncro/scripts/validate-syncro-baseline.ps1` passed after review follow-up verification.
+- GREEN: Code review CSRF decision patched; `mvn -f syncro/apps/backend/pom.xml test` passed with 2 tests.
+- GREEN: Code review CSRF decision patched; `pwsh -NoProfile -File syncro/scripts/validate-syncro-baseline.ps1` passed.
 
 ### Completion Notes List
 
@@ -259,6 +265,10 @@ cx/gpt-5.5
 - Added environment-driven `application.yml` and `application-local.yml` for datasource, Redis, Flyway, MQTT, InfluxDB, WAHA, actuator, and server port values.
 - Added Flyway migration folder, backend fixtures folder, context-load test, and controller smoke endpoint test.
 - Updated local development docs and baseline validation coverage for backend commands, smoke endpoint, dependencies, config env keys, and required skeleton files.
+- Resolved review finding [Patch]: Default profile now uses required environment placeholders with no embedded local endpoint defaults or dev credentials.
+- Resolved review finding [Patch]: Backend context test excludes datasource/JPA/Flyway auto-configuration, so it does not depend on live PostgreSQL.
+- Resolved review finding [Patch]: Security configuration no longer disables CSRF globally before auth mode is decided.
+- Resolved code review decision: `/api/v1/**` now uses stateless API CSRF ignoring while retaining CSRF defaults outside backend API routes.
 
 ### File List
 
@@ -286,3 +296,5 @@ cx/gpt-5.5
 ### Change Log
 
 - 2026-05-25: Implemented Story 1.3 Spring Boot 4.0.6 backend skeleton and moved story to review.
+- 2026-05-25: Addressed code review findings - 3 patch items resolved.
+- 2026-05-25: Resolved code review CSRF API policy decision and moved story to done.
