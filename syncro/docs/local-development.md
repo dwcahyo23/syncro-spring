@@ -61,9 +61,31 @@ pgAdmin is local/dev only. It is not a runtime dependency, user-facing feature, 
 
 Backend and future stories must read service URLs, credentials, and ports from environment variables. Do not hardcode PostgreSQL, Redis, InfluxDB, EMQX, or WAHA URLs in source code.
 
+## Backend
+
+Build and test the Spring Boot backend from the repository root:
+
+```powershell
+mvn -f syncro/apps/backend/pom.xml test
+```
+
+Run the backend locally after copying `syncro/.env.example` to `syncro/.env` and starting required local infrastructure:
+
+```powershell
+mvn -f syncro/apps/backend/pom.xml spring-boot:run
+```
+
+Smoke-test the backend health endpoint:
+
+```powershell
+Invoke-RestMethod http://localhost:8080/api/v1/health
+```
+
+Backend configuration reads service hosts, ports, credentials, MQTT client identity, and topic filter from environment variables aligned with `syncro/.env.example`. Keep `syncro/.env` untracked and do not hardcode PostgreSQL, Redis, InfluxDB, EMQX, or WAHA URLs in backend source.
+
 ## Current Story Boundary
 
-Story 1.2 initializes only Docker Compose local infrastructure, local development docs, and baseline validation. Spring Boot, Next.js, migrations, MQTT consumers, telemetry schemas, and notification workers are initialized in later stories.
+Story 1.3 initializes the Spring Boot backend skeleton, health endpoint, migration folder, baseline tests, local docs, and validation coverage. Domain modules, auth mode decisions, MQTT consumers, telemetry schemas, WAHA workers, and Next.js implementation are initialized in later stories.
 
 
 
