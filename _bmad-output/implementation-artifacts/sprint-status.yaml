@@ -1,0 +1,130 @@
+# generated: 2026-05-25
+# last_updated: 2026-05-25
+# project: Syncro
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-05-25
+last_updated: 2026-05-25
+project: Syncro
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # Epic 1: Platform Foundation, Local Infrastructure & Auth Access
+  epic-1: backlog
+  1-1-initialize-monorepo-and-version-baseline: backlog
+  1-2-start-local-infrastructure-stack: backlog
+  1-3-initialize-spring-boot-backend-skeleton: backlog
+  1-4-initialize-nextjs-admin-frontend-shell: backlog
+  1-5-choose-and-implement-auth-mode-baseline: backlog
+  1-6-enforce-application-role-access: backlog
+  1-7-implement-plant-scoped-data-access: backlog
+  epic-1-retrospective: optional
+
+  # Epic 2: Machine Master Data & Setup Foundation
+  epic-2: backlog
+  2-1-manage-plants: backlog
+  2-2-manage-plant-scoped-machine-groups: backlog
+  2-3-manage-machines-with-manual-active-state: backlog
+  2-4-manage-sparepart-taxonomy: backlog
+  2-5-manage-spareparts: backlog
+  2-6-install-spareparts-on-machines-with-lifetime-baseline: backlog
+  2-7-assign-machine-responsibility-levels: backlog
+  2-8-show-setup-completeness: backlog
+  2-9-implement-immutable-audit-log-for-master-data: backlog
+  epic-2-retrospective: optional
+
+  # Epic 3: Telemetry Ingestion & Latest Machine Visibility
+  epic-3: backlog
+  3-1-configure-mqtt-subscription-and-telemetry-contract: backlog
+  3-2-validate-mqtt-topic-and-base-payload: backlog
+  3-3-reject-inactive-machine-telemetry: backlog
+  3-4-persist-accepted-telemetry-to-influxdb-and-redis: backlog
+  3-5-calculate-production-count-delta-with-16-bit-wrap-support: backlog
+  3-6-support-optional-machine-telemetry-fields: backlog
+  3-7-show-latest-telemetry-dashboard: backlog
+  3-8-show-machine-hub-with-telemetry-context: backlog
+  3-9-enforce-telemetry-payload-contract-with-schema-version-messageid-and-timestamp: backlog
+  3-10-validate-payload-topic-machine-identity-match: backlog
+  3-11-implement-telemetry-quarantine-store-and-data-quality-validation: backlog
+  3-12-implement-backpressure-and-bounded-queue-behavior: backlog
+  3-13-configure-mqtt-security-tls-device-auth-acls: backlog
+  epic-3-retrospective: optional
+
+  # Epic 4: Sparepart Lifetime Alerting
+  epic-4: backlog
+  4-1-evaluate-sparepart-lifetime-threshold-from-accepted-telemetry: backlog
+  4-2-create-threshold-alert-with-duplicate-prevention: backlog
+  4-3-show-alert-list-and-alert-detail: backlog
+  4-4-acknowledge-open-alert: backlog
+  4-5-resolve-acknowledged-alert: backlog
+  4-6-allow-super-admin-direct-resolve-override: backlog
+  4-7-add-alert-state-to-machine-hub-and-operations-overview: backlog
+  epic-4-retrospective: optional
+
+  # Epic 5: WAHA Escalation & Notification Evidence
+  epic-5: backlog
+  5-1-create-waha-template-editor: backlog
+  5-2-queue-initial-waha-notification-for-open-alert: backlog
+  5-3-send-notification-job-through-waha-with-attempt-history: backlog
+  5-4-escalate-alert-notifications-by-responsibility-level: backlog
+  5-5-stop-escalation-when-alert-is-acknowledged: backlog
+  5-6-show-escalation-timeline-and-notification-history: backlog
+  5-7-surface-waha-notification-state-in-operations-views: backlog
+  5-8-implement-waha-rate-limiting: backlog
+  5-9-implement-circuit-breaker-for-waha-calls: backlog
+  epic-5-retrospective: optional
+
+  # Epic 6: System Health & Operational Diagnostics
+  epic-6: backlog
+  6-1-expose-dependency-health-checks: backlog
+  6-2-report-telemetry-ingest-worker-status: backlog
+  6-3-report-notification-worker-status: backlog
+  6-4-build-super-admin-health-dashboard: backlog
+  6-5-surface-latest-telemetry-freshness-in-health: backlog
+  6-6-link-health-failures-to-operational-evidence: backlog
+  6-7-implement-data-quality-panel-and-latency-indicator: backlog
+  epic-6-retrospective: optional
+
+  # Epic 7: Pilot Validation & Operational Proof
+  epic-7: backlog
+  7-1-create-canonical-pilot-seed-data: backlog
+  7-2-provide-pilot-mqtt-payload-fixtures: backlog
+  7-3-create-pilot-scripts-for-seed-publish-and-verify: backlog
+  7-4-validate-telemetry-before-threshold-does-not-create-alert: backlog
+  7-5-validate-threshold-alert-and-waha-notification-job: backlog
+  7-6-validate-acknowledgement-stops-escalation: backlog
+  7-7-document-pilot-validation-proof: backlog
+  epic-7-retrospective: optional
