@@ -53,6 +53,7 @@ Allowed by default when related to requested work:
 - Documentation under `docs/` and required root docs.
 - BMad artifacts under `_bmad/` and `_bmad-output/`.
 - Shared Claude/agent workflow files under `.claude/`, `.agent/`, and `.agents/`, excluding user-local settings.
+- Shared Hermes Agent or OpenClaw project configuration only when it is deterministic, non-secret, and required for the team to reproduce workflows.
 - Root config files required by tooling, for example `.gitignore`, package manager config, build config, lint config, formatter config, and CI config.
 
 ## What Must Not Be Committed
@@ -66,9 +67,19 @@ Never commit:
 - `.next/`, `dist/`, `build/`, `target/`, `.gradle/`, `.turbo/`, `.vercel/`, or similar generated directories.
 - Logs, temporary files, cache files, OS/editor files.
 - User-local Claude settings such as `.claude/settings.local.json`.
+- Hermes Agent or OpenClaw local sessions, memory, cache, logs, transcripts, run output, credentials, browser profiles, downloaded files, and generated scratch work.
 - Large binary assets unless the user explicitly confirms they belong in Git.
 
 If forbidden content appears necessary, stop and ask for explicit confirmation and safer alternative.
+
+## Hermes Agent and OpenClaw Workspace Rules
+
+- Treat `E:\01 DEV\SYNCRO-SPRING` as a shared workspace; do not let Hermes Agent or OpenClaw write secrets, caches, browser profiles, downloads, or transient run output into committed paths.
+- Keep durable project source in `syncro/`; keep tool scratch work in ignored local directories.
+- Before committing after Hermes Agent or OpenClaw use, inspect tool-created files carefully and stage only intentional project files.
+- If a tool creates generated code under `syncro/`, verify it is source code, not build output, before staging.
+- Do not commit tool memory, prompts containing private context, raw transcripts, local MCP settings, API keys, browser storage, or downloaded artifacts.
+- If Hermes Agent or OpenClaw config is needed for teammates, commit only sanitized templates or shared config; keep machine-local config ignored.
 
 ## Push Rules
 
