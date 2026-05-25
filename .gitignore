@@ -110,6 +110,7 @@ temp/
 
 # Claude/session local artifacts
 .claude/settings.local.json
+.claude/settings.json
 .claude/settings.local.*
 .claude/scheduled_tasks.json
 .claude/worktrees/
