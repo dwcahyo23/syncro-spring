@@ -1,6 +1,6 @@
 # Story 1.3: Initialize Spring Boot Backend Skeleton
 
-Status: review
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -47,6 +47,13 @@ so that Syncro can expose `/api/v1` endpoints and integrate persistence/services
   - [x] Extend `syncro/scripts/validate-syncro-baseline.ps1` to verify backend skeleton essentials without depending on caller working directory.
   - [x] Document that backend config uses `.env`/environment values and keeps `.env` untracked.
   - [x] Verify validation passes from repository root.
+
+### Review Findings
+
+- [ ] [Review][Patch] Default profile embeds local endpoints and dev credentials [syncro/apps/backend/src/main/resources/application.yml:1]
+- [ ] [Review][Patch] Backend context test depends on live local PostgreSQL [syncro/apps/backend/src/test/java/com/syncro/SyncroBackendApplicationTests.java:1]
+- [ ] [Review][Patch] CSRF is globally disabled before auth mode is decided [syncro/apps/backend/src/main/java/com/syncro/config/SecurityConfig.java:1]
+- [x] [Review][Defer] MQTT credentials are configured in backend but local EMQX MQTT auth is not enforced [syncro/infra/docker-compose.yml:71] — deferred, pre-existing/local infra auth story scope
 
 ## Dev Notes
 

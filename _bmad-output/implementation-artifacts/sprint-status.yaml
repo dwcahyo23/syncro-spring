@@ -46,7 +46,7 @@ development_status:
   epic-1: in-progress
   1-1-initialize-monorepo-and-version-baseline: done
   1-2-start-local-infrastructure-stack: done
-  1-3-initialize-spring-boot-backend-skeleton: review
+  1-3-initialize-spring-boot-backend-skeleton: in-progress
   1-4-initialize-nextjs-admin-frontend-shell: backlog
   1-5-choose-and-implement-auth-mode-baseline: backlog
   1-6-enforce-application-role-access: backlog
