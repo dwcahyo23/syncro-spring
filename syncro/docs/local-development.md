@@ -83,9 +83,38 @@ Invoke-RestMethod http://localhost:8080/api/v1/health
 
 Backend configuration reads service hosts, ports, credentials, MQTT client identity, and topic filter from environment variables aligned with `syncro/.env.example`. Keep `syncro/.env` untracked and do not hardcode PostgreSQL, Redis, InfluxDB, EMQX, or WAHA URLs in backend source.
 
+## Frontend
+
+Install dependencies from the repository root:
+
+```powershell
+npm --prefix syncro/apps/web install
+```
+
+Run the Next.js development server:
+
+```powershell
+npm --prefix syncro/apps/web run dev
+```
+
+Build the frontend shell:
+
+```powershell
+npm --prefix syncro/apps/web run build
+```
+
+Run configured frontend checks:
+
+```powershell
+npm --prefix syncro/apps/web run lint
+npm --prefix syncro/apps/web run check
+```
+
+The frontend shell uses `NEXT_PUBLIC_API_URL` only as a browser-visible backend base URL placeholder. Do not put PostgreSQL, Redis, InfluxDB, EMQX, WAHA credentials, or private API keys in frontend environment files.
+
 ## Current Story Boundary
 
-Story 1.3 initializes the Spring Boot backend skeleton, health endpoint, migration folder, baseline tests, local docs, and validation coverage. Domain modules, auth mode decisions, MQTT consumers, telemetry schemas, WAHA workers, and Next.js implementation are initialized in later stories.
+Story 1.4 initializes the Next.js admin frontend shell, Syncro navigation placeholders, theme/status token foundation, source boundaries, local docs, and validation coverage. Auth behavior, role enforcement, plant scoping, backend API integration, domain screens, telemetry calculations, alerts, WAHA workflows, and health data arrive in later stories.
 
 
 

@@ -7,6 +7,15 @@ $requiredDirs = @(
   'syncro/apps/backend/src/test/java/com/syncro',
   'syncro/apps/backend/src/test/resources/fixtures',
   'syncro/apps/web',
+  'syncro/apps/web/src/app',
+  'syncro/apps/web/src/components/ui',
+  'syncro/apps/web/src/components/syncro',
+  'syncro/apps/web/src/features',
+  'syncro/apps/web/src/lib/api',
+  'syncro/apps/web/src/lib/auth',
+  'syncro/apps/web/src/lib/formatting',
+  'syncro/apps/web/src/stores',
+  'syncro/apps/web/src/types',
   'syncro/infra/postgres/init',
   'syncro/infra/pgadmin',
   'syncro/infra/redis',
@@ -33,7 +42,20 @@ $requiredFiles = @(
   'syncro/apps/backend/src/main/resources/application.yml',
   'syncro/apps/backend/src/main/resources/application-local.yml',
   'syncro/apps/backend/src/test/java/com/syncro/SyncroBackendApplicationTests.java',
-  'syncro/apps/backend/src/test/java/com/syncro/api/HealthControllerTest.java'
+  'syncro/apps/backend/src/test/java/com/syncro/api/HealthControllerTest.java',
+  'syncro/apps/web/package.json',
+  'syncro/apps/web/src/app/globals.css',
+  'syncro/apps/web/src/app/(main)/dashboard/layout.tsx',
+  'syncro/apps/web/src/app/(main)/dashboard/operations-overview/page.tsx',
+  'syncro/apps/web/src/app/(main)/dashboard/telemetry/page.tsx',
+  'syncro/apps/web/src/app/(main)/dashboard/alerts/page.tsx',
+  'syncro/apps/web/src/app/(main)/dashboard/master-data/plants/page.tsx',
+  'syncro/apps/web/src/app/(main)/dashboard/waha-templates/page.tsx',
+  'syncro/apps/web/src/app/(main)/dashboard/audit-log/page.tsx',
+  'syncro/apps/web/src/app/(main)/dashboard/system-health/page.tsx',
+  'syncro/apps/web/src/app/(main)/dashboard/settings/page.tsx',
+  'syncro/apps/web/src/navigation/sidebar/sidebar-items.ts',
+  'syncro/apps/web/src/components/syncro/module-placeholder.tsx'
 )
 
 $requiredEnv = @(
@@ -83,6 +105,35 @@ if (Test-Path $localDevelopmentPath -PathType Leaf) {
   if ($localDevelopmentContent -notmatch 'pgAdmin is local/dev only') { $missing += 'missing pgAdmin local/dev-only documentation' }
   if ($localDevelopmentContent -notmatch 'mvn -f syncro/apps/backend/pom.xml test') { $missing += 'missing backend test command documentation' }
   if ($localDevelopmentContent -notmatch 'http://localhost:8080/api/v1/health') { $missing += 'missing backend smoke endpoint documentation' }
+  if ($localDevelopmentContent -notmatch 'npm --prefix syncro/apps/web run dev') { $missing += 'missing frontend dev command documentation' }
+  if ($localDevelopmentContent -notmatch 'npm --prefix syncro/apps/web run build') { $missing += 'missing frontend build command documentation' }
+}
+
+$webPackagePath = Join-Path $repoRoot 'syncro/apps/web/package.json'
+if (Test-Path $webPackagePath -PathType Leaf) {
+  $webPackageContent = Get-Content $webPackagePath -Raw
+  foreach ($dependency in @('next', 'react', 'tailwindcss', 'react-hook-form', 'zod', '@tanstack/react-table', 'zustand', '@biomejs/biome')) {
+    if ($webPackageContent -notmatch [regex]::Escape($dependency)) { $missing += "missing frontend dependency: $dependency" }
+  }
+  foreach ($script in @('"dev"', '"build"', '"lint"', '"check"')) {
+    if ($webPackageContent -notmatch [regex]::Escape($script)) { $missing += "missing frontend script: $script" }
+  }
+}
+
+$webSidebarPath = Join-Path $repoRoot 'syncro/apps/web/src/navigation/sidebar/sidebar-items.ts'
+if (Test-Path $webSidebarPath -PathType Leaf) {
+  $webSidebarContent = Get-Content $webSidebarPath -Raw
+  foreach ($label in @('Operations Overview', 'Telemetry', 'Alerts', 'Master Data', 'WAHA Templates', 'Audit Log', 'System Health', 'Settings')) {
+    if ($webSidebarContent -notmatch [regex]::Escape($label)) { $missing += "missing frontend navigation item: $label" }
+  }
+}
+
+$webGlobalsPath = Join-Path $repoRoot 'syncro/apps/web/src/app/globals.css'
+if (Test-Path $webGlobalsPath -PathType Leaf) {
+  $webGlobalsContent = Get-Content $webGlobalsPath -Raw
+  foreach ($token in @('--syncro-status-healthy', '--syncro-status-warning', '--syncro-status-critical', '--syncro-status-info', '--syncro-status-neutral', '.font-tabular', '.font-mono-tight')) {
+    if ($webGlobalsContent -notmatch [regex]::Escape($token)) { $missing += "missing frontend style token: $token" }
+  }
 }
 
 $backendPomPath = Join-Path $repoRoot 'syncro/apps/backend/pom.xml'
