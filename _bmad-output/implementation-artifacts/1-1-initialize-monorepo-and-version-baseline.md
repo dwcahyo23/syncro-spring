@@ -1,6 +1,6 @@
 # Story 1.1: Initialize Monorepo and Version Baseline
 
-Status: review
+Status: done
 
 ## Story
 
@@ -35,6 +35,10 @@ so that future stories are built consistently from one known foundation.
 - [x] Task 4: Validate structure (AC: #1)
   - [x] Verify all directories exist and are not empty (use `.gitkeep` where needed)
   - [x] Verify `.env.example` contains all required variables
+
+### Review Findings
+
+- [x] [Review][Patch] Validation script depends on caller working directory [syncro/scripts/validate-syncro-baseline.ps1:1] — Script checks `syncro/...` paths relative to current shell directory. Running from `syncro/`, `syncro/scripts/`, or CI subdirectory reports false missing files. Fixed by deriving repository root from `$PSScriptRoot` and resolving all required paths from that root.
 
 ## Dev Notes
 
@@ -163,6 +167,7 @@ cx/gpt-5.5
 
 - RED: temporary `validate-syncro-baseline.ps1` failed before skeleton existed, reporting missing required directories and files.
 - GREEN: `pwsh -NoProfile -File syncro/scripts/validate-syncro-baseline.ps1` passed.
+- REVIEW PATCH: Validation script passed from repository root, `syncro/`, and `syncro/scripts/` after anchoring paths to `$PSScriptRoot`.
 
 ### Completion Notes List
 
@@ -197,3 +202,4 @@ cx/gpt-5.5
 ### Change Log
 
 - 2026-05-25: Implemented Story 1.1 monorepo baseline and moved story to review.
+- 2026-05-25: Addressed code review patch for cwd-independent validation and moved story to done.

@@ -1,3 +1,5 @@
+$repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..')
+
 $requiredDirs = @(
   'syncro/apps/backend',
   'syncro/apps/web',
@@ -33,13 +35,16 @@ $requiredEnv = @(
 
 $missing = @()
 foreach ($dir in $requiredDirs) {
-  if (-not (Test-Path $dir -PathType Container)) { $missing += "missing directory: $dir" }
+  $path = Join-Path $repoRoot $dir
+  if (-not (Test-Path $path -PathType Container)) { $missing += "missing directory: $dir" }
 }
 foreach ($file in $requiredFiles) {
-  if (-not (Test-Path $file -PathType Leaf)) { $missing += "missing file: $file" }
+  $path = Join-Path $repoRoot $file
+  if (-not (Test-Path $path -PathType Leaf)) { $missing += "missing file: $file" }
 }
-if (Test-Path 'syncro/.env.example' -PathType Leaf) {
-  $envContent = Get-Content 'syncro/.env.example' -Raw
+$envExamplePath = Join-Path $repoRoot 'syncro/.env.example'
+if (Test-Path $envExamplePath -PathType Leaf) {
+  $envContent = Get-Content $envExamplePath -Raw
   foreach ($key in $requiredEnv) {
     if ($envContent -notmatch "(?m)^$key=") { $missing += "missing env key: $key" }
   }
