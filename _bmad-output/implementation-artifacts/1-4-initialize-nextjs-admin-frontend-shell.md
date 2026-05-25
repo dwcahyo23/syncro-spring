@@ -1,6 +1,6 @@
 # Story 1.4: Initialize Next.js Admin Frontend Shell
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -57,6 +57,18 @@ so that Syncro has a responsive app shell for future operational screens.
   - [x] Verify desktop, tablet, and mobile responsive shell behavior manually.
   - [x] Verify console has no critical runtime errors on shell load.
   - [x] Record exact commands and blockers in Dev Agent Record; do not claim browser verification unless performed.
+
+### Review Findings
+
+- [x] [Review][Patch] Add missing settings feature boundary [syncro/apps/web/src/features/settings]
+- [x] [Review][Patch] Extend baseline validation to require settings feature boundary [syncro/scripts/validate-syncro-baseline.ps1]
+- [x] [Review][Patch] Remove committed starter dashboard image or confirm project asset ownership [syncro/apps/web/media/dashboard.png]
+- [x] [Review][Patch] Fix web pre-commit hook paths so they work from repository root [syncro/apps/web/.husky/pre-commit:1]
+- [x] [Review][Patch] Encode/decode client cookie values and set SameSite consistently [syncro/apps/web/src/lib/cookie.client.ts:9]
+- [x] [Review][Patch] Constrain preference cookie server action inputs or remove unused generic setter [syncro/apps/web/src/server/server-actions.ts:9]
+- [x] [Review][Patch] Remove unused auth form validation/demo submit behavior before auth story [syncro/apps/web/src/app/(main)/auth/_components/login-form.tsx:11]
+- [x] [Review][Patch] Remove unused auth form validation/demo submit behavior before auth story [syncro/apps/web/src/app/(main)/auth/_components/register-form.tsx:10]
+- [x] [Review][Patch] Remove blanket `*.sh` ignore from web app gitignore [syncro/apps/web/.gitignore:21]
 
 ## Dev Notes
 
@@ -269,6 +281,8 @@ cx/gpt-5.5
 - `pwsh -NoProfile -File syncro/scripts/validate-syncro-baseline.ps1` passed.
 - `npm run dev` started Next.js 16.2.6 Turbopack on `http://localhost:3001` because port 3000 was occupied by process 20260.
 - Browser verification opened `/operations-overview`, desktop/tablet/mobile responsive snapshots passed, and console showed no errors after route rewrite fix.
+- Code review follow-ups applied: removed starter image/demo auth form components, fixed cookie persistence, removed unused generic server cookie setter, fixed web Husky paths, narrowed `.gitignore`, and extended baseline validation for feature boundaries.
+- Review follow-up validation passed: `npm --prefix syncro/apps/web run check`, `npm --prefix syncro/apps/web run build`, `npm --prefix syncro/apps/web run lint`, and `pwsh -NoProfile -File syncro/scripts/validate-syncro-baseline.ps1`.
 
 ### Completion Notes List
 
@@ -277,6 +291,7 @@ cx/gpt-5.5
 - Added public route rewrites for Syncro shell URLs while preserving starter dashboard route group structure.
 - Updated local development docs and baseline validation to cover frontend package, route shells, navigation, boundaries, status tokens, and documented commands without requiring secrets or build output.
 - Verified build, lint, Biome check, baseline validation, dev server startup, browser shell load, desktop/tablet/mobile responsiveness, and console state.
+- Addressed all code review patch findings and re-ran web check/build/lint plus baseline validation successfully.
 
 ### File List
 
@@ -290,12 +305,12 @@ cx/gpt-5.5
 - `syncro/apps/web/README.md`
 - `syncro/apps/web/biome.json`
 - `syncro/apps/web/components.json`
-- `syncro/apps/web/media/*`
 - `syncro/apps/web/next.config.mjs`
 - `syncro/apps/web/package-lock.json`
 - `syncro/apps/web/package.json`
 - `syncro/apps/web/postcss.config.mjs`
 - `syncro/apps/web/src/**/*`
+- `syncro/apps/web/media/dashboard.png` (deleted after code review)
 - `syncro/apps/web/tsconfig.json`
 - `syncro/apps/web/tsconfig.scripts.json`
 - `syncro/docs/local-development.md`
@@ -306,3 +321,4 @@ cx/gpt-5.5
 | Date | Version | Description | Author |
 | --- | --- | --- | --- |
 | 2026-05-26 | 1.0 | Implemented Syncro Next.js admin frontend shell and validation coverage. | Dev Agent |
+| 2026-05-26 | 1.1 | Addressed code review follow-ups and marked story done. | Dev Agent |

@@ -9,16 +9,18 @@ function writeClientCookie(serializedCookie: string) {
 
 export function setClientCookie(key: string, value: string, days = 7) {
   const expires = new Date(Date.now() + days * 864e5).toUTCString();
-  writeClientCookie(`${key}=${value}; expires=${expires}; path=/`);
+  writeClientCookie(`${key}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`);
 }
 
 export function getClientCookie(key: string) {
-  return document.cookie
+  const value = document.cookie
     .split("; ")
     .find((row) => row.startsWith(`${key}=`))
     ?.split("=")[1];
+
+  return value ? decodeURIComponent(value) : undefined;
 }
 
 export function deleteClientCookie(key: string) {
-  writeClientCookie(`${key}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`);
+  writeClientCookie(`${key}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax`);
 }
