@@ -1,6 +1,6 @@
 # Story 1.1: Initialize Monorepo and Version Baseline
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -18,23 +18,23 @@ so that future stories are built consistently from one known foundation.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create monorepo root structure (AC: #1)
-  - [ ] Create `syncro/` root directory
-  - [ ] Create `syncro/apps/backend/` placeholder (pom.xml created in Story 1.3)
-  - [ ] Create `syncro/apps/web/` placeholder (initialized in Story 1.4)
-  - [ ] Create `syncro/infra/` with subdirectories: `postgres/init/`, `pgadmin/`, `redis/`, `influxdb/`, `emqx/etc/`, `waha/`
-  - [ ] Create `syncro/scripts/` directory
-  - [ ] Create `syncro/docs/` directory
-  - [ ] Create `syncro/tests/e2e/` and `syncro/tests/fixtures/` directories
-- [ ] Task 2: Create root configuration files (AC: #3, #5)
-  - [ ] Create `syncro/.env.example` with all infrastructure service variables
-  - [ ] Create `syncro/.gitignore` with comprehensive exclusions
-- [ ] Task 3: Document version baseline (AC: #2, #4)
-  - [ ] Create `syncro/README.md` with project overview, tech stack versions, and local dev instructions placeholder
-  - [ ] Create `syncro/docs/local-development.md` placeholder referencing architecture decisions
-- [ ] Task 4: Validate structure (AC: #1)
-  - [ ] Verify all directories exist and are not empty (use `.gitkeep` where needed)
-  - [ ] Verify `.env.example` contains all required variables
+- [x] Task 1: Create monorepo root structure (AC: #1)
+  - [x] Create `syncro/` root directory
+  - [x] Create `syncro/apps/backend/` placeholder (pom.xml created in Story 1.3)
+  - [x] Create `syncro/apps/web/` placeholder (initialized in Story 1.4)
+  - [x] Create `syncro/infra/` with subdirectories: `postgres/init/`, `pgadmin/`, `redis/`, `influxdb/`, `emqx/etc/`, `waha/`
+  - [x] Create `syncro/scripts/` directory
+  - [x] Create `syncro/docs/` directory
+  - [x] Create `syncro/tests/e2e/` and `syncro/tests/fixtures/` directories
+- [x] Task 2: Create root configuration files (AC: #3, #5)
+  - [x] Create `syncro/.env.example` with all infrastructure service variables
+  - [x] Create `syncro/.gitignore` with comprehensive exclusions
+- [x] Task 3: Document version baseline (AC: #2, #4)
+  - [x] Create `syncro/README.md` with project overview, tech stack versions, and local dev instructions placeholder
+  - [x] Create `syncro/docs/local-development.md` placeholder referencing architecture decisions
+- [x] Task 4: Validate structure (AC: #1)
+  - [x] Verify all directories exist and are not empty (use `.gitkeep` where needed)
+  - [x] Verify `.env.example` contains all required variables
 
 ## Dev Notes
 
@@ -157,8 +157,43 @@ waha
 
 ### Agent Model Used
 
+cx/gpt-5.5
+
 ### Debug Log References
+
+- RED: temporary `validate-syncro-baseline.ps1` failed before skeleton existed, reporting missing required directories and files.
+- GREEN: `pwsh -NoProfile -File syncro/scripts/validate-syncro-baseline.ps1` passed.
 
 ### Completion Notes List
 
+- Created Syncro monorepo baseline directories under `syncro/` only.
+- Added `.gitkeep` placeholders for empty implementation directories.
+- Added `syncro/.env.example` with required infrastructure, backend, and frontend variables.
+- Added `syncro/.gitignore` covering Node, Next.js, Java, Maven, logs, local infra data, secrets, and temp files.
+- Added `syncro/README.md` with selected version baseline and repository structure.
+- Added `syncro/docs/local-development.md` referencing architecture constraints and story boundary.
+- Added `syncro/scripts/validate-syncro-baseline.ps1` to verify required structure and environment keys.
+
 ### File List
+
+- syncro/.env.example
+- syncro/.gitignore
+- syncro/README.md
+- syncro/apps/backend/.gitkeep
+- syncro/apps/web/.gitkeep
+- syncro/docs/local-development.md
+- syncro/infra/emqx/etc/.gitkeep
+- syncro/infra/influxdb/.gitkeep
+- syncro/infra/pgadmin/.gitkeep
+- syncro/infra/postgres/init/.gitkeep
+- syncro/infra/redis/.gitkeep
+- syncro/infra/waha/.gitkeep
+- syncro/scripts/validate-syncro-baseline.ps1
+- syncro/tests/e2e/.gitkeep
+- syncro/tests/fixtures/.gitkeep
+- _bmad-output/implementation-artifacts/1-1-initialize-monorepo-and-version-baseline.md
+- _bmad-output/implementation-artifacts/sprint-status.yaml
+
+### Change Log
+
+- 2026-05-25: Implemented Story 1.1 monorepo baseline and moved story to review.
