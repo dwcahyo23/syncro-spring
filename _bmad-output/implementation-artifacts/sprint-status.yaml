@@ -50,7 +50,7 @@ development_status:
   1-4-initialize-nextjs-admin-frontend-shell: done
   1-5-choose-and-implement-auth-mode-baseline: done
   1-6-enforce-application-role-access: done
-  1-7-implement-plant-scoped-data-access: backlog
+  1-7-implement-plant-scoped-data-access: review
   epic-1-retrospective: optional
 
   # Epic 2: Machine Master Data & Setup Foundation

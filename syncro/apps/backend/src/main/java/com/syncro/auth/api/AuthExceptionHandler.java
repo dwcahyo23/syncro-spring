@@ -2,6 +2,7 @@ package com.syncro.auth.api;
 
 import com.syncro.auth.api.AuthDtos.ErrorResponse;
 import com.syncro.auth.application.AuthService.BadCredentialsException;
+import com.syncro.auth.application.PlantScopeService.PlantAccessDeniedException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
@@ -27,6 +28,11 @@ public class AuthExceptionHandler {
   @ExceptionHandler(MethodArgumentNotValidException.class)
   ResponseEntity<ErrorResponse> validationError() {
     return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Request validation failed.");
+  }
+
+  @ExceptionHandler(PlantAccessDeniedException.class)
+  ResponseEntity<ErrorResponse> plantAccessDenied() {
+    return error(HttpStatus.FORBIDDEN, "PLANT_ACCESS_DENIED", "You don't have access to this plant's data.");
   }
 
   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message) {

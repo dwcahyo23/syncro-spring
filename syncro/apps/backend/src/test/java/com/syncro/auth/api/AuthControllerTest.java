@@ -13,6 +13,7 @@ import com.syncro.auth.api.AuthDtos.LoginResponse;
 import com.syncro.auth.application.AuthService;
 import com.syncro.auth.application.AuthService.BadCredentialsException;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
+import com.syncro.auth.application.PlantScopeService;
 import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.auth.application.JwtTokenService;
 import com.syncro.auth.infrastructure.JwtAuthenticationFilter;
@@ -43,6 +44,9 @@ class AuthControllerTest {
 
   @MockitoBean
   private JwtTokenService jwtTokenService;
+
+  @MockitoBean
+  private PlantScopeService plantScopes;
 
   @Test
   void loginReturnsTokenAndUserWithoutSecrets() throws Exception {

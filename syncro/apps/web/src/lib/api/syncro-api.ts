@@ -8,6 +8,19 @@ type LoginInput = {
   password: string;
 };
 
+export type PlantScope = {
+  id: string;
+  code: string;
+  name: string;
+};
+
+export type PlantScopeResponse = {
+  mode: "UNRESTRICTED" | "ASSIGNED" | "EMPTY";
+  availablePlants: PlantScope[];
+  defaultPlantId: string | null;
+  emptyReason: "NO_PLANTS_ASSIGNED" | null;
+};
+
 function isAuthUser(value: unknown): value is LoginResult["user"] {
   if (!value || typeof value !== "object") {
     return false;
@@ -30,6 +43,28 @@ function isLoginResult(value: unknown): value is LoginResult {
     typeof result.accessToken === "string" &&
     typeof result.expiresInSeconds === "number" &&
     isAuthUser(result.user)
+  );
+}
+
+function isPlantScope(value: unknown): value is PlantScope {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const plant = value as Record<string, unknown>;
+  return typeof plant.id === "string" && typeof plant.code === "string" && typeof plant.name === "string";
+}
+
+function isPlantScopeResponse(value: unknown): value is PlantScopeResponse {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const scope = value as Record<string, unknown>;
+  return (
+    (scope.mode === "UNRESTRICTED" || scope.mode === "ASSIGNED" || scope.mode === "EMPTY") &&
+    Array.isArray(scope.availablePlants) &&
+    scope.availablePlants.every(isPlantScope) &&
+    (typeof scope.defaultPlantId === "string" || scope.defaultPlantId === null) &&
+    (scope.emptyReason === "NO_PLANTS_ASSIGNED" || scope.emptyReason === null)
   );
 }
 
@@ -61,6 +96,21 @@ export async function fetchCurrentUser(token: string): Promise<LoginResult["user
   }
   if (!response.ok || !isAuthUser(payload)) {
     throw new Error("Authentication is required.");
+  }
+  return payload;
+}
+
+export async function fetchPlantScope(token: string): Promise<PlantScopeResponse> {
+  const response = await fetch(`${API_BASE_URL}/auth/plant-scope`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const payload: unknown = await response.json().catch(() => undefined);
+  if (response.status === 401) {
+    expireAuthSession();
+    throw new Error("Authentication is required.");
+  }
+  if (!response.ok || !isPlantScopeResponse(payload)) {
+    throw new Error("Plant scope could not be loaded.");
   }
   return payload;
 }
