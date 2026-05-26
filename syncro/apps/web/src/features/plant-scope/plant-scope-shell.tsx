@@ -8,7 +8,13 @@ import { AUTH_TOKEN_COOKIE } from "@/lib/auth/auth-session";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
 import { getClientCookie } from "@/lib/cookie.client";
 
-import { resetPlantScope, setActivePlantScope, setPlantScope, usePlantScope } from "./plant-scope-store";
+import {
+  resetPlantScope,
+  setActivePlantScope,
+  setPlantScope,
+  setPlantScopeLoadError,
+  usePlantScope,
+} from "./plant-scope-store";
 
 export function PlantScopeShell() {
   const authUser = useAuthUser();
@@ -32,12 +38,7 @@ export function PlantScopeShell() {
       })
       .catch(() => {
         if (active) {
-          setPlantScope({
-            mode: "EMPTY",
-            availablePlants: [],
-            defaultPlantId: null,
-            emptyReason: "NO_PLANTS_ASSIGNED",
-          });
+          setPlantScopeLoadError();
         }
       });
 

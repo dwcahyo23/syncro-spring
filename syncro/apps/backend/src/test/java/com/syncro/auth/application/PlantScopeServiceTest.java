@@ -101,6 +101,25 @@ class PlantScopeServiceTest {
   }
 
   @Test
+  void nonSuperAdminWithStaleAssignmentsReceivesEmptyScope() {
+    var userId = UUID.randomUUID();
+    var stalePlantId = UUID.randomUUID();
+    when(assignments.findByAuthUserId(userId))
+        .thenReturn(List.of(new AuthUserPlantAssignmentEntity(userId, stalePlantId, Instant.parse("2026-05-26T00:00:00Z"))));
+    when(plants.findAllById(List.of(stalePlantId))).thenReturn(List.of());
+
+    var scope = plantScopes.effectiveScope(new AuthenticatedUser(
+        userId.toString(),
+        "viewer@syncro.dev",
+        ApplicationRole.VIEWER));
+
+    assertThat(scope.mode()).isEqualTo("EMPTY");
+    assertThat(scope.availablePlants()).isEmpty();
+    assertThat(scope.defaultPlantId()).isNull();
+    assertThat(scope.emptyReason()).isEqualTo("NO_PLANTS_ASSIGNED");
+  }
+
+  @Test
   void requirePlantAccessRejectsOutOfScopePlantForAssignedUser() {
     var userId = UUID.randomUUID();
     var assignedPlantId = UUID.randomUUID();
@@ -116,11 +135,26 @@ class PlantScopeServiceTest {
   }
 
   @Test
-  void requirePlantAccessAllowsSuperAdmin() {
+  void requirePlantAccessAllowsSuperAdminForExistingPlant() {
+    var plantId = UUID.randomUUID();
+    when(plants.existsById(plantId)).thenReturn(true);
+
     plantScopes.requirePlantAccess(new AuthenticatedUser(
         UUID.randomUUID().toString(),
         "admin@syncro.dev",
-        ApplicationRole.SUPER_ADMIN), UUID.randomUUID());
+        ApplicationRole.SUPER_ADMIN), plantId);
+  }
+
+  @Test
+  void requirePlantAccessRejectsMissingPlantForSuperAdmin() {
+    var plantId = UUID.randomUUID();
+    when(plants.existsById(plantId)).thenReturn(false);
+
+    assertThatThrownBy(() -> plantScopes.requirePlantAccess(new AuthenticatedUser(
+        UUID.randomUUID().toString(),
+        "admin@syncro.dev",
+        ApplicationRole.SUPER_ADMIN), plantId))
+        .isInstanceOf(PlantScopeService.PlantAccessDeniedException.class);
   }
 
   @Test

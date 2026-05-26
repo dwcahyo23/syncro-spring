@@ -135,7 +135,7 @@ AR-005: Choose Story 0 auth mode before auth implementation: Spring Security coo
 AR-006: Run local infrastructure through `infra/docker-compose.yml` with stable service names: `postgres`, `pgadmin`, `redis`, `influxdb`, `emqx`, and `waha`.
 AR-007: Keep MQTT contract broker-agnostic while using EMQX for local/dev broker implementation.
 AR-008: Configure backend MQTT via environment variables, not hardcoded EMQX URLs.
-AR-009: Use REST JSON API under `/api/v1` and generate/maintain OpenAPI contracts.
+AR-009: Use REST JSON API under `/api/v1`, add Springdoc OpenAPI before Epic 2 data APIs, and generate/maintain OpenAPI contracts.
 AR-010: Use PostgreSQL as system of record for master data, auth, config, alerts, WAHA templates, responsibility, notification jobs, audit events, and health snapshots.
 AR-011: Use InfluxDB 3 Core for accepted telemetry history, with v2 line protocol compatibility as fallback if Java support blocks implementation.
 AR-012: Use Redis for latest telemetry state and lightweight cache.
@@ -152,6 +152,8 @@ AR-022: Use pgAdmin only as local/dev evidence tool, not runtime dependency or a
 AR-023: Create `docs/pilot-validation.md` with operator proof and technical proof sections.
 AR-024: Store timestamps in UTC; frontend displays both absolute audit/evidence timestamp and relative operational freshness.
 AR-025: Keep Phase 1 modular monolith ready for CMMS, IMMS, ABAC, reporting, KPI, and IATF expansion without adding premature microservices.
+AR-026: Starting Epic 2, use Orval to generate TypeScript clients and TanStack Query hooks from Springdoc OpenAPI; keep Zustand for UI/session state only.
+AR-027: Add Resilience4j before WAHA or InfluxDB external-call workflows so retry, timeout, and circuit-breaker behavior is standardized.
 
 ### UX Design Requirements
 
@@ -469,6 +471,7 @@ So that machine data can be organized by plant.
 **Then** plant is persisted in PostgreSQL
 **And** plant appears in plant management list
 **And** duplicate or invalid plant data returns standard validation error
+**And** plant create/update request DTOs enforce `@Valid` Jakarta Bean Validation with explicit size/format constraints and malformed JSON returns the standard safe error shape
 **And** VIEWER can view permitted plant list but cannot create, edit, or delete
 **And** plant table supports loading, empty, error, read-only, and forbidden states
 
@@ -485,6 +488,7 @@ So that process lines like Forming can be represented per plant.
 **Then** machine group is linked to that plant
 **And** same machine group name may exist in different plants
 **And** duplicate machine group name in same plant is rejected
+**And** machine group create/update request DTOs enforce required `plantId`, bounded text fields, and safe validation/malformed JSON errors
 **And** machine group list can be filtered by plant
 **And** VIEWER cannot mutate machine groups
 
@@ -504,6 +508,7 @@ So that telemetry acceptance can depend on registered machine master data.
 **And** machine active state is not inferred from MQTT or telemetry freshness
 **And** machine summary shows plant, group, code, name/status where available
 **And** invalid or duplicate machine code returns standard validation error
+**And** machine create/update request DTOs enforce required UUIDs, machine-code format/length, allowed status values, bounded optional fields, and malformed JSON/type mismatch safe errors
 
 ### Story 2.4: Manage Sparepart Taxonomy
 
@@ -517,6 +522,7 @@ So that spareparts are normalized and searchable.
 **When** user creates taxonomy entries for category, brand, kind, or type
 **Then** entries are persisted and available for sparepart creation
 **And** duplicate taxonomy values within same dimension are rejected
+**And** taxonomy request DTOs enforce bounded names/codes and return safe validation/malformed JSON errors
 **And** taxonomy lists support loading, empty, error, read-only, and forbidden states
 **And** VIEWER can view taxonomy but cannot mutate it
 
@@ -532,6 +538,7 @@ So that installed spareparts can be tracked consistently.
 **When** user creates sparepart referencing category, brand, kind, and type
 **Then** sparepart is persisted and visible in sparepart list
 **And** missing required taxonomy references return validation error
+**And** sparepart request DTOs enforce required taxonomy UUIDs, bounded text/code fields, and safe validation/malformed JSON errors
 **And** sparepart list supports dense table display and filters
 **And** VIEWER cannot create, edit, or delete spareparts
 
@@ -550,6 +557,7 @@ So that Syncro can later calculate consumed lifetime from production output.
 **And** user may override threshold percentage
 **And** consumption rule is recorded as counter-based, not `installedAt`-based
 **And** invalid expected count, baseline, or threshold returns validation error
+**And** installation request DTOs enforce positive/zero-safe numeric ranges, threshold min/max, required UUIDs, and safe validation/malformed JSON errors
 **And** installation list shows baseline/current/expected/threshold evidence fields where current count is available
 
 ### Story 2.7: Assign Machine Responsibility Levels
@@ -567,6 +575,7 @@ So that alerts can route to the correct escalation recipients later.
 **And** responsibility is machine-specific
 **And** job scope is stored separately from application role
 **And** invalid or duplicate assignments return validation error
+**And** responsibility request DTOs enforce required machine/user UUIDs, allowed responsibility level enum values, and safe validation/malformed JSON errors
 **And** UI explains `MANAGE` app role is different from `MANAGER` job scope where relevant
 
 ### Story 2.8: Show Setup Completeness

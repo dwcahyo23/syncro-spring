@@ -12,9 +12,45 @@ type PlantScopedModulePlaceholderProps = {
 };
 
 export function PlantScopedModulePlaceholder({ title, description, sections }: PlantScopedModulePlaceholderProps) {
-  const { scope } = usePlantScope();
+  const { loadError, scope } = usePlantScope();
 
-  if (scope?.mode === "EMPTY") {
+  if (loadError) {
+    return (
+      <main className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+        <div className="space-y-2">
+          <p className="font-medium text-muted-foreground text-sm">Syncro shell</p>
+          <h1 className="font-semibold text-3xl tracking-tight">{title}</h1>
+          <p className="max-w-3xl text-muted-foreground">{description}</p>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Plant scope unavailable</CardTitle>
+            <CardDescription>Plant scope could not be loaded. Try again or contact your administrator.</CardDescription>
+          </CardHeader>
+        </Card>
+      </main>
+    );
+  }
+
+  if (!scope) {
+    return (
+      <main className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+        <div className="space-y-2">
+          <p className="font-medium text-muted-foreground text-sm">Syncro shell</p>
+          <h1 className="font-semibold text-3xl tracking-tight">{title}</h1>
+          <p className="max-w-3xl text-muted-foreground">{description}</p>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Loading plant scope</CardTitle>
+            <CardDescription>Checking assigned plants before showing this module.</CardDescription>
+          </CardHeader>
+        </Card>
+      </main>
+    );
+  }
+
+  if (scope.mode === "EMPTY") {
     return (
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <div className="space-y-2">

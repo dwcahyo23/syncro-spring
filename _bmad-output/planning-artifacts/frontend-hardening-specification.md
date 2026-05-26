@@ -585,3 +585,86 @@ All 15 domain components can be built from:
 - Existing stack: Zustand, React Hook Form, Zod, TanStack Table
 
 No additional npm packages required for Phase 1 frontend.
+
+## 10. Server State Decision from Epic 2
+
+Starting with Epic 2 data APIs, Syncro uses TanStack Query for client-side server state. Keep Zustand limited to UI/session shell state such as active plant scope, layout preferences, and transient interaction state.
+
+Epic 2 also introduces Orval-generated TypeScript client functions and TanStack Query hooks from the Springdoc OpenAPI contract. Generated files must stay isolated from handwritten feature components and should be wrapped only when a feature needs Syncro-specific composition.
+
+TanStack Query conventions:
+
+- All query and mutation functions come from Orval-generated clients or call the typed API boundary under `src/lib/api`; components must not parse raw `fetch` responses.
+- Query keys must be stable arrays and include active plant scope for plant-scoped data, for example `["machines", { plantScope: activePlantId, page, filters }]`.
+- Mutations must define explicit invalidation behavior for affected query keys.
+- Loading, empty, error, forbidden, stale, and success states remain product behavior and must be rendered by feature components.
+- Do not use TanStack Query as authorization source of truth; backend API decisions remain authoritative.
+
+Backend validation contract for Epic 2 forms:
+
+- Every create/update endpoint must expose request DTO validation through the OpenAPI contract generated from Springdoc.
+- Frontend forms must mirror backend required/length/format/range constraints for guidance, but backend validation remains authoritative.
+- Standard validation and malformed JSON/type mismatch errors must map to reachable field/global error UI, not generic success/empty states.
+- Frontend tests or manual evidence must cover blank, too-long, invalid format/range, forbidden, and duplicate responses for each form.
+
+## 11. Epic 2 Form UX Guardrails
+
+Epic 2 introduces the first real CRUD workflows. These forms must make backend validation, plant scope, role permissions, and setup dependencies understandable instead of hiding them behind generic toasts.
+
+### 11.1 Error Mapping
+
+- Backend `fieldErrors` map to the exact field control and move focus to the first invalid field after submit.
+- Backend global errors such as duplicate, forbidden, stale scope, malformed JSON, or server failure render in a visible form-level alert above actions.
+- Duplicate conflicts use specific copy, for example `Plant code already exists`, `Machine code already exists in this plant`, or `Machine group name already exists in this plant`.
+- Validation failure must not clear user-entered values.
+- Toasts may reinforce success/failure, but cannot be the only validation feedback.
+
+### 11.2 Empty, Forbidden, and Dependency States
+
+- Empty states must distinguish `no data yet`, `no plant assignment`, `forbidden by role`, `load failed`, and `prerequisite missing`.
+- Forms with parent dependencies must route users to prerequisites instead of showing dead disabled forms:
+  - Machine Group requires Plant.
+  - Machine requires Plant and Machine Group.
+  - Sparepart requires taxonomy dimensions.
+  - Installation requires Machine and Sparepart.
+  - Responsibility requires Machine and User.
+- `SUPER_ADMIN` with no plants sees setup CTA copy; non-SUPER_ADMIN with no assignment sees admin-contact copy.
+- Changing active plant scope while a form is dirty must show an unsaved-changes guard before discarding form state.
+
+### 11.3 Selects, Dropdowns, and Pickers
+
+- Do not use native browser `<select>` or native-looking controls for product UI unless explicitly required as accessibility fallback.
+- Use polished non-native shadcn/Radix primitives for selects, dropdown menus, comboboxes, date pickers, and input pickers.
+- For short controlled enums, use shadcn/Radix `Select` or segmented/radio-style controls when all options should stay visible.
+- For searchable or growing datasets such as plant, machine group, machine, sparepart, user, taxonomy, or WAHA recipient selection, use Combobox pattern with `Popover` + `Command` or a dedicated picker component.
+- Pickers must support keyboard navigation, visible focus, clear current value, loading state, empty state, forbidden/disabled state, and long-name truncation with full value available.
+- Picker labels must show domain context, for example plant code + plant name, machine code + machine name, or user login + role/job scope.
+
+### 11.4 Mutation Behavior
+
+- Avoid optimistic UI for Epic 2 CRUD mutations that can fail due to permission, plant scope, duplicate constraint, or validation; prefer submit loading state followed by refetch/invalidation.
+- Submit buttons disable during pending mutation and prevent double submit.
+- Successful mutation shows durable feedback and refreshes affected TanStack Query keys.
+- Destructive actions require confirmation with impact copy; if backend blocks delete due to child records, show exact blocking reason and next action.
+- Mutation success should expose audit/evidence feedback where available, for example `Change recorded` with link or expandable audit detail once audit endpoints exist.
+
+### 11.5 Tables and Dense Admin Workflows
+
+- Tables must handle long industrial codes/names without layout break: truncate in cells, preserve full value via tooltip/title/detail drawer, and keep copy action where useful.
+- Keyboard-heavy workflows must preserve logical tab order, Enter submit where safe, Escape closes dialogs/popovers, and focus returns to trigger after close.
+- Bulk-looking actions are out of scope unless backend supports safe authorization, validation, audit, and rollback semantics.
+- Mobile/tablet layouts may use stacked cards, but must preserve field labels, actions, forbidden/read-only state, and validation messages.
+
+### 11.6 Evidence Required per Epic 2 Story
+
+Each Epic 2 CRUD story must capture automated test or browser/manual evidence for:
+
+- create success
+- edit success
+- blank/too-long/invalid field error
+- duplicate conflict
+- forbidden/read-only role behavior
+- plant-scope restriction where applicable
+- missing prerequisite state
+- dirty-form navigation or plant-scope change guard
+- picker keyboard interaction and empty/loading state

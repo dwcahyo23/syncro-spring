@@ -186,6 +186,8 @@ Recommended backend starter setup:
 - Avoid Lombok by default unless the team explicitly chooses it.
 - Defer MapStruct or other mapping libraries until boilerplate mapping becomes a real implementation pain.
 - Spring Boot DevTools may be added for local development only.
+- Add Springdoc OpenAPI before Epic 2 data APIs so backend contracts can generate frontend types and query clients.
+- Add Resilience4j before WAHA/InfluxDB external-call workflows so timeout, retry, and circuit-breaker behavior stays consistent instead of becoming scattered manual retry code.
 
 #### Frontend: arhamkhnz/next-shadcn-admin-dashboard
 
@@ -326,8 +328,9 @@ Project initialization should be the first implementation story and must verify 
 - Redis for latest telemetry and cache.
 - MQTT broker choice deferred to infra decision, but protocol contract fixed.
 - Queue implementation: start with PostgreSQL-backed outbox/job table for Phase 1; upgrade to dedicated broker later if needed.
-- Frontend state: server state via API fetching; Zustand only for local UI/session shell state.
-- API docs: OpenAPI generated from Spring backend.
+- Frontend state: TanStack Query for client-side server state starting Epic 2 data APIs; Zustand only for local UI/session shell state.
+- API docs: Springdoc OpenAPI generated from Spring backend.
+- Frontend API client generation: Orval generates TypeScript client functions and TanStack Query hooks from the backend OpenAPI contract starting Epic 2.
 - Audit/event table exists from Phase 1 for setup changes, alert actions, notification attempts, and significant health changes.
 
 **Deferred Decisions (Post-MVP):**
@@ -378,6 +381,8 @@ Rationale: reduces moving parts for Phase 1 while preserving clear ownership and
 - API authorization enforced server-side; frontend only hides/shows allowed actions based on API-provided permissions.
 - Password/session implementation can start local/internal; SSO/Keycloak deferred unless company infrastructure requires it.
 - Validate all external boundaries: REST DTOs, MQTT payloads, WAHA responses.
+- REST request DTOs must use `spring-boot-starter-validation` / Jakarta Bean Validation with `@Valid` controller binding, explicit `@Size` limits on string inputs, format/range constraints where known, and custom constraints only for Syncro domain formats such as plant code, machine code, MQTT topic segment, WAHA phone, or threshold rules.
+- Backend error handling must normalize validation failures and malformed JSON/type mismatches into the standard safe error shape; tests must cover blank, null, too-long, malformed, duplicate, and cross-field invalid inputs for each state-changing endpoint.
 - Plant-scoped data access: non-SUPER_ADMIN users see only telemetry, alerts, and operational data for their assigned plants. Backend API enforces plant scope on all queries; frontend displays plant selector for multi-plant users.
 
 **MQTT Security:**
@@ -397,7 +402,8 @@ Rationale: reduces moving parts for Phase 1 while preserving clear ownership and
 ### API & Communication Patterns
 
 - Web ↔ Backend: REST JSON under `/api/v1`.
-- Backend API docs: OpenAPI.
+- Backend API docs: Springdoc OpenAPI.
+- Epic 2 frontend data APIs use Orval-generated TypeScript clients and TanStack Query hooks from the backend OpenAPI contract; handwritten fetch remains allowed only for shell/session endpoints or until the generator is introduced.
 - Standard API error shape should include machine-readable code, user-facing message, field errors where relevant, timestamp, and request trace id.
 - Operational response objects should include status, status label, status reason, timestamp, and allowed actions where UX needs action safety.
 - MQTT topic: `factory/{plantCode}/{machineCode}/telemetry`.
@@ -441,7 +447,9 @@ Rationale: reduces moving parts for Phase 1 while preserving clear ownership and
   - Settings
 - Domain components from UX spec are frontend wrappers over backend data contracts.
 - New domain components from research reconciliation: `DataQualityPanel`, `QuarantineLogTable`, `LatencyIndicator`, `AuditLogTable`, `PlantScopeSelector`.
-- Zustand only for local UI state; backend remains source of truth for permissions, calculations, and workflows.
+- TanStack Query is the client-side server-state layer starting Epic 2 data APIs. Query keys must include active plant scope where data is plant-scoped, and mutations must invalidate affected query keys explicitly.
+- Orval is the frontend API generation tool starting Epic 2. Generate TypeScript client functions and TanStack Query hooks from Springdoc OpenAPI; keep generated files isolated from handwritten domain components.
+- Zustand only for local UI/session shell state; backend remains source of truth for permissions, calculations, and workflows.
 
 ### Infrastructure & Deployment
 
@@ -1583,8 +1591,8 @@ No architecture blocker found.
   - Not blocking architecture because backend ownership and Spring Security boundary already decided.
 - Exact dependency versions must be pinned during repository initialization.
   - Not blocking architecture because stack families and boundaries are fixed.
-- Exact frontend API client library pattern not fully named.
-  - Not blocking because `lib/api/` boundary exists.
+- Springdoc OpenAPI, Orval, TanStack Query provider, and query-key conventions start in Epic 2.
+  - Not blocking Story 1.x because Phase 1 shell/auth state uses typed API fetch plus local UI/session state only.
 - Exact E2E test runner not selected.
   - Not blocking architecture; can be selected during implementation.
 
@@ -1666,8 +1674,8 @@ Issues from review already addressed:
 
 - Select final auth mode: session cookie or JWT.
 - Pin exact dependency versions during repository initialization.
-- Select frontend API client pattern.
-- Add generated OpenAPI workflow.
+- Add Springdoc OpenAPI, Orval generation, TanStack Query provider, query-key factory, and mutation invalidation conventions in the first Epic 2 frontend data story.
+- Add Resilience4j before WAHA/InfluxDB external-call implementation.
 - Add report storage architecture before Phase 4.
 - Add ABAC policy model before full ABAC rollout.
 - Revisit dedicated message broker if notification workload grows.

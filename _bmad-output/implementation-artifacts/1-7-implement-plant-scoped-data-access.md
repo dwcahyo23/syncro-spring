@@ -1,6 +1,6 @@
 # Story 1.7: Implement Plant-Scoped Data Access
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -80,6 +80,16 @@ so that multi-plant deployments maintain data privacy between plants.
   - [x] Run `pwsh -NoProfile -File syncro/scripts/validate-syncro-baseline.ps1`.
   - [x] Start backend and frontend locally; manually verify header selector and empty/multi/super-admin behavior in browser.
   - [x] Map each acceptance criterion to exact command, test, or browser evidence before moving story to review/done.
+
+### Review Findings
+
+- [x] [Review][Patch] Plant-scope load failures are misreported as valid empty authorization [`syncro/apps/web/src/features/plant-scope/plant-scope-shell.tsx`] — Any plant-scope fetch failure, including 401/session expiry, network/server failures, or invalid API shape, is caught and converted into `mode: "EMPTY"` with `emptyReason: "NO_PLANTS_ASSIGNED"`. This masks real load/auth failures as valid no-assignment state and shows the wrong empty-state copy.
+- [x] [Review][Patch] Plant-scoped placeholders render unrestricted content while scope is still loading [`syncro/apps/web/src/features/plant-scope/plant-scoped-module-placeholder.tsx`] — Initial `scope` is `null`, but placeholders render normal module content unless scope is explicitly `EMPTY`. This creates a loading-time authorization gap pattern before effective scope is known.
+- [x] [Review][Patch] Assigned plant scope can throw 500 when assignment rows resolve to zero plants [`syncro/apps/backend/src/main/java/com/syncro/auth/application/PlantScopeService.java`] — `assignedPlantIds` is checked before resolving plant rows, then `availablePlants.getFirst()` is called without verifying resolved plants are non-empty. Concurrent delete/cascade or repaired data can produce a 500.
+- [x] [Review][Patch] Super-admin with exactly one plant loses visible `All Plants` scope [`syncro/apps/web/src/components/syncro/plant-scope-selector.tsx`] — Backend defaults `SUPER_ADMIN` to `all`, but frontend single-plant branch ignores `isSuperAdmin` and `activePlantId`, rendering the one plant chip instead of `All Plants`.
+- [x] [Review][Patch] Plant-scope guard grants super-admin access to nonexistent plant IDs [`syncro/apps/backend/src/main/java/com/syncro/auth/application/PlantScopeService.java`] — `canAccessPlant` returns true for every `SUPER_ADMIN` UUID without checking plant existence, so later callers may conflate authorization with valid resource identity.
+- [x] [Review][Patch] AC8 frontend evidence is overstated [`_bmad-output/implementation-artifacts/1-7-implement-plant-scoped-data-access.md`] — Diff adds backend-only test endpoint for out-of-scope `403`, but no production frontend direct-resource state exists. Story evidence claims frontend copy coverage beyond implemented routes.
+- [x] [Review][Patch] AC3 and AC9 evidence should state deferred endpoint adoption, not full protected operational API behavior [`_bmad-output/implementation-artifacts/1-7-implement-plant-scoped-data-access.md`] — Current implementation verifies scope service/guard contracts and placeholder UI because real operational APIs are deferred; story evidence should not imply actual Operations/Telemetry/Alerts/Machine-list data APIs enforce filters today.
 
 ## Dev Notes
 
@@ -250,13 +260,13 @@ cx/gpt-5.5
 
 - AC #1: `PlantScopeControllerTest`, `PlantScopeServiceTest`, and `/api/v1/auth/plant-scope` derive scope server-side from authenticated principal and assignment repositories.
 - AC #2: `PlantScopeControllerTest.superAdminReceivesUnrestrictedPlantScope` and `PlantScopeServiceTest.superAdminIsUnrestrictedAndDefaultsToAllPlants` cover unrestricted `SUPER_ADMIN`; browser evidence shows `All Plants`.
-- AC #3: `PlantScopeServiceTest.nonSuperAdminReceivesOnlyAssignedPlants` and `canAccessPlantReturnsTrueOnlyForEffectiveScope` cover assigned-plant enforcement contract for future operational APIs.
+- AC #3: `PlantScopeServiceTest.nonSuperAdminReceivesOnlyAssignedPlants` and `canAccessPlantReturnsTrueOnlyForEffectiveScope` cover assigned-plant enforcement contract for future operational APIs; real Operations, Telemetry, Alerts, and Machine-list data APIs are deferred to later domain stories.
 - AC #4: `PlantScopeControllerTest.unassignedUserReceivesEmptyScopeReason`, `PlantScopeServiceTest.nonSuperAdminWithoutAssignmentsReceivesEmptyScope`, and browser empty-state evidence cover no-assignment behavior.
 - AC #5: Browser evidence confirms header placeholder replaced by accessible `PlantScopeSelector` with `Select plant scope`; `npm --prefix syncro/apps/web run check` passed.
 - AC #6: Browser evidence confirms `SUPER_ADMIN` sees `All Plants`; `MANAGE` sees `All my plants` plus assigned plants only.
 - AC #7: `plant-scope-store.ts` keeps active scope across route navigation and `plant-scope-shell.tsx` resets on auth-user/session changes; browser route checks confirmed selector state in app shell.
-- AC #8: `PlantScopeControllerTest.outOfScopeResourceCheckReturnsSafeForbiddenError` verifies `403` safe error shape and copy.
-- AC #9: Frontend sends scope only through typed API/client state; `PlantScopeService.requirePlantAccess` validates requested plant server-side for future filters.
+- AC #8: `PlantScopeControllerTest.outOfScopeResourceCheckReturnsSafeForbiddenError` verifies backend `403` safe error shape and standard copy for future direct-resource pages; no production direct-resource pages exist in this story scope.
+- AC #9: Frontend sends scope only through typed API/client state; `PlantScopeService.requirePlantAccess` validates requested plant server-side for future filters, while real plant-filtered operational endpoints are deferred to later domain stories.
 - AC #10: JWT/application role code unchanged; tests use only `ROLE_<applicationRole>` and plant scope remains service/database driven.
 - AC #11: `syncro-api.ts` owns plant-scope backend call; no frontend direct dependency access added; baseline validation passed.
 - AC #12: Evidence above maps every AC to automated commands or browser checks.

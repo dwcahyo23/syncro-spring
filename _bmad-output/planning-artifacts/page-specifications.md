@@ -114,9 +114,10 @@ Detailed interaction, content, and state specifications for primary operational 
 
 ### 1.6 Data Refresh
 
+- Starting Epic 2, client-side server state uses TanStack Query for consistent loading, retry, stale, background refresh, and mutation feedback behavior.
 - Auto-refresh every 30 seconds for telemetry cards and alert count.
 - Health summary refreshes every 60 seconds.
-- Manual refresh button in header.
+- Manual refresh button in header invalidates relevant query keys and preserves active plant scope.
 - No WebSocket in Phase 1 — polling only.
 
 ---

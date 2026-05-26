@@ -41,13 +41,16 @@ public class PlantScopeService {
     var availablePlants = plants.findAllById(assignedPlantIds).stream()
         .map(this::toView)
         .toList();
+    if (availablePlants.isEmpty()) {
+      return new PlantScopeResponse("EMPTY", List.of(), null, NO_PLANTS_ASSIGNED);
+    }
     return new PlantScopeResponse("ASSIGNED", availablePlants, availablePlants.getFirst().id(), null);
   }
 
   @Transactional(readOnly = true)
   public boolean canAccessPlant(AuthenticatedUser user, UUID plantId) {
     if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
-      return true;
+      return plants.existsById(plantId);
     }
     return assignments.findByAuthUserId(UUID.fromString(user.id())).stream()
         .anyMatch(assignment -> assignment.getPlantId().equals(plantId));

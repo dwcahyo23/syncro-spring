@@ -152,6 +152,7 @@ For SUPER_ADMIN health monitoring, the desired feeling is diagnostic confidence:
 - Keep alert copy direct: what happened, where, why it matters, and what to do next.
 - Avoid decorative charts that reduce trust or distract from operational action.
 - Provide empty, loading, error, and stale-data states that explain what is happening.
+- Starting Epic 2, frontend server-state UX should use TanStack Query patterns so loading, retry, background refresh, stale data, and mutation feedback stay consistent across many Syncro phases.
 - Explain sparepart lifetime calculation using baseline counter, current count, consumed count, expected count, and threshold percentage.
 - Health failure cards should show dependency, status, last checked time, and last error.
 

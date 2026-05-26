@@ -69,7 +69,9 @@ export function PlantScopeSelector({
     );
   }
 
-  if (availablePlants.length === 1) {
+  const allLabel = isSuperAdmin ? "All Plants" : "All my plants";
+
+  if (availablePlants.length === 1 && (!isSuperAdmin || activePlantId !== "all")) {
     const plant = availablePlants[0];
 
     return (
@@ -85,7 +87,6 @@ export function PlantScopeSelector({
     );
   }
 
-  const allLabel = isSuperAdmin ? "All Plants" : "All my plants";
   const activePlant = availablePlants.find((plant) => plant.id === activePlantId);
   const triggerLabel = activePlant?.name ?? allLabel;
 

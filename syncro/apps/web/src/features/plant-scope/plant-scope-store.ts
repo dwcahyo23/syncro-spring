@@ -7,14 +7,20 @@ import type { PlantScopeResponse } from "@/lib/api/syncro-api";
 type PlantScopeState = {
   scope: PlantScopeResponse | null;
   activePlantId: string;
+  loadError: boolean;
 };
 
 const ALL_PLANTS = "all";
 const listeners = new Set<() => void>();
-let state: PlantScopeState = { scope: null, activePlantId: ALL_PLANTS };
+let state: PlantScopeState = { scope: null, activePlantId: ALL_PLANTS, loadError: false };
 
 export function setPlantScope(scope: PlantScopeResponse | null) {
-  state = { scope, activePlantId: scope?.defaultPlantId ?? ALL_PLANTS };
+  state = { scope, activePlantId: scope?.defaultPlantId ?? ALL_PLANTS, loadError: false };
+  emit();
+}
+
+export function setPlantScopeLoadError() {
+  state = { scope: null, activePlantId: ALL_PLANTS, loadError: true };
   emit();
 }
 
@@ -24,7 +30,7 @@ export function setActivePlantScope(activePlantId: string) {
 }
 
 export function resetPlantScope() {
-  state = { scope: null, activePlantId: ALL_PLANTS };
+  state = { scope: null, activePlantId: ALL_PLANTS, loadError: false };
   emit();
 }
 
