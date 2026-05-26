@@ -54,8 +54,8 @@ development_status:
   epic-1-retrospective: done
 
   # Epic 2: Machine Master Data & Setup Foundation
-  epic-2: backlog
-  2-1-manage-plants: backlog
+  epic-2: in-progress
+  2-1-manage-plants: review
   2-2-manage-plant-scoped-machine-groups: backlog
   2-3-manage-machines-with-manual-active-state: backlog
   2-4-manage-sparepart-taxonomy: backlog

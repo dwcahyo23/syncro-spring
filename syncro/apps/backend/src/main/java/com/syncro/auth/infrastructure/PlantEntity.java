@@ -56,4 +56,10 @@ public class PlantEntity {
   public Instant getUpdatedAt() {
     return updatedAt;
   }
+
+  public void update(String code, String name, Instant updatedAt) {
+    this.code = code;
+    this.name = name;
+    this.updatedAt = updatedAt;
+  }
 }

@@ -2,6 +2,7 @@ package com.syncro;
 
 import com.syncro.auth.application.PlantScopeService;
 import com.syncro.auth.infrastructure.AuthUserRepository;
+import com.syncro.auth.infrastructure.PlantRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -39,6 +40,9 @@ class SyncroBackendApplicationTests {
 
   @MockitoBean
   private PlantScopeService plantScopeService;
+
+  @MockitoBean
+  private PlantRepository plantRepository;
 
   @Test
   void contextLoads() {
