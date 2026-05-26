@@ -5,6 +5,7 @@ import com.syncro.auth.api.AuthDtos.LoginResponse;
 import com.syncro.auth.infrastructure.AuthUserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthService {
@@ -18,9 +19,13 @@ public class AuthService {
     this.tokens = tokens;
   }
 
+  @Transactional(readOnly = true)
   public LoginResponse login(String loginIdentifier, String password) {
     var user = users.findByLoginIdentifierIgnoreCase(loginIdentifier.trim())
-        .filter(candidate -> candidate.isEnabled() && passwordEncoder.matches(password, candidate.getPasswordHash()))
+        .filter(candidate -> {
+          var passwordMatches = passwordEncoder.matches(password, candidate.getPasswordHash());
+          return passwordMatches && candidate.isEnabled();
+        })
         .orElseThrow(BadCredentialsException::new);
     return new LoginResponse(
         "Bearer",

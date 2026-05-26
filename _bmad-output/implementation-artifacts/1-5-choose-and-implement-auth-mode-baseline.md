@@ -1,6 +1,6 @@
 # Story 1.5: Choose and Implement Auth Mode Baseline
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -61,6 +61,15 @@ so that only authenticated users can access protected screens and APIs.
   - [x] Frontend checks cover login form success/failure behavior with typed API boundary mocks or runtime manual evidence; do not duplicate backend auth decisions in UI tests.
   - [x] Run relevant backend Maven tests, frontend `npm --prefix syncro/apps/web run check`, `build`, `lint` where changed, and baseline validation script.
   - [x] Start frontend and backend locally and manually verify login success, failed login, protected dashboard direct URL when signed out, and refresh behavior before marking story complete.
+
+### Review Findings
+
+- [x] [Review][Patch] JWT token stored in non-HttpOnly browser cookie needs explicit XSS limitation documentation [`syncro/docs/local-development.md`]
+- [x] [Review][Patch] Custom ObjectMapper overrides Spring Boot JSON configuration and can break ISO timestamp serialization [`syncro/apps/backend/src/main/java/com/syncro/config/JsonConfig.java:9`]
+- [x] [Review][Patch] JWT secret accepts weak short values because only `@NotBlank` validates it [`syncro/apps/backend/src/main/java/com/syncro/config/JwtProperties.java:11`]
+- [x] [Review][Patch] Login path short-circuits password verification for disabled users and creates timing oracle [`syncro/apps/backend/src/main/java/com/syncro/auth/application/AuthService.java:21`]
+- [x] [Review][Patch] AuthService login reads repository without transaction boundary despite story guardrail [`syncro/apps/backend/src/main/java/com/syncro/auth/application/AuthService.java:18`]
+- [x] [Review][Patch] No Testcontainers/real PostgreSQL test proves migration, unique constraint, or stored password hash behavior [`syncro/apps/backend/src/test/java/com/syncro/auth/api/AuthControllerTest.java:35`]
 
 ## Dev Notes
 

@@ -24,7 +24,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
     "syncro.influxdb.bucket=test",
     "syncro.waha.url=http://localhost:3000",
     "syncro.waha.api-key=test",
-    "syncro.auth.jwt.secret=test-secret-for-context-loads",
+    "syncro.auth.jwt.secret=test-secret-for-context-loads-32",
     "syncro.auth.jwt.issuer=syncro-test",
     "syncro.auth.jwt.ttl-minutes=30",
     "syncro.auth.local-admin.enabled=false",

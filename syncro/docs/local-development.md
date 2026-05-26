@@ -132,7 +132,7 @@ Example login check:
 Invoke-RestMethod http://localhost:8080/api/v1/auth/login -Method Post -ContentType 'application/json' -Body '{"loginIdentifier":"admin@syncro.dev","password":"syncro-admin-dev"}'
 ```
 
-The frontend stores the Phase 1 JWT in browser-managed cookies for route guarding and API calls. This is a local baseline only: backend JWT validation remains the authority, browser storage is not a permission source, and role-specific authorization is Story 1.6 scope.
+The frontend stores the Phase 1 JWT in browser-managed cookies for route guarding and API calls. This is a local baseline only: backend JWT validation remains the authority, browser storage is not a permission source, client-managed cookies are not HttpOnly and remain exposed to XSS, and role-specific authorization is Story 1.6 scope.
 
 ## Current Story Boundary
 
