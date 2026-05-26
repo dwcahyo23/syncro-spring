@@ -31,7 +31,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(AuthController.class)
-@Import({SecurityConfig.class, AuthExceptionHandler.class, JwtAuthenticationFilter.class, TimeConfig.class, TestJsonConfig.class})
+@Import({SecurityConfig.class, AuthExceptionHandler.class, JwtAuthenticationFilter.class, TimeConfig.class, TestJsonConfig.class,
+    RoleCheckTestController.class})
 class AuthControllerTest {
 
   @Autowired
@@ -111,6 +112,7 @@ class AuthControllerTest {
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("FORBIDDEN"))
         .andExpect(jsonPath("$.message").value("You do not have permission to access this resource."))
+        .andExpect(jsonPath("$.timestamp").isNotEmpty())
         .andExpect(jsonPath("$.traceId").isNotEmpty());
   }
 
@@ -120,7 +122,10 @@ class AuthControllerTest {
         .with(SecurityMockMvcRequestPostProcessors.authentication(authenticationFor(
             new AuthenticatedUser("user-3", "viewer@syncro.dev", ApplicationRole.VIEWER)))))
         .andExpect(status().isForbidden())
-        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"))
+        .andExpect(jsonPath("$.message").value("You do not have permission to access this resource."))
+        .andExpect(jsonPath("$.timestamp").isNotEmpty())
+        .andExpect(jsonPath("$.traceId").isNotEmpty());
   }
 
   @Test
@@ -129,7 +134,10 @@ class AuthControllerTest {
         .with(SecurityMockMvcRequestPostProcessors.authentication(authenticationFor(
             new AuthenticatedUser("user-3", "viewer@syncro.dev", ApplicationRole.VIEWER)))))
         .andExpect(status().isForbidden())
-        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"))
+        .andExpect(jsonPath("$.message").value("You do not have permission to access this resource."))
+        .andExpect(jsonPath("$.timestamp").isNotEmpty())
+        .andExpect(jsonPath("$.traceId").isNotEmpty());
   }
 
   @Test

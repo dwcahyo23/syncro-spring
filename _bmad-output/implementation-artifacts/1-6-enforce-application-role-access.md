@@ -1,6 +1,6 @@
 # Story 1.6: Enforce Application Role Access
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -80,6 +80,14 @@ so that users only see and perform actions allowed by their platform role.
   - [x] Run `pwsh -NoProfile -File syncro/scripts/validate-syncro-baseline.ps1`.
   - [x] Start backend and frontend locally; manually verify navigation/search/menu/forbidden/logout for `SUPER_ADMIN`, `MANAGE`, and `VIEWER` using seeded or test users.
   - [x] Map every AC to evidence before moving story to review.
+
+### Review Findings
+
+- [x] [Review][Patch] Real role enforcement is only proven through synthetic auth role-check endpoints [syncro/apps/backend/src/test/java/com/syncro/auth/api/RoleCheckTestController.java]
+- [x] [Review][Patch] Production auth role-check endpoints expand API contract as test scaffolding [syncro/apps/backend/src/test/java/com/syncro/auth/api/RoleCheckTestController.java]
+- [x] [Review][Patch] CORS omits common mutation methods needed by protected API flows [syncro/apps/backend/src/main/java/com/syncro/config/SecurityConfig.java]
+- [x] [Review][Patch] Forbidden response tests do not lock required timestamp field [syncro/apps/backend/src/test/java/com/syncro/auth/api/AuthControllerTest.java]
+- [x] [Review][Patch] Sidebar filtering does not recursively filter subItems [syncro/apps/web/src/navigation/sidebar/filter-sidebar-items.ts]
 
 ## Dev Notes
 

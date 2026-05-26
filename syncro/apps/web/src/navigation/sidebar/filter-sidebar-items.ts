@@ -5,7 +5,12 @@ export function filterSidebarItems(groups: readonly NavGroup[], role: AuthUser["
   return groups
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => canAccessNavItem(item, role)),
+      items: group.items
+        .filter((item) => canAccessNavItem(item, role))
+        .map((item) => ({
+          ...item,
+          subItems: item.subItems?.filter((subItem) => canAccessNavItem(subItem, role)),
+        })),
     }))
     .filter((group) => group.items.length > 0);
 }

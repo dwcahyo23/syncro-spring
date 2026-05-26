@@ -17,6 +17,7 @@ export interface NavSubItem {
   comingSoon?: boolean;
   newTab?: boolean;
   isNew?: boolean;
+  roles?: Array<"SUPER_ADMIN" | "MANAGE" | "VIEWER">;
 }
 
 export interface NavMainItem {
