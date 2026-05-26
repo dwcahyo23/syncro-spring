@@ -24,8 +24,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
   @Bean
-  SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter, ObjectMapper objectMapper,
-      Clock clock) throws Exception {
+  SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter, Clock clock) throws Exception {
+    var objectMapper = new ObjectMapper();
     return http
         .cors(cors -> {})
         .csrf(csrf -> csrf.ignoringRequestMatchers("/api/v1/**"))

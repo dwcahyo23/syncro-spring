@@ -24,12 +24,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
   private final JwtTokenService tokens;
-  private final ObjectMapper objectMapper;
+  private final ObjectMapper objectMapper = new ObjectMapper();
   private final Clock clock;
 
-  public JwtAuthenticationFilter(JwtTokenService tokens, ObjectMapper objectMapper, Clock clock) {
+  public JwtAuthenticationFilter(JwtTokenService tokens, Clock clock) {
     this.tokens = tokens;
-    this.objectMapper = objectMapper;
     this.clock = clock;
   }
 

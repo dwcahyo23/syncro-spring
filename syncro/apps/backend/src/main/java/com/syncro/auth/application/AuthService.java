@@ -9,6 +9,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthService {
+  private static final String DUMMY_PASSWORD_HASH = "$2a$10$7EqJtq98hPqEX7fNZaFWoOhiI6BFSH9upL7M9PdPIpEBaU8UQFJ6i";
+
   private final AuthUserRepository users;
   private final PasswordEncoder passwordEncoder;
   private final JwtTokenService tokens;
@@ -21,17 +23,18 @@ public class AuthService {
 
   @Transactional(readOnly = true)
   public LoginResponse login(String loginIdentifier, String password) {
-    var user = users.findByLoginIdentifierIgnoreCase(loginIdentifier.trim())
-        .filter(candidate -> {
-          var passwordMatches = passwordEncoder.matches(password, candidate.getPasswordHash());
-          return passwordMatches && candidate.isEnabled();
-        })
+    var user = users.findByLoginIdentifierIgnoreCase(loginIdentifier.trim());
+    var passwordHash = user.map(candidate -> candidate.getPasswordHash()).orElse(DUMMY_PASSWORD_HASH);
+    var passwordMatches = passwordEncoder.matches(password, passwordHash);
+    var authenticatedUser = user
+        .filter(candidate -> passwordMatches && candidate.isEnabled())
         .orElseThrow(BadCredentialsException::new);
     return new LoginResponse(
         "Bearer",
-        tokens.createToken(user),
+        tokens.createToken(authenticatedUser),
         tokens.expiresInSeconds(),
-        new AuthUserView(user.getId().toString(), user.getLoginIdentifier(), user.getApplicationRole()));
+        new AuthUserView(authenticatedUser.getId().toString(), authenticatedUser.getLoginIdentifier(),
+            authenticatedUser.getApplicationRole()));
   }
 
   public AuthUserView currentUser(JwtTokenService.AuthenticatedUser user) {

@@ -71,6 +71,11 @@ so that only authenticated users can access protected screens and APIs.
 - [x] [Review][Patch] AuthService login reads repository without transaction boundary despite story guardrail [`syncro/apps/backend/src/main/java/com/syncro/auth/application/AuthService.java:18`]
 - [x] [Review][Patch] No Testcontainers/real PostgreSQL test proves migration, unique constraint, or stored password hash behavior [`syncro/apps/backend/src/test/java/com/syncro/auth/api/AuthControllerTest.java:35`]
 
+### Re-review Findings
+
+- [x] [Review][Patch] Missing-user login still skips password verification work and can leak username existence by timing [`syncro/apps/backend/src/main/java/com/syncro/auth/application/AuthService.java:21`]
+- [x] [Review][Patch] ObjectMapper override still bypasses Spring Boot JSON customization ownership [`syncro/apps/backend/src/main/java/com/syncro/config/JsonConfig.java:10`]
+
 ## Dev Notes
 
 ### Scope Boundary
