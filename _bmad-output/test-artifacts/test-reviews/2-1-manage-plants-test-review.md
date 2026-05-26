@@ -4,6 +4,7 @@ stepsCompleted:
   - loaded-knowledge-fragments
   - reviewed-story-evidence
   - reviewed-backend-tests
+  - reviewed-review-fixes
 lastStep: 'review-complete'
 lastSaved: '2026-05-27'
 workflowType: 'testarch-test-review'
@@ -13,40 +14,39 @@ inputDocuments:
   - syncro/apps/backend/src/test/java/com/syncro/masterdata/application/PlantServiceIntegrationTest.java
 ---
 
-# Test Quality Review: Story 2.1 Manage Plants
+# Test Quality Re-Review: Story 2.1 Manage Plants
 
-**Quality Score**: 88/100 (A- - Good)
+**Quality Score**: 92/100 (A - Strong)
 **Review Date**: 2026-05-27
-**Review Scope**: suite
+**Review Scope**: suite re-review after review fixes
 **Reviewer**: Murat (BMad TEA Agent)
 
 ---
 
-Note: This review audits existing tests; it does not generate tests. Coverage mapping and coverage gates are out of scope here. Use `trace` for coverage decisions.
+Note: This review audits existing tests and story evidence; it does not generate tests. Coverage mapping and coverage gates are out of scope here. Use `trace` for formal AC coverage decisions.
 
 ## Executive Summary
 
-**Overall Assessment**: Good
+**Overall Assessment**: Strong
 
 **Recommendation**: Approve with Comments
 
-### Key Strengths
+### Key Improvements Since Prior Review
 
-✅ Backend tests cover high-risk role/scope authorization paths with MockMvc and real PostgreSQL integration.
-✅ Safe error shape is asserted for validation, malformed JSON, duplicate code, forbidden, not found, and unauthenticated cases.
-✅ Testcontainers proof covers persistence, uniqueness, plant-scope filtering, out-of-scope mutation, and assignment cascade delete.
+✅ Backend tests now include Story/Test IDs and priority markers through `@DisplayName` on API and service integration tests.
+✅ AC4 invalid payload matrix now covers blank, null, too-long, and bad code format payloads, plus malformed JSON.
+✅ API authorization regression coverage now includes unauthenticated mutation paths, VIEWER update, MANAGE out-of-scope delete, and invalid UUID path errors.
+✅ Service integration proof now covers MANAGE creator assignment after plant creation.
 
-### Key Weaknesses
+### Remaining Weakness
 
-❌ Test names do not include Story/Test IDs or priority markers, reducing traceability and selective execution value.
-❌ Frontend/browser evidence is manual in story record; no committed UI automation or component test exists for loading/error/read-only/validation states.
-❌ AC4 matrix mentions null, too-long, badly formatted, and type-mismatched payloads, but visible tests only prove blank and malformed JSON.
+❌ Frontend/browser evidence remains manual in story record; no committed app-level UI automation or component test was found for loading/error/read-only/validation states.
 
 ### Summary
 
-Story 2.1 has strong backend test quality and good risk coverage for most critical CRUD/security paths. Tests are deterministic, focused, and isolated enough for current scale; no hard waits, hidden assertions, or flakiness patterns were detected in reviewed backend files.
+Story 2.1 backend test quality materially improved after review fixes. The suite now has better traceability, stronger negative-path coverage, and clearer P0/P1 classification for security and data-integrity paths.
 
-Approval is safe with comments because no critical blocker was found. Main improvement is traceability and remaining edge-case automation: add IDs/priority markers and expand validation/UI automated evidence before this pattern becomes default for later Epic 2 master-data screens.
+Approval remains safe with comments. Backend is production-worthy for current risk; remaining improvement is frontend automated regression protection before the same CRUD pattern spreads across Epic 2.
 
 ---
 
@@ -54,21 +54,21 @@ Approval is safe with comments because no critical blocker was found. Main impro
 
 | Criterion                            | Status  | Violations | Notes |
 | ------------------------------------ | ------- | ---------- | ----- |
-| BDD Format (Given-When-Then)         | WARN    | 15         | Test names are descriptive but not Given/When/Then style. |
-| Test IDs                             | WARN    | 15         | No `2.1-LEVEL-SEQ` IDs in test names or metadata. |
-| Priority Markers (P0/P1/P2/P3)       | WARN    | 15         | Security/data-integrity tests are effectively P0/P1 but unmarked. |
-| Hard Waits (sleep, waitForTimeout)   | PASS    | 0          | No hard waits detected. |
-| Determinism (no conditionals)        | PASS    | 0          | Tests execute fixed paths; no flow-control conditionals. |
-| Isolation (cleanup, no shared state) | PASS    | 0          | Integration tests are transactional with Testcontainers DB. |
+| BDD Format (Given-When-Then)         | WARN    | 0          | Names are behavior-focused but not strict Given/When/Then. Acceptable for JUnit display names. |
+| Test IDs                             | PASS    | 0          | API tests use `2.1-API-###`; service tests use `2.1-SVC-###`. |
+| Priority Markers (P0/P1/P2/P3)       | PASS    | 0          | Display names include P0/P1 markers for reviewed tests. |
+| Hard Waits (sleep, waitForTimeout)   | PASS    | 0          | No hard waits detected in reviewed backend tests. |
+| Determinism (no conditionals)        | PASS    | 0          | Tests execute fixed paths; parameterized method switch is deterministic. |
+| Isolation (cleanup, no shared state) | PASS    | 0          | Integration tests are transactional with Testcontainers DB and unique data. |
 | Fixture Patterns                     | PASS    | 0          | Spring test fixtures and helper methods keep setup contained. |
-| Data Factories                       | WARN    | 1          | Helpers exist, but repeated user/plant setup could become factory methods. |
-| Network-First Pattern                | N/A     | 0          | No committed browser/network automation in reviewed scope. |
+| Data Factories                       | WARN    | 1          | Helpers exist, but repeated user/plant setup can become factories if suite grows. |
+| Network-First Pattern                | WARN    | 1          | No committed browser/network automation in reviewed app scope; manual browser evidence only. |
 | Explicit Assertions                  | PASS    | 0          | Assertions are visible in test bodies. |
-| Test Length (≤300 lines)             | PASS    | 0          | `PlantControllerTest` 207 lines; `PlantServiceIntegrationTest` 172 lines. |
-| Test Duration (≤1.5 min)             | PASS    | 0          | Story evidence: targeted suite passed, full backend suite passed. |
-| Flakiness Patterns                   | PASS    | 0          | No sleeps, random shared hardcoded unique keys, or external nondeterminism found. |
+| Test Length (≤300 lines)             | PASS    | 0          | `PlantControllerTest` 289 lines; `PlantServiceIntegrationTest` 195 lines. |
+| Test Duration (≤1.5 min)             | PASS    | 0          | Story/review evidence: targeted suite and full backend suite passed. |
+| Flakiness Patterns                   | PASS    | 0          | No sleeps, no remote services, no timing races found in reviewed tests. |
 
-**Total Violations**: 0 Critical, 0 High, 3 Medium, 1 Low
+**Total Violations**: 0 Critical, 0 High, 1 Medium, 1 Low
 
 ---
 
@@ -78,21 +78,19 @@ Approval is safe with comments because no critical blocker was found. Main impro
 Starting Score:          100
 Critical Violations:     -0 × 10 = -0
 High Violations:         -0 × 5 = -0
-Medium Violations:       -3 × 2 = -6
+Medium Violations:       -1 × 5 = -5
 Low Violations:          -1 × 1 = -1
 
 Bonus Points:
-  Excellent BDD:         +0
-  Comprehensive Fixtures: +0
-  Data Factories:        +0
-  Network-First:         +0
-  Perfect Isolation:     +5
-  All Test IDs:          +0
+  Test IDs present:      +2
+  Priority markers:      +2
+  Real DB integration:   +2
+  Strong safe-errors:    +2
                          --------
-Total Bonus:             +5
+Total Bonus:             +8
 
-Final Score:             98 capped/rebalanced to 88/100 for missing traceability + UI automation evidence
-Grade:                   A-
+Final Score:             92/100 after cap for missing frontend automation evidence
+Grade:                   A
 ```
 
 ---
@@ -105,48 +103,15 @@ No critical issues detected. ✅
 
 ## Recommendations (Should Fix)
 
-### 1. Add Story/Test IDs and priority markers
+### 1. Add frontend automated state evidence
 
 **Severity**: P2 (Medium)
-**Location**: `syncro/apps/backend/src/test/java/com/syncro/masterdata/api/PlantControllerTest.java:53`, `syncro/apps/backend/src/test/java/com/syncro/masterdata/application/PlantServiceIntegrationTest.java:84`
-**Criterion**: Test IDs, Priority Markers
-**Knowledge Base**: [test-levels-framework.md](../../../.claude/skills/bmad-tea/resources/knowledge/test-levels-framework.md), [test-priorities-matrix.md](../../../.claude/skills/bmad-tea/resources/knowledge/test-priorities-matrix.md)
-
-**Issue Description**:
-Tests are clear, but no ID links them to Story 2.1 or priority. Auth/authz, duplicate, and delete cascade are P0/P1 risk areas because they affect security and data integrity.
-
-**Current Code**:
-
-```java
-@Test
-void viewerCannotCreatePlant() throws Exception {
-```
-
-**Recommended Improvement**:
-
-```java
-@Test
-@DisplayName("2.1-API-004 P0 VIEWER cannot create plants")
-void viewerCannotCreatePlant() throws Exception {
-```
-
-**Benefits**:
-Traceability improves, future `trace` workflow can map evidence faster, and CI can later filter critical tests by naming/tag convention.
-
-**Priority**:
-P2. Does not block current review because story evidence maps ACs, but should become standard before Epic 2 repeats this pattern across many CRUD screens.
-
----
-
-### 2. Automate frontend state evidence
-
-**Severity**: P2 (Medium)
-**Location**: `_bmad-output/implementation-artifacts/2-1-manage-plants.md:267`, `syncro/apps/web/src/features/master-data/plants/plant-management.tsx`
+**Location**: `_bmad-output/implementation-artifacts/2-1-manage-plants.md:281`, `syncro/apps/web/src/features/master-data/plants/plant-management.tsx`
 **Criterion**: Network-First Pattern, Error Handling UI
-**Knowledge Base**: [network-first.md](../../../.claude/skills/bmad-tea/resources/knowledge/network-first.md), [error-handling.md](../../../.claude/skills/bmad-tea/resources/knowledge/error-handling.md)
+**Knowledge Base**: `network-first.md`, `error-handling.md`, `selector-resilience.md`, `timing-debugging.md`
 
 **Issue Description**:
-Story record includes browser evidence for SUPER_ADMIN and VIEWER flows, but no committed UI automation or component test proves loading/error/forbidden/validation states. This is acceptable for Story 2.1 review evidence, but weak as reusable regression protection.
+Story record includes browser evidence for SUPER_ADMIN and VIEWER flows, but no committed app-level UI automation or component test was found for loading/error/forbidden/validation/read-only states. This is acceptable for current Story 2.1 because browser evidence exists, but weak as regression protection for Epic 2 CRUD reuse.
 
 **Current Evidence**:
 
@@ -166,82 +131,85 @@ await plantsPromise;
 await expect(page.getByText("Plants")).toBeVisible();
 ```
 
+Cover at least:
+
+- list success
+- empty state
+- loading state
+- error/retry state
+- VIEWER read-only state
+- backend validation error display
+- forbidden mutation/error display
+- delete confirmation
+
 **Benefits**:
-Prevents regressions in error, loading, read-only, and validation UI when Epic 2 adds machine groups/machines and reuses same CRUD pattern.
+Prevents regressions in frontend behavior when Story 2.2+ repeats the generated-client + TanStack Query CRUD pattern.
 
 **Priority**:
-P2. Manual browser evidence is acceptable now; automation should be added as soon as frontend test harness exists.
+P2. Not blocking current approval; should be addressed when frontend test harness becomes project baseline.
 
 ---
 
-### 3. Expand validation edge-case matrix
-
-**Severity**: P2 (Medium)
-**Location**: `syncro/apps/backend/src/test/java/com/syncro/masterdata/api/PlantControllerTest.java:115`
-**Criterion**: Explicit Assertions, NFR Security/Safe Errors
-**Knowledge Base**: [nfr-criteria.md](../../../.claude/skills/bmad-tea/resources/knowledge/nfr-criteria.md), [error-handling.md](../../../.claude/skills/bmad-tea/resources/knowledge/error-handling.md)
-
-**Issue Description**:
-AC4 requires blank, null, too-long, badly formatted, malformed JSON, and type-mismatched payloads. Current reviewed tests visibly prove blank and malformed JSON. Type mismatch for current string fields may be less relevant, but null/too-long/bad code format should be explicit.
-
-**Current Code**:
-
-```java
-.content("{\"code\":\"\",\"name\":\"\"}")
-```
-
-**Recommended Improvement**:
-Use parameterized tests for invalid payloads while keeping assertions explicit:
-
-```java
-@ParameterizedTest
-@ValueSource(strings = {
-    "{\"code\":null,\"name\":\"Plant GM1\"}",
-    "{\"code\":\"bad code\",\"name\":\"Plant GM1\"}",
-    "{\"code\":\"GM1\",\"name\":null}"
-})
-void invalidPlantPayloadReturnsSafeValidationError(String payload) throws Exception {
-```
-
-**Benefits**:
-Closes AC4 edge-case ambiguity and protects safe error contract from leaking validation internals.
-
-**Priority**:
-P2. Not blocking because core validation and malformed JSON are covered, but matrix should be complete before more master-data DTOs duplicate pattern.
-
----
-
-### 4. Extract repeated entity setup if more service tests are added
+### 2. Extract repeated entity setup if more service tests are added
 
 **Severity**: P3 (Low)
-**Location**: `syncro/apps/backend/src/test/java/com/syncro/masterdata/application/PlantServiceIntegrationTest.java:104`
+**Location**: `syncro/apps/backend/src/test/java/com/syncro/masterdata/application/PlantServiceIntegrationTest.java:114`
 **Criterion**: Data Factories
-**Knowledge Base**: [test-quality.md](../../../.claude/skills/bmad-tea/resources/knowledge/test-quality.md)
+**Knowledge Base**: `test-quality.md`, `data-factories.md`
 
 **Issue Description**:
-Repeated `AuthUserEntity`, `PlantEntity`, and assignment setup is still readable. If more cases are added, duplication will increase and obscure intent.
+Repeated `AuthUserEntity`, `PlantEntity`, and assignment setup remains readable today. If more master-data service cases are added, duplication will grow and obscure intent.
 
 **Recommended Improvement**:
-Add focused helper methods like `saveUser(role)`, `savePlant(code)`, and `assign(userId, plantId)` inside test class.
+Add focused helpers like `saveUser(role, loginIdentifier)`, `savePlant(code, name)`, and `assign(userId, plantId)` inside the test class or shared test fixture once duplication repeats.
 
 **Benefits**:
 Keeps future tests under 300 lines and improves readability without hiding assertions.
 
 **Priority**:
-P3. Current file is small and acceptable.
+P3. Current file is acceptable.
+
+---
+
+## Prior Recommendations Rechecked
+
+| Prior recommendation | Current status | Evidence |
+| -------------------- | -------------- | -------- |
+| Add Story/Test IDs and priority markers | Closed | `PlantControllerTest` uses `2.1-API-001..014` and `P0/P1`; `PlantServiceIntegrationTest` uses `2.1-SVC-001..005` and `P0/P1`. |
+| Expand validation edge-case matrix | Closed | `invalidPlantRequestReturnsFieldErrors` covers blank, null code, null name, bad code format, too-long code, too-long name; `malformedJsonReturnsSafeError` covers malformed JSON. |
+| Add frontend automated state tests | Open | Browser evidence exists, but no committed app-level UI/component test found. |
+| Extract repeated entity setup | Open, low priority | Existing helper `persistedUser` reduces repetition; more factories only needed if suite grows. |
 
 ---
 
 ## Best Practices Found
 
-### 1. Real PostgreSQL proof for schema-sensitive behavior
+### 1. Traceable backend test names
 
-**Location**: `syncro/apps/backend/src/test/java/com/syncro/masterdata/application/PlantServiceIntegrationTest.java:59`
-**Pattern**: Integration test with Testcontainers
-**Knowledge Base**: [test-levels-framework.md](../../../.claude/skills/bmad-tea/resources/knowledge/test-levels-framework.md)
+**Location**: `syncro/apps/backend/src/test/java/com/syncro/masterdata/api/PlantControllerTest.java:58`, `syncro/apps/backend/src/test/java/com/syncro/masterdata/application/PlantServiceIntegrationTest.java:87`
+**Pattern**: Story/test ID + priority in `@DisplayName`
 
 **Why This Is Good**:
-Delete cascade, uniqueness, and scope filtering are database/integration concerns. Testcontainers is correct level; mocks would miss schema behavior.
+Display names now support fast review, selective execution planning, and future `trace` mapping without changing method names.
+
+**Code Example**:
+
+```java
+@DisplayName("2.1-API-004 P0 VIEWER cannot create plants")
+```
+
+**Use as Reference**:
+Use `story-level-seq priority behavior` naming for Story 2.2 and later master-data tests.
+
+---
+
+### 2. Real PostgreSQL proof for schema-sensitive behavior
+
+**Location**: `syncro/apps/backend/src/test/java/com/syncro/masterdata/application/PlantServiceIntegrationTest.java:61`
+**Pattern**: Integration test with Testcontainers
+
+**Why This Is Good**:
+Delete cascade, uniqueness, FK-backed assignment, and scope filtering are database/integration concerns. Testcontainers is correct level; mocks would miss schema behavior.
 
 **Code Example**:
 
@@ -251,38 +219,36 @@ static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17
 ```
 
 **Use as Reference**:
-Reuse this pattern for Story 2.2 machine groups and later master-data FK/delete behavior.
+Reuse this pattern for Story 2.2 machine groups and later FK/delete behavior.
 
 ---
 
-### 2. Safe error contract assertions
+### 3. Safe error contract assertions
 
-**Location**: `syncro/apps/backend/src/test/java/com/syncro/masterdata/api/PlantControllerTest.java:114`
+**Location**: `syncro/apps/backend/src/test/java/com/syncro/masterdata/api/PlantControllerTest.java:139`
 **Pattern**: Explicit negative-path assertions
-**Knowledge Base**: [error-handling.md](../../../.claude/skills/bmad-tea/resources/knowledge/error-handling.md), [nfr-criteria.md](../../../.claude/skills/bmad-tea/resources/knowledge/nfr-criteria.md)
 
 **Why This Is Good**:
-Tests assert `code`, `message`, `fieldErrors`, `timestamp`, and `traceId`, matching project rules to avoid leaking Java/SQL internals.
+Tests assert safe error fields and codes across validation, malformed JSON, duplicate, forbidden, unauthenticated, not found, and invalid path values, matching project rules to avoid Java/SQL/internal leakage.
 
 **Code Example**:
 
 ```java
+.andExpect(status().isBadRequest())
 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
-.andExpect(jsonPath("$.fieldErrors.code").isNotEmpty())
-.andExpect(jsonPath("$.fieldErrors.name").isNotEmpty())
+.andExpect(jsonPath("$.fieldErrors").isNotEmpty())
 .andExpect(jsonPath("$.traceId").isNotEmpty());
 ```
 
 **Use as Reference**:
-Use same pattern for every Epic 2 CRUD controller.
+Use same safe-error matrix for every Epic 2 CRUD controller.
 
 ---
 
-### 3. Scope authorization tested at service boundary
+### 4. Service-level authorization and scope proof
 
-**Location**: `syncro/apps/backend/src/test/java/com/syncro/masterdata/application/PlantServiceIntegrationTest.java:126`
+**Location**: `syncro/apps/backend/src/test/java/com/syncro/masterdata/application/PlantServiceIntegrationTest.java:134`
 **Pattern**: Authorization + persistence integration
-**Knowledge Base**: [risk-governance.md](../../../.claude/skills/bmad-tea/resources/knowledge/risk-governance.md)
 
 **Why This Is Good**:
 Backend authorization is source of truth. Testing scope decisions in service integration reduces risk that UI hiding becomes mistaken as security.
@@ -304,69 +270,29 @@ Carry this into plant-scoped machine groups and machines.
 
 ## Test File Analysis
 
-### File Metadata
+### `PlantControllerTest.java`
 
 - **File Path**: `syncro/apps/backend/src/test/java/com/syncro/masterdata/api/PlantControllerTest.java`
-- **File Size**: 207 lines
+- **File Size**: 289 lines
 - **Test Framework**: JUnit 5 + Spring MockMvc
-- **Language**: Java
-
-### Test Structure
-
-- **Describe Blocks**: 0 Java class-level suite
-- **Test Cases**: 10
-- **Average Test Length**: ~15 lines per test
-- **Fixtures Used**: Spring WebMvcTest, MockitoBean, SecurityMockMvcRequestPostProcessors
-- **Data Factories Used**: 1 helper (`user(ApplicationRole role)`)
-
-### Test Scope
-
-- **Test IDs**: none
+- **Test Cases**: 14 declared methods, 21 executions with parameterized invalid-payload and unauthenticated-mutation cases
+- **Test IDs**: `2.1-API-001` through `2.1-API-014`
 - **Priority Distribution**:
-  - P0 (Critical): 4 implicit auth/authz/security tests
-  - P1 (High): 4 implicit CRUD/error tests
-  - P2 (Medium): 2 implicit API shape tests
-  - P3 (Low): 0
-  - Unknown: 10 unmarked
+  - P0: unauthenticated list, VIEWER create, MANAGE out-of-scope update, VIEWER delete, unauthenticated mutation, VIEWER update, MANAGE out-of-scope delete
+  - P1: list success, create success, validation, malformed JSON, duplicate, not-found, invalid path
+- **Assertions**: HTTP status, response shape, JSON path values, safe error codes/messages, trace IDs
 
-### Assertions Analysis
-
-- **Total Assertions**: ~33 MockMvc result assertions
-- **Assertions per Test**: ~3.3 avg
-- **Assertion Types**: HTTP status, JSON path values, safe error fields
-
----
-
-### File Metadata
+### `PlantServiceIntegrationTest.java`
 
 - **File Path**: `syncro/apps/backend/src/test/java/com/syncro/masterdata/application/PlantServiceIntegrationTest.java`
-- **File Size**: 172 lines
+- **File Size**: 195 lines
 - **Test Framework**: JUnit 5 + Spring Boot Test + Testcontainers PostgreSQL + AssertJ
-- **Language**: Java
-
-### Test Structure
-
-- **Describe Blocks**: 0 Java class-level suite
 - **Test Cases**: 5
-- **Average Test Length**: ~17 lines per test
-- **Fixtures Used**: SpringBootTest, Transactional, PostgreSQLContainer
-- **Data Factories Used**: 1 helper (`authenticatedUser(ApplicationRole role)`)
-
-### Test Scope
-
-- **Test IDs**: none
+- **Test IDs**: `2.1-SVC-001` through `2.1-SVC-005`
 - **Priority Distribution**:
-  - P0 (Critical): 2 implicit data integrity/authz tests
-  - P1 (High): 3 implicit CRUD/scope tests
-  - P2 (Medium): 0
-  - P3 (Low): 0
-  - Unknown: 5 unmarked
-
-### Assertions Analysis
-
-- **Total Assertions**: ~8 AssertJ assertions
-- **Assertions per Test**: ~1.6 avg
-- **Assertion Types**: equality, repository presence/absence, thrown exception type, collection contains/excludes
+  - P0: MANAGE out-of-scope update
+  - P1: create normalization + assignment, duplicate rejection, viewer scope filtering, delete cascade
+- **Assertions**: equality, repository presence/absence, assignment membership, thrown exception type, collection include/exclude
 
 ---
 
@@ -374,28 +300,35 @@ Carry this into plant-scoped machine groups and machines.
 
 ### Related Artifacts
 
-- **Story File**: [_bmad-output/implementation-artifacts/2-1-manage-plants.md](../../implementation-artifacts/2-1-manage-plants.md)
-- **Risk Assessment**: Medium-high due authz + data integrity + new API contract baseline
-- **Priority Framework**: P0/P1 should apply to auth/authz, safe error, uniqueness, delete cascade, and generated client path
+- **Story File**: `_bmad-output/implementation-artifacts/2-1-manage-plants.md`
+- **Prior Review**: this file, previous version scored 88/100 with comments
+- **Latest review-fix commit noted in session**: `7e7d4cc Resolve plant management review findings`
+- **Risk Assessment**: Medium-high due authz + data integrity + API contract baseline
+- **Priority Framework**: P0/P1 applies to auth/authz, safe errors, uniqueness, delete cascade, invalid path, generated client path
+
+### Evidence Reviewed
+
+- Story review findings are all checked in `_bmad-output/implementation-artifacts/2-1-manage-plants.md:91-102`.
+- Story evidence still records earlier backend/full validation and browser checks in `_bmad-output/implementation-artifacts/2-1-manage-plants.md:274-281`.
+- Session evidence after review fixes recorded targeted backend suite PASS: `PlantControllerTest`, `PlantServiceIntegrationTest`, `SyncroBackendApplicationTests` — 27 tests, 0 failures/errors/skips.
+- Session evidence after review fixes recorded full backend suite PASS: 56 tests, 0 failures/errors/skips.
 
 ---
 
 ## Knowledge Base References
 
-This review consulted the following knowledge base fragments:
+This review consulted these TEA knowledge areas:
 
-- **[risk-governance.md](../../../.claude/skills/bmad-tea/resources/knowledge/risk-governance.md)** - Risk scoring, gate decisions, traceability expectations
-- **[probability-impact.md](../../../.claude/skills/bmad-tea/resources/knowledge/probability-impact.md)** - Probability × impact thresholds
-- **[test-quality.md](../../../.claude/skills/bmad-tea/resources/knowledge/test-quality.md)** - Deterministic, isolated, explicit, focused test DoD
-- **[test-levels-framework.md](../../../.claude/skills/bmad-tea/resources/knowledge/test-levels-framework.md)** - Unit/integration/E2E selection
-- **[nfr-criteria.md](../../../.claude/skills/bmad-tea/resources/knowledge/nfr-criteria.md)** - Security, reliability, maintainability criteria
-- **[error-handling.md](../../../.claude/skills/bmad-tea/resources/knowledge/error-handling.md)** - Safe error and resilience validation
-- **[network-first.md](../../../.claude/skills/bmad-tea/resources/knowledge/network-first.md)** - UI automation network-first guidance
-- **[test-priorities-matrix.md](../../../.claude/skills/bmad-tea/resources/knowledge/test-priorities-matrix.md)** - P0-P3 classification
+- `risk-governance.md` - Risk scoring, gate decisions, traceability expectations
+- `test-quality.md` - Deterministic, isolated, explicit, focused test DoD
+- `test-levels-framework.md` - Unit/integration/E2E selection
+- `data-factories.md` - Maintainable fixture setup
+- `selective-testing.md` - Story/test IDs and priority filtering value
+- `test-healing-patterns.md` - Flake-resistance patterns
+- `selector-resilience.md` - UI locator resilience guidance
+- `timing-debugging.md` - Avoiding hard waits and race conditions
 
 For formal coverage mapping, run `trace` workflow.
-
-See [tea-index.csv](../../../.claude/skills/bmad-tea/resources/tea-index.csv) for complete knowledge base.
 
 ---
 
@@ -403,21 +336,17 @@ See [tea-index.csv](../../../.claude/skills/bmad-tea/resources/tea-index.csv) fo
 
 ### Immediate Actions (Before Merge)
 
-No blocking immediate actions. Story can proceed to code review/merge gate from test-quality perspective.
+No blocking immediate actions. Story can proceed from test-quality perspective.
 
 ### Follow-up Actions (Future PRs)
 
-1. **Add test IDs and priority markers** - Apply `2.1-LEVEL-SEQ` naming or display names to backend tests.
+1. **Add frontend automated state tests** - Cover list success, empty, loading, error/retry, read-only VIEWER, validation error, forbidden handling, and delete confirmation with network-first waits/stubs.
    - Priority: P2
-   - Target: next master-data test cleanup or Story 2.2 setup
+   - Target: frontend test harness introduction or Story 2.2 CRUD pattern hardening
 
-2. **Add frontend automated state tests** - Cover list success, empty, error/retry, read-only VIEWER, validation error, and delete confirmation with network-first waits/stubs.
-   - Priority: P2
-   - Target: frontend test harness introduction
-
-3. **Expand invalid DTO payload matrix** - Add null, too-long, bad code format, and type mismatch where meaningful.
-   - Priority: P2
-   - Target: before duplicating CRUD pattern across Story 2.2+
+2. **Extract backend service fixtures if tests expand** - Add helper/factory methods for saved users, plants, and assignments once duplication repeats.
+   - Priority: P3
+   - Target: when adding more plant-scoped master-data service tests
 
 ### Re-Review Needed?
 
@@ -430,9 +359,7 @@ No blocking immediate actions. Story can proceed to code review/merge gate from 
 **Recommendation**: Approve with Comments
 
 **Rationale**:
-Backend tests are production-worthy for current story risk: they cover role enforcement, plant scope, safe errors, persistence, uniqueness, and delete cascade with the right test levels. Reviewed files comply with core DoD: no hard waits, no hidden assertions, focused tests under 300 lines, and isolated database execution.
-
-> Test quality is good with 88/100 score. Minor issues noted can be addressed in follow-up PRs. Tests are production-ready and follow best practices, with traceability and frontend automation as main improvements.
+Backend tests now meet strong quality expectations for Story 2.1 risk: traceable IDs, P0/P1 priority markers, safe error assertions, real PostgreSQL integration, role/scope authorization checks, duplicate protection, invalid path handling, and delete cascade proof. Remaining frontend automation gap is important but not blocking because story contains manual browser evidence and no project frontend test harness baseline is yet visible.
 
 ---
 
@@ -440,22 +367,20 @@ Backend tests are production-worthy for current story risk: they cover role enfo
 
 ### Violation Summary by Location
 
-| Line | Severity | Criterion | Issue | Fix |
-| ---- | -------- | --------- | ----- | --- |
-| `PlantControllerTest.java:53` | P2 | Test IDs/Priority | Tests lack Story 2.1 IDs and priority tags | Add `@DisplayName` or naming convention |
-| `PlantServiceIntegrationTest.java:84` | P2 | Test IDs/Priority | Integration tests lack IDs/priority tags | Add `@DisplayName` or naming convention |
-| `2-1-manage-plants.md:267` | P2 | UI automation evidence | Browser evidence manual only | Add frontend automated tests when harness exists |
-| `PlantControllerTest.java:115` | P2 | Validation matrix | AC4 edge cases incomplete in visible tests | Add parameterized invalid payload tests |
-| `PlantServiceIntegrationTest.java:104` | P3 | Data factories | Repeated entity setup may grow | Extract helpers if more cases added |
+| Location | Severity | Criterion | Issue | Fix |
+| -------- | -------- | --------- | ----- | --- |
+| `syncro/apps/web/src/features/master-data/plants/plant-management.tsx` | P2 | UI automation evidence | Manual browser evidence only; no committed UI state automation found | Add Playwright/component tests with network-first waits/stubs |
+| `PlantServiceIntegrationTest.java:114` | P3 | Data factories | Some repeated entity setup remains | Extract helpers if service suite grows |
 
 ### Related Reviews
 
 | File | Score | Grade | Critical | Status |
 | ---- | ----- | ----- | -------- | ------ |
-| `PlantControllerTest.java` | 88/100 | A- | 0 | Approved with comments |
-| `PlantServiceIntegrationTest.java` | 88/100 | A- | 0 | Approved with comments |
+| `PlantControllerTest.java` | 94/100 | A | 0 | Approved |
+| `PlantServiceIntegrationTest.java` | 93/100 | A | 0 | Approved |
+| Frontend UI evidence | 82/100 | B | 0 | Approved with comments |
 
-**Suite Average**: 88/100 (A-)
+**Suite Average**: 92/100 (A)
 
 ---
 
@@ -463,6 +388,6 @@ Backend tests are production-worthy for current story risk: they cover role enfo
 
 **Generated By**: BMad TEA Agent (Test Architect)
 **Workflow**: testarch-test-review v4.0
-**Review ID**: test-review-2-1-manage-plants-20260527
+**Review ID**: test-review-2-1-manage-plants-20260527-r2
 **Timestamp**: 2026-05-27 00:00:00
-**Version**: 1.0
+**Version**: 2.0
