@@ -26,7 +26,10 @@ import com.syncro.masterdata.application.PlantService.PlantView;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -52,6 +55,7 @@ class PlantControllerTest {
   private JwtTokenService jwtTokenService;
 
   @Test
+  @DisplayName("2.1-API-001 P0 unauthenticated users cannot list plants")
   void listPlantsRequiresAuthentication() throws Exception {
     mockMvc.perform(get("/api/v1/plants"))
         .andExpect(status().isUnauthorized())
@@ -59,6 +63,7 @@ class PlantControllerTest {
   }
 
   @Test
+  @DisplayName("2.1-API-002 P1 SUPER_ADMIN can list plants")
   void superAdminCanListPlants() throws Exception {
     var user = user(ApplicationRole.SUPER_ADMIN);
     var plantId = UUID.randomUUID();
@@ -78,6 +83,7 @@ class PlantControllerTest {
   }
 
   @Test
+  @DisplayName("2.1-API-003 P1 MANAGE can create plants")
   void manageCanCreatePlant() throws Exception {
     var user = user(ApplicationRole.MANAGE);
     var plantId = UUID.randomUUID();
@@ -98,6 +104,7 @@ class PlantControllerTest {
   }
 
   @Test
+  @DisplayName("2.1-API-004 P0 VIEWER cannot create plants")
   void viewerCannotCreatePlant() throws Exception {
     var user = user(ApplicationRole.VIEWER);
     doThrow(new PlantMutationForbiddenException()).when(plants).create(eq(user), any());
@@ -112,22 +119,31 @@ class PlantControllerTest {
         .andExpect(jsonPath("$.traceId").isNotEmpty());
   }
 
-  @Test
-  void invalidPlantRequestReturnsFieldErrors() throws Exception {
+  @ParameterizedTest
+  @DisplayName("2.1-API-005 P1 invalid plant requests return field errors")
+  @ValueSource(strings = {
+      "{\"code\":\"\",\"name\":\"\"}",
+      "{\"code\":null,\"name\":\"Plant GM1\"}",
+      "{\"code\":\"GM1\",\"name\":null}",
+      "{\"code\":\"GM 1\",\"name\":\"Plant GM1\"}",
+      "{\"code\":\"ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLM\",\"name\":\"Plant GM1\"}",
+      "{\"code\":\"GM1\",\"name\":\"ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ\"}"
+  })
+  void invalidPlantRequestReturnsFieldErrors(String payload) throws Exception {
     var user = user(ApplicationRole.MANAGE);
 
     mockMvc.perform(post("/api/v1/plants")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
-        .content("{\"code\":\"\",\"name\":\"\"}"))
+        .content(payload))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
-        .andExpect(jsonPath("$.fieldErrors.code").isNotEmpty())
-        .andExpect(jsonPath("$.fieldErrors.name").isNotEmpty())
+        .andExpect(jsonPath("$.fieldErrors").isNotEmpty())
         .andExpect(jsonPath("$.traceId").isNotEmpty());
   }
 
   @Test
+  @DisplayName("2.1-API-006 P1 malformed JSON returns safe error")
   void malformedJsonReturnsSafeError() throws Exception {
     var user = user(ApplicationRole.MANAGE);
 
@@ -142,6 +158,7 @@ class PlantControllerTest {
   }
 
   @Test
+  @DisplayName("2.1-API-007 P1 duplicate plant code returns safe validation error")
   void duplicatePlantCodeReturnsSafeValidationError() throws Exception {
     var user = user(ApplicationRole.MANAGE);
     doThrow(new DuplicatePlantCodeException()).when(plants).create(eq(user), any());
@@ -157,6 +174,7 @@ class PlantControllerTest {
   }
 
   @Test
+  @DisplayName("2.1-API-008 P0 MANAGE out-of-scope update returns safe forbidden error")
   void outOfScopeUpdateReturnsSafeForbiddenError() throws Exception {
     var user = user(ApplicationRole.MANAGE);
     var plantId = UUID.randomUUID();
@@ -172,6 +190,7 @@ class PlantControllerTest {
   }
 
   @Test
+  @DisplayName("2.1-API-009 P1 missing plant returns safe not-found error")
   void missingPlantReturnsSafeNotFoundError() throws Exception {
     var user = user(ApplicationRole.SUPER_ADMIN);
     var plantId = UUID.randomUUID();
@@ -184,6 +203,7 @@ class PlantControllerTest {
   }
 
   @Test
+  @DisplayName("2.1-API-010 P0 VIEWER cannot delete plants")
   void viewerCannotDeletePlant() throws Exception {
     var user = user(ApplicationRole.VIEWER);
     var plantId = UUID.randomUUID();
@@ -192,6 +212,67 @@ class PlantControllerTest {
     mockMvc.perform(delete("/api/v1/plants/{plantId}", plantId).with(auth(user)))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @ParameterizedTest
+  @DisplayName("2.1-API-011 P0 unauthenticated users cannot mutate plants")
+  @ValueSource(strings = {"POST", "PUT", "DELETE"})
+  void mutatePlantsRequiresAuthentication(String method) throws Exception {
+    var plantId = UUID.randomUUID();
+    var request = switch (method) {
+      case "POST" -> post("/api/v1/plants")
+          .contentType(MediaType.APPLICATION_JSON)
+          .content("{\"code\":\"GM1\",\"name\":\"Plant GM1\"}");
+      case "PUT" -> put("/api/v1/plants/{plantId}", plantId)
+          .contentType(MediaType.APPLICATION_JSON)
+          .content("{\"code\":\"GM1\",\"name\":\"Plant GM1\"}");
+      case "DELETE" -> delete("/api/v1/plants/{plantId}", plantId);
+      default -> throw new IllegalArgumentException(method);
+    };
+
+    mockMvc.perform(request)
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
+  }
+
+  @Test
+  @DisplayName("2.1-API-012 P0 VIEWER cannot update plants")
+  void viewerCannotUpdatePlant() throws Exception {
+    var user = user(ApplicationRole.VIEWER);
+    var plantId = UUID.randomUUID();
+    doThrow(new PlantMutationForbiddenException()).when(plants).update(eq(user), eq(plantId), any());
+
+    mockMvc.perform(put("/api/v1/plants/{plantId}", plantId)
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"code\":\"GM1\",\"name\":\"Plant GM1\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  @DisplayName("2.1-API-013 P0 MANAGE out-of-scope delete returns safe forbidden error")
+  void outOfScopeDeleteReturnsSafeForbiddenError() throws Exception {
+    var user = user(ApplicationRole.MANAGE);
+    var plantId = UUID.randomUUID();
+    doThrow(new PlantMutationForbiddenException()).when(plants).delete(user, plantId);
+
+    mockMvc.perform(delete("/api/v1/plants/{plantId}", plantId).with(auth(user)))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"))
+        .andExpect(jsonPath("$.traceId").isNotEmpty());
+  }
+
+  @Test
+  @DisplayName("2.1-API-014 P1 invalid plant id returns safe path error")
+  void invalidPlantIdReturnsSafePathError() throws Exception {
+    var user = user(ApplicationRole.SUPER_ADMIN);
+
+    mockMvc.perform(get("/api/v1/plants/not-a-uuid").with(auth(user)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_PATH_VALUE"))
+        .andExpect(jsonPath("$.message").value("Path value is invalid."))
+        .andExpect(jsonPath("$.traceId").isNotEmpty());
   }
 
   private static AuthenticatedUser user(ApplicationRole role) {

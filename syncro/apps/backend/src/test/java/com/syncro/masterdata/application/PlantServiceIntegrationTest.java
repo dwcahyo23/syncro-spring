@@ -16,6 +16,7 @@ import com.syncro.masterdata.application.PlantService.DuplicatePlantCodeExceptio
 import com.syncro.auth.application.PlantScopeService.PlantAccessDeniedException;
 import java.time.Instant;
 import java.util.UUID;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -83,19 +84,24 @@ class PlantServiceIntegrationTest {
   private PasswordEncoder passwordEncoder;
 
   @Test
+  @DisplayName("2.1-SVC-001 P1 MANAGE creates normalized plant and receives assignment")
   void manageCreatesNormalizedPlant() {
-    var user = authenticatedUser(ApplicationRole.MANAGE);
+    var user = persistedUser(ApplicationRole.MANAGE, "manage-create@syncro.dev");
 
     var created = plantService.create(user, new CreatePlantCommand(" gm1 ", " Plant GM1 "));
 
     assertThat(created.code()).isEqualTo("GM1");
     assertThat(created.name()).isEqualTo("Plant GM1");
     assertThat(plants.findById(created.id())).isPresent();
+    assertThat(assignments.findByAuthUserId(UUID.fromString(user.id())))
+        .extracting("plantId")
+        .contains(created.id());
   }
 
   @Test
+  @DisplayName("2.1-SVC-002 P1 duplicate plant code is rejected case-insensitively")
   void duplicatePlantCodeIsRejectedCaseInsensitively() {
-    var user = authenticatedUser(ApplicationRole.MANAGE);
+    var user = persistedUser(ApplicationRole.MANAGE, "manage-duplicate@syncro.dev");
     plantService.create(user, new CreatePlantCommand("GM1", "Plant GM1"));
 
     assertThatThrownBy(() -> plantService.create(user, new CreatePlantCommand("gm1", "Other")))
@@ -103,6 +109,7 @@ class PlantServiceIntegrationTest {
   }
 
   @Test
+  @DisplayName("2.1-SVC-003 P1 VIEWER lists assigned plants only")
   void viewerCanListAssignedPlantsOnly() {
     var now = Instant.parse("2026-05-27T00:00:00Z");
     var viewerId = UUID.randomUUID();
@@ -125,6 +132,7 @@ class PlantServiceIntegrationTest {
   }
 
   @Test
+  @DisplayName("2.1-SVC-004 P0 MANAGE cannot update out-of-scope plant")
   void manageCannotUpdateOutOfScopePlant() {
     var now = Instant.parse("2026-05-27T00:00:00Z");
     var manageId = UUID.randomUUID();
@@ -146,6 +154,7 @@ class PlantServiceIntegrationTest {
   }
 
   @Test
+  @DisplayName("2.1-SVC-005 P1 deleting plant cascades existing assignments")
   void deleteCascadesExistingPlantAssignments() {
     var now = Instant.parse("2026-05-27T00:00:00Z");
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
@@ -164,6 +173,19 @@ class PlantServiceIntegrationTest {
 
     assertThat(plants.findById(plant.getId())).isEmpty();
     assertThat(assignments.findByAuthUserId(user.getId())).isEmpty();
+  }
+
+  private AuthenticatedUser persistedUser(ApplicationRole role, String loginIdentifier) {
+    var now = Instant.parse("2026-05-27T00:00:00Z");
+    var user = users.saveAndFlush(new AuthUserEntity(
+        UUID.randomUUID(),
+        loginIdentifier,
+        passwordEncoder.encode("syncro-test-password"),
+        role,
+        true,
+        now,
+        now));
+    return new AuthenticatedUser(user.getId().toString(), user.getLoginIdentifier(), role);
   }
 
   private static AuthenticatedUser authenticatedUser(ApplicationRole role) {

@@ -3,6 +3,8 @@ package com.syncro.masterdata.application;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.application.PlantScopeService;
 import com.syncro.auth.domain.ApplicationRole;
+import com.syncro.auth.infrastructure.AuthUserPlantAssignmentEntity;
+import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
 import com.syncro.auth.infrastructure.PlantEntity;
 import com.syncro.auth.infrastructure.PlantRepository;
 import java.time.Clock;
@@ -10,17 +12,24 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class PlantService {
   private final PlantRepository plants;
+  private final AuthUserPlantAssignmentRepository assignments;
   private final PlantScopeService plantScopes;
   private final Clock clock;
 
-  public PlantService(PlantRepository plants, PlantScopeService plantScopes, Clock clock) {
+  public PlantService(
+      PlantRepository plants,
+      AuthUserPlantAssignmentRepository assignments,
+      PlantScopeService plantScopes,
+      Clock clock) {
     this.plants = plants;
+    this.assignments = assignments;
     this.plantScopes = plantScopes;
     this.clock = clock;
   }
@@ -58,7 +67,11 @@ public class PlantService {
       throw new DuplicatePlantCodeException();
     }
     var now = Instant.now(clock);
-    return toView(plants.save(new PlantEntity(UUID.randomUUID(), code, name, now, now)));
+    var plant = savePlant(new PlantEntity(UUID.randomUUID(), code, name, now, now));
+    if (user.applicationRole() == ApplicationRole.MANAGE) {
+      assignments.save(new AuthUserPlantAssignmentEntity(UUID.fromString(user.id()), plant.getId(), now));
+    }
+    return toView(plant);
   }
 
   @Transactional
@@ -74,7 +87,7 @@ public class PlantService {
       throw new DuplicatePlantCodeException();
     }
     plant.update(code, normalizeName(command.name()), Instant.now(clock));
-    return toView(plant);
+    return toView(savePlant(plant));
   }
 
   @Transactional
@@ -91,8 +104,16 @@ public class PlantService {
   }
 
   private void requireMutationRole(AuthenticatedUser user) {
-    if (user.applicationRole() == ApplicationRole.VIEWER) {
+    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN && user.applicationRole() != ApplicationRole.MANAGE) {
       throw new PlantMutationForbiddenException();
+    }
+  }
+
+  private PlantEntity savePlant(PlantEntity plant) {
+    try {
+      return plants.saveAndFlush(plant);
+    } catch (DataIntegrityViolationException exception) {
+      throw new DuplicatePlantCodeException();
     }
   }
 

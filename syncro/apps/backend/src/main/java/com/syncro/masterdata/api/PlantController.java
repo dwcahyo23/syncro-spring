@@ -6,6 +6,9 @@ import com.syncro.masterdata.api.PlantDtos.PlantRequest;
 import com.syncro.masterdata.api.PlantDtos.PlantView;
 import com.syncro.masterdata.application.PlantService;
 import com.syncro.masterdata.application.PlantService.CreatePlantCommand;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.UUID;
@@ -29,16 +32,36 @@ public class PlantController {
     this.plants = plants;
   }
 
+  @Operation(summary = "List plants")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Plants returned"),
+      @ApiResponse(responseCode = "401", description = "Authentication required")
+  })
   @GetMapping
   public PlantListResponse list(@AuthenticationPrincipal AuthenticatedUser user) {
     return new PlantListResponse(plants.list(user).stream().map(this::toDto).toList());
   }
 
+  @Operation(summary = "Get plant")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Plant returned"),
+      @ApiResponse(responseCode = "400", description = "Invalid plant id"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Plant not found")
+  })
   @GetMapping("/{plantId}")
   public PlantView get(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID plantId) {
     return toDto(plants.get(user, plantId));
   }
 
+  @Operation(summary = "Create plant")
+  @ApiResponses({
+      @ApiResponse(responseCode = "201", description = "Plant created"),
+      @ApiResponse(responseCode = "400", description = "Validation, malformed JSON, or duplicate plant code"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden")
+  })
   @PostMapping
   public ResponseEntity<PlantView> create(@AuthenticationPrincipal AuthenticatedUser user,
       @Valid @RequestBody PlantRequest request) {
@@ -46,12 +69,28 @@ public class PlantController {
     return ResponseEntity.created(URI.create("/api/v1/plants/" + created.id())).body(created);
   }
 
+  @Operation(summary = "Update plant")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Plant updated"),
+      @ApiResponse(responseCode = "400", description = "Validation, malformed JSON, duplicate plant code, or invalid plant id"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Plant not found")
+  })
   @PutMapping("/{plantId}")
   public PlantView update(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID plantId,
       @Valid @RequestBody PlantRequest request) {
     return toDto(plants.update(user, plantId, command(request)));
   }
 
+  @Operation(summary = "Delete plant")
+  @ApiResponses({
+      @ApiResponse(responseCode = "204", description = "Plant deleted"),
+      @ApiResponse(responseCode = "400", description = "Invalid plant id"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Plant not found")
+  })
   @DeleteMapping("/{plantId}")
   public ResponseEntity<Void> delete(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID plantId) {
     plants.delete(user, plantId);

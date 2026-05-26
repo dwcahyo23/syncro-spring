@@ -88,6 +88,19 @@ So that machine data can be organized by plant.
   - [x] Run `pwsh -NoProfile -File syncro/scripts/validate-syncro-baseline.ps1`.
   - [x] Record exact commands, test names, browser URLs, and acceptance-criteria evidence in Dev Agent Record before moving to review.
 
+### Review Findings
+
+- [x] [Review][Patch] Auto-assign MANAGE creator to newly created plant — Decision resolved: MANAGE create remains allowed, and creator receives assignment to the new plant so scoped MANAGE can see what they create.
+- [x] [Review][Patch] Concurrent duplicate plant create/update can return unsafe 500 instead of `DUPLICATE_PLANT_CODE` [syncro/apps/backend/src/main/java/com/syncro/masterdata/application/PlantService.java]
+- [x] [Review][Patch] Invalid UUID path variables may bypass Plant error shape because `MethodArgumentTypeMismatchException` is not handled [syncro/apps/backend/src/main/java/com/syncro/masterdata/api/PlantExceptionHandler.java]
+- [x] [Review][Patch] Plant mutation role guard is denylist-based and would allow future non-VIEWER roles to mutate plants by default [syncro/apps/backend/src/main/java/com/syncro/masterdata/application/PlantService.java]
+- [x] [Review][Patch] AC4 validation matrix incomplete: null, too-long, bad code format, and type-mismatch payloads are not tested [syncro/apps/backend/src/test/java/com/syncro/masterdata/api/PlantControllerTest.java:115]
+- [x] [Review][Patch] Unauthenticated create/update/delete API paths are not tested for `401` [syncro/apps/backend/src/test/java/com/syncro/masterdata/api/PlantControllerTest.java]
+- [x] [Review][Patch] VIEWER update API path is not tested for `403` [syncro/apps/backend/src/test/java/com/syncro/masterdata/api/PlantControllerTest.java]
+- [x] [Review][Patch] MANAGE out-of-scope delete API path is not tested for safe `403` [syncro/apps/backend/src/test/java/com/syncro/masterdata/api/PlantControllerTest.java]
+- [x] [Review][Patch] Plant CRUD OpenAPI error responses are not explicit in controller annotations/config, so generated contract may omit validation/duplicate/forbidden/not-found response metadata [syncro/apps/backend/src/main/java/com/syncro/masterdata/api/PlantController.java]
+- [x] [Review][Patch] Backend tests lack Story/Test IDs and priority markers flagged by TEA review [syncro/apps/backend/src/test/java/com/syncro/masterdata/api/PlantControllerTest.java:53]
+
 ## Dev Notes
 
 ### Scope Boundary
