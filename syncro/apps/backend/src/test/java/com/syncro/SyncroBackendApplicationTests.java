@@ -1,7 +1,9 @@
 package com.syncro;
 
+import com.syncro.auth.infrastructure.AuthUserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @SpringBootTest(properties = {
     "server.port=0",
@@ -21,9 +23,18 @@ import org.springframework.boot.test.context.SpringBootTest;
     "syncro.influxdb.org=test",
     "syncro.influxdb.bucket=test",
     "syncro.waha.url=http://localhost:3000",
-    "syncro.waha.api-key=test"
+    "syncro.waha.api-key=test",
+    "syncro.auth.jwt.secret=test-secret-for-context-loads",
+    "syncro.auth.jwt.issuer=syncro-test",
+    "syncro.auth.jwt.ttl-minutes=30",
+    "syncro.auth.local-admin.enabled=false",
+    "syncro.auth.local-admin.login-identifier=admin@syncro.dev",
+    "syncro.auth.local-admin.password=test-password"
 })
 class SyncroBackendApplicationTests {
+
+  @MockitoBean
+  private AuthUserRepository authUserRepository;
 
   @Test
   void contextLoads() {

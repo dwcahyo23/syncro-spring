@@ -31,6 +31,15 @@ management:
         enabled: true
 
 syncro:
+  auth:
+    jwt:
+      secret: ${SYNCRO_AUTH_JWT_SECRET}
+      issuer: ${SYNCRO_AUTH_JWT_ISSUER}
+      ttl-minutes: ${SYNCRO_AUTH_JWT_TTL_MINUTES}
+    local-admin:
+      enabled: ${SYNCRO_AUTH_LOCAL_ADMIN_ENABLED:false}
+      login-identifier: ${SYNCRO_AUTH_LOCAL_ADMIN_LOGIN:disabled@syncro.local}
+      password: ${SYNCRO_AUTH_LOCAL_ADMIN_PASSWORD:disabled}
   mqtt:
     host: ${SYNCRO_MQTT_HOST}
     port: ${SYNCRO_MQTT_PORT}

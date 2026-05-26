@@ -75,6 +75,8 @@ $requiredEnv = @(
   'SYNCRO_MQTT_HOST', 'SYNCRO_MQTT_PORT', 'SYNCRO_MQTT_DASHBOARD_PORT', 'SYNCRO_MQTT_USERNAME', 'SYNCRO_MQTT_PASSWORD', 'SYNCRO_MQTT_CLIENT_ID', 'SYNCRO_MQTT_TOPIC_FILTER',
   'WAHA_HOST', 'WAHA_PORT', 'WAHA_API_KEY',
   'SPRING_PROFILES_ACTIVE', 'SERVER_PORT',
+  'SYNCRO_AUTH_JWT_SECRET', 'SYNCRO_AUTH_JWT_ISSUER', 'SYNCRO_AUTH_JWT_TTL_MINUTES',
+  'SYNCRO_AUTH_LOCAL_ADMIN_ENABLED', 'SYNCRO_AUTH_LOCAL_ADMIN_LOGIN', 'SYNCRO_AUTH_LOCAL_ADMIN_PASSWORD',
   'NEXT_PUBLIC_API_URL'
 )
 
@@ -116,6 +118,8 @@ if (Test-Path $localDevelopmentPath -PathType Leaf) {
   if ($localDevelopmentContent -notmatch 'http://localhost:8080/api/v1/health') { $missing += 'missing backend smoke endpoint documentation' }
   if ($localDevelopmentContent -notmatch 'npm --prefix syncro/apps/web run dev') { $missing += 'missing frontend dev command documentation' }
   if ($localDevelopmentContent -notmatch 'npm --prefix syncro/apps/web run build') { $missing += 'missing frontend build command documentation' }
+  if ($localDevelopmentContent -notmatch 'Spring Security JWT auth') { $missing += 'missing JWT auth mode documentation' }
+  if ($localDevelopmentContent -notmatch 'SYNCRO_AUTH_LOCAL_ADMIN_LOGIN') { $missing += 'missing local admin auth documentation' }
 }
 
 $webPackagePath = Join-Path $repoRoot 'syncro/apps/web/package.json'
@@ -157,7 +161,7 @@ if (Test-Path $backendPomPath -PathType Leaf) {
 $backendConfigPath = Join-Path $repoRoot 'syncro/apps/backend/src/main/resources/application.yml'
 if (Test-Path $backendConfigPath -PathType Leaf) {
   $backendConfigContent = Get-Content $backendConfigPath -Raw
-  foreach ($key in @('POSTGRES_HOST', 'POSTGRES_PORT', 'POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD', 'REDIS_HOST', 'REDIS_PORT', 'SYNCRO_MQTT_HOST', 'SYNCRO_MQTT_PORT', 'SYNCRO_MQTT_USERNAME', 'SYNCRO_MQTT_PASSWORD', 'SYNCRO_MQTT_CLIENT_ID', 'SYNCRO_MQTT_TOPIC_FILTER', 'SERVER_PORT')) {
+  foreach ($key in @('POSTGRES_HOST', 'POSTGRES_PORT', 'POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD', 'REDIS_HOST', 'REDIS_PORT', 'SYNCRO_MQTT_HOST', 'SYNCRO_MQTT_PORT', 'SYNCRO_MQTT_USERNAME', 'SYNCRO_MQTT_PASSWORD', 'SYNCRO_MQTT_CLIENT_ID', 'SYNCRO_MQTT_TOPIC_FILTER', 'SERVER_PORT', 'SYNCRO_AUTH_JWT_SECRET', 'SYNCRO_AUTH_JWT_ISSUER', 'SYNCRO_AUTH_JWT_TTL_MINUTES', 'SYNCRO_AUTH_LOCAL_ADMIN_ENABLED', 'SYNCRO_AUTH_LOCAL_ADMIN_LOGIN', 'SYNCRO_AUTH_LOCAL_ADMIN_PASSWORD')) {
     if ($backendConfigContent -notmatch [regex]::Escape($key)) { $missing += "missing backend config env key: $key" }
   }
 }

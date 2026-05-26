@@ -112,9 +112,31 @@ npm --prefix syncro/apps/web run check
 
 The frontend shell uses `NEXT_PUBLIC_API_URL` only as a browser-visible backend base URL placeholder. Do not put PostgreSQL, Redis, InfluxDB, EMQX, WAHA credentials, or private API keys in frontend environment files.
 
+## Auth Baseline
+
+Story 1.5 selects Spring Security JWT auth for Phase 1. Backend exposes `POST /api/v1/auth/login` and `GET /api/v1/auth/me`; all other `/api/v1/**` endpoints require a bearer token except `/api/v1/health` and `/actuator/health`.
+
+Local development can bootstrap one SUPER_ADMIN account when `SYNCRO_AUTH_LOCAL_ADMIN_ENABLED=true`:
+
+| Variable | Purpose |
+|---|---|
+| `SYNCRO_AUTH_JWT_SECRET` | HMAC secret for local JWT signing. Replace before shared/non-local use. |
+| `SYNCRO_AUTH_JWT_ISSUER` | JWT issuer expected by backend validation. |
+| `SYNCRO_AUTH_JWT_TTL_MINUTES` | Access token lifetime in minutes. |
+| `SYNCRO_AUTH_LOCAL_ADMIN_LOGIN` | Local SUPER_ADMIN login identifier. |
+| `SYNCRO_AUTH_LOCAL_ADMIN_PASSWORD` | Local bootstrap password, hashed before storage. |
+
+Example login check:
+
+```powershell
+Invoke-RestMethod http://localhost:8080/api/v1/auth/login -Method Post -ContentType 'application/json' -Body '{"loginIdentifier":"admin@syncro.dev","password":"syncro-admin-dev"}'
+```
+
+The frontend stores the Phase 1 JWT in browser-managed cookies for route guarding and API calls. This is a local baseline only: backend JWT validation remains the authority, browser storage is not a permission source, and role-specific authorization is Story 1.6 scope.
+
 ## Current Story Boundary
 
-Story 1.4 initializes the Next.js admin frontend shell, Syncro navigation placeholders, theme/status token foundation, source boundaries, local docs, and validation coverage. Auth behavior, role enforcement, plant scoping, backend API integration, domain screens, telemetry calculations, alerts, WAHA workflows, and health data arrive in later stories.
+Story 1.5 implements authenticated access baseline. Role enforcement, plant scoping, domain screens, telemetry calculations, alerts, WAHA workflows, and health data arrive in later stories.
 
 
 

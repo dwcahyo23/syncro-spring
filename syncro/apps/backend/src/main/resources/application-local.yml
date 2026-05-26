@@ -15,6 +15,15 @@ spring:
       port: ${REDIS_PORT:6379}
 
 syncro:
+  auth:
+    jwt:
+      secret: ${SYNCRO_AUTH_JWT_SECRET:syncro-local-jwt-secret-change-before-shared-use}
+      issuer: ${SYNCRO_AUTH_JWT_ISSUER:syncro-local}
+      ttl-minutes: ${SYNCRO_AUTH_JWT_TTL_MINUTES:480}
+    local-admin:
+      enabled: ${SYNCRO_AUTH_LOCAL_ADMIN_ENABLED:true}
+      login-identifier: ${SYNCRO_AUTH_LOCAL_ADMIN_LOGIN:admin@syncro.dev}
+      password: ${SYNCRO_AUTH_LOCAL_ADMIN_PASSWORD:syncro-admin-dev}
   mqtt:
     host: ${SYNCRO_MQTT_HOST:localhost}
     port: ${SYNCRO_MQTT_PORT:1883}
