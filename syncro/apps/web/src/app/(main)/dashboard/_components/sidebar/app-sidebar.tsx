@@ -15,10 +15,12 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { APP_CONFIG } from "@/config/app-config";
+import { useAuthUser } from "@/lib/auth/use-auth-user";
 import { sidebarItems } from "@/navigation/sidebar/sidebar-items";
 import { usePreferencesStore } from "@/stores/preferences/preferences-provider";
 
 import { NavMain } from "./nav-main";
+import { NavUser } from "./nav-user";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { sidebarVariant, sidebarCollapsible, isSynced } = usePreferencesStore(
@@ -31,6 +33,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const variant = isSynced ? sidebarVariant : props.variant;
   const collapsible = isSynced ? sidebarCollapsible : props.collapsible;
+  const user = useAuthUser();
 
   return (
     <Sidebar {...props} variant={variant} collapsible={collapsible}>
@@ -52,9 +55,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {/* <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
       </SidebarContent>
       <SidebarFooter>
-        <div className="rounded-lg border bg-sidebar-accent p-3 text-sidebar-accent-foreground text-sm">
-          Plant scope selector arrives with plant-scoped access.
-        </div>
+        <NavUser user={user} />
       </SidebarFooter>
     </Sidebar>
   );

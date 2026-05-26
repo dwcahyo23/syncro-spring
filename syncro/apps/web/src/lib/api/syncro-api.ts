@@ -1,3 +1,4 @@
+import { expireAuthSession } from "@/lib/auth/auth-client";
 import type { LoginResult } from "@/lib/auth/auth-session";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
@@ -54,8 +55,19 @@ export async function fetchCurrentUser(token: string): Promise<LoginResult["user
     headers: { Authorization: `Bearer ${token}` },
   });
   const payload: unknown = await response.json().catch(() => undefined);
+  if (response.status === 401) {
+    expireAuthSession();
+    throw new Error("Authentication is required.");
+  }
   if (!response.ok || !isAuthUser(payload)) {
     throw new Error("Authentication is required.");
   }
   return payload;
+}
+
+export async function logoutFromSyncro(token: string | undefined) {
+  await fetch(`${API_BASE_URL}/auth/logout`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  }).catch(() => undefined);
 }

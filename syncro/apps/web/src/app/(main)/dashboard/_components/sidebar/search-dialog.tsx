@@ -18,6 +18,8 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
+import { useAuthUser } from "@/lib/auth/use-auth-user";
+import { filterSidebarItems } from "@/navigation/sidebar/filter-sidebar-items";
 import type { NavMainItem } from "@/navigation/sidebar/sidebar-items";
 import { sidebarItems } from "@/navigation/sidebar/sidebar-items";
 
@@ -36,36 +38,36 @@ function getSubItemGroup(groupLabel: string | undefined, itemTitle: string) {
   return sidebarGroupLabels.has(itemTitle) ? (groupLabel ?? "Other") : itemTitle;
 }
 
-const searchItems: SearchItem[] = sidebarItems.flatMap((group) =>
-  group.items.flatMap((item) => {
-    if (item.subItems) {
-      return item.subItems.map((sub) => ({
-        group: getSubItemGroup(group.label, item.title),
-        label: sub.title,
-        url: sub.url,
-        icon: item.icon,
-        disabled: sub.comingSoon,
-        newTab: sub.newTab,
-      }));
-    }
-    return [
-      {
-        group: group.label ?? "Other",
-        label: item.title,
-        url: item.url,
-        icon: item.icon,
-        disabled: item.comingSoon,
-        newTab: item.newTab,
-      },
-    ];
-  }),
-);
+function buildSearchItems(groups: ReturnType<typeof filterSidebarItems>): SearchItem[] {
+  return groups.flatMap((group) =>
+    group.items.flatMap((item) => {
+      if (item.subItems) {
+        return item.subItems.map((sub) => ({
+          group: getSubItemGroup(group.label, item.title),
+          label: sub.title,
+          url: sub.url,
+          icon: item.icon,
+          disabled: sub.comingSoon,
+          newTab: sub.newTab,
+        }));
+      }
+      return [
+        {
+          group: group.label ?? "Other",
+          label: item.title,
+          url: item.url,
+          icon: item.icon,
+          disabled: item.comingSoon,
+          newTab: item.newTab,
+        },
+      ];
+    }),
+  );
+}
 
 function getAvailableItems(items: SearchItem[]) {
   return items.filter((item) => !item.disabled && !item.url.includes("coming-soon"));
 }
-
-const recommendations = getAvailableItems(searchItems);
 
 function groupBy(items: SearchItem[]) {
   const groups = [...new Set(items.map((item) => item.group))];
@@ -79,6 +81,9 @@ export function SearchDialog() {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const router = useRouter();
+  const user = useAuthUser();
+  const searchItems = buildSearchItems(filterSidebarItems(sidebarItems, user?.applicationRole ?? null));
+  const recommendations = getAvailableItems(searchItems);
 
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {

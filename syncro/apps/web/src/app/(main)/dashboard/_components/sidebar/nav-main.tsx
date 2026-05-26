@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { ChevronRight, MailIcon, PlusCircleIcon } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   DropdownMenu,
@@ -25,6 +24,8 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useAuthUser } from "@/lib/auth/use-auth-user";
+import { filterSidebarItems } from "@/navigation/sidebar/filter-sidebar-items";
 import type { NavGroup, NavMainItem } from "@/navigation/sidebar/sidebar-items";
 
 interface NavMainProps {
@@ -144,6 +145,8 @@ const NavItemCollapsed = ({
 export function NavMain({ items }: NavMainProps) {
   const path = usePathname();
   const { state, isMobile } = useSidebar();
+  const user = useAuthUser();
+  const filteredItems = filterSidebarItems(items, user?.applicationRole ?? null);
 
   const isItemActive = (url: string, subItems?: NavMainItem["subItems"]) => {
     if (subItems?.length) {
@@ -158,30 +161,7 @@ export function NavMain({ items }: NavMainProps) {
 
   return (
     <>
-      <SidebarGroup>
-        <SidebarGroupContent className="flex flex-col gap-2">
-          <SidebarMenu>
-            <SidebarMenuItem className="flex items-center gap-2">
-              <SidebarMenuButton
-                tooltip="Quick Create"
-                className="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
-              >
-                <PlusCircleIcon />
-                <span>Quick Create</span>
-              </SidebarMenuButton>
-              <Button
-                size="icon"
-                className="h-9 w-9 shrink-0 group-data-[collapsible=icon]:opacity-0"
-                variant="outline"
-              >
-                <MailIcon />
-                <span className="sr-only">Inbox</span>
-              </Button>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-      {items.map((group) => (
+      {filteredItems.map((group) => (
         <SidebarGroup key={group.id}>
           {group.label && <SidebarGroupLabel>{group.label}</SidebarGroupLabel>}
           <SidebarGroupContent className="flex flex-col gap-2">

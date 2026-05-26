@@ -27,7 +27,7 @@ export interface NavMainItem {
   comingSoon?: boolean;
   newTab?: boolean;
   isNew?: boolean;
-  roles?: string[];
+  roles?: Array<"SUPER_ADMIN" | "MANAGE" | "VIEWER">;
 }
 
 export interface NavGroup {
@@ -59,6 +59,7 @@ export const sidebarItems: NavGroup[] = [
         title: "Master Data",
         url: "/master-data",
         icon: Database,
+        roles: ["SUPER_ADMIN", "MANAGE"],
         subItems: [
           { title: "Plants", url: "/master-data/plants" },
           { title: "Machine Groups", url: "/master-data/machine-groups" },
@@ -72,11 +73,13 @@ export const sidebarItems: NavGroup[] = [
         title: "WAHA Templates",
         url: "/waha-templates",
         icon: MessageSquare,
+        roles: ["SUPER_ADMIN"],
       },
       {
         title: "Audit Log",
         url: "/audit-log",
         icon: FileText,
+        roles: ["SUPER_ADMIN", "MANAGE"],
       },
       {
         title: "System Health",

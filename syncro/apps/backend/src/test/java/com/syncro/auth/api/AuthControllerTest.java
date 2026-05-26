@@ -23,7 +23,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import java.util.List;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -86,10 +88,62 @@ class AuthControllerTest {
     when(authService.currentUser(user)).thenReturn(new AuthUserView("user-1", "admin@syncro.dev", ApplicationRole.SUPER_ADMIN));
 
     mockMvc.perform(get("/api/v1/auth/me")
-        .with(SecurityMockMvcRequestPostProcessors.authentication(
-            new UsernamePasswordAuthenticationToken(user, null, user.applicationRole() == null ? null : java.util.List.of()))))
+        .with(SecurityMockMvcRequestPostProcessors.authentication(authenticationFor(user))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.loginIdentifier").value("admin@syncro.dev"))
         .andExpect(jsonPath("$.applicationRole").value("SUPER_ADMIN"));
   }
+
+  @Test
+  void superAdminCanAccessSuperAdminRoleCheck() throws Exception {
+    mockMvc.perform(get("/api/v1/auth/role-check/super-admin")
+        .with(SecurityMockMvcRequestPostProcessors.authentication(authenticationFor(
+            new AuthenticatedUser("user-1", "admin@syncro.dev", ApplicationRole.SUPER_ADMIN)))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("OK"));
+  }
+
+  @Test
+  void manageCannotAccessSuperAdminRoleCheck() throws Exception {
+    mockMvc.perform(get("/api/v1/auth/role-check/super-admin")
+        .with(SecurityMockMvcRequestPostProcessors.authentication(authenticationFor(
+            new AuthenticatedUser("user-2", "manage@syncro.dev", ApplicationRole.MANAGE)))))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"))
+        .andExpect(jsonPath("$.message").value("You do not have permission to access this resource."))
+        .andExpect(jsonPath("$.traceId").isNotEmpty());
+  }
+
+  @Test
+  void viewerCannotAccessManageRoleCheck() throws Exception {
+    mockMvc.perform(get("/api/v1/auth/role-check/manage")
+        .with(SecurityMockMvcRequestPostProcessors.authentication(authenticationFor(
+            new AuthenticatedUser("user-3", "viewer@syncro.dev", ApplicationRole.VIEWER)))))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  void viewerCannotAccessMutationRoleCheck() throws Exception {
+    mockMvc.perform(post("/api/v1/auth/role-check/mutation")
+        .with(SecurityMockMvcRequestPostProcessors.authentication(authenticationFor(
+            new AuthenticatedUser("user-3", "viewer@syncro.dev", ApplicationRole.VIEWER)))))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  void unauthenticatedRoleCheckReturnsAuthenticationRequired() throws Exception {
+    mockMvc.perform(get("/api/v1/auth/role-check/manage"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
+  }
+
+  private static UsernamePasswordAuthenticationToken authenticationFor(AuthenticatedUser user) {
+    return new UsernamePasswordAuthenticationToken(
+        user,
+        null,
+        List.of(new SimpleGrantedAuthority("ROLE_" + user.applicationRole().name())));
+  }
 }
+

@@ -21,6 +21,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
+@org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 public class SecurityConfig {
 
   @Bean
@@ -34,15 +35,25 @@ public class SecurityConfig {
             .requestMatchers("/api/v1/health", "/actuator/health", "/api/v1/auth/login").permitAll()
             .requestMatchers("/api/v1/**").authenticated()
             .anyRequest().permitAll())
-        .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint((request, response, exception) -> {
-          response.setStatus(401);
-          response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-          objectMapper.writeValue(response.getWriter(), new ErrorResponse(
-              "AUTHENTICATION_REQUIRED",
-              "Authentication is required.",
-              Instant.now(clock).toString(),
-              UUID.randomUUID().toString()));
-        }))
+        .exceptionHandling(exceptions -> exceptions
+            .authenticationEntryPoint((request, response, exception) -> {
+              response.setStatus(401);
+              response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+              objectMapper.writeValue(response.getWriter(), new ErrorResponse(
+                  "AUTHENTICATION_REQUIRED",
+                  "Authentication is required.",
+                  Instant.now(clock).toString(),
+                  UUID.randomUUID().toString()));
+            })
+            .accessDeniedHandler((request, response, exception) -> {
+              response.setStatus(403);
+              response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+              objectMapper.writeValue(response.getWriter(), new ErrorResponse(
+                  "FORBIDDEN",
+                  "You do not have permission to access this resource.",
+                  Instant.now(clock).toString(),
+                  UUID.randomUUID().toString()));
+            }))
         .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
         .build();
   }

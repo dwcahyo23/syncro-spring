@@ -1,30 +1,46 @@
 "use client";
 
-import { CircleUser, CreditCard, EllipsisVertical, LogOut, MessageSquareDot } from "lucide-react";
+import { useRouter } from "next/navigation";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { EllipsisVertical, LogOut, Settings } from "lucide-react";
+
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
-import { getInitials } from "@/lib/utils";
+import { logoutFromSyncro } from "@/lib/api/syncro-api";
+import { clearAuthSession, getAuthToken } from "@/lib/auth/auth-client";
+import type { AuthUser } from "@/lib/auth/auth-session";
 
-export function NavUser({
-  user,
-}: {
-  readonly user: {
-    readonly name: string;
-    readonly email: string;
-    readonly avatar: string;
-  };
-}) {
+const roleLabels: Record<AuthUser["applicationRole"], string> = {
+  SUPER_ADMIN: "Super Admin",
+  MANAGE: "Manage",
+  VIEWER: "Viewer",
+};
+
+export function NavUser({ user }: { readonly user: AuthUser | null }) {
   const { isMobile } = useSidebar();
+  const router = useRouter();
+
+  if (!user) {
+    return null;
+  }
+
+  const initials = getUserInitials(user.loginIdentifier);
+  const roleLabel = roleLabels[user.applicationRole];
+
+  const handleLogout = async () => {
+    const token = getAuthToken();
+    await logoutFromSyncro(token);
+    clearAuthSession();
+    router.replace("/auth/v2/login");
+  };
 
   return (
     <SidebarMenu>
@@ -36,12 +52,11 @@ export function NavUser({
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <Avatar className="h-8 w-8 rounded-lg grayscale">
-                <AvatarImage src={user.avatar || undefined} alt={user.name} />
-                <AvatarFallback className="rounded-lg">{getInitials(user.name)}</AvatarFallback>
+                <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{user.name}</span>
-                <span className="truncate text-muted-foreground text-xs">{user.email}</span>
+                <span className="truncate font-medium">{user.loginIdentifier}</span>
+                <span className="truncate text-muted-foreground text-xs">{roleLabel}</span>
               </div>
               <EllipsisVertical className="ml-auto size-4" />
             </SidebarMenuButton>
@@ -55,32 +70,20 @@ export function NavUser({
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.avatar || undefined} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">{getInitials(user.name)}</AvatarFallback>
+                  <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user.name}</span>
-                  <span className="truncate text-muted-foreground text-xs">{user.email}</span>
+                  <span className="truncate font-medium">{user.loginIdentifier}</span>
+                  <span className="truncate text-muted-foreground text-xs">{roleLabel}</span>
                 </div>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <CircleUser />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCard />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <MessageSquareDot />
-                Notifications
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => router.push("/settings")}>
+              <Settings />
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={handleLogout}>
               <LogOut />
               Log out
             </DropdownMenuItem>
@@ -88,5 +91,17 @@ export function NavUser({
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
+  );
+}
+
+function getUserInitials(loginIdentifier: string) {
+  const [name] = loginIdentifier.split("@");
+  return (
+    name
+      .split(/[._-]/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "SY"
   );
 }
