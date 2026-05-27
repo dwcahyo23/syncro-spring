@@ -4,6 +4,7 @@ import com.syncro.auth.application.PlantScopeService;
 import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
 import com.syncro.auth.infrastructure.AuthUserRepository;
 import com.syncro.auth.infrastructure.PlantRepository;
+import com.syncro.masterdata.infrastructure.MachineGroupRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -47,6 +48,9 @@ class SyncroBackendApplicationTests {
 
   @MockitoBean
   private AuthUserPlantAssignmentRepository authUserPlantAssignmentRepository;
+
+  @MockitoBean
+  private MachineGroupRepository machineGroupRepository;
 
   @Test
   void contextLoads() {
