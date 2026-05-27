@@ -259,8 +259,8 @@ cx/gpt-5.5 via Claude Code.
 
 ### Debug Log References
 
-- `mvn -f syncro/apps/backend/pom.xml "-Dtest=MachineGroupControllerTest,MachineGroupServiceIntegrationTest" test` — passed, 28 tests.
-- `mvn -f syncro/apps/backend/pom.xml test` — passed, 84 tests.
+- `mvn -f syncro/apps/backend/pom.xml "-Dtest=MachineGroupControllerTest,MachineGroupServiceIntegrationTest" test` — passed, 32 tests.
+- `mvn -f syncro/apps/backend/pom.xml test` — passed, 88 tests.
 - `npm --prefix syncro/apps/web run check` — passed.
 - `npm --prefix syncro/apps/web run lint` — passed.
 - `npm --prefix syncro/apps/web run build` — passed.
@@ -276,18 +276,19 @@ cx/gpt-5.5 via Claude Code.
 - Generated Orval/TanStack Query client models/hooks for machine groups.
 - Replaced Machine Groups placeholder route with feature UI covering plant filter, empty/loading/error/read-only/forbidden-oriented states, validation errors, create/edit/delete flows, and mutation pending states.
 - Added MockMvc and Testcontainers integration coverage for authentication, authorization, validation, duplicate names, scope filtering, constraints, and delete behavior.
+- Addressed test-review findings with a DB-level case-insensitive unique index and missing unauthenticated get, invalid plant filter, and out-of-scope create API tests.
 
 ### Acceptance Criteria Evidence
 
 - AC1 -> `MachineGroupServiceIntegrationTest` `2.2-SVC-001`, browser create/list evidence.
 - AC2 -> `MachineGroupServiceIntegrationTest` `2.2-SVC-003`.
-- AC3 -> `MachineGroupControllerTest` `2.2-API-007`, `MachineGroupServiceIntegrationTest` `2.2-SVC-002`.
-- AC4 -> `MachineGroupControllerTest` `2.2-API-005`, `2.2-API-006`, `2.2-API-013`.
+- AC3 -> `MachineGroupControllerTest` `2.2-API-007`, `MachineGroupServiceIntegrationTest` `2.2-SVC-002`, `2.2-SVC-010`.
+- AC4 -> `MachineGroupControllerTest` `2.2-API-005`, `2.2-API-006`, `2.2-API-013`, `2.2-API-015`.
 - AC5 -> `MachineGroupControllerTest` `2.2-API-002`, `MachineGroupServiceIntegrationTest` `2.2-SVC-004`.
-- AC6 -> `MachineGroupControllerTest` `2.2-API-008`, `MachineGroupServiceIntegrationTest` `2.2-SVC-005`, `2.2-SVC-006`.
+- AC6 -> `MachineGroupControllerTest` `2.2-API-008`, `2.2-API-016`, `MachineGroupServiceIntegrationTest` `2.2-SVC-005`, `2.2-SVC-006`.
 - AC7 -> UI hides mutation controls for non-mutating role via `canMutate`; backend VIEWER list/get and mutation denial covered by API/service tests.
 - AC8 -> `MachineGroupControllerTest` `2.2-API-004`, `2.2-API-011`, `2.2-API-012`.
-- AC9 -> `MachineGroupControllerTest` `2.2-API-001`, `2.2-API-010`.
+- AC9 -> `MachineGroupControllerTest` `2.2-API-001`, `2.2-API-010`, `2.2-API-014`.
 - AC10 -> migration FK uses `ON DELETE RESTRICT`; `MachineGroupServiceIntegrationTest` `2.2-SVC-008` verifies delete without dependents.
 - AC11 -> browser verified empty, create, list, edit, delete confirmation, mutation completion; UI code covers loading/error/read-only/forbidden/validation states.
 - AC12 -> evidence mapped above; full backend tests, frontend check/lint/build, and baseline validation passed.
@@ -303,6 +304,7 @@ cx/gpt-5.5 via Claude Code.
 - `syncro/apps/backend/src/main/java/com/syncro/masterdata/infrastructure/MachineGroupEntity.java`
 - `syncro/apps/backend/src/main/java/com/syncro/masterdata/infrastructure/MachineGroupRepository.java`
 - `syncro/apps/backend/src/main/resources/db/migration/V3__create_machine_groups.sql`
+- `syncro/apps/backend/src/main/resources/db/migration/V4__add_machine_group_case_insensitive_unique_index.sql`
 - `syncro/apps/backend/src/test/java/com/syncro/SyncroBackendApplicationTests.java`
 - `syncro/apps/backend/src/test/java/com/syncro/masterdata/api/MachineGroupControllerTest.java`
 - `syncro/apps/backend/src/test/java/com/syncro/masterdata/application/MachineGroupServiceIntegrationTest.java`
@@ -319,6 +321,7 @@ cx/gpt-5.5 via Claude Code.
 
 - 2026-05-27 — Created Story 2.2 with machine group CRUD, plant-scope, validation, API contract, UI, and test requirements.
 - 2026-05-27 — Implemented plant-scoped machine group migration, backend API, generated client, management UI, and validation/test evidence.
+- 2026-05-27 — Resolved test-review findings for DB case-insensitive uniqueness and missing API coverage.
 
 ## Story Completion Status
 

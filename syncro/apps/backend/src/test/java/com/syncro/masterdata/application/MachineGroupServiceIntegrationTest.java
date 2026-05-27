@@ -16,6 +16,7 @@ import com.syncro.masterdata.application.MachineGroupService.CreateMachineGroupC
 import com.syncro.masterdata.application.MachineGroupService.DuplicateMachineGroupNameException;
 import com.syncro.masterdata.application.MachineGroupService.MachineGroupMutationForbiddenException;
 import com.syncro.masterdata.application.MachineGroupService.MachineGroupNotFoundException;
+import com.syncro.masterdata.infrastructure.MachineGroupEntity;
 import com.syncro.masterdata.infrastructure.MachineGroupRepository;
 import java.time.Instant;
 import java.util.UUID;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -127,6 +129,17 @@ class MachineGroupServiceIntegrationTest {
 
     assertThat(first.id()).isNotEqualTo(second.id());
     assertThat(machineGroups.findAll()).hasSize(2);
+  }
+
+  @Test
+  @DisplayName("2.2-SVC-010 P0 database rejects case-insensitive duplicate machine group names")
+  void databaseRejectsCaseInsensitiveDuplicateNames() {
+    var plant = plant("GM1", "Plant GM1");
+    var now = Instant.parse("2026-05-27T00:00:00Z");
+    machineGroups.saveAndFlush(new MachineGroupEntity(UUID.randomUUID(), plant, "Forming", now, now));
+
+    assertThatThrownBy(() -> machineGroups.saveAndFlush(new MachineGroupEntity(UUID.randomUUID(), plant, "forming", now, now)))
+        .isInstanceOf(DataIntegrityViolationException.class);
   }
 
   @Test

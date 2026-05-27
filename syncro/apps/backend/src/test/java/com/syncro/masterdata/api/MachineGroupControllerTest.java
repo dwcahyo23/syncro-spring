@@ -208,6 +208,40 @@ class MachineGroupControllerTest {
         .andExpect(jsonPath("$.message").value("Machine group was not found."));
   }
 
+  @Test
+  @DisplayName("2.2-API-014 P0 unauthenticated users cannot get machine groups")
+  void getMachineGroupRequiresAuthentication() throws Exception {
+    mockMvc.perform(get("/api/v1/machine-groups/{machineGroupId}", UUID.randomUUID()))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
+  }
+
+  @Test
+  @DisplayName("2.2-API-015 P1 invalid plant filter returns safe query error")
+  void invalidPlantFilterReturnsSafeQueryError() throws Exception {
+    var user = user(ApplicationRole.SUPER_ADMIN);
+
+    mockMvc.perform(get("/api/v1/machine-groups").param("plantId", "not-a-uuid").with(auth(user)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_PATH_VALUE"))
+        .andExpect(jsonPath("$.message").value("Path value is invalid."));
+  }
+
+  @Test
+  @DisplayName("2.2-API-016 P0 MANAGE cannot create machine group for out-of-scope plant")
+  void manageCannotCreateMachineGroupForOutOfScopePlant() throws Exception {
+    var user = user(ApplicationRole.MANAGE);
+    var plantId = UUID.randomUUID();
+    doThrow(new PlantAccessDeniedException()).when(machineGroups).create(eq(user), any());
+
+    mockMvc.perform(post("/api/v1/machine-groups")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"plantId\":\"" + plantId + "\",\"name\":\"Forming\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
   @ParameterizedTest
   @DisplayName("2.2-API-010 P0 unauthenticated users cannot mutate machine groups")
   @ValueSource(strings = {"POST", "PUT", "DELETE"})
