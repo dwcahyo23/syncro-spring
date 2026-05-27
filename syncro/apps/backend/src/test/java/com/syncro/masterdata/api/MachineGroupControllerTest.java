@@ -21,6 +21,7 @@ import com.syncro.config.SecurityConfig;
 import com.syncro.config.TimeConfig;
 import com.syncro.masterdata.application.MachineGroupService;
 import com.syncro.masterdata.application.MachineGroupService.DuplicateMachineGroupNameException;
+import com.syncro.masterdata.application.MachineGroupService.MachineGroupDataIntegrityException;
 import com.syncro.masterdata.application.MachineGroupService.MachineGroupMutationForbiddenException;
 import com.syncro.masterdata.application.MachineGroupService.MachineGroupNotFoundException;
 import com.syncro.masterdata.application.MachineGroupService.MachineGroupView;
@@ -301,6 +302,19 @@ class MachineGroupControllerTest {
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("INVALID_PATH_VALUE"))
         .andExpect(jsonPath("$.message").value("Path value is invalid."));
+  }
+
+  @Test
+  @DisplayName("2.2-API-017 P1 delete integrity conflict returns safe conflict error")
+  void deleteIntegrityConflictReturnsSafeConflictError() throws Exception {
+    var user = user(ApplicationRole.MANAGE);
+    var groupId = UUID.randomUUID();
+    doThrow(new MachineGroupDataIntegrityException()).when(machineGroups).delete(user, groupId);
+
+    mockMvc.perform(delete("/api/v1/machine-groups/{machineGroupId}", groupId).with(auth(user)))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("MACHINE_GROUP_DATA_INTEGRITY_VIOLATION"))
+        .andExpect(jsonPath("$.message").value("Machine group data conflicts with existing records."));
   }
 
   private static AuthenticatedUser user(ApplicationRole role) {

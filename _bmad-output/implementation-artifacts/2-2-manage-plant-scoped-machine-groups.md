@@ -4,7 +4,7 @@ baseline_commit: 8f742fe49dbf61a39595c4e4e651408f89477d25
 
 # Story 2.2: Manage Plant-Scoped Machine Groups
 
-Status: review
+Status: done
 
 ## Story
 
@@ -251,6 +251,13 @@ Minimum frontend/browser evidence:
 - [Source: syncro/apps/backend/src/main/java/com/syncro/masterdata/application/PlantService.java]
 - [Source: syncro/apps/web/src/features/master-data/plants/plant-management.tsx]
 
+### Review Findings
+
+- [x] [Review][Patch] Plant must be immutable after machine group creation — `MachineGroupService.update(...)` rejects `plantId` changes; covered by `2.2-SVC-011`.
+- [x] [Review][Patch] DB-level duplicate race returns generic data-integrity error instead of duplicate-name safe error [`syncro/apps/backend/src/main/java/com/syncro/masterdata/application/MachineGroupService.java:119`] — fixed for `uq_machine_groups_plant_id_lower_name`; covered by `MachineGroupServiceTest`.
+- [x] [Review][Patch] Delete integrity violation can surface as unhandled 500 despite delete API documenting 409 conflict [`syncro/apps/backend/src/main/java/com/syncro/masterdata/application/MachineGroupService.java:90`] — fixed by mapping delete `DataIntegrityViolationException` to 409; covered by `2.2-API-017`.
+- [x] [Review][Defer] Add durable UI state evidence for AC11 [`syncro/apps/web/src/features/master-data/machine-groups/machine-group-management.tsx:176`] — deferred, test/evidence hardening rather than correctness patch
+
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -260,6 +267,7 @@ cx/gpt-5.5 via Claude Code.
 ### Debug Log References
 
 - `mvn -f syncro/apps/backend/pom.xml "-Dtest=MachineGroupControllerTest,MachineGroupServiceIntegrationTest" test` — passed, 32 tests.
+- `mvn -f syncro/apps/backend/pom.xml "-Dtest=MachineGroupControllerTest,MachineGroupServiceIntegrationTest,MachineGroupServiceTest" test` — passed, 36 tests after review patches.
 - `mvn -f syncro/apps/backend/pom.xml test` — passed, 88 tests.
 - `npm --prefix syncro/apps/web run check` — passed.
 - `npm --prefix syncro/apps/web run lint` — passed.
@@ -282,14 +290,14 @@ cx/gpt-5.5 via Claude Code.
 
 - AC1 -> `MachineGroupServiceIntegrationTest` `2.2-SVC-001`, browser create/list evidence.
 - AC2 -> `MachineGroupServiceIntegrationTest` `2.2-SVC-003`.
-- AC3 -> `MachineGroupControllerTest` `2.2-API-007`, `MachineGroupServiceIntegrationTest` `2.2-SVC-002`, `2.2-SVC-010`.
+- AC3 -> `MachineGroupControllerTest` `2.2-API-007`, `MachineGroupServiceIntegrationTest` `2.2-SVC-002`, `2.2-SVC-010`, `MachineGroupServiceTest` DB fallback tests.
 - AC4 -> `MachineGroupControllerTest` `2.2-API-005`, `2.2-API-006`, `2.2-API-013`, `2.2-API-015`.
 - AC5 -> `MachineGroupControllerTest` `2.2-API-002`, `MachineGroupServiceIntegrationTest` `2.2-SVC-004`.
 - AC6 -> `MachineGroupControllerTest` `2.2-API-008`, `2.2-API-016`, `MachineGroupServiceIntegrationTest` `2.2-SVC-005`, `2.2-SVC-006`.
 - AC7 -> UI hides mutation controls for non-mutating role via `canMutate`; backend VIEWER list/get and mutation denial covered by API/service tests.
 - AC8 -> `MachineGroupControllerTest` `2.2-API-004`, `2.2-API-011`, `2.2-API-012`.
 - AC9 -> `MachineGroupControllerTest` `2.2-API-001`, `2.2-API-010`, `2.2-API-014`.
-- AC10 -> migration FK uses `ON DELETE RESTRICT`; `MachineGroupServiceIntegrationTest` `2.2-SVC-008` verifies delete without dependents.
+- AC10 -> migration FK uses `ON DELETE RESTRICT`; `MachineGroupServiceIntegrationTest` `2.2-SVC-008` verifies delete without dependents; `MachineGroupControllerTest` `2.2-API-017` verifies dependency conflict returns safe 409.
 - AC11 -> browser verified empty, create, list, edit, delete confirmation, mutation completion; UI code covers loading/error/read-only/forbidden/validation states.
 - AC12 -> evidence mapped above; full backend tests, frontend check/lint/build, and baseline validation passed.
 
@@ -308,6 +316,7 @@ cx/gpt-5.5 via Claude Code.
 - `syncro/apps/backend/src/test/java/com/syncro/SyncroBackendApplicationTests.java`
 - `syncro/apps/backend/src/test/java/com/syncro/masterdata/api/MachineGroupControllerTest.java`
 - `syncro/apps/backend/src/test/java/com/syncro/masterdata/application/MachineGroupServiceIntegrationTest.java`
+- `syncro/apps/backend/src/test/java/com/syncro/masterdata/application/MachineGroupServiceTest.java`
 - `syncro/apps/web/src/app/(main)/dashboard/master-data/machine-groups/page.tsx`
 - `syncro/apps/web/src/features/master-data/machine-groups/machine-group-management.tsx`
 - `syncro/apps/web/src/lib/api/generated/model/index.ts`
@@ -322,7 +331,8 @@ cx/gpt-5.5 via Claude Code.
 - 2026-05-27 — Created Story 2.2 with machine group CRUD, plant-scope, validation, API contract, UI, and test requirements.
 - 2026-05-27 — Implemented plant-scoped machine group migration, backend API, generated client, management UI, and validation/test evidence.
 - 2026-05-27 — Resolved test-review findings for DB case-insensitive uniqueness and missing API coverage.
+- 2026-05-27 — Resolved code-review findings for immutable plant scope, duplicate race fallback, and delete integrity conflict mapping.
 
 ## Story Completion Status
 
-Story ready for review.
+Story done after code-review patches.

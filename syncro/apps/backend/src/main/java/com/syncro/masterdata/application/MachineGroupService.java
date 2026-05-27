@@ -70,11 +70,11 @@ public class MachineGroupService {
   public MachineGroupView update(AuthenticatedUser user, UUID machineGroupId, CreateMachineGroupCommand command) {
     requireMutationRole(user);
     var machineGroup = findScoped(user, machineGroupId);
-    var plantId = command.plantId();
-    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN) {
-      plantScopes.requirePlantAccess(user, plantId);
+    var plant = machineGroup.getPlant();
+    var plantId = plant.getId();
+    if (!plantId.equals(command.plantId())) {
+      throw new MachineGroupDataIntegrityException();
     }
-    var plant = plants.findById(plantId).orElseThrow(PlantNotFoundForMachineGroupException::new);
     var name = normalizeName(command.name());
     var existing = machineGroups.findByPlantIdAndNameIgnoreCase(plantId, name);
     if (existing.isPresent() && !existing.get().getId().equals(machineGroupId)) {
@@ -88,8 +88,12 @@ public class MachineGroupService {
   public void delete(AuthenticatedUser user, UUID machineGroupId) {
     requireMutationRole(user);
     var machineGroup = findScoped(user, machineGroupId);
-    machineGroups.delete(machineGroup);
-    machineGroups.flush();
+    try {
+      machineGroups.delete(machineGroup);
+      machineGroups.flush();
+    } catch (DataIntegrityViolationException exception) {
+      throw new MachineGroupDataIntegrityException();
+    }
   }
 
   private MachineGroupEntity findScoped(AuthenticatedUser user, UUID machineGroupId) {
@@ -119,7 +123,8 @@ public class MachineGroupService {
 
   private boolean isMachineGroupNameUniqueViolation(DataIntegrityViolationException exception) {
     var message = String.valueOf(exception.getMostSpecificCause().getMessage()).toLowerCase();
-    return message.contains("uq_machine_groups_plant_id_name");
+    return message.contains("uq_machine_groups_plant_id_name")
+        || message.contains("uq_machine_groups_plant_id_lower_name");
   }
 
   private String normalizeName(String name) {

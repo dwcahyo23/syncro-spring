@@ -143,6 +143,20 @@ class MachineGroupServiceIntegrationTest {
   }
 
   @Test
+  @DisplayName("2.2-SVC-011 P1 update cannot move machine group to another plant")
+  void updateCannotMoveMachineGroupToAnotherPlant() {
+    var sourcePlant = plant("GM1", "Plant GM1");
+    var targetPlant = plant("GM2", "Plant GM2");
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    var group = machineGroupService.create(admin, new CreateMachineGroupCommand(sourcePlant.getId(), "Forming"));
+
+    assertThatThrownBy(() -> machineGroupService.update(admin, group.id(), new CreateMachineGroupCommand(targetPlant.getId(), "Forming")))
+        .isInstanceOf(MachineGroupService.MachineGroupDataIntegrityException.class);
+
+    assertThat(machineGroups.findById(group.id())).get().extracting(entity -> entity.getPlant().getId()).isEqualTo(sourcePlant.getId());
+  }
+
+  @Test
   @DisplayName("2.2-SVC-004 P1 VIEWER lists assigned plant machine groups only")
   void viewerListsAssignedPlantMachineGroupsOnly() {
     var assigned = plant("GM1", "Plant GM1");
