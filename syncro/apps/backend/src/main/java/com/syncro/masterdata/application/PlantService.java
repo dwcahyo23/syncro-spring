@@ -113,8 +113,16 @@ public class PlantService {
     try {
       return plants.saveAndFlush(plant);
     } catch (DataIntegrityViolationException exception) {
-      throw new DuplicatePlantCodeException();
+      if (isPlantCodeUniqueViolation(exception)) {
+        throw new DuplicatePlantCodeException();
+      }
+      throw new PlantDataIntegrityException();
     }
+  }
+
+  private boolean isPlantCodeUniqueViolation(DataIntegrityViolationException exception) {
+    var message = String.valueOf(exception.getMostSpecificCause().getMessage()).toLowerCase();
+    return message.contains("uq_plants_code") || message.contains("plants_code_key");
   }
 
   private String normalizeCode(String code) {
@@ -136,6 +144,9 @@ public class PlantService {
   }
 
   public static class DuplicatePlantCodeException extends RuntimeException {
+  }
+
+  public static class PlantDataIntegrityException extends RuntimeException {
   }
 
   public static class PlantMutationForbiddenException extends RuntimeException {

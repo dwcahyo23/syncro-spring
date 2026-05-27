@@ -7,6 +7,8 @@ import com.syncro.masterdata.api.PlantDtos.PlantView;
 import com.syncro.masterdata.application.PlantService;
 import com.syncro.masterdata.application.PlantService.CreatePlantCommand;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
@@ -57,10 +59,11 @@ public class PlantController {
 
   @Operation(summary = "Create plant")
   @ApiResponses({
-      @ApiResponse(responseCode = "201", description = "Plant created"),
+      @ApiResponse(responseCode = "201", description = "Plant created", content = @Content(schema = @Schema(implementation = PlantView.class))),
       @ApiResponse(responseCode = "400", description = "Validation, malformed JSON, or duplicate plant code"),
       @ApiResponse(responseCode = "401", description = "Authentication required"),
-      @ApiResponse(responseCode = "403", description = "Forbidden")
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "409", description = "Plant data integrity conflict")
   })
   @PostMapping
   public ResponseEntity<PlantView> create(@AuthenticationPrincipal AuthenticatedUser user,
@@ -85,7 +88,7 @@ public class PlantController {
 
   @Operation(summary = "Delete plant")
   @ApiResponses({
-      @ApiResponse(responseCode = "204", description = "Plant deleted"),
+      @ApiResponse(responseCode = "204", description = "Plant deleted", content = @Content),
       @ApiResponse(responseCode = "400", description = "Invalid plant id"),
       @ApiResponse(responseCode = "401", description = "Authentication required"),
       @ApiResponse(responseCode = "403", description = "Forbidden"),

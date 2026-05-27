@@ -3,6 +3,7 @@ package com.syncro.masterdata.api;
 import com.syncro.auth.application.PlantScopeService.PlantAccessDeniedException;
 import com.syncro.masterdata.api.PlantDtos.ErrorResponse;
 import com.syncro.masterdata.application.PlantService.DuplicatePlantCodeException;
+import com.syncro.masterdata.application.PlantService.PlantDataIntegrityException;
 import com.syncro.masterdata.application.PlantService.PlantMutationForbiddenException;
 import com.syncro.masterdata.application.PlantService.PlantNotFoundException;
 import java.time.Clock;
@@ -51,6 +52,11 @@ public class PlantExceptionHandler {
   @ExceptionHandler(DuplicatePlantCodeException.class)
   ResponseEntity<ErrorResponse> duplicatePlantCode() {
     return error(HttpStatus.BAD_REQUEST, "DUPLICATE_PLANT_CODE", "Plant code already exists.", Map.of());
+  }
+
+  @ExceptionHandler(PlantDataIntegrityException.class)
+  ResponseEntity<ErrorResponse> plantDataIntegrity() {
+    return error(HttpStatus.CONFLICT, "PLANT_DATA_INTEGRITY_VIOLATION", "Plant data conflicts with existing records.", Map.of());
   }
 
   @ExceptionHandler({PlantMutationForbiddenException.class, PlantAccessDeniedException.class})

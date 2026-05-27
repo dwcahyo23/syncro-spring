@@ -4,7 +4,7 @@ baseline_commit: f5138c755cacbef317fef9c0bf6a2d4b2c9c648b
 
 # Story 2.1: Manage Plants
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -100,6 +100,12 @@ So that machine data can be organized by plant.
 - [x] [Review][Patch] MANAGE out-of-scope delete API path is not tested for safe `403` [syncro/apps/backend/src/test/java/com/syncro/masterdata/api/PlantControllerTest.java]
 - [x] [Review][Patch] Plant CRUD OpenAPI error responses are not explicit in controller annotations/config, so generated contract may omit validation/duplicate/forbidden/not-found response metadata [syncro/apps/backend/src/main/java/com/syncro/masterdata/api/PlantController.java]
 - [x] [Review][Patch] Backend tests lack Story/Test IDs and priority markers flagged by TEA review [syncro/apps/backend/src/test/java/com/syncro/masterdata/api/PlantControllerTest.java:53]
+- [x] [Review][Patch] MANAGE users with empty scope cannot create plants in UI [syncro/apps/web/src/features/master-data/plants/plant-management.tsx:147]
+- [x] [Review][Patch] Empty-scope frontend still fires plant list query [syncro/apps/web/src/features/master-data/plants/plant-management.tsx:59]
+- [x] [Review][Patch] Plant-scope query stays stale after MANAGE creates assigned plant [syncro/apps/web/src/features/master-data/plants/plant-management.tsx:60]
+- [x] [Review][Patch] Generated Orval client records create/delete success as 200 despite backend 201/204 [syncro/apps/web/src/lib/api/generated/syncro.ts:230]
+- [x] [Review][Patch] Broad integrity catch maps non-duplicate database violations to duplicate plant code [syncro/apps/backend/src/main/java/com/syncro/masterdata/application/PlantService.java:112]
+- [x] [Review][Patch] Create endpoint can return undocumented 409 conflict [syncro/apps/backend/src/main/java/com/syncro/masterdata/api/PlantController.java:61]
 
 ## Dev Notes
 

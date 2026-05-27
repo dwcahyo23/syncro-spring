@@ -33,7 +33,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
 import type { PlantRequest, PlantView } from "@/lib/api/generated/model";
-import { useCreate, useDelete, useList, useUpdate } from "@/lib/api/generated/syncro";
+import { getPlantScopeQueryKey, useCreate, useDelete, useList, useUpdate } from "@/lib/api/generated/syncro";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
 
@@ -55,12 +55,18 @@ export function PlantManagement() {
   const scope = plantScope.scope;
   const activePlantId = plantScope.activePlantId;
   const queryClient = useQueryClient();
+  const isAssignedEmpty = scope?.mode === "EMPTY";
   const plantsQueryKey = ["plants", activePlantId] as const;
-  const plants = useList({ query: { queryKey: plantsQueryKey } });
+  const plants = useList({ query: { enabled: Boolean(scope) && !isAssignedEmpty, queryKey: plantsQueryKey } });
   const invalidatePlants = () => queryClient.invalidateQueries({ queryKey: plantsQueryKey });
-  const createPlant = useCreate({ mutation: { onSuccess: invalidatePlants } });
+  const invalidatePlantScope = () => queryClient.invalidateQueries({ queryKey: getPlantScopeQueryKey() });
+  const invalidatePlantData = () => {
+    invalidatePlants();
+    invalidatePlantScope();
+  };
+  const createPlant = useCreate({ mutation: { onSuccess: invalidatePlantData } });
   const updatePlant = useUpdate({ mutation: { onSuccess: invalidatePlants } });
-  const deletePlant = useDelete({ mutation: { onSuccess: invalidatePlants } });
+  const deletePlant = useDelete({ mutation: { onSuccess: invalidatePlantData } });
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
   const [form, setForm] = useState<PlantFormState>(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -68,7 +74,6 @@ export function PlantManagement() {
   const [deleteTarget, setDeleteTarget] = useState<PlantView | null>(null);
 
   const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGE";
-  const isAssignedEmpty = scope?.mode === "EMPTY";
   const plantItems = plants.data?.data.items ?? [];
   const isSaving = createPlant.isPending || updatePlant.isPending;
 
@@ -144,9 +149,7 @@ export function PlantManagement() {
           <CardAction className="flex items-center gap-2">
             <Badge variant="outline">{scopeLabel}</Badge>
             {canMutate ? (
-              <Button onClick={openCreateDialog} disabled={isAssignedEmpty}>
-                Create plant
-              </Button>
+              <Button onClick={openCreateDialog}>Create plant</Button>
             ) : (
               <Badge variant="secondary">Read-only</Badge>
             )}
