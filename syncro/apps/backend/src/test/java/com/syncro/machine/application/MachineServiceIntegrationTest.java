@@ -219,7 +219,18 @@ class MachineServiceIntegrationTest {
   }
 
   @Test
-  @DisplayName("2.3-SVC-009 P0 MANAGE cannot use out-of-scope machine group")
+  @DisplayName("2.3-SVC-009 P0 unassigned MANAGE cannot list with out-of-scope machine group")
+  void unassignedManageCannotListWithOutOfScopeMachineGroup() {
+    var plant = plant("GM1", "Plant GM1");
+    var group = group(plant, "Forming");
+    var user = persistedUser(ApplicationRole.MANAGE, "manage-unassigned-machine-group-list@syncro.dev");
+
+    assertThatThrownBy(() -> machineService.list(user, null, group.getId(), null))
+        .isInstanceOf(PlantAccessDeniedException.class);
+  }
+
+  @Test
+  @DisplayName("2.3-SVC-010 P0 MANAGE cannot use out-of-scope machine group")
   void manageCannotUseOutOfScopeMachineGroup() {
     var assigned = plant("GM1", "Plant GM1");
     var other = plant("GM2", "Plant GM2");
@@ -234,7 +245,7 @@ class MachineServiceIntegrationTest {
   }
 
   @Test
-  @DisplayName("2.3-SVC-010 P0 VIEWER cannot mutate machines")
+  @DisplayName("2.3-SVC-011 P0 VIEWER cannot mutate machines")
   void viewerCannotMutateMachines() {
     var plant = plant("GM1", "Plant GM1");
     var group = group(plant, "Forming");
@@ -246,7 +257,7 @@ class MachineServiceIntegrationTest {
   }
 
   @Test
-  @DisplayName("2.3-SVC-011 P1 delete removes machine without dependents")
+  @DisplayName("2.3-SVC-012 P1 delete removes machine without dependents")
   void deleteRemovesMachineWithoutDependents() {
     var plant = plant("GM1", "Plant GM1");
     var group = group(plant, "Forming");
@@ -259,7 +270,7 @@ class MachineServiceIntegrationTest {
   }
 
   @Test
-  @DisplayName("2.3-SVC-012 P1 delete dependency conflict returns data integrity exception")
+  @DisplayName("2.3-SVC-013 P1 delete dependency conflict returns data integrity exception")
   void deleteDependencyConflictReturnsDataIntegrityException() {
     var plant = plant("GM1", "Plant GM1");
     var group = group(plant, "Forming");

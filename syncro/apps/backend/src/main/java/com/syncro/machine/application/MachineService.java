@@ -54,9 +54,6 @@ public class MachineService {
       if (plantId != null) {
         plantScopes.requirePlantAccess(user, plantId);
       }
-      if (scopedPlantIds.isEmpty()) {
-        return List.of();
-      }
     } else if (plantId != null && !plants.existsById(plantId)) {
       throw new PlantNotFoundForMachineException();
     }
@@ -68,6 +65,9 @@ public class MachineService {
       if (plantId != null && !group.getPlant().getId().equals(plantId)) {
         throw new MachineGroupPlantMismatchException();
       }
+    }
+    if (!superAdmin && scopedPlantIds.isEmpty()) {
+      return List.of();
     }
     var result = superAdmin
         ? machines.findAllUnscoped(plantId, machineGroupId, status)

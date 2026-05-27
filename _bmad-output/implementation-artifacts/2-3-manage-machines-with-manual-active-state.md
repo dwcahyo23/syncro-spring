@@ -4,7 +4,7 @@ baseline_commit: 390bd682edd5f28375a1a38616973bedb543a351
 
 # Story 2.3: Manage Machines with Manual Active State
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -116,6 +116,7 @@ so that telemetry acceptance can depend on registered machine master data.
 - [x] [Review][Patch] Duplicate constraint mapping depends on database message text [syncro/apps/backend/src/main/java/com/syncro/machine/application/MachineService.java:146]
 - [x] [Review][Patch] Machine code normalization omits Locale.ROOT and service-level normalized validation [syncro/apps/backend/src/main/java/com/syncro/machine/application/MachineService.java:153]
 - [x] [Review][Patch] Dependent-row delete conflict is only mocked, not proven against real PostgreSQL or explicitly deferred [syncro/apps/backend/src/test/java/com/syncro/machine/api/MachineControllerTest.java:214]
+- [x] [Review][Patch] Unassigned scoped users bypass list filter validation/authorization [syncro/apps/backend/src/main/java/com/syncro/machine/application/MachineService.java:57]
 
 ## Dev Notes
 

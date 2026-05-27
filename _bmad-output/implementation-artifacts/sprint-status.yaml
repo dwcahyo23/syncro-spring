@@ -1,5 +1,5 @@
 # generated: 2026-05-25
-# last_updated: 2026-05-27
+# last_updated: 2026-05-28
 # project: Syncro
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-25
-last_updated: 2026-05-27
+last_updated: 2026-05-28
 project: Syncro
 project_key: NOKEY
 tracking_system: file-system
@@ -57,7 +57,7 @@ development_status:
   epic-2: in-progress
   2-1-manage-plants: done
   2-2-manage-plant-scoped-machine-groups: done
-  2-3-manage-machines-with-manual-active-state: review
+  2-3-manage-machines-with-manual-active-state: done
   2-4-manage-sparepart-taxonomy: backlog
   2-5-manage-spareparts: backlog
   2-6-install-spareparts-on-machines-with-lifetime-baseline: backlog
