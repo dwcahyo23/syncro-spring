@@ -1,3 +1,6 @@
+ALTER TABLE machine_groups
+  ADD CONSTRAINT uq_machine_groups_id_plant_id UNIQUE (id, plant_id);
+
 CREATE TABLE machines (
   id UUID PRIMARY KEY,
   plant_id UUID NOT NULL,
@@ -11,7 +14,7 @@ CREATE TABLE machines (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT fk_machines_plant FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE RESTRICT,
-  CONSTRAINT fk_machines_machine_group FOREIGN KEY (machine_group_id) REFERENCES machine_groups(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_machines_machine_group_plant FOREIGN KEY (machine_group_id, plant_id) REFERENCES machine_groups(id, plant_id) ON DELETE RESTRICT,
   CONSTRAINT ck_machines_code_not_blank CHECK (btrim(code) <> ''),
   CONSTRAINT ck_machines_status CHECK (status IN ('ACTIVE', 'INACTIVE')),
   CONSTRAINT ck_machines_code_length CHECK (length(code) <= 64),

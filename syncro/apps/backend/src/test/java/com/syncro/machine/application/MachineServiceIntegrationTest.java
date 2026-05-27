@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -98,6 +99,9 @@ class MachineServiceIntegrationTest {
 
   @Autowired
   private PasswordEncoder passwordEncoder;
+
+  @Autowired
+  private JdbcTemplate jdbc;
 
   @Test
   @DisplayName("2.3-SVC-001 P1 MANAGE creates normalized active machine under assigned plant")
@@ -215,7 +219,22 @@ class MachineServiceIntegrationTest {
   }
 
   @Test
-  @DisplayName("2.3-SVC-009 P0 VIEWER cannot mutate machines")
+  @DisplayName("2.3-SVC-009 P0 MANAGE cannot use out-of-scope machine group")
+  void manageCannotUseOutOfScopeMachineGroup() {
+    var assigned = plant("GM1", "Plant GM1");
+    var other = plant("GM2", "Plant GM2");
+    var otherGroup = group(other, "Packing");
+    var user = persistedUser(ApplicationRole.MANAGE, "manage-out-of-scope-machine-group@syncro.dev");
+    assign(user, assigned);
+
+    assertThatThrownBy(() -> machineService.create(user, command(assigned.getId(), otherGroup.getId(), "BF-08410", MachineStatus.ACTIVE)))
+        .isInstanceOf(PlantAccessDeniedException.class);
+    assertThatThrownBy(() -> machineService.list(user, assigned.getId(), otherGroup.getId(), null))
+        .isInstanceOf(PlantAccessDeniedException.class);
+  }
+
+  @Test
+  @DisplayName("2.3-SVC-010 P0 VIEWER cannot mutate machines")
   void viewerCannotMutateMachines() {
     var plant = plant("GM1", "Plant GM1");
     var group = group(plant, "Forming");
@@ -227,7 +246,7 @@ class MachineServiceIntegrationTest {
   }
 
   @Test
-  @DisplayName("2.3-SVC-010 P1 delete removes machine without dependents")
+  @DisplayName("2.3-SVC-011 P1 delete removes machine without dependents")
   void deleteRemovesMachineWithoutDependents() {
     var plant = plant("GM1", "Plant GM1");
     var group = group(plant, "Forming");
@@ -237,6 +256,25 @@ class MachineServiceIntegrationTest {
     machineService.delete(admin, machine.id());
 
     assertThat(machines.findById(machine.id())).isEmpty();
+  }
+
+  @Test
+  @DisplayName("2.3-SVC-012 P1 delete dependency conflict returns data integrity exception")
+  void deleteDependencyConflictReturnsDataIntegrityException() {
+    var plant = plant("GM1", "Plant GM1");
+    var group = group(plant, "Forming");
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    var machine = machineService.create(admin, command(plant.getId(), group.getId(), "BF-08410", MachineStatus.ACTIVE));
+    jdbc.execute("""
+        CREATE TABLE machine_delete_dependencies (
+          id UUID PRIMARY KEY,
+          machine_id UUID NOT NULL REFERENCES machines(id) ON DELETE RESTRICT
+        )
+        """);
+    jdbc.update("INSERT INTO machine_delete_dependencies (id, machine_id) VALUES (?, ?)", UUID.randomUUID(), machine.id());
+
+    assertThatThrownBy(() -> machineService.delete(admin, machine.id()))
+        .isInstanceOf(MachineDataIntegrityException.class);
   }
 
   private MachineCommand command(UUID plantId, UUID groupId, String code, MachineStatus status) {

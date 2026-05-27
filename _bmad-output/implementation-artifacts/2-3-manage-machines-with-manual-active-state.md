@@ -108,6 +108,15 @@ so that telemetry acceptance can depend on registered machine master data.
   - [x] Run `pwsh -NoProfile -File syncro/scripts/validate-syncro-baseline.ps1` if script remains current.
   - [x] Map every AC to evidence in Dev Agent Record before moving story to review.
 
+### Review Findings
+
+- [x] [Review][Patch] Out-of-scope machineGroupId can return 400 instead of required 403 [syncro/apps/backend/src/main/java/com/syncro/machine/application/MachineService.java:55]
+- [x] [Review][Patch] Machine table does not enforce machine_group_id plant consistency at database level [syncro/apps/backend/src/main/resources/db/migration/V5__create_machines.sql:12]
+- [x] [Review][Patch] Super-admin list query passes null collection into JPQL IN predicate [syncro/apps/backend/src/main/java/com/syncro/machine/infrastructure/MachineRepository.java:15]
+- [x] [Review][Patch] Duplicate constraint mapping depends on database message text [syncro/apps/backend/src/main/java/com/syncro/machine/application/MachineService.java:146]
+- [x] [Review][Patch] Machine code normalization omits Locale.ROOT and service-level normalized validation [syncro/apps/backend/src/main/java/com/syncro/machine/application/MachineService.java:153]
+- [x] [Review][Patch] Dependent-row delete conflict is only mocked, not proven against real PostgreSQL or explicitly deferred [syncro/apps/backend/src/test/java/com/syncro/machine/api/MachineControllerTest.java:214]
+
 ## Dev Notes
 
 ### Scope Boundary

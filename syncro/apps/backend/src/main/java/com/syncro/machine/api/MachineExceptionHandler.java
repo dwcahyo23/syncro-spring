@@ -8,6 +8,7 @@ import com.syncro.machine.application.MachineService.MachineGroupNotFoundForMach
 import com.syncro.machine.application.MachineService.MachineGroupPlantMismatchException;
 import com.syncro.machine.application.MachineService.MachineMutationForbiddenException;
 import com.syncro.machine.application.MachineService.MachineNotFoundException;
+import com.syncro.machine.application.MachineService.MachineValidationException;
 import com.syncro.machine.application.MachineService.PlantNotFoundForMachineException;
 import java.time.Clock;
 import java.time.Instant;
@@ -50,6 +51,11 @@ public class MachineExceptionHandler {
   @ExceptionHandler(MethodArgumentTypeMismatchException.class)
   ResponseEntity<ErrorResponse> invalidPathValue() {
     return error(HttpStatus.BAD_REQUEST, "INVALID_PATH_VALUE", "Path value is invalid.", Map.of());
+  }
+
+  @ExceptionHandler(MachineValidationException.class)
+  ResponseEntity<ErrorResponse> machineValidation() {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", Map.of("code", "Invalid value."));
   }
 
   @ExceptionHandler(DuplicateMachineCodeException.class)

@@ -13,7 +13,21 @@ public interface MachineRepository extends JpaRepository<MachineEntity, UUID> {
       select machine from MachineEntity machine
       join fetch machine.plant plant
       join fetch machine.machineGroup machineGroup
-      where (:plantIds is null or plant.id in :plantIds)
+      where (:plantId is null or plant.id = :plantId)
+        and (:machineGroupId is null or machineGroup.id = :machineGroupId)
+        and (:status is null or machine.status = :status)
+      order by plant.code asc, machine.code asc
+      """)
+  List<MachineEntity> findAllUnscoped(
+      @Param("plantId") UUID plantId,
+      @Param("machineGroupId") UUID machineGroupId,
+      @Param("status") MachineStatus status);
+
+  @Query("""
+      select machine from MachineEntity machine
+      join fetch machine.plant plant
+      join fetch machine.machineGroup machineGroup
+      where plant.id in :plantIds
         and (:plantId is null or plant.id = :plantId)
         and (:machineGroupId is null or machineGroup.id = :machineGroupId)
         and (:status is null or machine.status = :status)
