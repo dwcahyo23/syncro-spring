@@ -1,6 +1,10 @@
+---
+baseline_commit: 390bd682edd5f28375a1a38616973bedb543a351
+---
+
 # Story 2.3: Manage Machines with Manual Active State
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -30,79 +34,79 @@ so that telemetry acceptance can depend on registered machine master data.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add machine PostgreSQL model (AC: #1, #3, #4, #6, #8, #9, #13)
-  - [ ] Add forward-only Flyway migration `V5__create_machines.sql` or next available version; do not edit applied migrations `V1` through `V4`.
-  - [ ] Create `machines` table with `id`, `plant_id`, `machine_group_id`, `code`, optional `name`, `status`, optional `brand`, optional `installed_at`, optional `notes`, `created_at`, and `updated_at`.
-  - [ ] Add FK `plant_id` to `plants(id)` and FK `machine_group_id` to `machine_groups(id)` with explicit delete behavior; default recommendation: `ON DELETE RESTRICT` for both.
-  - [ ] Add same-plant machine code uniqueness, preferably case-insensitive through a functional unique index on `(plant_id, lower(code))`.
-  - [ ] Add indexes for `plant_id`, `machine_group_id`, and `(plant_id, status)`.
-  - [ ] Add DB constraints for non-blank code, allowed `status` values `ACTIVE`/`INACTIVE`, and bounded text where DB-level checks are practical.
-  - [ ] Preserve plant immutability after creation at service layer even if request DTO includes `plantId` for edit.
+- [x] Task 1: Add machine PostgreSQL model (AC: #1, #3, #4, #6, #8, #9, #13)
+  - [x] Add forward-only Flyway migration `V5__create_machines.sql` or next available version; do not edit applied migrations `V1` through `V4`.
+  - [x] Create `machines` table with `id`, `plant_id`, `machine_group_id`, `code`, optional `name`, `status`, optional `brand`, optional `installed_at`, optional `notes`, `created_at`, and `updated_at`.
+  - [x] Add FK `plant_id` to `plants(id)` and FK `machine_group_id` to `machine_groups(id)` with explicit delete behavior; default recommendation: `ON DELETE RESTRICT` for both.
+  - [x] Add same-plant machine code uniqueness, preferably case-insensitive through a functional unique index on `(plant_id, lower(code))`.
+  - [x] Add indexes for `plant_id`, `machine_group_id`, and `(plant_id, status)`.
+  - [x] Add DB constraints for non-blank code, allowed `status` values `ACTIVE`/`INACTIVE`, and bounded text where DB-level checks are practical.
+  - [x] Preserve plant immutability after creation at service layer even if request DTO includes `plantId` for edit.
 
-- [ ] Task 2: Add backend Machine API under `/api/v1/machines` (AC: #1-#13)
-  - [ ] Create `com.syncro.machine` module with `api`, `application`, `domain` if needed, and `infrastructure` packages; this is first machine domain boundary.
-  - [ ] Add controller, DTO records, service, entity, and repository using Story 2.2 machine-group patterns.
-  - [ ] Recommended endpoints: `GET /api/v1/machines?plantId=...&machineGroupId=...&status=...`, `GET /api/v1/machines/{machineId}`, `POST /api/v1/machines`, `PUT /api/v1/machines/{machineId}`, `DELETE /api/v1/machines/{machineId}`.
-  - [ ] Use Java records for request/response DTOs; never serialize JPA entities.
-  - [ ] Request DTO must require `plantId`, `machineGroupId`, `code`, and `status`; optional fields are `name`, `brand`, `installedAt`, and `notes`.
-  - [ ] Normalize machine code consistently for duplicate detection; preserve trimmed user-facing display.
-  - [ ] Return `201` for create, `200` for update/get/list, and `204` for delete.
-  - [ ] Add explicit Springdoc `@ApiResponses` for success and safe error responses so Orval generates correct statuses and metadata.
+- [x] Task 2: Add backend Machine API under `/api/v1/machines` (AC: #1-#13)
+  - [x] Create `com.syncro.machine` module with `api`, `application`, `domain` if needed, and `infrastructure` packages; this is first machine domain boundary.
+  - [x] Add controller, DTO records, service, entity, and repository using Story 2.2 machine-group patterns.
+  - [x] Recommended endpoints: `GET /api/v1/machines?plantId=...&machineGroupId=...&status=...`, `GET /api/v1/machines/{machineId}`, `POST /api/v1/machines`, `PUT /api/v1/machines/{machineId}`, `DELETE /api/v1/machines/{machineId}`.
+  - [x] Use Java records for request/response DTOs; never serialize JPA entities.
+  - [x] Request DTO must require `plantId`, `machineGroupId`, `code`, and `status`; optional fields are `name`, `brand`, `installedAt`, and `notes`.
+  - [x] Normalize machine code consistently for duplicate detection; preserve trimmed user-facing display.
+  - [x] Return `201` for create, `200` for update/get/list, and `204` for delete.
+  - [x] Add explicit Springdoc `@ApiResponses` for success and safe error responses so Orval generates correct statuses and metadata.
 
-- [ ] Task 3: Enforce roles, plant scope, and machine-group consistency server-side (AC: #2, #8-#12)
-  - [ ] Reuse `PlantScopeService` for non-SUPER_ADMIN plant access checks.
-  - [ ] `SUPER_ADMIN` can list/view/mutate all machines.
-  - [ ] `MANAGE` can create/list/view/update/delete only for assigned plant scope.
-  - [ ] `VIEWER` can list/view permitted machines and cannot mutate.
-  - [ ] Empty assigned scope must not leak all data.
-  - [ ] Direct out-of-scope `plantId`, `machineGroupId`, or `machineId` access must return safe `403` for forbidden access.
-  - [ ] For get/update/delete by `machineId`, service must load machine then scope-check its persisted `plantId`; do not trust user-provided plantId.
-  - [ ] For create/update, service must verify machine group exists and belongs to the target/current plant.
+- [x] Task 3: Enforce roles, plant scope, and machine-group consistency server-side (AC: #2, #8-#12)
+  - [x] Reuse `PlantScopeService` for non-SUPER_ADMIN plant access checks.
+  - [x] `SUPER_ADMIN` can list/view/mutate all machines.
+  - [x] `MANAGE` can create/list/view/update/delete only for assigned plant scope.
+  - [x] `VIEWER` can list/view permitted machines and cannot mutate.
+  - [x] Empty assigned scope must not leak all data.
+  - [x] Direct out-of-scope `plantId`, `machineGroupId`, or `machineId` access must return safe `403` for forbidden access.
+  - [x] For get/update/delete by `machineId`, service must load machine then scope-check its persisted `plantId`; do not trust user-provided plantId.
+  - [x] For create/update, service must verify machine group exists and belongs to the target/current plant.
 
-- [ ] Task 4: Add safe error handling (AC: #3, #5, #6, #9-#13)
-  - [ ] Add machine-specific duplicate/not-found/data-integrity/forbidden exceptions and exception handler, or extend shared safe error handling without conflicting with Plant/MachineGroup handlers.
-  - [ ] Duplicate same plant/code returns stable machine-readable code such as `DUPLICATE_MACHINE_CODE`.
-  - [ ] Missing machine returns `MACHINE_NOT_FOUND`.
-  - [ ] Cross-plant machine-group relation returns safe validation/data-integrity error such as `MACHINE_GROUP_PLANT_MISMATCH`.
-  - [ ] Invalid UUID path/query values return existing `INVALID_PATH_VALUE` or equivalent safe error.
-  - [ ] Delete dependency conflicts return safe `409`, e.g. `MACHINE_DATA_INTEGRITY_VIOLATION`.
-  - [ ] Do not expose SQL constraint names, Java exception names, stack traces, raw database messages, MQTT topic internals, or telemetry infrastructure details.
+- [x] Task 4: Add safe error handling (AC: #3, #5, #6, #9-#13)
+  - [x] Add machine-specific duplicate/not-found/data-integrity/forbidden exceptions and exception handler, or extend shared safe error handling without conflicting with Plant/MachineGroup handlers.
+  - [x] Duplicate same plant/code returns stable machine-readable code such as `DUPLICATE_MACHINE_CODE`.
+  - [x] Missing machine returns `MACHINE_NOT_FOUND`.
+  - [x] Cross-plant machine-group relation returns safe validation/data-integrity error such as `MACHINE_GROUP_PLANT_MISMATCH`.
+  - [x] Invalid UUID path/query values return existing `INVALID_PATH_VALUE` or equivalent safe error.
+  - [x] Delete dependency conflicts return safe `409`, e.g. `MACHINE_DATA_INTEGRITY_VIOLATION`.
+  - [x] Do not expose SQL constraint names, Java exception names, stack traces, raw database messages, MQTT topic internals, or telemetry infrastructure details.
 
-- [ ] Task 5: Generate/update OpenAPI and Orval client (AC: #14, #15)
-  - [ ] Regenerate frontend API client from backend Springdoc after machine endpoints are available.
-  - [ ] Keep generated files isolated under `syncro/apps/web/src/lib/api/generated/`.
-  - [ ] Do not hand edit generated client output except as an emergency patch recorded in Dev Agent Record.
-  - [ ] Ensure generated client records create as `201` and delete as `204`.
+- [x] Task 5: Generate/update OpenAPI and Orval client (AC: #14, #15)
+  - [x] Regenerate frontend API client from backend Springdoc after machine endpoints are available.
+  - [x] Keep generated files isolated under `syncro/apps/web/src/lib/api/generated/`.
+  - [x] Do not hand edit generated client output except as an emergency patch recorded in Dev Agent Record.
+  - [x] Ensure generated client records create as `201` and delete as `204`.
 
-- [ ] Task 6: Build Machines management UI (AC: #1, #2, #7, #11, #14)
-  - [ ] Replace `syncro/apps/web/src/app/(main)/dashboard/master-data/machines/page.tsx` placeholder with route composition only.
-  - [ ] Put client management logic under `syncro/apps/web/src/features/master-data/machines/` unless a shared `features/machines/` summary component is introduced separately.
-  - [ ] Use generated Orval/TanStack Query hooks for CRUD.
-  - [ ] Use available plant list and machine group list to filter by plant and group; group options must be filtered to selected plant.
-  - [ ] Prefer shadcn/Radix non-native select/dropdown for plant, group, and status fields.
-  - [ ] Include dense table columns for code, optional name, plant, group, manual status, brand, installed date, updated date, and actions.
-  - [ ] Show manual status badge clearly as `ACTIVE`/`INACTIVE`; do not show telemetry live/stale as equivalent to status in this story.
-  - [ ] Include loading, empty, error, read-only VIEWER, forbidden, validation error, create, edit, delete confirmation, and mutation pending states.
-  - [ ] Query keys must include active plant scope plus selected plant/group/status filters.
-  - [ ] Mutations must invalidate machine list/detail queries and any machine-group/setup-completeness data if introduced later.
+- [x] Task 6: Build Machines management UI (AC: #1, #2, #7, #11, #14)
+  - [x] Replace `syncro/apps/web/src/app/(main)/dashboard/master-data/machines/page.tsx` placeholder with route composition only.
+  - [x] Put client management logic under `syncro/apps/web/src/features/master-data/machines/` unless a shared `features/machines/` summary component is introduced separately.
+  - [x] Use generated Orval/TanStack Query hooks for CRUD.
+  - [x] Use available plant list and machine group list to filter by plant and group; group options must be filtered to selected plant.
+  - [x] Prefer shadcn/Radix non-native select/dropdown for plant, group, and status fields.
+  - [x] Include dense table columns for code, optional name, plant, group, manual status, brand, installed date, updated date, and actions.
+  - [x] Show manual status badge clearly as `ACTIVE`/`INACTIVE`; do not show telemetry live/stale as equivalent to status in this story.
+  - [x] Include loading, empty, error, read-only VIEWER, forbidden, validation error, create, edit, delete confirmation, and mutation pending states.
+  - [x] Query keys must include active plant scope plus selected plant/group/status filters.
+  - [x] Mutations must invalidate machine list/detail queries and any machine-group/setup-completeness data if introduced later.
 
-- [ ] Task 7: Add backend tests (AC: #1-#13, #15)
-  - [ ] Add MockMvc/API tests for unauthenticated, SUPER_ADMIN, MANAGE, VIEWER, duplicate same-plant code, duplicate cross-plant allowed, invalid payload, malformed JSON, out-of-scope list/mutation, machine-group mismatch, not found, invalid UUID, invalid status, and delete conflict behavior.
-  - [ ] Add Testcontainers integration tests for migration, FK, case-insensitive uniqueness, scope filtering, plant immutability, machine-group same-plant invariant, manual status persistence, and delete behavior.
-  - [ ] Use real PostgreSQL for uniqueness/FK/query behavior; do not mock persistence for these paths.
-  - [ ] Add focused unit tests only for race-path exception mapping that is hard to trigger deterministically through repository pre-checks.
-  - [ ] Use Story/Test IDs and priority markers in display names, e.g. `2.3-API-001 P0 ...` and `2.3-SVC-001 P1 ...`.
+- [x] Task 7: Add backend tests (AC: #1-#13, #15)
+  - [x] Add MockMvc/API tests for unauthenticated, SUPER_ADMIN, MANAGE, VIEWER, duplicate same-plant code, duplicate cross-plant allowed, invalid payload, malformed JSON, out-of-scope list/mutation, machine-group mismatch, not found, invalid UUID, invalid status, and delete conflict behavior.
+  - [x] Add Testcontainers integration tests for migration, FK, case-insensitive uniqueness, scope filtering, plant immutability, machine-group same-plant invariant, manual status persistence, and delete behavior.
+  - [x] Use real PostgreSQL for uniqueness/FK/query behavior; do not mock persistence for these paths.
+  - [x] Add focused unit tests only for race-path exception mapping that is hard to trigger deterministically through repository pre-checks.
+  - [x] Use Story/Test IDs and priority markers in display names, e.g. `2.3-API-001 P0 ...` and `2.3-SVC-001 P1 ...`.
 
-- [ ] Task 8: Verify frontend and full baseline (AC: #14, #15)
-  - [ ] Run backend targeted tests for machine API/service.
-  - [ ] Run `mvn -f syncro/apps/backend/pom.xml test`.
-  - [ ] Run `npm --prefix syncro/apps/web run generate:api` if backend OpenAPI server is available.
-  - [ ] Run `npm --prefix syncro/apps/web run check`.
-  - [ ] Run `npm --prefix syncro/apps/web run lint`.
-  - [ ] Run `npm --prefix syncro/apps/web run build`.
-  - [ ] Start backend and frontend; verify Machines create/list/filter/edit/delete, manual status display, VIEWER read-only, and empty-scope behavior in browser.
-  - [ ] Run `pwsh -NoProfile -File syncro/scripts/validate-syncro-baseline.ps1` if script remains current.
-  - [ ] Map every AC to evidence in Dev Agent Record before moving story to review.
+- [x] Task 8: Verify frontend and full baseline (AC: #14, #15)
+  - [x] Run backend targeted tests for machine API/service.
+  - [x] Run `mvn -f syncro/apps/backend/pom.xml test`.
+  - [x] Run `npm --prefix syncro/apps/web run generate:api` if backend OpenAPI server is available.
+  - [x] Run `npm --prefix syncro/apps/web run check`.
+  - [x] Run `npm --prefix syncro/apps/web run lint`.
+  - [x] Run `npm --prefix syncro/apps/web run build`.
+  - [x] Start backend and frontend; verify Machines create/list/filter/edit/delete, manual status display, VIEWER read-only, and empty-scope behavior in browser.
+  - [x] Run `pwsh -NoProfile -File syncro/scripts/validate-syncro-baseline.ps1` if script remains current.
+  - [x] Map every AC to evidence in Dev Agent Record before moving story to review.
 
 ## Dev Notes
 
@@ -311,16 +315,88 @@ Minimum frontend/browser evidence:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Code (cx/gpt-5.5)
 
 ### Debug Log References
 
+- `mvn -f syncro/apps/backend/pom.xml "-Dtest=MachineControllerTest,MachineServiceIntegrationTest" test` — passed, 25 tests.
+- `mvn -f syncro/apps/backend/pom.xml test` — passed, 117 tests.
+- `npm --prefix syncro/apps/web run generate:api` — passed.
+- `npm --prefix syncro/apps/web run check` — passed, 87 files.
+- `npm --prefix syncro/apps/web run lint` — passed, 87 files.
+- `npm --prefix syncro/apps/web run build` — passed.
+- `pwsh -NoProfile -File syncro/scripts/validate-syncro-baseline.ps1` — passed.
+- Browser verification: `http://localhost:3001/dashboard/master-data/machines` as local SUPER_ADMIN showed GM1/Forming filters, `Create machine`, table row `BF-08410`, `Manual ACTIVE`; edit changed row to `Manual INACTIVE`; empty dependency state showed `No machine groups available` before seed data.
+
 ### Completion Notes List
+
+- Added `machines` PostgreSQL model with plant/group FKs, manual `ACTIVE`/`INACTIVE` status, case-insensitive same-plant code uniqueness, indexes, and DB checks.
+- Added `/api/v1/machines` list/get/create/update/delete with DTO records, safe error handling, plant-scope enforcement, immutable plant update behavior, same-plant group validation, and VIEWER read-only authorization.
+- Regenerated OpenAPI/Orval client and built Machines management UI using generated TanStack Query hooks, Radix selects, manual status badges, CRUD dialog, delete confirmation, loading/empty/error/read-only states, and scoped query keys.
+- Added MockMvc and Testcontainers integration coverage for authorization, validation, uniqueness, plant scope, plant immutability, same-plant group invariant, manual status persistence, and delete behavior.
 
 ### Acceptance Criteria Evidence
 
+- AC1 -> `MachineServiceIntegrationTest` `2.3-SVC-001`, `MachineControllerTest` `2.3-API-003`, browser row `BF-08410` visible in Machines table.
+- AC2 -> `MachineServiceIntegrationTest` `2.3-SVC-007`, `2.3-SVC-008`; UI filters include plant/group/status.
+- AC3 -> `MachineControllerTest` `2.3-API-006`; `MachineServiceIntegrationTest` `2.3-SVC-002`, `2.3-SVC-004`.
+- AC4 -> `MachineServiceIntegrationTest` `2.3-SVC-003`.
+- AC5 -> `MachineControllerTest` `2.3-API-004`, `2.3-API-005`; malformed and invalid values return safe `400`.
+- AC6 -> `MachineControllerTest` `2.3-API-005`; DB check `ck_machines_status` in `V5__create_machines.sql`.
+- AC7 -> Browser evidence showed `Manual ACTIVE` and edit to `Manual INACTIVE`; UI copy states status is master data, not MQTT freshness.
+- AC8 -> `MachineServiceIntegrationTest` `2.3-SVC-005`.
+- AC9 -> `MachineControllerTest` `2.3-API-007`; `MachineServiceIntegrationTest` `2.3-SVC-006`.
+- AC10 -> `MachineControllerTest` `2.3-API-009`; `MachineServiceIntegrationTest` `2.3-SVC-007`, `2.3-SVC-008`.
+- AC11 -> `MachineControllerTest` `2.3-API-008`; UI renders read-only badge and hides mutation controls when role is not mutable.
+- AC12 -> `MachineControllerTest` `2.3-API-001`.
+- AC13 -> `MachineControllerTest` `2.3-API-011`; `MachineServiceIntegrationTest` `2.3-SVC-010`; FKs use `ON DELETE RESTRICT`.
+- AC14 -> Browser evidence covered loading/data/empty dependency state, filters, create availability, edit mutation, manual status display, and table actions; UI code covers validation, error, read-only, delete confirmation, and pending states.
+- AC15 -> Evidence listed above maps every AC; full backend, frontend checks, build, baseline validation, and browser verification passed.
+
 ### File List
+
+- `_bmad-output/implementation-artifacts/2-3-manage-machines-with-manual-active-state.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `syncro/apps/backend/src/main/java/com/syncro/machine/api/MachineController.java`
+- `syncro/apps/backend/src/main/java/com/syncro/machine/api/MachineDtos.java`
+- `syncro/apps/backend/src/main/java/com/syncro/machine/api/MachineExceptionHandler.java`
+- `syncro/apps/backend/src/main/java/com/syncro/machine/application/MachineService.java`
+- `syncro/apps/backend/src/main/java/com/syncro/machine/domain/MachineStatus.java`
+- `syncro/apps/backend/src/main/java/com/syncro/machine/infrastructure/MachineEntity.java`
+- `syncro/apps/backend/src/main/java/com/syncro/machine/infrastructure/MachineRepository.java`
+- `syncro/apps/backend/src/main/resources/db/migration/V5__create_machines.sql`
+- `syncro/apps/backend/src/test/java/com/syncro/SyncroBackendApplicationTests.java`
+- `syncro/apps/backend/src/test/java/com/syncro/machine/api/MachineControllerTest.java`
+- `syncro/apps/backend/src/test/java/com/syncro/machine/application/MachineServiceIntegrationTest.java`
+- `syncro/apps/web/src/app/(main)/dashboard/master-data/machines/page.tsx`
+- `syncro/apps/web/src/features/master-data/machine-groups/machine-group-management.tsx`
+- `syncro/apps/web/src/features/master-data/machines/machine-management.tsx`
+- `syncro/apps/web/src/lib/api/generated/model/authUserView.ts`
+- `syncro/apps/web/src/lib/api/generated/model/authUserViewApplicationRole.ts`
+- `syncro/apps/web/src/lib/api/generated/model/health200.ts`
+- `syncro/apps/web/src/lib/api/generated/model/index.ts`
+- `syncro/apps/web/src/lib/api/generated/model/list1Params.ts`
+- `syncro/apps/web/src/lib/api/generated/model/list1Status.ts`
+- `syncro/apps/web/src/lib/api/generated/model/list2Params.ts`
+- `syncro/apps/web/src/lib/api/generated/model/loginRequest.ts`
+- `syncro/apps/web/src/lib/api/generated/model/loginResponse.ts`
+- `syncro/apps/web/src/lib/api/generated/model/logout200.ts`
+- `syncro/apps/web/src/lib/api/generated/model/machineGroupListResponse.ts`
+- `syncro/apps/web/src/lib/api/generated/model/machineGroupRequest.ts`
+- `syncro/apps/web/src/lib/api/generated/model/machineGroupView.ts`
+- `syncro/apps/web/src/lib/api/generated/model/machineListResponse.ts`
+- `syncro/apps/web/src/lib/api/generated/model/machineRequest.ts`
+- `syncro/apps/web/src/lib/api/generated/model/machineRequestStatus.ts`
+- `syncro/apps/web/src/lib/api/generated/model/machineView.ts`
+- `syncro/apps/web/src/lib/api/generated/model/machineViewStatus.ts`
+- `syncro/apps/web/src/lib/api/generated/model/plantListResponse.ts`
+- `syncro/apps/web/src/lib/api/generated/model/plantRequest.ts`
+- `syncro/apps/web/src/lib/api/generated/model/plantScopeResponse.ts`
+- `syncro/apps/web/src/lib/api/generated/model/plantScopeView.ts`
+- `syncro/apps/web/src/lib/api/generated/model/plantView.ts`
+- `syncro/apps/web/src/lib/api/generated/syncro.ts`
 
 ### Change Log
 
 - 2026-05-27 — Created Story 2.3 with machine CRUD, manual active-state, plant scope, validation, UI, and test requirements.
+- 2026-05-27 — Implemented machine CRUD backend, migration, generated API client, Machines UI, backend tests, validation evidence, and moved story to review.

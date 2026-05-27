@@ -35,13 +35,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
 import type { MachineGroupRequest, MachineGroupView, PlantView } from "@/lib/api/generated/model";
 import {
-  getList1QueryKey,
+  getList2QueryKey,
   getListQueryKey,
-  useCreate1,
-  useDelete1,
+  useCreate2,
+  useDelete2,
   useList,
-  useList1,
-  useUpdate1,
+  useList2,
+  useUpdate2,
 } from "@/lib/api/generated/syncro";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
@@ -65,7 +65,7 @@ export function MachineGroupManagement() {
   const availablePlants = useMemo(() => permittedPlants(plantItems, scope), [plantItems, scope]);
   const [selectedPlantId, setSelectedPlantId] = useState("");
   const effectivePlantId = selectedPlantId || availablePlants[0]?.id || "";
-  const machineGroups = useList1(
+  const machineGroups = useList2(
     { plantId: effectivePlantId },
     {
       query: {
@@ -74,9 +74,9 @@ export function MachineGroupManagement() {
       },
     },
   );
-  const createGroup = useCreate1({ mutation: { onSuccess: () => invalidateMachineGroupData(effectivePlantId) } });
-  const updateGroup = useUpdate1({ mutation: { onSuccess: () => invalidateMachineGroupData(effectivePlantId) } });
-  const deleteGroup = useDelete1({ mutation: { onSuccess: () => invalidateMachineGroupData(effectivePlantId) } });
+  const createGroup = useCreate2({ mutation: { onSuccess: () => invalidateMachineGroupData(effectivePlantId) } });
+  const updateGroup = useUpdate2({ mutation: { onSuccess: () => invalidateMachineGroupData(effectivePlantId) } });
+  const deleteGroup = useDelete2({ mutation: { onSuccess: () => invalidateMachineGroupData(effectivePlantId) } });
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
   const [form, setForm] = useState<MachineGroupFormState>(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -97,7 +97,7 @@ export function MachineGroupManagement() {
 
   function invalidateMachineGroupData(plantId: string) {
     queryClient.invalidateQueries({ queryKey: ["machine-groups", activePlantId, plantId] });
-    queryClient.invalidateQueries({ queryKey: getList1QueryKey({ plantId }) });
+    queryClient.invalidateQueries({ queryKey: getList2QueryKey({ plantId }) });
     queryClient.invalidateQueries({ queryKey: getListQueryKey() });
   }
 

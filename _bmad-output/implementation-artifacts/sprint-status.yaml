@@ -57,7 +57,7 @@ development_status:
   epic-2: in-progress
   2-1-manage-plants: done
   2-2-manage-plant-scoped-machine-groups: done
-  2-3-manage-machines-with-manual-active-state: ready-for-dev
+  2-3-manage-machines-with-manual-active-state: review
   2-4-manage-sparepart-taxonomy: backlog
   2-5-manage-spareparts: backlog
   2-6-install-spareparts-on-machines-with-lifetime-baseline: backlog
