@@ -1,14 +1,10 @@
-import { ModulePlaceholder } from "@/components/syncro/module-placeholder";
 import { RoleGuard } from "@/components/syncro/role-guard";
+import { SparepartTaxonomyManagement } from "@/features/master-data/spareparts/sparepart-taxonomy-management";
 
 export default function Page() {
   return (
-    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGE"]} title="Spareparts">
-      <ModulePlaceholder
-        title="Spareparts"
-        description="Sparepart master data shell for taxonomy-backed spareparts."
-        sections={["Taxonomy references", "Sparepart list", "Dense table placeholder"]}
-      />
+    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGE", "VIEWER"]} title="Spareparts">
+      <SparepartTaxonomyManagement />
     </RoleGuard>
   );
 }

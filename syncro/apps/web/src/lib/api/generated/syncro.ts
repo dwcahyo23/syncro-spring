@@ -27,8 +27,9 @@ import type {
 import type {
   AuthUserView,
   Health200,
-  List1Params,
   List2Params,
+  List3Params,
+  ListParams,
   LoginRequest,
   LoginResponse,
   Logout200,
@@ -41,7 +42,10 @@ import type {
   PlantListResponse,
   PlantRequest,
   PlantScopeResponse,
-  PlantView
+  PlantView,
+  SparepartTaxonomyListResponse,
+  SparepartTaxonomyRequest,
+  SparepartTaxonomyView
 } from './model';
 
 import { syncroFetch } from '../orval-mutator';
@@ -52,53 +56,48 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
 export type getResponse200 = {
-  data: PlantView
+  data: SparepartTaxonomyView
   status: 200
 }
 
 export type getResponse400 = {
-  data: PlantView
+  data: SparepartTaxonomyView
   status: 400
 }
 
 export type getResponse401 = {
-  data: PlantView
+  data: SparepartTaxonomyView
   status: 401
 }
 
-export type getResponse403 = {
-  data: PlantView
-  status: 403
-}
-
 export type getResponse404 = {
-  data: PlantView
+  data: SparepartTaxonomyView
   status: 404
 }
 
 export type getResponseSuccess = (getResponse200) & {
   headers: Headers;
 };
-export type getResponseError = (getResponse400 | getResponse401 | getResponse403 | getResponse404) & {
+export type getResponseError = (getResponse400 | getResponse401 | getResponse404) & {
   headers: Headers;
 };
 
 export type getResponse = (getResponseSuccess | getResponseError)
 
-export const getGetUrl = (plantId: string,) => {
+export const getGetUrl = (taxonomyId: string,) => {
 
 
 
 
-  return `/api/v1/plants/${plantId}`
+  return `/api/v1/sparepart-taxonomies/${taxonomyId}`
 }
 
 /**
- * @summary Get plant
+ * @summary Get sparepart taxonomy entry
  */
-export const get = async (plantId: string, options?: RequestInit): Promise<getResponse> => {
+export const get = async (taxonomyId: string, options?: RequestInit): Promise<getResponse> => {
 
-  return syncroFetch<getResponse>(getGetUrl(plantId),
+  return syncroFetch<getResponse>(getGetUrl(taxonomyId),
   {
     ...options,
     method: 'GET'
@@ -111,37 +110,37 @@ export const get = async (plantId: string, options?: RequestInit): Promise<getRe
 
 
 
-export const getGetQueryKey = (plantId: string,) => {
+export const getGetQueryKey = (taxonomyId: string,) => {
     return [
-    `/api/v1/plants/${plantId}`
+    `/api/v1/sparepart-taxonomies/${taxonomyId}`
     ] as const;
     }
 
 
-export const getGetQueryOptions = <TData = Awaited<ReturnType<typeof get>>, TError = PlantView>(plantId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+export const getGetQueryOptions = <TData = Awaited<ReturnType<typeof get>>, TError = SparepartTaxonomyView>(taxonomyId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetQueryKey(plantId);
+  const queryKey =  queryOptions?.queryKey ?? getGetQueryKey(taxonomyId);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof get>>> = ({ signal }) => get(plantId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof get>>> = ({ signal }) => get(taxonomyId, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: plantId !== null && plantId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof get>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: taxonomyId !== null && taxonomyId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof get>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
 export type GetQueryResult = NonNullable<Awaited<ReturnType<typeof get>>>
-export type GetQueryError = PlantView
+export type GetQueryError = SparepartTaxonomyView
 
 
-export function useGet<TData = Awaited<ReturnType<typeof get>>, TError = PlantView>(
- plantId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof get>>, TError, TData>> & Pick<
+export function useGet<TData = Awaited<ReturnType<typeof get>>, TError = SparepartTaxonomyView>(
+ taxonomyId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof get>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof get>>,
           TError,
@@ -150,8 +149,8 @@ export function useGet<TData = Awaited<ReturnType<typeof get>>, TError = PlantVi
       >, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGet<TData = Awaited<ReturnType<typeof get>>, TError = PlantView>(
- plantId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get>>, TError, TData>> & Pick<
+export function useGet<TData = Awaited<ReturnType<typeof get>>, TError = SparepartTaxonomyView>(
+ taxonomyId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof get>>,
           TError,
@@ -160,20 +159,20 @@ export function useGet<TData = Awaited<ReturnType<typeof get>>, TError = PlantVi
       >, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGet<TData = Awaited<ReturnType<typeof get>>, TError = PlantView>(
- plantId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+export function useGet<TData = Awaited<ReturnType<typeof get>>, TError = SparepartTaxonomyView>(
+ taxonomyId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary Get plant
+ * @summary Get sparepart taxonomy entry
  */
 
-export function useGet<TData = Awaited<ReturnType<typeof get>>, TError = PlantView>(
- plantId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+export function useGet<TData = Awaited<ReturnType<typeof get>>, TError = SparepartTaxonomyView>(
+ taxonomyId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGetQueryOptions(plantId,options)
+  const queryOptions = getGetQueryOptions(taxonomyId,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -187,68 +186,73 @@ export function useGet<TData = Awaited<ReturnType<typeof get>>, TError = PlantVi
 
 
 export type updateResponse200 = {
-  data: PlantView
+  data: SparepartTaxonomyView
   status: 200
 }
 
 export type updateResponse400 = {
-  data: PlantView
+  data: SparepartTaxonomyView
   status: 400
 }
 
 export type updateResponse401 = {
-  data: PlantView
+  data: SparepartTaxonomyView
   status: 401
 }
 
 export type updateResponse403 = {
-  data: PlantView
+  data: SparepartTaxonomyView
   status: 403
 }
 
 export type updateResponse404 = {
-  data: PlantView
+  data: SparepartTaxonomyView
   status: 404
+}
+
+export type updateResponse409 = {
+  data: SparepartTaxonomyView
+  status: 409
 }
 
 export type updateResponseSuccess = (updateResponse200) & {
   headers: Headers;
 };
-export type updateResponseError = (updateResponse400 | updateResponse401 | updateResponse403 | updateResponse404) & {
+export type updateResponseError = (updateResponse400 | updateResponse401 | updateResponse403 | updateResponse404 | updateResponse409) & {
   headers: Headers;
 };
 
 export type updateResponse = (updateResponseSuccess | updateResponseError)
 
-export const getUpdateUrl = (plantId: string,) => {
+export const getUpdateUrl = (taxonomyId: string,) => {
 
 
 
 
-  return `/api/v1/plants/${plantId}`
+  return `/api/v1/sparepart-taxonomies/${taxonomyId}`
 }
 
 /**
- * @summary Update plant
+ * @summary Update sparepart taxonomy entry
  */
-export const update = async (plantId: string,
-    plantRequest: PlantRequest, options?: RequestInit): Promise<updateResponse> => {
+export const update = async (taxonomyId: string,
+    sparepartTaxonomyRequest: SparepartTaxonomyRequest, options?: RequestInit): Promise<updateResponse> => {
 
-  return syncroFetch<updateResponse>(getUpdateUrl(plantId),
+  return syncroFetch<updateResponse>(getUpdateUrl(taxonomyId),
   {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(plantRequest)
+    body: JSON.stringify(sparepartTaxonomyRequest)
   }
 );}
 
 
 
 
-export const getUpdateMutationOptions = <TError = PlantView,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof update>>, TError,{plantId: string;data: PlantRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof update>>, TError,{plantId: string;data: PlantRequest}, TContext> => {
+export const getUpdateMutationOptions = <TError = SparepartTaxonomyView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof update>>, TError,{taxonomyId: string;data: SparepartTaxonomyRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof update>>, TError,{taxonomyId: string;data: SparepartTaxonomyRequest}, TContext> => {
 
 const mutationKey = ['update'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -260,10 +264,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof update>>, {plantId: string;data: PlantRequest}> = (props) => {
-          const {plantId,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof update>>, {taxonomyId: string;data: SparepartTaxonomyRequest}> = (props) => {
+          const {taxonomyId,data} = props ?? {};
 
-          return  update(plantId,data,requestOptions)
+          return  update(taxonomyId,data,requestOptions)
         }
 
 
@@ -274,18 +278,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type UpdateMutationResult = NonNullable<Awaited<ReturnType<typeof update>>>
-    export type UpdateMutationBody = PlantRequest
-    export type UpdateMutationError = PlantView
+    export type UpdateMutationBody = SparepartTaxonomyRequest
+    export type UpdateMutationError = SparepartTaxonomyView
 
     /**
- * @summary Update plant
+ * @summary Update sparepart taxonomy entry
  */
-export const useUpdate = <TError = PlantView,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof update>>, TError,{plantId: string;data: PlantRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+export const useUpdate = <TError = SparepartTaxonomyView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof update>>, TError,{taxonomyId: string;data: SparepartTaxonomyRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof update>>,
         TError,
-        {plantId: string;data: PlantRequest},
+        {taxonomyId: string;data: SparepartTaxonomyRequest},
         TContext
       > => {
       return useMutation(getUpdateMutationOptions(options), queryClient);
@@ -316,29 +320,34 @@ export type _deleteResponse404 = {
   status: 404
 }
 
+export type _deleteResponse409 = {
+  data: void
+  status: 409
+}
+
 export type _deleteResponseSuccess = (_deleteResponse204) & {
   headers: Headers;
 };
-export type _deleteResponseError = (_deleteResponse400 | _deleteResponse401 | _deleteResponse403 | _deleteResponse404) & {
+export type _deleteResponseError = (_deleteResponse400 | _deleteResponse401 | _deleteResponse403 | _deleteResponse404 | _deleteResponse409) & {
   headers: Headers;
 };
 
 export type _deleteResponse = (_deleteResponseSuccess | _deleteResponseError)
 
-export const getDeleteUrl = (plantId: string,) => {
+export const getDeleteUrl = (taxonomyId: string,) => {
 
 
 
 
-  return `/api/v1/plants/${plantId}`
+  return `/api/v1/sparepart-taxonomies/${taxonomyId}`
 }
 
 /**
- * @summary Delete plant
+ * @summary Delete sparepart taxonomy entry
  */
-export const _delete = async (plantId: string, options?: RequestInit): Promise<_deleteResponse> => {
+export const _delete = async (taxonomyId: string, options?: RequestInit): Promise<_deleteResponse> => {
 
-  return syncroFetch<_deleteResponse>(getDeleteUrl(plantId),
+  return syncroFetch<_deleteResponse>(getDeleteUrl(taxonomyId),
   {
     ...options,
     method: 'DELETE'
@@ -351,8 +360,8 @@ export const _delete = async (plantId: string, options?: RequestInit): Promise<_
 
 
 export const getDeleteMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof _delete>>, TError,{plantId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof _delete>>, TError,{plantId: string}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof _delete>>, TError,{taxonomyId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof _delete>>, TError,{taxonomyId: string}, TContext> => {
 
 const mutationKey = ['_delete'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -364,10 +373,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof _delete>>, {plantId: string}> = (props) => {
-          const {plantId} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof _delete>>, {taxonomyId: string}> = (props) => {
+          const {taxonomyId} = props ?? {};
 
-          return  _delete(plantId,requestOptions)
+          return  _delete(taxonomyId,requestOptions)
         }
 
 
@@ -382,41 +391,41 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type _DeleteMutationError = void
 
     /**
- * @summary Delete plant
+ * @summary Delete sparepart taxonomy entry
  */
 export const useDelete = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof _delete>>, TError,{plantId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof _delete>>, TError,{taxonomyId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof _delete>>,
         TError,
-        {plantId: string},
+        {taxonomyId: string},
         TContext
       > => {
       return useMutation(getDeleteMutationOptions(options), queryClient);
     }
 
 export type get1Response200 = {
-  data: MachineView
+  data: PlantView
   status: 200
 }
 
 export type get1Response400 = {
-  data: MachineView
+  data: PlantView
   status: 400
 }
 
 export type get1Response401 = {
-  data: MachineView
+  data: PlantView
   status: 401
 }
 
 export type get1Response403 = {
-  data: MachineView
+  data: PlantView
   status: 403
 }
 
 export type get1Response404 = {
-  data: MachineView
+  data: PlantView
   status: 404
 }
 
@@ -429,20 +438,20 @@ export type get1ResponseError = (get1Response400 | get1Response401 | get1Respons
 
 export type get1Response = (get1ResponseSuccess | get1ResponseError)
 
-export const getGet1Url = (machineId: string,) => {
+export const getGet1Url = (plantId: string,) => {
 
 
 
 
-  return `/api/v1/machines/${machineId}`
+  return `/api/v1/plants/${plantId}`
 }
 
 /**
- * @summary Get machine
+ * @summary Get plant
  */
-export const get1 = async (machineId: string, options?: RequestInit): Promise<get1Response> => {
+export const get1 = async (plantId: string, options?: RequestInit): Promise<get1Response> => {
 
-  return syncroFetch<get1Response>(getGet1Url(machineId),
+  return syncroFetch<get1Response>(getGet1Url(plantId),
   {
     ...options,
     method: 'GET'
@@ -455,37 +464,37 @@ export const get1 = async (machineId: string, options?: RequestInit): Promise<ge
 
 
 
-export const getGet1QueryKey = (machineId: string,) => {
+export const getGet1QueryKey = (plantId: string,) => {
     return [
-    `/api/v1/machines/${machineId}`
+    `/api/v1/plants/${plantId}`
     ] as const;
     }
 
 
-export const getGet1QueryOptions = <TData = Awaited<ReturnType<typeof get1>>, TError = MachineView>(machineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get1>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+export const getGet1QueryOptions = <TData = Awaited<ReturnType<typeof get1>>, TError = PlantView>(plantId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get1>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGet1QueryKey(machineId);
+  const queryKey =  queryOptions?.queryKey ?? getGet1QueryKey(plantId);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof get1>>> = ({ signal }) => get1(machineId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof get1>>> = ({ signal }) => get1(plantId, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: machineId !== null && machineId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof get1>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: plantId !== null && plantId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof get1>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
 export type Get1QueryResult = NonNullable<Awaited<ReturnType<typeof get1>>>
-export type Get1QueryError = MachineView
+export type Get1QueryError = PlantView
 
 
-export function useGet1<TData = Awaited<ReturnType<typeof get1>>, TError = MachineView>(
- machineId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof get1>>, TError, TData>> & Pick<
+export function useGet1<TData = Awaited<ReturnType<typeof get1>>, TError = PlantView>(
+ plantId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof get1>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof get1>>,
           TError,
@@ -494,8 +503,8 @@ export function useGet1<TData = Awaited<ReturnType<typeof get1>>, TError = Machi
       >, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGet1<TData = Awaited<ReturnType<typeof get1>>, TError = MachineView>(
- machineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get1>>, TError, TData>> & Pick<
+export function useGet1<TData = Awaited<ReturnType<typeof get1>>, TError = PlantView>(
+ plantId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get1>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof get1>>,
           TError,
@@ -504,20 +513,20 @@ export function useGet1<TData = Awaited<ReturnType<typeof get1>>, TError = Machi
       >, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGet1<TData = Awaited<ReturnType<typeof get1>>, TError = MachineView>(
- machineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get1>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+export function useGet1<TData = Awaited<ReturnType<typeof get1>>, TError = PlantView>(
+ plantId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get1>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary Get machine
+ * @summary Get plant
  */
 
-export function useGet1<TData = Awaited<ReturnType<typeof get1>>, TError = MachineView>(
- machineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get1>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+export function useGet1<TData = Awaited<ReturnType<typeof get1>>, TError = PlantView>(
+ plantId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get1>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGet1QueryOptions(machineId,options)
+  const queryOptions = getGet1QueryOptions(plantId,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -531,73 +540,68 @@ export function useGet1<TData = Awaited<ReturnType<typeof get1>>, TError = Machi
 
 
 export type update1Response200 = {
-  data: MachineView
+  data: PlantView
   status: 200
 }
 
 export type update1Response400 = {
-  data: MachineView
+  data: PlantView
   status: 400
 }
 
 export type update1Response401 = {
-  data: MachineView
+  data: PlantView
   status: 401
 }
 
 export type update1Response403 = {
-  data: MachineView
+  data: PlantView
   status: 403
 }
 
 export type update1Response404 = {
-  data: MachineView
+  data: PlantView
   status: 404
-}
-
-export type update1Response409 = {
-  data: MachineView
-  status: 409
 }
 
 export type update1ResponseSuccess = (update1Response200) & {
   headers: Headers;
 };
-export type update1ResponseError = (update1Response400 | update1Response401 | update1Response403 | update1Response404 | update1Response409) & {
+export type update1ResponseError = (update1Response400 | update1Response401 | update1Response403 | update1Response404) & {
   headers: Headers;
 };
 
 export type update1Response = (update1ResponseSuccess | update1ResponseError)
 
-export const getUpdate1Url = (machineId: string,) => {
+export const getUpdate1Url = (plantId: string,) => {
 
 
 
 
-  return `/api/v1/machines/${machineId}`
+  return `/api/v1/plants/${plantId}`
 }
 
 /**
- * @summary Update machine
+ * @summary Update plant
  */
-export const update1 = async (machineId: string,
-    machineRequest: MachineRequest, options?: RequestInit): Promise<update1Response> => {
+export const update1 = async (plantId: string,
+    plantRequest: PlantRequest, options?: RequestInit): Promise<update1Response> => {
 
-  return syncroFetch<update1Response>(getUpdate1Url(machineId),
+  return syncroFetch<update1Response>(getUpdate1Url(plantId),
   {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(machineRequest)
+    body: JSON.stringify(plantRequest)
   }
 );}
 
 
 
 
-export const getUpdate1MutationOptions = <TError = MachineView,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof update1>>, TError,{machineId: string;data: MachineRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof update1>>, TError,{machineId: string;data: MachineRequest}, TContext> => {
+export const getUpdate1MutationOptions = <TError = PlantView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof update1>>, TError,{plantId: string;data: PlantRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof update1>>, TError,{plantId: string;data: PlantRequest}, TContext> => {
 
 const mutationKey = ['update1'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -609,10 +613,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof update1>>, {machineId: string;data: MachineRequest}> = (props) => {
-          const {machineId,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof update1>>, {plantId: string;data: PlantRequest}> = (props) => {
+          const {plantId,data} = props ?? {};
 
-          return  update1(machineId,data,requestOptions)
+          return  update1(plantId,data,requestOptions)
         }
 
 
@@ -623,18 +627,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type Update1MutationResult = NonNullable<Awaited<ReturnType<typeof update1>>>
-    export type Update1MutationBody = MachineRequest
-    export type Update1MutationError = MachineView
+    export type Update1MutationBody = PlantRequest
+    export type Update1MutationError = PlantView
 
     /**
- * @summary Update machine
+ * @summary Update plant
  */
-export const useUpdate1 = <TError = MachineView,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof update1>>, TError,{machineId: string;data: MachineRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+export const useUpdate1 = <TError = PlantView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof update1>>, TError,{plantId: string;data: PlantRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof update1>>,
         TError,
-        {machineId: string;data: MachineRequest},
+        {plantId: string;data: PlantRequest},
         TContext
       > => {
       return useMutation(getUpdate1MutationOptions(options), queryClient);
@@ -665,34 +669,29 @@ export type delete1Response404 = {
   status: 404
 }
 
-export type delete1Response409 = {
-  data: void
-  status: 409
-}
-
 export type delete1ResponseSuccess = (delete1Response204) & {
   headers: Headers;
 };
-export type delete1ResponseError = (delete1Response400 | delete1Response401 | delete1Response403 | delete1Response404 | delete1Response409) & {
+export type delete1ResponseError = (delete1Response400 | delete1Response401 | delete1Response403 | delete1Response404) & {
   headers: Headers;
 };
 
 export type delete1Response = (delete1ResponseSuccess | delete1ResponseError)
 
-export const getDelete1Url = (machineId: string,) => {
+export const getDelete1Url = (plantId: string,) => {
 
 
 
 
-  return `/api/v1/machines/${machineId}`
+  return `/api/v1/plants/${plantId}`
 }
 
 /**
- * @summary Delete machine
+ * @summary Delete plant
  */
-export const delete1 = async (machineId: string, options?: RequestInit): Promise<delete1Response> => {
+export const delete1 = async (plantId: string, options?: RequestInit): Promise<delete1Response> => {
 
-  return syncroFetch<delete1Response>(getDelete1Url(machineId),
+  return syncroFetch<delete1Response>(getDelete1Url(plantId),
   {
     ...options,
     method: 'DELETE'
@@ -705,8 +704,8 @@ export const delete1 = async (machineId: string, options?: RequestInit): Promise
 
 
 export const getDelete1MutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof delete1>>, TError,{machineId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof delete1>>, TError,{machineId: string}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof delete1>>, TError,{plantId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof delete1>>, TError,{plantId: string}, TContext> => {
 
 const mutationKey = ['delete1'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -718,10 +717,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof delete1>>, {machineId: string}> = (props) => {
-          const {machineId} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof delete1>>, {plantId: string}> = (props) => {
+          const {plantId} = props ?? {};
 
-          return  delete1(machineId,requestOptions)
+          return  delete1(plantId,requestOptions)
         }
 
 
@@ -736,41 +735,41 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type Delete1MutationError = void
 
     /**
- * @summary Delete machine
+ * @summary Delete plant
  */
 export const useDelete1 = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof delete1>>, TError,{machineId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof delete1>>, TError,{plantId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof delete1>>,
         TError,
-        {machineId: string},
+        {plantId: string},
         TContext
       > => {
       return useMutation(getDelete1MutationOptions(options), queryClient);
     }
 
 export type get2Response200 = {
-  data: MachineGroupView
+  data: MachineView
   status: 200
 }
 
 export type get2Response400 = {
-  data: MachineGroupView
+  data: MachineView
   status: 400
 }
 
 export type get2Response401 = {
-  data: MachineGroupView
+  data: MachineView
   status: 401
 }
 
 export type get2Response403 = {
-  data: MachineGroupView
+  data: MachineView
   status: 403
 }
 
 export type get2Response404 = {
-  data: MachineGroupView
+  data: MachineView
   status: 404
 }
 
@@ -783,20 +782,20 @@ export type get2ResponseError = (get2Response400 | get2Response401 | get2Respons
 
 export type get2Response = (get2ResponseSuccess | get2ResponseError)
 
-export const getGet2Url = (machineGroupId: string,) => {
+export const getGet2Url = (machineId: string,) => {
 
 
 
 
-  return `/api/v1/machine-groups/${machineGroupId}`
+  return `/api/v1/machines/${machineId}`
 }
 
 /**
- * @summary Get machine group
+ * @summary Get machine
  */
-export const get2 = async (machineGroupId: string, options?: RequestInit): Promise<get2Response> => {
+export const get2 = async (machineId: string, options?: RequestInit): Promise<get2Response> => {
 
-  return syncroFetch<get2Response>(getGet2Url(machineGroupId),
+  return syncroFetch<get2Response>(getGet2Url(machineId),
   {
     ...options,
     method: 'GET'
@@ -809,37 +808,37 @@ export const get2 = async (machineGroupId: string, options?: RequestInit): Promi
 
 
 
-export const getGet2QueryKey = (machineGroupId: string,) => {
+export const getGet2QueryKey = (machineId: string,) => {
     return [
-    `/api/v1/machine-groups/${machineGroupId}`
+    `/api/v1/machines/${machineId}`
     ] as const;
     }
 
 
-export const getGet2QueryOptions = <TData = Awaited<ReturnType<typeof get2>>, TError = MachineGroupView>(machineGroupId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get2>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+export const getGet2QueryOptions = <TData = Awaited<ReturnType<typeof get2>>, TError = MachineView>(machineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get2>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGet2QueryKey(machineGroupId);
+  const queryKey =  queryOptions?.queryKey ?? getGet2QueryKey(machineId);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof get2>>> = ({ signal }) => get2(machineGroupId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof get2>>> = ({ signal }) => get2(machineId, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: machineGroupId !== null && machineGroupId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof get2>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: machineId !== null && machineId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof get2>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
 export type Get2QueryResult = NonNullable<Awaited<ReturnType<typeof get2>>>
-export type Get2QueryError = MachineGroupView
+export type Get2QueryError = MachineView
 
 
-export function useGet2<TData = Awaited<ReturnType<typeof get2>>, TError = MachineGroupView>(
- machineGroupId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof get2>>, TError, TData>> & Pick<
+export function useGet2<TData = Awaited<ReturnType<typeof get2>>, TError = MachineView>(
+ machineId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof get2>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof get2>>,
           TError,
@@ -848,8 +847,8 @@ export function useGet2<TData = Awaited<ReturnType<typeof get2>>, TError = Machi
       >, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGet2<TData = Awaited<ReturnType<typeof get2>>, TError = MachineGroupView>(
- machineGroupId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get2>>, TError, TData>> & Pick<
+export function useGet2<TData = Awaited<ReturnType<typeof get2>>, TError = MachineView>(
+ machineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get2>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof get2>>,
           TError,
@@ -858,20 +857,20 @@ export function useGet2<TData = Awaited<ReturnType<typeof get2>>, TError = Machi
       >, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGet2<TData = Awaited<ReturnType<typeof get2>>, TError = MachineGroupView>(
- machineGroupId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get2>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+export function useGet2<TData = Awaited<ReturnType<typeof get2>>, TError = MachineView>(
+ machineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get2>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary Get machine group
+ * @summary Get machine
  */
 
-export function useGet2<TData = Awaited<ReturnType<typeof get2>>, TError = MachineGroupView>(
- machineGroupId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get2>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+export function useGet2<TData = Awaited<ReturnType<typeof get2>>, TError = MachineView>(
+ machineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get2>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getGet2QueryOptions(machineGroupId,options)
+  const queryOptions = getGet2QueryOptions(machineId,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -885,32 +884,32 @@ export function useGet2<TData = Awaited<ReturnType<typeof get2>>, TError = Machi
 
 
 export type update2Response200 = {
-  data: MachineGroupView
+  data: MachineView
   status: 200
 }
 
 export type update2Response400 = {
-  data: MachineGroupView
+  data: MachineView
   status: 400
 }
 
 export type update2Response401 = {
-  data: MachineGroupView
+  data: MachineView
   status: 401
 }
 
 export type update2Response403 = {
-  data: MachineGroupView
+  data: MachineView
   status: 403
 }
 
 export type update2Response404 = {
-  data: MachineGroupView
+  data: MachineView
   status: 404
 }
 
 export type update2Response409 = {
-  data: MachineGroupView
+  data: MachineView
   status: 409
 }
 
@@ -923,35 +922,35 @@ export type update2ResponseError = (update2Response400 | update2Response401 | up
 
 export type update2Response = (update2ResponseSuccess | update2ResponseError)
 
-export const getUpdate2Url = (machineGroupId: string,) => {
+export const getUpdate2Url = (machineId: string,) => {
 
 
 
 
-  return `/api/v1/machine-groups/${machineGroupId}`
+  return `/api/v1/machines/${machineId}`
 }
 
 /**
- * @summary Update machine group
+ * @summary Update machine
  */
-export const update2 = async (machineGroupId: string,
-    machineGroupRequest: MachineGroupRequest, options?: RequestInit): Promise<update2Response> => {
+export const update2 = async (machineId: string,
+    machineRequest: MachineRequest, options?: RequestInit): Promise<update2Response> => {
 
-  return syncroFetch<update2Response>(getUpdate2Url(machineGroupId),
+  return syncroFetch<update2Response>(getUpdate2Url(machineId),
   {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(machineGroupRequest)
+    body: JSON.stringify(machineRequest)
   }
 );}
 
 
 
 
-export const getUpdate2MutationOptions = <TError = MachineGroupView,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof update2>>, TError,{machineGroupId: string;data: MachineGroupRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof update2>>, TError,{machineGroupId: string;data: MachineGroupRequest}, TContext> => {
+export const getUpdate2MutationOptions = <TError = MachineView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof update2>>, TError,{machineId: string;data: MachineRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof update2>>, TError,{machineId: string;data: MachineRequest}, TContext> => {
 
 const mutationKey = ['update2'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -963,10 +962,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof update2>>, {machineGroupId: string;data: MachineGroupRequest}> = (props) => {
-          const {machineGroupId,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof update2>>, {machineId: string;data: MachineRequest}> = (props) => {
+          const {machineId,data} = props ?? {};
 
-          return  update2(machineGroupId,data,requestOptions)
+          return  update2(machineId,data,requestOptions)
         }
 
 
@@ -977,18 +976,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type Update2MutationResult = NonNullable<Awaited<ReturnType<typeof update2>>>
-    export type Update2MutationBody = MachineGroupRequest
-    export type Update2MutationError = MachineGroupView
+    export type Update2MutationBody = MachineRequest
+    export type Update2MutationError = MachineView
 
     /**
- * @summary Update machine group
+ * @summary Update machine
  */
-export const useUpdate2 = <TError = MachineGroupView,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof update2>>, TError,{machineGroupId: string;data: MachineGroupRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+export const useUpdate2 = <TError = MachineView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof update2>>, TError,{machineId: string;data: MachineRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof update2>>,
         TError,
-        {machineGroupId: string;data: MachineGroupRequest},
+        {machineId: string;data: MachineRequest},
         TContext
       > => {
       return useMutation(getUpdate2MutationOptions(options), queryClient);
@@ -1033,20 +1032,20 @@ export type delete2ResponseError = (delete2Response400 | delete2Response401 | de
 
 export type delete2Response = (delete2ResponseSuccess | delete2ResponseError)
 
-export const getDelete2Url = (machineGroupId: string,) => {
+export const getDelete2Url = (machineId: string,) => {
 
 
 
 
-  return `/api/v1/machine-groups/${machineGroupId}`
+  return `/api/v1/machines/${machineId}`
 }
 
 /**
- * @summary Delete machine group
+ * @summary Delete machine
  */
-export const delete2 = async (machineGroupId: string, options?: RequestInit): Promise<delete2Response> => {
+export const delete2 = async (machineId: string, options?: RequestInit): Promise<delete2Response> => {
 
-  return syncroFetch<delete2Response>(getDelete2Url(machineGroupId),
+  return syncroFetch<delete2Response>(getDelete2Url(machineId),
   {
     ...options,
     method: 'DELETE'
@@ -1059,8 +1058,8 @@ export const delete2 = async (machineGroupId: string, options?: RequestInit): Pr
 
 
 export const getDelete2MutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof delete2>>, TError,{machineGroupId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof delete2>>, TError,{machineGroupId: string}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof delete2>>, TError,{machineId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof delete2>>, TError,{machineId: string}, TContext> => {
 
 const mutationKey = ['delete2'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -1072,10 +1071,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof delete2>>, {machineGroupId: string}> = (props) => {
-          const {machineGroupId} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof delete2>>, {machineId: string}> = (props) => {
+          const {machineId} = props ?? {};
 
-          return  delete2(machineGroupId,requestOptions)
+          return  delete2(machineId,requestOptions)
         }
 
 
@@ -1090,52 +1089,67 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type Delete2MutationError = void
 
     /**
- * @summary Delete machine group
+ * @summary Delete machine
  */
 export const useDelete2 = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof delete2>>, TError,{machineGroupId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof delete2>>, TError,{machineId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof delete2>>,
         TError,
-        {machineGroupId: string},
+        {machineId: string},
         TContext
       > => {
       return useMutation(getDelete2MutationOptions(options), queryClient);
     }
 
-export type listResponse200 = {
-  data: PlantListResponse
+export type get3Response200 = {
+  data: MachineGroupView
   status: 200
 }
 
-export type listResponse401 = {
-  data: PlantListResponse
+export type get3Response400 = {
+  data: MachineGroupView
+  status: 400
+}
+
+export type get3Response401 = {
+  data: MachineGroupView
   status: 401
 }
 
-export type listResponseSuccess = (listResponse200) & {
+export type get3Response403 = {
+  data: MachineGroupView
+  status: 403
+}
+
+export type get3Response404 = {
+  data: MachineGroupView
+  status: 404
+}
+
+export type get3ResponseSuccess = (get3Response200) & {
   headers: Headers;
 };
-export type listResponseError = (listResponse401) & {
+export type get3ResponseError = (get3Response400 | get3Response401 | get3Response403 | get3Response404) & {
   headers: Headers;
 };
 
-export type listResponse = (listResponseSuccess | listResponseError)
+export type get3Response = (get3ResponseSuccess | get3ResponseError)
 
-export const getListUrl = () => {
-
-
+export const getGet3Url = (machineGroupId: string,) => {
 
 
-  return `/api/v1/plants`
+
+
+  return `/api/v1/machine-groups/${machineGroupId}`
 }
 
 /**
- * @summary List plants
+ * @summary Get machine group
  */
-export const list = async ( options?: RequestInit): Promise<listResponse> => {
+export const get3 = async (machineGroupId: string, options?: RequestInit): Promise<get3Response> => {
 
-  return syncroFetch<listResponse>(getListUrl(),
+  return syncroFetch<get3Response>(getGet3Url(machineGroupId),
   {
     ...options,
     method: 'GET'
@@ -1148,23 +1162,374 @@ export const list = async ( options?: RequestInit): Promise<listResponse> => {
 
 
 
-export const getListQueryKey = () => {
+export const getGet3QueryKey = (machineGroupId: string,) => {
     return [
-    `/api/v1/plants`
+    `/api/v1/machine-groups/${machineGroupId}`
     ] as const;
     }
 
 
-export const getListQueryOptions = <TData = Awaited<ReturnType<typeof list>>, TError = PlantListResponse>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+export const getGet3QueryOptions = <TData = Awaited<ReturnType<typeof get3>>, TError = MachineGroupView>(machineGroupId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get3>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGet3QueryKey(machineGroupId);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof list>>> = ({ signal }) => list({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof get3>>> = ({ signal }) => get3(machineGroupId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: machineGroupId !== null && machineGroupId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof get3>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type Get3QueryResult = NonNullable<Awaited<ReturnType<typeof get3>>>
+export type Get3QueryError = MachineGroupView
+
+
+export function useGet3<TData = Awaited<ReturnType<typeof get3>>, TError = MachineGroupView>(
+ machineGroupId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof get3>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof get3>>,
+          TError,
+          Awaited<ReturnType<typeof get3>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGet3<TData = Awaited<ReturnType<typeof get3>>, TError = MachineGroupView>(
+ machineGroupId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get3>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof get3>>,
+          TError,
+          Awaited<ReturnType<typeof get3>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGet3<TData = Awaited<ReturnType<typeof get3>>, TError = MachineGroupView>(
+ machineGroupId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get3>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get machine group
+ */
+
+export function useGet3<TData = Awaited<ReturnType<typeof get3>>, TError = MachineGroupView>(
+ machineGroupId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof get3>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGet3QueryOptions(machineGroupId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export type update3Response200 = {
+  data: MachineGroupView
+  status: 200
+}
+
+export type update3Response400 = {
+  data: MachineGroupView
+  status: 400
+}
+
+export type update3Response401 = {
+  data: MachineGroupView
+  status: 401
+}
+
+export type update3Response403 = {
+  data: MachineGroupView
+  status: 403
+}
+
+export type update3Response404 = {
+  data: MachineGroupView
+  status: 404
+}
+
+export type update3Response409 = {
+  data: MachineGroupView
+  status: 409
+}
+
+export type update3ResponseSuccess = (update3Response200) & {
+  headers: Headers;
+};
+export type update3ResponseError = (update3Response400 | update3Response401 | update3Response403 | update3Response404 | update3Response409) & {
+  headers: Headers;
+};
+
+export type update3Response = (update3ResponseSuccess | update3ResponseError)
+
+export const getUpdate3Url = (machineGroupId: string,) => {
+
+
+
+
+  return `/api/v1/machine-groups/${machineGroupId}`
+}
+
+/**
+ * @summary Update machine group
+ */
+export const update3 = async (machineGroupId: string,
+    machineGroupRequest: MachineGroupRequest, options?: RequestInit): Promise<update3Response> => {
+
+  return syncroFetch<update3Response>(getUpdate3Url(machineGroupId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(machineGroupRequest)
+  }
+);}
+
+
+
+
+export const getUpdate3MutationOptions = <TError = MachineGroupView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof update3>>, TError,{machineGroupId: string;data: MachineGroupRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof update3>>, TError,{machineGroupId: string;data: MachineGroupRequest}, TContext> => {
+
+const mutationKey = ['update3'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof update3>>, {machineGroupId: string;data: MachineGroupRequest}> = (props) => {
+          const {machineGroupId,data} = props ?? {};
+
+          return  update3(machineGroupId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type Update3MutationResult = NonNullable<Awaited<ReturnType<typeof update3>>>
+    export type Update3MutationBody = MachineGroupRequest
+    export type Update3MutationError = MachineGroupView
+
+    /**
+ * @summary Update machine group
+ */
+export const useUpdate3 = <TError = MachineGroupView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof update3>>, TError,{machineGroupId: string;data: MachineGroupRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof update3>>,
+        TError,
+        {machineGroupId: string;data: MachineGroupRequest},
+        TContext
+      > => {
+      return useMutation(getUpdate3MutationOptions(options), queryClient);
+    }
+
+export type delete3Response204 = {
+  data: void
+  status: 204
+}
+
+export type delete3Response400 = {
+  data: void
+  status: 400
+}
+
+export type delete3Response401 = {
+  data: void
+  status: 401
+}
+
+export type delete3Response403 = {
+  data: void
+  status: 403
+}
+
+export type delete3Response404 = {
+  data: void
+  status: 404
+}
+
+export type delete3Response409 = {
+  data: void
+  status: 409
+}
+
+export type delete3ResponseSuccess = (delete3Response204) & {
+  headers: Headers;
+};
+export type delete3ResponseError = (delete3Response400 | delete3Response401 | delete3Response403 | delete3Response404 | delete3Response409) & {
+  headers: Headers;
+};
+
+export type delete3Response = (delete3ResponseSuccess | delete3ResponseError)
+
+export const getDelete3Url = (machineGroupId: string,) => {
+
+
+
+
+  return `/api/v1/machine-groups/${machineGroupId}`
+}
+
+/**
+ * @summary Delete machine group
+ */
+export const delete3 = async (machineGroupId: string, options?: RequestInit): Promise<delete3Response> => {
+
+  return syncroFetch<delete3Response>(getDelete3Url(machineGroupId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDelete3MutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof delete3>>, TError,{machineGroupId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof delete3>>, TError,{machineGroupId: string}, TContext> => {
+
+const mutationKey = ['delete3'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof delete3>>, {machineGroupId: string}> = (props) => {
+          const {machineGroupId} = props ?? {};
+
+          return  delete3(machineGroupId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type Delete3MutationResult = NonNullable<Awaited<ReturnType<typeof delete3>>>
+
+    export type Delete3MutationError = void
+
+    /**
+ * @summary Delete machine group
+ */
+export const useDelete3 = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof delete3>>, TError,{machineGroupId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof delete3>>,
+        TError,
+        {machineGroupId: string},
+        TContext
+      > => {
+      return useMutation(getDelete3MutationOptions(options), queryClient);
+    }
+
+export type listResponse200 = {
+  data: SparepartTaxonomyListResponse
+  status: 200
+}
+
+export type listResponse400 = {
+  data: SparepartTaxonomyListResponse
+  status: 400
+}
+
+export type listResponse401 = {
+  data: SparepartTaxonomyListResponse
+  status: 401
+}
+
+export type listResponseSuccess = (listResponse200) & {
+  headers: Headers;
+};
+export type listResponseError = (listResponse400 | listResponse401) & {
+  headers: Headers;
+};
+
+export type listResponse = (listResponseSuccess | listResponseError)
+
+export const getListUrl = (params?: ListParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/sparepart-taxonomies?${stringifiedParams}` : `/api/v1/sparepart-taxonomies`
+}
+
+/**
+ * @summary List sparepart taxonomy entries
+ */
+export const list = async (params?: ListParams, options?: RequestInit): Promise<listResponse> => {
+
+  return syncroFetch<listResponse>(getListUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListQueryKey = (params?: ListParams,) => {
+    return [
+    `/api/v1/sparepart-taxonomies`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListQueryOptions = <TData = Awaited<ReturnType<typeof list>>, TError = SparepartTaxonomyListResponse>(params?: ListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof list>>> = ({ signal }) => list(params, { signal, ...requestOptions });
 
 
 
@@ -1174,11 +1539,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListQueryResult = NonNullable<Awaited<ReturnType<typeof list>>>
-export type ListQueryError = PlantListResponse
+export type ListQueryError = SparepartTaxonomyListResponse
 
 
-export function useList<TData = Awaited<ReturnType<typeof list>>, TError = PlantListResponse>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof list>>, TError, TData>> & Pick<
+export function useList<TData = Awaited<ReturnType<typeof list>>, TError = SparepartTaxonomyListResponse>(
+ params: undefined |  ListParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof list>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof list>>,
           TError,
@@ -1187,8 +1552,8 @@ export function useList<TData = Awaited<ReturnType<typeof list>>, TError = Plant
       >, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useList<TData = Awaited<ReturnType<typeof list>>, TError = PlantListResponse>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list>>, TError, TData>> & Pick<
+export function useList<TData = Awaited<ReturnType<typeof list>>, TError = SparepartTaxonomyListResponse>(
+ params?: ListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof list>>,
           TError,
@@ -1197,20 +1562,20 @@ export function useList<TData = Awaited<ReturnType<typeof list>>, TError = Plant
       >, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useList<TData = Awaited<ReturnType<typeof list>>, TError = PlantListResponse>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+export function useList<TData = Awaited<ReturnType<typeof list>>, TError = SparepartTaxonomyListResponse>(
+ params?: ListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary List plants
+ * @summary List sparepart taxonomy entries
  */
 
-export function useList<TData = Awaited<ReturnType<typeof list>>, TError = PlantListResponse>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+export function useList<TData = Awaited<ReturnType<typeof list>>, TError = SparepartTaxonomyListResponse>(
+ params?: ListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getListQueryOptions(options)
+  const queryOptions = getListQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -1224,27 +1589,27 @@ export function useList<TData = Awaited<ReturnType<typeof list>>, TError = Plant
 
 
 export type createResponse201 = {
-  data: PlantView
+  data: SparepartTaxonomyView
   status: 201
 }
 
 export type createResponse400 = {
-  data: PlantView
+  data: SparepartTaxonomyView
   status: 400
 }
 
 export type createResponse401 = {
-  data: PlantView
+  data: SparepartTaxonomyView
   status: 401
 }
 
 export type createResponse403 = {
-  data: PlantView
+  data: SparepartTaxonomyView
   status: 403
 }
 
 export type createResponse409 = {
-  data: PlantView
+  data: SparepartTaxonomyView
   status: 409
 }
 
@@ -1262,29 +1627,29 @@ export const getCreateUrl = () => {
 
 
 
-  return `/api/v1/plants`
+  return `/api/v1/sparepart-taxonomies`
 }
 
 /**
- * @summary Create plant
+ * @summary Create sparepart taxonomy entry
  */
-export const create = async (plantRequest: PlantRequest, options?: RequestInit): Promise<createResponse> => {
+export const create = async (sparepartTaxonomyRequest: SparepartTaxonomyRequest, options?: RequestInit): Promise<createResponse> => {
 
   return syncroFetch<createResponse>(getCreateUrl(),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(plantRequest)
+    body: JSON.stringify(sparepartTaxonomyRequest)
   }
 );}
 
 
 
 
-export const getCreateMutationOptions = <TError = PlantView,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof create>>, TError,{data: PlantRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof create>>, TError,{data: PlantRequest}, TContext> => {
+export const getCreateMutationOptions = <TError = SparepartTaxonomyView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof create>>, TError,{data: SparepartTaxonomyRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof create>>, TError,{data: SparepartTaxonomyRequest}, TContext> => {
 
 const mutationKey = ['create'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -1296,7 +1661,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof create>>, {data: PlantRequest}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof create>>, {data: SparepartTaxonomyRequest}> = (props) => {
           const {data} = props ?? {};
 
           return  create(data,requestOptions)
@@ -1310,58 +1675,282 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type CreateMutationResult = NonNullable<Awaited<ReturnType<typeof create>>>
-    export type CreateMutationBody = PlantRequest
-    export type CreateMutationError = PlantView
+    export type CreateMutationBody = SparepartTaxonomyRequest
+    export type CreateMutationError = SparepartTaxonomyView
 
     /**
- * @summary Create plant
+ * @summary Create sparepart taxonomy entry
  */
-export const useCreate = <TError = PlantView,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof create>>, TError,{data: PlantRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+export const useCreate = <TError = SparepartTaxonomyView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof create>>, TError,{data: SparepartTaxonomyRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof create>>,
         TError,
-        {data: PlantRequest},
+        {data: SparepartTaxonomyRequest},
         TContext
       > => {
       return useMutation(getCreateMutationOptions(options), queryClient);
     }
 
 export type list1Response200 = {
-  data: MachineListResponse
+  data: PlantListResponse
   status: 200
 }
 
-export type list1Response400 = {
-  data: MachineListResponse
-  status: 400
-}
-
 export type list1Response401 = {
-  data: MachineListResponse
+  data: PlantListResponse
   status: 401
-}
-
-export type list1Response403 = {
-  data: MachineListResponse
-  status: 403
-}
-
-export type list1Response404 = {
-  data: MachineListResponse
-  status: 404
 }
 
 export type list1ResponseSuccess = (list1Response200) & {
   headers: Headers;
 };
-export type list1ResponseError = (list1Response400 | list1Response401 | list1Response403 | list1Response404) & {
+export type list1ResponseError = (list1Response401) & {
   headers: Headers;
 };
 
 export type list1Response = (list1ResponseSuccess | list1ResponseError)
 
-export const getList1Url = (params?: List1Params,) => {
+export const getList1Url = () => {
+
+
+
+
+  return `/api/v1/plants`
+}
+
+/**
+ * @summary List plants
+ */
+export const list1 = async ( options?: RequestInit): Promise<list1Response> => {
+
+  return syncroFetch<list1Response>(getList1Url(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getList1QueryKey = () => {
+    return [
+    `/api/v1/plants`
+    ] as const;
+    }
+
+
+export const getList1QueryOptions = <TData = Awaited<ReturnType<typeof list1>>, TError = PlantListResponse>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list1>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getList1QueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof list1>>> = ({ signal }) => list1({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof list1>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type List1QueryResult = NonNullable<Awaited<ReturnType<typeof list1>>>
+export type List1QueryError = PlantListResponse
+
+
+export function useList1<TData = Awaited<ReturnType<typeof list1>>, TError = PlantListResponse>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof list1>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof list1>>,
+          TError,
+          Awaited<ReturnType<typeof list1>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useList1<TData = Awaited<ReturnType<typeof list1>>, TError = PlantListResponse>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list1>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof list1>>,
+          TError,
+          Awaited<ReturnType<typeof list1>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useList1<TData = Awaited<ReturnType<typeof list1>>, TError = PlantListResponse>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list1>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List plants
+ */
+
+export function useList1<TData = Awaited<ReturnType<typeof list1>>, TError = PlantListResponse>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list1>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getList1QueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export type create1Response201 = {
+  data: PlantView
+  status: 201
+}
+
+export type create1Response400 = {
+  data: PlantView
+  status: 400
+}
+
+export type create1Response401 = {
+  data: PlantView
+  status: 401
+}
+
+export type create1Response403 = {
+  data: PlantView
+  status: 403
+}
+
+export type create1Response409 = {
+  data: PlantView
+  status: 409
+}
+
+export type create1ResponseSuccess = (create1Response201) & {
+  headers: Headers;
+};
+export type create1ResponseError = (create1Response400 | create1Response401 | create1Response403 | create1Response409) & {
+  headers: Headers;
+};
+
+export type create1Response = (create1ResponseSuccess | create1ResponseError)
+
+export const getCreate1Url = () => {
+
+
+
+
+  return `/api/v1/plants`
+}
+
+/**
+ * @summary Create plant
+ */
+export const create1 = async (plantRequest: PlantRequest, options?: RequestInit): Promise<create1Response> => {
+
+  return syncroFetch<create1Response>(getCreate1Url(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(plantRequest)
+  }
+);}
+
+
+
+
+export const getCreate1MutationOptions = <TError = PlantView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof create1>>, TError,{data: PlantRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof create1>>, TError,{data: PlantRequest}, TContext> => {
+
+const mutationKey = ['create1'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof create1>>, {data: PlantRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  create1(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type Create1MutationResult = NonNullable<Awaited<ReturnType<typeof create1>>>
+    export type Create1MutationBody = PlantRequest
+    export type Create1MutationError = PlantView
+
+    /**
+ * @summary Create plant
+ */
+export const useCreate1 = <TError = PlantView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof create1>>, TError,{data: PlantRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof create1>>,
+        TError,
+        {data: PlantRequest},
+        TContext
+      > => {
+      return useMutation(getCreate1MutationOptions(options), queryClient);
+    }
+
+export type list2Response200 = {
+  data: MachineListResponse
+  status: 200
+}
+
+export type list2Response400 = {
+  data: MachineListResponse
+  status: 400
+}
+
+export type list2Response401 = {
+  data: MachineListResponse
+  status: 401
+}
+
+export type list2Response403 = {
+  data: MachineListResponse
+  status: 403
+}
+
+export type list2Response404 = {
+  data: MachineListResponse
+  status: 404
+}
+
+export type list2ResponseSuccess = (list2Response200) & {
+  headers: Headers;
+};
+export type list2ResponseError = (list2Response400 | list2Response401 | list2Response403 | list2Response404) & {
+  headers: Headers;
+};
+
+export type list2Response = (list2ResponseSuccess | list2ResponseError)
+
+export const getList2Url = (params?: List2Params,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -1379,258 +1968,7 @@ export const getList1Url = (params?: List1Params,) => {
 /**
  * @summary List machines
  */
-export const list1 = async (params?: List1Params, options?: RequestInit): Promise<list1Response> => {
-
-  return syncroFetch<list1Response>(getList1Url(params),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getList1QueryKey = (params?: List1Params,) => {
-    return [
-    `/api/v1/machines`, ...(params ? [params] : [])
-    ] as const;
-    }
-
-
-export const getList1QueryOptions = <TData = Awaited<ReturnType<typeof list1>>, TError = MachineListResponse>(params?: List1Params, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list1>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getList1QueryKey(params);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof list1>>> = ({ signal }) => list1(params, { signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof list1>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type List1QueryResult = NonNullable<Awaited<ReturnType<typeof list1>>>
-export type List1QueryError = MachineListResponse
-
-
-export function useList1<TData = Awaited<ReturnType<typeof list1>>, TError = MachineListResponse>(
- params: undefined |  List1Params, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof list1>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof list1>>,
-          TError,
-          Awaited<ReturnType<typeof list1>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof syncroFetch>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useList1<TData = Awaited<ReturnType<typeof list1>>, TError = MachineListResponse>(
- params?: List1Params, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list1>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof list1>>,
-          TError,
-          Awaited<ReturnType<typeof list1>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof syncroFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useList1<TData = Awaited<ReturnType<typeof list1>>, TError = MachineListResponse>(
- params?: List1Params, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list1>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary List machines
- */
-
-export function useList1<TData = Awaited<ReturnType<typeof list1>>, TError = MachineListResponse>(
- params?: List1Params, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list1>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getList1QueryOptions(params,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-
-
-export type create1Response201 = {
-  data: MachineView
-  status: 201
-}
-
-export type create1Response400 = {
-  data: MachineView
-  status: 400
-}
-
-export type create1Response401 = {
-  data: MachineView
-  status: 401
-}
-
-export type create1Response403 = {
-  data: MachineView
-  status: 403
-}
-
-export type create1Response404 = {
-  data: MachineView
-  status: 404
-}
-
-export type create1Response409 = {
-  data: MachineView
-  status: 409
-}
-
-export type create1ResponseSuccess = (create1Response201) & {
-  headers: Headers;
-};
-export type create1ResponseError = (create1Response400 | create1Response401 | create1Response403 | create1Response404 | create1Response409) & {
-  headers: Headers;
-};
-
-export type create1Response = (create1ResponseSuccess | create1ResponseError)
-
-export const getCreate1Url = () => {
-
-
-
-
-  return `/api/v1/machines`
-}
-
-/**
- * @summary Create machine
- */
-export const create1 = async (machineRequest: MachineRequest, options?: RequestInit): Promise<create1Response> => {
-
-  return syncroFetch<create1Response>(getCreate1Url(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(machineRequest)
-  }
-);}
-
-
-
-
-export const getCreate1MutationOptions = <TError = MachineView,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof create1>>, TError,{data: MachineRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof create1>>, TError,{data: MachineRequest}, TContext> => {
-
-const mutationKey = ['create1'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof create1>>, {data: MachineRequest}> = (props) => {
-          const {data} = props ?? {};
-
-          return  create1(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type Create1MutationResult = NonNullable<Awaited<ReturnType<typeof create1>>>
-    export type Create1MutationBody = MachineRequest
-    export type Create1MutationError = MachineView
-
-    /**
- * @summary Create machine
- */
-export const useCreate1 = <TError = MachineView,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof create1>>, TError,{data: MachineRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof create1>>,
-        TError,
-        {data: MachineRequest},
-        TContext
-      > => {
-      return useMutation(getCreate1MutationOptions(options), queryClient);
-    }
-
-export type list2Response200 = {
-  data: MachineGroupListResponse
-  status: 200
-}
-
-export type list2Response400 = {
-  data: MachineGroupListResponse
-  status: 400
-}
-
-export type list2Response401 = {
-  data: MachineGroupListResponse
-  status: 401
-}
-
-export type list2Response403 = {
-  data: MachineGroupListResponse
-  status: 403
-}
-
-export type list2Response404 = {
-  data: MachineGroupListResponse
-  status: 404
-}
-
-export type list2ResponseSuccess = (list2Response200) & {
-  headers: Headers;
-};
-export type list2ResponseError = (list2Response400 | list2Response401 | list2Response403 | list2Response404) & {
-  headers: Headers;
-};
-
-export type list2Response = (list2ResponseSuccess | list2ResponseError)
-
-export const getList2Url = (params: List2Params,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : String(value))
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `/api/v1/machine-groups?${stringifiedParams}` : `/api/v1/machine-groups`
-}
-
-/**
- * @summary List machine groups
- */
-export const list2 = async (params: List2Params, options?: RequestInit): Promise<list2Response> => {
+export const list2 = async (params?: List2Params, options?: RequestInit): Promise<list2Response> => {
 
   return syncroFetch<list2Response>(getList2Url(params),
   {
@@ -1647,12 +1985,12 @@ export const list2 = async (params: List2Params, options?: RequestInit): Promise
 
 export const getList2QueryKey = (params?: List2Params,) => {
     return [
-    `/api/v1/machine-groups`, ...(params ? [params] : [])
+    `/api/v1/machines`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getList2QueryOptions = <TData = Awaited<ReturnType<typeof list2>>, TError = MachineGroupListResponse>(params: List2Params, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list2>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+export const getList2QueryOptions = <TData = Awaited<ReturnType<typeof list2>>, TError = MachineListResponse>(params?: List2Params, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list2>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -1671,11 +2009,11 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type List2QueryResult = NonNullable<Awaited<ReturnType<typeof list2>>>
-export type List2QueryError = MachineGroupListResponse
+export type List2QueryError = MachineListResponse
 
 
-export function useList2<TData = Awaited<ReturnType<typeof list2>>, TError = MachineGroupListResponse>(
- params: List2Params, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof list2>>, TError, TData>> & Pick<
+export function useList2<TData = Awaited<ReturnType<typeof list2>>, TError = MachineListResponse>(
+ params: undefined |  List2Params, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof list2>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof list2>>,
           TError,
@@ -1684,8 +2022,8 @@ export function useList2<TData = Awaited<ReturnType<typeof list2>>, TError = Mac
       >, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useList2<TData = Awaited<ReturnType<typeof list2>>, TError = MachineGroupListResponse>(
- params: List2Params, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list2>>, TError, TData>> & Pick<
+export function useList2<TData = Awaited<ReturnType<typeof list2>>, TError = MachineListResponse>(
+ params?: List2Params, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list2>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof list2>>,
           TError,
@@ -1694,16 +2032,16 @@ export function useList2<TData = Awaited<ReturnType<typeof list2>>, TError = Mac
       >, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useList2<TData = Awaited<ReturnType<typeof list2>>, TError = MachineGroupListResponse>(
- params: List2Params, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list2>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+export function useList2<TData = Awaited<ReturnType<typeof list2>>, TError = MachineListResponse>(
+ params?: List2Params, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list2>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary List machine groups
+ * @summary List machines
  */
 
-export function useList2<TData = Awaited<ReturnType<typeof list2>>, TError = MachineGroupListResponse>(
- params: List2Params, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list2>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+export function useList2<TData = Awaited<ReturnType<typeof list2>>, TError = MachineListResponse>(
+ params?: List2Params, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list2>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -1721,32 +2059,32 @@ export function useList2<TData = Awaited<ReturnType<typeof list2>>, TError = Mac
 
 
 export type create2Response201 = {
-  data: MachineGroupView
+  data: MachineView
   status: 201
 }
 
 export type create2Response400 = {
-  data: MachineGroupView
+  data: MachineView
   status: 400
 }
 
 export type create2Response401 = {
-  data: MachineGroupView
+  data: MachineView
   status: 401
 }
 
 export type create2Response403 = {
-  data: MachineGroupView
+  data: MachineView
   status: 403
 }
 
 export type create2Response404 = {
-  data: MachineGroupView
+  data: MachineView
   status: 404
 }
 
 export type create2Response409 = {
-  data: MachineGroupView
+  data: MachineView
   status: 409
 }
 
@@ -1764,29 +2102,29 @@ export const getCreate2Url = () => {
 
 
 
-  return `/api/v1/machine-groups`
+  return `/api/v1/machines`
 }
 
 /**
- * @summary Create machine group
+ * @summary Create machine
  */
-export const create2 = async (machineGroupRequest: MachineGroupRequest, options?: RequestInit): Promise<create2Response> => {
+export const create2 = async (machineRequest: MachineRequest, options?: RequestInit): Promise<create2Response> => {
 
   return syncroFetch<create2Response>(getCreate2Url(),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(machineGroupRequest)
+    body: JSON.stringify(machineRequest)
   }
 );}
 
 
 
 
-export const getCreate2MutationOptions = <TError = MachineGroupView,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof create2>>, TError,{data: MachineGroupRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof create2>>, TError,{data: MachineGroupRequest}, TContext> => {
+export const getCreate2MutationOptions = <TError = MachineView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof create2>>, TError,{data: MachineRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof create2>>, TError,{data: MachineRequest}, TContext> => {
 
 const mutationKey = ['create2'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -1798,7 +2136,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof create2>>, {data: MachineGroupRequest}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof create2>>, {data: MachineRequest}> = (props) => {
           const {data} = props ?? {};
 
           return  create2(data,requestOptions)
@@ -1812,21 +2150,272 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type Create2MutationResult = NonNullable<Awaited<ReturnType<typeof create2>>>
-    export type Create2MutationBody = MachineGroupRequest
-    export type Create2MutationError = MachineGroupView
+    export type Create2MutationBody = MachineRequest
+    export type Create2MutationError = MachineView
+
+    /**
+ * @summary Create machine
+ */
+export const useCreate2 = <TError = MachineView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof create2>>, TError,{data: MachineRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof create2>>,
+        TError,
+        {data: MachineRequest},
+        TContext
+      > => {
+      return useMutation(getCreate2MutationOptions(options), queryClient);
+    }
+
+export type list3Response200 = {
+  data: MachineGroupListResponse
+  status: 200
+}
+
+export type list3Response400 = {
+  data: MachineGroupListResponse
+  status: 400
+}
+
+export type list3Response401 = {
+  data: MachineGroupListResponse
+  status: 401
+}
+
+export type list3Response403 = {
+  data: MachineGroupListResponse
+  status: 403
+}
+
+export type list3Response404 = {
+  data: MachineGroupListResponse
+  status: 404
+}
+
+export type list3ResponseSuccess = (list3Response200) & {
+  headers: Headers;
+};
+export type list3ResponseError = (list3Response400 | list3Response401 | list3Response403 | list3Response404) & {
+  headers: Headers;
+};
+
+export type list3Response = (list3ResponseSuccess | list3ResponseError)
+
+export const getList3Url = (params: List3Params,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/machine-groups?${stringifiedParams}` : `/api/v1/machine-groups`
+}
+
+/**
+ * @summary List machine groups
+ */
+export const list3 = async (params: List3Params, options?: RequestInit): Promise<list3Response> => {
+
+  return syncroFetch<list3Response>(getList3Url(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getList3QueryKey = (params?: List3Params,) => {
+    return [
+    `/api/v1/machine-groups`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getList3QueryOptions = <TData = Awaited<ReturnType<typeof list3>>, TError = MachineGroupListResponse>(params: List3Params, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list3>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getList3QueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof list3>>> = ({ signal }) => list3(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof list3>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type List3QueryResult = NonNullable<Awaited<ReturnType<typeof list3>>>
+export type List3QueryError = MachineGroupListResponse
+
+
+export function useList3<TData = Awaited<ReturnType<typeof list3>>, TError = MachineGroupListResponse>(
+ params: List3Params, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof list3>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof list3>>,
+          TError,
+          Awaited<ReturnType<typeof list3>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useList3<TData = Awaited<ReturnType<typeof list3>>, TError = MachineGroupListResponse>(
+ params: List3Params, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list3>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof list3>>,
+          TError,
+          Awaited<ReturnType<typeof list3>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useList3<TData = Awaited<ReturnType<typeof list3>>, TError = MachineGroupListResponse>(
+ params: List3Params, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list3>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List machine groups
+ */
+
+export function useList3<TData = Awaited<ReturnType<typeof list3>>, TError = MachineGroupListResponse>(
+ params: List3Params, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list3>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getList3QueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export type create3Response201 = {
+  data: MachineGroupView
+  status: 201
+}
+
+export type create3Response400 = {
+  data: MachineGroupView
+  status: 400
+}
+
+export type create3Response401 = {
+  data: MachineGroupView
+  status: 401
+}
+
+export type create3Response403 = {
+  data: MachineGroupView
+  status: 403
+}
+
+export type create3Response404 = {
+  data: MachineGroupView
+  status: 404
+}
+
+export type create3Response409 = {
+  data: MachineGroupView
+  status: 409
+}
+
+export type create3ResponseSuccess = (create3Response201) & {
+  headers: Headers;
+};
+export type create3ResponseError = (create3Response400 | create3Response401 | create3Response403 | create3Response404 | create3Response409) & {
+  headers: Headers;
+};
+
+export type create3Response = (create3ResponseSuccess | create3ResponseError)
+
+export const getCreate3Url = () => {
+
+
+
+
+  return `/api/v1/machine-groups`
+}
+
+/**
+ * @summary Create machine group
+ */
+export const create3 = async (machineGroupRequest: MachineGroupRequest, options?: RequestInit): Promise<create3Response> => {
+
+  return syncroFetch<create3Response>(getCreate3Url(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(machineGroupRequest)
+  }
+);}
+
+
+
+
+export const getCreate3MutationOptions = <TError = MachineGroupView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof create3>>, TError,{data: MachineGroupRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof create3>>, TError,{data: MachineGroupRequest}, TContext> => {
+
+const mutationKey = ['create3'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof create3>>, {data: MachineGroupRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  create3(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type Create3MutationResult = NonNullable<Awaited<ReturnType<typeof create3>>>
+    export type Create3MutationBody = MachineGroupRequest
+    export type Create3MutationError = MachineGroupView
 
     /**
  * @summary Create machine group
  */
-export const useCreate2 = <TError = MachineGroupView,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof create2>>, TError,{data: MachineGroupRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+export const useCreate3 = <TError = MachineGroupView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof create3>>, TError,{data: MachineGroupRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof create2>>,
+        Awaited<ReturnType<typeof create3>>,
         TError,
         {data: MachineGroupRequest},
         TContext
       > => {
-      return useMutation(getCreate2MutationOptions(options), queryClient);
+      return useMutation(getCreate3MutationOptions(options), queryClient);
     }
 
 export type logoutResponse200 = {

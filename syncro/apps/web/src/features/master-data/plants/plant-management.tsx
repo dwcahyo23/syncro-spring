@@ -33,7 +33,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
 import type { PlantRequest, PlantView } from "@/lib/api/generated/model";
-import { getPlantScopeQueryKey, useCreate, useDelete, useList, useUpdate } from "@/lib/api/generated/syncro";
+import { getPlantScopeQueryKey, useCreate1, useDelete1, useList1, useUpdate1 } from "@/lib/api/generated/syncro";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
 
@@ -57,16 +57,16 @@ export function PlantManagement() {
   const queryClient = useQueryClient();
   const isAssignedEmpty = scope?.mode === "EMPTY";
   const plantsQueryKey = ["plants", activePlantId] as const;
-  const plants = useList({ query: { enabled: Boolean(scope) && !isAssignedEmpty, queryKey: plantsQueryKey } });
+  const plants = useList1({ query: { enabled: Boolean(scope) && !isAssignedEmpty, queryKey: plantsQueryKey } });
   const invalidatePlants = () => queryClient.invalidateQueries({ queryKey: plantsQueryKey });
   const invalidatePlantScope = () => queryClient.invalidateQueries({ queryKey: getPlantScopeQueryKey() });
   const invalidatePlantData = () => {
     invalidatePlants();
     invalidatePlantScope();
   };
-  const createPlant = useCreate({ mutation: { onSuccess: invalidatePlantData } });
-  const updatePlant = useUpdate({ mutation: { onSuccess: invalidatePlants } });
-  const deletePlant = useDelete({ mutation: { onSuccess: invalidatePlantData } });
+  const createPlant = useCreate1({ mutation: { onSuccess: invalidatePlantData } });
+  const updatePlant = useUpdate1({ mutation: { onSuccess: invalidatePlants } });
+  const deletePlant = useDelete1({ mutation: { onSuccess: invalidatePlantData } });
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
   const [form, setForm] = useState<PlantFormState>(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
