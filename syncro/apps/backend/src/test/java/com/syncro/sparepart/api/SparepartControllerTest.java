@@ -25,6 +25,7 @@ import com.syncro.sparepart.application.SparepartService.SparepartMutationForbid
 import com.syncro.sparepart.application.SparepartService.SparepartNotFoundException;
 import com.syncro.sparepart.application.SparepartService.SparepartTaxonomyDimensionMismatchException;
 import com.syncro.sparepart.application.SparepartService.SparepartTaxonomyRefView;
+import com.syncro.sparepart.application.SparepartService.SparepartListView;
 import com.syncro.sparepart.application.SparepartService.SparepartTaxonomyReferenceNotFoundException;
 import com.syncro.sparepart.application.SparepartService.SparepartView;
 import java.time.Instant;
@@ -75,7 +76,7 @@ class SparepartControllerTest {
     var brandId = UUID.randomUUID();
     var kindId = UUID.randomUUID();
     var typeId = UUID.randomUUID();
-    when(spareparts.list(eq(user), any())).thenReturn(List.of(view(sparepartId, categoryId, brandId, kindId, typeId)));
+    when(spareparts.list(eq(user), any())).thenReturn(new SparepartListView(List.of(view(sparepartId, categoryId, brandId, kindId, typeId)), 1, 0, 200));
 
     mockMvc.perform(get("/api/v1/spareparts")
         .param("categoryId", categoryId.toString())
@@ -91,7 +92,10 @@ class SparepartControllerTest {
         .andExpect(jsonPath("$.items[0].category.id").value(categoryId.toString()))
         .andExpect(jsonPath("$.items[0].brand.id").value(brandId.toString()))
         .andExpect(jsonPath("$.items[0].kind.id").value(kindId.toString()))
-        .andExpect(jsonPath("$.items[0].type.id").value(typeId.toString()));
+        .andExpect(jsonPath("$.items[0].type.id").value(typeId.toString()))
+        .andExpect(jsonPath("$.totalElements").value(1))
+        .andExpect(jsonPath("$.page").value(0))
+        .andExpect(jsonPath("$.size").value(200));
   }
 
   @Test

@@ -12,4 +12,6 @@ brandId?: string;
 kindId?: string;
 typeId?: string;
 search?: string;
+page?: number;
+size?: number;
 };

@@ -10,6 +10,7 @@ import com.syncro.sparepart.infrastructure.SparepartTaxonomyRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
@@ -20,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SparepartService {
-  private static final int LIST_LIMIT = 200;
+  private static final int MAX_PAGE_SIZE = 200;
   private static final String DUPLICATE_CODE_CONSTRAINT = "uq_spareparts_lower_code";
   private static final String DUPLICATE_NAME_CONSTRAINT = "uq_spareparts_lower_name";
 
@@ -35,11 +36,15 @@ public class SparepartService {
   }
 
   @Transactional(readOnly = true)
-  public List<SparepartView> list(AuthenticatedUser user, SparepartFilters filters) {
+  public SparepartListView list(AuthenticatedUser user, SparepartFilters filters) {
     var search = normalizeSearch(filters.search());
-    return spareparts.search(filters.categoryId(), filters.brandId(), filters.kindId(), filters.typeId(), search, PageRequest.of(0, LIST_LIMIT)).stream()
-        .map(this::toView)
-        .toList();
+    var page = normalizePage(filters.page());
+    var size = normalizeSize(filters.size());
+    var pageable = PageRequest.of(page, size);
+    var result = search.isEmpty()
+        ? spareparts.search(filters.categoryId(), filters.brandId(), filters.kindId(), filters.typeId(), pageable)
+        : spareparts.search(filters.categoryId(), filters.brandId(), filters.kindId(), filters.typeId(), search, pageable);
+    return new SparepartListView(result.stream().map(this::toView).toList(), result.getTotalElements(), page, size);
   }
 
   @Transactional(readOnly = true)
@@ -124,10 +129,31 @@ public class SparepartService {
 
   private String normalizeSearch(String search) {
     if (search == null) {
-      return null;
+      return "";
     }
-    var trimmed = search.trim();
-    return trimmed.isEmpty() ? null : trimmed;
+    var trimmed = search.trim().toLowerCase(Locale.ROOT);
+    return trimmed.isEmpty() ? "" : escapeLikePattern(trimmed);
+  }
+
+  private String escapeLikePattern(String search) {
+    return search
+        .replace("\\", "\\\\")
+        .replace("%", "\\%")
+        .replace("_", "\\_");
+  }
+
+  private int normalizePage(int page) {
+    if (page < 0) {
+      throw new SparepartValidationException();
+    }
+    return page;
+  }
+
+  private int normalizeSize(int size) {
+    if (size < 1 || size > MAX_PAGE_SIZE) {
+      throw new SparepartValidationException();
+    }
+    return size;
   }
 
   private UUID requiredId(UUID id) {
@@ -230,7 +256,10 @@ public class SparepartService {
   public record SparepartCommand(String code, String name, UUID categoryId, UUID brandId, UUID kindId, UUID typeId) {
   }
 
-  public record SparepartFilters(UUID categoryId, UUID brandId, UUID kindId, UUID typeId, String search) {
+  public record SparepartFilters(UUID categoryId, UUID brandId, UUID kindId, UUID typeId, String search, int page, int size) {
+  }
+
+  public record SparepartListView(List<SparepartView> items, long totalElements, int page, int size) {
   }
 
   public record SparepartTaxonomyRefView(UUID id, String code, String name) {

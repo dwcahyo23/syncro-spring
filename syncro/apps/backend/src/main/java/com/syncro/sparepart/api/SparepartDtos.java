@@ -38,6 +38,6 @@ public final class SparepartDtos {
       Instant updatedAt) {
   }
 
-  public record SparepartListResponse(List<SparepartView> items) {
+  public record SparepartListResponse(List<SparepartView> items, long totalElements, int page, int size) {
   }
 }

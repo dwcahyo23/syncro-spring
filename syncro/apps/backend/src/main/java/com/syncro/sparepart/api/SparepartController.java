@@ -49,9 +49,12 @@ public class SparepartController {
       @RequestParam(required = false) UUID brandId,
       @RequestParam(required = false) UUID kindId,
       @RequestParam(required = false) UUID typeId,
-      @RequestParam(required = false) String search) {
-    var filters = new SparepartFilters(categoryId, brandId, kindId, typeId, search);
-    return new SparepartListResponse(spareparts.list(user, filters).stream().map(this::toDto).toList());
+      @RequestParam(required = false) String search,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "200") int size) {
+    var filters = new SparepartFilters(categoryId, brandId, kindId, typeId, search, page, size);
+    var result = spareparts.list(user, filters);
+    return new SparepartListResponse(result.items().stream().map(this::toDto).toList(), result.totalElements(), result.page(), result.size());
   }
 
   @Operation(operationId = "getSparepart", summary = "Get sparepart")

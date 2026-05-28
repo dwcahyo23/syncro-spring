@@ -4,7 +4,7 @@ baseline_commit: bdcb998280bce3519e008e0d50f6a0204cae923b
 
 # Story 2.5: Manage Spareparts
 
-Status: review
+Status: done
 
 ## Story
 
@@ -94,6 +94,10 @@ so that installed spareparts can be tracked consistently.
 - [x] [Review][Patch] Strengthen create/edit/delete E2E assertions against refreshed table state [syncro/apps/web/tests/e2e/spareparts.spec.ts:101]
 - [x] [Review][Patch] Add Story 2.5 forbidden-state E2E evidence [syncro/apps/web/tests/e2e/spareparts.spec.ts:185]
 - [x] [Review][Patch] Mark skipped ATDD scaffolds as planned coverage, not active evidence [_bmad-output/test-artifacts/atdd-checklist-2-5-manage-spareparts.md:193]
+- [x] [Review][Patch] Add pageable sparepart list instead of silent 200-row truncation [syncro/apps/backend/src/main/java/com/syncro/sparepart/api/SparepartController.java:47]
+- [x] [Review][Patch] Escape wildcard characters in sparepart search [syncro/apps/backend/src/main/java/com/syncro/sparepart/infrastructure/SparepartRepository.java:30]
+- [x] [Review][Patch] Use generated API model types in sparepart E2E fixtures [syncro/apps/web/tests/e2e/spareparts.spec.ts:6]
+- [x] [Review][Defer] Hardcoded local ports in new web test config [syncro/apps/web/playwright.config.ts:2] — deferred, pre-existing
 
 ## Dev Notes
 
@@ -211,6 +215,9 @@ cx/gpt-5.5
 - `npm --prefix "syncro/apps/web" run generate:api` — PASS.
 - `npm --prefix "syncro/apps/web" run check` — PASS, 89 files.
 - `npm --prefix "syncro/apps/web" run build` — PASS.
+- Review patch: `mvn -f "syncro/apps/backend/pom.xml" "-Dtest=SparepartControllerTest,SparepartServiceIntegrationTest" test` — PASS, 38 tests.
+- Review patch: `npm --prefix "syncro/apps/web" run check` — PASS, 98 files.
+- Review patch: `npm --prefix "syncro/apps/web" run build` — PASS.
 - `npm --prefix "syncro/apps/web" run dev -- --port 3001` plus HTTP smoke `http://localhost:3001/dashboard/master-data/spareparts` — PASS. Browser automation was not available in this session, so UI verification is limited to route compilation/HTTP smoke plus build checks.
 
 ### Completion Notes List

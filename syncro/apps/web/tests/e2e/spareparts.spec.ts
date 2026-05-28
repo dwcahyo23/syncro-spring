@@ -1,35 +1,13 @@
 import type { Page } from "@playwright/test";
 
+import type { SparepartTaxonomyView, SparepartView } from "@/lib/api/generated/model";
+
 import { expect, test } from "../support/fixtures";
 
 type Role = "SUPER_ADMIN" | "MANAGE" | "VIEWER" | "STAFF";
 
-type SparepartTaxonomyItem = {
-  id: string;
-  dimension: "CATEGORY" | "BRAND" | "KIND" | "TYPE";
-  code: string;
-  name: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
-type SparepartItem = {
-  id: string;
-  code: string;
-  name: string;
-  category: SparepartRef;
-  brand: SparepartRef;
-  kind: SparepartRef;
-  type: SparepartRef;
-  createdAt: string;
-  updatedAt: string;
-};
-
-type SparepartRef = {
-  id: string;
-  code: string;
-  name: string;
-};
+type SparepartTaxonomyItem = Required<SparepartTaxonomyView>;
+type SparepartItem = Required<SparepartView>;
 
 const routePath = "/dashboard/master-data/spareparts";
 const timestamp = "2026-05-28T00:00:00Z";

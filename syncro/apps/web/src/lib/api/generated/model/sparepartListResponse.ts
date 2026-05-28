@@ -9,4 +9,7 @@ import type { SparepartView } from './sparepartView';
 
 export interface SparepartListResponse {
   items?: SparepartView[];
+  totalElements?: number;
+  page?: number;
+  size?: number;
 }

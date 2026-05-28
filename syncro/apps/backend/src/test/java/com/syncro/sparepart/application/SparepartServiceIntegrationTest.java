@@ -149,13 +149,45 @@ class SparepartServiceIntegrationTest {
     sparepartService.create(admin, command("RELAY-OMRON-MY2N", "Omron MY2N Relay", otherRefs));
 
     var result = sparepartService.list(admin, new SparepartFilters(
-        refs.category().getId(), refs.brand().getId(), refs.kind().getId(), refs.type().getId(), "lx5"));
+        refs.category().getId(), refs.brand().getId(), refs.kind().getId(), refs.type().getId(), "lx5", 0, 200));
 
-    assertThat(result).extracting("id").containsExactly(plc.id());
+    assertThat(result.items()).extracting("id").containsExactly(plc.id());
   }
 
   @Test
-  @DisplayName("2.5-SVC-006 P1 update changes sparepart fields and preserves id")
+  @DisplayName("2.5-SVC-006 P1 list paginates results and reports total count")
+  void listPaginatesResultsAndReportsTotalCount() {
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    var refs = taxonomyRefs();
+    sparepartService.create(admin, command("PLC-001", "Alpha PLC", refs));
+    var beta = sparepartService.create(admin, command("PLC-002", "Beta PLC", refs));
+    sparepartService.create(admin, command("PLC-003", "Gamma PLC", refs));
+
+    var result = sparepartService.list(admin, new SparepartFilters(null, null, null, null, null, 1, 1));
+
+    assertThat(result.items()).extracting("id").containsExactly(beta.id());
+    assertThat(result.totalElements()).isEqualTo(3);
+    assertThat(result.page()).isEqualTo(1);
+    assertThat(result.size()).isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName("2.5-SVC-007 P1 list search treats wildcard characters literally")
+  void listSearchTreatsWildcardCharactersLiterally() {
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    var refs = taxonomyRefs();
+    var literal = sparepartService.create(admin, command("PLC_10", "Percent 100% PLC", refs));
+    sparepartService.create(admin, command("PLC-10", "Percent 1000 PLC", refs));
+
+    var underscore = sparepartService.list(admin, new SparepartFilters(null, null, null, null, "PLC_10", 0, 200));
+    var percent = sparepartService.list(admin, new SparepartFilters(null, null, null, null, "100%", 0, 200));
+
+    assertThat(underscore.items()).extracting("id").containsExactly(literal.id());
+    assertThat(percent.items()).extracting("id").containsExactly(literal.id());
+  }
+
+  @Test
+  @DisplayName("2.5-SVC-008 P1 update changes sparepart fields and preserves id")
   void updateChangesSparepartFieldsAndPreservesId() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     var refs = taxonomyRefs();
@@ -176,7 +208,7 @@ class SparepartServiceIntegrationTest {
     var refs = taxonomyRefs();
     var created = sparepartService.create(admin, command("PLC-WECON-LX5", "Wecon LX5 PLC", refs));
 
-    assertThat(sparepartService.list(viewer, new SparepartFilters(null, null, null, null, null))).extracting("id").containsExactly(created.id());
+    assertThat(sparepartService.list(viewer, new SparepartFilters(null, null, null, null, null, 0, 200)).items()).extracting("id").containsExactly(created.id());
     assertThatThrownBy(() -> sparepartService.create(viewer, command("PLC-WECON-LX5-B", "Wecon LX5 PLC Backup", refs)))
         .isInstanceOf(SparepartMutationForbiddenException.class);
   }
