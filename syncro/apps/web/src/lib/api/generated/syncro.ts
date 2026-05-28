@@ -30,6 +30,7 @@ import type {
   ListMachineGroupsParams,
   ListMachinesParams,
   ListSparepartTaxonomiesParams,
+  ListSparepartsParams,
   LoginRequest,
   LoginResponse,
   Logout200,
@@ -43,9 +44,12 @@ import type {
   PlantRequest,
   PlantScopeResponse,
   PlantView,
+  SparepartListResponse,
+  SparepartRequest,
   SparepartTaxonomyListResponse,
   SparepartTaxonomyRequest,
-  SparepartTaxonomyView
+  SparepartTaxonomyView,
+  SparepartView
 } from './model';
 
 import { syncroFetch } from '../orval-mutator';
@@ -54,6 +58,355 @@ import { syncroFetch } from '../orval-mutator';
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
+
+export type getSparepartResponse200 = {
+  data: SparepartView
+  status: 200
+}
+
+export type getSparepartResponse400 = {
+  data: SparepartView
+  status: 400
+}
+
+export type getSparepartResponse401 = {
+  data: SparepartView
+  status: 401
+}
+
+export type getSparepartResponse404 = {
+  data: SparepartView
+  status: 404
+}
+
+export type getSparepartResponseSuccess = (getSparepartResponse200) & {
+  headers: Headers;
+};
+export type getSparepartResponseError = (getSparepartResponse400 | getSparepartResponse401 | getSparepartResponse404) & {
+  headers: Headers;
+};
+
+export type getSparepartResponse = (getSparepartResponseSuccess | getSparepartResponseError)
+
+export const getGetSparepartUrl = (sparepartId: string,) => {
+
+
+
+
+  return `/api/v1/spareparts/${sparepartId}`
+}
+
+/**
+ * @summary Get sparepart
+ */
+export const getSparepart = async (sparepartId: string, options?: RequestInit): Promise<getSparepartResponse> => {
+
+  return syncroFetch<getSparepartResponse>(getGetSparepartUrl(sparepartId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSparepartQueryKey = (sparepartId: string,) => {
+    return [
+    `/api/v1/spareparts/${sparepartId}`
+    ] as const;
+    }
+
+
+export const getGetSparepartQueryOptions = <TData = Awaited<ReturnType<typeof getSparepart>>, TError = SparepartView>(sparepartId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSparepart>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSparepartQueryKey(sparepartId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSparepart>>> = ({ signal }) => getSparepart(sparepartId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: sparepartId !== null && sparepartId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSparepart>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSparepartQueryResult = NonNullable<Awaited<ReturnType<typeof getSparepart>>>
+export type GetSparepartQueryError = SparepartView
+
+
+export function useGetSparepart<TData = Awaited<ReturnType<typeof getSparepart>>, TError = SparepartView>(
+ sparepartId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSparepart>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSparepart>>,
+          TError,
+          Awaited<ReturnType<typeof getSparepart>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSparepart<TData = Awaited<ReturnType<typeof getSparepart>>, TError = SparepartView>(
+ sparepartId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSparepart>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSparepart>>,
+          TError,
+          Awaited<ReturnType<typeof getSparepart>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSparepart<TData = Awaited<ReturnType<typeof getSparepart>>, TError = SparepartView>(
+ sparepartId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSparepart>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get sparepart
+ */
+
+export function useGetSparepart<TData = Awaited<ReturnType<typeof getSparepart>>, TError = SparepartView>(
+ sparepartId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSparepart>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSparepartQueryOptions(sparepartId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export type updateSparepartResponse200 = {
+  data: SparepartView
+  status: 200
+}
+
+export type updateSparepartResponse400 = {
+  data: SparepartView
+  status: 400
+}
+
+export type updateSparepartResponse401 = {
+  data: SparepartView
+  status: 401
+}
+
+export type updateSparepartResponse403 = {
+  data: SparepartView
+  status: 403
+}
+
+export type updateSparepartResponse404 = {
+  data: SparepartView
+  status: 404
+}
+
+export type updateSparepartResponse409 = {
+  data: SparepartView
+  status: 409
+}
+
+export type updateSparepartResponseSuccess = (updateSparepartResponse200) & {
+  headers: Headers;
+};
+export type updateSparepartResponseError = (updateSparepartResponse400 | updateSparepartResponse401 | updateSparepartResponse403 | updateSparepartResponse404 | updateSparepartResponse409) & {
+  headers: Headers;
+};
+
+export type updateSparepartResponse = (updateSparepartResponseSuccess | updateSparepartResponseError)
+
+export const getUpdateSparepartUrl = (sparepartId: string,) => {
+
+
+
+
+  return `/api/v1/spareparts/${sparepartId}`
+}
+
+/**
+ * @summary Update sparepart
+ */
+export const updateSparepart = async (sparepartId: string,
+    sparepartRequest: SparepartRequest, options?: RequestInit): Promise<updateSparepartResponse> => {
+
+  return syncroFetch<updateSparepartResponse>(getUpdateSparepartUrl(sparepartId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(sparepartRequest)
+  }
+);}
+
+
+
+
+export const getUpdateSparepartMutationOptions = <TError = SparepartView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSparepart>>, TError,{sparepartId: string;data: SparepartRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSparepart>>, TError,{sparepartId: string;data: SparepartRequest}, TContext> => {
+
+const mutationKey = ['updateSparepart'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSparepart>>, {sparepartId: string;data: SparepartRequest}> = (props) => {
+          const {sparepartId,data} = props ?? {};
+
+          return  updateSparepart(sparepartId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSparepartMutationResult = NonNullable<Awaited<ReturnType<typeof updateSparepart>>>
+    export type UpdateSparepartMutationBody = SparepartRequest
+    export type UpdateSparepartMutationError = SparepartView
+
+    /**
+ * @summary Update sparepart
+ */
+export const useUpdateSparepart = <TError = SparepartView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSparepart>>, TError,{sparepartId: string;data: SparepartRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateSparepart>>,
+        TError,
+        {sparepartId: string;data: SparepartRequest},
+        TContext
+      > => {
+      return useMutation(getUpdateSparepartMutationOptions(options), queryClient);
+    }
+
+export type deleteSparepartResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteSparepartResponse400 = {
+  data: void
+  status: 400
+}
+
+export type deleteSparepartResponse401 = {
+  data: void
+  status: 401
+}
+
+export type deleteSparepartResponse403 = {
+  data: void
+  status: 403
+}
+
+export type deleteSparepartResponse404 = {
+  data: void
+  status: 404
+}
+
+export type deleteSparepartResponse409 = {
+  data: void
+  status: 409
+}
+
+export type deleteSparepartResponseSuccess = (deleteSparepartResponse204) & {
+  headers: Headers;
+};
+export type deleteSparepartResponseError = (deleteSparepartResponse400 | deleteSparepartResponse401 | deleteSparepartResponse403 | deleteSparepartResponse404 | deleteSparepartResponse409) & {
+  headers: Headers;
+};
+
+export type deleteSparepartResponse = (deleteSparepartResponseSuccess | deleteSparepartResponseError)
+
+export const getDeleteSparepartUrl = (sparepartId: string,) => {
+
+
+
+
+  return `/api/v1/spareparts/${sparepartId}`
+}
+
+/**
+ * @summary Delete sparepart
+ */
+export const deleteSparepart = async (sparepartId: string, options?: RequestInit): Promise<deleteSparepartResponse> => {
+
+  return syncroFetch<deleteSparepartResponse>(getDeleteSparepartUrl(sparepartId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteSparepartMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSparepart>>, TError,{sparepartId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteSparepart>>, TError,{sparepartId: string}, TContext> => {
+
+const mutationKey = ['deleteSparepart'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteSparepart>>, {sparepartId: string}> = (props) => {
+          const {sparepartId} = props ?? {};
+
+          return  deleteSparepart(sparepartId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteSparepartMutationResult = NonNullable<Awaited<ReturnType<typeof deleteSparepart>>>
+
+    export type DeleteSparepartMutationError = void
+
+    /**
+ * @summary Delete sparepart
+ */
+export const useDeleteSparepart = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSparepart>>, TError,{sparepartId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteSparepart>>,
+        TError,
+        {sparepartId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteSparepartMutationOptions(options), queryClient);
+    }
 
 export type getSparepartTaxonomyResponse200 = {
   data: SparepartTaxonomyView
@@ -1454,6 +1807,242 @@ export const useDeleteMachineGroup = <TError = void,
         TContext
       > => {
       return useMutation(getDeleteMachineGroupMutationOptions(options), queryClient);
+    }
+
+export type listSparepartsResponse200 = {
+  data: SparepartListResponse
+  status: 200
+}
+
+export type listSparepartsResponse400 = {
+  data: SparepartListResponse
+  status: 400
+}
+
+export type listSparepartsResponse401 = {
+  data: SparepartListResponse
+  status: 401
+}
+
+export type listSparepartsResponseSuccess = (listSparepartsResponse200) & {
+  headers: Headers;
+};
+export type listSparepartsResponseError = (listSparepartsResponse400 | listSparepartsResponse401) & {
+  headers: Headers;
+};
+
+export type listSparepartsResponse = (listSparepartsResponseSuccess | listSparepartsResponseError)
+
+export const getListSparepartsUrl = (params?: ListSparepartsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/spareparts?${stringifiedParams}` : `/api/v1/spareparts`
+}
+
+/**
+ * @summary List spareparts
+ */
+export const listSpareparts = async (params?: ListSparepartsParams, options?: RequestInit): Promise<listSparepartsResponse> => {
+
+  return syncroFetch<listSparepartsResponse>(getListSparepartsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSparepartsQueryKey = (params?: ListSparepartsParams,) => {
+    return [
+    `/api/v1/spareparts`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListSparepartsQueryOptions = <TData = Awaited<ReturnType<typeof listSpareparts>>, TError = SparepartListResponse>(params?: ListSparepartsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSpareparts>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSparepartsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSpareparts>>> = ({ signal }) => listSpareparts(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSpareparts>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListSparepartsQueryResult = NonNullable<Awaited<ReturnType<typeof listSpareparts>>>
+export type ListSparepartsQueryError = SparepartListResponse
+
+
+export function useListSpareparts<TData = Awaited<ReturnType<typeof listSpareparts>>, TError = SparepartListResponse>(
+ params: undefined |  ListSparepartsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSpareparts>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSpareparts>>,
+          TError,
+          Awaited<ReturnType<typeof listSpareparts>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListSpareparts<TData = Awaited<ReturnType<typeof listSpareparts>>, TError = SparepartListResponse>(
+ params?: ListSparepartsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSpareparts>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSpareparts>>,
+          TError,
+          Awaited<ReturnType<typeof listSpareparts>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListSpareparts<TData = Awaited<ReturnType<typeof listSpareparts>>, TError = SparepartListResponse>(
+ params?: ListSparepartsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSpareparts>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List spareparts
+ */
+
+export function useListSpareparts<TData = Awaited<ReturnType<typeof listSpareparts>>, TError = SparepartListResponse>(
+ params?: ListSparepartsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSpareparts>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListSparepartsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export type createSparepartResponse201 = {
+  data: SparepartView
+  status: 201
+}
+
+export type createSparepartResponse400 = {
+  data: SparepartView
+  status: 400
+}
+
+export type createSparepartResponse401 = {
+  data: SparepartView
+  status: 401
+}
+
+export type createSparepartResponse403 = {
+  data: SparepartView
+  status: 403
+}
+
+export type createSparepartResponse409 = {
+  data: SparepartView
+  status: 409
+}
+
+export type createSparepartResponseSuccess = (createSparepartResponse201) & {
+  headers: Headers;
+};
+export type createSparepartResponseError = (createSparepartResponse400 | createSparepartResponse401 | createSparepartResponse403 | createSparepartResponse409) & {
+  headers: Headers;
+};
+
+export type createSparepartResponse = (createSparepartResponseSuccess | createSparepartResponseError)
+
+export const getCreateSparepartUrl = () => {
+
+
+
+
+  return `/api/v1/spareparts`
+}
+
+/**
+ * @summary Create sparepart
+ */
+export const createSparepart = async (sparepartRequest: SparepartRequest, options?: RequestInit): Promise<createSparepartResponse> => {
+
+  return syncroFetch<createSparepartResponse>(getCreateSparepartUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(sparepartRequest)
+  }
+);}
+
+
+
+
+export const getCreateSparepartMutationOptions = <TError = SparepartView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSparepart>>, TError,{data: SparepartRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSparepart>>, TError,{data: SparepartRequest}, TContext> => {
+
+const mutationKey = ['createSparepart'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSparepart>>, {data: SparepartRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createSparepart(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSparepartMutationResult = NonNullable<Awaited<ReturnType<typeof createSparepart>>>
+    export type CreateSparepartMutationBody = SparepartRequest
+    export type CreateSparepartMutationError = SparepartView
+
+    /**
+ * @summary Create sparepart
+ */
+export const useCreateSparepart = <TError = SparepartView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSparepart>>, TError,{data: SparepartRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createSparepart>>,
+        TError,
+        {data: SparepartRequest},
+        TContext
+      > => {
+      return useMutation(getCreateSparepartMutationOptions(options), queryClient);
     }
 
 export type listSparepartTaxonomiesResponse200 = {

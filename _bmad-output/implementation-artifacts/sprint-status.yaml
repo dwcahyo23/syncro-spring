@@ -59,7 +59,7 @@ development_status:
   2-2-manage-plant-scoped-machine-groups: done
   2-3-manage-machines-with-manual-active-state: done
   2-4-manage-sparepart-taxonomy: done
-  2-5-manage-spareparts: backlog
+  2-5-manage-spareparts: review
   2-6-install-spareparts-on-machines-with-lifetime-baseline: backlog
   2-7-assign-machine-responsibility-levels: backlog
   2-8-show-setup-completeness: backlog
