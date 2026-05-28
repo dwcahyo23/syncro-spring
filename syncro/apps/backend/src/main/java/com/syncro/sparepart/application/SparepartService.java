@@ -14,11 +14,13 @@ import java.util.Optional;
 import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SparepartService {
+  private static final int LIST_LIMIT = 200;
   private static final String DUPLICATE_CODE_CONSTRAINT = "uq_spareparts_lower_code";
   private static final String DUPLICATE_NAME_CONSTRAINT = "uq_spareparts_lower_name";
 
@@ -35,7 +37,7 @@ public class SparepartService {
   @Transactional(readOnly = true)
   public List<SparepartView> list(AuthenticatedUser user, SparepartFilters filters) {
     var search = normalizeSearch(filters.search());
-    return spareparts.search(filters.categoryId(), filters.brandId(), filters.kindId(), filters.typeId(), search).stream()
+    return spareparts.search(filters.categoryId(), filters.brandId(), filters.kindId(), filters.typeId(), search, PageRequest.of(0, LIST_LIMIT)).stream()
         .map(this::toView)
         .toList();
   }

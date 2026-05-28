@@ -192,8 +192,8 @@ Acceptance criteria mapped to level-appropriate, priority-based scenarios. Dupli
 
 ### Acceptance Criteria Covered
 
-- API scaffolds cover AC1-AC13.
-- E2E scaffolds cover AC1, AC6, AC7, AC8, AC9, AC10, AC14, AC15, AC16.
+- API scaffolds represent planned coverage for AC1-AC13; they are not active acceptance evidence until unskipped and wired to stable fixtures/tokens.
+- E2E scaffolds represent planned coverage for AC1, AC6, AC7, AC8, AC9, AC10, AC14, AC15, AC16; active Story 2.5 E2E evidence remains in `syncro/apps/web/tests/e2e/spareparts.spec.ts`.
 - AC17 remains build/static evidence from existing story implementation (`generate:api`, `check`, build evidence), not duplicate ATDD scaffold.
 
 ### Step 4C Result
@@ -229,7 +229,7 @@ ATDD red-phase scaffold generation aggregated successfully. Files written to dis
 ### Completion Notes
 
 - Story 2.5 already has implementation and active automation, so generated ATDD tests remain skipped by design.
-- AC1-AC16 are represented by skipped ATDD scaffolds; AC17 remains covered by existing build/static evidence rather than duplicate ATDD scaffold.
+- AC1-AC16 planned coverage is represented by skipped ATDD scaffolds; active acceptance evidence comes from existing backend/API tests, active Story 2.5 E2E tests, and build/static checks recorded in the story.
 - Future activation requires stable backend fixtures/tokens for API scaffolds and approval to convert selected `test.skip()` cases into active regression tests.
 
 ### Step 5 Result

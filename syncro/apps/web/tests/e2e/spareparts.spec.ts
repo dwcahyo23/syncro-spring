@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 
 import { expect, test } from "../support/fixtures";
 
-type Role = "SUPER_ADMIN" | "MANAGE" | "VIEWER";
+type Role = "SUPER_ADMIN" | "MANAGE" | "VIEWER" | "STAFF";
 
 type SparepartTaxonomyItem = {
   id: string;
@@ -71,6 +71,8 @@ const spareparts: SparepartItem[] = [
 ];
 
 test.describe("sparepart management", () => {
+  test.describe.configure({ mode: "serial" });
+
   test.beforeEach(async ({ page }) => {
     await setAuthUser(page, "MANAGE");
   });
@@ -83,7 +85,7 @@ test.describe("sparepart management", () => {
       await route.fulfill(jsonResponse({ items: spareparts, totalElements: spareparts.length }));
     });
 
-    await page.goto(routePath);
+    await page.goto(routePath, { waitUntil: "domcontentloaded" });
 
     await expect(page.getByText("Manage global sparepart master data")).toBeVisible();
     await expect(page.getByRole("cell", { name: "BF-08410" })).toBeVisible();
@@ -100,7 +102,8 @@ test.describe("sparepart management", () => {
 
   test("[P0] creates sparepart with taxonomy selectors", async ({ page }) => {
     await mockTaxonomy(page);
-    await mockSparepartList(page, []);
+    let listItems: SparepartItem[] = [];
+    await mockStatefulSparepartList(page, () => listItems);
     let createPayload: Record<string, unknown> | null = null;
     await page.route("**/api/v1/spareparts", async (route) => {
       if (route.request().method() !== "POST") {
@@ -108,10 +111,11 @@ test.describe("sparepart management", () => {
         return;
       }
       createPayload = route.request().postDataJSON();
+      listItems = [spareparts[0]];
       await route.fulfill(jsonResponse({ ...spareparts[0], code: "BF-08410", name: "Electric PLC Wecon LX5" }, 201));
     });
 
-    await page.goto(routePath);
+    await page.goto(routePath, { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: "Create sparepart" }).click();
     await expect(page.getByRole("dialog", { name: "Create sparepart" })).toBeVisible();
     await page.getByLabel("Code").fill("BF-08410");
@@ -133,24 +137,29 @@ test.describe("sparepart management", () => {
         typeId: "tax-type-electric",
       });
     await expect(page.getByText("Sparepart created.")).toBeVisible();
+    await expect(page.getByRole("cell", { name: "BF-08410" })).toBeVisible();
+    await expect(page.getByText("No spareparts yet")).toHaveCount(0);
   });
 
   test("[P0] edits and deletes sparepart successfully", async ({ page }) => {
     await mockTaxonomy(page);
-    await mockSparepartList(page, spareparts);
+    let listItems = [...spareparts];
+    await mockStatefulSparepartList(page, () => listItems);
     await page.route("**/api/v1/spareparts/sparepart-bf-08410", async (route) => {
       if (route.request().method() === "PUT") {
+        listItems = [{ ...spareparts[0], name: "Electric PLC Wecon LX5 Updated" }, spareparts[1]];
         await route.fulfill(jsonResponse({ ...spareparts[0], name: "Electric PLC Wecon LX5 Updated" }));
         return;
       }
       if (route.request().method() === "DELETE") {
+        listItems = [spareparts[1]];
         await route.fulfill({ status: 204, body: "" });
         return;
       }
       await route.fallback();
     });
 
-    await page.goto(routePath);
+    await page.goto(routePath, { waitUntil: "domcontentloaded" });
     await page
       .getByRole("row", { name: /BF-08410/ })
       .getByRole("button", { name: "Edit" })
@@ -158,6 +167,7 @@ test.describe("sparepart management", () => {
     await page.getByLabel("Name").fill("Electric PLC Wecon LX5 Updated");
     await page.getByRole("button", { name: "Save sparepart" }).click();
     await expect(page.getByText("Sparepart updated.")).toBeVisible();
+    await expect(page.getByRole("cell", { name: "Electric PLC Wecon LX5 Updated" })).toBeVisible();
 
     await page
       .getByRole("row", { name: /BF-08410/ })
@@ -166,6 +176,16 @@ test.describe("sparepart management", () => {
     await expect(page.getByRole("alertdialog", { name: "Delete sparepart?" })).toBeVisible();
     await page.getByRole("button", { name: "Delete sparepart" }).click();
     await expect(page.getByText("Sparepart deleted.")).toBeVisible();
+    await expect(page.getByRole("row", { name: /BF-08410/ })).toHaveCount(0);
+  });
+
+  test("[P1] renders forbidden state for disallowed role", async ({ page }) => {
+    await setAuthUser(page, "STAFF");
+
+    await page.goto(routePath, { waitUntil: "domcontentloaded" });
+
+    await expect(page.getByText("Permission denied")).toBeVisible();
+    await expect(page.getByText("You don't have permission to access this page.")).toBeVisible();
   });
 
   test("[P1] renders viewer read-only state without mutation actions", async ({ page }) => {
@@ -173,7 +193,7 @@ test.describe("sparepart management", () => {
     await mockTaxonomy(page);
     await mockSparepartList(page, spareparts);
 
-    await page.goto(routePath);
+    await page.goto(routePath, { waitUntil: "domcontentloaded" });
 
     await expect(page.locator("main").getByText("Read-only").first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Create sparepart" })).toHaveCount(0);
@@ -188,7 +208,7 @@ test.describe("sparepart management", () => {
     });
     await mockSparepartList(page, []);
 
-    await page.goto(routePath);
+    await page.goto(routePath, { waitUntil: "domcontentloaded" });
     await expect(page.getByText("Taxonomy setup incomplete")).toBeVisible();
     await expect(page.getByRole("button", { name: "Create sparepart" })).toBeDisabled();
 
@@ -229,7 +249,7 @@ test.describe("sparepart management", () => {
       await route.fallback();
     });
 
-    await page.goto(routePath);
+    await page.goto(routePath, { waitUntil: "domcontentloaded" });
     await page
       .getByRole("row", { name: /BF-08410/ })
       .getByRole("button", { name: "Delete" })
@@ -283,9 +303,14 @@ async function mockTaxonomy(page: Page, items = taxonomyItems) {
 }
 
 async function mockSparepartList(page: Page, items = spareparts) {
+  await mockStatefulSparepartList(page, () => items);
+}
+
+async function mockStatefulSparepartList(page: Page, items: () => SparepartItem[]) {
   await page.route("**/api/v1/spareparts**", async (route) => {
     if (route.request().method() === "GET") {
-      await route.fulfill(jsonResponse({ items, totalElements: items.length }));
+      const currentItems = items();
+      await route.fulfill(jsonResponse({ items: currentItems, totalElements: currentItems.length }));
       return;
     }
     await route.fallback();

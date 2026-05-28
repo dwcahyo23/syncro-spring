@@ -83,6 +83,18 @@ so that installed spareparts can be tracked consistently.
   - [x] If UI changes are made, start the dev server and test golden path plus edge states in browser before marking done.
   - [x] Record commands and results in Dev Agent Record.
 
+### Review Findings
+
+- [x] [Review][Patch] Enforce taxonomy dimension at database layer [syncro/apps/backend/src/main/resources/db/migration/V7__create_spareparts.sql:10]
+- [x] [Review][Patch] Add bounded pagination or hard limit to sparepart list [syncro/apps/backend/src/main/java/com/syncro/sparepart/api/SparepartController.java:46]
+- [x] [Review][Patch] Remove cross-bounded-context error DTO import [syncro/apps/backend/src/main/java/com/syncro/sparepart/api/SparepartExceptionHandler.java:2]
+- [x] [Review][Patch] Add created metadata to sparepart dense table [syncro/apps/web/src/features/master-data/spareparts/sparepart-management.tsx:375]
+- [x] [Review][Patch] Guard edit/delete mutations from missing sparepart ids [syncro/apps/web/src/features/master-data/spareparts/sparepart-management.tsx:116]
+- [x] [Review][Patch] Filter invalid taxonomy options before rendering selects [syncro/apps/web/src/features/master-data/spareparts/sparepart-management.tsx:473]
+- [x] [Review][Patch] Strengthen create/edit/delete E2E assertions against refreshed table state [syncro/apps/web/tests/e2e/spareparts.spec.ts:101]
+- [x] [Review][Patch] Add Story 2.5 forbidden-state E2E evidence [syncro/apps/web/tests/e2e/spareparts.spec.ts:185]
+- [x] [Review][Patch] Mark skipped ATDD scaffolds as planned coverage, not active evidence [_bmad-output/test-artifacts/atdd-checklist-2-5-manage-spareparts.md:193]
+
 ## Dev Notes
 
 ### Source Context

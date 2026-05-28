@@ -113,7 +113,11 @@ export function SparepartManagement() {
 
     try {
       if (dialogMode?.type === "edit") {
-        await updateSparepart.mutateAsync({ sparepartId: dialogMode.sparepart.id ?? "", data: form });
+        if (!dialogMode.sparepart.id) {
+          setFormError("Sparepart cannot be updated because its identifier is missing.");
+          return;
+        }
+        await updateSparepart.mutateAsync({ sparepartId: dialogMode.sparepart.id, data: form });
         toast.success("Sparepart updated.");
       } else {
         await createSparepart.mutateAsync({ data: form });
@@ -135,7 +139,11 @@ export function SparepartManagement() {
     setDeleteError(null);
 
     try {
-      await deleteSparepart.mutateAsync({ sparepartId: deleteTarget.id ?? "" });
+      if (!deleteTarget.id) {
+        setDeleteError("Sparepart cannot be deleted because its identifier is missing.");
+        return;
+      }
+      await deleteSparepart.mutateAsync({ sparepartId: deleteTarget.id });
       toast.success("Sparepart deleted.");
       setDeleteTarget(null);
     } catch (error) {
@@ -379,6 +387,7 @@ function SparepartTable({
             <TableHead>Brand</TableHead>
             <TableHead>Kind</TableHead>
             <TableHead>Type</TableHead>
+            <TableHead>Created</TableHead>
             <TableHead>Updated</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -392,6 +401,7 @@ function SparepartTable({
               <TableCell>{sparepart.brand?.name ?? "-"}</TableCell>
               <TableCell>{sparepart.kind?.name ?? "-"}</TableCell>
               <TableCell>{sparepart.type?.name ?? "-"}</TableCell>
+              <TableCell>{sparepart.createdAt ? formatDate(sparepart.createdAt) : "-"}</TableCell>
               <TableCell>{sparepart.updatedAt ? formatDate(sparepart.updatedAt) : "-"}</TableCell>
               <TableCell className="text-right">
                 {canMutate ? (
@@ -543,7 +553,7 @@ function SparepartSkeleton() {
 
 function groupByDimension(items: SparepartTaxonomyView[]) {
   return items.reduce((groups, item) => {
-    if (item.dimension) {
+    if (item.id && item.dimension) {
       groups.set(item.dimension, [...(groups.get(item.dimension) ?? []), item]);
     }
     return groups;

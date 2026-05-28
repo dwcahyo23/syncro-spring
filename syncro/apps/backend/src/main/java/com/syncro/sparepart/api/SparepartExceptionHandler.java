@@ -1,6 +1,5 @@
 package com.syncro.sparepart.api;
 
-import com.syncro.masterdata.api.PlantDtos.ErrorResponse;
 import com.syncro.sparepart.application.SparepartService.DuplicateSparepartException;
 import com.syncro.sparepart.application.SparepartService.SparepartDataIntegrityException;
 import com.syncro.sparepart.application.SparepartService.SparepartMutationForbiddenException;
@@ -89,5 +88,8 @@ public class SparepartExceptionHandler {
   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message, Map<String, String> fieldErrors) {
     return ResponseEntity.status(status)
         .body(new ErrorResponse(code, message, fieldErrors, Instant.now(clock).toString(), UUID.randomUUID().toString()));
+  }
+
+  record ErrorResponse(String code, String message, Map<String, String> fieldErrors, String timestamp, String traceId) {
   }
 }
