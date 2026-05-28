@@ -35,13 +35,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
 import type { MachineGroupRequest, MachineGroupView, PlantView } from "@/lib/api/generated/model";
 import {
-  getList1QueryKey,
-  getList3QueryKey,
-  useCreate3,
-  useDelete3,
-  useList1,
-  useList3,
-  useUpdate3,
+  getListMachineGroupsQueryKey,
+  getListPlantsQueryKey,
+  useCreateMachineGroup,
+  useDeleteMachineGroup,
+  useListMachineGroups,
+  useListPlants,
+  useUpdateMachineGroup,
 } from "@/lib/api/generated/syncro";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
@@ -60,12 +60,12 @@ export function MachineGroupManagement() {
   const queryClient = useQueryClient();
   const isAssignedEmpty = scope?.mode === "EMPTY";
   const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGE";
-  const plants = useList1({ query: { enabled: Boolean(scope) && !isAssignedEmpty } });
+  const plants = useListPlants({ query: { enabled: Boolean(scope) && !isAssignedEmpty } });
   const plantItems = plants.data?.data.items ?? [];
   const availablePlants = useMemo(() => permittedPlants(plantItems, scope), [plantItems, scope]);
   const [selectedPlantId, setSelectedPlantId] = useState("");
   const effectivePlantId = selectedPlantId || availablePlants[0]?.id || "";
-  const machineGroups = useList3(
+  const machineGroups = useListMachineGroups(
     { plantId: effectivePlantId },
     {
       query: {
@@ -74,9 +74,15 @@ export function MachineGroupManagement() {
       },
     },
   );
-  const createGroup = useCreate3({ mutation: { onSuccess: () => invalidateMachineGroupData(effectivePlantId) } });
-  const updateGroup = useUpdate3({ mutation: { onSuccess: () => invalidateMachineGroupData(effectivePlantId) } });
-  const deleteGroup = useDelete3({ mutation: { onSuccess: () => invalidateMachineGroupData(effectivePlantId) } });
+  const createGroup = useCreateMachineGroup({
+    mutation: { onSuccess: () => invalidateMachineGroupData(effectivePlantId) },
+  });
+  const updateGroup = useUpdateMachineGroup({
+    mutation: { onSuccess: () => invalidateMachineGroupData(effectivePlantId) },
+  });
+  const deleteGroup = useDeleteMachineGroup({
+    mutation: { onSuccess: () => invalidateMachineGroupData(effectivePlantId) },
+  });
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
   const [form, setForm] = useState<MachineGroupFormState>(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -97,8 +103,8 @@ export function MachineGroupManagement() {
 
   function invalidateMachineGroupData(plantId: string) {
     queryClient.invalidateQueries({ queryKey: ["machine-groups", activePlantId, plantId] });
-    queryClient.invalidateQueries({ queryKey: getList3QueryKey({ plantId }) });
-    queryClient.invalidateQueries({ queryKey: getList1QueryKey() });
+    queryClient.invalidateQueries({ queryKey: getListMachineGroupsQueryKey({ plantId }) });
+    queryClient.invalidateQueries({ queryKey: getListPlantsQueryKey() });
   }
 
   function openCreateDialog() {

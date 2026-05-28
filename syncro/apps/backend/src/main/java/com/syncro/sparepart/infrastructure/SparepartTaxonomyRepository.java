@@ -11,7 +11,11 @@ public interface SparepartTaxonomyRepository extends JpaRepository<SparepartTaxo
 
   List<SparepartTaxonomyEntity> findByDimensionOrderByNameAsc(SparepartTaxonomyDimension dimension);
 
+  Optional<SparepartTaxonomyEntity> findByDimensionAndCodeIgnoreCase(SparepartTaxonomyDimension dimension, String code);
+
   Optional<SparepartTaxonomyEntity> findByDimensionAndNameIgnoreCase(SparepartTaxonomyDimension dimension, String name);
+
+  boolean existsByDimensionAndCodeIgnoreCase(SparepartTaxonomyDimension dimension, String code);
 
   boolean existsByDimensionAndNameIgnoreCase(SparepartTaxonomyDimension dimension, String name);
 }

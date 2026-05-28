@@ -10,6 +10,7 @@ import type { SparepartTaxonomyViewDimension } from './sparepartTaxonomyViewDime
 export interface SparepartTaxonomyView {
   id?: string;
   dimension?: SparepartTaxonomyViewDimension;
+  code?: string;
   name?: string;
   createdAt?: string;
   updatedAt?: string;

@@ -14,12 +14,14 @@ public final class SparepartTaxonomyDtos {
 
   public record SparepartTaxonomyRequest(
       @NotNull SparepartTaxonomyDimension dimension,
+      @NotBlank @Size(max = 64) String code,
       @NotBlank @Size(max = 255) String name) {
   }
 
   public record SparepartTaxonomyView(
       UUID id,
       SparepartTaxonomyDimension dimension,
+      String code,
       String name,
       Instant createdAt,
       Instant updatedAt) {

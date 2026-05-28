@@ -6,6 +6,6 @@
  * OpenAPI spec version: v1
  */
 
-export type List3Params = {
+export type ListMachineGroupsParams = {
 plantId: string;
 };

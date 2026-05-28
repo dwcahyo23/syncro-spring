@@ -4,7 +4,7 @@ baseline_commit: e2129017418f8058b7bfecacac530287aa3815a3
 
 # Story 2.4: Manage Sparepart Taxonomy
 
-Status: review
+Status: done
 
 ## Story
 
@@ -81,6 +81,13 @@ so that spareparts are normalized and searchable.
   - [x] Run web lint/type checks used by recent stories.
   - [x] If UI changes are made during implementation, start the dev server and test golden path plus edge states in browser before marking done.
   - [x] Record commands and results in Dev Agent Record.
+
+### Review Findings
+
+- [x] [Review][Patch] Taxonomy `code` contract missing end-to-end — AC5/AC11 and story subtasks mention name/code, normalized display value/code, and required dimension/name/code. Decision: add `code` now as first-class taxonomy field.
+- [x] [Review][Patch] Update silently ignores requested dimension changes instead of rejecting them [syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartTaxonomyService.java:55]
+- [x] [Review][Patch] Delete conflict closes dialog and loses retry/error context [syncro/apps/web/src/features/master-data/spareparts/sparepart-taxonomy-management.tsx:232]
+- [x] [Review][Patch] Generated client export names shifted and can break existing callers [syncro/apps/backend/src/main/java/com/syncro/sparepart/api/SparepartTaxonomyController.java:39]
 
 ## Dev Notes
 
@@ -188,6 +195,9 @@ cx/gpt-5.5
 - OpenAPI generation succeeded using temporary PostgreSQL on port `65432`, then `npm --prefix "syncro/apps/web" run generate:api` refreshed Orval client.
 - Web checks passed: `npm --prefix "syncro/apps/web" run check`.
 - Web production build passed: `npm --prefix "syncro/apps/web" run build`.
+- Review patch backend tests passed: `mvn -f "syncro/apps/backend/pom.xml" "-Dtest=SparepartTaxonomyControllerTest,SparepartTaxonomyServiceIntegrationTest" test` — 32 tests, 0 failures, 0 errors.
+- Review patch web checks passed: `npm --prefix "syncro/apps/web" run check`.
+- Review patch web production build passed: `npm --prefix "syncro/apps/web" run build`.
 - UI smoke passed: Next dev server served `/dashboard/master-data/spareparts` with HTTP 200 on port `3001`.
 
 ### Completion Notes List
@@ -201,6 +211,7 @@ cx/gpt-5.5
 - Replaced spareparts placeholder with taxonomy management UI showing four dimensions, read-only state, loading skeleton, empty state, retryable API error state, duplicate validation messages, and mutation actions for permitted roles.
 - Adjusted existing plant, machine, and machine-group feature imports/usages after OpenAPI operation order renumbered generated hook names.
 - Browser-level interaction was limited to dev-server HTTP smoke because no browser automation tool is available in this session.
+- Review patches added first-class taxonomy code contract, rejected dimension moves, preserved delete dialog errors, and stabilized generated API client names with explicit operation IDs.
 
 ### File List
 
@@ -214,6 +225,9 @@ cx/gpt-5.5
 - `syncro/apps/backend/src/main/java/com/syncro/sparepart/api/SparepartTaxonomyDtos.java`
 - `syncro/apps/backend/src/main/java/com/syncro/sparepart/api/SparepartTaxonomyController.java`
 - `syncro/apps/backend/src/main/java/com/syncro/sparepart/api/SparepartTaxonomyExceptionHandler.java`
+- `syncro/apps/backend/src/main/java/com/syncro/masterdata/api/PlantController.java`
+- `syncro/apps/backend/src/main/java/com/syncro/masterdata/api/MachineGroupController.java`
+- `syncro/apps/backend/src/main/java/com/syncro/machine/api/MachineController.java`
 - `syncro/apps/backend/src/test/java/com/syncro/sparepart/api/SparepartTaxonomyControllerTest.java`
 - `syncro/apps/backend/src/test/java/com/syncro/sparepart/application/SparepartTaxonomyServiceIntegrationTest.java`
 - `syncro/apps/web/src/app/(main)/dashboard/master-data/spareparts/page.tsx`
@@ -232,3 +246,4 @@ cx/gpt-5.5
 ### Change Log
 
 - 2026-05-28: Implemented Story 2.4 sparepart taxonomy backend, generated API client, web UI, tests, validations, and moved story to review.
+- 2026-05-28: Resolved code review patches for taxonomy code contract, dimension-change rejection, delete conflict UX, and stable generated operation names; moved story to done.

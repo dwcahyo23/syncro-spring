@@ -36,7 +36,7 @@ public class MachineController {
     this.machines = machines;
   }
 
-  @Operation(summary = "List machines")
+  @Operation(operationId = "listMachines", summary = "List machines")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Machines returned"),
       @ApiResponse(responseCode = "400", description = "Invalid filter"),
@@ -52,7 +52,7 @@ public class MachineController {
     return new MachineListResponse(machines.list(user, plantId, machineGroupId, status).stream().map(this::toDto).toList());
   }
 
-  @Operation(summary = "Get machine")
+  @Operation(operationId = "getMachine", summary = "Get machine")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Machine returned"),
       @ApiResponse(responseCode = "400", description = "Invalid machine id"),
@@ -65,7 +65,7 @@ public class MachineController {
     return toDto(machines.get(user, machineId));
   }
 
-  @Operation(summary = "Create machine")
+  @Operation(operationId = "createMachine", summary = "Create machine")
   @ApiResponses({
       @ApiResponse(responseCode = "201", description = "Machine created", content = @Content(schema = @Schema(implementation = MachineView.class))),
       @ApiResponse(responseCode = "400", description = "Validation, malformed JSON, duplicate code, invalid status, or invalid relation"),
@@ -81,7 +81,7 @@ public class MachineController {
     return ResponseEntity.created(URI.create("/api/v1/machines/" + created.id())).body(created);
   }
 
-  @Operation(summary = "Update machine")
+  @Operation(operationId = "updateMachine", summary = "Update machine")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Machine updated"),
       @ApiResponse(responseCode = "400", description = "Validation, malformed JSON, duplicate code, invalid status, or invalid relation"),
@@ -96,7 +96,7 @@ public class MachineController {
     return toDto(machines.update(user, machineId, command(request)));
   }
 
-  @Operation(summary = "Delete machine")
+  @Operation(operationId = "deleteMachine", summary = "Delete machine")
   @ApiResponses({
       @ApiResponse(responseCode = "204", description = "Machine deleted", content = @Content),
       @ApiResponse(responseCode = "400", description = "Invalid machine id"),

@@ -36,7 +36,7 @@ public class SparepartTaxonomyController {
     this.taxonomy = taxonomy;
   }
 
-  @Operation(summary = "List sparepart taxonomy entries")
+  @Operation(operationId = "listSparepartTaxonomies", summary = "List sparepart taxonomy entries")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Sparepart taxonomy entries returned"),
       @ApiResponse(responseCode = "400", description = "Invalid dimension"),
@@ -48,7 +48,7 @@ public class SparepartTaxonomyController {
     return new SparepartTaxonomyListResponse(taxonomy.list(user, dimension).stream().map(this::toDto).toList());
   }
 
-  @Operation(summary = "Get sparepart taxonomy entry")
+  @Operation(operationId = "getSparepartTaxonomy", summary = "Get sparepart taxonomy entry")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Sparepart taxonomy entry returned"),
       @ApiResponse(responseCode = "400", description = "Invalid taxonomy id"),
@@ -60,7 +60,7 @@ public class SparepartTaxonomyController {
     return toDto(taxonomy.get(user, taxonomyId));
   }
 
-  @Operation(summary = "Create sparepart taxonomy entry")
+  @Operation(operationId = "createSparepartTaxonomy", summary = "Create sparepart taxonomy entry")
   @ApiResponses({
       @ApiResponse(responseCode = "201", description = "Sparepart taxonomy entry created", content = @Content(schema = @Schema(implementation = SparepartTaxonomyView.class))),
       @ApiResponse(responseCode = "400", description = "Validation, malformed JSON, duplicate name, or invalid dimension"),
@@ -75,7 +75,7 @@ public class SparepartTaxonomyController {
     return ResponseEntity.created(URI.create("/api/v1/sparepart-taxonomies/" + created.id())).body(created);
   }
 
-  @Operation(summary = "Update sparepart taxonomy entry")
+  @Operation(operationId = "updateSparepartTaxonomy", summary = "Update sparepart taxonomy entry")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Sparepart taxonomy entry updated"),
       @ApiResponse(responseCode = "400", description = "Validation, malformed JSON, duplicate name, or invalid taxonomy id"),
@@ -90,7 +90,7 @@ public class SparepartTaxonomyController {
     return toDto(taxonomy.update(user, taxonomyId, command(request)));
   }
 
-  @Operation(summary = "Delete sparepart taxonomy entry")
+  @Operation(operationId = "deleteSparepartTaxonomy", summary = "Delete sparepart taxonomy entry")
   @ApiResponses({
       @ApiResponse(responseCode = "204", description = "Sparepart taxonomy entry deleted", content = @Content),
       @ApiResponse(responseCode = "400", description = "Invalid taxonomy id"),
@@ -106,10 +106,10 @@ public class SparepartTaxonomyController {
   }
 
   private SparepartTaxonomyCommand command(SparepartTaxonomyRequest request) {
-    return new SparepartTaxonomyCommand(request.dimension(), request.name());
+    return new SparepartTaxonomyCommand(request.dimension(), request.code(), request.name());
   }
 
   private SparepartTaxonomyView toDto(SparepartTaxonomyService.SparepartTaxonomyView entry) {
-    return new SparepartTaxonomyView(entry.id(), entry.dimension(), entry.name(), entry.createdAt(), entry.updatedAt());
+    return new SparepartTaxonomyView(entry.id(), entry.dimension(), entry.code(), entry.name(), entry.createdAt(), entry.updatedAt());
   }
 }

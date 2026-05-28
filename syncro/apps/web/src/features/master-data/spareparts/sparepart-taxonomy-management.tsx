@@ -8,7 +8,6 @@ import { toast } from "sonner";
 
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -34,7 +33,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { SparepartTaxonomyRequest, SparepartTaxonomyView } from "@/lib/api/generated/model";
 import { SparepartTaxonomyRequestDimension } from "@/lib/api/generated/model";
-import { getListQueryKey, useCreate, useDelete, useList, useUpdate } from "@/lib/api/generated/syncro";
+import {
+  getListSparepartTaxonomiesQueryKey,
+  useCreateSparepartTaxonomy,
+  useDeleteSparepartTaxonomy,
+  useListSparepartTaxonomies,
+  useUpdateSparepartTaxonomy,
+} from "@/lib/api/generated/syncro";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
 
@@ -60,36 +65,42 @@ export function SparepartTaxonomyManagement() {
   const user = useAuthUser();
   const queryClient = useQueryClient();
   const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGE";
-  const taxonomy = useList();
-  const createTaxonomy = useCreate({ mutation: { onSuccess: invalidateTaxonomyData } });
-  const updateTaxonomy = useUpdate({ mutation: { onSuccess: invalidateTaxonomyData } });
-  const deleteTaxonomy = useDelete({ mutation: { onSuccess: invalidateTaxonomyData } });
+  const taxonomy = useListSparepartTaxonomies();
+  const createTaxonomy = useCreateSparepartTaxonomy({ mutation: { onSuccess: invalidateTaxonomyData } });
+  const updateTaxonomy = useUpdateSparepartTaxonomy({ mutation: { onSuccess: invalidateTaxonomyData } });
+  const deleteTaxonomy = useDeleteSparepartTaxonomy({ mutation: { onSuccess: invalidateTaxonomyData } });
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
   const [form, setForm] = useState<TaxonomyFormState>({
     dimension: SparepartTaxonomyRequestDimension.CATEGORY,
+    code: "",
     name: "",
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<SparepartTaxonomyView | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const items = taxonomy.data?.data.items ?? [];
   const groupedItems = useMemo(() => groupByDimension(items), [items]);
   const isSaving = createTaxonomy.isPending || updateTaxonomy.isPending;
 
   function invalidateTaxonomyData() {
-    queryClient.invalidateQueries({ queryKey: getListQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getListSparepartTaxonomiesQueryKey() });
   }
 
   function openCreateDialog(dimension: TaxonomyDimension) {
     setDialogMode({ type: "create", dimension });
-    setForm({ dimension, name: "" });
+    setForm({ dimension, code: "", name: "" });
     setFieldErrors({});
     setFormError(null);
   }
 
   function openEditDialog(entry: SparepartTaxonomyView) {
     setDialogMode({ type: "edit", entry });
-    setForm({ dimension: entry.dimension ?? SparepartTaxonomyRequestDimension.CATEGORY, name: entry.name ?? "" });
+    setForm({
+      dimension: entry.dimension ?? SparepartTaxonomyRequestDimension.CATEGORY,
+      code: entry.code ?? "",
+      name: entry.name ?? "",
+    });
     setFieldErrors({});
     setFormError(null);
   }
@@ -120,13 +131,16 @@ export function SparepartTaxonomyManagement() {
     if (!deleteTarget) {
       return;
     }
+    setDeleteError(null);
 
     try {
       await deleteTaxonomy.mutateAsync({ taxonomyId: deleteTarget.id ?? "" });
       toast.success("Taxonomy entry deleted.");
       setDeleteTarget(null);
     } catch (error) {
-      toast.error(errorResponse(error)?.message ?? "Taxonomy delete failed.");
+      const message = errorResponse(error)?.message ?? "Taxonomy delete failed.";
+      setDeleteError(message);
+      toast.error(message);
     }
   }
 
@@ -174,7 +188,10 @@ export function SparepartTaxonomyManagement() {
                       items={groupedItems.get(dimension.value) ?? []}
                       canMutate={canMutate}
                       onEdit={openEditDialog}
-                      onDelete={setDeleteTarget}
+                      onDelete={(entry) => {
+                        setDeleteError(null);
+                        setDeleteTarget(entry);
+                      }}
                     />
                   </CardContent>
                 </Card>
@@ -216,6 +233,17 @@ export function SparepartTaxonomyManagement() {
               />
               {fieldErrors.name ? <p className="text-destructive text-sm">{fieldErrors.name}</p> : null}
             </div>
+            <div className="grid gap-2">
+              <Label htmlFor="taxonomy-code">Code</Label>
+              <Input
+                id="taxonomy-code"
+                value={form.code}
+                onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
+                aria-invalid={Boolean(fieldErrors.code)}
+                disabled={isSaving}
+              />
+              {fieldErrors.code ? <p className="text-destructive text-sm">{fieldErrors.code}</p> : null}
+            </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogMode(null)} disabled={isSaving}>
                 Cancel
@@ -236,12 +264,16 @@ export function SparepartTaxonomyManagement() {
             <AlertDialogDescription>
               This removes {deleteTarget?.name}. Deletion is blocked when existing sparepart records depend on it.
             </AlertDialogDescription>
+            {deleteError ? (
+              <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{deleteError}</p>
+            ) : null}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleteTaxonomy.isPending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={confirmDelete} disabled={deleteTaxonomy.isPending}>
+            <Button variant="destructive" onClick={confirmDelete} disabled={deleteTaxonomy.isPending}>
+              {deleteTaxonomy.isPending ? <Loader2Icon className="animate-spin" /> : null}
               Delete taxonomy entry
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -268,6 +300,7 @@ function TaxonomyTable({
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead>Code</TableHead>
           <TableHead>Name</TableHead>
           <TableHead>Created</TableHead>
           <TableHead className="text-right">Actions</TableHead>
@@ -275,7 +308,8 @@ function TaxonomyTable({
       </TableHeader>
       <TableBody>
         {items.map((entry) => (
-          <TableRow key={entry.id ?? `${entry.dimension}-${entry.name}`}>
+          <TableRow key={entry.id ?? `${entry.dimension}-${entry.code}-${entry.name}`}>
+            <TableCell className="font-mono text-xs">{entry.code}</TableCell>
             <TableCell className="font-medium">{entry.name}</TableCell>
             <TableCell>{entry.createdAt ? formatDate(entry.createdAt) : "-"}</TableCell>
             <TableCell className="text-right">

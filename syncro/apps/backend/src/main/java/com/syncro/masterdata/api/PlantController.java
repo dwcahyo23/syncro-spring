@@ -34,7 +34,7 @@ public class PlantController {
     this.plants = plants;
   }
 
-  @Operation(summary = "List plants")
+  @Operation(operationId = "listPlants", summary = "List plants")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Plants returned"),
       @ApiResponse(responseCode = "401", description = "Authentication required")
@@ -44,7 +44,7 @@ public class PlantController {
     return new PlantListResponse(plants.list(user).stream().map(this::toDto).toList());
   }
 
-  @Operation(summary = "Get plant")
+  @Operation(operationId = "getPlant", summary = "Get plant")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Plant returned"),
       @ApiResponse(responseCode = "400", description = "Invalid plant id"),
@@ -57,7 +57,7 @@ public class PlantController {
     return toDto(plants.get(user, plantId));
   }
 
-  @Operation(summary = "Create plant")
+  @Operation(operationId = "createPlant", summary = "Create plant")
   @ApiResponses({
       @ApiResponse(responseCode = "201", description = "Plant created", content = @Content(schema = @Schema(implementation = PlantView.class))),
       @ApiResponse(responseCode = "400", description = "Validation, malformed JSON, or duplicate plant code"),
@@ -72,7 +72,7 @@ public class PlantController {
     return ResponseEntity.created(URI.create("/api/v1/plants/" + created.id())).body(created);
   }
 
-  @Operation(summary = "Update plant")
+  @Operation(operationId = "updatePlant", summary = "Update plant")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Plant updated"),
       @ApiResponse(responseCode = "400", description = "Validation, malformed JSON, duplicate plant code, or invalid plant id"),
@@ -86,7 +86,7 @@ public class PlantController {
     return toDto(plants.update(user, plantId, command(request)));
   }
 
-  @Operation(summary = "Delete plant")
+  @Operation(operationId = "deletePlant", summary = "Delete plant")
   @ApiResponses({
       @ApiResponse(responseCode = "204", description = "Plant deleted", content = @Content),
       @ApiResponse(responseCode = "400", description = "Invalid plant id"),

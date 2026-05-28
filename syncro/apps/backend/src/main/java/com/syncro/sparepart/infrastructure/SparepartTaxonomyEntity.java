@@ -20,6 +20,9 @@ public class SparepartTaxonomyEntity {
   @Column(nullable = false, length = 32)
   private SparepartTaxonomyDimension dimension;
 
+  @Column(nullable = false, length = 64)
+  private String code;
+
   @Column(nullable = false, length = 255)
   private String name;
 
@@ -32,9 +35,16 @@ public class SparepartTaxonomyEntity {
   protected SparepartTaxonomyEntity() {
   }
 
-  public SparepartTaxonomyEntity(UUID id, SparepartTaxonomyDimension dimension, String name, Instant createdAt, Instant updatedAt) {
+  public SparepartTaxonomyEntity(
+      UUID id,
+      SparepartTaxonomyDimension dimension,
+      String code,
+      String name,
+      Instant createdAt,
+      Instant updatedAt) {
     this.id = id;
     this.dimension = dimension;
+    this.code = code;
     this.name = name;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
@@ -46,6 +56,10 @@ public class SparepartTaxonomyEntity {
 
   public SparepartTaxonomyDimension getDimension() {
     return dimension;
+  }
+
+  public String getCode() {
+    return code;
   }
 
   public String getName() {
@@ -60,7 +74,8 @@ public class SparepartTaxonomyEntity {
     return updatedAt;
   }
 
-  public void update(String name, Instant updatedAt) {
+  public void update(String code, String name, Instant updatedAt) {
+    this.code = code;
     this.name = name;
     this.updatedAt = updatedAt;
   }

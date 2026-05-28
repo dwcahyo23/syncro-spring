@@ -12,6 +12,7 @@ import com.syncro.sparepart.application.SparepartTaxonomyService.SparepartTaxono
 import com.syncro.sparepart.application.SparepartTaxonomyService.SparepartTaxonomyDataIntegrityException;
 import com.syncro.sparepart.application.SparepartTaxonomyService.SparepartTaxonomyMutationForbiddenException;
 import com.syncro.sparepart.application.SparepartTaxonomyService.SparepartTaxonomyNotFoundException;
+import com.syncro.sparepart.application.SparepartTaxonomyService.SparepartTaxonomyValidationException;
 import com.syncro.sparepart.domain.SparepartTaxonomyDimension;
 import com.syncro.sparepart.infrastructure.SparepartTaxonomyEntity;
 import com.syncro.sparepart.infrastructure.SparepartTaxonomyRepository;
@@ -91,9 +92,10 @@ class SparepartTaxonomyServiceIntegrationTest {
   void manageCreatesNormalizedTaxonomyEntry() {
     var user = persistedUser(ApplicationRole.MANAGE, "manage-taxonomy@syncro.dev");
 
-    var created = taxonomyService.create(user, command(SparepartTaxonomyDimension.CATEGORY, " Electric "));
+    var created = taxonomyService.create(user, command(SparepartTaxonomyDimension.CATEGORY, " ELEC ", " Electric "));
 
     assertThat(created.dimension()).isEqualTo(SparepartTaxonomyDimension.CATEGORY);
+    assertThat(created.code()).isEqualTo("ELEC");
     assertThat(created.name()).isEqualTo("Electric");
     assertThat(taxonomy.findById(created.id())).isPresent();
   }
@@ -102,9 +104,9 @@ class SparepartTaxonomyServiceIntegrationTest {
   @DisplayName("2.4-SVC-002 P1 duplicate same-dimension taxonomy name is rejected case-insensitively")
   void duplicateSameDimensionNameRejectedCaseInsensitively() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    taxonomyService.create(admin, command(SparepartTaxonomyDimension.CATEGORY, "Electric"));
+    taxonomyService.create(admin, command(SparepartTaxonomyDimension.CATEGORY, "ELEC", "Electric"));
 
-    assertThatThrownBy(() -> taxonomyService.create(admin, command(SparepartTaxonomyDimension.CATEGORY, " electric ")))
+    assertThatThrownBy(() -> taxonomyService.create(admin, command(SparepartTaxonomyDimension.CATEGORY, "ELEC-2", " electric ")))
         .isInstanceOf(DuplicateSparepartTaxonomyException.class);
   }
 
@@ -113,8 +115,8 @@ class SparepartTaxonomyServiceIntegrationTest {
   void sameNameAllowedAcrossDimensions() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
 
-    var category = taxonomyService.create(admin, command(SparepartTaxonomyDimension.CATEGORY, "Electric"));
-    var kind = taxonomyService.create(admin, command(SparepartTaxonomyDimension.KIND, "Electric"));
+    var category = taxonomyService.create(admin, command(SparepartTaxonomyDimension.CATEGORY, "ELEC", "Electric"));
+    var kind = taxonomyService.create(admin, command(SparepartTaxonomyDimension.KIND, "ELEC", "Electric"));
 
     assertThat(category.id()).isNotEqualTo(kind.id());
     assertThat(taxonomy.findAll()).hasSize(2);
@@ -124,10 +126,10 @@ class SparepartTaxonomyServiceIntegrationTest {
   @DisplayName("2.4-SVC-004 P0 database rejects case-insensitive duplicate taxonomy names within dimension")
   void databaseRejectsCaseInsensitiveDuplicateWithinDimension() {
     var now = Instant.parse("2026-05-28T00:00:00Z");
-    taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.CATEGORY, "Electric", now, now));
+    taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.CATEGORY, "ELEC", "Electric", now, now));
 
     assertThatThrownBy(() -> taxonomy.saveAndFlush(new SparepartTaxonomyEntity(
-        UUID.randomUUID(), SparepartTaxonomyDimension.CATEGORY, "electric", now, now)))
+        UUID.randomUUID(), SparepartTaxonomyDimension.CATEGORY, "ELEC-2", "electric", now, now)))
         .isInstanceOf(DataIntegrityViolationException.class);
   }
 
@@ -135,9 +137,9 @@ class SparepartTaxonomyServiceIntegrationTest {
   @DisplayName("2.4-SVC-005 P1 list filters by dimension and orders by dimension then name")
   void listFiltersByDimensionAndOrdersPredictably() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    var brand = taxonomyService.create(admin, command(SparepartTaxonomyDimension.BRAND, "Wecon"));
-    taxonomyService.create(admin, command(SparepartTaxonomyDimension.CATEGORY, "Electric"));
-    var omron = taxonomyService.create(admin, command(SparepartTaxonomyDimension.BRAND, "Omron"));
+    var brand = taxonomyService.create(admin, command(SparepartTaxonomyDimension.BRAND, "WECON", "Wecon"));
+    taxonomyService.create(admin, command(SparepartTaxonomyDimension.CATEGORY, "ELEC", "Electric"));
+    var omron = taxonomyService.create(admin, command(SparepartTaxonomyDimension.BRAND, "OMRON", "Omron"));
 
     var result = taxonomyService.list(admin, SparepartTaxonomyDimension.BRAND);
 
@@ -145,15 +147,13 @@ class SparepartTaxonomyServiceIntegrationTest {
   }
 
   @Test
-  @DisplayName("2.4-SVC-006 P1 update preserves taxonomy dimension")
-  void updatePreservesTaxonomyDimension() {
+  @DisplayName("2.4-SVC-006 P1 update rejects taxonomy dimension changes")
+  void updateRejectsTaxonomyDimensionChanges() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    var created = taxonomyService.create(admin, command(SparepartTaxonomyDimension.CATEGORY, "Electric"));
+    var created = taxonomyService.create(admin, command(SparepartTaxonomyDimension.CATEGORY, "ELEC", "Electric"));
 
-    var updated = taxonomyService.update(admin, created.id(), command(SparepartTaxonomyDimension.BRAND, "Electrical"));
-
-    assertThat(updated.dimension()).isEqualTo(SparepartTaxonomyDimension.CATEGORY);
-    assertThat(updated.name()).isEqualTo("Electrical");
+    assertThatThrownBy(() -> taxonomyService.update(admin, created.id(), command(SparepartTaxonomyDimension.BRAND, "ELEC-NEW", "Electrical")))
+        .isInstanceOf(SparepartTaxonomyValidationException.class);
   }
 
   @Test
@@ -161,10 +161,10 @@ class SparepartTaxonomyServiceIntegrationTest {
   void viewerCanListButCannotMutateTaxonomy() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     var viewer = persistedUser(ApplicationRole.VIEWER, "viewer-taxonomy@syncro.dev");
-    var entry = taxonomyService.create(admin, command(SparepartTaxonomyDimension.CATEGORY, "Electric"));
+    var entry = taxonomyService.create(admin, command(SparepartTaxonomyDimension.CATEGORY, "ELEC", "Electric"));
 
     assertThat(taxonomyService.list(viewer, null)).extracting("id").containsExactly(entry.id());
-    assertThatThrownBy(() -> taxonomyService.create(viewer, command(SparepartTaxonomyDimension.BRAND, "Wecon")))
+    assertThatThrownBy(() -> taxonomyService.create(viewer, command(SparepartTaxonomyDimension.BRAND, "WECON", "Wecon")))
         .isInstanceOf(SparepartTaxonomyMutationForbiddenException.class);
   }
 
@@ -172,7 +172,7 @@ class SparepartTaxonomyServiceIntegrationTest {
   @DisplayName("2.4-SVC-008 P1 delete removes taxonomy entry without dependents")
   void deleteRemovesTaxonomyEntryWithoutDependents() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    var entry = taxonomyService.create(admin, command(SparepartTaxonomyDimension.CATEGORY, "Electric"));
+    var entry = taxonomyService.create(admin, command(SparepartTaxonomyDimension.CATEGORY, "ELEC", "Electric"));
 
     taxonomyService.delete(admin, entry.id());
 
@@ -192,7 +192,7 @@ class SparepartTaxonomyServiceIntegrationTest {
   @DisplayName("2.4-SVC-010 P1 delete dependency conflict returns data integrity exception")
   void deleteDependencyConflictReturnsDataIntegrityException() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    var entry = taxonomyService.create(admin, command(SparepartTaxonomyDimension.CATEGORY, "Electric"));
+    var entry = taxonomyService.create(admin, command(SparepartTaxonomyDimension.CATEGORY, "ELEC", "Electric"));
     jdbc.execute("""
         CREATE TABLE sparepart_taxonomy_delete_dependencies (
           id UUID PRIMARY KEY,
@@ -205,8 +205,8 @@ class SparepartTaxonomyServiceIntegrationTest {
         .isInstanceOf(SparepartTaxonomyDataIntegrityException.class);
   }
 
-  private SparepartTaxonomyCommand command(SparepartTaxonomyDimension dimension, String name) {
-    return new SparepartTaxonomyCommand(dimension, name);
+  private SparepartTaxonomyCommand command(SparepartTaxonomyDimension dimension, String code, String name) {
+    return new SparepartTaxonomyCommand(dimension, code, name);
   }
 
   private AuthenticatedUser persistedUser(ApplicationRole role, String loginIdentifier) {

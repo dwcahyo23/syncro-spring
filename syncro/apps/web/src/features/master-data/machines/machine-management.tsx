@@ -42,15 +42,15 @@ import type {
   PlantView,
 } from "@/lib/api/generated/model";
 import {
-  getList1QueryKey,
-  getList2QueryKey,
-  getList3QueryKey,
-  useCreate2,
-  useDelete2,
-  useList1,
-  useList2,
-  useList3,
-  useUpdate2,
+  getListMachineGroupsQueryKey,
+  getListMachinesQueryKey,
+  getListPlantsQueryKey,
+  useCreateMachine,
+  useDeleteMachine,
+  useListMachineGroups,
+  useListMachines,
+  useListPlants,
+  useUpdateMachine,
 } from "@/lib/api/generated/syncro";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
@@ -79,7 +79,7 @@ export function MachineManagement() {
   const queryClient = useQueryClient();
   const isAssignedEmpty = scope?.mode === "EMPTY";
   const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGE";
-  const plants = useList1({ query: { enabled: Boolean(scope) && !isAssignedEmpty } });
+  const plants = useListPlants({ query: { enabled: Boolean(scope) && !isAssignedEmpty } });
   const plantItems = plants.data?.data.items ?? [];
   const availablePlants = useMemo(() => permittedPlants(plantItems, scope), [plantItems, scope]);
   const [selectedPlantId, setSelectedPlantId] = useState("");
@@ -87,7 +87,7 @@ export function MachineManagement() {
   const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("ALL");
   const effectivePlantId = selectedPlantId || availablePlants[0]?.id || "";
   const groupParams = { plantId: effectivePlantId };
-  const machineGroups = useList3(groupParams, {
+  const machineGroups = useListMachineGroups(groupParams, {
     query: {
       enabled: Boolean(effectivePlantId) && !isAssignedEmpty,
       queryKey: ["machine-groups", activePlantId, effectivePlantId],
@@ -99,15 +99,15 @@ export function MachineManagement() {
     machineGroupId: selectedGroupId === "ALL" ? undefined : selectedGroupId,
     status: selectedStatus === "ALL" ? undefined : selectedStatus,
   };
-  const machines = useList2(machineParams, {
+  const machines = useListMachines(machineParams, {
     query: {
       enabled: Boolean(effectivePlantId) && !isAssignedEmpty,
       queryKey: ["machines", activePlantId, effectivePlantId, selectedGroupId, selectedStatus],
     },
   });
-  const createMachine = useCreate2({ mutation: { onSuccess: invalidateMachineData } });
-  const updateMachine = useUpdate2({ mutation: { onSuccess: invalidateMachineData } });
-  const deleteMachine = useDelete2({ mutation: { onSuccess: invalidateMachineData } });
+  const createMachine = useCreateMachine({ mutation: { onSuccess: invalidateMachineData } });
+  const updateMachine = useUpdateMachine({ mutation: { onSuccess: invalidateMachineData } });
+  const deleteMachine = useDeleteMachine({ mutation: { onSuccess: invalidateMachineData } });
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
   const [form, setForm] = useState<MachineFormState>(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -136,9 +136,9 @@ export function MachineManagement() {
     queryClient.invalidateQueries({
       queryKey: ["machines", activePlantId, effectivePlantId, selectedGroupId, selectedStatus],
     });
-    queryClient.invalidateQueries({ queryKey: getList2QueryKey(machineParams) });
-    queryClient.invalidateQueries({ queryKey: getList3QueryKey(groupParams) });
-    queryClient.invalidateQueries({ queryKey: getList1QueryKey() });
+    queryClient.invalidateQueries({ queryKey: getListMachinesQueryKey(machineParams) });
+    queryClient.invalidateQueries({ queryKey: getListMachineGroupsQueryKey(groupParams) });
+    queryClient.invalidateQueries({ queryKey: getListPlantsQueryKey() });
   }
 
   function openCreateDialog() {

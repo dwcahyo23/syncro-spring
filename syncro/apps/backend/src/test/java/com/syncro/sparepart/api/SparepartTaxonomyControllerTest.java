@@ -72,6 +72,7 @@ class SparepartTaxonomyControllerTest {
     when(taxonomy.list(user, SparepartTaxonomyDimension.CATEGORY)).thenReturn(List.of(new SparepartTaxonomyView(
         entryId,
         SparepartTaxonomyDimension.CATEGORY,
+        "ELEC",
         "Electric",
         Instant.parse("2026-05-28T00:00:00Z"),
         Instant.parse("2026-05-28T00:00:00Z"))));
@@ -80,6 +81,7 @@ class SparepartTaxonomyControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items[0].id").value(entryId.toString()))
         .andExpect(jsonPath("$.items[0].dimension").value("CATEGORY"))
+        .andExpect(jsonPath("$.items[0].code").value("ELEC"))
         .andExpect(jsonPath("$.items[0].name").value("Electric"));
   }
 
@@ -91,6 +93,7 @@ class SparepartTaxonomyControllerTest {
     when(taxonomy.create(eq(user), any())).thenReturn(new SparepartTaxonomyView(
         entryId,
         SparepartTaxonomyDimension.CATEGORY,
+        "ELEC",
         "Electric",
         Instant.parse("2026-05-28T00:00:00Z"),
         Instant.parse("2026-05-28T00:00:00Z")));
@@ -98,10 +101,11 @@ class SparepartTaxonomyControllerTest {
     mockMvc.perform(post("/api/v1/sparepart-taxonomies")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
-        .content("{\"dimension\":\"CATEGORY\",\"name\":\"Electric\"}"))
+        .content("{\"dimension\":\"CATEGORY\",\"code\":\"ELEC\",\"name\":\"Electric\"}"))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.id").value(entryId.toString()))
         .andExpect(jsonPath("$.dimension").value("CATEGORY"))
+        .andExpect(jsonPath("$.code").value("ELEC"))
         .andExpect(jsonPath("$.name").value("Electric"));
   }
 
@@ -114,7 +118,7 @@ class SparepartTaxonomyControllerTest {
     mockMvc.perform(post("/api/v1/sparepart-taxonomies")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
-        .content("{\"dimension\":\"CATEGORY\",\"name\":\"Electric\"}"))
+        .content("{\"dimension\":\"CATEGORY\",\"code\":\"ELEC\",\"name\":\"Electric\"}"))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("FORBIDDEN"))
         .andExpect(jsonPath("$.traceId").isNotEmpty());
@@ -123,10 +127,13 @@ class SparepartTaxonomyControllerTest {
   @ParameterizedTest
   @DisplayName("2.4-API-005 P1 invalid taxonomy requests return field errors")
   @ValueSource(strings = {
-      "{\"dimension\":null,\"name\":\"Electric\"}",
-      "{\"dimension\":\"CATEGORY\",\"name\":\"\"}",
-      "{\"dimension\":\"CATEGORY\",\"name\":null}",
-      "{\"dimension\":\"CATEGORY\",\"name\":\"ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ\"}"
+      "{\"dimension\":null,\"code\":\"ELEC\",\"name\":\"Electric\"}",
+      "{\"dimension\":\"CATEGORY\",\"code\":\"\",\"name\":\"Electric\"}",
+      "{\"dimension\":\"CATEGORY\",\"code\":\"ELEC\",\"name\":\"\"}",
+      "{\"dimension\":\"CATEGORY\",\"code\":null,\"name\":\"Electric\"}",
+      "{\"dimension\":\"CATEGORY\",\"code\":\"ELEC\",\"name\":null}",
+      "{\"dimension\":\"CATEGORY\",\"code\":\"ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLM\",\"name\":\"Electric\"}",
+      "{\"dimension\":\"CATEGORY\",\"code\":\"ELEC\",\"name\":\"ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ\"}"
   })
   void invalidTaxonomyRequestReturnsFieldErrors(String payload) throws Exception {
     var user = user(ApplicationRole.MANAGE);
@@ -164,10 +171,10 @@ class SparepartTaxonomyControllerTest {
     mockMvc.perform(post("/api/v1/sparepart-taxonomies")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
-        .content("{\"dimension\":\"CATEGORY\",\"name\":\"Electric\"}"))
+        .content("{\"dimension\":\"CATEGORY\",\"code\":\"ELEC\",\"name\":\"Electric\"}"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("DUPLICATE_SPAREPART_TAXONOMY"))
-        .andExpect(jsonPath("$.message").value("Sparepart taxonomy name already exists for this dimension."));
+        .andExpect(jsonPath("$.message").value("Sparepart taxonomy code or name already exists for this dimension."));
   }
 
   @Test
@@ -214,7 +221,7 @@ class SparepartTaxonomyControllerTest {
     mockMvc.perform(put("/api/v1/sparepart-taxonomies/{taxonomyId}", entryId)
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
-        .content("{\"dimension\":\"CATEGORY\",\"name\":\"Electric\"}"))
+        .content("{\"dimension\":\"CATEGORY\",\"code\":\"ELEC\",\"name\":\"Electric\"}"))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("FORBIDDEN"));
   }

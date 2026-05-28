@@ -6,10 +6,10 @@
  * OpenAPI spec version: v1
  */
 
-export type ListDimension = typeof ListDimension[keyof typeof ListDimension];
+export type ListSparepartTaxonomiesDimension = typeof ListSparepartTaxonomiesDimension[keyof typeof ListSparepartTaxonomiesDimension];
 
 
-export const ListDimension = {
+export const ListSparepartTaxonomiesDimension = {
   CATEGORY: 'CATEGORY',
   BRAND: 'BRAND',
   KIND: 'KIND',

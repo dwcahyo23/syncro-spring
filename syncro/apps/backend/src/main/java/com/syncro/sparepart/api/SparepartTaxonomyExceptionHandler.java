@@ -51,12 +51,12 @@ public class SparepartTaxonomyExceptionHandler {
 
   @ExceptionHandler(SparepartTaxonomyValidationException.class)
   ResponseEntity<ErrorResponse> taxonomyValidation() {
-    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", Map.of("name", "Invalid value."));
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", Map.of());
   }
 
   @ExceptionHandler(DuplicateSparepartTaxonomyException.class)
   ResponseEntity<ErrorResponse> duplicateTaxonomy() {
-    return error(HttpStatus.BAD_REQUEST, "DUPLICATE_SPAREPART_TAXONOMY", "Sparepart taxonomy name already exists for this dimension.", Map.of());
+    return error(HttpStatus.BAD_REQUEST, "DUPLICATE_SPAREPART_TAXONOMY", "Sparepart taxonomy code or name already exists for this dimension.", Map.of());
   }
 
   @ExceptionHandler(SparepartTaxonomyDataIntegrityException.class)

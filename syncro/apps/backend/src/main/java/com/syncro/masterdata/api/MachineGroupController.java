@@ -35,7 +35,7 @@ public class MachineGroupController {
     this.machineGroups = machineGroups;
   }
 
-  @Operation(summary = "List machine groups")
+  @Operation(operationId = "listMachineGroups", summary = "List machine groups")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Machine groups returned"),
       @ApiResponse(responseCode = "400", description = "Invalid plant id"),
@@ -48,7 +48,7 @@ public class MachineGroupController {
     return new MachineGroupListResponse(machineGroups.list(user, plantId).stream().map(this::toDto).toList());
   }
 
-  @Operation(summary = "Get machine group")
+  @Operation(operationId = "getMachineGroup", summary = "Get machine group")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Machine group returned"),
       @ApiResponse(responseCode = "400", description = "Invalid machine group id"),
@@ -61,7 +61,7 @@ public class MachineGroupController {
     return toDto(machineGroups.get(user, machineGroupId));
   }
 
-  @Operation(summary = "Create machine group")
+  @Operation(operationId = "createMachineGroup", summary = "Create machine group")
   @ApiResponses({
       @ApiResponse(responseCode = "201", description = "Machine group created", content = @Content(schema = @Schema(implementation = MachineGroupView.class))),
       @ApiResponse(responseCode = "400", description = "Validation, malformed JSON, duplicate machine group name, or invalid plant id"),
@@ -77,7 +77,7 @@ public class MachineGroupController {
     return ResponseEntity.created(URI.create("/api/v1/machine-groups/" + created.id())).body(created);
   }
 
-  @Operation(summary = "Update machine group")
+  @Operation(operationId = "updateMachineGroup", summary = "Update machine group")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Machine group updated"),
       @ApiResponse(responseCode = "400", description = "Validation, malformed JSON, duplicate machine group name, or invalid machine group id"),
@@ -92,7 +92,7 @@ public class MachineGroupController {
     return toDto(machineGroups.update(user, machineGroupId, command(request)));
   }
 
-  @Operation(summary = "Delete machine group")
+  @Operation(operationId = "deleteMachineGroup", summary = "Delete machine group")
   @ApiResponses({
       @ApiResponse(responseCode = "204", description = "Machine group deleted", content = @Content),
       @ApiResponse(responseCode = "400", description = "Invalid machine group id"),

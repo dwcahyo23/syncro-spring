@@ -5,10 +5,10 @@
  * Syncro backend REST API.
  * OpenAPI spec version: v1
  */
-import type { List2Status } from './list2Status';
+import type { ListMachinesStatus } from './listMachinesStatus';
 
-export type List2Params = {
+export type ListMachinesParams = {
 plantId?: string;
 machineGroupId?: string;
-status?: List2Status;
+status?: ListMachinesStatus;
 };

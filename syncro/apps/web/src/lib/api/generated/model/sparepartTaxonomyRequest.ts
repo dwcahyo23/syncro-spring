@@ -11,6 +11,11 @@ export interface SparepartTaxonomyRequest {
   dimension: SparepartTaxonomyRequestDimension;
   /**
      * @minLength 0
+     * @maxLength 64
+     */
+  code: string;
+  /**
+     * @minLength 0
      * @maxLength 255
      */
   name: string;
