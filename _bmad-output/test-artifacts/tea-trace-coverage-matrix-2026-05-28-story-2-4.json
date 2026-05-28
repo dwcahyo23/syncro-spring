@@ -1,0 +1,254 @@
+{
+  "phase": "PHASE_1_COMPLETE",
+  "generated_at": "2026-05-28T00:00:00Z",
+  "trace_target": {
+    "type": "story",
+    "id": "2.4",
+    "label": "Manage Sparepart Taxonomy"
+  },
+  "collection_mode": "contract_static",
+  "collection_status": "COLLECTED",
+  "allow_gate": true,
+  "coverage_basis": "acceptance_criteria",
+  "summary_confidence": "high",
+  "oracle": {
+    "resolution_mode": "formal_requirements",
+    "confidence": "high",
+    "sources": [
+      "_bmad-output/implementation-artifacts/2-4-manage-sparepart-taxonomy.md",
+      "_bmad-output/test-artifacts/test-design-epic-2.md"
+    ],
+    "external_pointer_status": "not_used",
+    "synthetic": false
+  },
+  "requirements": [
+    {
+      "id": "AC1",
+      "title": "Permitted users create taxonomy entries and entries persist for later sparepart creation",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {"id": "2.4-API-003", "title": "P1 MANAGE can create taxonomy", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/api/SparepartTaxonomyControllerTest.java", "line": 88, "level": "api", "status": "active"},
+        {"id": "2.4-SVC-001", "title": "P1 MANAGE creates normalized taxonomy entry", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/application/SparepartTaxonomyServiceIntegrationTest.java", "line": 90, "level": "api", "status": "active"}
+      ],
+      "evidence": ["SparepartTaxonomyService.create persists normalized entity", "sparepart_taxonomy table + indexes exist"]
+    },
+    {
+      "id": "AC2",
+      "title": "Same-dimension duplicates with case/whitespace differences reject safely",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {"id": "2.4-API-007", "title": "P1 duplicate taxonomy returns safe validation error", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/api/SparepartTaxonomyControllerTest.java", "line": 165, "level": "api", "status": "active"},
+        {"id": "2.4-SVC-002", "title": "P1 duplicate same-dimension taxonomy name is rejected case-insensitively", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/application/SparepartTaxonomyServiceIntegrationTest.java", "line": 103, "level": "api", "status": "active"},
+        {"id": "2.4-SVC-004", "title": "P0 database rejects case-insensitive duplicate taxonomy names within dimension", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/application/SparepartTaxonomyServiceIntegrationTest.java", "line": 125, "level": "api", "status": "active"}
+      ],
+      "evidence": ["Unique indexes on lower(code) and lower(name) per dimension", "Safe DUPLICATE_SPAREPART_TAXONOMY error"]
+    },
+    {
+      "id": "AC3",
+      "title": "Same taxonomy value is allowed across different dimensions",
+      "priority": "P1",
+      "coverage": "FULL",
+      "tests": [
+        {"id": "2.4-SVC-003", "title": "P1 same taxonomy name is allowed across dimensions", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/application/SparepartTaxonomyServiceIntegrationTest.java", "line": 113, "level": "api", "status": "active"}
+      ],
+      "evidence": ["Unique indexes include dimension"]
+    },
+    {
+      "id": "AC4",
+      "title": "Permitted users list taxonomy grouped/filterable by dimension and ordered predictably",
+      "priority": "P1",
+      "coverage": "FULL",
+      "tests": [
+        {"id": "2.4-API-002", "title": "P1 VIEWER can list taxonomy", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/api/SparepartTaxonomyControllerTest.java", "line": 67, "level": "api", "status": "active"},
+        {"id": "2.4-SVC-005", "title": "P1 list filters by dimension and orders by dimension then name", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/application/SparepartTaxonomyServiceIntegrationTest.java", "line": 136, "level": "api", "status": "active"}
+      ],
+      "evidence": ["GET /api/v1/sparepart-taxonomies supports dimension filter", "Service orders by dimension/name or name"]
+    },
+    {
+      "id": "AC5",
+      "title": "Permitted users update name/code within bounds without changing dimension identity",
+      "priority": "P1",
+      "coverage": "FULL",
+      "tests": [
+        {"id": "2.4-SVC-006", "title": "P1 update rejects taxonomy dimension changes", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/application/SparepartTaxonomyServiceIntegrationTest.java", "line": 149, "level": "api", "status": "active"}
+      ],
+      "evidence": ["SparepartTaxonomyService.update rejects dimension move and updates code/name"]
+    },
+    {
+      "id": "AC6",
+      "title": "Permitted users delete taxonomy entry without dependents",
+      "priority": "P1",
+      "coverage": "FULL",
+      "tests": [
+        {"id": "2.4-SVC-008", "title": "P1 delete removes taxonomy entry without dependents", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/application/SparepartTaxonomyServiceIntegrationTest.java", "line": 171, "level": "api", "status": "active"}
+      ],
+      "evidence": ["DELETE endpoint delegates to service delete; repository entry removed"]
+    },
+    {
+      "id": "AC7",
+      "title": "Referenced taxonomy delete returns safe 409 data integrity conflict",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {"id": "2.4-API-013", "title": "P1 delete integrity conflict returns safe conflict error", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/api/SparepartTaxonomyControllerTest.java", "line": 252, "level": "api", "status": "active"},
+        {"id": "2.4-SVC-010", "title": "P1 delete dependency conflict returns data integrity exception", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/application/SparepartTaxonomyServiceIntegrationTest.java", "line": 191, "level": "api", "status": "active"}
+      ],
+      "evidence": ["Ad-hoc FK proves PostgreSQL restrict conflict until Story 2.5 real sparepart FK exists", "Controller maps conflict to SPAREPART_TAXONOMY_DATA_INTEGRITY_VIOLATION"]
+    },
+    {
+      "id": "AC8",
+      "title": "VIEWER can view taxonomy management and list APIs",
+      "priority": "P1",
+      "coverage": "FULL",
+      "tests": [
+        {"id": "2.4-API-002", "title": "P1 VIEWER can list taxonomy", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/api/SparepartTaxonomyControllerTest.java", "line": 67, "level": "api", "status": "active"},
+        {"id": "2.4-SVC-007", "title": "P0 VIEWER can list taxonomy but cannot mutate", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/application/SparepartTaxonomyServiceIntegrationTest.java", "line": 159, "level": "api", "status": "active"}
+      ],
+      "evidence": ["Route RoleGuard allows VIEWER", "UI canMutate false produces read-only display"]
+    },
+    {
+      "id": "AC9",
+      "title": "VIEWER create/update/delete denied server-side with safe forbidden response",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {"id": "2.4-API-004", "title": "P0 VIEWER cannot create taxonomy", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/api/SparepartTaxonomyControllerTest.java", "line": 112, "level": "api", "status": "active"},
+        {"id": "2.4-API-010", "title": "P0 VIEWER cannot update taxonomy", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/api/SparepartTaxonomyControllerTest.java", "line": 214, "level": "api", "status": "active"},
+        {"id": "2.4-API-011", "title": "P0 VIEWER cannot delete taxonomy", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/api/SparepartTaxonomyControllerTest.java", "line": 229, "level": "api", "status": "active"}
+      ],
+      "evidence": ["requireMutationRole permits only SUPER_ADMIN/MANAGE"]
+    },
+    {
+      "id": "AC10",
+      "title": "Unauthenticated requests get existing safe authentication error shape",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {"id": "2.4-API-001", "title": "P0 unauthenticated users cannot list taxonomy", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/api/SparepartTaxonomyControllerTest.java", "line": 59, "level": "api", "status": "active"},
+        {"id": "2.4-API-009", "title": "P0 unauthenticated users cannot mutate taxonomy", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/api/SparepartTaxonomyControllerTest.java", "line": 193, "level": "api", "status": "active"}
+      ],
+      "evidence": ["AUTHENTICATION_REQUIRED asserted for list and mutations"]
+    },
+    {
+      "id": "AC11",
+      "title": "Malformed JSON, invalid dimensions, blank/over-length values return safe stable errors",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {"id": "2.4-API-005", "title": "P1 invalid taxonomy requests return field errors", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/api/SparepartTaxonomyControllerTest.java", "line": 127, "level": "api", "status": "active"},
+        {"id": "2.4-API-006", "title": "P1 malformed JSON returns safe error", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/api/SparepartTaxonomyControllerTest.java", "line": 151, "level": "api", "status": "active"},
+        {"id": "2.4-API-012", "title": "P1 invalid taxonomy id returns safe path error", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/api/SparepartTaxonomyControllerTest.java", "line": 241, "level": "api", "status": "active"},
+        {"id": "2.4-API-014", "title": "P1 invalid dimension query returns safe path error", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/api/SparepartTaxonomyControllerTest.java", "line": 265, "level": "api", "status": "active"}
+      ],
+      "evidence": ["VALIDATION_ERROR, MALFORMED_JSON, INVALID_PATH_VALUE asserted", "DB check constraints mirror DTO bounds"]
+    },
+    {
+      "id": "AC12",
+      "title": "MANAGE/VIEWER plant assignment limits do not hide global taxonomy",
+      "priority": "P1",
+      "coverage": "FULL",
+      "tests": [
+        {"id": "2.4-SVC-007", "title": "P0 VIEWER can list taxonomy but cannot mutate", "file": "syncro/apps/backend/src/test/java/com/syncro/sparepart/application/SparepartTaxonomyServiceIntegrationTest.java", "line": 159, "level": "api", "status": "active"}
+      ],
+      "evidence": ["SparepartTaxonomyService.list ignores plant scope and has no PlantScopeService dependency"]
+    },
+    {
+      "id": "AC13",
+      "title": "SUPER_ADMIN/MANAGE UI can create, edit, delete all four taxonomy dimensions",
+      "priority": "P2",
+      "coverage": "PARTIAL",
+      "tests": [],
+      "evidence": ["SparepartTaxonomyManagement renders four DIMENSIONS and mutation buttons when canMutate", "Story evidence: dev server HTTP 200 smoke only"],
+      "gap": "No automated component/E2E or browser interaction evidence for create/edit/delete flow."
+    },
+    {
+      "id": "AC14",
+      "title": "VIEWER UI shows read-only state and hides/disables mutation actions",
+      "priority": "P2",
+      "coverage": "PARTIAL",
+      "tests": [],
+      "evidence": ["Route allows VIEWER; canMutate false renders Read-only/View only badges and hides mutation buttons"],
+      "gap": "No automated component/E2E or browser role evidence for VIEWER read-only UI."
+    },
+    {
+      "id": "AC15",
+      "title": "UI renders loading, empty, failed, read-only, and forbidden durable states",
+      "priority": "P2",
+      "coverage": "PARTIAL",
+      "tests": [],
+      "evidence": ["Source renders loading skeleton, empty state, retryable API error, read-only badge", "RoleGuard handles allowed-role route guard"],
+      "gap": "No automated component/E2E evidence for loading/empty/error/forbidden states; forbidden specific state not directly inspected in this trace."
+    },
+    {
+      "id": "AC16",
+      "title": "Generated Orval client refreshed and web feature uses generated hooks/types",
+      "priority": "P1",
+      "coverage": "FULL",
+      "tests": [
+        {"id": "story-evidence-web-check", "title": "Web check/build and generated API evidence", "file": "_bmad-output/implementation-artifacts/2-4-manage-sparepart-taxonomy.md", "line": 194, "level": "other", "status": "active"}
+      ],
+      "evidence": ["Story records generate:api, npm check, npm build", "UI imports generated hooks/types from src/lib/api/generated"]
+    }
+  ],
+  "coverage_statistics": {
+    "total_requirements": 16,
+    "fully_covered": 13,
+    "partially_covered": 3,
+    "uncovered": 0,
+    "overall_coverage_percentage": 81,
+    "priority_breakdown": {
+      "P0": {"total": 6, "covered": 6, "percentage": 100},
+      "P1": {"total": 7, "covered": 7, "percentage": 100},
+      "P2": {"total": 3, "covered": 0, "percentage": 0},
+      "P3": {"total": 0, "covered": 0, "percentage": 100}
+    }
+  },
+  "gap_analysis": {
+    "critical_gaps": [],
+    "high_gaps": [],
+    "medium_gaps": [],
+    "low_gaps": [],
+    "partial_coverage_items": ["AC13", "AC14", "AC15"],
+    "unit_only_items": []
+  },
+  "coverage_heuristics": {
+    "endpoint_gaps": [],
+    "auth_negative_path_gaps": [],
+    "happy_path_only_gaps": [],
+    "ui_journey_gaps": ["AC13", "AC14"],
+    "ui_state_gaps": ["AC15"],
+    "counts": {
+      "endpoints_without_tests": 0,
+      "auth_missing_negative_paths": 0,
+      "happy_path_only_criteria": 0,
+      "ui_journeys_without_e2e": 2,
+      "ui_states_missing_coverage": 1
+    }
+  },
+  "test_inventory": {
+    "summary": {
+      "files": 4,
+      "cases": 17,
+      "skipped_cases": 0,
+      "fixme_cases": 0,
+      "pending_cases": 0,
+      "by_level": {
+        "e2e": {"tests": 0, "criteria_covered": 0},
+        "api": {"tests": 16, "criteria_covered": 12},
+        "component": {"tests": 0, "criteria_covered": 0},
+        "unit": {"tests": 0, "criteria_covered": 0},
+        "other": {"tests": 1, "criteria_covered": 1}
+      }
+    },
+    "blockers": []
+  },
+  "blockers": [],
+  "recommendations": [
+    {"priority": "MEDIUM", "action": "Add component or E2E coverage for SUPER_ADMIN/MANAGE taxonomy create/edit/delete UI flow.", "requirements": ["AC13"]},
+    {"priority": "MEDIUM", "action": "Add VIEWER component or E2E evidence for read-only taxonomy UI.", "requirements": ["AC14"]},
+    {"priority": "MEDIUM", "action": "Add UI state tests for loading, empty, API error retry, and forbidden/read-only states.", "requirements": ["AC15"]},
+    {"priority": "LOW", "action": "Replace ad-hoc delete dependency FK with real Story 2.5 sparepart FK coverage when sparepart table exists.", "requirements": ["AC7"]}
+  ]
+}
