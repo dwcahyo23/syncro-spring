@@ -10,6 +10,10 @@
     "format": "biome format --write",
     "check": "biome check",
     "check:fix": "biome check --write",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report",
     "prepare": "husky",
     "generate:api": "orval --config orval.config.ts",
     "generate:presets": "ts-node -P tsconfig.scripts.json src/scripts/generate-theme-presets.ts"
@@ -54,6 +58,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",
+    "@faker-js/faker": "^10.4.0",
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4.3.0",
     "@types/d3-geo": "^3.1.0",
     "@types/node": "^22.19.19",

@@ -1,0 +1,24 @@
+import { test as base, expect } from "@playwright/test";
+
+import { createPlant } from "../helpers/data-factory";
+import { SyncroApiClient } from "../helpers/syncro-api-client";
+
+type SyncroFixtures = {
+  api: SyncroApiClient;
+  testData: {
+    plant: ReturnType<typeof createPlant>;
+  };
+};
+
+export const test = base.extend<SyncroFixtures>({
+  api: async ({ request }, use) => {
+    await use(new SyncroApiClient(request));
+  },
+  testData: async ({ page: _page }, use) => {
+    await use({
+      plant: createPlant(),
+    });
+  },
+});
+
+export { expect };
