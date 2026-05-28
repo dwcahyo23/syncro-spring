@@ -12,7 +12,7 @@ This skill orchestrates one Syncro story through BMad Method Phase 4 and TEA che
 ## Inputs
 
 - Required: story id/key or clear next-story intent, e.g. `2-6`, `2-6-install-spareparts`, or `next`.
-- Optional flags in plain language: `skip ATDD`, `skip automation`, `skip trace`, `review only`, `resume`.
+- Optional flags in plain language: `skip ATDD`, `skip automation`, `skip trace`, `review only`, `resume`, `commit after done`.
 
 If no story is supplied, start with Sprint Status and ask the user to choose one story before continuing.
 
@@ -23,7 +23,8 @@ If no story is supplied, start with Sprint Status and ask the user to choose one
 - Every stage ends with a halt: summarize evidence, ask for confirmation, and wait before invoking the next skill.
 - TEA stages are optional but recommended for API, UI, data integrity, auth, migration, or operational-risk stories.
 - If any stage reports unresolved findings or failed checks, route back to the stage that owns the fix instead of advancing.
-- Do not commit or push unless the user explicitly asks after the workflow result.
+- Auto-detect resume position from sprint status, story file status, existing ATDD/test/trace artifacts, current git diff, and any prior workflow evidence in the story file before asking where to continue.
+- Commit is an explicit final gate only: prepare one scoped commit when the user asked `commit after done` or approves the Closeout commit prompt; never push unless separately asked.
 
 ## Stage Order
 
@@ -31,7 +32,9 @@ If no story is supplied, start with Sprint Status and ask the user to choose one
 
 Invoke `bmad-sprint-status` or inspect sprint status if already loaded. Confirm target story key, current status, and whether this is a new run, resume, or review-only run.
 
-Halt prompt: `Continue with story <story-key>? [Y] continue / [N] choose another / [R] review-only resume`.
+For resume/autodetect, inspect only evidence needed to choose next stage: story status, story tasks/checklist, existing TEA artifacts, relevant tests, and current git status/diff summary. State detected last completed stage, next recommended stage, and confidence. If confidence is low, ask the user to choose from the plausible stages.
+
+Halt prompt: `Detected next stage: <stage> because <evidence>. Continue? [Y] / [Choose stage] / [Review-only] / [Stop]`.
 
 ### 2. Create and Validate Story
 
@@ -89,15 +92,19 @@ Summarize:
 - Skills run and any skipped TEA stages with reasons.
 - Checks passed/failed.
 - Remaining action items.
-- Whether commit is needed.
+- Commit recommendation with exact scoped paths, or why no commit is safe yet.
+
+If commit is approved, follow repository commit rules exactly: inspect status, diff stat, unstaged diff, staged diff, last five commits, and current branch; stage only intended files; create a concise imperative commit ending with `Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>`; then report status, branch, and commit hash. If inspection shows unrelated/forbidden files, stop and ask.
 
 Offer next actions: commit, run next story through `syncro-story-flow`, rerun review, or stop.
 
 ## Resume Paths
 
+- `auto resume` or `resume`: run Orient autodetection and recommend the next stage from evidence.
 - `review only`: skip to Code Review for an already implemented story.
 - `resume after dev`: start at TEA Automation unless user chooses Code Review.
 - `resume after review`: start at TEA Traceability Gate if review patches are resolved.
+- `resume after trace`: start at Closeout, including commit gate if approved.
 - `next`: use Sprint Status to select next story, then begin at Create and Validate Story.
 
 ## Failure Routing
