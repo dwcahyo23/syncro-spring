@@ -119,6 +119,55 @@ After every commit:
 3. Confirm working tree is clean or explain remaining intentional changes.
 4. Report branch name and commit hash.
 
+## Syncro Development Commands
+
+Use PowerShell command shapes below so Claude Code auto-allow rules can match consistently during long-running development:
+
+- Start backend: `./syncro/scripts/start-backend.ps1`
+- Start web: `./syncro/scripts/start-web.ps1`
+- Backend tests: `./syncro/apps/backend/mvnw.cmd -f ./syncro/apps/backend/pom.xml test`
+- Backend single test: `./syncro/apps/backend/mvnw.cmd -f ./syncro/apps/backend/pom.xml -Dtest=ClassName test`
+- Web typecheck: `npm --prefix ./syncro/apps/web run typecheck`
+- Web lint: `npm --prefix ./syncro/apps/web run lint`
+- Web unit tests: `npm --prefix ./syncro/apps/web run test`
+- Web build: `npm --prefix ./syncro/apps/web run build`
+
+Do not replace these with equivalent `cd`, Bash, native wrapper, or alternate package-manager forms unless the stable command itself is broken. Prefer fixing these scripts over introducing new command shapes.
+
+Preferred story automation commands:
+
+- Full story automation: `/syncro-story-flow <story-id> auto phase 4 tea`
+- Next story automation: `/syncro-story-flow next auto phase 4 tea`
+- Resume automation: `/syncro-story-flow resume auto phase 4 tea`
+- Review-only pass: `/syncro-story-flow <story-id> review only`
+
+## Syncro Long-Run Automation Rules
+
+- Use PowerShell for Syncro commands on Windows.
+- Treat backend `8080` and web `3001` as the standard local development ports.
+- Start long-running backend or web servers with background execution, not foreground blocking.
+- If the needed server is already reachable, reuse it instead of starting another copy.
+- If a stable command fails because the script is wrong, fix the script and rerun the same stable command shape.
+- Do not create alternate one-off commands to bypass local allow rules.
+- Do not kill existing server processes unless the user explicitly asks or the process was started by this session and is clearly stale.
+- Backend startup should load only `syncro/.env.example` for local development defaults; never read or modify `.env` or `.env.*` secret files unless explicitly requested.
+- Prefer targeted tests first, then broader suites only when the changed scope requires them.
+- Avoid package installation, dependency upgrades, Docker resets, database resets, or generated-client rewrites unless the task requires them.
+
+## Web Browser Testing
+
+For interactive web verification, use Playwright MCP browser tools first. Do not run native Playwright browser automation from the CLI unless the user explicitly asks or MCP cannot cover the check.
+
+Forbidden by default unless explicitly requested: `npx playwright`, `playwright test`, `npm run e2e`, native browser automation scripts, or screenshots generated outside MCP.
+
+Expected browser-test flow:
+
+1. Start backend with `./syncro/scripts/start-backend.ps1` in the background when API behavior is needed and port `8080` is not already reachable.
+2. Start web with `./syncro/scripts/start-web.ps1` in the background when port `3001` is not already reachable.
+3. Navigate and verify with MCP Playwright tools (`browser_navigate`, `browser_snapshot`, `browser_click`, `browser_fill_form`, `browser_wait_for`, `browser_console_messages`, `browser_network_requests`).
+4. Check MCP console and network evidence before reporting UI success.
+5. If MCP cannot cover a required browser check, explain the gap and ask before using native Playwright.
+
 ## Handling Hook or Test Failures
 
 - If a hook fails, do not bypass it.

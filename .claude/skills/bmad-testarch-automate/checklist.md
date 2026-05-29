@@ -9,6 +9,7 @@ Before starting this workflow, verify:
 - [ ] Framework scaffolding configured (playwright.config.ts or cypress.config.ts exists)
 - [ ] Test directory structure exists (tests/ folder with subdirectories)
 - [ ] Package.json has test framework dependencies installed
+- [ ] Test execution uses project-defined package scripts or monorepo commands; native Playwright CLI is not required unless explicitly requested
 
 **Halt only if:** Framework scaffolding is completely missing (run `framework` workflow first)
 
