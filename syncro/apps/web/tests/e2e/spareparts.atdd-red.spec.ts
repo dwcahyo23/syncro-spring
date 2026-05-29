@@ -284,7 +284,7 @@ async function setAuthUser(page: Page, role: Role) {
   await page.context().addCookies(
     ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"].flatMap((url) => [
       { name: "syncro_auth_token", value: `token-${role.toLowerCase()}`, url },
-      { name: "syncro_auth_user", value: authUser, url },
+      { name: "syncro_auth_user", value: encodeURIComponent(authUser), url },
     ]),
   );
 }

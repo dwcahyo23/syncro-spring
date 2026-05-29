@@ -41,7 +41,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -97,6 +100,7 @@ class MachineSparepartInstallationServiceIntegrationTest {
   @Autowired private AuthUserPlantAssignmentRepository assignments;
   @Autowired private PasswordEncoder passwordEncoder;
   @Autowired private JdbcTemplate jdbc;
+  @Autowired private PlatformTransactionManager transactionManager;
 
   @Test
   @DisplayName("2.6-SVC-001 P0 create stores default threshold and nullable telemetry evidence")
@@ -235,14 +239,11 @@ class MachineSparepartInstallationServiceIntegrationTest {
     var sparepart = sparepart("PLC-WECON-LX5");
     var now = Instant.parse("2026-05-28T00:00:00Z");
 
-    assertThatThrownBy(() -> installations.saveAndFlush(new com.syncro.sparepart.infrastructure.MachineSparepartInstallationEntity(
-        UUID.randomUUID(), machine, sparepart, 0, 0, 90, now, now, now)))
+    assertThatThrownBy(() -> saveInvalidInstallation(machine, sparepart, 0, 0, 90, now))
         .isInstanceOf(DataIntegrityViolationException.class);
-    assertThatThrownBy(() -> installations.saveAndFlush(new com.syncro.sparepart.infrastructure.MachineSparepartInstallationEntity(
-        UUID.randomUUID(), machine, sparepart, 100, -1, 90, now, now, now)))
+    assertThatThrownBy(() -> saveInvalidInstallation(machine, sparepart, 100, -1, 90, now))
         .isInstanceOf(DataIntegrityViolationException.class);
-    assertThatThrownBy(() -> installations.saveAndFlush(new com.syncro.sparepart.infrastructure.MachineSparepartInstallationEntity(
-        UUID.randomUUID(), machine, sparepart, 100, 0, 101, now, now, now)))
+    assertThatThrownBy(() -> saveInvalidInstallation(machine, sparepart, 100, 0, 101, now))
         .isInstanceOf(DataIntegrityViolationException.class);
   }
 
@@ -288,6 +289,14 @@ class MachineSparepartInstallationServiceIntegrationTest {
         .isInstanceOf(InstallationValidationException.class);
   }
 
+  private void saveInvalidInstallation(MachineEntity machine, SparepartEntity sparepart, long expectedProductionCount,
+      long baselineCounter, int thresholdPercentage, Instant now) {
+    var transactions = new TransactionTemplate(transactionManager);
+    transactions.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    transactions.executeWithoutResult(status -> installations.saveAndFlush(new com.syncro.sparepart.infrastructure.MachineSparepartInstallationEntity(
+        UUID.randomUUID(), machine, sparepart, expectedProductionCount, baselineCounter, thresholdPercentage, now, now, now)));
+  }
+
   private PlantEntity plant(String code) {
     var now = Instant.parse("2026-05-28T00:00:00Z");
     return plants.saveAndFlush(new PlantEntity(UUID.randomUUID(), code, "Plant " + code, now, now));
@@ -302,11 +311,12 @@ class MachineSparepartInstallationServiceIntegrationTest {
 
   private SparepartEntity sparepart(String code) {
     var now = Instant.parse("2026-05-28T00:00:00Z");
-    var category = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.CATEGORY, "ELEC" + UUID.randomUUID().toString().substring(0, 4), "Electric", now, now));
-    var brand = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.BRAND, "WECON" + UUID.randomUUID().toString().substring(0, 4), "Wecon", now, now));
-    var kind = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.KIND, "PLC" + UUID.randomUUID().toString().substring(0, 4), "PLC", now, now));
-    var type = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.TYPE, "LX5" + UUID.randomUUID().toString().substring(0, 4), "LX5", now, now));
-    return spareparts.saveAndFlush(new SparepartEntity(UUID.randomUUID(), code, "Electric PLC Wecon LX5", category, brand, kind, type, now, now));
+    var suffix = code.replaceAll("[^A-Z0-9]", "");
+    var category = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.CATEGORY, "ELEC" + suffix, "Electric " + suffix, now, now));
+    var brand = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.BRAND, "WECON" + suffix, "Wecon " + suffix, now, now));
+    var kind = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.KIND, "PLC" + suffix, "PLC " + suffix, now, now));
+    var type = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.TYPE, "LX5" + suffix, "LX5 " + suffix, now, now));
+    return spareparts.saveAndFlush(new SparepartEntity(UUID.randomUUID(), code, "Electric PLC Wecon LX5 " + suffix, category, brand, kind, type, now, now));
   }
 
   private AuthenticatedUser persistedUser(ApplicationRole role, String loginIdentifier) {

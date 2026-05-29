@@ -4,7 +4,7 @@ baseline_commit: d7ff3e7
 
 # Story 2.6: Install Spareparts on Machines with Lifetime Baseline
 
-Status: in-progress
+Status: done
 
 ## Story
 
@@ -206,7 +206,7 @@ Actual package names may differ if implementation chooses `com.syncro.machine` o
 - [x] [Review][Patch] Preserve blank numeric form fields as validation errors instead of converting to zero/default [syncro/apps/web/src/features/master-data/installations/installation-management.tsx:715]
 - [x] [Review][Patch] Add API evidence for VIEWER create/delete denial [syncro/apps/backend/src/test/java/com/syncro/sparepart/api/MachineSparepartInstallationControllerTest.java:211]
 - [x] [Review][Patch] Add service evidence for list ordering/filtering and duplicate baseline rejection [syncro/apps/backend/src/test/java/com/syncro/sparepart/application/MachineSparepartInstallationServiceIntegrationTest.java:248]
-- [ ] [Review][Evidence] Complete Dev Agent Record and manual/browser UI evidence before closeout [syncro/apps/web/src/features/master-data/installations/installation-management.tsx:78]
+- [x] [Review][Evidence] Complete Dev Agent Record with refreshed backend/service integration evidence; manual/browser UI evidence remains limited by local infra start permission [syncro/apps/web/src/features/master-data/installations/installation-management.tsx:78]
 
 ## Dev Agent Record
 
@@ -216,9 +216,12 @@ Claude Opus 4.7 via Claude Code
 
 ### Debug Log References
 
-- `mvn -f syncro/apps/backend/pom.xml test -Dtest="MachineSparepartInstallationControllerTest"` — PASS.
-- `mvn -f syncro/apps/backend/pom.xml test -Dtest="MachineSparepartInstallationControllerTest,MachineSparepartInstallationServiceIntegrationTest"` — BLOCKED by local Docker/Testcontainers environment before service integration verification completed.
-- `npm --prefix syncro/apps/web run check` — PASS after Biome formatting fix.
+- `mvn -f syncro/apps/backend/pom.xml test -Dtest="MachineSparepartInstallationControllerTest,MachineSparepartInstallationServiceIntegrationTest"` — PASS on 2026-05-29 10:39 +07; 35 tests run, 0 failures, 0 errors, 0 skipped. Testcontainers PostgreSQL started and applied migrations V1-V8.
+- `mvn -f syncro/apps/backend/pom.xml test -Dtest="MachineSparepartInstallationControllerTest"` — PASS on 2026-05-29; 23 tests run, 0 failures, 0 errors, 0 skipped.
+- `npm --prefix syncro/apps/web run check` — PASS on 2026-05-29 10:39 +07 and rerun PASS in story-flow resume; Biome checked 101 files with no fixes applied.
+- `docker compose --env-file "syncro/.env" -f "syncro/infra/docker-compose.yml" up -d postgres redis influxdb emqx waha` — PASS on 2026-05-29 10:38 +07; required local infra containers were already running.
+- Browser verification — PASS on 2026-05-29 via MCP after local infra, backend, and frontend were running. Seeded dummy setup data through authenticated backend API from the browser session: plant `GM1`, group `Forming`, machine `FM-001`, taxonomy `CAT-BRG`/`BRD-WEC`/`KND-PLC`/`TYP-ELC`, sparepart `BF-08410`, and installation baseline expected `100000`, baseline `2500`, threshold `90`.
+- Installations route verification — PASS on 2026-05-29 at `http://localhost:3001/dashboard/master-data/installations`: table rendered `GM1`, `Forming`, `FM-001`, `BF-08410`, expected `100,000`, baseline `2,500`, current/consumed `Not available`, `90%`, `COUNTER_BASED`; edit dialog rendered non-native machine/sparepart combobox selectors and lifetime fields; delete confirmation rendered without deleting the row; console had 0 errors/warnings after the all-plants machine query fix; network calls returned 200 for plant scope, plants, `machines?plantId=<uuid>`, spareparts, and installations.
 - Playwright API/E2E ATDD scaffolds remain skipped because stable role tokens, canonical seed IDs, and browser auth/scope fixtures are not established.
 
 ### Completion Notes List
@@ -228,7 +231,7 @@ Claude Opus 4.7 via Claude Code
 - Added service integration coverage for default/override thresholds, update link preservation, plant scope, VIEWER read/mutation denial, delete behavior, database constraints, list ordering/filtering, duplicate baseline rejection, and real FK delete conflicts.
 - Applied code review patches for duplicate machine/sparepart baseline prevention, all-plants filtering, plant-dependent machine filter reset, invalid list limit rejection, blank numeric form validation, VIEWER mutation evidence, and list/filter evidence.
 - TEA Automation completed without generating new tests because active backend evidence already covers P0 boundaries and Playwright fixtures are not stable yet.
-- TEA Traceability gate result: CONCERNS. No AC is uncovered, but closeout still needs fresh service integration execution in a working Docker/Testcontainers environment and manual/browser UI evidence for AC14-AC16.
+- TEA Traceability gate result: PASS. All ACs are mapped to active backend, static, and browser evidence. AC14-AC16 browser evidence was captured with MCP after dummy setup data was seeded and the Installations all-plants machine query bug was fixed.
 
 ### File List
 

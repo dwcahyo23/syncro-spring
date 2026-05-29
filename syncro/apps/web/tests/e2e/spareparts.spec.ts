@@ -252,11 +252,11 @@ function taxonomyItem(
 }
 
 async function setAuthUser(page: Page, role: Role) {
-  const authUser = JSON.stringify({
+  const authUser = {
     id: `user-${role.toLowerCase()}`,
     loginIdentifier: `${role.toLowerCase()}@syncro.local`,
     applicationRole: role,
-  });
+  };
 
   await page.context().addCookies(
     ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"].flatMap((url) => [
@@ -267,11 +267,21 @@ async function setAuthUser(page: Page, role: Role) {
       },
       {
         name: "syncro_auth_user",
-        value: authUser,
+        value: encodeURIComponent(JSON.stringify(authUser)),
         url,
       },
     ]),
   );
+  await page.route("**/api/v1/auth/plant-scope", async (route) => {
+    await route.fulfill(
+      jsonResponse({
+        mode: "UNRESTRICTED",
+        availablePlants: [{ id: "plant-main", code: "PLT-MAIN", name: "Main Plant" }],
+        defaultPlantId: "plant-main",
+        emptyReason: null,
+      }),
+    );
+  });
 }
 
 async function mockTaxonomy(page: Page, items = taxonomyItems) {

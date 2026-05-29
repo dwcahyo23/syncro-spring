@@ -67,6 +67,7 @@ type InstallationForm = {
 };
 
 const ALL = "__all__";
+const ALL_PLANTS = "all";
 const EMPTY_FORM: InstallationForm = {
   machineId: "",
   sparepartId: "",
@@ -83,11 +84,13 @@ export function InstallationManagement() {
   const queryClient = useQueryClient();
   const isAssignedEmpty = scope?.mode === "EMPTY";
   const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGE";
-  const [filters, setFilters] = useState<Filters>({ plantId: activePlantId ?? undefined });
+  const [filters, setFilters] = useState<Filters>({ plantId: normalizePlantId(activePlantId) });
   const plants = useListPlants({ query: { enabled: Boolean(scope) && !isAssignedEmpty } });
   const plantItems = plants.data?.data.items ?? [];
   const availablePlants = useMemo(() => permittedPlants(plantItems, scope), [plantItems, scope]);
-  const machinePlantId = filters.plantId || activePlantId || availablePlants[0]?.id || "";
+  const selectedPlantId = normalizePlantId(activePlantId);
+  const filterPlantId = normalizePlantId(filters.plantId);
+  const machinePlantId = filterPlantId ?? selectedPlantId ?? availablePlants[0]?.id ?? "";
   const machines = useListMachines(
     { plantId: machinePlantId || undefined },
     {
@@ -101,7 +104,7 @@ export function InstallationManagement() {
   const machineItems = machines.data?.data.items ?? [];
   const sparepartItems = spareparts.data?.data.items ?? [];
   const installationParams = {
-    plantId: filters.plantId,
+    plantId: filterPlantId,
     machineId: machineItems.some((machine) => machine.id === filters.machineId) ? filters.machineId : undefined,
     sparepartId: filters.sparepartId,
     limit: 100,
@@ -710,6 +713,10 @@ function InstallationSkeleton() {
       <Skeleton className="h-12 w-full" />
     </div>
   );
+}
+
+function normalizePlantId(plantId: string | undefined) {
+  return plantId === ALL || plantId === ALL_PLANTS ? undefined : plantId;
 }
 
 function permittedPlants(plants: PlantView[], scope: ReturnType<typeof usePlantScope>["scope"]) {
