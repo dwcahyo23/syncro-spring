@@ -1,0 +1,236 @@
+package com.syncro.sparepart.application;
+
+import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
+import com.syncro.auth.application.PlantScopeService;
+import com.syncro.auth.domain.ApplicationRole;
+import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
+import com.syncro.auth.infrastructure.PlantRepository;
+import com.syncro.machine.infrastructure.MachineEntity;
+import com.syncro.machine.infrastructure.MachineRepository;
+import com.syncro.sparepart.infrastructure.MachineSparepartInstallationEntity;
+import com.syncro.sparepart.infrastructure.MachineSparepartInstallationRepository;
+import com.syncro.sparepart.infrastructure.SparepartEntity;
+import com.syncro.sparepart.infrastructure.SparepartRepository;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Limit;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class MachineSparepartInstallationService {
+  private static final int DEFAULT_THRESHOLD_PERCENTAGE = 90;
+
+  private final MachineSparepartInstallationRepository installations;
+  private final MachineRepository machines;
+  private final SparepartRepository spareparts;
+  private final PlantRepository plants;
+  private final PlantScopeService plantScopes;
+  private final AuthUserPlantAssignmentRepository assignments;
+  private final Clock clock;
+
+  public MachineSparepartInstallationService(MachineSparepartInstallationRepository installations,
+      MachineRepository machines, SparepartRepository spareparts, PlantRepository plants,
+      PlantScopeService plantScopes, AuthUserPlantAssignmentRepository assignments, Clock clock) {
+    this.installations = installations;
+    this.machines = machines;
+    this.spareparts = spareparts;
+    this.plants = plants;
+    this.plantScopes = plantScopes;
+    this.assignments = assignments;
+    this.clock = clock;
+  }
+
+  @Transactional(readOnly = true)
+  public List<InstallationView> list(AuthenticatedUser user, InstallationFilters filters) {
+    var superAdmin = user.applicationRole() == ApplicationRole.SUPER_ADMIN;
+    validateFilterScope(user, filters, superAdmin);
+    var result = superAdmin
+        ? installations.findAllUnscoped(filters.machineId(), filters.sparepartId(), filters.plantId(), filters.machineGroupId(), Limit.of(filters.limit()))
+        : installations.findAllScoped(scopedPlantIds(user), filters.machineId(), filters.sparepartId(), filters.plantId(), filters.machineGroupId(), Limit.of(filters.limit()));
+    return result.stream().map(this::toView).toList();
+  }
+
+  @Transactional(readOnly = true)
+  public InstallationView get(AuthenticatedUser user, UUID installationId) {
+    return toView(findScoped(user, installationId));
+  }
+
+  @Transactional
+  public InstallationView create(AuthenticatedUser user, InstallationCommand command) {
+    requireMutationRole(user);
+    var normalized = normalize(command);
+    var machine = resolveMachine(user, normalized.machineId());
+    var sparepart = resolveSparepart(normalized.sparepartId());
+    var now = Instant.now(clock);
+    return toView(save(new MachineSparepartInstallationEntity(UUID.randomUUID(), machine, sparepart,
+        normalized.expectedProductionCount(), normalized.baselineCounter(), normalized.thresholdPercentage(),
+        now, now, now)));
+  }
+
+  @Transactional
+  public InstallationView update(AuthenticatedUser user, UUID installationId, InstallationUpdateCommand command) {
+    requireMutationRole(user);
+    var installation = findScoped(user, installationId);
+    var normalized = normalize(command);
+    installation.update(normalized.expectedProductionCount(), normalized.baselineCounter(), normalized.thresholdPercentage(), Instant.now(clock));
+    return toView(save(installation));
+  }
+
+  @Transactional
+  public void delete(AuthenticatedUser user, UUID installationId) {
+    requireMutationRole(user);
+    var installation = findScoped(user, installationId);
+    try {
+      installations.delete(installation);
+      installations.flush();
+    } catch (DataIntegrityViolationException exception) {
+      throw new InstallationDataIntegrityException();
+    }
+  }
+
+  private void validateFilterScope(AuthenticatedUser user, InstallationFilters filters, boolean superAdmin) {
+    if (!superAdmin) {
+      if (filters.plantId() != null) {
+        plantScopes.requirePlantAccess(user, filters.plantId());
+      }
+      if (filters.machineId() != null) {
+        resolveMachine(user, filters.machineId());
+      }
+      var scopedPlantIds = scopedPlantIds(user);
+      if (scopedPlantIds.isEmpty()) {
+        throw new InstallationPlantScopeEmptyException();
+      }
+    } else if (filters.plantId() != null && !plants.existsById(filters.plantId())) {
+      throw new InstallationPlantNotFoundException();
+    }
+  }
+
+  private MachineEntity resolveMachine(AuthenticatedUser user, UUID machineId) {
+    var machine = machines.findByIdWithPlantAndGroup(machineId).orElseThrow(MachineForInstallationNotFoundException::new);
+    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN) {
+      plantScopes.requirePlantAccess(user, machine.getPlant().getId());
+    }
+    return machine;
+  }
+
+  private SparepartEntity resolveSparepart(UUID sparepartId) {
+    return spareparts.findById(sparepartId).orElseThrow(SparepartForInstallationNotFoundException::new);
+  }
+
+  private MachineSparepartInstallationEntity findScoped(AuthenticatedUser user, UUID installationId) {
+    var installation = installations.findByIdWithDetails(installationId).orElseThrow(InstallationNotFoundException::new);
+    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN) {
+      plantScopes.requirePlantAccess(user, installation.getMachine().getPlant().getId());
+    }
+    return installation;
+  }
+
+  private void requireMutationRole(AuthenticatedUser user) {
+    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN && user.applicationRole() != ApplicationRole.MANAGE) {
+      throw new InstallationMutationForbiddenException();
+    }
+  }
+
+  private MachineSparepartInstallationEntity save(MachineSparepartInstallationEntity installation) {
+    try {
+      return installations.saveAndFlush(installation);
+    } catch (DataIntegrityViolationException exception) {
+      throw new InstallationDataIntegrityException();
+    }
+  }
+
+  private List<UUID> scopedPlantIds(AuthenticatedUser user) {
+    return assignments.findByAuthUserId(UUID.fromString(user.id())).stream()
+        .map(assignment -> assignment.getPlantId())
+        .toList();
+  }
+
+  private InstallationCommand normalize(InstallationCommand command) {
+    if (command.machineId() == null || command.sparepartId() == null) {
+      throw new InstallationValidationException();
+    }
+    return new InstallationCommand(command.machineId(), command.sparepartId(), positive(command.expectedProductionCount()),
+        nonNegative(command.baselineCounter()), threshold(command.thresholdPercentage()));
+  }
+
+  private InstallationUpdateCommand normalize(InstallationUpdateCommand command) {
+    return new InstallationUpdateCommand(positive(command.expectedProductionCount()), nonNegative(command.baselineCounter()),
+        threshold(command.thresholdPercentage()));
+  }
+
+  private long positive(Long value) {
+    if (value == null || value <= 0) {
+      throw new InstallationValidationException();
+    }
+    return value;
+  }
+
+  private long nonNegative(Long value) {
+    if (value == null || value < 0) {
+      throw new InstallationValidationException();
+    }
+    return value;
+  }
+
+  private int threshold(Integer value) {
+    var threshold = value == null ? DEFAULT_THRESHOLD_PERCENTAGE : value;
+    if (threshold < 1 || threshold > 100) {
+      throw new InstallationValidationException();
+    }
+    return threshold;
+  }
+
+  private InstallationView toView(MachineSparepartInstallationEntity installation) {
+    var machine = installation.getMachine();
+    var plant = machine.getPlant();
+    var machineGroup = machine.getMachineGroup();
+    var sparepart = installation.getSparepart();
+    return new InstallationView(installation.getId(), machine.getId(), machine.getCode(), machine.getName(), plant.getId(),
+        plant.getCode(), plant.getName(), machineGroup.getId(), machineGroup.getName(), sparepart.getId(), sparepart.getCode(),
+        sparepart.getName(), new TaxonomyRefView(sparepart.getCategory().getId(), sparepart.getCategory().getCode(), sparepart.getCategory().getName()),
+        new TaxonomyRefView(sparepart.getBrand().getId(), sparepart.getBrand().getCode(), sparepart.getBrand().getName()),
+        new TaxonomyRefView(sparepart.getKind().getId(), sparepart.getKind().getCode(), sparepart.getKind().getName()),
+        new TaxonomyRefView(sparepart.getType().getId(), sparepart.getType().getCode(), sparepart.getType().getName()),
+        installation.getExpectedProductionCount(), installation.getBaselineCounter(), null, null, null,
+        installation.getThresholdPercentage(), "COUNTER_BASED", installation.getInstalledAt(), installation.getCreatedAt(), installation.getUpdatedAt());
+  }
+
+  public record InstallationCommand(UUID machineId, UUID sparepartId, Long expectedProductionCount, Long baselineCounter,
+      Integer thresholdPercentage) {
+  }
+
+  public record InstallationUpdateCommand(Long expectedProductionCount, Long baselineCounter, Integer thresholdPercentage) {
+  }
+
+  public record InstallationFilters(UUID machineId, UUID sparepartId, UUID plantId, UUID machineGroupId, int limit) {
+    public InstallationFilters {
+      if (limit < 1 || limit > 200) {
+        throw new InstallationValidationException();
+      }
+    }
+  }
+
+  public record TaxonomyRefView(UUID id, String code, String name) {
+  }
+
+  public record InstallationView(UUID id, UUID machineId, String machineCode, String machineName, UUID plantId,
+      String plantCode, String plantName, UUID machineGroupId, String machineGroupName, UUID sparepartId,
+      String sparepartCode, String sparepartName, TaxonomyRefView category, TaxonomyRefView brand,
+      TaxonomyRefView kind, TaxonomyRefView type, long expectedProductionCount, long baselineCounter,
+      Long currentCount, Long consumedProductionCount, java.math.BigDecimal consumedPercentage, int thresholdPercentage,
+      String calculationBasis, Instant installedAt, Instant createdAt, Instant updatedAt) {
+  }
+
+  public static class InstallationDataIntegrityException extends RuntimeException { }
+  public static class InstallationMutationForbiddenException extends RuntimeException { }
+  public static class InstallationNotFoundException extends RuntimeException { }
+  public static class InstallationPlantNotFoundException extends RuntimeException { }
+  public static class InstallationPlantScopeEmptyException extends RuntimeException { }
+  public static class InstallationValidationException extends RuntimeException { }
+  public static class MachineForInstallationNotFoundException extends RuntimeException { }
+  public static class SparepartForInstallationNotFoundException extends RuntimeException { }
+}

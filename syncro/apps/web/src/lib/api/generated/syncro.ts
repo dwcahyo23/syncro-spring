@@ -27,7 +27,12 @@ import type {
 import type {
   AuthUserView,
   Health200,
+  InstallationListResponse,
+  InstallationRequest,
+  InstallationUpdateRequest,
+  InstallationView,
   ListMachineGroupsParams,
+  ListMachineSparepartInstallationsParams,
   ListMachinesParams,
   ListSparepartTaxonomiesParams,
   ListSparepartsParams,
@@ -1455,6 +1460,360 @@ export const useDeleteMachine = <TError = void,
       return useMutation(getDeleteMachineMutationOptions(options), queryClient);
     }
 
+export type getMachineSparepartInstallationResponse200 = {
+  data: InstallationView
+  status: 200
+}
+
+export type getMachineSparepartInstallationResponse400 = {
+  data: InstallationView
+  status: 400
+}
+
+export type getMachineSparepartInstallationResponse401 = {
+  data: InstallationView
+  status: 401
+}
+
+export type getMachineSparepartInstallationResponse403 = {
+  data: InstallationView
+  status: 403
+}
+
+export type getMachineSparepartInstallationResponse404 = {
+  data: InstallationView
+  status: 404
+}
+
+export type getMachineSparepartInstallationResponseSuccess = (getMachineSparepartInstallationResponse200) & {
+  headers: Headers;
+};
+export type getMachineSparepartInstallationResponseError = (getMachineSparepartInstallationResponse400 | getMachineSparepartInstallationResponse401 | getMachineSparepartInstallationResponse403 | getMachineSparepartInstallationResponse404) & {
+  headers: Headers;
+};
+
+export type getMachineSparepartInstallationResponse = (getMachineSparepartInstallationResponseSuccess | getMachineSparepartInstallationResponseError)
+
+export const getGetMachineSparepartInstallationUrl = (installationId: string,) => {
+
+
+
+
+  return `/api/v1/machine-sparepart-installations/${installationId}`
+}
+
+/**
+ * @summary Get machine sparepart installation
+ */
+export const getMachineSparepartInstallation = async (installationId: string, options?: RequestInit): Promise<getMachineSparepartInstallationResponse> => {
+
+  return syncroFetch<getMachineSparepartInstallationResponse>(getGetMachineSparepartInstallationUrl(installationId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMachineSparepartInstallationQueryKey = (installationId: string,) => {
+    return [
+    `/api/v1/machine-sparepart-installations/${installationId}`
+    ] as const;
+    }
+
+
+export const getGetMachineSparepartInstallationQueryOptions = <TData = Awaited<ReturnType<typeof getMachineSparepartInstallation>>, TError = InstallationView>(installationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMachineSparepartInstallation>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMachineSparepartInstallationQueryKey(installationId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMachineSparepartInstallation>>> = ({ signal }) => getMachineSparepartInstallation(installationId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: installationId !== null && installationId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMachineSparepartInstallation>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetMachineSparepartInstallationQueryResult = NonNullable<Awaited<ReturnType<typeof getMachineSparepartInstallation>>>
+export type GetMachineSparepartInstallationQueryError = InstallationView
+
+
+export function useGetMachineSparepartInstallation<TData = Awaited<ReturnType<typeof getMachineSparepartInstallation>>, TError = InstallationView>(
+ installationId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMachineSparepartInstallation>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMachineSparepartInstallation>>,
+          TError,
+          Awaited<ReturnType<typeof getMachineSparepartInstallation>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMachineSparepartInstallation<TData = Awaited<ReturnType<typeof getMachineSparepartInstallation>>, TError = InstallationView>(
+ installationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMachineSparepartInstallation>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMachineSparepartInstallation>>,
+          TError,
+          Awaited<ReturnType<typeof getMachineSparepartInstallation>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMachineSparepartInstallation<TData = Awaited<ReturnType<typeof getMachineSparepartInstallation>>, TError = InstallationView>(
+ installationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMachineSparepartInstallation>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get machine sparepart installation
+ */
+
+export function useGetMachineSparepartInstallation<TData = Awaited<ReturnType<typeof getMachineSparepartInstallation>>, TError = InstallationView>(
+ installationId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMachineSparepartInstallation>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetMachineSparepartInstallationQueryOptions(installationId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export type updateMachineSparepartInstallationResponse200 = {
+  data: InstallationView
+  status: 200
+}
+
+export type updateMachineSparepartInstallationResponse400 = {
+  data: InstallationView
+  status: 400
+}
+
+export type updateMachineSparepartInstallationResponse401 = {
+  data: InstallationView
+  status: 401
+}
+
+export type updateMachineSparepartInstallationResponse403 = {
+  data: InstallationView
+  status: 403
+}
+
+export type updateMachineSparepartInstallationResponse404 = {
+  data: InstallationView
+  status: 404
+}
+
+export type updateMachineSparepartInstallationResponse409 = {
+  data: InstallationView
+  status: 409
+}
+
+export type updateMachineSparepartInstallationResponseSuccess = (updateMachineSparepartInstallationResponse200) & {
+  headers: Headers;
+};
+export type updateMachineSparepartInstallationResponseError = (updateMachineSparepartInstallationResponse400 | updateMachineSparepartInstallationResponse401 | updateMachineSparepartInstallationResponse403 | updateMachineSparepartInstallationResponse404 | updateMachineSparepartInstallationResponse409) & {
+  headers: Headers;
+};
+
+export type updateMachineSparepartInstallationResponse = (updateMachineSparepartInstallationResponseSuccess | updateMachineSparepartInstallationResponseError)
+
+export const getUpdateMachineSparepartInstallationUrl = (installationId: string,) => {
+
+
+
+
+  return `/api/v1/machine-sparepart-installations/${installationId}`
+}
+
+/**
+ * @summary Update machine sparepart installation
+ */
+export const updateMachineSparepartInstallation = async (installationId: string,
+    installationUpdateRequest: InstallationUpdateRequest, options?: RequestInit): Promise<updateMachineSparepartInstallationResponse> => {
+
+  return syncroFetch<updateMachineSparepartInstallationResponse>(getUpdateMachineSparepartInstallationUrl(installationId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(installationUpdateRequest)
+  }
+);}
+
+
+
+
+export const getUpdateMachineSparepartInstallationMutationOptions = <TError = InstallationView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMachineSparepartInstallation>>, TError,{installationId: string;data: InstallationUpdateRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMachineSparepartInstallation>>, TError,{installationId: string;data: InstallationUpdateRequest}, TContext> => {
+
+const mutationKey = ['updateMachineSparepartInstallation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMachineSparepartInstallation>>, {installationId: string;data: InstallationUpdateRequest}> = (props) => {
+          const {installationId,data} = props ?? {};
+
+          return  updateMachineSparepartInstallation(installationId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMachineSparepartInstallationMutationResult = NonNullable<Awaited<ReturnType<typeof updateMachineSparepartInstallation>>>
+    export type UpdateMachineSparepartInstallationMutationBody = InstallationUpdateRequest
+    export type UpdateMachineSparepartInstallationMutationError = InstallationView
+
+    /**
+ * @summary Update machine sparepart installation
+ */
+export const useUpdateMachineSparepartInstallation = <TError = InstallationView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMachineSparepartInstallation>>, TError,{installationId: string;data: InstallationUpdateRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateMachineSparepartInstallation>>,
+        TError,
+        {installationId: string;data: InstallationUpdateRequest},
+        TContext
+      > => {
+      return useMutation(getUpdateMachineSparepartInstallationMutationOptions(options), queryClient);
+    }
+
+export type deleteMachineSparepartInstallationResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteMachineSparepartInstallationResponse400 = {
+  data: void
+  status: 400
+}
+
+export type deleteMachineSparepartInstallationResponse401 = {
+  data: void
+  status: 401
+}
+
+export type deleteMachineSparepartInstallationResponse403 = {
+  data: void
+  status: 403
+}
+
+export type deleteMachineSparepartInstallationResponse404 = {
+  data: void
+  status: 404
+}
+
+export type deleteMachineSparepartInstallationResponse409 = {
+  data: void
+  status: 409
+}
+
+export type deleteMachineSparepartInstallationResponseSuccess = (deleteMachineSparepartInstallationResponse204) & {
+  headers: Headers;
+};
+export type deleteMachineSparepartInstallationResponseError = (deleteMachineSparepartInstallationResponse400 | deleteMachineSparepartInstallationResponse401 | deleteMachineSparepartInstallationResponse403 | deleteMachineSparepartInstallationResponse404 | deleteMachineSparepartInstallationResponse409) & {
+  headers: Headers;
+};
+
+export type deleteMachineSparepartInstallationResponse = (deleteMachineSparepartInstallationResponseSuccess | deleteMachineSparepartInstallationResponseError)
+
+export const getDeleteMachineSparepartInstallationUrl = (installationId: string,) => {
+
+
+
+
+  return `/api/v1/machine-sparepart-installations/${installationId}`
+}
+
+/**
+ * @summary Delete machine sparepart installation
+ */
+export const deleteMachineSparepartInstallation = async (installationId: string, options?: RequestInit): Promise<deleteMachineSparepartInstallationResponse> => {
+
+  return syncroFetch<deleteMachineSparepartInstallationResponse>(getDeleteMachineSparepartInstallationUrl(installationId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteMachineSparepartInstallationMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMachineSparepartInstallation>>, TError,{installationId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteMachineSparepartInstallation>>, TError,{installationId: string}, TContext> => {
+
+const mutationKey = ['deleteMachineSparepartInstallation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMachineSparepartInstallation>>, {installationId: string}> = (props) => {
+          const {installationId} = props ?? {};
+
+          return  deleteMachineSparepartInstallation(installationId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteMachineSparepartInstallationMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMachineSparepartInstallation>>>
+
+    export type DeleteMachineSparepartInstallationMutationError = void
+
+    /**
+ * @summary Delete machine sparepart installation
+ */
+export const useDeleteMachineSparepartInstallation = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMachineSparepartInstallation>>, TError,{installationId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteMachineSparepartInstallation>>,
+        TError,
+        {installationId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteMachineSparepartInstallationMutationOptions(options), queryClient);
+    }
+
 export type getMachineGroupResponse200 = {
   data: MachineGroupView
   status: 200
@@ -2754,6 +3113,247 @@ export const useCreateMachine = <TError = MachineView,
         TContext
       > => {
       return useMutation(getCreateMachineMutationOptions(options), queryClient);
+    }
+
+export type listMachineSparepartInstallationsResponse200 = {
+  data: InstallationListResponse
+  status: 200
+}
+
+export type listMachineSparepartInstallationsResponse400 = {
+  data: InstallationListResponse
+  status: 400
+}
+
+export type listMachineSparepartInstallationsResponse401 = {
+  data: InstallationListResponse
+  status: 401
+}
+
+export type listMachineSparepartInstallationsResponse403 = {
+  data: InstallationListResponse
+  status: 403
+}
+
+export type listMachineSparepartInstallationsResponseSuccess = (listMachineSparepartInstallationsResponse200) & {
+  headers: Headers;
+};
+export type listMachineSparepartInstallationsResponseError = (listMachineSparepartInstallationsResponse400 | listMachineSparepartInstallationsResponse401 | listMachineSparepartInstallationsResponse403) & {
+  headers: Headers;
+};
+
+export type listMachineSparepartInstallationsResponse = (listMachineSparepartInstallationsResponseSuccess | listMachineSparepartInstallationsResponseError)
+
+export const getListMachineSparepartInstallationsUrl = (params?: ListMachineSparepartInstallationsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/machine-sparepart-installations?${stringifiedParams}` : `/api/v1/machine-sparepart-installations`
+}
+
+/**
+ * @summary List machine sparepart installations
+ */
+export const listMachineSparepartInstallations = async (params?: ListMachineSparepartInstallationsParams, options?: RequestInit): Promise<listMachineSparepartInstallationsResponse> => {
+
+  return syncroFetch<listMachineSparepartInstallationsResponse>(getListMachineSparepartInstallationsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMachineSparepartInstallationsQueryKey = (params?: ListMachineSparepartInstallationsParams,) => {
+    return [
+    `/api/v1/machine-sparepart-installations`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListMachineSparepartInstallationsQueryOptions = <TData = Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError = InstallationListResponse>(params?: ListMachineSparepartInstallationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMachineSparepartInstallationsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMachineSparepartInstallations>>> = ({ signal }) => listMachineSparepartInstallations(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListMachineSparepartInstallationsQueryResult = NonNullable<Awaited<ReturnType<typeof listMachineSparepartInstallations>>>
+export type ListMachineSparepartInstallationsQueryError = InstallationListResponse
+
+
+export function useListMachineSparepartInstallations<TData = Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError = InstallationListResponse>(
+ params: undefined |  ListMachineSparepartInstallationsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listMachineSparepartInstallations>>,
+          TError,
+          Awaited<ReturnType<typeof listMachineSparepartInstallations>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListMachineSparepartInstallations<TData = Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError = InstallationListResponse>(
+ params?: ListMachineSparepartInstallationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listMachineSparepartInstallations>>,
+          TError,
+          Awaited<ReturnType<typeof listMachineSparepartInstallations>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListMachineSparepartInstallations<TData = Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError = InstallationListResponse>(
+ params?: ListMachineSparepartInstallationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List machine sparepart installations
+ */
+
+export function useListMachineSparepartInstallations<TData = Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError = InstallationListResponse>(
+ params?: ListMachineSparepartInstallationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListMachineSparepartInstallationsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export type createMachineSparepartInstallationResponse201 = {
+  data: InstallationView
+  status: 201
+}
+
+export type createMachineSparepartInstallationResponse400 = {
+  data: InstallationView
+  status: 400
+}
+
+export type createMachineSparepartInstallationResponse401 = {
+  data: InstallationView
+  status: 401
+}
+
+export type createMachineSparepartInstallationResponse403 = {
+  data: InstallationView
+  status: 403
+}
+
+export type createMachineSparepartInstallationResponse409 = {
+  data: InstallationView
+  status: 409
+}
+
+export type createMachineSparepartInstallationResponseSuccess = (createMachineSparepartInstallationResponse201) & {
+  headers: Headers;
+};
+export type createMachineSparepartInstallationResponseError = (createMachineSparepartInstallationResponse400 | createMachineSparepartInstallationResponse401 | createMachineSparepartInstallationResponse403 | createMachineSparepartInstallationResponse409) & {
+  headers: Headers;
+};
+
+export type createMachineSparepartInstallationResponse = (createMachineSparepartInstallationResponseSuccess | createMachineSparepartInstallationResponseError)
+
+export const getCreateMachineSparepartInstallationUrl = () => {
+
+
+
+
+  return `/api/v1/machine-sparepart-installations`
+}
+
+/**
+ * @summary Create machine sparepart installation
+ */
+export const createMachineSparepartInstallation = async (installationRequest: InstallationRequest, options?: RequestInit): Promise<createMachineSparepartInstallationResponse> => {
+
+  return syncroFetch<createMachineSparepartInstallationResponse>(getCreateMachineSparepartInstallationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(installationRequest)
+  }
+);}
+
+
+
+
+export const getCreateMachineSparepartInstallationMutationOptions = <TError = InstallationView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMachineSparepartInstallation>>, TError,{data: InstallationRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createMachineSparepartInstallation>>, TError,{data: InstallationRequest}, TContext> => {
+
+const mutationKey = ['createMachineSparepartInstallation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createMachineSparepartInstallation>>, {data: InstallationRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createMachineSparepartInstallation(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateMachineSparepartInstallationMutationResult = NonNullable<Awaited<ReturnType<typeof createMachineSparepartInstallation>>>
+    export type CreateMachineSparepartInstallationMutationBody = InstallationRequest
+    export type CreateMachineSparepartInstallationMutationError = InstallationView
+
+    /**
+ * @summary Create machine sparepart installation
+ */
+export const useCreateMachineSparepartInstallation = <TError = InstallationView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMachineSparepartInstallation>>, TError,{data: InstallationRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createMachineSparepartInstallation>>,
+        TError,
+        {data: InstallationRequest},
+        TContext
+      > => {
+      return useMutation(getCreateMachineSparepartInstallationMutationOptions(options), queryClient);
     }
 
 export type listMachineGroupsResponse200 = {
