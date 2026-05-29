@@ -141,6 +141,16 @@ Preferred story automation commands:
 - Resume automation: `/syncro-story-flow resume auto phase 4 tea`
 - Review-only pass: `/syncro-story-flow <story-id> review only`
 
+Preferred story correction commands:
+
+- Full story correction: `/syncro-correct-story <story-id> auto phase 4 tea blind inspection proxy user`
+- Broad UI/UX correction: `/syncro-correct-story <story-id> auto phase 4 tea blind inspection proxy user wds party mode "<correction signal>"`
+- Investigation-only correction: `/syncro-correct-story <story-id> investigate only blind inspection proxy user "<what feels wrong>"`
+- Resume correction: `/syncro-correct-story resume <story-id> auto tea blind inspection proxy user`
+- Review-only correction: `/syncro-correct-story <story-id> review only`
+
+Use `/syncro-correct-story` instead of advancing to the next story when a story is already started, in review, or marked done but has frontend, backend, UI/UX, responsiveness, overflow, workflow, domain-model, or test-evidence gaps. Treat planning artifacts as claims to verify, not the only source of truth; use MCP Playwright browser inspection for user-visible UI quality before declaring correction complete.
+
 ## Syncro Long-Run Automation Rules
 
 - Use PowerShell for Syncro commands on Windows.
