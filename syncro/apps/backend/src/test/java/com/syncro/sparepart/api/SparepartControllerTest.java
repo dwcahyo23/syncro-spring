@@ -24,6 +24,7 @@ import com.syncro.sparepart.application.SparepartService.SparepartDataIntegrityE
 import com.syncro.sparepart.application.SparepartService.SparepartMutationForbiddenException;
 import com.syncro.sparepart.application.SparepartService.SparepartNotFoundException;
 import com.syncro.sparepart.application.SparepartService.SparepartTaxonomyDimensionMismatchException;
+import com.syncro.sparepart.application.SparepartService.SparepartMachineRefView;
 import com.syncro.sparepart.application.SparepartService.SparepartTaxonomyRefView;
 import com.syncro.sparepart.application.SparepartService.SparepartListView;
 import com.syncro.sparepart.application.SparepartService.SparepartTaxonomyReferenceNotFoundException;
@@ -122,14 +123,15 @@ class SparepartControllerTest {
   @ParameterizedTest
   @DisplayName("2.5-API-004 P1 invalid sparepart requests return field errors")
   @ValueSource(strings = {
-      "{\"code\":\"\",\"name\":\"Wecon LX5 PLC\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
-      "{\"code\":\"PLC-WECON-LX5\",\"name\":\"\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
-      "{\"code\":null,\"name\":\"Wecon LX5 PLC\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
-      "{\"code\":\"PLC-WECON-LX5\",\"name\":null,\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
-      "{\"code\":\"PLC-WECON-LX5\",\"name\":\"Wecon LX5 PLC\",\"categoryId\":null,\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
-      "{\"code\":\"PLC-WECON-LX5\",\"name\":\"Wecon LX5 PLC\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":null,\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
-      "{\"code\":\"PLC-WECON-LX5\",\"name\":\"Wecon LX5 PLC\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":null,\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
-      "{\"code\":\"PLC-WECON-LX5\",\"name\":\"Wecon LX5 PLC\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":null}"
+      "{\"code\":\"\",\"name\":\"Wecon LX5 PLC\",\"machineId\":\"00000000-0000-0000-0000-000000000010\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
+      "{\"code\":\"PLC-WECON-LX5\",\"name\":\"\",\"machineId\":\"00000000-0000-0000-0000-000000000010\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
+      "{\"code\":null,\"name\":\"Wecon LX5 PLC\",\"machineId\":\"00000000-0000-0000-0000-000000000010\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
+      "{\"code\":\"PLC-WECON-LX5\",\"name\":null,\"machineId\":\"00000000-0000-0000-0000-000000000010\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
+      "{\"code\":\"PLC-WECON-LX5\",\"name\":\"Wecon LX5 PLC\",\"machineId\":null,\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
+      "{\"code\":\"PLC-WECON-LX5\",\"name\":\"Wecon LX5 PLC\",\"machineId\":\"00000000-0000-0000-0000-000000000010\",\"categoryId\":null,\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
+      "{\"code\":\"PLC-WECON-LX5\",\"name\":\"Wecon LX5 PLC\",\"machineId\":\"00000000-0000-0000-0000-000000000010\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":null,\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
+      "{\"code\":\"PLC-WECON-LX5\",\"name\":\"Wecon LX5 PLC\",\"machineId\":\"00000000-0000-0000-0000-000000000010\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":null,\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
+      "{\"code\":\"PLC-WECON-LX5\",\"name\":\"Wecon LX5 PLC\",\"machineId\":\"00000000-0000-0000-0000-000000000010\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":null}"
   })
   void invalidSparepartRequestReturnsFieldErrors(String payload) throws Exception {
     var user = user(ApplicationRole.MANAGE);
@@ -277,6 +279,17 @@ class SparepartControllerTest {
   }
 
   @Test
+  @DisplayName("2.R-API-002 P1 invalid sparepart taxonomy query UUID returns safe query error")
+  void invalidSparepartTaxonomyQueryUuidReturnsSafeQueryError() throws Exception {
+    var user = user(ApplicationRole.SUPER_ADMIN);
+
+    mockMvc.perform(get("/api/v1/spareparts").param("categoryId", "not-a-uuid").with(auth(user)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_QUERY_VALUE"))
+        .andExpect(jsonPath("$.message").value("Query value is invalid."));
+  }
+
+  @Test
   @DisplayName("2.5-API-013 P1 missing sparepart returns safe not-found error")
   void missingSparepartReturnsSafeNotFoundError() throws Exception {
     var user = user(ApplicationRole.SUPER_ADMIN);
@@ -304,7 +317,7 @@ class SparepartControllerTest {
 
   private static String payload(UUID categoryId, UUID brandId, UUID kindId, UUID typeId) {
     return """
-        {"code":"PLC-WECON-LX5","name":"Wecon LX5 PLC","categoryId":"%s","brandId":"%s","kindId":"%s","typeId":"%s"}
+        {"code":"PLC-WECON-LX5","name":"Wecon LX5 PLC","machineId":"00000000-0000-0000-0000-000000000010","categoryId":"%s","brandId":"%s","kindId":"%s","typeId":"%s"}
         """.formatted(categoryId, brandId, kindId, typeId);
   }
 
@@ -313,6 +326,13 @@ class SparepartControllerTest {
         sparepartId,
         "PLC-WECON-LX5",
         "Wecon LX5 PLC",
+        new SparepartMachineRefView(
+            UUID.fromString("00000000-0000-0000-0000-000000000010"),
+            "MCH-1",
+            "Machine 1",
+            UUID.fromString("00000000-0000-0000-0000-000000000011"),
+            "PLANT-1",
+            "Plant 1"),
         new SparepartTaxonomyRefView(categoryId, "ELEC", "Electric"),
         new SparepartTaxonomyRefView(brandId, "WECON", "Wecon"),
         new SparepartTaxonomyRefView(kindId, "PLC", "PLC"),

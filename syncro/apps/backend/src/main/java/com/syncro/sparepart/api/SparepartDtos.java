@@ -14,10 +14,20 @@ public final class SparepartDtos {
   public record SparepartRequest(
       @NotBlank @Size(max = 64) String code,
       @NotBlank @Size(max = 255) String name,
+      @NotNull UUID machineId,
       @NotNull UUID categoryId,
       @NotNull UUID brandId,
       @NotNull UUID kindId,
       @NotNull UUID typeId) {
+  }
+
+  public record SparepartMachineRefView(
+      UUID id,
+      String code,
+      String name,
+      UUID plantId,
+      String plantCode,
+      String plantName) {
   }
 
   public record SparepartTaxonomyRefView(
@@ -30,6 +40,7 @@ public final class SparepartDtos {
       UUID id,
       String code,
       String name,
+      SparepartMachineRefView machine,
       SparepartTaxonomyRefView category,
       SparepartTaxonomyRefView brand,
       SparepartTaxonomyRefView kind,

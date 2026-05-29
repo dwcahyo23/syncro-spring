@@ -17,6 +17,7 @@ export interface SparepartRequest {
      * @maxLength 255
      */
   name: string;
+  machineId: string;
   categoryId: string;
   brandId: string;
   kindId: string;

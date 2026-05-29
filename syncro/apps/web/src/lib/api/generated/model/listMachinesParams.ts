@@ -11,4 +11,9 @@ export type ListMachinesParams = {
 plantId?: string;
 machineGroupId?: string;
 status?: ListMachinesStatus;
+search?: string;
+limit?: number;
+page?: number;
+size?: number;
+sort?: string;
 };

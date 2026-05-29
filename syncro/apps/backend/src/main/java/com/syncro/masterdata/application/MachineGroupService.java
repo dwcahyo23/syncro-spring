@@ -9,13 +9,21 @@ import com.syncro.masterdata.infrastructure.MachineGroupRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class MachineGroupService {
+  private static final int DEFAULT_PAGE_SIZE = 100;
+  private static final int MAX_PAGE_SIZE = 200;
+  private static final Set<String> ALLOWED_SORTS = Set.of("name", "createdAt", "updatedAt");
+
   private final MachineGroupRepository machineGroups;
   private final PlantRepository plants;
   private final PlantScopeService plantScopes;
@@ -33,15 +41,23 @@ public class MachineGroupService {
   }
 
   @Transactional(readOnly = true)
-  public List<MachineGroupView> list(AuthenticatedUser user, UUID plantId) {
+  public MachineGroupListView list(AuthenticatedUser user, UUID plantId) {
+    return list(user, plantId, null, 0, DEFAULT_PAGE_SIZE, "name,asc");
+  }
+
+  @Transactional(readOnly = true)
+  public MachineGroupListView list(AuthenticatedUser user, UUID plantId, String search, int page, int size, String sort) {
     if (user.applicationRole() != ApplicationRole.SUPER_ADMIN) {
       plantScopes.requirePlantAccess(user, plantId);
     } else if (!plants.existsById(plantId)) {
       throw new PlantNotFoundForMachineGroupException();
     }
-    return machineGroups.findByPlantIdOrderByNameAsc(plantId).stream()
-        .map(this::toView)
-        .toList();
+    var normalizedPage = normalizePage(page);
+    var normalizedSize = normalizeSize(size);
+    var normalizedSort = normalizeSort(sort);
+    var result = machineGroups.search(plantId, normalizeSearch(search), PageRequest.of(normalizedPage, normalizedSize, normalizedSort));
+    return new MachineGroupListView(
+        result.stream().map(this::toView).toList(), result.getTotalElements(), normalizedPage, normalizedSize, sortName(normalizedSort));
   }
 
   @Transactional(readOnly = true)
@@ -127,6 +143,46 @@ public class MachineGroupService {
         || message.contains("uq_machine_groups_plant_id_lower_name");
   }
 
+  private String normalizeSearch(String search) {
+    if (search == null || search.isBlank()) {
+      return null;
+    }
+    var normalized = search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+    return "%" + normalized + "%";
+  }
+
+  private int normalizePage(int page) {
+    if (page < 0) {
+      throw new MachineGroupDataIntegrityException();
+    }
+    return page;
+  }
+
+  private int normalizeSize(int size) {
+    if (size < 1 || size > MAX_PAGE_SIZE) {
+      throw new MachineGroupDataIntegrityException();
+    }
+    return size;
+  }
+
+  private Sort normalizeSort(String sort) {
+    if (sort == null || sort.isBlank()) {
+      return Sort.by(Sort.Direction.ASC, "name");
+    }
+    var parts = sort.split(",", 2);
+    var property = parts[0].trim();
+    if (!ALLOWED_SORTS.contains(property)) {
+      throw new MachineGroupDataIntegrityException();
+    }
+    var direction = parts.length > 1 && "desc".equalsIgnoreCase(parts[1].trim()) ? Sort.Direction.DESC : Sort.Direction.ASC;
+    return Sort.by(direction, property);
+  }
+
+  private String sortName(Sort sort) {
+    var order = sort.iterator().next();
+    return order.getProperty() + "," + order.getDirection().name().toLowerCase(Locale.ROOT);
+  }
+
   private String normalizeName(String name) {
     return name.trim();
   }
@@ -154,6 +210,9 @@ public class MachineGroupService {
       String name,
       Instant createdAt,
       Instant updatedAt) {
+  }
+
+  public record MachineGroupListView(List<MachineGroupView> items, long totalElements, int page, int size, String sort) {
   }
 
   public static class DuplicateMachineGroupNameException extends RuntimeException {

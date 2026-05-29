@@ -8,7 +8,9 @@ import com.syncro.sparepart.infrastructure.SparepartTaxonomyRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -19,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class SparepartTaxonomyService {
   private static final String DUPLICATE_TAXONOMY_CODE_CONSTRAINT = "uq_sparepart_taxonomy_dimension_lower_code";
   private static final String DUPLICATE_TAXONOMY_NAME_CONSTRAINT = "uq_sparepart_taxonomy_dimension_lower_name";
+  private static final Set<String> CONTROLLED_CATEGORY_CODES = Set.of("ELECTRIC", "MECHANIC", "PNEUMATIC", "HYDRAULIC", "ELECTRONIC");
 
   private final SparepartTaxonomyRepository taxonomy;
   private final Clock clock;
@@ -30,9 +33,17 @@ public class SparepartTaxonomyService {
 
   @Transactional(readOnly = true)
   public List<SparepartTaxonomyView> list(AuthenticatedUser user, SparepartTaxonomyDimension dimension) {
+    return list(user, dimension, null);
+  }
+
+  @Transactional(readOnly = true)
+  public List<SparepartTaxonomyView> list(AuthenticatedUser user, SparepartTaxonomyDimension dimension, UUID categoryId) {
+    if (dimension == null && categoryId != null) {
+      throw new SparepartTaxonomyValidationException();
+    }
     var entries = dimension == null
         ? taxonomy.findAllByOrderByDimensionAscNameAsc()
-        : taxonomy.findByDimensionOrderByNameAsc(dimension);
+        : taxonomy.findByDimensionAndCategoryIdOrderByNameAsc(dimension, categoryId);
     return entries.stream().map(this::toView).toList();
   }
 
@@ -47,12 +58,14 @@ public class SparepartTaxonomyService {
     validateCommand(command);
     var code = normalizeCode(command.code());
     var name = normalizeName(command.name());
+    validateControlledCategory(command.dimension(), code);
+    var category = resolveCategory(command.dimension(), command.categoryId());
     if (taxonomy.existsByDimensionAndCodeIgnoreCase(command.dimension(), code)
         || taxonomy.existsByDimensionAndNameIgnoreCase(command.dimension(), name)) {
       throw new DuplicateSparepartTaxonomyException();
     }
     var now = Instant.now(clock);
-    return toView(save(new SparepartTaxonomyEntity(UUID.randomUUID(), command.dimension(), code, name, now, now)));
+    return toView(save(new SparepartTaxonomyEntity(UUID.randomUUID(), command.dimension(), code, name, category, now, now)));
   }
 
   @Transactional
@@ -65,12 +78,14 @@ public class SparepartTaxonomyService {
     }
     var code = normalizeCode(command.code());
     var name = normalizeName(command.name());
+    validateControlledCategory(command.dimension(), code);
+    var category = resolveCategory(command.dimension(), command.categoryId());
     var existingCode = taxonomy.findByDimensionAndCodeIgnoreCase(entry.getDimension(), code);
     var existingName = taxonomy.findByDimensionAndNameIgnoreCase(entry.getDimension(), name);
     if (isDifferentEntry(existingCode, taxonomyId) || isDifferentEntry(existingName, taxonomyId)) {
       throw new DuplicateSparepartTaxonomyException();
     }
-    entry.update(code, name, Instant.now(clock));
+    entry.update(code, name, category, Instant.now(clock));
     return toView(save(entry));
   }
 
@@ -102,6 +117,23 @@ public class SparepartTaxonomyService {
     }
     normalizeCode(command.code());
     normalizeName(command.name());
+  }
+
+  private SparepartTaxonomyEntity resolveCategory(SparepartTaxonomyDimension dimension, UUID categoryId) {
+    if (dimension == SparepartTaxonomyDimension.CATEGORY) {
+      if (categoryId != null) {
+        throw new SparepartTaxonomyValidationException();
+      }
+      return null;
+    }
+    if (categoryId == null) {
+      throw new SparepartTaxonomyValidationException();
+    }
+    var category = find(categoryId);
+    if (category.getDimension() != SparepartTaxonomyDimension.CATEGORY) {
+      throw new SparepartTaxonomyValidationException();
+    }
+    return category;
   }
 
   private boolean isDifferentEntry(Optional<SparepartTaxonomyEntity> existing, UUID taxonomyId) {
@@ -136,11 +168,17 @@ public class SparepartTaxonomyService {
     if (code == null) {
       throw new SparepartTaxonomyValidationException();
     }
-    var trimmed = code.trim();
+    var trimmed = code.trim().toUpperCase(Locale.ROOT);
     if (trimmed.isEmpty() || trimmed.length() > 64) {
       throw new SparepartTaxonomyValidationException();
     }
     return trimmed;
+  }
+
+  private void validateControlledCategory(SparepartTaxonomyDimension dimension, String code) {
+    if (dimension == SparepartTaxonomyDimension.CATEGORY && !CONTROLLED_CATEGORY_CODES.contains(code)) {
+      throw new SparepartTaxonomyValidationException();
+    }
   }
 
   private String normalizeName(String name) {
@@ -156,10 +194,16 @@ public class SparepartTaxonomyService {
 
   private SparepartTaxonomyView toView(SparepartTaxonomyEntity entry) {
     return new SparepartTaxonomyView(
-        entry.getId(), entry.getDimension(), entry.getCode(), entry.getName(), entry.getCreatedAt(), entry.getUpdatedAt());
+        entry.getId(),
+        entry.getDimension(),
+        entry.getCode(),
+        entry.getName(),
+        entry.getCategory() == null ? null : entry.getCategory().getId(),
+        entry.getCreatedAt(),
+        entry.getUpdatedAt());
   }
 
-  public record SparepartTaxonomyCommand(SparepartTaxonomyDimension dimension, String code, String name) {
+  public record SparepartTaxonomyCommand(SparepartTaxonomyDimension dimension, String code, String name, UUID categoryId) {
   }
 
   public record SparepartTaxonomyView(
@@ -167,6 +211,7 @@ public class SparepartTaxonomyService {
       SparepartTaxonomyDimension dimension,
       String code,
       String name,
+      UUID categoryId,
       Instant createdAt,
       Instant updatedAt) {
   }

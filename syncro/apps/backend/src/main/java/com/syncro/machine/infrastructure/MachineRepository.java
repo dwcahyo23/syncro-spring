@@ -4,6 +4,8 @@ import com.syncro.machine.domain.MachineStatus;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,12 +18,14 @@ public interface MachineRepository extends JpaRepository<MachineEntity, UUID> {
       where (:plantId is null or plant.id = :plantId)
         and (:machineGroupId is null or machineGroup.id = :machineGroupId)
         and (:status is null or machine.status = :status)
-      order by plant.code asc, machine.code asc
+        and (:search is null or lower(machine.code) like :search or lower(machine.name) like :search or lower(plant.code) like :search or lower(plant.name) like :search)
       """)
-  List<MachineEntity> findAllUnscoped(
+  Page<MachineEntity> findAllUnscoped(
       @Param("plantId") UUID plantId,
       @Param("machineGroupId") UUID machineGroupId,
-      @Param("status") MachineStatus status);
+      @Param("status") MachineStatus status,
+      @Param("search") String search,
+      Pageable pageable);
 
   @Query("""
       select machine from MachineEntity machine
@@ -31,13 +35,15 @@ public interface MachineRepository extends JpaRepository<MachineEntity, UUID> {
         and (:plantId is null or plant.id = :plantId)
         and (:machineGroupId is null or machineGroup.id = :machineGroupId)
         and (:status is null or machine.status = :status)
-      order by plant.code asc, machine.code asc
+        and (:search is null or lower(machine.code) like :search or lower(machine.name) like :search or lower(plant.code) like :search or lower(plant.name) like :search)
       """)
-  List<MachineEntity> findAllScoped(
+  Page<MachineEntity> findAllScoped(
       @Param("plantIds") List<UUID> plantIds,
       @Param("plantId") UUID plantId,
       @Param("machineGroupId") UUID machineGroupId,
-      @Param("status") MachineStatus status);
+      @Param("status") MachineStatus status,
+      @Param("search") String search,
+      Pageable pageable);
 
   @Query("""
       select machine from MachineEntity machine

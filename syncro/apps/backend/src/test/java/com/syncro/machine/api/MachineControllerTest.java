@@ -25,6 +25,7 @@ import com.syncro.machine.application.MachineService.MachineDataIntegrityExcepti
 import com.syncro.machine.application.MachineService.MachineGroupPlantMismatchException;
 import com.syncro.machine.application.MachineService.MachineMutationForbiddenException;
 import com.syncro.machine.application.MachineService.MachineNotFoundException;
+import com.syncro.machine.application.MachineService.MachineListView;
 import com.syncro.machine.application.MachineService.MachineView;
 import com.syncro.machine.domain.MachineStatus;
 import java.time.Instant;
@@ -73,12 +74,15 @@ class MachineControllerTest {
     var plantId = UUID.randomUUID();
     var groupId = UUID.randomUUID();
     var machineId = UUID.randomUUID();
-    when(machines.list(user, plantId, groupId, MachineStatus.ACTIVE)).thenReturn(List.of(view(machineId, plantId, groupId)));
+    when(machines.list(user, plantId, groupId, MachineStatus.ACTIVE, "BF", 0, 25, "code,asc"))
+        .thenReturn(new MachineListView(List.of(view(machineId, plantId, groupId)), 1, 0, 25, "code,asc"));
 
     mockMvc.perform(get("/api/v1/machines")
         .param("plantId", plantId.toString())
         .param("machineGroupId", groupId.toString())
         .param("status", "ACTIVE")
+        .param("search", "BF")
+        .param("limit", "25")
         .with(auth(user)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items[0].id").value(machineId.toString()))
@@ -192,7 +196,7 @@ class MachineControllerTest {
   void outOfScopeListReturnsSafeForbiddenError() throws Exception {
     var user = user(ApplicationRole.MANAGE);
     var plantId = UUID.randomUUID();
-    doThrow(new PlantAccessDeniedException()).when(machines).list(user, plantId, null, null);
+    doThrow(new PlantAccessDeniedException()).when(machines).list(user, plantId, null, null, null, 0, 100, "code,asc");
 
     mockMvc.perform(get("/api/v1/machines").param("plantId", plantId.toString()).with(auth(user)))
         .andExpect(status().isForbidden())
@@ -221,6 +225,17 @@ class MachineControllerTest {
     mockMvc.perform(delete("/api/v1/machines/{machineId}", machineId).with(auth(user)))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value("MACHINE_DATA_INTEGRITY_VIOLATION"));
+  }
+
+  @Test
+  @DisplayName("2.R-API-001 P1 invalid machine query UUID returns safe query error")
+  void invalidMachineQueryUuidReturnsSafeQueryError() throws Exception {
+    var user = user(ApplicationRole.SUPER_ADMIN);
+
+    mockMvc.perform(get("/api/v1/machines").param("plantId", "not-a-uuid").with(auth(user)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_QUERY_VALUE"))
+        .andExpect(jsonPath("$.message").value("Query value is invalid."));
   }
 
   private static MachineView view(UUID id, UUID plantId, UUID groupId) {

@@ -26,6 +26,6 @@ public final class MachineGroupDtos {
       Instant updatedAt) {
   }
 
-  public record MachineGroupListResponse(List<MachineGroupView> items) {
+  public record MachineGroupListResponse(List<MachineGroupView> items, long totalElements, int page, int size, String sort) {
   }
 }

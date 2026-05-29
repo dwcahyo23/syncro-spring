@@ -263,13 +263,24 @@ class SparepartTaxonomyControllerTest {
   }
 
   @Test
-  @DisplayName("2.4-API-014 P1 invalid dimension query returns safe path error")
-  void invalidDimensionQueryReturnsSafePathError() throws Exception {
+  @DisplayName("2.4-API-014 P1 invalid dimension query returns safe query error")
+  void invalidDimensionQueryReturnsSafeQueryError() throws Exception {
     var user = user(ApplicationRole.SUPER_ADMIN);
 
     mockMvc.perform(get("/api/v1/sparepart-taxonomies").param("dimension", "INVALID").with(auth(user)))
         .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("INVALID_PATH_VALUE"));
+        .andExpect(jsonPath("$.code").value("INVALID_QUERY_VALUE"));
+  }
+
+  @Test
+  @DisplayName("2.R-API-004 P1 invalid taxonomy category query UUID returns safe query error")
+  void invalidTaxonomyCategoryQueryUuidReturnsSafeQueryError() throws Exception {
+    var user = user(ApplicationRole.SUPER_ADMIN);
+
+    mockMvc.perform(get("/api/v1/sparepart-taxonomies").param("categoryId", "not-a-uuid").with(auth(user)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_QUERY_VALUE"))
+        .andExpect(jsonPath("$.message").value("Query value is invalid."));
   }
 
   private static AuthenticatedUser user(ApplicationRole role) {

@@ -293,6 +293,17 @@ class MachineSparepartInstallationControllerTest {
   }
 
   @Test
+  @DisplayName("2.R-API-003 P1 invalid installation query UUID returns safe query error")
+  void invalidInstallationQueryUuidReturnsSafeQueryError() throws Exception {
+    var user = user(ApplicationRole.SUPER_ADMIN);
+
+    mockMvc.perform(get("/api/v1/machine-sparepart-installations").param("machineId", "not-a-uuid").with(auth(user)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_QUERY_VALUE"))
+        .andExpect(jsonPath("$.message").value("Query value is invalid."));
+  }
+
+  @Test
   @DisplayName("2.6-API-014 P0 invalid path UUID returns safe error")
   void invalidPathUuidReturnsSafeError() throws Exception {
     var user = user(ApplicationRole.MANAGE);

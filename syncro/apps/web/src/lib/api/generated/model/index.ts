@@ -37,6 +37,7 @@ export * from './plantScopeResponse';
 export * from './plantScopeView';
 export * from './plantView';
 export * from './sparepartListResponse';
+export * from './sparepartMachineRefView';
 export * from './sparepartRequest';
 export * from './sparepartTaxonomyListResponse';
 export * from './sparepartTaxonomyRefView';

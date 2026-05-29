@@ -35,6 +35,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
 import type {
+  ListMachineGroupsParams,
+  ListMachinesParams,
   MachineGroupView,
   MachineRequest,
   MachineView,
@@ -85,12 +87,20 @@ export function MachineManagement() {
   const [selectedPlantId, setSelectedPlantId] = useState("");
   const [selectedGroupId, setSelectedGroupId] = useState("ALL");
   const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("ALL");
+  const [groupSearch, setGroupSearch] = useState("");
+  const [machineSearch, setMachineSearch] = useState("");
   const effectivePlantId = selectedPlantId || availablePlants[0]?.id || "";
-  const groupParams = { plantId: effectivePlantId };
+  const groupParams = {
+    plantId: effectivePlantId,
+    search: groupSearch.trim() || undefined,
+    page: 0,
+    size: 100,
+    sort: "name,asc",
+  } satisfies ListMachineGroupsParams;
   const machineGroups = useListMachineGroups(groupParams, {
     query: {
       enabled: Boolean(effectivePlantId) && !isAssignedEmpty,
-      queryKey: ["machine-groups", activePlantId, effectivePlantId],
+      queryKey: ["machine-groups", activePlantId, effectivePlantId, groupSearch.trim()],
     },
   });
   const groupItems = machineGroups.data?.data.items ?? [];
@@ -98,11 +108,15 @@ export function MachineManagement() {
     plantId: effectivePlantId || undefined,
     machineGroupId: selectedGroupId === "ALL" ? undefined : selectedGroupId,
     status: selectedStatus === "ALL" ? undefined : selectedStatus,
-  };
+    search: machineSearch.trim() || undefined,
+    page: 0,
+    size: 100,
+    sort: "code,asc",
+  } satisfies ListMachinesParams;
   const machines = useListMachines(machineParams, {
     query: {
       enabled: Boolean(effectivePlantId) && !isAssignedEmpty,
-      queryKey: ["machines", activePlantId, effectivePlantId, selectedGroupId, selectedStatus],
+      queryKey: ["machines", activePlantId, effectivePlantId, selectedGroupId, selectedStatus, machineSearch.trim()],
     },
   });
   const createMachine = useCreateMachine({ mutation: { onSuccess: invalidateMachineData } });
@@ -209,25 +223,7 @@ export function MachineManagement() {
         <CardHeader>
           <CardTitle>Machines</CardTitle>
           <CardDescription>Manage registered machine master data and manual ACTIVE/INACTIVE status.</CardDescription>
-          <CardAction className="flex flex-wrap items-center gap-2">
-            <PlantSelect
-              plants={availablePlants}
-              value={effectivePlantId}
-              disabled={!availablePlants.length || plants.isLoading || isAssignedEmpty}
-              onChange={setSelectedPlantId}
-            />
-            <MachineGroupSelect
-              groups={groupItems}
-              value={selectedGroupId}
-              disabled={!effectivePlantId || machineGroups.isLoading || isAssignedEmpty}
-              onChange={setSelectedGroupId}
-              includeAll
-            />
-            <StatusSelect
-              value={selectedStatus}
-              onChange={(value) => setSelectedStatus(value as StatusFilter)}
-              includeAll
-            />
+          <CardAction>
             {canMutate ? (
               <Button onClick={openCreateDialog} disabled={!canCreate}>
                 Create machine
@@ -237,7 +233,42 @@ export function MachineManagement() {
             )}
           </CardAction>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[repeat(auto-fit,14rem)] sm:justify-start">
+            <PlantSelect
+              plants={availablePlants}
+              value={effectivePlantId}
+              disabled={!availablePlants.length || plants.isLoading || isAssignedEmpty}
+              onChange={setSelectedPlantId}
+              compact
+            />
+            <Input
+              value={machineSearch}
+              onChange={(event) => setMachineSearch(event.target.value)}
+              placeholder="Search machines"
+              disabled={!effectivePlantId || isAssignedEmpty}
+            />
+            <Input
+              value={groupSearch}
+              onChange={(event) => setGroupSearch(event.target.value)}
+              placeholder="Search groups"
+              disabled={!effectivePlantId || isAssignedEmpty}
+            />
+            <MachineGroupSelect
+              groups={groupItems}
+              value={selectedGroupId}
+              disabled={!effectivePlantId || machineGroups.isLoading || isAssignedEmpty}
+              onChange={setSelectedGroupId}
+              includeAll
+              compact
+            />
+            <StatusSelect
+              value={selectedStatus}
+              onChange={(value) => setSelectedStatus(value as StatusFilter)}
+              includeAll
+              compact
+            />
+          </div>
           {isAssignedEmpty ? (
             <MachineState title="No plant assignment" description="Your account has no assigned plant scope." />
           ) : null}
@@ -329,7 +360,7 @@ export function MachineManagement() {
       </Card>
 
       <Dialog open={dialogMode !== null} onOpenChange={(open) => !open && setDialogMode(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
           <form onSubmit={submitMachine} className="space-y-4">
             <DialogHeader>
               <DialogTitle>{dialogMode?.type === "edit" ? "Edit machine" : "Create machine"}</DialogTitle>
@@ -340,8 +371,8 @@ export function MachineManagement() {
             {formError ? (
               <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{formError}</p>
             ) : null}
-            <div className="grid gap-2 sm:grid-cols-2">
-              <div className="grid gap-2">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid min-w-0 gap-2">
                 <Label htmlFor="machine-plant">Plant</Label>
                 <PlantSelect
                   plants={availablePlants}
@@ -354,7 +385,7 @@ export function MachineManagement() {
                 />
                 {fieldErrors.plantId ? <p className="text-destructive text-sm">{fieldErrors.plantId}</p> : null}
               </div>
-              <div className="grid gap-2">
+              <div className="grid min-w-0 gap-2">
                 <Label htmlFor="machine-group">Machine group</Label>
                 <MachineGroupSelect
                   groups={groupItems}
@@ -368,8 +399,8 @@ export function MachineManagement() {
                 ) : null}
               </div>
             </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <div className="grid gap-2">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid min-w-0 gap-2">
                 <Label htmlFor="machine-code">Code</Label>
                 <Input
                   id="machine-code"
@@ -380,7 +411,7 @@ export function MachineManagement() {
                 />
                 {fieldErrors.code ? <p className="text-destructive text-sm">{fieldErrors.code}</p> : null}
               </div>
-              <div className="grid gap-2">
+              <div className="grid min-w-0 gap-2">
                 <Label htmlFor="machine-status">Manual status</Label>
                 <StatusSelect
                   value={form.status ?? "ACTIVE"}
@@ -393,8 +424,8 @@ export function MachineManagement() {
                 {fieldErrors.status ? <p className="text-destructive text-sm">{fieldErrors.status}</p> : null}
               </div>
             </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <div className="grid gap-2">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid min-w-0 gap-2">
                 <Label htmlFor="machine-name">Name</Label>
                 <Input
                   id="machine-name"
@@ -403,7 +434,7 @@ export function MachineManagement() {
                   disabled={isSaving}
                 />
               </div>
-              <div className="grid gap-2">
+              <div className="grid min-w-0 gap-2">
                 <Label htmlFor="machine-brand">Brand</Label>
                 <Input
                   id="machine-brand"
@@ -472,16 +503,18 @@ function PlantSelect({
   disabled,
   onChange,
   triggerId,
+  compact,
 }: {
   plants: PlantView[];
   value: string;
   disabled?: boolean;
   onChange: (value: string) => void;
   triggerId?: string;
+  compact?: boolean;
 }) {
   return (
     <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger id={triggerId} className="min-w-52">
+      <SelectTrigger id={triggerId} className={compact ? "w-full min-w-0" : "w-full min-w-0 sm:min-w-52"}>
         <SelectValue placeholder="Select plant" />
       </SelectTrigger>
       <SelectContent>
@@ -502,6 +535,7 @@ function MachineGroupSelect({
   onChange,
   triggerId,
   includeAll,
+  compact,
 }: {
   groups: MachineGroupView[];
   value: string;
@@ -509,10 +543,11 @@ function MachineGroupSelect({
   onChange: (value: string) => void;
   triggerId?: string;
   includeAll?: boolean;
+  compact?: boolean;
 }) {
   return (
     <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger id={triggerId} className="min-w-52">
+      <SelectTrigger id={triggerId} className={compact ? "w-full min-w-0" : "w-full min-w-0 sm:min-w-52"}>
         <SelectValue placeholder="Select machine group" />
       </SelectTrigger>
       <SelectContent>
@@ -533,16 +568,18 @@ function StatusSelect({
   disabled,
   triggerId,
   includeAll,
+  compact,
 }: {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
   triggerId?: string;
   includeAll?: boolean;
+  compact?: boolean;
 }) {
   return (
     <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger id={triggerId} className="min-w-40">
+      <SelectTrigger id={triggerId} className={compact ? "w-full min-w-0" : "w-full min-w-0 sm:min-w-40"}>
         <SelectValue placeholder="Status" />
       </SelectTrigger>
       <SelectContent>

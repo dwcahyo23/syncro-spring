@@ -42,6 +42,6 @@ public final class MachineDtos {
       Instant updatedAt) {
   }
 
-  public record MachineListResponse(List<MachineView> items) {
+  public record MachineListResponse(List<MachineView> items, long totalElements, int page, int size, String sort) {
   }
 }

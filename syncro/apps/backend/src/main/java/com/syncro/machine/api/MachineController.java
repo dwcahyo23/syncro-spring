@@ -48,8 +48,15 @@ public class MachineController {
   public MachineListResponse list(@AuthenticationPrincipal AuthenticatedUser user,
       @RequestParam(required = false) UUID plantId,
       @RequestParam(required = false) UUID machineGroupId,
-      @RequestParam(required = false) MachineStatus status) {
-    return new MachineListResponse(machines.list(user, plantId, machineGroupId, status).stream().map(this::toDto).toList());
+      @RequestParam(required = false) MachineStatus status,
+      @RequestParam(required = false) String search,
+      @RequestParam(required = false) Integer limit,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "100") int size,
+      @RequestParam(defaultValue = "code,asc") String sort) {
+    var result = machines.list(user, plantId, machineGroupId, status, search, page, limit == null ? size : limit, sort);
+    return new MachineListResponse(
+        result.items().stream().map(this::toDto).toList(), result.totalElements(), result.page(), result.size(), result.sort());
   }
 
   @Operation(operationId = "getMachine", summary = "Get machine")

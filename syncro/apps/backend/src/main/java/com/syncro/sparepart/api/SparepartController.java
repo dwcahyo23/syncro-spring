@@ -2,6 +2,7 @@ package com.syncro.sparepart.api;
 
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.sparepart.api.SparepartDtos.SparepartListResponse;
+import com.syncro.sparepart.api.SparepartDtos.SparepartMachineRefView;
 import com.syncro.sparepart.api.SparepartDtos.SparepartRequest;
 import com.syncro.sparepart.api.SparepartDtos.SparepartTaxonomyRefView;
 import com.syncro.sparepart.api.SparepartDtos.SparepartView;
@@ -115,7 +116,7 @@ public class SparepartController {
   }
 
   private SparepartCommand command(SparepartRequest request) {
-    return new SparepartCommand(request.code(), request.name(), request.categoryId(), request.brandId(), request.kindId(), request.typeId());
+    return new SparepartCommand(request.code(), request.name(), request.machineId(), request.categoryId(), request.brandId(), request.kindId(), request.typeId());
   }
 
   private SparepartView toDto(SparepartService.SparepartView sparepart) {
@@ -123,12 +124,17 @@ public class SparepartController {
         sparepart.id(),
         sparepart.code(),
         sparepart.name(),
+        toDto(sparepart.machine()),
         toDto(sparepart.category()),
         toDto(sparepart.brand()),
         toDto(sparepart.kind()),
         toDto(sparepart.type()),
         sparepart.createdAt(),
         sparepart.updatedAt());
+  }
+
+  private SparepartMachineRefView toDto(SparepartService.SparepartMachineRefView machine) {
+    return new SparepartMachineRefView(machine.id(), machine.code(), machine.name(), machine.plantId(), machine.plantCode(), machine.plantName());
   }
 
   private SparepartTaxonomyRefView toDto(SparepartService.SparepartTaxonomyRefView taxonomy) {

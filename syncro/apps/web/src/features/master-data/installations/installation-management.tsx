@@ -38,18 +38,25 @@ import type {
   InstallationView,
   MachineView,
   PlantView,
+  SparepartRequest,
+  SparepartTaxonomyView,
   SparepartView,
 } from "@/lib/api/generated/model";
+import { SparepartTaxonomyRequestDimension } from "@/lib/api/generated/model";
 import {
   getListMachineSparepartInstallationsQueryKey,
   getListMachinesQueryKey,
   getListSparepartsQueryKey,
+  getListSparepartTaxonomiesQueryKey,
   useCreateMachineSparepartInstallation,
+  useCreateSparepart,
+  useCreateSparepartTaxonomy,
   useDeleteMachineSparepartInstallation,
   useListMachineSparepartInstallations,
   useListMachines,
   useListPlants,
   useListSpareparts,
+  useListSparepartTaxonomies,
   useUpdateMachineSparepartInstallation,
 } from "@/lib/api/generated/syncro";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
@@ -65,6 +72,7 @@ type InstallationForm = {
   baselineCounter: string;
   thresholdPercentage: string;
 };
+type TaxonomyDimension = SparepartTaxonomyView["dimension"];
 
 const ALL = "__all__";
 const ALL_PLANTS = "all";
@@ -74,6 +82,15 @@ const EMPTY_FORM: InstallationForm = {
   expectedProductionCount: "",
   baselineCounter: "0",
   thresholdPercentage: "90",
+};
+const EMPTY_SPAREPART_FORM: SparepartRequest = {
+  code: "",
+  name: "",
+  machineId: "",
+  categoryId: "",
+  brandId: "",
+  kindId: "",
+  typeId: "",
 };
 
 export function InstallationManagement() {
@@ -85,21 +102,25 @@ export function InstallationManagement() {
   const isAssignedEmpty = scope?.mode === "EMPTY";
   const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGE";
   const [filters, setFilters] = useState<Filters>({ plantId: normalizePlantId(activePlantId) });
+  const [machineSearch, setMachineSearch] = useState("");
   const plants = useListPlants({ query: { enabled: Boolean(scope) && !isAssignedEmpty } });
+  const taxonomy = useListSparepartTaxonomies();
   const plantItems = plants.data?.data.items ?? [];
   const availablePlants = useMemo(() => permittedPlants(plantItems, scope), [plantItems, scope]);
   const selectedPlantId = normalizePlantId(activePlantId);
   const filterPlantId = normalizePlantId(filters.plantId);
   const machinePlantId = filterPlantId ?? selectedPlantId ?? availablePlants[0]?.id ?? "";
-  const machines = useListMachines(
-    { plantId: machinePlantId || undefined },
-    {
-      query: {
-        enabled: Boolean(machinePlantId) && !isAssignedEmpty,
-        queryKey: ["machines", "installations", machinePlantId],
-      },
+  const machineLookupParams = {
+    plantId: machinePlantId || undefined,
+    search: machineSearch.trim() || undefined,
+    limit: 25,
+  };
+  const machines = useListMachines(machineLookupParams, {
+    query: {
+      enabled: Boolean(machinePlantId) && !isAssignedEmpty,
+      queryKey: ["machines", "installations", machinePlantId, machineLookupParams.search],
     },
-  );
+  });
   const spareparts = useListSpareparts();
   const machineItems = machines.data?.data.items ?? [];
   const sparepartItems = spareparts.data?.data.items ?? [];
@@ -124,6 +145,12 @@ export function InstallationManagement() {
   const createInstallation = useCreateMachineSparepartInstallation({
     mutation: { onSuccess: invalidateInstallationData },
   });
+  const createSparepart = useCreateSparepart({
+    mutation: { onSuccess: invalidateInstallationData },
+  });
+  const createTaxonomy = useCreateSparepartTaxonomy({
+    mutation: { onSuccess: invalidateTaxonomyData },
+  });
   const updateInstallation = useUpdateMachineSparepartInstallation({
     mutation: { onSuccess: invalidateInstallationData },
   });
@@ -134,12 +161,20 @@ export function InstallationManagement() {
   const [form, setForm] = useState<InstallationForm>(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [inlineSparepartOpen, setInlineSparepartOpen] = useState(false);
+  const [inlineSparepartForm, setInlineSparepartForm] = useState<SparepartRequest>(EMPTY_SPAREPART_FORM);
+  const [inlineSparepartErrors, setInlineSparepartErrors] = useState<Record<string, string>>({});
+  const [inlineSparepartError, setInlineSparepartError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<InstallationView | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const installationItems = installations.data?.data.items ?? [];
-  const isLoading = plants.isLoading || machines.isLoading || spareparts.isLoading || installations.isLoading;
+  const taxonomyItems = taxonomy.data?.data.items ?? [];
+  const taxonomyByDimension = useMemo(() => groupByDimension(taxonomyItems), [taxonomyItems]);
+  const isLoading =
+    plants.isLoading || machines.isLoading || spareparts.isLoading || taxonomy.isLoading || installations.isLoading;
   const isSaving = createInstallation.isPending || updateInstallation.isPending;
-  const loadError = [plants.error, machines.error, spareparts.error, installations.error]
+  const isCreatingInlineSparepart = createSparepart.isPending;
+  const loadError = [plants.error, machines.error, spareparts.error, taxonomy.error, installations.error]
     .map(errorResponse)
     .find((error) => error?.code === "FORBIDDEN");
 
@@ -152,8 +187,28 @@ export function InstallationManagement() {
   function invalidateInstallationData() {
     queryClient.invalidateQueries({ queryKey: ["machine-sparepart-installations", activePlantId] });
     queryClient.invalidateQueries({ queryKey: getListMachineSparepartInstallationsQueryKey(installationParams) });
-    queryClient.invalidateQueries({ queryKey: getListMachinesQueryKey({ plantId: machinePlantId || undefined }) });
+    queryClient.invalidateQueries({ queryKey: getListMachinesQueryKey(machineLookupParams) });
     queryClient.invalidateQueries({ queryKey: getListSparepartsQueryKey() });
+  }
+
+  function invalidateTaxonomyData() {
+    queryClient.invalidateQueries({ queryKey: getListSparepartTaxonomiesQueryKey() });
+  }
+
+  async function createInlineTaxonomyValue(dimension: SparepartTaxonomyRequestDimension, name: string) {
+    const response = await createTaxonomy.mutateAsync({
+      data: {
+        dimension,
+        code: taxonomyCode(name),
+        name: name.trim(),
+        categoryId: inlineSparepartForm.categoryId,
+      },
+    });
+    await queryClient.invalidateQueries({ queryKey: getListSparepartTaxonomiesQueryKey() });
+    if (response.data.id) {
+      setInlineSparepartForm((current) => ({ ...current, [formFieldForDimension(dimension)]: response.data.id ?? "" }));
+    }
+    toast.success(`${dimensionLabel(dimension)} created.`);
   }
 
   function openCreateDialog() {
@@ -161,6 +216,7 @@ export function InstallationManagement() {
     setForm({ ...EMPTY_FORM, machineId: machineItems[0]?.id ?? "", sparepartId: sparepartItems[0]?.id ?? "" });
     setFieldErrors({});
     setFormError(null);
+    resetInlineSparepartForm();
   }
 
   function openEditDialog(installation: InstallationView) {
@@ -174,6 +230,35 @@ export function InstallationManagement() {
     });
     setFieldErrors({});
     setFormError(null);
+    resetInlineSparepartForm();
+  }
+
+  function resetInlineSparepartForm() {
+    setInlineSparepartOpen(false);
+    setInlineSparepartForm(defaultSparepartForm(taxonomyByDimension, form.machineId));
+    setInlineSparepartErrors({});
+    setInlineSparepartError(null);
+  }
+
+  async function submitInlineSparepart() {
+    setInlineSparepartErrors({});
+    setInlineSparepartError(null);
+
+    try {
+      const response = await createSparepart.mutateAsync({ data: inlineSparepartForm });
+      const sparepart = response.data;
+      if (sparepart.id) {
+        setForm((current) => ({ ...current, sparepartId: sparepart.id ?? "" }));
+      }
+      await queryClient.invalidateQueries({ queryKey: getListSparepartsQueryKey() });
+      setInlineSparepartOpen(false);
+      toast.success("Sparepart created and selected.");
+    } catch (error) {
+      const response = errorResponse(error);
+      setInlineSparepartErrors(response?.fieldErrors ?? {});
+      setInlineSparepartError(response?.message ?? "Sparepart request failed.");
+      toast.error(response?.message ?? "Sparepart request failed.");
+    }
   }
 
   async function submitInstallation(event: FormEvent<HTMLFormElement>) {
@@ -245,7 +330,7 @@ export function InstallationManagement() {
           <InstallationState title="No plant assignment" description="Your account has no assigned plant scope." />
         ) : null}
         {isLoading ? <InstallationSkeleton /> : null}
-        {plants.isError || machines.isError || spareparts.isError || installations.isError ? (
+        {plants.isError || machines.isError || spareparts.isError || taxonomy.isError || installations.isError ? (
           <InstallationState
             title={loadError ? "Installations access is forbidden" : "Installations could not be loaded"}
             description={loadError?.message ?? "Refresh data or contact administrator if access should be available."}
@@ -317,7 +402,7 @@ export function InstallationManagement() {
       </CardContent>
 
       <Dialog open={dialogMode !== null} onOpenChange={(open) => !open && setDialogMode(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
           <form onSubmit={submitInstallation} className="space-y-4">
             <DialogHeader>
               <DialogTitle>{dialogMode?.type === "edit" ? "Edit installation" : "Create installation"}</DialogTitle>
@@ -328,12 +413,28 @@ export function InstallationManagement() {
             {formError ? (
               <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{formError}</p>
             ) : null}
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2">
+              {inlineSparepartOpen ? (
+                <InlineSparepartForm
+                  form={inlineSparepartForm}
+                  fieldErrors={inlineSparepartErrors}
+                  formError={inlineSparepartError}
+                  disabled={isSaving || isCreatingInlineSparepart}
+                  taxonomyByDimension={taxonomyByDimension}
+                  taxonomyDisabled={createTaxonomy.isPending}
+                  onCreateTaxonomy={createInlineTaxonomyValue}
+                  onChange={setInlineSparepartForm}
+                  onCancel={resetInlineSparepartForm}
+                  onSubmit={submitInlineSparepart}
+                />
+              ) : null}
               <MachineSelect
                 value={form.machineId}
+                search={machineSearch}
                 error={fieldErrors.machineId}
                 disabled={isSaving || dialogMode?.type === "edit"}
                 items={machineItems}
+                onSearchChange={setMachineSearch}
                 onChange={(machineId) => setForm((current) => ({ ...current, machineId }))}
               />
               <SparepartSelect
@@ -341,6 +442,8 @@ export function InstallationManagement() {
                 error={fieldErrors.sparepartId}
                 disabled={isSaving || dialogMode?.type === "edit"}
                 items={sparepartItems}
+                canCreateInline={dialogMode?.type !== "edit"}
+                onCreateInline={() => setInlineSparepartOpen((open) => !open)}
                 onChange={(sparepartId) => setForm((current) => ({ ...current, sparepartId }))}
               />
               <NumberField
@@ -424,7 +527,7 @@ function InstallationFilters({
   onChange: (filters: Filters) => void;
 }) {
   return (
-    <div className="grid gap-3 rounded-lg border p-3 md:grid-cols-3">
+    <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[repeat(auto-fit,14rem)] sm:justify-start">
       <Select
         value={filters.plantId ?? ALL}
         onValueChange={(plantId) =>
@@ -435,7 +538,7 @@ function InstallationFilters({
           })
         }
       >
-        <SelectTrigger>
+        <SelectTrigger className="w-full min-w-0">
           <SelectValue placeholder="Plant" />
         </SelectTrigger>
         <SelectContent>
@@ -453,7 +556,7 @@ function InstallationFilters({
         value={filters.machineId ?? ALL}
         onValueChange={(machineId) => onChange({ ...filters, machineId: machineId === ALL ? undefined : machineId })}
       >
-        <SelectTrigger>
+        <SelectTrigger className="w-full min-w-0">
           <SelectValue placeholder="Machine" />
         </SelectTrigger>
         <SelectContent>
@@ -462,7 +565,7 @@ function InstallationFilters({
             .filter((machine) => machine.id)
             .map((machine) => (
               <SelectItem key={machine.id} value={machine.id ?? ""}>
-                {machine.code} · {machine.name || "Unnamed"}
+                {machine.code} · {machine.name || "Unnamed"} · {machine.plantCode}
               </SelectItem>
             ))}
         </SelectContent>
@@ -473,7 +576,7 @@ function InstallationFilters({
           onChange({ ...filters, sparepartId: sparepartId === ALL ? undefined : sparepartId })
         }
       >
-        <SelectTrigger>
+        <SelectTrigger className="w-full min-w-0">
           <SelectValue placeholder="Sparepart" />
         </SelectTrigger>
         <SelectContent>
@@ -582,28 +685,43 @@ function InstallationTable({
 
 function MachineSelect({
   value,
+  search,
   error,
   disabled,
   items,
+  onSearchChange,
   onChange,
 }: {
   value: string;
+  search: string;
   error?: string;
   disabled?: boolean;
   items: MachineView[];
+  onSearchChange: (value: string) => void;
   onChange: (value: string) => void;
 }) {
   return (
     <div className="grid gap-2">
       <Label>Machine</Label>
-      <Select value={value} onValueChange={onChange} disabled={disabled ?? items.length === 0}>
-        <SelectTrigger aria-invalid={Boolean(error)}>
+      <Select value={value} onValueChange={onChange} disabled={disabled ?? false}>
+        <SelectTrigger className="w-full min-w-0" aria-invalid={Boolean(error)}>
           <SelectValue placeholder="Select machine" />
         </SelectTrigger>
         <SelectContent>
+          <div className="p-2">
+            <Input
+              value={search}
+              placeholder="Search machine code, name, or plant"
+              onChange={(event) => onSearchChange(event.target.value)}
+              onKeyDown={(event) => event.stopPropagation()}
+            />
+          </div>
+          {items.length === 0 ? (
+            <div className="px-2 py-1.5 text-muted-foreground text-sm">No machines found</div>
+          ) : null}
           {items.map((machine) => (
             <SelectItem key={machine.id ?? machine.code} value={machine.id ?? ""}>
-              {machine.code} · {machine.name || "Unnamed"}
+              {machine.code} · {machine.name || "Unnamed"} · {machine.plantCode}
             </SelectItem>
           ))}
         </SelectContent>
@@ -618,19 +736,30 @@ function SparepartSelect({
   error,
   disabled,
   items,
+  canCreateInline,
+  onCreateInline,
   onChange,
 }: {
   value: string;
   error?: string;
   disabled?: boolean;
   items: SparepartView[];
+  canCreateInline: boolean;
+  onCreateInline: () => void;
   onChange: (value: string) => void;
 }) {
   return (
     <div className="grid gap-2">
-      <Label>Sparepart</Label>
+      <div className="flex items-center justify-between gap-2">
+        <Label>Sparepart</Label>
+        {canCreateInline ? (
+          <Button type="button" variant="link" className="h-auto p-0" onClick={onCreateInline} disabled={disabled}>
+            Create inline
+          </Button>
+        ) : null}
+      </div>
       <Select value={value} onValueChange={onChange} disabled={disabled ?? items.length === 0}>
-        <SelectTrigger aria-invalid={Boolean(error)}>
+        <SelectTrigger className="w-full min-w-0" aria-invalid={Boolean(error)}>
           <SelectValue placeholder="Select sparepart" />
         </SelectTrigger>
         <SelectContent>
@@ -639,6 +768,213 @@ function SparepartSelect({
               {sparepart.code} · {sparepart.name}
             </SelectItem>
           ))}
+        </SelectContent>
+      </Select>
+      {error ? <p className="text-destructive text-sm">{error}</p> : null}
+    </div>
+  );
+}
+
+function InlineSparepartForm({
+  form,
+  fieldErrors,
+  formError,
+  disabled,
+  taxonomyByDimension,
+  taxonomyDisabled,
+  onCreateTaxonomy,
+  onChange,
+  onCancel,
+  onSubmit,
+}: {
+  form: SparepartRequest;
+  fieldErrors: Record<string, string>;
+  formError: string | null;
+  disabled: boolean;
+  taxonomyByDimension: Map<TaxonomyDimension, SparepartTaxonomyView[]>;
+  taxonomyDisabled: boolean;
+  onCreateTaxonomy: (dimension: SparepartTaxonomyRequestDimension, name: string) => Promise<void>;
+  onChange: (form: SparepartRequest) => void;
+  onCancel: () => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <div className="space-y-3 rounded-lg border bg-muted/30 p-3 md:col-span-2">
+      <div>
+        <h3 className="font-medium text-sm">Create sparepart inline</h3>
+        <p className="text-muted-foreground text-xs">
+          Create the missing sparepart without losing this installation draft.
+        </p>
+      </div>
+      {formError ? <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{formError}</p> : null}
+      <div className="grid gap-3 md:grid-cols-2">
+        <TextField
+          id="inline-sparepart-code"
+          label="Code"
+          value={form.code}
+          error={fieldErrors.code}
+          disabled={disabled}
+          onChange={(code) => onChange({ ...form, code })}
+        />
+        <TextField
+          id="inline-sparepart-name"
+          label="Name"
+          value={form.name}
+          error={fieldErrors.name}
+          disabled={disabled}
+          onChange={(name) => onChange({ ...form, name })}
+        />
+        <TaxonomySelect
+          label="Category"
+          value={form.categoryId}
+          error={fieldErrors.categoryId}
+          disabled={disabled}
+          items={taxonomyByDimension.get(SparepartTaxonomyRequestDimension.CATEGORY) ?? []}
+          onChange={(categoryId) => onChange({ ...form, categoryId, brandId: "", kindId: "", typeId: "" })}
+        />
+        <TaxonomySelect
+          label="Brand"
+          value={form.brandId}
+          error={fieldErrors.brandId}
+          disabled={disabled}
+          items={linkedTaxonomyOptions(taxonomyByDimension, SparepartTaxonomyRequestDimension.BRAND, form.categoryId)}
+          creatable={!taxonomyDisabled && Boolean(form.categoryId)}
+          onCreate={(name) => onCreateTaxonomy(SparepartTaxonomyRequestDimension.BRAND, name)}
+          onChange={(brandId) => onChange({ ...form, brandId })}
+        />
+        <TaxonomySelect
+          label="Kind"
+          value={form.kindId}
+          error={fieldErrors.kindId}
+          disabled={disabled}
+          items={linkedTaxonomyOptions(taxonomyByDimension, SparepartTaxonomyRequestDimension.KIND, form.categoryId)}
+          creatable={!taxonomyDisabled && Boolean(form.categoryId)}
+          onCreate={(name) => onCreateTaxonomy(SparepartTaxonomyRequestDimension.KIND, name)}
+          onChange={(kindId) => onChange({ ...form, kindId })}
+        />
+        <TaxonomySelect
+          label="Type"
+          value={form.typeId}
+          error={fieldErrors.typeId}
+          disabled={disabled}
+          items={linkedTaxonomyOptions(taxonomyByDimension, SparepartTaxonomyRequestDimension.TYPE, form.categoryId)}
+          creatable={!taxonomyDisabled && Boolean(form.categoryId)}
+          onCreate={(name) => onCreateTaxonomy(SparepartTaxonomyRequestDimension.TYPE, name)}
+          onChange={(typeId) => onChange({ ...form, typeId })}
+        />
+      </div>
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button type="button" variant="outline" onClick={onCancel} disabled={disabled}>
+          Cancel sparepart
+        </Button>
+        <Button type="button" onClick={onSubmit} disabled={disabled}>
+          {disabled ? <Loader2Icon className="animate-spin" /> : null}
+          Create and select
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function TextField({
+  id,
+  label,
+  value,
+  error,
+  disabled,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value?: string;
+  error?: string;
+  disabled?: boolean;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        value={value ?? ""}
+        onChange={(event) => onChange(event.target.value)}
+        aria-invalid={Boolean(error)}
+        disabled={disabled}
+      />
+      {error ? <p className="text-destructive text-sm">{error}</p> : null}
+    </div>
+  );
+}
+
+function TaxonomySelect({
+  label,
+  value,
+  error,
+  disabled,
+  items,
+  creatable,
+  onCreate,
+  onChange,
+}: {
+  label: string;
+  value?: string;
+  error?: string;
+  disabled?: boolean;
+  items: SparepartTaxonomyView[];
+  creatable?: boolean;
+  onCreate?: (name: string) => Promise<void>;
+  onChange: (value: string) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const visibleItems = items.filter((item) => taxonomyMatches(item, search));
+  const canCreate = Boolean(creatable && onCreate && search.trim());
+
+  async function submitCreate() {
+    if (!onCreate || !search.trim()) {
+      return;
+    }
+    await onCreate(search);
+    setSearch("");
+  }
+
+  return (
+    <div className="grid gap-2">
+      <Label>{label}</Label>
+      <Select value={value} onValueChange={onChange} disabled={Boolean(disabled) || (!creatable && items.length === 0)}>
+        <SelectTrigger className="w-full min-w-0" aria-invalid={Boolean(error)}>
+          <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
+        </SelectTrigger>
+        <SelectContent position="popper" side="top" align="start" className="max-h-72">
+          <div className="p-2">
+            <Input
+              value={search}
+              placeholder={`Search ${label.toLowerCase()}`}
+              onChange={(event) => setSearch(event.target.value)}
+              onKeyDown={(event) => event.stopPropagation()}
+            />
+          </div>
+          {visibleItems.length === 0 ? (
+            <div className="px-2 py-1.5 text-muted-foreground text-sm">No {label.toLowerCase()} found</div>
+          ) : null}
+          {visibleItems.map((item) => (
+            <SelectItem key={item.id} value={item.id ?? ""}>
+              {item.name} ({item.code})
+            </SelectItem>
+          ))}
+          {canCreate ? (
+            <div className="border-t p-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                size="sm"
+                onClick={submitCreate}
+                disabled={disabled}
+              >
+                Create {label.toLowerCase()} “{search.trim()}”
+              </Button>
+            </div>
+          ) : null}
         </SelectContent>
       </Select>
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
@@ -730,6 +1066,71 @@ function permittedPlants(plants: PlantView[], scope: ReturnType<typeof usePlantS
   return plants.filter((plant) => plant.id && assignedIds.has(plant.id));
 }
 
+function groupByDimension(items: SparepartTaxonomyView[]) {
+  return items.reduce((groups, item) => {
+    if (item.id && item.dimension) {
+      groups.set(item.dimension, [...(groups.get(item.dimension) ?? []), item]);
+    }
+    return groups;
+  }, new Map<TaxonomyDimension, SparepartTaxonomyView[]>());
+}
+
+function linkedTaxonomyOptions(
+  taxonomyByDimension: Map<TaxonomyDimension, SparepartTaxonomyView[]>,
+  dimension: TaxonomyDimension,
+  categoryId: string,
+) {
+  return (taxonomyByDimension.get(dimension) ?? []).filter((item) => !categoryId || item.categoryId === categoryId);
+}
+
+function taxonomyMatches(item: SparepartTaxonomyView, search: string) {
+  const normalized = search.trim().toLowerCase();
+  if (!normalized) {
+    return true;
+  }
+  return [item.code, item.name].some((value) => value?.toLowerCase().includes(normalized));
+}
+
+function taxonomyCode(name: string) {
+  return name
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function dimensionLabel(dimension: SparepartTaxonomyRequestDimension) {
+  return String(dimension).toLowerCase();
+}
+
+function formFieldForDimension(dimension: SparepartTaxonomyRequestDimension): keyof SparepartRequest {
+  if (dimension === SparepartTaxonomyRequestDimension.BRAND) {
+    return "brandId";
+  }
+  if (dimension === SparepartTaxonomyRequestDimension.KIND) {
+    return "kindId";
+  }
+  if (dimension === SparepartTaxonomyRequestDimension.TYPE) {
+    return "typeId";
+  }
+  return "categoryId";
+}
+
+function defaultSparepartForm(
+  taxonomyByDimension: Map<TaxonomyDimension, SparepartTaxonomyView[]>,
+  machineId: string,
+): SparepartRequest {
+  return {
+    code: "",
+    name: "",
+    machineId,
+    categoryId: taxonomyByDimension.get(SparepartTaxonomyRequestDimension.CATEGORY)?.[0]?.id ?? "",
+    brandId: taxonomyByDimension.get(SparepartTaxonomyRequestDimension.BRAND)?.[0]?.id ?? "",
+    kindId: taxonomyByDimension.get(SparepartTaxonomyRequestDimension.KIND)?.[0]?.id ?? "",
+    typeId: taxonomyByDimension.get(SparepartTaxonomyRequestDimension.TYPE)?.[0]?.id ?? "",
+  };
+}
+
 type ParsedLifetimeFields = {
   expectedProductionCount: number;
   baselineCounter: number;
@@ -766,7 +1167,12 @@ function parseLifetimeFields(form: InstallationForm): ParseResult {
     fieldErrors.thresholdPercentage = "Threshold percentage is required and must be between 1 and 100.";
   }
 
-  if (Object.keys(fieldErrors).length > 0) {
+  if (
+    Object.keys(fieldErrors).length > 0 ||
+    expectedProductionCount === null ||
+    baselineCounter === null ||
+    thresholdPercentage === null
+  ) {
     return { ok: false, fieldErrors };
   }
 

@@ -7,6 +7,13 @@ import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.auth.infrastructure.AuthUserEntity;
 import com.syncro.auth.infrastructure.AuthUserRepository;
+import com.syncro.auth.infrastructure.PlantEntity;
+import com.syncro.auth.infrastructure.PlantRepository;
+import com.syncro.machine.domain.MachineStatus;
+import com.syncro.machine.infrastructure.MachineEntity;
+import com.syncro.machine.infrastructure.MachineRepository;
+import com.syncro.masterdata.infrastructure.MachineGroupEntity;
+import com.syncro.masterdata.infrastructure.MachineGroupRepository;
 import com.syncro.sparepart.application.SparepartService.DuplicateSparepartException;
 import com.syncro.sparepart.application.SparepartService.SparepartCommand;
 import com.syncro.sparepart.application.SparepartService.SparepartFilters;
@@ -84,6 +91,15 @@ class SparepartServiceIntegrationTest {
   private SparepartTaxonomyRepository taxonomy;
 
   @Autowired
+  private MachineRepository machines;
+
+  @Autowired
+  private MachineGroupRepository machineGroups;
+
+  @Autowired
+  private PlantRepository plants;
+
+  @Autowired
   private AuthUserRepository users;
 
   @Autowired
@@ -144,7 +160,7 @@ class SparepartServiceIntegrationTest {
   void listFiltersByTaxonomyAndSearch() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     var refs = taxonomyRefs();
-    var otherRefs = taxonomyRefs("MECH", "Mechanical", "OMRON", "Omron", "RELAY", "Relay", "MY2N", "MY2N");
+    var otherRefs = taxonomyRefs("MECHANIC", "Mechanical", "OMRON", "Omron", "RELAY", "Relay", "MY2N", "MY2N");
     var plc = sparepartService.create(admin, command("PLC-WECON-LX5", "Wecon LX5 PLC", refs));
     sparepartService.create(admin, command("RELAY-OMRON-MY2N", "Omron MY2N Relay", otherRefs));
 
@@ -220,7 +236,7 @@ class SparepartServiceIntegrationTest {
     var refs = taxonomyRefs();
 
     assertThatThrownBy(() -> sparepartService.create(admin, new SparepartCommand(
-        "PLC-WECON-LX5", "Wecon LX5 PLC", UUID.randomUUID(), refs.brand().getId(), refs.kind().getId(), refs.type().getId())))
+        "PLC-WECON-LX5", "Wecon LX5 PLC", machine().getId(), UUID.randomUUID(), refs.brand().getId(), refs.kind().getId(), refs.type().getId())))
         .isInstanceOf(SparepartTaxonomyReferenceNotFoundException.class);
   }
 
@@ -231,7 +247,19 @@ class SparepartServiceIntegrationTest {
     var refs = taxonomyRefs();
 
     assertThatThrownBy(() -> sparepartService.create(admin, new SparepartCommand(
-        "PLC-WECON-LX5", "Wecon LX5 PLC", refs.brand().getId(), refs.brand().getId(), refs.kind().getId(), refs.type().getId())))
+        "PLC-WECON-LX5", "Wecon LX5 PLC", machine().getId(), refs.brand().getId(), refs.brand().getId(), refs.kind().getId(), refs.type().getId())))
+        .isInstanceOf(SparepartTaxonomyDimensionMismatchException.class);
+  }
+
+  @Test
+  @DisplayName("2.R-SVC-002 P0 mismatched linked taxonomy is rejected safely")
+  void mismatchedLinkedTaxonomyRejectedSafely() {
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    var refs = taxonomyRefs();
+    var otherRefs = taxonomyRefs("MECHANIC", "Mechanic", "OMRON", "Omron", "RELAY", "Relay", "MY2N", "MY2N");
+
+    assertThatThrownBy(() -> sparepartService.create(admin, new SparepartCommand(
+        "PLC-WECON-LX5", "Wecon LX5 PLC", machine().getId(), refs.category().getId(), otherRefs.brand().getId(), refs.kind().getId(), refs.type().getId())))
         .isInstanceOf(SparepartTaxonomyDimensionMismatchException.class);
   }
 
@@ -253,7 +281,7 @@ class SparepartServiceIntegrationTest {
     assertThatThrownBy(() -> sparepartService.create(admin, command(" ", "Wecon LX5 PLC", refs)))
         .isInstanceOf(SparepartValidationException.class);
     assertThatThrownBy(() -> sparepartService.create(admin, new SparepartCommand(
-        "PLC-WECON-LX5", "Wecon LX5 PLC", refs.category().getId(), null, refs.kind().getId(), refs.type().getId())))
+        "PLC-WECON-LX5", "Wecon LX5 PLC", machine().getId(), refs.category().getId(), null, refs.kind().getId(), refs.type().getId())))
         .isInstanceOf(SparepartValidationException.class);
   }
 
@@ -279,21 +307,39 @@ class SparepartServiceIntegrationTest {
   }
 
   private SparepartCommand command(String code, String name, TaxonomyRefs refs) {
-    return new SparepartCommand(code, name, refs.category().getId(), refs.brand().getId(), refs.kind().getId(), refs.type().getId());
+    return new SparepartCommand(code, name, machine().getId(), refs.category().getId(), refs.brand().getId(), refs.kind().getId(), refs.type().getId());
+  }
+
+  private MachineEntity machine() {
+    var now = Instant.parse("2026-05-28T00:00:00Z");
+    var plant = plants.findByCodeIgnoreCase("PLANT-1")
+        .orElseGet(() -> plants.saveAndFlush(new PlantEntity(UUID.randomUUID(), "PLANT-1", "Plant 1", now, now)));
+    var group = machineGroups.findByPlantIdAndNameIgnoreCase(plant.getId(), "Assembly")
+        .orElseGet(() -> machineGroups.saveAndFlush(new MachineGroupEntity(UUID.randomUUID(), plant, "Assembly", now, now)));
+    return machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), "MCH-1")
+        .orElseGet(() -> machines.saveAndFlush(new MachineEntity(
+            UUID.randomUUID(), plant, group, "MCH-1", "Machine 1", MachineStatus.ACTIVE, null, null, null, now, now)));
   }
 
   private TaxonomyRefs taxonomyRefs() {
-    return taxonomyRefs("ELEC", "Electric", "WECON", "Wecon", "PLC", "PLC", "LX5", "LX5");
+    return taxonomyRefs("ELECTRIC", "Electric", "WECON", "Wecon", "PLC", "PLC", "LX5", "LX5");
   }
 
   private TaxonomyRefs taxonomyRefs(String categoryCode, String categoryName, String brandCode, String brandName,
       String kindCode, String kindName, String typeCode, String typeName) {
     var now = Instant.parse("2026-05-28T00:00:00Z");
+    var category = taxonomy.findByDimensionAndCodeIgnoreCase(SparepartTaxonomyDimension.CATEGORY, categoryCode)
+        .orElseGet(() -> taxonomy.saveAndFlush(new SparepartTaxonomyEntity(
+            UUID.randomUUID(), SparepartTaxonomyDimension.CATEGORY, categoryCode, categoryName, now, now)));
     return new TaxonomyRefs(
-        taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.CATEGORY, categoryCode, categoryName, now, now)),
-        taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.BRAND, brandCode, brandName, now, now)),
-        taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.KIND, kindCode, kindName, now, now)),
-        taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.TYPE, typeCode, typeName, now, now)));
+        category,
+        taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.BRAND, uniqueCode(brandCode), brandName, category, now, now)),
+        taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.KIND, uniqueCode(kindCode), kindName, category, now, now)),
+        taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.TYPE, uniqueCode(typeCode), typeName, category, now, now)));
+  }
+
+  private String uniqueCode(String code) {
+    return code + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
   }
 
   private AuthenticatedUser persistedUser(ApplicationRole role, String loginIdentifier) {

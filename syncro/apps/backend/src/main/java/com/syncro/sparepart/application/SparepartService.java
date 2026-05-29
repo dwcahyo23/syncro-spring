@@ -2,6 +2,8 @@ package com.syncro.sparepart.application;
 
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.domain.ApplicationRole;
+import com.syncro.machine.infrastructure.MachineEntity;
+import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.sparepart.domain.SparepartTaxonomyDimension;
 import com.syncro.sparepart.infrastructure.SparepartEntity;
 import com.syncro.sparepart.infrastructure.SparepartRepository;
@@ -27,11 +29,13 @@ public class SparepartService {
 
   private final SparepartRepository spareparts;
   private final SparepartTaxonomyRepository taxonomy;
+  private final MachineRepository machines;
   private final Clock clock;
 
-  public SparepartService(SparepartRepository spareparts, SparepartTaxonomyRepository taxonomy, Clock clock) {
+  public SparepartService(SparepartRepository spareparts, SparepartTaxonomyRepository taxonomy, MachineRepository machines, Clock clock) {
     this.spareparts = spareparts;
     this.taxonomy = taxonomy;
+    this.machines = machines;
     this.clock = clock;
   }
 
@@ -60,11 +64,13 @@ public class SparepartService {
       throw new DuplicateSparepartException();
     }
     var now = Instant.now(clock);
+    var machine = resolveMachine(user, normalized.machineId());
     var taxonomies = resolveTaxonomies(normalized);
     return toView(save(new SparepartEntity(
         UUID.randomUUID(),
         normalized.code(),
         normalized.name(),
+        machine,
         taxonomies.category(),
         taxonomies.brand(),
         taxonomies.kind(),
@@ -83,10 +89,12 @@ public class SparepartService {
     if (isDifferentSparepart(existingCode, sparepartId) || isDifferentSparepart(existingName, sparepartId)) {
       throw new DuplicateSparepartException();
     }
+    var machine = resolveMachine(user, normalized.machineId());
     var taxonomies = resolveTaxonomies(normalized);
     sparepart.update(
         normalized.code(),
         normalized.name(),
+        machine,
         taxonomies.category(),
         taxonomies.brand(),
         taxonomies.kind(),
@@ -121,6 +129,7 @@ public class SparepartService {
     return new SparepartCommand(
         normalizeCode(command.code()),
         normalizeName(command.name()),
+        requiredId(command.machineId()),
         requiredId(command.categoryId()),
         requiredId(command.brandId()),
         requiredId(command.kindId()),
@@ -163,12 +172,24 @@ public class SparepartService {
     return id;
   }
 
+  private MachineEntity resolveMachine(AuthenticatedUser user, UUID machineId) {
+    var machine = machines.findByIdWithPlantAndGroup(machineId).orElseThrow(SparepartMachineNotFoundException::new);
+    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN && !user.assignedPlantIds().contains(machine.getPlant().getId())) {
+      throw new SparepartMachineNotFoundException();
+    }
+    return machine;
+  }
+
   private TaxonomyRefs resolveTaxonomies(SparepartCommand command) {
-    return new TaxonomyRefs(
+    var refs = new TaxonomyRefs(
         taxonomy(command.categoryId(), SparepartTaxonomyDimension.CATEGORY),
         taxonomy(command.brandId(), SparepartTaxonomyDimension.BRAND),
         taxonomy(command.kindId(), SparepartTaxonomyDimension.KIND),
         taxonomy(command.typeId(), SparepartTaxonomyDimension.TYPE));
+    validateLinkedTaxonomy(refs.category(), refs.brand());
+    validateLinkedTaxonomy(refs.category(), refs.kind());
+    validateLinkedTaxonomy(refs.category(), refs.type());
+    return refs;
   }
 
   private SparepartTaxonomyEntity taxonomy(UUID id, SparepartTaxonomyDimension expectedDimension) {
@@ -177,6 +198,12 @@ public class SparepartService {
       throw new SparepartTaxonomyDimensionMismatchException();
     }
     return entry;
+  }
+
+  private void validateLinkedTaxonomy(SparepartTaxonomyEntity category, SparepartTaxonomyEntity dependent) {
+    if (dependent.getCategory() == null || !dependent.getCategory().getId().equals(category.getId())) {
+      throw new SparepartTaxonomyDimensionMismatchException();
+    }
   }
 
   private boolean isDifferentSparepart(Optional<SparepartEntity> existing, UUID sparepartId) {
@@ -234,12 +261,18 @@ public class SparepartService {
         sparepart.getId(),
         sparepart.getCode(),
         sparepart.getName(),
+        toMachineRef(sparepart.getMachine()),
         toTaxonomyRef(sparepart.getCategory()),
         toTaxonomyRef(sparepart.getBrand()),
         toTaxonomyRef(sparepart.getKind()),
         toTaxonomyRef(sparepart.getType()),
         sparepart.getCreatedAt(),
         sparepart.getUpdatedAt());
+  }
+
+  private SparepartMachineRefView toMachineRef(MachineEntity machine) {
+    var plant = machine.getPlant();
+    return new SparepartMachineRefView(machine.getId(), machine.getCode(), machine.getName(), plant.getId(), plant.getCode(), plant.getName());
   }
 
   private SparepartTaxonomyRefView toTaxonomyRef(SparepartTaxonomyEntity taxonomy) {
@@ -253,13 +286,16 @@ public class SparepartService {
       SparepartTaxonomyEntity type) {
   }
 
-  public record SparepartCommand(String code, String name, UUID categoryId, UUID brandId, UUID kindId, UUID typeId) {
+  public record SparepartCommand(String code, String name, UUID machineId, UUID categoryId, UUID brandId, UUID kindId, UUID typeId) {
   }
 
   public record SparepartFilters(UUID categoryId, UUID brandId, UUID kindId, UUID typeId, String search, int page, int size) {
   }
 
   public record SparepartListView(List<SparepartView> items, long totalElements, int page, int size) {
+  }
+
+  public record SparepartMachineRefView(UUID id, String code, String name, UUID plantId, String plantCode, String plantName) {
   }
 
   public record SparepartTaxonomyRefView(UUID id, String code, String name) {
@@ -269,6 +305,7 @@ public class SparepartService {
       UUID id,
       String code,
       String name,
+      SparepartMachineRefView machine,
       SparepartTaxonomyRefView category,
       SparepartTaxonomyRefView brand,
       SparepartTaxonomyRefView kind,
@@ -287,6 +324,9 @@ public class SparepartService {
   }
 
   public static class SparepartNotFoundException extends RuntimeException {
+  }
+
+  public static class SparepartMachineNotFoundException extends RuntimeException {
   }
 
   public static class SparepartTaxonomyDimensionMismatchException extends RuntimeException {

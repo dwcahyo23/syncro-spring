@@ -9,4 +9,5 @@ import type { ListSparepartTaxonomiesDimension } from './listSparepartTaxonomies
 
 export type ListSparepartTaxonomiesParams = {
 dimension?: ListSparepartTaxonomiesDimension;
+categoryId?: string;
 };

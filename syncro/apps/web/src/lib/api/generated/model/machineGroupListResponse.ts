@@ -9,4 +9,8 @@ import type { MachineGroupView } from './machineGroupView';
 
 export interface MachineGroupListResponse {
   items?: MachineGroupView[];
+  totalElements?: number;
+  page?: number;
+  size?: number;
+  sort?: string;
 }

@@ -19,6 +19,8 @@ public interface SparepartRepository extends JpaRepository<SparepartEntity, UUID
 
   @Query(value = """
       select sparepart from SparepartEntity sparepart
+      join fetch sparepart.machine machine
+      join fetch machine.plant plant
       join fetch sparepart.category category
       join fetch sparepart.brand brand
       join fetch sparepart.kind kind
@@ -49,6 +51,8 @@ public interface SparepartRepository extends JpaRepository<SparepartEntity, UUID
 
   @Query(value = """
       select sparepart from SparepartEntity sparepart
+      join fetch sparepart.machine machine
+      join fetch machine.plant plant
       join fetch sparepart.category category
       join fetch sparepart.brand brand
       join fetch sparepart.kind kind

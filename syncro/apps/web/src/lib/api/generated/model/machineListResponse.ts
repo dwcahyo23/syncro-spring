@@ -9,4 +9,8 @@ import type { MachineView } from './machineView';
 
 export interface MachineListResponse {
   items?: MachineView[];
+  totalElements?: number;
+  page?: number;
+  size?: number;
+  sort?: string;
 }

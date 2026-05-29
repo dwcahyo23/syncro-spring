@@ -5,7 +5,10 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
@@ -26,6 +29,10 @@ public class SparepartTaxonomyEntity {
   @Column(nullable = false, length = 255)
   private String name;
 
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "category_id")
+  private SparepartTaxonomyEntity category;
+
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
@@ -42,10 +49,22 @@ public class SparepartTaxonomyEntity {
       String name,
       Instant createdAt,
       Instant updatedAt) {
+    this(id, dimension, code, name, null, createdAt, updatedAt);
+  }
+
+  public SparepartTaxonomyEntity(
+      UUID id,
+      SparepartTaxonomyDimension dimension,
+      String code,
+      String name,
+      SparepartTaxonomyEntity category,
+      Instant createdAt,
+      Instant updatedAt) {
     this.id = id;
     this.dimension = dimension;
     this.code = code;
     this.name = name;
+    this.category = category;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
   }
@@ -66,6 +85,10 @@ public class SparepartTaxonomyEntity {
     return name;
   }
 
+  public SparepartTaxonomyEntity getCategory() {
+    return category;
+  }
+
   public Instant getCreatedAt() {
     return createdAt;
   }
@@ -74,9 +97,10 @@ public class SparepartTaxonomyEntity {
     return updatedAt;
   }
 
-  public void update(String code, String name, Instant updatedAt) {
+  public void update(String code, String name, SparepartTaxonomyEntity category, Instant updatedAt) {
     this.code = code;
     this.name = name;
+    this.category = category;
     this.updatedAt = updatedAt;
   }
 }

@@ -44,8 +44,15 @@ public class MachineGroupController {
       @ApiResponse(responseCode = "404", description = "Plant not found")
   })
   @GetMapping
-  public MachineGroupListResponse list(@AuthenticationPrincipal AuthenticatedUser user, @RequestParam UUID plantId) {
-    return new MachineGroupListResponse(machineGroups.list(user, plantId).stream().map(this::toDto).toList());
+  public MachineGroupListResponse list(@AuthenticationPrincipal AuthenticatedUser user,
+      @RequestParam UUID plantId,
+      @RequestParam(required = false) String search,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "100") int size,
+      @RequestParam(defaultValue = "name,asc") String sort) {
+    var result = machineGroups.list(user, plantId, search, page, size, sort);
+    return new MachineGroupListResponse(
+        result.items().stream().map(this::toDto).toList(), result.totalElements(), result.page(), result.size(), result.sort());
   }
 
   @Operation(operationId = "getMachineGroup", summary = "Get machine group")

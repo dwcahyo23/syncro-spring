@@ -1,5 +1,6 @@
 package com.syncro.sparepart.infrastructure;
 
+import com.syncro.machine.infrastructure.MachineEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -21,6 +22,10 @@ public class SparepartEntity {
 
   @Column(nullable = false, length = 255)
   private String name;
+
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "machine_id", nullable = false)
+  private MachineEntity machine;
 
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "category_id", nullable = false)
@@ -51,6 +56,7 @@ public class SparepartEntity {
       UUID id,
       String code,
       String name,
+      MachineEntity machine,
       SparepartTaxonomyEntity category,
       SparepartTaxonomyEntity brand,
       SparepartTaxonomyEntity kind,
@@ -60,6 +66,7 @@ public class SparepartEntity {
     this.id = id;
     this.code = code;
     this.name = name;
+    this.machine = machine;
     this.category = category;
     this.brand = brand;
     this.kind = kind;
@@ -78,6 +85,10 @@ public class SparepartEntity {
 
   public String getName() {
     return name;
+  }
+
+  public MachineEntity getMachine() {
+    return machine;
   }
 
   public SparepartTaxonomyEntity getCategory() {
@@ -107,6 +118,7 @@ public class SparepartEntity {
   public void update(
       String code,
       String name,
+      MachineEntity machine,
       SparepartTaxonomyEntity category,
       SparepartTaxonomyEntity brand,
       SparepartTaxonomyEntity kind,
@@ -114,6 +126,7 @@ public class SparepartEntity {
       Instant updatedAt) {
     this.code = code;
     this.name = name;
+    this.machine = machine;
     this.category = category;
     this.brand = brand;
     this.kind = kind;

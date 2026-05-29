@@ -33,7 +33,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
-import type { MachineGroupRequest, MachineGroupView, PlantView } from "@/lib/api/generated/model";
+import type {
+  ListMachineGroupsParams,
+  MachineGroupRequest,
+  MachineGroupView,
+  PlantView,
+} from "@/lib/api/generated/model";
 import {
   getListMachineGroupsQueryKey,
   getListPlantsQueryKey,
@@ -64,16 +69,21 @@ export function MachineGroupManagement() {
   const plantItems = plants.data?.data.items ?? [];
   const availablePlants = useMemo(() => permittedPlants(plantItems, scope), [plantItems, scope]);
   const [selectedPlantId, setSelectedPlantId] = useState("");
+  const [search, setSearch] = useState("");
   const effectivePlantId = selectedPlantId || availablePlants[0]?.id || "";
-  const machineGroups = useListMachineGroups(
-    { plantId: effectivePlantId },
-    {
-      query: {
-        enabled: Boolean(effectivePlantId) && !isAssignedEmpty,
-        queryKey: ["machine-groups", activePlantId, effectivePlantId],
-      },
+  const groupParams = {
+    plantId: effectivePlantId,
+    search: search.trim() || undefined,
+    page: 0,
+    size: 100,
+    sort: "name,asc",
+  } satisfies ListMachineGroupsParams;
+  const machineGroups = useListMachineGroups(groupParams, {
+    query: {
+      enabled: Boolean(effectivePlantId) && !isAssignedEmpty,
+      queryKey: ["machine-groups", activePlantId, effectivePlantId, search.trim()],
     },
-  );
+  });
   const createGroup = useCreateMachineGroup({
     mutation: { onSuccess: () => invalidateMachineGroupData(effectivePlantId) },
   });
@@ -103,7 +113,7 @@ export function MachineGroupManagement() {
 
   function invalidateMachineGroupData(plantId: string) {
     queryClient.invalidateQueries({ queryKey: ["machine-groups", activePlantId, plantId] });
-    queryClient.invalidateQueries({ queryKey: getListMachineGroupsQueryKey({ plantId }) });
+    queryClient.invalidateQueries({ queryKey: getListMachineGroupsQueryKey(groupParams) });
     queryClient.invalidateQueries({ queryKey: getListPlantsQueryKey() });
   }
 
@@ -163,13 +173,7 @@ export function MachineGroupManagement() {
         <CardHeader>
           <CardTitle>Machine Groups</CardTitle>
           <CardDescription>Manage plant-scoped process lines such as Forming.</CardDescription>
-          <CardAction className="flex flex-wrap items-center gap-2">
-            <PlantSelect
-              plants={availablePlants}
-              value={effectivePlantId}
-              disabled={!availablePlants.length || plants.isLoading || isAssignedEmpty}
-              onChange={setSelectedPlantId}
-            />
+          <CardAction>
             {canMutate ? (
               <Button onClick={openCreateDialog} disabled={!effectivePlantId || isAssignedEmpty}>
                 Create machine group
@@ -179,7 +183,22 @@ export function MachineGroupManagement() {
             )}
           </CardAction>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[repeat(auto-fit,14rem)] sm:justify-start">
+            <PlantSelect
+              plants={availablePlants}
+              value={effectivePlantId}
+              disabled={!availablePlants.length || plants.isLoading || isAssignedEmpty}
+              onChange={setSelectedPlantId}
+              compact
+            />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search groups"
+              disabled={!effectivePlantId || isAssignedEmpty}
+            />
+          </div>
           {isAssignedEmpty ? (
             <MachineGroupState title="No plant assignment" description="Your account has no assigned plant scope." />
           ) : null}
@@ -249,7 +268,7 @@ export function MachineGroupManagement() {
       </Card>
 
       <Dialog open={dialogMode !== null} onOpenChange={(open) => !open && setDialogMode(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-lg">
           <form onSubmit={submitMachineGroup} className="space-y-4">
             <DialogHeader>
               <DialogTitle>{dialogMode?.type === "edit" ? "Edit machine group" : "Create machine group"}</DialogTitle>
@@ -322,16 +341,18 @@ function PlantSelect({
   disabled,
   onChange,
   triggerId,
+  compact,
 }: {
   plants: PlantView[];
   value: string;
   disabled?: boolean;
   onChange: (value: string) => void;
   triggerId?: string;
+  compact?: boolean;
 }) {
   return (
     <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger id={triggerId} className="min-w-52">
+      <SelectTrigger id={triggerId} className={compact ? "w-full min-w-0" : "w-full min-w-0 sm:min-w-52"}>
         <SelectValue placeholder="Select plant" />
       </SelectTrigger>
       <SelectContent>

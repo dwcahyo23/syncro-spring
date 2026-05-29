@@ -2,6 +2,7 @@ package com.syncro.sparepart.api;
 
 import com.syncro.sparepart.application.SparepartService.DuplicateSparepartException;
 import com.syncro.sparepart.application.SparepartService.SparepartDataIntegrityException;
+import com.syncro.sparepart.application.SparepartService.SparepartMachineNotFoundException;
 import com.syncro.sparepart.application.SparepartService.SparepartMutationForbiddenException;
 import com.syncro.sparepart.application.SparepartService.SparepartNotFoundException;
 import com.syncro.sparepart.application.SparepartService.SparepartTaxonomyDimensionMismatchException;
@@ -19,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
@@ -46,7 +48,10 @@ public class SparepartExceptionHandler {
   }
 
   @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-  ResponseEntity<ErrorResponse> invalidPathValue() {
+  ResponseEntity<ErrorResponse> invalidPathValue(MethodArgumentTypeMismatchException exception) {
+    if (exception.getParameter() != null && exception.getParameter().hasParameterAnnotation(RequestParam.class)) {
+      return error(HttpStatus.BAD_REQUEST, "INVALID_QUERY_VALUE", "Query value is invalid.", Map.of());
+    }
     return error(HttpStatus.BAD_REQUEST, "INVALID_PATH_VALUE", "Path value is invalid.", Map.of());
   }
 
@@ -83,6 +88,11 @@ public class SparepartExceptionHandler {
   @ExceptionHandler(SparepartNotFoundException.class)
   ResponseEntity<ErrorResponse> sparepartNotFound() {
     return error(HttpStatus.NOT_FOUND, "SPAREPART_NOT_FOUND", "Sparepart was not found.", Map.of());
+  }
+
+  @ExceptionHandler(SparepartMachineNotFoundException.class)
+  ResponseEntity<ErrorResponse> machineNotFound() {
+    return error(HttpStatus.NOT_FOUND, "SPAREPART_MACHINE_NOT_FOUND", "Sparepart machine was not found.", Map.of());
   }
 
   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message, Map<String, String> fieldErrors) {

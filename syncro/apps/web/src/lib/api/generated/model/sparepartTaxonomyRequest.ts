@@ -19,4 +19,5 @@ export interface SparepartTaxonomyRequest {
      * @maxLength 255
      */
   name: string;
+  categoryId?: string;
 }

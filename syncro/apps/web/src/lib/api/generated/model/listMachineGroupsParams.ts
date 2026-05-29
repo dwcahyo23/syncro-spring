@@ -8,4 +8,8 @@
 
 export type ListMachineGroupsParams = {
 plantId: string;
+search?: string;
+page?: number;
+size?: number;
+sort?: string;
 };

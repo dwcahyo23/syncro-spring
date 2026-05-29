@@ -14,8 +14,11 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -24,6 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MachineService {
   private static final String DUPLICATE_MACHINE_CODE_CONSTRAINT = "uq_machines_plant_id_lower_code";
+  private static final int DEFAULT_PAGE_SIZE = 100;
+  private static final int MAX_PAGE_SIZE = 200;
+  private static final Set<String> ALLOWED_SORTS = Set.of("code", "name", "status", "createdAt", "updatedAt");
   private static final Pattern MACHINE_CODE_PATTERN = Pattern.compile("^[A-Z0-9][A-Z0-9._-]{0,63}$");
 
   private final MachineRepository machines;
@@ -44,7 +50,19 @@ public class MachineService {
   }
 
   @Transactional(readOnly = true)
-  public List<MachineView> list(AuthenticatedUser user, UUID plantId, UUID machineGroupId, MachineStatus status) {
+  public MachineListView list(AuthenticatedUser user, UUID plantId, UUID machineGroupId, MachineStatus status) {
+    return list(user, plantId, machineGroupId, status, null, 0, DEFAULT_PAGE_SIZE, "code,asc");
+  }
+
+  @Transactional(readOnly = true)
+  public MachineListView list(AuthenticatedUser user, UUID plantId, UUID machineGroupId, MachineStatus status,
+      String search, Integer limit) {
+    return list(user, plantId, machineGroupId, status, search, 0, limit == null ? DEFAULT_PAGE_SIZE : limit, "code,asc");
+  }
+
+  @Transactional(readOnly = true)
+  public MachineListView list(AuthenticatedUser user, UUID plantId, UUID machineGroupId, MachineStatus status,
+      String search, int page, int size, String sort) {
     var superAdmin = user.applicationRole() == ApplicationRole.SUPER_ADMIN;
     List<UUID> scopedPlantIds = List.of();
     if (!superAdmin) {
@@ -66,13 +84,19 @@ public class MachineService {
         throw new MachineGroupPlantMismatchException();
       }
     }
+    var normalizedPage = normalizePage(page);
+    var normalizedSize = normalizeSize(size);
+    var normalizedSort = normalizeSort(sort);
     if (!superAdmin && scopedPlantIds.isEmpty()) {
-      return List.of();
+      return new MachineListView(List.of(), 0, normalizedPage, normalizedSize, sortName(normalizedSort));
     }
+    var normalizedSearch = normalizeSearch(search);
+    var pageable = PageRequest.of(normalizedPage, normalizedSize, normalizedSort);
     var result = superAdmin
-        ? machines.findAllUnscoped(plantId, machineGroupId, status)
-        : machines.findAllScoped(scopedPlantIds, plantId, machineGroupId, status);
-    return result.stream().map(this::toView).toList();
+        ? machines.findAllUnscoped(plantId, machineGroupId, status, normalizedSearch, pageable)
+        : machines.findAllScoped(scopedPlantIds, plantId, machineGroupId, status, normalizedSearch, pageable);
+    return new MachineListView(
+        result.stream().map(this::toView).toList(), result.getTotalElements(), normalizedPage, normalizedSize, sortName(normalizedSort));
   }
 
   @Transactional(readOnly = true)
@@ -187,6 +211,46 @@ public class MachineService {
     }
   }
 
+  private String normalizeSearch(String search) {
+    if (search == null || search.isBlank()) {
+      return null;
+    }
+    var normalized = search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+    return "%" + normalized + "%";
+  }
+
+  private int normalizePage(int page) {
+    if (page < 0) {
+      throw new MachineValidationException();
+    }
+    return page;
+  }
+
+  private int normalizeSize(int size) {
+    if (size < 1 || size > MAX_PAGE_SIZE) {
+      throw new MachineValidationException();
+    }
+    return size;
+  }
+
+  private Sort normalizeSort(String sort) {
+    if (sort == null || sort.isBlank()) {
+      return Sort.by(Sort.Direction.ASC, "code");
+    }
+    var parts = sort.split(",", 2);
+    var property = parts[0].trim();
+    if (!ALLOWED_SORTS.contains(property)) {
+      throw new MachineValidationException();
+    }
+    var direction = parts.length > 1 && "desc".equalsIgnoreCase(parts[1].trim()) ? Sort.Direction.DESC : Sort.Direction.ASC;
+    return Sort.by(direction, property);
+  }
+
+  private String sortName(Sort sort) {
+    var order = sort.iterator().next();
+    return order.getProperty() + "," + order.getDirection().name().toLowerCase(Locale.ROOT);
+  }
+
   private String normalizeCode(String code) {
     if (code == null) {
       throw new MachineValidationException();
@@ -221,6 +285,9 @@ public class MachineService {
   public record MachineView(UUID id, UUID plantId, String plantCode, String plantName, UUID machineGroupId,
       String machineGroupName, String code, String name, MachineStatus status, String brand, LocalDate installedAt,
       String notes, Instant createdAt, Instant updatedAt) {
+  }
+
+  public record MachineListView(List<MachineView> items, long totalElements, int page, int size, String sort) {
   }
 
   public static class DuplicateMachineCodeException extends RuntimeException {

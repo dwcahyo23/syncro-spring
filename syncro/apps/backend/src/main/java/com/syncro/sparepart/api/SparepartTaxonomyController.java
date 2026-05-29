@@ -44,8 +44,9 @@ public class SparepartTaxonomyController {
   })
   @GetMapping
   public SparepartTaxonomyListResponse list(@AuthenticationPrincipal AuthenticatedUser user,
-      @RequestParam(required = false) SparepartTaxonomyDimension dimension) {
-    return new SparepartTaxonomyListResponse(taxonomy.list(user, dimension).stream().map(this::toDto).toList());
+      @RequestParam(required = false) SparepartTaxonomyDimension dimension,
+      @RequestParam(required = false) UUID categoryId) {
+    return new SparepartTaxonomyListResponse(taxonomy.list(user, dimension, categoryId).stream().map(this::toDto).toList());
   }
 
   @Operation(operationId = "getSparepartTaxonomy", summary = "Get sparepart taxonomy entry")
@@ -106,10 +107,11 @@ public class SparepartTaxonomyController {
   }
 
   private SparepartTaxonomyCommand command(SparepartTaxonomyRequest request) {
-    return new SparepartTaxonomyCommand(request.dimension(), request.code(), request.name());
+    return new SparepartTaxonomyCommand(request.dimension(), request.code(), request.name(), request.categoryId());
   }
 
   private SparepartTaxonomyView toDto(SparepartTaxonomyService.SparepartTaxonomyView entry) {
-    return new SparepartTaxonomyView(entry.id(), entry.dimension(), entry.code(), entry.name(), entry.createdAt(), entry.updatedAt());
+    return new SparepartTaxonomyView(
+        entry.id(), entry.dimension(), entry.code(), entry.name(), entry.categoryId(), entry.createdAt(), entry.updatedAt());
   }
 }

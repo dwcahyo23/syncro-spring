@@ -12,6 +12,7 @@ export interface SparepartTaxonomyView {
   dimension?: SparepartTaxonomyViewDimension;
   code?: string;
   name?: string;
+  categoryId?: string;
   createdAt?: string;
   updatedAt?: string;
 }

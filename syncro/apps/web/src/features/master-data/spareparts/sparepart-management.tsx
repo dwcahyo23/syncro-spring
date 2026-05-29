@@ -31,12 +31,15 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { SparepartRequest, SparepartTaxonomyView, SparepartView } from "@/lib/api/generated/model";
+import type { MachineView, SparepartRequest, SparepartTaxonomyView, SparepartView } from "@/lib/api/generated/model";
 import { SparepartTaxonomyRequestDimension } from "@/lib/api/generated/model";
 import {
   getListSparepartsQueryKey,
+  getListSparepartTaxonomiesQueryKey,
   useCreateSparepart,
+  useCreateSparepartTaxonomy,
   useDeleteSparepart,
+  useListMachines,
   useListSpareparts,
   useListSparepartTaxonomies,
   useUpdateSparepart,
@@ -53,6 +56,7 @@ const ALL = "__all__";
 const EMPTY_FORM: SparepartRequest = {
   code: "",
   name: "",
+  machineId: "",
   categoryId: "",
   brandId: "",
   kindId: "",
@@ -64,9 +68,12 @@ export function SparepartManagement() {
   const queryClient = useQueryClient();
   const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGE";
   const [filters, setFilters] = useState<Filters>({});
+  const [machineSearch, setMachineSearch] = useState("");
   const taxonomy = useListSparepartTaxonomies();
+  const machines = useListMachines({ search: machineSearch.trim() || undefined, page: 0, size: 25, sort: "code,asc" });
   const spareparts = useListSpareparts(cleanFilters(filters));
   const createSparepart = useCreateSparepart({ mutation: { onSuccess: invalidateSparepartData } });
+  const createTaxonomy = useCreateSparepartTaxonomy({ mutation: { onSuccess: invalidateTaxonomyData } });
   const updateSparepart = useUpdateSparepart({ mutation: { onSuccess: invalidateSparepartData } });
   const deleteSparepart = useDeleteSparepart({ mutation: { onSuccess: invalidateSparepartData } });
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
@@ -77,6 +84,7 @@ export function SparepartManagement() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const taxonomyItems = taxonomy.data?.data.items ?? [];
   const taxonomyByDimension = useMemo(() => groupByDimension(taxonomyItems), [taxonomyItems]);
+  const machineItems = machines.data?.data.items ?? [];
   const items = spareparts.data?.data.items ?? [];
   const isSaving = createSparepart.isPending || updateSparepart.isPending;
   const taxonomyReady = hasRequiredTaxonomy(taxonomyByDimension);
@@ -85,9 +93,29 @@ export function SparepartManagement() {
     queryClient.invalidateQueries({ queryKey: getListSparepartsQueryKey() });
   }
 
+  function invalidateTaxonomyData() {
+    queryClient.invalidateQueries({ queryKey: getListSparepartTaxonomiesQueryKey() });
+  }
+
+  async function createTaxonomyValue(dimension: SparepartTaxonomyRequestDimension, name: string) {
+    const response = await createTaxonomy.mutateAsync({
+      data: {
+        dimension,
+        code: taxonomyCode(name),
+        name: name.trim(),
+        categoryId: form.categoryId,
+      },
+    });
+    await queryClient.invalidateQueries({ queryKey: getListSparepartTaxonomiesQueryKey() });
+    if (response.data.id) {
+      setForm((current) => ({ ...current, [formFieldForDimension(dimension)]: response.data.id ?? "" }));
+    }
+    toast.success(`${dimensionLabel(dimension)} created.`);
+  }
+
   function openCreateDialog() {
     setDialogMode({ type: "create" });
-    setForm(defaultForm(taxonomyByDimension));
+    setForm(defaultForm(taxonomyByDimension, machineItems));
     setFieldErrors({});
     setFormError(null);
   }
@@ -97,6 +125,7 @@ export function SparepartManagement() {
     setForm({
       code: sparepart.code ?? "",
       name: sparepart.name ?? "",
+      machineId: sparepart.machine?.id ?? "",
       categoryId: sparepart.category?.id ?? "",
       brandId: sparepart.brand?.id ?? "",
       kindId: sparepart.kind?.id ?? "",
@@ -158,7 +187,7 @@ export function SparepartManagement() {
       <CardHeader>
         <CardTitle>Spareparts</CardTitle>
         <CardDescription>
-          Manage global sparepart master data with category, brand, kind, and type references.
+          Manage machine-linked sparepart master data with category, brand, kind, and type references.
         </CardDescription>
         <CardAction>
           <div className="flex items-center gap-2">
@@ -221,16 +250,16 @@ export function SparepartManagement() {
       </CardContent>
 
       <Dialog open={dialogMode !== null} onOpenChange={(open) => !open && setDialogMode(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
           <form onSubmit={submitSparepart} className="space-y-4">
             <DialogHeader>
               <DialogTitle>{dialogMode?.type === "edit" ? "Edit sparepart" : "Create sparepart"}</DialogTitle>
-              <DialogDescription>Code and name must be unique across global spareparts.</DialogDescription>
+              <DialogDescription>Code and name must be unique, and the sparepart must be linked to an existing machine.</DialogDescription>
             </DialogHeader>
             {formError ? (
               <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{formError}</p>
             ) : null}
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2">
               <TextField
                 id="sparepart-code"
                 label="Code"
@@ -247,20 +276,37 @@ export function SparepartManagement() {
                 disabled={isSaving}
                 onChange={(name) => setForm((current) => ({ ...current, name }))}
               />
+              <MachineSelect
+                value={form.machineId}
+                search={machineSearch}
+                error={fieldErrors.machineId}
+                disabled={isSaving}
+                items={machineItems}
+                onSearchChange={setMachineSearch}
+                onChange={(machineId) => setForm((current) => ({ ...current, machineId }))}
+              />
               <TaxonomySelect
                 label="Category"
                 value={form.categoryId}
                 error={fieldErrors.categoryId}
                 disabled={isSaving}
                 items={taxonomyByDimension.get(SparepartTaxonomyRequestDimension.CATEGORY) ?? []}
-                onChange={(categoryId) => setForm((current) => ({ ...current, categoryId }))}
+                onChange={(categoryId) =>
+                  setForm((current) => ({ ...current, categoryId, brandId: "", kindId: "", typeId: "" }))
+                }
               />
               <TaxonomySelect
                 label="Brand"
                 value={form.brandId}
                 error={fieldErrors.brandId}
                 disabled={isSaving}
-                items={taxonomyByDimension.get(SparepartTaxonomyRequestDimension.BRAND) ?? []}
+                items={linkedTaxonomyOptions(
+                  taxonomyByDimension,
+                  SparepartTaxonomyRequestDimension.BRAND,
+                  form.categoryId,
+                )}
+                creatable={!createTaxonomy.isPending && Boolean(form.categoryId)}
+                onCreate={(name) => createTaxonomyValue(SparepartTaxonomyRequestDimension.BRAND, name)}
                 onChange={(brandId) => setForm((current) => ({ ...current, brandId }))}
               />
               <TaxonomySelect
@@ -268,7 +314,13 @@ export function SparepartManagement() {
                 value={form.kindId}
                 error={fieldErrors.kindId}
                 disabled={isSaving}
-                items={taxonomyByDimension.get(SparepartTaxonomyRequestDimension.KIND) ?? []}
+                items={linkedTaxonomyOptions(
+                  taxonomyByDimension,
+                  SparepartTaxonomyRequestDimension.KIND,
+                  form.categoryId,
+                )}
+                creatable={!createTaxonomy.isPending && Boolean(form.categoryId)}
+                onCreate={(name) => createTaxonomyValue(SparepartTaxonomyRequestDimension.KIND, name)}
                 onChange={(kindId) => setForm((current) => ({ ...current, kindId }))}
               />
               <TaxonomySelect
@@ -276,7 +328,13 @@ export function SparepartManagement() {
                 value={form.typeId}
                 error={fieldErrors.typeId}
                 disabled={isSaving}
-                items={taxonomyByDimension.get(SparepartTaxonomyRequestDimension.TYPE) ?? []}
+                items={linkedTaxonomyOptions(
+                  taxonomyByDimension,
+                  SparepartTaxonomyRequestDimension.TYPE,
+                  form.categoryId,
+                )}
+                creatable={!createTaxonomy.isPending && Boolean(form.categoryId)}
+                onCreate={(name) => createTaxonomyValue(SparepartTaxonomyRequestDimension.TYPE, name)}
                 onChange={(typeId) => setForm((current) => ({ ...current, typeId }))}
               />
             </div>
@@ -327,8 +385,8 @@ function SparepartFilters({
   onChange: (filters: Filters) => void;
 }) {
   return (
-    <div className="grid gap-3 rounded-lg border p-3 md:grid-cols-5">
-      <div className="relative md:col-span-1">
+    <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[repeat(auto-fit,14rem)] sm:justify-start">
+      <div className="relative w-full">
         <SearchIcon className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           className="pl-9"
@@ -456,12 +514,62 @@ function TextField({
   );
 }
 
+function MachineSelect({
+  value,
+  search,
+  error,
+  disabled,
+  items,
+  onSearchChange,
+  onChange,
+}: {
+  value?: string;
+  search: string;
+  error?: string;
+  disabled?: boolean;
+  items: MachineView[];
+  onSearchChange: (value: string) => void;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="grid gap-2">
+      <Label>Machine</Label>
+      <Select value={value} onValueChange={onChange} disabled={Boolean(disabled) || items.length === 0}>
+        <SelectTrigger className="w-full min-w-0" aria-invalid={Boolean(error)}>
+          <SelectValue placeholder="Select machine" />
+        </SelectTrigger>
+        <SelectContent>
+          <div className="p-2">
+            <Input
+              value={search}
+              placeholder="Search machine code, name, or plant"
+              onChange={(event) => onSearchChange(event.target.value)}
+              onKeyDown={(event) => event.stopPropagation()}
+            />
+          </div>
+          {items.length === 0 ? (
+            <div className="px-2 py-1.5 text-muted-foreground text-sm">No machines found</div>
+          ) : null}
+          {items.map((machine) => (
+            <SelectItem key={machine.id ?? machine.code} value={machine.id ?? ""}>
+              {machine.code} · {machine.name || "Unnamed"} · {machine.plantCode}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {error ? <p className="text-destructive text-sm">{error}</p> : null}
+    </div>
+  );
+}
+
 function TaxonomySelect({
   label,
   value,
   error,
   disabled,
   items,
+  creatable,
+  onCreate,
   onChange,
 }: {
   label: string;
@@ -469,21 +577,60 @@ function TaxonomySelect({
   error?: string;
   disabled?: boolean;
   items: SparepartTaxonomyView[];
+  creatable?: boolean;
+  onCreate?: (name: string) => Promise<void>;
   onChange: (value: string) => void;
 }) {
+  const [search, setSearch] = useState("");
+  const visibleItems = items.filter((item) => taxonomyMatches(item, search));
+  const canCreate = Boolean(creatable && onCreate && search.trim());
+
+  async function submitCreate() {
+    if (!onCreate || !search.trim()) {
+      return;
+    }
+    await onCreate(search);
+    setSearch("");
+  }
+
   return (
     <div className="grid gap-2">
       <Label>{label}</Label>
-      <Select value={value} onValueChange={onChange} disabled={Boolean(disabled) || items.length === 0}>
-        <SelectTrigger aria-invalid={Boolean(error)}>
+      <Select value={value} onValueChange={onChange} disabled={Boolean(disabled) || (!creatable && items.length === 0)}>
+        <SelectTrigger className="w-full min-w-0" aria-invalid={Boolean(error)}>
           <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
         </SelectTrigger>
-        <SelectContent>
-          {items.map((item) => (
+        <SelectContent position="popper" side="top" align="start" className="max-h-72">
+          <div className="p-2">
+            <Input
+              value={search}
+              placeholder={`Search ${label.toLowerCase()}`}
+              onChange={(event) => setSearch(event.target.value)}
+              onKeyDown={(event) => event.stopPropagation()}
+            />
+          </div>
+          {visibleItems.length === 0 ? (
+            <div className="px-2 py-1.5 text-muted-foreground text-sm">No {label.toLowerCase()} found</div>
+          ) : null}
+          {visibleItems.map((item) => (
             <SelectItem key={item.id} value={item.id ?? ""}>
               {item.name} ({item.code})
             </SelectItem>
           ))}
+          {canCreate ? (
+            <div className="border-t p-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                size="sm"
+                onClick={submitCreate}
+                disabled={disabled}
+              >
+                Create {label.toLowerCase()} “{search.trim()}”
+              </Button>
+            </div>
+          ) : null}
         </SelectContent>
       </Select>
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
@@ -504,7 +651,7 @@ function FilterSelect({
 }) {
   return (
     <Select value={value ?? ALL} onValueChange={(next) => onChange(next === ALL ? undefined : next)}>
-      <SelectTrigger>
+      <SelectTrigger className="w-full min-w-0">
         <SelectValue placeholder={label} />
       </SelectTrigger>
       <SelectContent>
@@ -560,6 +707,47 @@ function groupByDimension(items: SparepartTaxonomyView[]) {
   }, new Map<TaxonomyDimension, SparepartTaxonomyView[]>());
 }
 
+function linkedTaxonomyOptions(
+  taxonomyByDimension: Map<TaxonomyDimension, SparepartTaxonomyView[]>,
+  dimension: TaxonomyDimension,
+  categoryId: string,
+) {
+  return (taxonomyByDimension.get(dimension) ?? []).filter((item) => !categoryId || item.categoryId === categoryId);
+}
+
+function taxonomyMatches(item: SparepartTaxonomyView, search: string) {
+  const normalized = search.trim().toLowerCase();
+  if (!normalized) {
+    return true;
+  }
+  return [item.code, item.name].some((value) => value?.toLowerCase().includes(normalized));
+}
+
+function taxonomyCode(name: string) {
+  return name
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function dimensionLabel(dimension: SparepartTaxonomyRequestDimension) {
+  return String(dimension).toLowerCase();
+}
+
+function formFieldForDimension(dimension: SparepartTaxonomyRequestDimension): keyof SparepartRequest {
+  if (dimension === SparepartTaxonomyRequestDimension.BRAND) {
+    return "brandId";
+  }
+  if (dimension === SparepartTaxonomyRequestDimension.KIND) {
+    return "kindId";
+  }
+  if (dimension === SparepartTaxonomyRequestDimension.TYPE) {
+    return "typeId";
+  }
+  return "categoryId";
+}
+
 function hasRequiredTaxonomy(taxonomyByDimension: Map<TaxonomyDimension, SparepartTaxonomyView[]>) {
   return [
     SparepartTaxonomyRequestDimension.CATEGORY,
@@ -569,10 +757,14 @@ function hasRequiredTaxonomy(taxonomyByDimension: Map<TaxonomyDimension, Sparepa
   ].every((dimension) => (taxonomyByDimension.get(dimension) ?? []).length > 0);
 }
 
-function defaultForm(taxonomyByDimension: Map<TaxonomyDimension, SparepartTaxonomyView[]>): SparepartRequest {
+function defaultForm(
+  taxonomyByDimension: Map<TaxonomyDimension, SparepartTaxonomyView[]>,
+  machines: MachineView[],
+): SparepartRequest {
   return {
     code: "",
     name: "",
+    machineId: machines[0]?.id ?? "",
     categoryId: taxonomyByDimension.get(SparepartTaxonomyRequestDimension.CATEGORY)?.[0]?.id ?? "",
     brandId: taxonomyByDimension.get(SparepartTaxonomyRequestDimension.BRAND)?.[0]?.id ?? "",
     kindId: taxonomyByDimension.get(SparepartTaxonomyRequestDimension.KIND)?.[0]?.id ?? "",

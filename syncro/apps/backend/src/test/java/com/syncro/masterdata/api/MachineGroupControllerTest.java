@@ -24,6 +24,7 @@ import com.syncro.masterdata.application.MachineGroupService.DuplicateMachineGro
 import com.syncro.masterdata.application.MachineGroupService.MachineGroupDataIntegrityException;
 import com.syncro.masterdata.application.MachineGroupService.MachineGroupMutationForbiddenException;
 import com.syncro.masterdata.application.MachineGroupService.MachineGroupNotFoundException;
+import com.syncro.masterdata.application.MachineGroupService.MachineGroupListView;
 import com.syncro.masterdata.application.MachineGroupService.MachineGroupView;
 import java.time.Instant;
 import java.util.List;
@@ -70,14 +71,14 @@ class MachineGroupControllerTest {
     var user = user(ApplicationRole.SUPER_ADMIN);
     var plantId = UUID.randomUUID();
     var groupId = UUID.randomUUID();
-    when(machineGroups.list(user, plantId)).thenReturn(List.of(new MachineGroupView(
+    when(machineGroups.list(user, plantId, null, 0, 100, "name,asc")).thenReturn(new MachineGroupListView(List.of(new MachineGroupView(
         groupId,
         plantId,
         "GM1",
         "Plant GM1",
         "Forming",
         Instant.parse("2026-05-27T00:00:00Z"),
-        Instant.parse("2026-05-27T00:00:00Z"))));
+        Instant.parse("2026-05-27T00:00:00Z"))), 1, 0, 100, "name,asc"));
 
     mockMvc.perform(get("/api/v1/machine-groups").param("plantId", plantId.toString()).with(auth(user)))
         .andExpect(status().isOk())
@@ -188,7 +189,7 @@ class MachineGroupControllerTest {
   void outOfScopeListReturnsSafeForbiddenError() throws Exception {
     var user = user(ApplicationRole.MANAGE);
     var plantId = UUID.randomUUID();
-    doThrow(new PlantAccessDeniedException()).when(machineGroups).list(user, plantId);
+    doThrow(new PlantAccessDeniedException()).when(machineGroups).list(user, plantId, null, 0, 100, "name,asc");
 
     mockMvc.perform(get("/api/v1/machine-groups").param("plantId", plantId.toString()).with(auth(user)))
         .andExpect(status().isForbidden())
@@ -224,8 +225,8 @@ class MachineGroupControllerTest {
 
     mockMvc.perform(get("/api/v1/machine-groups").param("plantId", "not-a-uuid").with(auth(user)))
         .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("INVALID_PATH_VALUE"))
-        .andExpect(jsonPath("$.message").value("Path value is invalid."));
+        .andExpect(jsonPath("$.code").value("INVALID_QUERY_VALUE"))
+        .andExpect(jsonPath("$.message").value("Query value is invalid."));
   }
 
   @Test

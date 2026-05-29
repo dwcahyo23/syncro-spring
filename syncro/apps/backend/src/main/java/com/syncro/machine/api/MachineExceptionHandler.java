@@ -22,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
@@ -49,7 +50,10 @@ public class MachineExceptionHandler {
   }
 
   @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-  ResponseEntity<ErrorResponse> invalidPathValue() {
+  ResponseEntity<ErrorResponse> invalidPathValue(MethodArgumentTypeMismatchException exception) {
+    if (exception.getParameter() != null && exception.getParameter().hasParameterAnnotation(RequestParam.class)) {
+      return error(HttpStatus.BAD_REQUEST, "INVALID_QUERY_VALUE", "Query value is invalid.", Map.of());
+    }
     return error(HttpStatus.BAD_REQUEST, "INVALID_PATH_VALUE", "Path value is invalid.", Map.of());
   }
 
