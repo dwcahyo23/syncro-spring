@@ -1,26 +1,26 @@
 installation:
   version: 6.8.0
   installDate: 2026-05-22T02:20:16.321Z
-  lastUpdated: 2026-05-28T16:54:53.741Z
+  lastUpdated: 2026-06-01T10:36:30.160Z
 modules:
   - name: core
     version: 6.8.0
     installDate: 2026-05-22T02:20:14.376Z
-    lastUpdated: 2026-05-28T16:54:53.726Z
+    lastUpdated: 2026-06-01T10:36:30.149Z
     source: built-in
     npmPackage: null
     repoUrl: null
   - name: bmm
     version: 6.8.0
     installDate: 2026-05-22T02:20:14.286Z
-    lastUpdated: 2026-05-28T16:54:53.729Z
+    lastUpdated: 2026-06-01T10:36:30.151Z
     source: built-in
     npmPackage: null
     repoUrl: null
   - name: tea
     version: v1.19.0
     installDate: 2026-05-26T16:49:42.168Z
-    lastUpdated: 2026-05-28T16:54:53.733Z
+    lastUpdated: 2026-06-01T10:36:30.154Z
     source: external
     npmPackage: bmad-method-test-architecture-enterprise
     repoUrl: https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise
@@ -29,7 +29,7 @@ modules:
   - name: bmb
     version: v1.8.1
     installDate: 2026-05-26T16:49:42.468Z
-    lastUpdated: 2026-05-28T16:54:53.737Z
+    lastUpdated: 2026-06-01T10:36:30.158Z
     source: external
     npmPackage: bmad-builder
     repoUrl: https://github.com/bmad-code-org/bmad-builder
@@ -38,7 +38,7 @@ modules:
   - name: wds
     version: v0.4.3
     installDate: 2026-05-22T02:20:16.159Z
-    lastUpdated: 2026-05-28T16:54:53.741Z
+    lastUpdated: 2026-06-01T10:36:30.160Z
     source: external
     npmPackage: bmad-wds
     repoUrl: https://github.com/bmad-code-org/bmad-method-wds-expansion
@@ -46,9 +46,10 @@ modules:
     sha: cc16f09fcfab26d35635af1491f36a38a8431c8d
 ides:
   - claude-code
-  - antigravity
-  - openclaw
-  - droid
-  - kilo
-  - roo
   - codex
+  - droid
+  - antigravity
+  - kilo
+  - openclaw
+  - roo
+  - opencode

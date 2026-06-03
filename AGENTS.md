@@ -1,10 +1,10 @@
-# Claude Project Instructions
+# Codex Project Instructions
 
 ## Repository Layout
 
 - Application source code will live under `syncro/`.
 - Keep BMad workflow and planning artifacts under `_bmad/` and `_bmad-output/`.
-- Keep Claude/agent workflow files under `.claude/`, `.agent/`, and `.agents/` when they are project-shared.
+- Keep Codex/agent workflow files under `.Codex/`, `.agent/`, and `.agents/` when they are project-shared.
 - Do not create or use separate worktrees for normal project work unless the user explicitly asks.
 
 ## Branching
@@ -52,7 +52,7 @@ Allowed by default when related to requested work:
 - Tests under `tests/` or app-local test folders.
 - Documentation under `docs/` and required root docs.
 - BMad artifacts under `_bmad/` and `_bmad-output/`.
-- Shared Claude/agent workflow files under `.claude/`, `.agent/`, and `.agents/`, excluding user-local settings.
+- Shared Codex/agent workflow files under `.Codex/`, `.agent/`, and `.agents/`, excluding user-local settings.
 - Shared Hermes Agent or OpenClaw project configuration only when it is deterministic, non-secret, and required for the team to reproduce workflows.
 - Root config files required by tooling, for example `.gitignore`, package manager config, build config, lint config, formatter config, and CI config.
 
@@ -66,7 +66,7 @@ Never commit:
 - `node_modules/`, package manager caches, build output, coverage output, or generated binaries.
 - `.next/`, `dist/`, `build/`, `target/`, `.gradle/`, `.turbo/`, `.vercel/`, or similar generated directories.
 - Logs, temporary files, cache files, OS/editor files.
-- User-local Claude settings such as `.claude/settings.local.json`.
+- User-local Codex settings such as `.Codex/settings.local.json`.
 - Hermes Agent or OpenClaw local sessions, memory, cache, logs, transcripts, run output, credentials, browser profiles, downloaded files, and generated scratch work.
 - Large binary assets unless the user explicitly confirms they belong in Git.
 
@@ -94,10 +94,10 @@ If forbidden content appears necessary, stop and ask for explicit confirmation a
 - Use concise imperative subject line.
 - Body should explain why the change exists, not list every file.
 - Mention scope when useful: `backend`, `web`, `infra`, `BMad`, `docs`, or `syncro`.
-- End every Claude-created commit with:
+- End every Codex-created commit with:
 
 ```text
-Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
+Co-Authored-By: Codex Opus 4.7 <noreply@anthropic.com>
 ```
 
 Example:
@@ -107,7 +107,7 @@ Add Syncro project baseline
 
 Capture workflow rules and project guardrails so future implementation under syncro/ can be committed safely.
 
-Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
+Co-Authored-By: Codex Opus 4.7 <noreply@anthropic.com>
 ```
 
 ## Post-Commit Verification
@@ -125,11 +125,11 @@ After every commit:
 - If PowerShell command execution has version/runtime issues, use PowerShell 7 explicitly via `pwsh`.
 - If PowerShell and `pwsh` both fail for a command, fall back to `cmd` before using Bash.
 - Do not use Bash command shapes unless the user explicitly asks or PowerShell/`pwsh`/`cmd` cannot run the required command.
-- Prefer dedicated Claude tools (`Read`, `Edit`, `Glob`, `Grep`) over shell commands when they fit.
+- Prefer dedicated Codex tools (`Read`, `Edit`, `Glob`, `Grep`) over shell commands when they fit.
 
 ## Syncro Development Commands
 
-Use PowerShell command shapes below so Claude Code auto-allow rules can match consistently during long-running development:
+Use PowerShell command shapes below so Codex auto-allow rules can match consistently during long-running development:
 
 - Start backend: `./syncro/scripts/start-backend.ps1`
 - Start web: `./syncro/scripts/start-web.ps1`
