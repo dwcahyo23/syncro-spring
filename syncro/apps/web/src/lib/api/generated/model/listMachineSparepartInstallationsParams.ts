@@ -5,11 +5,12 @@
  * Syncro backend REST API.
  * OpenAPI spec version: v1
  */
+import type { Pageable } from './pageable';
 
 export type ListMachineSparepartInstallationsParams = {
 machineId?: string;
 sparepartId?: string;
 plantId?: string;
 machineGroupId?: string;
-limit?: number;
+pageable: Pageable;
 };

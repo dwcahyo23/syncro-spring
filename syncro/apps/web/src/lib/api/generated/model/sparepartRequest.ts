@@ -7,16 +7,6 @@
  */
 
 export interface SparepartRequest {
-  /**
-     * @minLength 0
-     * @maxLength 64
-     */
-  code: string;
-  /**
-     * @minLength 0
-     * @maxLength 255
-     */
-  name: string;
   machineId: string;
   categoryId: string;
   brandId: string;

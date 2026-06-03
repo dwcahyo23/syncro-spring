@@ -19,6 +19,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import { DataTableSortHeader } from "@/components/ui/data-table-sort-header";
 import {
   Dialog,
   DialogContent,
@@ -70,18 +72,21 @@ export function MachineGroupManagement() {
   const availablePlants = useMemo(() => permittedPlants(plantItems, scope), [plantItems, scope]);
   const [selectedPlantId, setSelectedPlantId] = useState("");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(25);
+  const [sort, setSort] = useState("name,asc");
   const effectivePlantId = selectedPlantId || availablePlants[0]?.id || "";
   const groupParams = {
     plantId: effectivePlantId,
     search: search.trim() || undefined,
-    page: 0,
-    size: 100,
-    sort: "name,asc",
+    page,
+    size,
+    sort,
   } satisfies ListMachineGroupsParams;
   const machineGroups = useListMachineGroups(groupParams, {
     query: {
       enabled: Boolean(effectivePlantId) && !isAssignedEmpty,
-      queryKey: ["machine-groups", activePlantId, effectivePlantId, search.trim()],
+      queryKey: ["machine-groups", activePlantId, effectivePlantId, search.trim(), page, size, sort],
     },
   });
   const createGroup = useCreateMachineGroup({
@@ -184,7 +189,7 @@ export function MachineGroupManagement() {
           </CardAction>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[repeat(auto-fit,14rem)] sm:justify-start">
+          <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[repeat(auto-fill,minmax(14rem,14rem))] sm:justify-start">
             <PlantSelect
               plants={availablePlants}
               value={effectivePlantId}
@@ -230,9 +235,13 @@ export function MachineGroupManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
+                  <TableHead>
+                    <DataTableSortHeader title="Name" field="name" sort={sort} onSortChange={setSort} />
+                  </TableHead>
                   <TableHead>Plant</TableHead>
-                  <TableHead>Created</TableHead>
+                  <TableHead>
+                    <DataTableSortHeader title="Created" field="createdAt" sort={sort} onSortChange={setSort} />
+                  </TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -263,6 +272,18 @@ export function MachineGroupManagement() {
                 ))}
               </TableBody>
             </Table>
+          ) : null}
+          {!machineGroups.isLoading && !machineGroups.isError && machineGroups.data?.data ? (
+            <DataTablePagination
+              page={page}
+              size={size}
+              totalElements={machineGroups.data.data.totalElements}
+              onPageChange={setPage}
+              onSizeChange={(newSize) => {
+                setSize(newSize);
+                setPage(0);
+              }}
+            />
           ) : null}
         </CardContent>
       </Card>

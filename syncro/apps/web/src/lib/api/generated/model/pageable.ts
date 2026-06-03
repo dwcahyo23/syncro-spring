@@ -5,12 +5,11 @@
  * Syncro backend REST API.
  * OpenAPI spec version: v1
  */
-import type { SparepartView } from './sparepartView';
 
-export interface SparepartListResponse {
-  items?: SparepartView[];
-  totalElements?: number;
+export interface Pageable {
+  /** @minimum 0 */
   page?: number;
+  /** @minimum 1 */
   size?: number;
-  sort?: string;
+  sort?: string[];
 }

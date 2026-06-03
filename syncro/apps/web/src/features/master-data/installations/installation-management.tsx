@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import React, { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, Trash2, TriangleAlertIcon } from "lucide-react";
@@ -18,6 +18,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CreatableSelect, type CreatableSelectOption } from "@/components/ui/creatable-select";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import { DataTableSortHeader } from "@/components/ui/data-table-sort-header";
 import {
   Dialog,
   DialogContent,
@@ -68,24 +71,25 @@ type Filters = { plantId?: string; machineId?: string; sparepartId?: string };
 type InstallationForm = {
   machineId: string;
   sparepartId: string;
+  functionName: string;
   expectedProductionCount: string;
   baselineCounter: string;
   thresholdPercentage: string;
 };
 type TaxonomyDimension = SparepartTaxonomyView["dimension"];
+type SparepartFormState = Omit<SparepartRequest, "code" | "name">;
 
 const ALL = "__all__";
 const ALL_PLANTS = "all";
 const EMPTY_FORM: InstallationForm = {
   machineId: "",
   sparepartId: "",
+  functionName: "Primary",
   expectedProductionCount: "",
   baselineCounter: "0",
   thresholdPercentage: "90",
 };
-const EMPTY_SPAREPART_FORM: SparepartRequest = {
-  code: "",
-  name: "",
+const EMPTY_SPAREPART_FORM: SparepartFormState = {
   machineId: "",
   categoryId: "",
   brandId: "",
@@ -103,6 +107,20 @@ export function InstallationManagement() {
   const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGE";
   const [filters, setFilters] = useState<Filters>({ plantId: normalizePlantId(activePlantId) });
   const [machineSearch, setMachineSearch] = useState("");
+  const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
+  const [step, setStep] = useState<1 | 2>(1);
+  const [form, setForm] = useState<InstallationForm>(EMPTY_FORM);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(25);
+  const [sort, setSort] = useState("machineCode,asc");
+  const [inlineSparepartOpen, setInlineSparepartOpen] = useState(false);
+  const [inlineSparepartForm, setInlineSparepartForm] = useState<SparepartFormState>(EMPTY_SPAREPART_FORM);
+  const [inlineSparepartErrors, setInlineSparepartErrors] = useState<Record<string, string>>({});
+  const [inlineSparepartError, setInlineSparepartError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<InstallationView | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const plants = useListPlants({ query: { enabled: Boolean(scope) && !isAssignedEmpty } });
   const taxonomy = useListSparepartTaxonomies();
   const plantItems = plants.data?.data.items ?? [];
@@ -121,14 +139,23 @@ export function InstallationManagement() {
       queryKey: ["machines", "installations", machinePlantId, machineLookupParams.search],
     },
   });
-  const spareparts = useListSpareparts();
+  const selectedInstallationMachineId = form.machineId || undefined;
+  const filterSpareparts = useListSpareparts(
+    { machineId: filters.machineId, pageable: { page: 0, size: 100, sort: ["code,asc"] } },
+    { query: { enabled: !isAssignedEmpty } },
+  );
+  const formSpareparts = useListSpareparts(
+    { machineId: selectedInstallationMachineId, pageable: { page: 0, size: 100, sort: ["code,asc"] } },
+    { query: { enabled: Boolean(selectedInstallationMachineId) && !isAssignedEmpty } },
+  );
   const machineItems = machines.data?.data.items ?? [];
-  const sparepartItems = spareparts.data?.data.items ?? [];
+  const filterSparepartItems = filterSpareparts.data?.data.items ?? [];
+  const formSparepartItems = formSpareparts.data?.data.items ?? [];
   const installationParams = {
     plantId: filterPlantId,
     machineId: machineItems.some((machine) => machine.id === filters.machineId) ? filters.machineId : undefined,
     sparepartId: filters.sparepartId,
-    limit: 100,
+    pageable: { page, size, sort: [sort] },
   };
   const installations = useListMachineSparepartInstallations(installationParams, {
     query: {
@@ -139,6 +166,9 @@ export function InstallationManagement() {
         filters.plantId ?? ALL,
         installationParams.machineId,
         filters.sparepartId,
+        page,
+        size,
+        sort,
       ],
     },
   });
@@ -157,24 +187,18 @@ export function InstallationManagement() {
   const deleteInstallation = useDeleteMachineSparepartInstallation({
     mutation: { onSuccess: invalidateInstallationData },
   });
-  const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
-  const [form, setForm] = useState<InstallationForm>(EMPTY_FORM);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [formError, setFormError] = useState<string | null>(null);
-  const [inlineSparepartOpen, setInlineSparepartOpen] = useState(false);
-  const [inlineSparepartForm, setInlineSparepartForm] = useState<SparepartRequest>(EMPTY_SPAREPART_FORM);
-  const [inlineSparepartErrors, setInlineSparepartErrors] = useState<Record<string, string>>({});
-  const [inlineSparepartError, setInlineSparepartError] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<InstallationView | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
   const installationItems = installations.data?.data.items ?? [];
   const taxonomyItems = taxonomy.data?.data.items ?? [];
   const taxonomyByDimension = useMemo(() => groupByDimension(taxonomyItems), [taxonomyItems]);
   const isLoading =
-    plants.isLoading || machines.isLoading || spareparts.isLoading || taxonomy.isLoading || installations.isLoading;
+    plants.isLoading ||
+    machines.isLoading ||
+    filterSpareparts.isLoading ||
+    (Boolean(selectedInstallationMachineId) && formSpareparts.isLoading) ||
+    taxonomy.isLoading ||
+    installations.isLoading;
   const isSaving = createInstallation.isPending || updateInstallation.isPending;
-  const isCreatingInlineSparepart = createSparepart.isPending;
-  const loadError = [plants.error, machines.error, spareparts.error, taxonomy.error, installations.error]
+  const loadError = [plants.error, machines.error, filterSpareparts.error, taxonomy.error, installations.error]
     .map(errorResponse)
     .find((error) => error?.code === "FORBIDDEN");
 
@@ -195,35 +219,24 @@ export function InstallationManagement() {
     queryClient.invalidateQueries({ queryKey: getListSparepartTaxonomiesQueryKey() });
   }
 
-  async function createInlineTaxonomyValue(dimension: SparepartTaxonomyRequestDimension, name: string) {
-    const response = await createTaxonomy.mutateAsync({
-      data: {
-        dimension,
-        code: taxonomyCode(name),
-        name: name.trim(),
-        categoryId: inlineSparepartForm.categoryId,
-      },
-    });
-    await queryClient.invalidateQueries({ queryKey: getListSparepartTaxonomiesQueryKey() });
-    if (response.data.id) {
-      setInlineSparepartForm((current) => ({ ...current, [formFieldForDimension(dimension)]: response.data.id ?? "" }));
-    }
-    toast.success(`${dimensionLabel(dimension)} created.`);
-  }
+  // createTaxonomyValue removed as taxonomy creation is now queued in submitInlineSparepart
 
   function openCreateDialog() {
     setDialogMode({ type: "create" });
-    setForm({ ...EMPTY_FORM, machineId: machineItems[0]?.id ?? "", sparepartId: sparepartItems[0]?.id ?? "" });
+    setStep(1);
+    setForm(EMPTY_FORM);
     setFieldErrors({});
     setFormError(null);
-    resetInlineSparepartForm();
+    resetInlineSparepartForm("");
   }
 
   function openEditDialog(installation: InstallationView) {
     setDialogMode({ type: "edit", installation });
+    setStep(1);
     setForm({
       machineId: installation.machineId ?? "",
       sparepartId: installation.sparepartId ?? "",
+      functionName: installation.functionName ?? "Primary",
       expectedProductionCount: String(installation.expectedProductionCount ?? ""),
       baselineCounter: String(installation.baselineCounter ?? "0"),
       thresholdPercentage: String(installation.thresholdPercentage ?? "90"),
@@ -233,9 +246,9 @@ export function InstallationManagement() {
     resetInlineSparepartForm();
   }
 
-  function resetInlineSparepartForm() {
+  function resetInlineSparepartForm(machineId = form.machineId) {
     setInlineSparepartOpen(false);
-    setInlineSparepartForm(defaultSparepartForm(taxonomyByDimension, form.machineId));
+    setInlineSparepartForm(defaultSparepartForm(taxonomyByDimension, machineId));
     setInlineSparepartErrors({});
     setInlineSparepartError(null);
   }
@@ -245,7 +258,40 @@ export function InstallationManagement() {
     setInlineSparepartError(null);
 
     try {
-      const response = await createSparepart.mutateAsync({ data: inlineSparepartForm });
+      const payload = { ...inlineSparepartForm };
+
+      if (payload.categoryId.startsWith("pending-")) {
+        const name = payload.categoryId.replace("pending-", "");
+        const res = await createTaxonomy.mutateAsync({
+          data: { dimension: "CATEGORY", name, code: taxonomyCode(name) },
+        });
+        payload.categoryId = res.data.id ?? "";
+      }
+      if (payload.kindId.startsWith("pending-")) {
+        const name = payload.kindId.replace("pending-", "");
+        const res = await createTaxonomy.mutateAsync({
+          data: { dimension: "KIND", name, code: taxonomyCode(name), categoryId: payload.categoryId },
+        });
+        payload.kindId = res.data.id ?? "";
+      }
+      if (payload.brandId.startsWith("pending-")) {
+        const name = payload.brandId.replace("pending-", "");
+        const res = await createTaxonomy.mutateAsync({
+          data: { dimension: "BRAND", name, code: taxonomyCode(name), categoryId: payload.categoryId },
+        });
+        payload.brandId = res.data.id ?? "";
+      }
+      if (payload.typeId.startsWith("pending-")) {
+        const name = payload.typeId.replace("pending-", "");
+        const res = await createTaxonomy.mutateAsync({
+          data: { dimension: "TYPE", name, code: taxonomyCode(name), categoryId: payload.categoryId },
+        });
+        payload.typeId = res.data.id ?? "";
+      }
+
+      await queryClient.invalidateQueries({ queryKey: getListSparepartTaxonomiesQueryKey() });
+
+      const response = await createSparepart.mutateAsync({ data: payload as SparepartRequest });
       const sparepart = response.data;
       if (sparepart.id) {
         setForm((current) => ({ ...current, sparepartId: sparepart.id ?? "" }));
@@ -307,7 +353,7 @@ export function InstallationManagement() {
     }
   }
 
-  const canCreate = canMutate && machineItems.length > 0 && sparepartItems.length > 0 && !isAssignedEmpty;
+  const canCreate = canMutate && machineItems.length > 0 && filterSparepartItems.length > 0 && !isAssignedEmpty;
 
   return (
     <Card>
@@ -330,7 +376,7 @@ export function InstallationManagement() {
           <InstallationState title="No plant assignment" description="Your account has no assigned plant scope." />
         ) : null}
         {isLoading ? <InstallationSkeleton /> : null}
-        {plants.isError || machines.isError || spareparts.isError || taxonomy.isError || installations.isError ? (
+        {plants.isError || machines.isError || filterSpareparts.isError || taxonomy.isError || installations.isError ? (
           <InstallationState
             title={loadError ? "Installations access is forbidden" : "Installations could not be loaded"}
             description={loadError?.message ?? "Refresh data or contact administrator if access should be available."}
@@ -341,7 +387,7 @@ export function InstallationManagement() {
                   void Promise.all([
                     plants.refetch(),
                     machines.refetch(),
-                    spareparts.refetch(),
+                    filterSpareparts.refetch(),
                     installations.refetch(),
                   ])
                 }
@@ -357,32 +403,32 @@ export function InstallationManagement() {
             description="Create or assign a plant before installing spareparts."
           />
         ) : null}
+        {!isLoading && availablePlants.length > 0 ? (
+          <InstallationFilters
+            plants={availablePlants}
+            machines={machineItems}
+            spareparts={filterSparepartItems}
+            filters={filters}
+            onChange={setFilters}
+          />
+        ) : null}
         {!isLoading && !isAssignedEmpty && availablePlants.length > 0 && machineItems.length === 0 ? (
           <InstallationState
             title="No machines available"
             description="Create a machine before installing spareparts."
           />
         ) : null}
-        {!isLoading && !spareparts.isError && sparepartItems.length === 0 ? (
+        {!isLoading && !filterSpareparts.isError && filterSparepartItems.length === 0 ? (
           <InstallationState
             title="No spareparts available"
             description="Create spareparts before installing them on machines."
-          />
-        ) : null}
-        {!isLoading && availablePlants.length > 0 && machineItems.length > 0 && sparepartItems.length > 0 ? (
-          <InstallationFilters
-            plants={availablePlants}
-            machines={machineItems}
-            spareparts={sparepartItems}
-            filters={filters}
-            onChange={setFilters}
           />
         ) : null}
         {!isLoading &&
         !installations.isError &&
         installationItems.length === 0 &&
         machineItems.length > 0 &&
-        sparepartItems.length > 0 ? (
+        filterSparepartItems.length > 0 ? (
           <InstallationState
             title="No installations yet"
             description="Create the first baseline installation or adjust filters."
@@ -396,6 +442,20 @@ export function InstallationManagement() {
             onDelete={(installation) => {
               setDeleteError(null);
               setDeleteTarget(installation);
+            }}
+            sort={sort}
+            onSortChange={setSort}
+          />
+        ) : null}
+        {!isLoading && !installations.isError && installations.data?.data ? (
+          <DataTablePagination
+            page={page}
+            size={size}
+            totalElements={installations.data.data.totalElements}
+            onPageChange={setPage}
+            onSizeChange={(newSize) => {
+              setSize(newSize);
+              setPage(0);
             }}
           />
         ) : null}
@@ -413,76 +473,135 @@ export function InstallationManagement() {
             {formError ? (
               <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{formError}</p>
             ) : null}
+            <div className="my-2 flex items-center gap-2 text-sm">
+              <div
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${step >= 1 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+              >
+                1
+              </div>
+              <span className={step >= 1 ? "font-medium" : "text-muted-foreground"}>Identity</span>
+              <div className="h-px flex-1 bg-border" />
+              <div
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${step >= 2 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+              >
+                2
+              </div>
+              <span className={step >= 2 ? "font-medium" : "text-muted-foreground"}>Counters</span>
+            </div>
             <div className="grid gap-4 md:grid-cols-2">
-              {inlineSparepartOpen ? (
-                <InlineSparepartForm
-                  form={inlineSparepartForm}
-                  fieldErrors={inlineSparepartErrors}
-                  formError={inlineSparepartError}
-                  disabled={isSaving || isCreatingInlineSparepart}
-                  taxonomyByDimension={taxonomyByDimension}
-                  taxonomyDisabled={createTaxonomy.isPending}
-                  onCreateTaxonomy={createInlineTaxonomyValue}
-                  onChange={setInlineSparepartForm}
-                  onCancel={resetInlineSparepartForm}
-                  onSubmit={submitInlineSparepart}
-                />
+              {step === 1 ? (
+                <>
+                  {inlineSparepartOpen ? (
+                    <InlineSparepartForm
+                      form={inlineSparepartForm}
+                      fieldErrors={inlineSparepartErrors}
+                      formError={inlineSparepartError}
+                      disabled={createSparepart.isPending || createTaxonomy.isPending}
+                      taxonomyByDimension={taxonomyByDimension}
+                      taxonomyDisabled={createTaxonomy.isPending}
+                      onChange={setInlineSparepartForm}
+                      onCancel={resetInlineSparepartForm}
+                      onSubmit={submitInlineSparepart}
+                    />
+                  ) : null}
+                  <MachineSelect
+                    value={form.machineId}
+                    search={machineSearch}
+                    error={fieldErrors.machineId}
+                    disabled={isSaving || dialogMode?.type === "edit"}
+                    items={machineItems}
+                    onSearchChange={setMachineSearch}
+                    onChange={(machineId) => setForm((current) => ({ ...current, machineId }))}
+                  />
+                  <SparepartSelect
+                    value={form.sparepartId}
+                    error={fieldErrors.sparepartId}
+                    disabled={isSaving || dialogMode?.type === "edit"}
+                    items={formSparepartItems}
+                    canCreateInline={dialogMode?.type !== "edit"}
+                    onCreateInline={() => {
+                      setInlineSparepartForm((current) => ({ ...current, machineId: form.machineId }));
+                      setInlineSparepartOpen((open) => !open);
+                    }}
+                    onChange={(sparepartId) => setForm((current) => ({ ...current, sparepartId }))}
+                  />
+                  <TextField
+                    id="installation-function-name"
+                    label="Function / usage"
+                    value={form.functionName}
+                    error={fieldErrors.functionName}
+                    disabled={isSaving}
+                    onChange={(functionName) => setForm((current) => ({ ...current, functionName }))}
+                  />
+                </>
               ) : null}
-              <MachineSelect
-                value={form.machineId}
-                search={machineSearch}
-                error={fieldErrors.machineId}
-                disabled={isSaving || dialogMode?.type === "edit"}
-                items={machineItems}
-                onSearchChange={setMachineSearch}
-                onChange={(machineId) => setForm((current) => ({ ...current, machineId }))}
-              />
-              <SparepartSelect
-                value={form.sparepartId}
-                error={fieldErrors.sparepartId}
-                disabled={isSaving || dialogMode?.type === "edit"}
-                items={sparepartItems}
-                canCreateInline={dialogMode?.type !== "edit"}
-                onCreateInline={() => setInlineSparepartOpen((open) => !open)}
-                onChange={(sparepartId) => setForm((current) => ({ ...current, sparepartId }))}
-              />
-              <NumberField
-                id="installation-expected-count"
-                label="Expected production count"
-                value={form.expectedProductionCount}
-                error={fieldErrors.expectedProductionCount}
-                disabled={isSaving}
-                min={1}
-                onChange={(expectedProductionCount) => setForm((current) => ({ ...current, expectedProductionCount }))}
-              />
-              <NumberField
-                id="installation-baseline-counter"
-                label="Baseline counter"
-                value={form.baselineCounter}
-                error={fieldErrors.baselineCounter}
-                disabled={isSaving}
-                min={0}
-                onChange={(baselineCounter) => setForm((current) => ({ ...current, baselineCounter }))}
-              />
-              <NumberField
-                id="installation-threshold"
-                label="Threshold percentage"
-                value={form.thresholdPercentage}
-                error={fieldErrors.thresholdPercentage}
-                disabled={isSaving}
-                min={1}
-                max={100}
-                onChange={(thresholdPercentage) => setForm((current) => ({ ...current, thresholdPercentage }))}
-              />
+              {step === 2 ? (
+                <>
+                  <NumberField
+                    id="installation-expected-count"
+                    label="Expected production count"
+                    value={form.expectedProductionCount}
+                    error={fieldErrors.expectedProductionCount}
+                    disabled={isSaving}
+                    min={1}
+                    onChange={(expectedProductionCount) =>
+                      setForm((current) => ({ ...current, expectedProductionCount }))
+                    }
+                  />
+                  <NumberField
+                    id="installation-baseline-counter"
+                    label="Baseline counter"
+                    value={form.baselineCounter}
+                    error={fieldErrors.baselineCounter}
+                    disabled={isSaving}
+                    min={0}
+                    onChange={(baselineCounter) => setForm((current) => ({ ...current, baselineCounter }))}
+                  />
+                  <NumberField
+                    id="installation-threshold"
+                    label="Threshold percentage"
+                    value={form.thresholdPercentage}
+                    error={fieldErrors.thresholdPercentage}
+                    disabled={isSaving}
+                    min={1}
+                    max={100}
+                    onChange={(thresholdPercentage) => setForm((current) => ({ ...current, thresholdPercentage }))}
+                  />
+                </>
+              ) : null}
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogMode(null)} disabled={isSaving}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSaving || !form.machineId || !form.sparepartId}>
-                {isSaving ? <Loader2Icon className="animate-spin" /> : null}
-                Save installation
-              </Button>
+              {step === 2 ? (
+                <Button type="button" variant="outline" onClick={() => setStep(1)} disabled={isSaving}>
+                  Back
+                </Button>
+              ) : (
+                <Button type="button" variant="outline" onClick={() => setDialogMode(null)} disabled={isSaving}>
+                  Cancel
+                </Button>
+              )}
+              {step === 1 ? (
+                <Button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setStep(2);
+                  }}
+                  disabled={!form.machineId || !form.sparepartId || !form.functionName.trim()}
+                >
+                  Next
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  disabled={
+                    isSaving || !form.expectedProductionCount || !form.baselineCounter || !form.thresholdPercentage
+                  }
+                >
+                  {isSaving ? <Loader2Icon className="animate-spin" /> : null}
+                  Save installation
+                </Button>
+              )}
             </DialogFooter>
           </form>
         </DialogContent>
@@ -527,9 +646,13 @@ function InstallationFilters({
   onChange: (filters: Filters) => void;
 }) {
   return (
-    <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[repeat(auto-fit,14rem)] sm:justify-start">
-      <Select
-        value={filters.plantId ?? ALL}
+    <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[repeat(auto-fill,minmax(14rem,14rem))] sm:justify-start">
+      <SearchableSelect
+        label="Plant"
+        value={filters.plantId}
+        options={plants
+          .filter((p) => p.id)
+          .map((p) => ({ id: p.id ?? "", label: `${p.code} · ${p.name}` }))}
         onValueChange={(plantId) =>
           onChange({
             plantId: plantId === ALL ? undefined : plantId,
@@ -537,59 +660,27 @@ function InstallationFilters({
             sparepartId: filters.sparepartId,
           })
         }
-      >
-        <SelectTrigger className="w-full min-w-0">
-          <SelectValue placeholder="Plant" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={ALL}>All plants</SelectItem>
-          {plants
-            .filter((plant) => plant.id)
-            .map((plant) => (
-              <SelectItem key={plant.id} value={plant.id ?? ""}>
-                {plant.code} · {plant.name}
-              </SelectItem>
-            ))}
-        </SelectContent>
-      </Select>
-      <Select
-        value={filters.machineId ?? ALL}
+      />
+      <SearchableSelect
+        label="Machine"
+        value={filters.machineId}
+        disabled={machines.length === 0}
+        options={machines
+          .filter((m) => m.id)
+          .map((m) => ({ id: m.id ?? "", label: `${m.code} · ${m.name || "Unnamed"} · ${m.plantCode}` }))}
         onValueChange={(machineId) => onChange({ ...filters, machineId: machineId === ALL ? undefined : machineId })}
-      >
-        <SelectTrigger className="w-full min-w-0">
-          <SelectValue placeholder="Machine" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={ALL}>All machines</SelectItem>
-          {machines
-            .filter((machine) => machine.id)
-            .map((machine) => (
-              <SelectItem key={machine.id} value={machine.id ?? ""}>
-                {machine.code} · {machine.name || "Unnamed"} · {machine.plantCode}
-              </SelectItem>
-            ))}
-        </SelectContent>
-      </Select>
-      <Select
-        value={filters.sparepartId ?? ALL}
+      />
+      <SearchableSelect
+        label="Sparepart"
+        value={filters.sparepartId}
+        disabled={spareparts.length === 0}
+        options={spareparts
+          .filter((s) => s.id)
+          .map((s) => ({ id: s.id ?? "", label: `${s.code} · ${sparepartIdentity(s)}` }))}
         onValueChange={(sparepartId) =>
           onChange({ ...filters, sparepartId: sparepartId === ALL ? undefined : sparepartId })
         }
-      >
-        <SelectTrigger className="w-full min-w-0">
-          <SelectValue placeholder="Sparepart" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={ALL}>All spareparts</SelectItem>
-          {spareparts
-            .filter((sparepart) => sparepart.id)
-            .map((sparepart) => (
-              <SelectItem key={sparepart.id} value={sparepart.id ?? ""}>
-                {sparepart.code} · {sparepart.name}
-              </SelectItem>
-            ))}
-        </SelectContent>
-      </Select>
+      />
     </div>
   );
 }
@@ -599,11 +690,15 @@ function InstallationTable({
   canMutate,
   onEdit,
   onDelete,
+  sort,
+  onSortChange,
 }: {
   items: InstallationView[];
   canMutate: boolean;
   onEdit: (installation: InstallationView) => void;
   onDelete: (installation: InstallationView) => void;
+  sort: string;
+  onSortChange: (sort: string) => void;
 }) {
   return (
     <div className="overflow-x-auto rounded-lg border">
@@ -612,16 +707,25 @@ function InstallationTable({
           <TableRow>
             <TableHead>Plant</TableHead>
             <TableHead>Group</TableHead>
-            <TableHead>Machine</TableHead>
-            <TableHead>Sparepart</TableHead>
+            <TableHead>
+              <DataTableSortHeader title="Machine" field="machineCode" sort={sort} onSortChange={onSortChange} />
+            </TableHead>
+            <TableHead>
+              <DataTableSortHeader title="Sparepart" field="sparepartCode" sort={sort} onSortChange={onSortChange} />
+            </TableHead>
+            <TableHead>Function</TableHead>
             <TableHead>Expected</TableHead>
             <TableHead>Baseline</TableHead>
             <TableHead>Current</TableHead>
             <TableHead>Consumed</TableHead>
             <TableHead>Threshold</TableHead>
             <TableHead>Basis</TableHead>
-            <TableHead>Created</TableHead>
-            <TableHead>Updated</TableHead>
+            <TableHead>
+              <DataTableSortHeader title="Created" field="createdAt" sort={sort} onSortChange={onSortChange} />
+            </TableHead>
+            <TableHead>
+              <DataTableSortHeader title="Updated" field="updatedAt" sort={sort} onSortChange={onSortChange} />
+            </TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -638,18 +742,9 @@ function InstallationTable({
               </TableCell>
               <TableCell>
                 <div className="font-medium">{installation.sparepartCode}</div>
-                <div className="text-muted-foreground text-xs">{installation.sparepartName}</div>
-                <div className="text-muted-foreground text-xs">
-                  {[
-                    installation.category?.name,
-                    installation.brand?.name,
-                    installation.kind?.name,
-                    installation.type?.name,
-                  ]
-                    .filter(Boolean)
-                    .join(" / ")}
-                </div>
+                <div className="text-muted-foreground text-xs">{installationSparepartIdentity(installation)}</div>
               </TableCell>
+              <TableCell>{installation.functionName ?? "-"}</TableCell>
               <TableCell>{formatNumber(installation.expectedProductionCount)}</TableCell>
               <TableCell>{formatNumber(installation.baselineCounter)}</TableCell>
               <TableCell>{formatNullableNumber(installation.currentCount)}</TableCell>
@@ -765,7 +860,7 @@ function SparepartSelect({
         <SelectContent>
           {items.map((sparepart) => (
             <SelectItem key={sparepart.id ?? sparepart.code} value={sparepart.id ?? ""}>
-              {sparepart.code} · {sparepart.name}
+              {sparepart.code} · {sparepartIdentity(sparepart)}
             </SelectItem>
           ))}
         </SelectContent>
@@ -782,19 +877,17 @@ function InlineSparepartForm({
   disabled,
   taxonomyByDimension,
   taxonomyDisabled,
-  onCreateTaxonomy,
   onChange,
   onCancel,
   onSubmit,
 }: {
-  form: SparepartRequest;
+  form: SparepartFormState;
   fieldErrors: Record<string, string>;
   formError: string | null;
   disabled: boolean;
   taxonomyByDimension: Map<TaxonomyDimension, SparepartTaxonomyView[]>;
   taxonomyDisabled: boolean;
-  onCreateTaxonomy: (dimension: SparepartTaxonomyRequestDimension, name: string) => Promise<void>;
-  onChange: (form: SparepartRequest) => void;
+  onChange: (form: SparepartFormState) => void;
   onCancel: () => void;
   onSubmit: () => void;
 }) {
@@ -808,39 +901,16 @@ function InlineSparepartForm({
       </div>
       {formError ? <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{formError}</p> : null}
       <div className="grid gap-3 md:grid-cols-2">
-        <TextField
-          id="inline-sparepart-code"
-          label="Code"
-          value={form.code}
-          error={fieldErrors.code}
-          disabled={disabled}
-          onChange={(code) => onChange({ ...form, code })}
-        />
-        <TextField
-          id="inline-sparepart-name"
-          label="Name"
-          value={form.name}
-          error={fieldErrors.name}
-          disabled={disabled}
-          onChange={(name) => onChange({ ...form, name })}
-        />
+        <GeneratedCodeHint />
         <TaxonomySelect
           label="Category"
           value={form.categoryId}
           error={fieldErrors.categoryId}
           disabled={disabled}
           items={taxonomyByDimension.get(SparepartTaxonomyRequestDimension.CATEGORY) ?? []}
+          creatable={false}
+          onCreate={undefined}
           onChange={(categoryId) => onChange({ ...form, categoryId, brandId: "", kindId: "", typeId: "" })}
-        />
-        <TaxonomySelect
-          label="Brand"
-          value={form.brandId}
-          error={fieldErrors.brandId}
-          disabled={disabled}
-          items={linkedTaxonomyOptions(taxonomyByDimension, SparepartTaxonomyRequestDimension.BRAND, form.categoryId)}
-          creatable={!taxonomyDisabled && Boolean(form.categoryId)}
-          onCreate={(name) => onCreateTaxonomy(SparepartTaxonomyRequestDimension.BRAND, name)}
-          onChange={(brandId) => onChange({ ...form, brandId })}
         />
         <TaxonomySelect
           label="Kind"
@@ -849,8 +919,18 @@ function InlineSparepartForm({
           disabled={disabled}
           items={linkedTaxonomyOptions(taxonomyByDimension, SparepartTaxonomyRequestDimension.KIND, form.categoryId)}
           creatable={!taxonomyDisabled && Boolean(form.categoryId)}
-          onCreate={(name) => onCreateTaxonomy(SparepartTaxonomyRequestDimension.KIND, name)}
+          onCreate={(name) => Promise.resolve(onChange({ ...form, kindId: `pending-${name}` }))}
           onChange={(kindId) => onChange({ ...form, kindId })}
+        />
+        <TaxonomySelect
+          label="Brand"
+          value={form.brandId}
+          error={fieldErrors.brandId}
+          disabled={disabled}
+          items={linkedTaxonomyOptions(taxonomyByDimension, SparepartTaxonomyRequestDimension.BRAND, form.categoryId)}
+          creatable={!taxonomyDisabled && Boolean(form.categoryId)}
+          onCreate={(name) => Promise.resolve(onChange({ ...form, brandId: `pending-${name}` }))}
+          onChange={(brandId) => onChange({ ...form, brandId })}
         />
         <TaxonomySelect
           label="Type"
@@ -859,7 +939,7 @@ function InlineSparepartForm({
           disabled={disabled}
           items={linkedTaxonomyOptions(taxonomyByDimension, SparepartTaxonomyRequestDimension.TYPE, form.categoryId)}
           creatable={!taxonomyDisabled && Boolean(form.categoryId)}
-          onCreate={(name) => onCreateTaxonomy(SparepartTaxonomyRequestDimension.TYPE, name)}
+          onCreate={(name) => Promise.resolve(onChange({ ...form, typeId: `pending-${name}` }))}
           onChange={(typeId) => onChange({ ...form, typeId })}
         />
       </div>
@@ -906,6 +986,15 @@ function TextField({
   );
 }
 
+function GeneratedCodeHint() {
+  return (
+    <div className="grid gap-2 rounded-md border border-dashed p-3 text-sm md:min-h-[4.5rem]">
+      <span className="font-medium">Generated code</span>
+      <span className="text-muted-foreground">BOM code is assigned after save.</span>
+    </div>
+  );
+}
+
 function TaxonomySelect({
   label,
   value,
@@ -925,58 +1014,32 @@ function TaxonomySelect({
   onCreate?: (name: string) => Promise<void>;
   onChange: (value: string) => void;
 }) {
-  const [search, setSearch] = useState("");
-  const visibleItems = items.filter((item) => taxonomyMatches(item, search));
-  const canCreate = Boolean(creatable && onCreate && search.trim());
+  const options = items.map((item) => ({ value: item.id ?? "", label: `${item.name} (${item.code})` }));
+  const selectedOption = options.find((option) => option.value === value) ?? null;
 
-  async function submitCreate() {
-    if (!onCreate || !search.trim()) {
+  async function submitCreate(inputValue: string) {
+    if (!onCreate || !inputValue.trim()) {
       return;
     }
-    await onCreate(search);
-    setSearch("");
+    await onCreate(inputValue);
   }
 
   return (
     <div className="grid gap-2">
       <Label>{label}</Label>
-      <Select value={value} onValueChange={onChange} disabled={Boolean(disabled) || (!creatable && items.length === 0)}>
-        <SelectTrigger className="w-full min-w-0" aria-invalid={Boolean(error)}>
-          <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
-        </SelectTrigger>
-        <SelectContent position="popper" side="top" align="start" className="max-h-72">
-          <div className="p-2">
-            <Input
-              value={search}
-              placeholder={`Search ${label.toLowerCase()}`}
-              onChange={(event) => setSearch(event.target.value)}
-              onKeyDown={(event) => event.stopPropagation()}
-            />
-          </div>
-          {visibleItems.length === 0 ? (
-            <div className="px-2 py-1.5 text-muted-foreground text-sm">No {label.toLowerCase()} found</div>
-          ) : null}
-          {visibleItems.map((item) => (
-            <SelectItem key={item.id} value={item.id ?? ""}>
-              {item.name} ({item.code})
-            </SelectItem>
-          ))}
-          {canCreate ? (
-            <div className="border-t p-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                size="sm"
-                onClick={submitCreate}
-                disabled={disabled}
-              >
-                Create {label.toLowerCase()} “{search.trim()}”
-              </Button>
-            </div>
-          ) : null}
-        </SelectContent>
-      </Select>
+      <CreatableSelect
+        value={selectedOption}
+        options={options}
+        placeholder={`Select ${label.toLowerCase()}`}
+        invalid={Boolean(error)}
+        isDisabled={Boolean(disabled) || (!creatable && items.length === 0)}
+        isClearable={false}
+        isSearchable
+        formatCreateLabel={(inputValue) => `Create ${label.toLowerCase()} “${inputValue.trim()}”`}
+        noOptionsMessage={() => `No ${label.toLowerCase()} found`}
+        onCreateOption={creatable ? submitCreate : undefined}
+        onChange={(option) => onChange((option as CreatableSelectOption | null)?.value ?? "")}
+      />
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
     </div>
   );
@@ -1006,11 +1069,16 @@ function NumberField({
       <Label htmlFor={id}>{label}</Label>
       <Input
         id={id}
-        type="number"
-        min={min}
-        max={max}
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => {
+          const nextValue = event.target.value.replace(/\D/g, "");
+          if (nextValue === "" || (Number(nextValue) >= min && (max === undefined || Number(nextValue) <= max))) {
+            onChange(nextValue);
+          }
+        }}
         aria-invalid={Boolean(error)}
         disabled={disabled}
       />
@@ -1066,6 +1134,22 @@ function permittedPlants(plants: PlantView[], scope: ReturnType<typeof usePlantS
   return plants.filter((plant) => plant.id && assignedIds.has(plant.id));
 }
 
+function sparepartIdentity(sparepart: SparepartView) {
+  return (
+    [sparepart.category?.name, sparepart.kind?.name, sparepart.brand?.name, sparepart.type?.name]
+      .filter(Boolean)
+      .join(" · ") || "Unknown identity"
+  );
+}
+
+function installationSparepartIdentity(installation: InstallationView) {
+  return (
+    [installation.category?.name, installation.kind?.name, installation.brand?.name, installation.type?.name]
+      .filter(Boolean)
+      .join(" · ") || "Unknown identity"
+  );
+}
+
 function groupByDimension(items: SparepartTaxonomyView[]) {
   return items.reduce((groups, item) => {
     if (item.id && item.dimension) {
@@ -1083,14 +1167,6 @@ function linkedTaxonomyOptions(
   return (taxonomyByDimension.get(dimension) ?? []).filter((item) => !categoryId || item.categoryId === categoryId);
 }
 
-function taxonomyMatches(item: SparepartTaxonomyView, search: string) {
-  const normalized = search.trim().toLowerCase();
-  if (!normalized) {
-    return true;
-  }
-  return [item.code, item.name].some((value) => value?.toLowerCase().includes(normalized));
-}
-
 function taxonomyCode(name: string) {
   return name
     .trim()
@@ -1099,30 +1175,11 @@ function taxonomyCode(name: string) {
     .replace(/^_+|_+$/g, "");
 }
 
-function dimensionLabel(dimension: SparepartTaxonomyRequestDimension) {
-  return String(dimension).toLowerCase();
-}
-
-function formFieldForDimension(dimension: SparepartTaxonomyRequestDimension): keyof SparepartRequest {
-  if (dimension === SparepartTaxonomyRequestDimension.BRAND) {
-    return "brandId";
-  }
-  if (dimension === SparepartTaxonomyRequestDimension.KIND) {
-    return "kindId";
-  }
-  if (dimension === SparepartTaxonomyRequestDimension.TYPE) {
-    return "typeId";
-  }
-  return "categoryId";
-}
-
 function defaultSparepartForm(
   taxonomyByDimension: Map<TaxonomyDimension, SparepartTaxonomyView[]>,
   machineId: string,
-): SparepartRequest {
+): SparepartFormState {
   return {
-    code: "",
-    name: "",
     machineId,
     categoryId: taxonomyByDimension.get(SparepartTaxonomyRequestDimension.CATEGORY)?.[0]?.id ?? "",
     brandId: taxonomyByDimension.get(SparepartTaxonomyRequestDimension.BRAND)?.[0]?.id ?? "",
@@ -1143,12 +1200,13 @@ function createPayload(form: InstallationForm, values: ParsedLifetimeFields): In
   return {
     machineId: form.machineId,
     sparepartId: form.sparepartId,
+    functionName: form.functionName.trim(),
     ...values,
   };
 }
 
-function updatePayload(_form: InstallationForm, values: ParsedLifetimeFields): InstallationUpdateRequest {
-  return values;
+function updatePayload(form: InstallationForm, values: ParsedLifetimeFields): InstallationUpdateRequest {
+  return { functionName: form.functionName.trim(), ...values };
 }
 
 function parseLifetimeFields(form: InstallationForm): ParseResult {
@@ -1157,6 +1215,9 @@ function parseLifetimeFields(form: InstallationForm): ParseResult {
   const baselineCounter = parseRequiredNumber(form.baselineCounter);
   const thresholdPercentage = parseRequiredNumber(form.thresholdPercentage);
 
+  if (!form.functionName.trim()) {
+    fieldErrors.functionName = "Function / usage is required.";
+  }
   if (expectedProductionCount === null || expectedProductionCount < 1) {
     fieldErrors.expectedProductionCount = "Expected production count is required and must be positive.";
   }
@@ -1211,4 +1272,54 @@ function formatConsumed(installation: InstallationView) {
 
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+}
+
+function SearchableSelect({
+  label,
+  value,
+  options,
+  onValueChange,
+  disabled,
+}: {
+  label: string;
+  value?: string;
+  options: { id: string; label: string }[];
+  onValueChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  const [search, setSearch] = React.useState("");
+  const filtered = search.trim()
+    ? options.filter((o) => o.label.toLowerCase().includes(search.trim().toLowerCase()))
+    : options;
+  const selected = options.find((o) => o.id === value);
+
+  return (
+    <Select value={value ?? ALL} onValueChange={(v) => { onValueChange(v); setSearch(""); }} disabled={disabled}>
+      <SelectTrigger className="w-full min-w-0">
+        <SelectValue placeholder={`All ${label}`}>
+          {selected ? selected.label : `All ${label}`}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        <div className="p-2">
+          <Input
+            placeholder={`Search ${label.toLowerCase()}...`}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          />
+        </div>
+        <SelectItem value={ALL}>All {label}</SelectItem>
+        {filtered.map((o) => (
+          <SelectItem key={o.id} value={o.id}>
+            {o.label}
+          </SelectItem>
+        ))}
+        {filtered.length === 0 ? (
+          <p className="px-2 py-3 text-center text-sm text-muted-foreground">No results</p>
+        ) : null}
+      </SelectContent>
+    </Select>
+  );
 }

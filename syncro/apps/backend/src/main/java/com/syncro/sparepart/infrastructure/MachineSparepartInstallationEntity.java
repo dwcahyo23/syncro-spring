@@ -25,6 +25,9 @@ public class MachineSparepartInstallationEntity {
   @JoinColumn(name = "sparepart_id", nullable = false)
   private SparepartEntity sparepart;
 
+  @Column(name = "function_name", nullable = false, length = 255)
+  private String functionName;
+
   @Column(name = "expected_production_count", nullable = false)
   private long expectedProductionCount;
 
@@ -47,11 +50,12 @@ public class MachineSparepartInstallationEntity {
   }
 
   public MachineSparepartInstallationEntity(UUID id, MachineEntity machine, SparepartEntity sparepart,
-      long expectedProductionCount, long baselineCounter, int thresholdPercentage, Instant installedAt,
+      String functionName, long expectedProductionCount, long baselineCounter, int thresholdPercentage, Instant installedAt,
       Instant createdAt, Instant updatedAt) {
     this.id = id;
     this.machine = machine;
     this.sparepart = sparepart;
+    this.functionName = functionName;
     this.expectedProductionCount = expectedProductionCount;
     this.baselineCounter = baselineCounter;
     this.thresholdPercentage = thresholdPercentage;
@@ -63,6 +67,7 @@ public class MachineSparepartInstallationEntity {
   public UUID getId() { return id; }
   public MachineEntity getMachine() { return machine; }
   public SparepartEntity getSparepart() { return sparepart; }
+  public String getFunctionName() { return functionName; }
   public long getExpectedProductionCount() { return expectedProductionCount; }
   public long getBaselineCounter() { return baselineCounter; }
   public int getThresholdPercentage() { return thresholdPercentage; }
@@ -70,7 +75,8 @@ public class MachineSparepartInstallationEntity {
   public Instant getCreatedAt() { return createdAt; }
   public Instant getUpdatedAt() { return updatedAt; }
 
-  public void update(long expectedProductionCount, long baselineCounter, int thresholdPercentage, Instant updatedAt) {
+  public void update(String functionName, long expectedProductionCount, long baselineCounter, int thresholdPercentage, Instant updatedAt) {
+    this.functionName = functionName;
     this.expectedProductionCount = expectedProductionCount;
     this.baselineCounter = baselineCounter;
     this.thresholdPercentage = thresholdPercentage;

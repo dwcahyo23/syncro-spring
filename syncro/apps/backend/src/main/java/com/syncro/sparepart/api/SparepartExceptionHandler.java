@@ -62,7 +62,7 @@ public class SparepartExceptionHandler {
 
   @ExceptionHandler(DuplicateSparepartException.class)
   ResponseEntity<ErrorResponse> duplicateSparepart() {
-    return error(HttpStatus.BAD_REQUEST, "DUPLICATE_SPAREPART", "Sparepart code or name already exists.", Map.of());
+    return error(HttpStatus.BAD_REQUEST, "DUPLICATE_SPAREPART", "Sparepart identity already exists for this machine.", Map.of());
   }
 
   @ExceptionHandler(SparepartTaxonomyReferenceNotFoundException.class)

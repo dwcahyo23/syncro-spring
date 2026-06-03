@@ -11,7 +11,6 @@ import type { SparepartTaxonomyRefView } from './sparepartTaxonomyRefView';
 export interface SparepartView {
   id?: string;
   code?: string;
-  name?: string;
   machine?: SparepartMachineRefView;
   category?: SparepartTaxonomyRefView;
   brand?: SparepartTaxonomyRefView;

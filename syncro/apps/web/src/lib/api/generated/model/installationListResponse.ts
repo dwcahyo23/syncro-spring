@@ -9,4 +9,8 @@ import type { InstallationView } from './installationView';
 
 export interface InstallationListResponse {
   items?: InstallationView[];
+  totalElements?: number;
+  page?: number;
+  size?: number;
+  sort?: string;
 }

@@ -1,8 +1,6 @@
 package com.syncro.sparepart.api;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -12,8 +10,6 @@ public final class SparepartDtos {
   }
 
   public record SparepartRequest(
-      @NotBlank @Size(max = 64) String code,
-      @NotBlank @Size(max = 255) String name,
       @NotNull UUID machineId,
       @NotNull UUID categoryId,
       @NotNull UUID brandId,
@@ -39,7 +35,6 @@ public final class SparepartDtos {
   public record SparepartView(
       UUID id,
       String code,
-      String name,
       SparepartMachineRefView machine,
       SparepartTaxonomyRefView category,
       SparepartTaxonomyRefView brand,
@@ -49,6 +44,6 @@ public final class SparepartDtos {
       Instant updatedAt) {
   }
 
-  public record SparepartListResponse(List<SparepartView> items, long totalElements, int page, int size) {
+  public record SparepartListResponse(List<SparepartView> items, long totalElements, int page, int size, String sort) {
   }
 }

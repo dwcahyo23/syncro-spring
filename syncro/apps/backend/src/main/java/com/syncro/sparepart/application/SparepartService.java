@@ -2,6 +2,7 @@ package com.syncro.sparepart.application;
 
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.domain.ApplicationRole;
+import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.sparepart.domain.SparepartTaxonomyDimension;
@@ -13,11 +14,10 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,30 +25,30 @@ import org.springframework.transaction.annotation.Transactional;
 public class SparepartService {
   private static final int MAX_PAGE_SIZE = 200;
   private static final String DUPLICATE_CODE_CONSTRAINT = "uq_spareparts_lower_code";
-  private static final String DUPLICATE_NAME_CONSTRAINT = "uq_spareparts_lower_name";
+  private static final String DUPLICATE_IDENTITY_CONSTRAINT = "uq_spareparts_machine_taxonomy_identity";
 
   private final SparepartRepository spareparts;
   private final SparepartTaxonomyRepository taxonomy;
   private final MachineRepository machines;
+  private final AuthUserPlantAssignmentRepository assignments;
   private final Clock clock;
 
-  public SparepartService(SparepartRepository spareparts, SparepartTaxonomyRepository taxonomy, MachineRepository machines, Clock clock) {
+  public SparepartService(SparepartRepository spareparts, SparepartTaxonomyRepository taxonomy, MachineRepository machines,
+      AuthUserPlantAssignmentRepository assignments, Clock clock) {
     this.spareparts = spareparts;
     this.taxonomy = taxonomy;
     this.machines = machines;
+    this.assignments = assignments;
     this.clock = clock;
   }
 
   @Transactional(readOnly = true)
-  public SparepartListView list(AuthenticatedUser user, SparepartFilters filters) {
+  public SparepartListView list(AuthenticatedUser user, SparepartFilters filters, Pageable pageable) {
+    validatePageable(pageable);
     var search = normalizeSearch(filters.search());
-    var page = normalizePage(filters.page());
-    var size = normalizeSize(filters.size());
-    var pageable = PageRequest.of(page, size);
-    var result = search.isEmpty()
-        ? spareparts.search(filters.categoryId(), filters.brandId(), filters.kindId(), filters.typeId(), pageable)
-        : spareparts.search(filters.categoryId(), filters.brandId(), filters.kindId(), filters.typeId(), search, pageable);
-    return new SparepartListView(result.stream().map(this::toView).toList(), result.getTotalElements(), page, size);
+    var machineCode = normalizeSearch(filters.machineCode());
+    var result = spareparts.search(filters.categoryId(), filters.brandId(), filters.kindId(), filters.typeId(), filters.machineId(), search, machineCode, pageable);
+    return new SparepartListView(result.stream().map(this::toView).toList(), result.getTotalElements(), pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort().toString());
   }
 
   @Transactional(readOnly = true)
@@ -60,16 +60,15 @@ public class SparepartService {
   public SparepartView create(AuthenticatedUser user, SparepartCommand command) {
     requireMutationRole(user);
     var normalized = normalize(command);
-    if (spareparts.existsByCodeIgnoreCase(normalized.code()) || spareparts.existsByNameIgnoreCase(normalized.name())) {
-      throw new DuplicateSparepartException();
-    }
     var now = Instant.now(clock);
     var machine = resolveMachine(user, normalized.machineId());
     var taxonomies = resolveTaxonomies(normalized);
+    rejectDuplicateIdentity(machine, taxonomies);
+    var generatedCode = nextBomCode(machine, taxonomies);
     return toView(save(new SparepartEntity(
         UUID.randomUUID(),
-        normalized.code(),
-        normalized.name(),
+        generatedCode,
+        sparepartLabel(taxonomies),
         machine,
         taxonomies.category(),
         taxonomies.brand(),
@@ -84,16 +83,12 @@ public class SparepartService {
     requireMutationRole(user);
     var sparepart = find(sparepartId);
     var normalized = normalize(command);
-    var existingCode = spareparts.findByCodeIgnoreCase(normalized.code());
-    var existingName = spareparts.findByNameIgnoreCase(normalized.name());
-    if (isDifferentSparepart(existingCode, sparepartId) || isDifferentSparepart(existingName, sparepartId)) {
-      throw new DuplicateSparepartException();
-    }
     var machine = resolveMachine(user, normalized.machineId());
     var taxonomies = resolveTaxonomies(normalized);
+    rejectDuplicateIdentity(sparepartId, machine, taxonomies);
     sparepart.update(
-        normalized.code(),
-        normalized.name(),
+        bomCodeForUpdate(sparepart, machine, taxonomies),
+        sparepartLabel(taxonomies),
         machine,
         taxonomies.category(),
         taxonomies.brand(),
@@ -127,8 +122,6 @@ public class SparepartService {
 
   private SparepartCommand normalize(SparepartCommand command) {
     return new SparepartCommand(
-        normalizeCode(command.code()),
-        normalizeName(command.name()),
         requiredId(command.machineId()),
         requiredId(command.categoryId()),
         requiredId(command.brandId()),
@@ -151,18 +144,66 @@ public class SparepartService {
         .replace("_", "\\_");
   }
 
-  private int normalizePage(int page) {
-    if (page < 0) {
+  private void validatePageable(Pageable pageable) {
+    if (pageable.getPageNumber() < 0 || pageable.getPageSize() < 1 || pageable.getPageSize() > MAX_PAGE_SIZE) {
       throw new SparepartValidationException();
     }
-    return page;
   }
 
-  private int normalizeSize(int size) {
-    if (size < 1 || size > MAX_PAGE_SIZE) {
-      throw new SparepartValidationException();
+  private String bomCodeForUpdate(SparepartEntity sparepart, MachineEntity machine, TaxonomyRefs taxonomies) {
+    var prefix = bomPrefix(machine, taxonomies);
+    return sparepart.getCode().startsWith(prefix) ? sparepart.getCode() : nextBomCode(prefix);
+  }
+
+  private void rejectDuplicateIdentity(MachineEntity machine, TaxonomyRefs taxonomies) {
+    if (spareparts.existsByIdentity(
+        machine.getId(),
+        taxonomies.category().getId(),
+        taxonomies.brand().getId(),
+        taxonomies.kind().getId(),
+        taxonomies.type().getId())) {
+      throw new DuplicateSparepartException();
     }
-    return size;
+  }
+
+  private void rejectDuplicateIdentity(UUID sparepartId, MachineEntity machine, TaxonomyRefs taxonomies) {
+    if (spareparts.existsByIdentityExcludingId(
+        sparepartId,
+        machine.getId(),
+        taxonomies.category().getId(),
+        taxonomies.brand().getId(),
+        taxonomies.kind().getId(),
+        taxonomies.type().getId())) {
+      throw new DuplicateSparepartException();
+    }
+  }
+
+  private String nextBomCode(MachineEntity machine, TaxonomyRefs taxonomies) {
+    return nextBomCode(bomPrefix(machine, taxonomies));
+  }
+
+  private String nextBomCode(String prefix) {
+    var maxSeries = spareparts.findCodesByPrefix(prefix).stream()
+        .filter(code -> code.length() == prefix.length() + 3)
+        .map(code -> code.substring(prefix.length()))
+        .filter(series -> series.chars().allMatch(Character::isDigit))
+        .mapToInt(Integer::parseInt)
+        .max()
+        .orElse(-1);
+    if (maxSeries >= 999) {
+      throw new DuplicateSparepartException();
+    }
+    return prefix + String.format(Locale.ROOT, "%03d", maxSeries + 1);
+  }
+
+  private String bomPrefix(MachineEntity machine, TaxonomyRefs taxonomies) {
+    return machine.getCode() + machine.getPlant().getCode()
+        + codePart(taxonomies.category()) + codePart(taxonomies.kind()) + codePart(taxonomies.brand());
+  }
+
+  private String codePart(SparepartTaxonomyEntity taxonomy) {
+    var normalized = taxonomy.getCode().replaceAll("[^A-Za-z0-9]", "").toUpperCase(Locale.ROOT);
+    return normalized.length() <= 3 ? String.format(Locale.ROOT, "%-3s", normalized).replace(' ', '0') : normalized.substring(0, 3);
   }
 
   private UUID requiredId(UUID id) {
@@ -174,8 +215,13 @@ public class SparepartService {
 
   private MachineEntity resolveMachine(AuthenticatedUser user, UUID machineId) {
     var machine = machines.findByIdWithPlantAndGroup(machineId).orElseThrow(SparepartMachineNotFoundException::new);
-    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN && !user.assignedPlantIds().contains(machine.getPlant().getId())) {
-      throw new SparepartMachineNotFoundException();
+    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN) {
+      var assignedPlantIds = assignments.findByAuthUserId(UUID.fromString(user.id())).stream()
+          .map(assignment -> assignment.getPlantId())
+          .toList();
+      if (!assignedPlantIds.contains(machine.getPlant().getId())) {
+        throw new SparepartMachineNotFoundException();
+      }
     }
     return machine;
   }
@@ -206,8 +252,9 @@ public class SparepartService {
     }
   }
 
-  private boolean isDifferentSparepart(Optional<SparepartEntity> existing, UUID sparepartId) {
-    return existing.isPresent() && !existing.get().getId().equals(sparepartId);
+  private String sparepartLabel(TaxonomyRefs taxonomies) {
+    return taxonomies.category().getName() + " · " + taxonomies.kind().getName() + " · "
+        + taxonomies.brand().getName() + " · " + taxonomies.type().getName();
   }
 
   private SparepartEntity save(SparepartEntity sparepart) {
@@ -226,7 +273,7 @@ public class SparepartService {
     while (cause != null) {
       if (cause instanceof ConstraintViolationException constraint
           && (DUPLICATE_CODE_CONSTRAINT.equalsIgnoreCase(constraint.getConstraintName())
-              || DUPLICATE_NAME_CONSTRAINT.equalsIgnoreCase(constraint.getConstraintName()))) {
+              || DUPLICATE_IDENTITY_CONSTRAINT.equalsIgnoreCase(constraint.getConstraintName()))) {
         return true;
       }
       cause = cause.getCause();
@@ -234,33 +281,10 @@ public class SparepartService {
     return false;
   }
 
-  private String normalizeCode(String code) {
-    if (code == null) {
-      throw new SparepartValidationException();
-    }
-    var trimmed = code.trim();
-    if (trimmed.isEmpty() || trimmed.length() > 64) {
-      throw new SparepartValidationException();
-    }
-    return trimmed;
-  }
-
-  private String normalizeName(String name) {
-    if (name == null) {
-      throw new SparepartValidationException();
-    }
-    var trimmed = name.trim();
-    if (trimmed.isEmpty() || trimmed.length() > 255) {
-      throw new SparepartValidationException();
-    }
-    return trimmed;
-  }
-
   private SparepartView toView(SparepartEntity sparepart) {
     return new SparepartView(
         sparepart.getId(),
         sparepart.getCode(),
-        sparepart.getName(),
         toMachineRef(sparepart.getMachine()),
         toTaxonomyRef(sparepart.getCategory()),
         toTaxonomyRef(sparepart.getBrand()),
@@ -286,13 +310,13 @@ public class SparepartService {
       SparepartTaxonomyEntity type) {
   }
 
-  public record SparepartCommand(String code, String name, UUID machineId, UUID categoryId, UUID brandId, UUID kindId, UUID typeId) {
+  public record SparepartCommand(UUID machineId, UUID categoryId, UUID brandId, UUID kindId, UUID typeId) {
   }
 
-  public record SparepartFilters(UUID categoryId, UUID brandId, UUID kindId, UUID typeId, String search, int page, int size) {
+  public record SparepartFilters(UUID categoryId, UUID brandId, UUID kindId, UUID typeId, String search, String machineCode, UUID machineId) {
   }
 
-  public record SparepartListView(List<SparepartView> items, long totalElements, int page, int size) {
+  public record SparepartListView(List<SparepartView> items, long totalElements, int page, int size, String sort) {
   }
 
   public record SparepartMachineRefView(UUID id, String code, String name, UUID plantId, String plantCode, String plantName) {
@@ -304,7 +328,6 @@ public class SparepartService {
   public record SparepartView(
       UUID id,
       String code,
-      String name,
       SparepartMachineRefView machine,
       SparepartTaxonomyRefView category,
       SparepartTaxonomyRefView brand,

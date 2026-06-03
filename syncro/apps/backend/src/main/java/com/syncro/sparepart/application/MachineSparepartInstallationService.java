@@ -16,7 +16,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.domain.Limit;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,13 +45,14 @@ public class MachineSparepartInstallationService {
   }
 
   @Transactional(readOnly = true)
-  public List<InstallationView> list(AuthenticatedUser user, InstallationFilters filters) {
+  public InstallationListView list(AuthenticatedUser user, InstallationFilters filters, Pageable pageable) {
+    validatePageable(pageable);
     var superAdmin = user.applicationRole() == ApplicationRole.SUPER_ADMIN;
     validateFilterScope(user, filters, superAdmin);
     var result = superAdmin
-        ? installations.findAllUnscoped(filters.machineId(), filters.sparepartId(), filters.plantId(), filters.machineGroupId(), Limit.of(filters.limit()))
-        : installations.findAllScoped(scopedPlantIds(user), filters.machineId(), filters.sparepartId(), filters.plantId(), filters.machineGroupId(), Limit.of(filters.limit()));
-    return result.stream().map(this::toView).toList();
+        ? installations.findAllUnscoped(filters.machineId(), filters.sparepartId(), filters.plantId(), filters.machineGroupId(), pageable)
+        : installations.findAllScoped(scopedPlantIds(user), filters.machineId(), filters.sparepartId(), filters.plantId(), filters.machineGroupId(), pageable);
+    return new InstallationListView(result.stream().map(this::toView).toList(), result.getTotalElements(), pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort().toString());
   }
 
   @Transactional(readOnly = true)
@@ -67,7 +68,7 @@ public class MachineSparepartInstallationService {
     var sparepart = resolveSparepart(normalized.sparepartId());
     var now = Instant.now(clock);
     return toView(save(new MachineSparepartInstallationEntity(UUID.randomUUID(), machine, sparepart,
-        normalized.expectedProductionCount(), normalized.baselineCounter(), normalized.thresholdPercentage(),
+        normalized.functionName(), normalized.expectedProductionCount(), normalized.baselineCounter(), normalized.thresholdPercentage(),
         now, now, now)));
   }
 
@@ -76,7 +77,7 @@ public class MachineSparepartInstallationService {
     requireMutationRole(user);
     var installation = findScoped(user, installationId);
     var normalized = normalize(command);
-    installation.update(normalized.expectedProductionCount(), normalized.baselineCounter(), normalized.thresholdPercentage(), Instant.now(clock));
+    installation.update(normalized.functionName(), normalized.expectedProductionCount(), normalized.baselineCounter(), normalized.thresholdPercentage(), Instant.now(clock));
     return toView(save(installation));
   }
 
@@ -149,17 +150,34 @@ public class MachineSparepartInstallationService {
         .toList();
   }
 
+  private void validatePageable(Pageable pageable) {
+    if (pageable.getPageNumber() < 0 || pageable.getPageSize() < 1 || pageable.getPageSize() > 200) {
+      throw new InstallationValidationException();
+    }
+  }
+
   private InstallationCommand normalize(InstallationCommand command) {
     if (command.machineId() == null || command.sparepartId() == null) {
       throw new InstallationValidationException();
     }
-    return new InstallationCommand(command.machineId(), command.sparepartId(), positive(command.expectedProductionCount()),
+    return new InstallationCommand(command.machineId(), command.sparepartId(), normalizeFunctionName(command.functionName()), positive(command.expectedProductionCount()),
         nonNegative(command.baselineCounter()), threshold(command.thresholdPercentage()));
   }
 
   private InstallationUpdateCommand normalize(InstallationUpdateCommand command) {
-    return new InstallationUpdateCommand(positive(command.expectedProductionCount()), nonNegative(command.baselineCounter()),
+    return new InstallationUpdateCommand(normalizeFunctionName(command.functionName()), positive(command.expectedProductionCount()), nonNegative(command.baselineCounter()),
         threshold(command.thresholdPercentage()));
+  }
+
+  private String normalizeFunctionName(String value) {
+    if (value == null) {
+      throw new InstallationValidationException();
+    }
+    var trimmed = value.trim();
+    if (trimmed.isEmpty() || trimmed.length() > 255) {
+      throw new InstallationValidationException();
+    }
+    return trimmed;
   }
 
   private long positive(Long value) {
@@ -191,7 +209,7 @@ public class MachineSparepartInstallationService {
     var sparepart = installation.getSparepart();
     return new InstallationView(installation.getId(), machine.getId(), machine.getCode(), machine.getName(), plant.getId(),
         plant.getCode(), plant.getName(), machineGroup.getId(), machineGroup.getName(), sparepart.getId(), sparepart.getCode(),
-        sparepart.getName(), new TaxonomyRefView(sparepart.getCategory().getId(), sparepart.getCategory().getCode(), sparepart.getCategory().getName()),
+        sparepart.getName(), installation.getFunctionName(), new TaxonomyRefView(sparepart.getCategory().getId(), sparepart.getCategory().getCode(), sparepart.getCategory().getName()),
         new TaxonomyRefView(sparepart.getBrand().getId(), sparepart.getBrand().getCode(), sparepart.getBrand().getName()),
         new TaxonomyRefView(sparepart.getKind().getId(), sparepart.getKind().getCode(), sparepart.getKind().getName()),
         new TaxonomyRefView(sparepart.getType().getId(), sparepart.getType().getCode(), sparepart.getType().getName()),
@@ -199,19 +217,17 @@ public class MachineSparepartInstallationService {
         installation.getThresholdPercentage(), "COUNTER_BASED", installation.getInstalledAt(), installation.getCreatedAt(), installation.getUpdatedAt());
   }
 
-  public record InstallationCommand(UUID machineId, UUID sparepartId, Long expectedProductionCount, Long baselineCounter,
+  public record InstallationCommand(UUID machineId, UUID sparepartId, String functionName, Long expectedProductionCount, Long baselineCounter,
       Integer thresholdPercentage) {
   }
 
-  public record InstallationUpdateCommand(Long expectedProductionCount, Long baselineCounter, Integer thresholdPercentage) {
+  public record InstallationUpdateCommand(String functionName, Long expectedProductionCount, Long baselineCounter, Integer thresholdPercentage) {
   }
 
-  public record InstallationFilters(UUID machineId, UUID sparepartId, UUID plantId, UUID machineGroupId, int limit) {
-    public InstallationFilters {
-      if (limit < 1 || limit > 200) {
-        throw new InstallationValidationException();
-      }
-    }
+  public record InstallationFilters(UUID machineId, UUID sparepartId, UUID plantId, UUID machineGroupId) {
+  }
+
+  public record InstallationListView(List<InstallationView> items, long totalElements, int page, int size, String sort) {
   }
 
   public record TaxonomyRefView(UUID id, String code, String name) {
@@ -219,7 +235,7 @@ public class MachineSparepartInstallationService {
 
   public record InstallationView(UUID id, UUID machineId, String machineCode, String machineName, UUID plantId,
       String plantCode, String plantName, UUID machineGroupId, String machineGroupName, UUID sparepartId,
-      String sparepartCode, String sparepartName, TaxonomyRefView category, TaxonomyRefView brand,
+      String sparepartCode, String sparepartName, String functionName, TaxonomyRefView category, TaxonomyRefView brand,
       TaxonomyRefView kind, TaxonomyRefView type, long expectedProductionCount, long baselineCounter,
       Long currentCount, Long consumedProductionCount, java.math.BigDecimal consumedPercentage, int thresholdPercentage,
       String calculationBasis, Instant installedAt, Instant createdAt, Instant updatedAt) {

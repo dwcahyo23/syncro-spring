@@ -31,6 +31,7 @@ export * from './machineRequest';
 export * from './machineRequestStatus';
 export * from './machineView';
 export * from './machineViewStatus';
+export * from './pageable';
 export * from './plantListResponse';
 export * from './plantRequest';
 export * from './plantScopeResponse';

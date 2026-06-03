@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useMemo, useState } from "react";
+import React, { type FormEvent, useMemo, useState } from "react";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, SearchIcon, Trash2, TriangleAlertIcon } from "lucide-react";
@@ -15,6 +15,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import { DataTableSortHeader } from "@/components/ui/data-table-sort-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,12 +52,17 @@ import { useAuthUser } from "@/lib/auth/use-auth-user";
 type DialogMode = { type: "create"; sparepart?: never } | { type: "edit"; sparepart: SparepartView };
 type ErrorResponse = { code: string; message: string; fieldErrors?: Record<string, string> };
 type TaxonomyDimension = SparepartTaxonomyView["dimension"];
-type Filters = { categoryId?: string; brandId?: string; kindId?: string; typeId?: string; search?: string };
+type Filters = { 
+  categoryId: string | null;
+  brandId: string | null;
+  kindId: string | null;
+  typeId: string | null;
+  search: string;
+  machineCode: string;
+};
 
 const ALL = "__all__";
 const EMPTY_FORM: SparepartRequest = {
-  code: "",
-  name: "",
   machineId: "",
   categoryId: "",
   brandId: "",
@@ -67,16 +74,27 @@ export function SparepartManagement() {
   const user = useAuthUser();
   const queryClient = useQueryClient();
   const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGE";
-  const [filters, setFilters] = useState<Filters>({});
+  const [filters, setFilters] = useState<Filters>({
+    categoryId: null,
+    brandId: null,
+    kindId: null,
+    typeId: null,
+    search: "",
+    machineCode: "",
+  });
   const [machineSearch, setMachineSearch] = useState("");
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(10);
+  const [sort, setSort] = useState("");
   const taxonomy = useListSparepartTaxonomies();
-  const machines = useListMachines({ search: machineSearch.trim() || undefined, page: 0, size: 25, sort: "code,asc" });
-  const spareparts = useListSpareparts(cleanFilters(filters));
+  const machines = useListMachines({ search: machineSearch.trim() || undefined, page: 0, size: 50 });
+  const spareparts = useListSpareparts({ ...cleanFilters(filters), pageable: { page, size, sort: sort ? [sort] : undefined } });
   const createSparepart = useCreateSparepart({ mutation: { onSuccess: invalidateSparepartData } });
   const createTaxonomy = useCreateSparepartTaxonomy({ mutation: { onSuccess: invalidateTaxonomyData } });
   const updateSparepart = useUpdateSparepart({ mutation: { onSuccess: invalidateSparepartData } });
   const deleteSparepart = useDeleteSparepart({ mutation: { onSuccess: invalidateSparepartData } });
-  const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
+  const [dialogMode, setDialogMode] = useState<{ type: "create" } | { type: "edit"; sparepart: SparepartView } | null>(null);
+  const [step, setStep] = useState(1);
   const [form, setForm] = useState<SparepartRequest>(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -115,16 +133,15 @@ export function SparepartManagement() {
 
   function openCreateDialog() {
     setDialogMode({ type: "create" });
-    setForm(defaultForm(taxonomyByDimension, machineItems));
+    setForm(EMPTY_FORM);
     setFieldErrors({});
     setFormError(null);
+    setStep(1);
   }
 
   function openEditDialog(sparepart: SparepartView) {
     setDialogMode({ type: "edit", sparepart });
     setForm({
-      code: sparepart.code ?? "",
-      name: sparepart.name ?? "",
       machineId: sparepart.machine?.id ?? "",
       categoryId: sparepart.category?.id ?? "",
       brandId: sparepart.brand?.id ?? "",
@@ -133,6 +150,7 @@ export function SparepartManagement() {
     });
     setFieldErrors({});
     setFormError(null);
+    setStep(1);
   }
 
   async function submitSparepart(event: FormEvent<HTMLFormElement>) {
@@ -141,15 +159,39 @@ export function SparepartManagement() {
     setFormError(null);
 
     try {
+      let finalForm = { ...form };
+      const pendingTaxonomies = [
+        { key: "brandId" as const, dim: SparepartTaxonomyRequestDimension.BRAND, name: finalForm.brandId },
+        { key: "kindId" as const, dim: SparepartTaxonomyRequestDimension.KIND, name: finalForm.kindId },
+        { key: "typeId" as const, dim: SparepartTaxonomyRequestDimension.TYPE, name: finalForm.typeId },
+      ];
+
+      for (const t of pendingTaxonomies) {
+        if (t.name.startsWith("pending-")) {
+          const actualName = t.name.replace("pending-", "");
+          const res = await createTaxonomy.mutateAsync({
+            data: {
+              dimension: t.dim,
+              code: taxonomyCode(actualName),
+              name: actualName.trim(),
+              categoryId: finalForm.categoryId,
+            },
+          });
+          finalForm[t.key] = res.data.id ?? "";
+        }
+      }
+      
+      await queryClient.invalidateQueries({ queryKey: getListSparepartTaxonomiesQueryKey() });
+
       if (dialogMode?.type === "edit") {
         if (!dialogMode.sparepart.id) {
           setFormError("Sparepart cannot be updated because its identifier is missing.");
           return;
         }
-        await updateSparepart.mutateAsync({ sparepartId: dialogMode.sparepart.id, data: form });
+        await updateSparepart.mutateAsync({ sparepartId: dialogMode.sparepart.id, data: finalForm });
         toast.success("Sparepart updated.");
       } else {
-        await createSparepart.mutateAsync({ data: form });
+        await createSparepart.mutateAsync({ data: finalForm });
         toast.success("Sparepart created.");
       }
       setDialogMode(null);
@@ -231,7 +273,14 @@ export function SparepartManagement() {
           />
         ) : null}
         {!taxonomy.isLoading && !taxonomy.isError && taxonomyReady ? (
-          <SparepartFilters filters={filters} taxonomyByDimension={taxonomyByDimension} onChange={setFilters} />
+          <SparepartFilters
+            filters={filters}
+            taxonomyByDimension={taxonomyByDimension}
+            onChange={(newFilters) => {
+              setFilters(newFilters);
+              setPage(0);
+            }}
+          />
         ) : null}
         {!spareparts.isLoading && !spareparts.isError && taxonomyReady && items.length === 0 ? (
           <SparepartState title="No spareparts yet" description="Create first sparepart or adjust filters." />
@@ -245,37 +294,42 @@ export function SparepartManagement() {
               setDeleteError(null);
               setDeleteTarget(sparepart);
             }}
+            sort={sort}
+            setSort={setSort}
+          />
+        ) : null}
+        {!spareparts.isLoading && !spareparts.isError && spareparts.data?.data ? (
+          <DataTablePagination
+            page={page}
+            size={size}
+            totalElements={spareparts.data.data.totalElements}
+            onPageChange={setPage}
+            onSizeChange={(newSize) => {
+              setSize(newSize);
+              setPage(0);
+            }}
           />
         ) : null}
       </CardContent>
 
       <Dialog open={dialogMode !== null} onOpenChange={(open) => !open && setDialogMode(null)}>
         <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
-          <form onSubmit={submitSparepart} className="space-y-4">
+          <form onSubmit={submitSparepart}>
             <DialogHeader>
               <DialogTitle>{dialogMode?.type === "edit" ? "Edit sparepart" : "Create sparepart"}</DialogTitle>
-              <DialogDescription>Code and name must be unique, and the sparepart must be linked to an existing machine.</DialogDescription>
+              <DialogDescription>Code must be unique, and the sparepart must be linked to an existing machine.</DialogDescription>
             </DialogHeader>
             {formError ? (
               <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{formError}</p>
             ) : null}
-            <div className="grid gap-4 md:grid-cols-2">
-              <TextField
-                id="sparepart-code"
-                label="Code"
-                value={form.code}
-                error={fieldErrors.code}
-                disabled={isSaving}
-                onChange={(code) => setForm((current) => ({ ...current, code }))}
-              />
-              <TextField
-                id="sparepart-name"
-                label="Name"
-                value={form.name}
-                error={fieldErrors.name}
-                disabled={isSaving}
-                onChange={(name) => setForm((current) => ({ ...current, name }))}
-              />
+            
+            <div className="flex gap-2 items-center text-sm font-medium py-2">
+              <span className={step === 1 ? "text-primary" : "text-muted-foreground"}>1. Details</span>
+              <span className="text-muted-foreground">/</span>
+              <span className={step === 2 ? "text-primary" : "text-muted-foreground"}>2. Confirmation</span>
+            </div>
+
+            <div className={step === 1 ? "grid gap-4 md:grid-cols-2" : "hidden"}>
               <MachineSelect
                 value={form.machineId}
                 search={machineSearch}
@@ -291,23 +345,11 @@ export function SparepartManagement() {
                 error={fieldErrors.categoryId}
                 disabled={isSaving}
                 items={taxonomyByDimension.get(SparepartTaxonomyRequestDimension.CATEGORY) ?? []}
+                creatable={false}
+                onCreate={undefined}
                 onChange={(categoryId) =>
                   setForm((current) => ({ ...current, categoryId, brandId: "", kindId: "", typeId: "" }))
                 }
-              />
-              <TaxonomySelect
-                label="Brand"
-                value={form.brandId}
-                error={fieldErrors.brandId}
-                disabled={isSaving}
-                items={linkedTaxonomyOptions(
-                  taxonomyByDimension,
-                  SparepartTaxonomyRequestDimension.BRAND,
-                  form.categoryId,
-                )}
-                creatable={!createTaxonomy.isPending && Boolean(form.categoryId)}
-                onCreate={(name) => createTaxonomyValue(SparepartTaxonomyRequestDimension.BRAND, name)}
-                onChange={(brandId) => setForm((current) => ({ ...current, brandId }))}
               />
               <TaxonomySelect
                 label="Kind"
@@ -319,9 +361,23 @@ export function SparepartManagement() {
                   SparepartTaxonomyRequestDimension.KIND,
                   form.categoryId,
                 )}
-                creatable={!createTaxonomy.isPending && Boolean(form.categoryId)}
-                onCreate={(name) => createTaxonomyValue(SparepartTaxonomyRequestDimension.KIND, name)}
+                creatable={!isSaving && Boolean(form.categoryId)}
+                onCreate={(name) => Promise.resolve(setForm((current) => ({ ...current, kindId: `pending-${name}` })))}
                 onChange={(kindId) => setForm((current) => ({ ...current, kindId }))}
+              />
+              <TaxonomySelect
+                label="Brand"
+                value={form.brandId}
+                error={fieldErrors.brandId}
+                disabled={isSaving}
+                items={linkedTaxonomyOptions(
+                  taxonomyByDimension,
+                  SparepartTaxonomyRequestDimension.BRAND,
+                  form.categoryId,
+                )}
+                creatable={!isSaving && Boolean(form.categoryId)}
+                onCreate={(name) => Promise.resolve(setForm((current) => ({ ...current, brandId: `pending-${name}` })))}
+                onChange={(brandId) => setForm((current) => ({ ...current, brandId }))}
               />
               <TaxonomySelect
                 label="Type"
@@ -333,19 +389,36 @@ export function SparepartManagement() {
                   SparepartTaxonomyRequestDimension.TYPE,
                   form.categoryId,
                 )}
-                creatable={!createTaxonomy.isPending && Boolean(form.categoryId)}
-                onCreate={(name) => createTaxonomyValue(SparepartTaxonomyRequestDimension.TYPE, name)}
+                creatable={!isSaving && Boolean(form.categoryId)}
+                onCreate={(name) => Promise.resolve(setForm((current) => ({ ...current, typeId: `pending-${name}` })))}
                 onChange={(typeId) => setForm((current) => ({ ...current, typeId }))}
               />
             </div>
-            <DialogFooter>
+
+            {step === 2 && (
+              <div className="grid gap-2 rounded-md border border-dashed p-3 text-sm min-h-[4.5rem] my-4">
+                <span className="font-medium">Confirmation</span>
+                <span className="text-muted-foreground">Review your sparepart details. BOM code will be generated upon save.</span>
+              </div>
+            )}
+
+            <DialogFooter className="mt-4">
               <Button type="button" variant="outline" onClick={() => setDialogMode(null)} disabled={isSaving}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSaving}>
-                {isSaving ? <Loader2Icon className="animate-spin" /> : null}
-                Save sparepart
-              </Button>
+              {step === 1 ? (
+                <Button type="button" onClick={() => setStep(2)}>Next</Button>
+              ) : (
+                <>
+                  <Button type="button" variant="secondary" onClick={() => setStep(1)} disabled={isSaving}>
+                    Back
+                  </Button>
+                  <Button type="submit" disabled={isSaving}>
+                    {isSaving ? <Loader2Icon className="animate-spin" /> : null}
+                    Save sparepart
+                  </Button>
+                </>
+              )}
             </DialogFooter>
           </form>
         </DialogContent>
@@ -356,7 +429,7 @@ export function SparepartManagement() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete sparepart?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes {deleteTarget?.name}. Deletion is blocked when installed spareparts depend on it.
+              This removes {deleteTarget?.code}. Deletion is blocked when installed spareparts depend on it.
             </AlertDialogDescription>
             {deleteError ? (
               <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{deleteError}</p>
@@ -390,34 +463,43 @@ function SparepartFilters({
         <SearchIcon className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           className="pl-9"
-          placeholder="Search code or name"
-          value={filters.search ?? ""}
+          placeholder="Search code..."
+          value={filters.search}
           onChange={(event) => onChange({ ...filters, search: event.target.value })}
+        />
+      </div>
+      <div className="relative w-full">
+        <SearchIcon className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          className="pl-9"
+          placeholder="Filter machine code..."
+          value={filters.machineCode}
+          onChange={(event) => onChange({ ...filters, machineCode: event.target.value })}
         />
       </div>
       <FilterSelect
         label="Category"
-        value={filters.categoryId}
+        value={filters.categoryId ?? undefined}
         items={taxonomyByDimension.get(SparepartTaxonomyRequestDimension.CATEGORY) ?? []}
-        onChange={(categoryId) => onChange({ ...filters, categoryId })}
+        onChange={(categoryId) => onChange({ ...filters, categoryId: categoryId ?? null })}
       />
       <FilterSelect
         label="Brand"
-        value={filters.brandId}
-        items={taxonomyByDimension.get(SparepartTaxonomyRequestDimension.BRAND) ?? []}
-        onChange={(brandId) => onChange({ ...filters, brandId })}
+        value={filters.brandId ?? undefined}
+        items={linkedTaxonomyOptions(taxonomyByDimension, SparepartTaxonomyRequestDimension.BRAND, filters.categoryId ?? "")}
+        onChange={(brandId) => onChange({ ...filters, brandId: brandId ?? null })}
       />
       <FilterSelect
         label="Kind"
-        value={filters.kindId}
-        items={taxonomyByDimension.get(SparepartTaxonomyRequestDimension.KIND) ?? []}
-        onChange={(kindId) => onChange({ ...filters, kindId })}
+        value={filters.kindId ?? undefined}
+        items={linkedTaxonomyOptions(taxonomyByDimension, SparepartTaxonomyRequestDimension.KIND, filters.categoryId ?? "")}
+        onChange={(kindId) => onChange({ ...filters, kindId: kindId ?? null })}
       />
       <FilterSelect
         label="Type"
-        value={filters.typeId}
-        items={taxonomyByDimension.get(SparepartTaxonomyRequestDimension.TYPE) ?? []}
-        onChange={(typeId) => onChange({ ...filters, typeId })}
+        value={filters.typeId ?? undefined}
+        items={linkedTaxonomyOptions(taxonomyByDimension, SparepartTaxonomyRequestDimension.TYPE, filters.categoryId ?? "")}
+        onChange={(typeId) => onChange({ ...filters, typeId: typeId ?? null })}
       />
     </div>
   );
@@ -428,23 +510,27 @@ function SparepartTable({
   canMutate,
   onEdit,
   onDelete,
+  sort,
+  setSort,
 }: {
   items: SparepartView[];
   canMutate: boolean;
   onEdit: (sparepart: SparepartView) => void;
   onDelete: (sparepart: SparepartView) => void;
+  sort: string;
+  setSort: (sort: string) => void;
 }) {
   return (
     <div className="overflow-x-auto rounded-lg border">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Code</TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Category</TableHead>
-            <TableHead>Brand</TableHead>
-            <TableHead>Kind</TableHead>
-            <TableHead>Type</TableHead>
+            <TableHead className="whitespace-nowrap"><DataTableSortHeader title="Code" field="code" sort={sort} onSortChange={setSort} /></TableHead>
+            <TableHead className="whitespace-nowrap min-w-[200px]"><DataTableSortHeader title="Machine" field="machine.code" sort={sort} onSortChange={setSort} /></TableHead>
+            <TableHead className="whitespace-nowrap"><DataTableSortHeader title="Category" field="category.name" sort={sort} onSortChange={setSort} /></TableHead>
+            <TableHead className="whitespace-nowrap"><DataTableSortHeader title="Kind" field="kind.name" sort={sort} onSortChange={setSort} /></TableHead>
+            <TableHead className="whitespace-nowrap"><DataTableSortHeader title="Brand" field="brand.name" sort={sort} onSortChange={setSort} /></TableHead>
+            <TableHead className="whitespace-nowrap"><DataTableSortHeader title="Type" field="type.name" sort={sort} onSortChange={setSort} /></TableHead>
             <TableHead>Created</TableHead>
             <TableHead>Updated</TableHead>
             <TableHead className="text-right">Actions</TableHead>
@@ -452,12 +538,12 @@ function SparepartTable({
         </TableHeader>
         <TableBody>
           {items.map((sparepart) => (
-            <TableRow key={sparepart.id ?? `${sparepart.code}-${sparepart.name}`}>
+            <TableRow key={sparepart.id ?? sparepart.code}>
               <TableCell className="font-mono text-xs">{sparepart.code}</TableCell>
-              <TableCell className="font-medium">{sparepart.name}</TableCell>
+              <TableCell>{sparepart.machine?.code ? `${sparepart.machine.name} (${sparepart.machine.code})` : "-"}</TableCell>
               <TableCell>{sparepart.category?.name ?? "-"}</TableCell>
-              <TableCell>{sparepart.brand?.name ?? "-"}</TableCell>
               <TableCell>{sparepart.kind?.name ?? "-"}</TableCell>
+              <TableCell>{sparepart.brand?.name ?? "-"}</TableCell>
               <TableCell>{sparepart.type?.name ?? "-"}</TableCell>
               <TableCell>{sparepart.createdAt ? formatDate(sparepart.createdAt) : "-"}</TableCell>
               <TableCell>{sparepart.updatedAt ? formatDate(sparepart.updatedAt) : "-"}</TableCell>
@@ -649,18 +735,40 @@ function FilterSelect({
   items: SparepartTaxonomyView[];
   onChange: (value: string | undefined) => void;
 }) {
+  const [search, setSearch] = React.useState("");
+  const filtered = search.trim()
+    ? items.filter((item) =>
+        [item.name, item.code].some((v) => v?.toLowerCase().includes(search.trim().toLowerCase()))
+      )
+    : items;
+  const selectedItem = items.find((i) => i.id === value);
+
   return (
-    <Select value={value ?? ALL} onValueChange={(next) => onChange(next === ALL ? undefined : next)}>
+    <Select value={value ?? ALL} onValueChange={(next) => { onChange(next === ALL ? undefined : next); setSearch(""); }}>
       <SelectTrigger className="w-full min-w-0">
-        <SelectValue placeholder={label} />
+        <SelectValue placeholder={`All ${label.toLowerCase()}`}>
+          {selectedItem ? selectedItem.name : `All ${label.toLowerCase()}`}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
+        <div className="p-2">
+          <Input
+            placeholder={`Search ${label.toLowerCase()}...`}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          />
+        </div>
         <SelectItem value={ALL}>All {label.toLowerCase()}</SelectItem>
-        {items.map((item) => (
+        {filtered.map((item) => (
           <SelectItem key={item.id} value={item.id ?? ""}>
             {item.name}
           </SelectItem>
         ))}
+        {filtered.length === 0 ? (
+          <p className="px-2 py-3 text-center text-sm text-muted-foreground">No results</p>
+        ) : null}
       </SelectContent>
     </Select>
   );
@@ -762,8 +870,6 @@ function defaultForm(
   machines: MachineView[],
 ): SparepartRequest {
   return {
-    code: "",
-    name: "",
     machineId: machines[0]?.id ?? "",
     categoryId: taxonomyByDimension.get(SparepartTaxonomyRequestDimension.CATEGORY)?.[0]?.id ?? "",
     brandId: taxonomyByDimension.get(SparepartTaxonomyRequestDimension.BRAND)?.[0]?.id ?? "",
@@ -779,6 +885,7 @@ function cleanFilters(filters: Filters) {
     kindId: filters.kindId ?? undefined,
     typeId: filters.typeId ?? undefined,
     search: filters.search?.trim() || undefined,
+    machineCode: filters.machineCode?.trim() || undefined,
   };
 }
 

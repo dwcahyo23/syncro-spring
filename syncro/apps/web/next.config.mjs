@@ -1,8 +1,16 @@
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const webRoot = dirname(fileURLToPath(import.meta.url));
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactCompiler: true,
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
+  },
+  turbopack: {
+    root: webRoot,
   },
   async redirects() {
     return [

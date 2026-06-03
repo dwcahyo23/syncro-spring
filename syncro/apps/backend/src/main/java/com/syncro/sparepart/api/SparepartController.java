@@ -17,6 +17,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -51,11 +53,12 @@ public class SparepartController {
       @RequestParam(required = false) UUID kindId,
       @RequestParam(required = false) UUID typeId,
       @RequestParam(required = false) String search,
-      @RequestParam(defaultValue = "0") int page,
-      @RequestParam(defaultValue = "200") int size) {
-    var filters = new SparepartFilters(categoryId, brandId, kindId, typeId, search, page, size);
-    var result = spareparts.list(user, filters);
-    return new SparepartListResponse(result.items().stream().map(this::toDto).toList(), result.totalElements(), result.page(), result.size());
+      @RequestParam(required = false) String machineCode,
+      @RequestParam(required = false) UUID machineId,
+      @PageableDefault(size = 200, sort = "code") Pageable pageable) {
+    var filters = new SparepartFilters(categoryId, brandId, kindId, typeId, search, machineCode, machineId);
+    var result = spareparts.list(user, filters, pageable);
+    return new SparepartListResponse(result.items().stream().map(this::toDto).toList(), result.totalElements(), result.page(), result.size(), result.sort());
   }
 
   @Operation(operationId = "getSparepart", summary = "Get sparepart")
@@ -116,14 +119,13 @@ public class SparepartController {
   }
 
   private SparepartCommand command(SparepartRequest request) {
-    return new SparepartCommand(request.code(), request.name(), request.machineId(), request.categoryId(), request.brandId(), request.kindId(), request.typeId());
+    return new SparepartCommand(request.machineId(), request.categoryId(), request.brandId(), request.kindId(), request.typeId());
   }
 
   private SparepartView toDto(SparepartService.SparepartView sparepart) {
     return new SparepartView(
         sparepart.id(),
         sparepart.code(),
-        sparepart.name(),
         toDto(sparepart.machine()),
         toDto(sparepart.category()),
         toDto(sparepart.brand()),

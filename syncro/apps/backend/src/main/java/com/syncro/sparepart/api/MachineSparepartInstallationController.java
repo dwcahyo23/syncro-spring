@@ -18,6 +18,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -52,9 +54,9 @@ public class MachineSparepartInstallationController {
       @RequestParam(required = false) UUID sparepartId,
       @RequestParam(required = false) UUID plantId,
       @RequestParam(required = false) UUID machineGroupId,
-      @RequestParam(defaultValue = "100") int limit) {
-    return new InstallationListResponse(installations.list(user, new InstallationFilters(machineId, sparepartId, plantId, machineGroupId, limit))
-        .stream().map(this::toDto).toList());
+      @PageableDefault(size = 100, sort = "installedAt") Pageable pageable) {
+    var result = installations.list(user, new InstallationFilters(machineId, sparepartId, plantId, machineGroupId), pageable);
+    return new InstallationListResponse(result.items().stream().map(this::toDto).toList(), result.totalElements(), result.page(), result.size(), result.sort());
   }
 
   @Operation(operationId = "getMachineSparepartInstallation", summary = "Get machine sparepart installation")
@@ -98,7 +100,7 @@ public class MachineSparepartInstallationController {
   public InstallationView update(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID installationId,
       @Valid @RequestBody InstallationUpdateRequest request) {
     return toDto(installations.update(user, installationId, new InstallationUpdateCommand(
-        request.expectedProductionCount(), request.baselineCounter(), request.thresholdPercentage())));
+        request.functionName(), request.expectedProductionCount(), request.baselineCounter(), request.thresholdPercentage())));
   }
 
   @Operation(operationId = "deleteMachineSparepartInstallation", summary = "Delete machine sparepart installation")
@@ -117,13 +119,13 @@ public class MachineSparepartInstallationController {
   }
 
   private InstallationCommand command(InstallationRequest request) {
-    return new InstallationCommand(request.machineId(), request.sparepartId(), request.expectedProductionCount(), request.baselineCounter(), request.thresholdPercentage());
+    return new InstallationCommand(request.machineId(), request.sparepartId(), request.functionName(), request.expectedProductionCount(), request.baselineCounter(), request.thresholdPercentage());
   }
 
   private InstallationView toDto(MachineSparepartInstallationService.InstallationView installation) {
     return new InstallationView(installation.id(), installation.machineId(), installation.machineCode(), installation.machineName(),
         installation.plantId(), installation.plantCode(), installation.plantName(), installation.machineGroupId(), installation.machineGroupName(),
-        installation.sparepartId(), installation.sparepartCode(), installation.sparepartName(), toDto(installation.category()),
+        installation.sparepartId(), installation.sparepartCode(), installation.sparepartName(), installation.functionName(), toDto(installation.category()),
         toDto(installation.brand()), toDto(installation.kind()), toDto(installation.type()), installation.expectedProductionCount(),
         installation.baselineCounter(), installation.currentCount(), installation.consumedProductionCount(), installation.consumedPercentage(),
         installation.thresholdPercentage(), installation.calculationBasis(), installation.installedAt(), installation.createdAt(), installation.updatedAt());

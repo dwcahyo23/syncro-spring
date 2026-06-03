@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.auth.infrastructure.AuthUserEntity;
+import com.syncro.auth.infrastructure.AuthUserPlantAssignmentEntity;
+import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
 import com.syncro.auth.infrastructure.AuthUserRepository;
 import com.syncro.auth.infrastructure.PlantEntity;
 import com.syncro.auth.infrastructure.PlantRepository;
@@ -31,6 +33,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -103,18 +106,23 @@ class SparepartServiceIntegrationTest {
   private AuthUserRepository users;
 
   @Autowired
+  private AuthUserPlantAssignmentRepository assignments;
+
+  @Autowired
   private PasswordEncoder passwordEncoder;
 
   @Test
   @DisplayName("2.5-SVC-001 P1 MANAGE creates normalized sparepart with taxonomy references")
   void manageCreatesNormalizedSparepartWithTaxonomyReferences() {
     var user = persistedUser(ApplicationRole.MANAGE, "manage-sparepart@syncro.dev");
+    var machine = machine();
+    assign(user, machine.getPlant());
     var refs = taxonomyRefs();
 
-    var created = sparepartService.create(user, command(" PLC-WECON-LX5 ", " Wecon LX5 PLC ", refs));
+    var created = sparepartService.create(user, command(" PLC-WECON-LX5 ", " Wecon LX5 PLC ", machine, refs));
 
-    assertThat(created.code()).isEqualTo("PLC-WECON-LX5");
-    assertThat(created.name()).isEqualTo("Wecon LX5 PLC");
+    assertThat(created.code()).startsWith("MCH-1PLANT-1ELEPLCWEC");
+    assertThat(created.code()).endsWith("000");
     assertThat(created.category().id()).isEqualTo(refs.category().getId());
     assertThat(created.brand().id()).isEqualTo(refs.brand().getId());
     assertThat(created.kind().id()).isEqualTo(refs.kind().getId());
@@ -123,35 +131,33 @@ class SparepartServiceIntegrationTest {
   }
 
   @Test
-  @DisplayName("2.5-SVC-002 P1 duplicate sparepart code is rejected case-insensitively")
-  void duplicateSparepartCodeRejectedCaseInsensitively() {
+  @DisplayName("2.R-SVC-003 P1 generated BOM sparepart code increments for same machine, category, kind, and brand while excluding type")
+  void generatedBomSparepartCodeIncrementsForSameBomPrefixExcludingType() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     var refs = taxonomyRefs();
-    sparepartService.create(admin, command("PLC-WECON-LX5", "Wecon LX5 PLC", refs));
+    var samePrefixDifferentType = new TaxonomyRefs(
+        refs.category(),
+        refs.brand(),
+        refs.kind(),
+        taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.TYPE, "LX7", "LX7", refs.category(),
+            Instant.parse("2026-05-28T00:00:00Z"), Instant.parse("2026-05-28T00:00:00Z"))));
+    var machine = machine();
+    var first = sparepartService.create(admin, command("IGNORED-1", "Wecon LX5 PLC", machine, refs));
+    var second = sparepartService.create(admin, command("IGNORED-2", "Wecon LX7 PLC", machine, samePrefixDifferentType));
 
-    assertThatThrownBy(() -> sparepartService.create(admin, command(" plc-wecon-lx5 ", "Wecon LX5 PLC Backup", refs)))
-        .isInstanceOf(DuplicateSparepartException.class);
+    assertThat(first.code()).isEqualTo("MCH-1PLANT-1ELEPLCWEC000");
+    assertThat(second.code()).isEqualTo("MCH-1PLANT-1ELEPLCWEC001");
   }
 
   @Test
-  @DisplayName("2.5-SVC-003 P1 duplicate sparepart name is rejected case-insensitively")
-  void duplicateSparepartNameRejectedCaseInsensitively() {
+  @DisplayName("2.R-SVC-004 P0 same machine and taxonomy identity is rejected even when code is client supplied differently")
+  void sameMachineAndTaxonomyIdentityRejected() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     var refs = taxonomyRefs();
-    sparepartService.create(admin, command("PLC-WECON-LX5", "Wecon LX5 PLC", refs));
+    var machine = machine();
+    sparepartService.create(admin, command("CLIENT-1", "Wecon LX5 PLC", machine, refs));
 
-    assertThatThrownBy(() -> sparepartService.create(admin, command("PLC-WECON-LX5-B", " wecon lx5 plc ", refs)))
-        .isInstanceOf(DuplicateSparepartException.class);
-  }
-
-  @Test
-  @DisplayName("2.5-SVC-004 P0 database rejects case-insensitive duplicate sparepart code")
-  void databaseRejectsCaseInsensitiveDuplicateSparepartCode() {
-    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    var refs = taxonomyRefs();
-    sparepartService.create(admin, command("PLC-WECON-LX5", "Wecon LX5 PLC", refs));
-
-    assertThatThrownBy(() -> sparepartService.create(admin, command("plc-wecon-lx5", "Wecon LX5 PLC Backup", refs)))
+    assertThatThrownBy(() -> sparepartService.create(admin, command("CLIENT-2", "Wecon LX5 PLC Duplicate", machine, refs)))
         .isInstanceOf(DuplicateSparepartException.class);
   }
 
@@ -165,23 +171,25 @@ class SparepartServiceIntegrationTest {
     sparepartService.create(admin, command("RELAY-OMRON-MY2N", "Omron MY2N Relay", otherRefs));
 
     var result = sparepartService.list(admin, new SparepartFilters(
-        refs.category().getId(), refs.brand().getId(), refs.kind().getId(), refs.type().getId(), "lx5", 0, 200));
+        refs.category().getId(), refs.brand().getId(), refs.kind().getId(), refs.type().getId(), "lx5", null, null), PageRequest.of(0, 200));
 
-    assertThat(result.items()).extracting("id").containsExactly(plc.id());
+    assertThat(result.items()).extracting(sparepart -> sparepart.id()).containsExactly(plc.id());
   }
 
   @Test
   @DisplayName("2.5-SVC-006 P1 list paginates results and reports total count")
   void listPaginatesResultsAndReportsTotalCount() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    var refs = taxonomyRefs();
-    sparepartService.create(admin, command("PLC-001", "Alpha PLC", refs));
-    var beta = sparepartService.create(admin, command("PLC-002", "Beta PLC", refs));
-    sparepartService.create(admin, command("PLC-003", "Gamma PLC", refs));
+    var alphaRefs = taxonomyRefs("ELECTRIC", "Electric", "WECON", "Wecon", "PLC", "PLC", "LX5", "LX5");
+    var betaRefs = taxonomyRefs("ELECTRIC", "Electric", "WECON", "Wecon", "PLC", "PLC", "LX7", "LX7");
+    var gammaRefs = taxonomyRefs("ELECTRIC", "Electric", "WECON", "Wecon", "PLC", "PLC", "LX9", "LX9");
+    sparepartService.create(admin, command("PLC-001", "Alpha PLC", alphaRefs));
+    var beta = sparepartService.create(admin, command("PLC-002", "Beta PLC", betaRefs));
+    sparepartService.create(admin, command("PLC-003", "Gamma PLC", gammaRefs));
 
-    var result = sparepartService.list(admin, new SparepartFilters(null, null, null, null, null, 1, 1));
+    var result = sparepartService.list(admin, new SparepartFilters(null, null, null, null, null, null, null), PageRequest.of(1, 1));
 
-    assertThat(result.items()).extracting("id").containsExactly(beta.id());
+    assertThat(result.items()).extracting(sparepart -> sparepart.id()).containsExactly(beta.id());
     assertThat(result.totalElements()).isEqualTo(3);
     assertThat(result.page()).isEqualTo(1);
     assertThat(result.size()).isEqualTo(1);
@@ -191,15 +199,16 @@ class SparepartServiceIntegrationTest {
   @DisplayName("2.5-SVC-007 P1 list search treats wildcard characters literally")
   void listSearchTreatsWildcardCharactersLiterally() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    var refs = taxonomyRefs();
-    var literal = sparepartService.create(admin, command("PLC_10", "Percent 100% PLC", refs));
-    sparepartService.create(admin, command("PLC-10", "Percent 1000 PLC", refs));
+    var literalRefs = taxonomyRefs("ELECTRIC", "Electric", "WECON", "Wecon", "PLC", "PLC", "100%", "100%");
+    var otherRefs = taxonomyRefs("ELECTRIC", "Electric", "WECON", "Wecon", "PLC", "PLC", "1000", "1000");
+    var literal = sparepartService.create(admin, command("PLC_10", "Percent 100% PLC", literalRefs));
+    sparepartService.create(admin, command("PLC-10", "Percent 1000 PLC", otherRefs));
 
-    var underscore = sparepartService.list(admin, new SparepartFilters(null, null, null, null, "PLC_10", 0, 200));
-    var percent = sparepartService.list(admin, new SparepartFilters(null, null, null, null, "100%", 0, 200));
+    var underscore = sparepartService.list(admin, new SparepartFilters(null, null, null, null, "_", null, null), PageRequest.of(0, 200));
+    var percent = sparepartService.list(admin, new SparepartFilters(null, null, null, null, "100%", null, null), PageRequest.of(0, 200));
 
-    assertThat(underscore.items()).extracting("id").containsExactly(literal.id());
-    assertThat(percent.items()).extracting("id").containsExactly(literal.id());
+    assertThat(underscore.items()).isEmpty();
+    assertThat(percent.items()).extracting(sparepart -> sparepart.id()).containsExactly(literal.id());
   }
 
   @Test
@@ -212,8 +221,8 @@ class SparepartServiceIntegrationTest {
     var updated = sparepartService.update(admin, created.id(), command("PLC-WECON-LX5-A", "Wecon LX5 PLC A", refs));
 
     assertThat(updated.id()).isEqualTo(created.id());
-    assertThat(updated.code()).isEqualTo("PLC-WECON-LX5-A");
-    assertThat(updated.name()).isEqualTo("Wecon LX5 PLC A");
+    assertThat(updated.code()).isEqualTo(created.code());
+    assertThat(updated.category().id()).isEqualTo(refs.category().getId());
   }
 
   @Test
@@ -224,7 +233,7 @@ class SparepartServiceIntegrationTest {
     var refs = taxonomyRefs();
     var created = sparepartService.create(admin, command("PLC-WECON-LX5", "Wecon LX5 PLC", refs));
 
-    assertThat(sparepartService.list(viewer, new SparepartFilters(null, null, null, null, null, 0, 200)).items()).extracting("id").containsExactly(created.id());
+    assertThat(sparepartService.list(viewer, new SparepartFilters(null, null, null, null, null, null, null), PageRequest.of(0, 200)).items()).extracting(sparepart -> sparepart.id()).containsExactly(created.id());
     assertThatThrownBy(() -> sparepartService.create(viewer, command("PLC-WECON-LX5-B", "Wecon LX5 PLC Backup", refs)))
         .isInstanceOf(SparepartMutationForbiddenException.class);
   }
@@ -236,7 +245,7 @@ class SparepartServiceIntegrationTest {
     var refs = taxonomyRefs();
 
     assertThatThrownBy(() -> sparepartService.create(admin, new SparepartCommand(
-        "PLC-WECON-LX5", "Wecon LX5 PLC", machine().getId(), UUID.randomUUID(), refs.brand().getId(), refs.kind().getId(), refs.type().getId())))
+        machine().getId(), UUID.randomUUID(), refs.brand().getId(), refs.kind().getId(), refs.type().getId())))
         .isInstanceOf(SparepartTaxonomyReferenceNotFoundException.class);
   }
 
@@ -247,7 +256,7 @@ class SparepartServiceIntegrationTest {
     var refs = taxonomyRefs();
 
     assertThatThrownBy(() -> sparepartService.create(admin, new SparepartCommand(
-        "PLC-WECON-LX5", "Wecon LX5 PLC", machine().getId(), refs.brand().getId(), refs.brand().getId(), refs.kind().getId(), refs.type().getId())))
+        machine().getId(), refs.brand().getId(), refs.brand().getId(), refs.kind().getId(), refs.type().getId())))
         .isInstanceOf(SparepartTaxonomyDimensionMismatchException.class);
   }
 
@@ -259,7 +268,7 @@ class SparepartServiceIntegrationTest {
     var otherRefs = taxonomyRefs("MECHANIC", "Mechanic", "OMRON", "Omron", "RELAY", "Relay", "MY2N", "MY2N");
 
     assertThatThrownBy(() -> sparepartService.create(admin, new SparepartCommand(
-        "PLC-WECON-LX5", "Wecon LX5 PLC", machine().getId(), refs.category().getId(), otherRefs.brand().getId(), refs.kind().getId(), refs.type().getId())))
+        machine().getId(), refs.category().getId(), otherRefs.brand().getId(), refs.kind().getId(), refs.type().getId())))
         .isInstanceOf(SparepartTaxonomyDimensionMismatchException.class);
   }
 
@@ -278,10 +287,11 @@ class SparepartServiceIntegrationTest {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     var refs = taxonomyRefs();
 
-    assertThatThrownBy(() -> sparepartService.create(admin, command(" ", "Wecon LX5 PLC", refs)))
+    assertThatThrownBy(() -> sparepartService.create(admin, new SparepartCommand(
+        null, refs.category().getId(), refs.brand().getId(), refs.kind().getId(), refs.type().getId())))
         .isInstanceOf(SparepartValidationException.class);
     assertThatThrownBy(() -> sparepartService.create(admin, new SparepartCommand(
-        "PLC-WECON-LX5", "Wecon LX5 PLC", machine().getId(), refs.category().getId(), null, refs.kind().getId(), refs.type().getId())))
+        machine().getId(), refs.category().getId(), null, refs.kind().getId(), refs.type().getId())))
         .isInstanceOf(SparepartValidationException.class);
   }
 
@@ -301,13 +311,17 @@ class SparepartServiceIntegrationTest {
   @DisplayName("2.5-SVC-013 P0 spareparts enforce taxonomy foreign keys")
   void sparepartsEnforceTaxonomyForeignKeys() {
     assertThatThrownBy(() -> spareparts.saveAndFlush(new com.syncro.sparepart.infrastructure.SparepartEntity(
-        UUID.randomUUID(), "PLC-WECON-LX5", "Wecon LX5 PLC", null, null, null, null,
+        UUID.randomUUID(), "PLC-WECON-LX5", "Wecon LX5 PLC", null, null, null, null, null,
         Instant.parse("2026-05-28T00:00:00Z"), Instant.parse("2026-05-28T00:00:00Z"))))
         .isInstanceOf(DataIntegrityViolationException.class);
   }
 
   private SparepartCommand command(String code, String name, TaxonomyRefs refs) {
-    return new SparepartCommand(code, name, machine().getId(), refs.category().getId(), refs.brand().getId(), refs.kind().getId(), refs.type().getId());
+    return command(code, name, machine(), refs);
+  }
+
+  private SparepartCommand command(String code, String name, MachineEntity machine, TaxonomyRefs refs) {
+    return new SparepartCommand(machine.getId(), refs.category().getId(), refs.brand().getId(), refs.kind().getId(), refs.type().getId());
   }
 
   private MachineEntity machine() {
@@ -333,9 +347,9 @@ class SparepartServiceIntegrationTest {
             UUID.randomUUID(), SparepartTaxonomyDimension.CATEGORY, categoryCode, categoryName, now, now)));
     return new TaxonomyRefs(
         category,
-        taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.BRAND, uniqueCode(brandCode), brandName, category, now, now)),
-        taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.KIND, uniqueCode(kindCode), kindName, category, now, now)),
-        taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.TYPE, uniqueCode(typeCode), typeName, category, now, now)));
+        taxonomy.findByDimensionAndNameIgnoreCase(SparepartTaxonomyDimension.BRAND, brandName).orElseGet(() -> taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.BRAND, uniqueCode(brandCode), brandName, category, now, now))),
+        taxonomy.findByDimensionAndNameIgnoreCase(SparepartTaxonomyDimension.KIND, kindName).orElseGet(() -> taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.KIND, uniqueCode(kindCode), kindName, category, now, now))),
+        taxonomy.findByDimensionAndNameIgnoreCase(SparepartTaxonomyDimension.TYPE, typeName).orElseGet(() -> taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.TYPE, uniqueCode(typeCode), typeName, category, now, now))));
   }
 
   private String uniqueCode(String code) {
@@ -347,6 +361,10 @@ class SparepartServiceIntegrationTest {
     var user = users.saveAndFlush(new AuthUserEntity(UUID.randomUUID(), loginIdentifier,
         passwordEncoder.encode("syncro-test-password"), role, true, now, now));
     return new AuthenticatedUser(user.getId().toString(), user.getLoginIdentifier(), role);
+  }
+
+  private void assign(AuthenticatedUser user, PlantEntity plant) {
+    assignments.saveAndFlush(new AuthUserPlantAssignmentEntity(UUID.fromString(user.id()), plant.getId(), Instant.parse("2026-05-28T00:00:00Z")));
   }
 
   private static AuthenticatedUser authenticatedUser(ApplicationRole role) {

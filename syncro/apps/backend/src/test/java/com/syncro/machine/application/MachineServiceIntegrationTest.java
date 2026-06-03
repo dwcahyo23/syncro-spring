@@ -205,7 +205,7 @@ class MachineServiceIntegrationTest {
 
     var result = machineService.list(viewer, null, null, null);
 
-    assertThat(result).extracting("id").containsExactly(assignedMachine.id());
+    assertThat(result.items()).extracting(machine -> machine.id()).containsExactly(assignedMachine.id());
   }
 
   @Test

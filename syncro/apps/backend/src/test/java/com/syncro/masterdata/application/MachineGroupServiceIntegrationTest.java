@@ -169,7 +169,7 @@ class MachineGroupServiceIntegrationTest {
 
     var result = machineGroupService.list(viewer, assigned.getId());
 
-    assertThat(result).extracting("id").containsExactly(assignedGroup.id());
+    assertThat(result.items()).extracting(group -> group.id()).containsExactly(assignedGroup.id());
   }
 
   @Test

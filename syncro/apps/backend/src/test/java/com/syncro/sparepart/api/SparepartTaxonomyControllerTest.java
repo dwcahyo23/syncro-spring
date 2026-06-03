@@ -69,11 +69,12 @@ class SparepartTaxonomyControllerTest {
   void viewerCanListTaxonomy() throws Exception {
     var user = user(ApplicationRole.VIEWER);
     var entryId = UUID.randomUUID();
-    when(taxonomy.list(user, SparepartTaxonomyDimension.CATEGORY)).thenReturn(List.of(new SparepartTaxonomyView(
+    when(taxonomy.list(user, SparepartTaxonomyDimension.CATEGORY, null)).thenReturn(List.of(new SparepartTaxonomyView(
         entryId,
         SparepartTaxonomyDimension.CATEGORY,
         "ELEC",
         "Electric",
+        null,
         Instant.parse("2026-05-28T00:00:00Z"),
         Instant.parse("2026-05-28T00:00:00Z"))));
 
@@ -95,6 +96,7 @@ class SparepartTaxonomyControllerTest {
         SparepartTaxonomyDimension.CATEGORY,
         "ELEC",
         "Electric",
+        null,
         Instant.parse("2026-05-28T00:00:00Z"),
         Instant.parse("2026-05-28T00:00:00Z")));
 

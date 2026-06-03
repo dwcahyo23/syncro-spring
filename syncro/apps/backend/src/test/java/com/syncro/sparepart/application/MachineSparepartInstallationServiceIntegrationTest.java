@@ -35,6 +35,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -111,7 +113,7 @@ class MachineSparepartInstallationServiceIntegrationTest {
     var user = persistedUser(ApplicationRole.MANAGE, "manage-install@syncro.dev");
     assign(user, plant);
 
-    var created = service.create(user, new InstallationCommand(machine.getId(), sparepart.getId(), 1_000_000L, 1_200L, null));
+    var created = service.create(user, new InstallationCommand(machine.getId(), sparepart.getId(), "Primary", 1_000_000L, 1_200L, null));
 
     assertThat(created.thresholdPercentage()).isEqualTo(90);
     assertThat(created.calculationBasis()).isEqualTo("COUNTER_BASED");
@@ -128,9 +130,9 @@ class MachineSparepartInstallationServiceIntegrationTest {
     var machine = machine(plant, "BF-08410");
     var sparepart = sparepart("PLC-WECON-LX5");
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    var created = service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), 1_000_000L, 1_200L, 85));
+    var created = service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), "Primary", 1_000_000L, 1_200L, 85));
 
-    var updated = service.update(admin, created.id(), new InstallationUpdateCommand(2_000_000L, 1_300L, 95));
+    var updated = service.update(admin, created.id(), new InstallationUpdateCommand("Secondary", 2_000_000L, 1_300L, 95));
 
     assertThat(updated.id()).isEqualTo(created.id());
     assertThat(updated.machineId()).isEqualTo(machine.getId());
@@ -148,11 +150,11 @@ class MachineSparepartInstallationServiceIntegrationTest {
     var sparepart = sparepart("PLC-WECON-LX5");
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
 
-    assertThatThrownBy(() -> service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), 0L, 0L, 90)))
+    assertThatThrownBy(() -> service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), "Primary", 0L, 0L, 90)))
         .isInstanceOf(InstallationValidationException.class);
-    assertThatThrownBy(() -> service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), 1L, -1L, 90)))
+    assertThatThrownBy(() -> service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), "Primary", 1L, -1L, 90)))
         .isInstanceOf(InstallationValidationException.class);
-    assertThatThrownBy(() -> service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), 1L, 0L, 101)))
+    assertThatThrownBy(() -> service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), "Primary", 1L, 0L, 101)))
         .isInstanceOf(InstallationValidationException.class);
   }
 
@@ -165,9 +167,11 @@ class MachineSparepartInstallationServiceIntegrationTest {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     var viewer = persistedUser(ApplicationRole.VIEWER, "viewer-install@syncro.dev");
     assign(viewer, plant);
-    var created = service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), 1_000_000L, 1_200L, null));
+    var created = service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), "Primary", 1_000_000L, 1_200L, null));
 
-    assertThat(service.list(viewer, new InstallationFilters(null, null, null, null, 100))).extracting("id").containsExactly(created.id());
+    assertThat(service.list(viewer, new InstallationFilters(null, null, null, null), PageRequest.of(0, 100)).items())
+        .extracting(installation -> installation.id())
+        .containsExactly(created.id());
     assertThat(service.get(viewer, created.id()).id()).isEqualTo(created.id());
     assertThatThrownBy(() -> service.delete(viewer, created.id())).isInstanceOf(InstallationMutationForbiddenException.class);
   }
@@ -182,12 +186,12 @@ class MachineSparepartInstallationServiceIntegrationTest {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     var manage = persistedUser(ApplicationRole.MANAGE, "manage-out-install@syncro.dev");
     assign(manage, plant);
-    var created = service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), 1_000_000L, 1_200L, null));
+    var created = service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), "Primary", 1_000_000L, 1_200L, null));
 
     assertThatThrownBy(() -> service.get(manage, created.id())).isInstanceOf(PlantAccessDeniedException.class);
-    assertThatThrownBy(() -> service.list(manage, new InstallationFilters(machine.getId(), null, null, null, 100)))
+    assertThatThrownBy(() -> service.list(manage, new InstallationFilters(machine.getId(), null, null, null), PageRequest.of(0, 100)))
         .isInstanceOf(PlantAccessDeniedException.class);
-    assertThatThrownBy(() -> service.create(manage, new InstallationCommand(machine.getId(), sparepart.getId(), 1L, 0L, null)))
+    assertThatThrownBy(() -> service.create(manage, new InstallationCommand(machine.getId(), sparepart.getId(), "Primary", 1L, 0L, null)))
         .isInstanceOf(PlantAccessDeniedException.class);
   }
 
@@ -198,7 +202,7 @@ class MachineSparepartInstallationServiceIntegrationTest {
     var machine = machine(plant, "BF-08410");
     var sparepart = sparepart("PLC-WECON-LX5");
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    var created = service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), 1_000_000L, 1_200L, null));
+    var created = service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), "Primary", 1_000_000L, 1_200L, null));
 
     service.delete(admin, created.id());
 
@@ -212,7 +216,7 @@ class MachineSparepartInstallationServiceIntegrationTest {
     var machine = machine(plant, "BF-08410");
     var sparepart = sparepart("PLC-WECON-LX5");
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), 1_000_000L, 1_200L, null));
+    service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), "Primary", 1_000_000L, 1_200L, null));
 
     assertThatThrownBy(() -> jdbc.update("DELETE FROM machines WHERE id = ?", machine.getId()))
         .isInstanceOf(DataIntegrityViolationException.class);
@@ -225,7 +229,7 @@ class MachineSparepartInstallationServiceIntegrationTest {
     var machine = machine(plant, "BF-08410");
     var sparepart = sparepart("PLC-WECON-LX5");
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), 1_000_000L, 1_200L, null));
+    service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), "Primary", 1_000_000L, 1_200L, null));
 
     assertThatThrownBy(() -> jdbc.update("DELETE FROM spareparts WHERE id = ?", sparepart.getId()))
         .isInstanceOf(DataIntegrityViolationException.class);
@@ -248,15 +252,18 @@ class MachineSparepartInstallationServiceIntegrationTest {
   }
 
   @Test
-  @DisplayName("2.6-SVC-010 P0 duplicate machine sparepart baseline is rejected")
-  void duplicateMachineSparepartBaselineRejected() {
+  @DisplayName("2.R-SVC-005 P0 duplicate machine sparepart function is rejected while different function is allowed")
+  void duplicateMachineSparepartFunctionRejectedWhileDifferentFunctionAllowed() {
     var plant = plant("GM1");
     var machine = machine(plant, "BF-08410");
     var sparepart = sparepart("PLC-WECON-LX5");
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), 1_000_000L, 1_200L, null));
+    var primary = service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), "Primary", 1_000_000L, 1_200L, null));
+    var backup = service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), "Backup", 2_000_000L, 2_400L, 80));
 
-    assertThatThrownBy(() -> service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), 2_000_000L, 2_400L, 80)))
+    assertThat(primary.functionName()).isEqualTo("Primary");
+    assertThat(backup.functionName()).isEqualTo("Backup");
+    assertThatThrownBy(() -> service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), " primary ", 3_000_000L, 3_600L, 80)))
         .isInstanceOf(InstallationDataIntegrityException.class);
   }
 
@@ -270,22 +277,30 @@ class MachineSparepartInstallationServiceIntegrationTest {
     var sparepartB = sparepart("PLC-WECON-LX5");
     var sparepartA = sparepart("PLC-ABB-001");
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    var second = service.create(admin, new InstallationCommand(machineB.getId(), sparepartB.getId(), 1_000_000L, 1_200L, null));
-    var first = service.create(admin, new InstallationCommand(machineA.getId(), sparepartA.getId(), 1_000_000L, 1_200L, null));
+    var second = service.create(admin, new InstallationCommand(machineB.getId(), sparepartB.getId(), "Primary", 1_000_000L, 1_200L, null));
+    var first = service.create(admin, new InstallationCommand(machineA.getId(), sparepartA.getId(), "Primary", 1_000_000L, 1_200L, null));
 
-    assertThat(service.list(admin, new InstallationFilters(null, null, null, null, 100))).extracting("id").containsExactly(first.id(), second.id());
-    assertThat(service.list(admin, new InstallationFilters(machineA.getId(), null, null, null, 100))).extracting("id").containsExactly(first.id());
-    assertThat(service.list(admin, new InstallationFilters(null, sparepartB.getId(), null, null, 100))).extracting("id").containsExactly(second.id());
-    assertThat(service.list(admin, new InstallationFilters(null, null, plantB.getId(), null, 100))).extracting("id").containsExactly(second.id());
-    assertThat(service.list(admin, new InstallationFilters(null, null, null, machineA.getMachineGroup().getId(), 100))).extracting("id").containsExactly(first.id());
+    assertThat(service.list(admin, new InstallationFilters(null, null, null, null), PageRequest.of(0, 100, Sort.by("machine.code"))).items())
+        .extracting(installation -> installation.id())
+        .containsExactly(first.id(), second.id());
+    assertThat(service.list(admin, new InstallationFilters(machineA.getId(), null, null, null), PageRequest.of(0, 100)).items())
+        .extracting(installation -> installation.id())
+        .containsExactly(first.id());
+    assertThat(service.list(admin, new InstallationFilters(null, sparepartB.getId(), null, null), PageRequest.of(0, 100)).items())
+        .extracting(installation -> installation.id())
+        .containsExactly(second.id());
+    assertThat(service.list(admin, new InstallationFilters(null, null, plantB.getId(), null), PageRequest.of(0, 100)).items())
+        .extracting(installation -> installation.id())
+        .containsExactly(second.id());
+    assertThat(service.list(admin, new InstallationFilters(null, null, null, machineA.getMachineGroup().getId()), PageRequest.of(0, 100)).items())
+        .extracting(installation -> installation.id())
+        .containsExactly(first.id());
   }
 
   @Test
-  @DisplayName("2.6-SVC-012 P1 invalid list limit is rejected")
+  @DisplayName("2.6-SVC-012 P1 oversized list page is rejected")
   void invalidListLimitRejected() {
-    assertThatThrownBy(() -> new InstallationFilters(null, null, null, null, 0))
-        .isInstanceOf(InstallationValidationException.class);
-    assertThatThrownBy(() -> new InstallationFilters(null, null, null, null, 201))
+    assertThatThrownBy(() -> service.list(authenticatedUser(ApplicationRole.SUPER_ADMIN), new InstallationFilters(null, null, null, null), PageRequest.of(0, 201)))
         .isInstanceOf(InstallationValidationException.class);
   }
 
@@ -294,7 +309,7 @@ class MachineSparepartInstallationServiceIntegrationTest {
     var transactions = new TransactionTemplate(transactionManager);
     transactions.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     transactions.executeWithoutResult(status -> installations.saveAndFlush(new com.syncro.sparepart.infrastructure.MachineSparepartInstallationEntity(
-        UUID.randomUUID(), machine, sparepart, expectedProductionCount, baselineCounter, thresholdPercentage, now, now, now)));
+        UUID.randomUUID(), machine, sparepart, "Primary", expectedProductionCount, baselineCounter, thresholdPercentage, now, now, now)));
   }
 
   private PlantEntity plant(String code) {
@@ -312,11 +327,12 @@ class MachineSparepartInstallationServiceIntegrationTest {
   private SparepartEntity sparepart(String code) {
     var now = Instant.parse("2026-05-28T00:00:00Z");
     var suffix = code.replaceAll("[^A-Z0-9]", "");
+    var machine = machine(plant("SP" + suffix), "MC" + suffix);
     var category = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.CATEGORY, "ELEC" + suffix, "Electric " + suffix, now, now));
-    var brand = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.BRAND, "WECON" + suffix, "Wecon " + suffix, now, now));
-    var kind = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.KIND, "PLC" + suffix, "PLC " + suffix, now, now));
-    var type = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.TYPE, "LX5" + suffix, "LX5 " + suffix, now, now));
-    return spareparts.saveAndFlush(new SparepartEntity(UUID.randomUUID(), code, "Electric PLC Wecon LX5 " + suffix, category, brand, kind, type, now, now));
+    var brand = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.BRAND, "WECON" + suffix, "Wecon " + suffix, category, now, now));
+    var kind = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.KIND, "PLC" + suffix, "PLC " + suffix, category, now, now));
+    var type = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.TYPE, "LX5" + suffix, "LX5 " + suffix, category, now, now));
+    return spareparts.saveAndFlush(new SparepartEntity(UUID.randomUUID(), code, "Electric PLC Wecon LX5 " + suffix, machine, category, brand, kind, type, now, now));
   }
 
   private AuthenticatedUser persistedUser(ApplicationRole role, String loginIdentifier) {

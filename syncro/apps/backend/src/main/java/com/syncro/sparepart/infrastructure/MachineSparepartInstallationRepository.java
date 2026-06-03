@@ -3,7 +3,8 @@ package com.syncro.sparepart.infrastructure;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.data.domain.Limit;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -23,14 +24,13 @@ public interface MachineSparepartInstallationRepository extends JpaRepository<Ma
         and (:sparepartId is null or sparepart.id = :sparepartId)
         and (:plantId is null or plant.id = :plantId)
         and (:machineGroupId is null or machineGroup.id = :machineGroupId)
-      order by plant.code asc, machine.code asc, sparepart.code asc, installation.createdAt asc
       """)
-  List<MachineSparepartInstallationEntity> findAllUnscoped(
+  Page<MachineSparepartInstallationEntity> findAllUnscoped(
       @Param("machineId") UUID machineId,
       @Param("sparepartId") UUID sparepartId,
       @Param("plantId") UUID plantId,
       @Param("machineGroupId") UUID machineGroupId,
-      Limit limit);
+      Pageable pageable);
 
   @Query("""
       select installation from MachineSparepartInstallationEntity installation
@@ -47,15 +47,14 @@ public interface MachineSparepartInstallationRepository extends JpaRepository<Ma
         and (:sparepartId is null or sparepart.id = :sparepartId)
         and (:plantId is null or plant.id = :plantId)
         and (:machineGroupId is null or machineGroup.id = :machineGroupId)
-      order by plant.code asc, machine.code asc, sparepart.code asc, installation.createdAt asc
       """)
-  List<MachineSparepartInstallationEntity> findAllScoped(
+  Page<MachineSparepartInstallationEntity> findAllScoped(
       @Param("plantIds") List<UUID> plantIds,
       @Param("machineId") UUID machineId,
       @Param("sparepartId") UUID sparepartId,
       @Param("plantId") UUID plantId,
       @Param("machineGroupId") UUID machineGroupId,
-      Limit limit);
+      Pageable pageable);
 
   @Query("""
       select installation from MachineSparepartInstallationEntity installation

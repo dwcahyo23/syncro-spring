@@ -69,7 +69,7 @@ class MachineSparepartInstallationControllerTest {
   void viewerCanListInstallations() throws Exception {
     var user = user(ApplicationRole.VIEWER);
     var installationId = UUID.randomUUID();
-    when(installations.list(eq(user), any())).thenReturn(List.of(view(installationId)));
+    when(installations.list(eq(user), any(), any())).thenReturn(new MachineSparepartInstallationService.InstallationListView(List.of(view(installationId)), 1, 0, 100, "installedAt: ASC"));
 
     mockMvc.perform(get("/api/v1/machine-sparepart-installations").with(auth(user)))
         .andExpect(status().isOk())
@@ -104,8 +104,8 @@ class MachineSparepartInstallationControllerTest {
   @ParameterizedTest
   @DisplayName("2.6-API-004 P0 omitted and null threshold are accepted for defaulting")
   @ValueSource(strings = {
-      "{\"machineId\":\"00000000-0000-0000-0000-000000000001\",\"sparepartId\":\"00000000-0000-0000-0000-000000000002\",\"expectedProductionCount\":1000000,\"baselineCounter\":1200}",
-      "{\"machineId\":\"00000000-0000-0000-0000-000000000001\",\"sparepartId\":\"00000000-0000-0000-0000-000000000002\",\"expectedProductionCount\":1000000,\"baselineCounter\":1200,\"thresholdPercentage\":null}"
+      "{\"machineId\":\"00000000-0000-0000-0000-000000000001\",\"sparepartId\":\"00000000-0000-0000-0000-000000000002\",\"functionName\":\"Primary\",\"expectedProductionCount\":1000000,\"baselineCounter\":1200}",
+      "{\"machineId\":\"00000000-0000-0000-0000-000000000001\",\"sparepartId\":\"00000000-0000-0000-0000-000000000002\",\"functionName\":\"Primary\",\"expectedProductionCount\":1000000,\"baselineCounter\":1200,\"thresholdPercentage\":null}"
   })
   void omittedAndNullThresholdAcceptedForDefaulting(String body) throws Exception {
     var user = user(ApplicationRole.MANAGE);
@@ -127,7 +127,7 @@ class MachineSparepartInstallationControllerTest {
     mockMvc.perform(post("/api/v1/machine-sparepart-installations")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
-        .content("{\"machineId\":\"00000000-0000-0000-0000-000000000001\",\"sparepartId\":\"00000000-0000-0000-0000-000000000002\",\"expectedProductionCount\":1000000,\"baselineCounter\":1200,\"thresholdPercentage\":\"\"}"))
+        .content("{\"machineId\":\"00000000-0000-0000-0000-000000000001\",\"sparepartId\":\"00000000-0000-0000-0000-000000000002\",\"functionName\":\"Primary\",\"expectedProductionCount\":1000000,\"baselineCounter\":1200,\"thresholdPercentage\":\"\"}"))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.thresholdPercentage").value(90));
   }
@@ -235,15 +235,7 @@ class MachineSparepartInstallationControllerTest {
         .andExpect(jsonPath("$.code").value("FORBIDDEN"));
   }
 
-  @Test
-  @DisplayName("2.6-API-012 P0 invalid list limit returns safe validation error")
-  void invalidListLimitReturnsSafeValidationError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
 
-    mockMvc.perform(get("/api/v1/machine-sparepart-installations?limit=0").with(auth(user)))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
-  }
 
   @Test
   @DisplayName("2.6-API-013 P0 update preserves installation identity")
@@ -316,19 +308,19 @@ class MachineSparepartInstallationControllerTest {
   private static String payload(Integer thresholdPercentage) {
     var threshold = thresholdPercentage == null ? "null" : thresholdPercentage.toString();
     return """
-        {"machineId":"00000000-0000-0000-0000-000000000001","sparepartId":"00000000-0000-0000-0000-000000000002","expectedProductionCount":1000000,"baselineCounter":1200,"thresholdPercentage":%s}
+        {"machineId":"00000000-0000-0000-0000-000000000001","sparepartId":"00000000-0000-0000-0000-000000000002","functionName":"Primary","expectedProductionCount":1000000,"baselineCounter":1200,"thresholdPercentage":%s}
         """.formatted(threshold);
   }
 
   private static String updatePayload() {
     return """
-        {"expectedProductionCount":2000000,"baselineCounter":1300,"thresholdPercentage":95}
+        {"functionName":"Secondary","expectedProductionCount":2000000,"baselineCounter":1300,"thresholdPercentage":95}
         """;
   }
 
   private static InstallationView view(UUID installationId) {
     return new InstallationView(installationId, UUID.randomUUID(), "BF-08410", "JBF19", UUID.randomUUID(), "GM1", "GM1",
-        UUID.randomUUID(), "Forming", UUID.randomUUID(), "PLC-WECON-LX5", "Electric PLC Wecon LX5",
+        UUID.randomUUID(), "Forming", UUID.randomUUID(), "PLC-WECON-LX5", "Electric PLC Wecon LX5", "Primary",
         new TaxonomyRefView(UUID.randomUUID(), "ELEC", "Electric"), new TaxonomyRefView(UUID.randomUUID(), "WECON", "Wecon"),
         new TaxonomyRefView(UUID.randomUUID(), "PLC", "PLC"), new TaxonomyRefView(UUID.randomUUID(), "LX5", "LX5"),
         1_000_000L, 1_200L, null, null, null, 90, "COUNTER_BASED",

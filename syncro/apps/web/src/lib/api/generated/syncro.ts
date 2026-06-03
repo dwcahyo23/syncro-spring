@@ -2192,7 +2192,7 @@ export type listSparepartsResponseError = (listSparepartsResponse400 | listSpare
 
 export type listSparepartsResponse = (listSparepartsResponseSuccess | listSparepartsResponseError)
 
-export const getListSparepartsUrl = (params?: ListSparepartsParams,) => {
+export const getListSparepartsUrl = (params: ListSparepartsParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -2210,7 +2210,7 @@ export const getListSparepartsUrl = (params?: ListSparepartsParams,) => {
 /**
  * @summary List spareparts
  */
-export const listSpareparts = async (params?: ListSparepartsParams, options?: RequestInit): Promise<listSparepartsResponse> => {
+export const listSpareparts = async (params: ListSparepartsParams, options?: RequestInit): Promise<listSparepartsResponse> => {
 
   return syncroFetch<listSparepartsResponse>(getListSparepartsUrl(params),
   {
@@ -2232,7 +2232,7 @@ export const getListSparepartsQueryKey = (params?: ListSparepartsParams,) => {
     }
 
 
-export const getListSparepartsQueryOptions = <TData = Awaited<ReturnType<typeof listSpareparts>>, TError = SparepartListResponse>(params?: ListSparepartsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSpareparts>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+export const getListSparepartsQueryOptions = <TData = Awaited<ReturnType<typeof listSpareparts>>, TError = SparepartListResponse>(params: ListSparepartsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSpareparts>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -2255,7 +2255,7 @@ export type ListSparepartsQueryError = SparepartListResponse
 
 
 export function useListSpareparts<TData = Awaited<ReturnType<typeof listSpareparts>>, TError = SparepartListResponse>(
- params: undefined |  ListSparepartsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSpareparts>>, TError, TData>> & Pick<
+ params: ListSparepartsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSpareparts>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof listSpareparts>>,
           TError,
@@ -2265,7 +2265,7 @@ export function useListSpareparts<TData = Awaited<ReturnType<typeof listSparepar
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useListSpareparts<TData = Awaited<ReturnType<typeof listSpareparts>>, TError = SparepartListResponse>(
- params?: ListSparepartsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSpareparts>>, TError, TData>> & Pick<
+ params: ListSparepartsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSpareparts>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof listSpareparts>>,
           TError,
@@ -2275,7 +2275,7 @@ export function useListSpareparts<TData = Awaited<ReturnType<typeof listSparepar
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useListSpareparts<TData = Awaited<ReturnType<typeof listSpareparts>>, TError = SparepartListResponse>(
- params?: ListSparepartsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSpareparts>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ params: ListSparepartsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSpareparts>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -2283,7 +2283,7 @@ export function useListSpareparts<TData = Awaited<ReturnType<typeof listSparepar
  */
 
 export function useListSpareparts<TData = Awaited<ReturnType<typeof listSpareparts>>, TError = SparepartListResponse>(
- params?: ListSparepartsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSpareparts>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ params: ListSparepartsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSpareparts>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
@@ -3144,7 +3144,7 @@ export type listMachineSparepartInstallationsResponseError = (listMachineSparepa
 
 export type listMachineSparepartInstallationsResponse = (listMachineSparepartInstallationsResponseSuccess | listMachineSparepartInstallationsResponseError)
 
-export const getListMachineSparepartInstallationsUrl = (params?: ListMachineSparepartInstallationsParams,) => {
+export const getListMachineSparepartInstallationsUrl = (params: ListMachineSparepartInstallationsParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -3162,7 +3162,7 @@ export const getListMachineSparepartInstallationsUrl = (params?: ListMachineSpar
 /**
  * @summary List machine sparepart installations
  */
-export const listMachineSparepartInstallations = async (params?: ListMachineSparepartInstallationsParams, options?: RequestInit): Promise<listMachineSparepartInstallationsResponse> => {
+export const listMachineSparepartInstallations = async (params: ListMachineSparepartInstallationsParams, options?: RequestInit): Promise<listMachineSparepartInstallationsResponse> => {
 
   return syncroFetch<listMachineSparepartInstallationsResponse>(getListMachineSparepartInstallationsUrl(params),
   {
@@ -3184,7 +3184,7 @@ export const getListMachineSparepartInstallationsQueryKey = (params?: ListMachin
     }
 
 
-export const getListMachineSparepartInstallationsQueryOptions = <TData = Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError = InstallationListResponse>(params?: ListMachineSparepartInstallationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+export const getListMachineSparepartInstallationsQueryOptions = <TData = Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError = InstallationListResponse>(params: ListMachineSparepartInstallationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -3207,7 +3207,7 @@ export type ListMachineSparepartInstallationsQueryError = InstallationListRespon
 
 
 export function useListMachineSparepartInstallations<TData = Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError = InstallationListResponse>(
- params: undefined |  ListMachineSparepartInstallationsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError, TData>> & Pick<
+ params: ListMachineSparepartInstallationsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof listMachineSparepartInstallations>>,
           TError,
@@ -3217,7 +3217,7 @@ export function useListMachineSparepartInstallations<TData = Awaited<ReturnType<
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useListMachineSparepartInstallations<TData = Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError = InstallationListResponse>(
- params?: ListMachineSparepartInstallationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError, TData>> & Pick<
+ params: ListMachineSparepartInstallationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof listMachineSparepartInstallations>>,
           TError,
@@ -3227,7 +3227,7 @@ export function useListMachineSparepartInstallations<TData = Awaited<ReturnType<
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useListMachineSparepartInstallations<TData = Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError = InstallationListResponse>(
- params?: ListMachineSparepartInstallationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ params: ListMachineSparepartInstallationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -3235,7 +3235,7 @@ export function useListMachineSparepartInstallations<TData = Awaited<ReturnType<
  */
 
 export function useListMachineSparepartInstallations<TData = Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError = InstallationListResponse>(
- params?: ListMachineSparepartInstallationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ params: ListMachineSparepartInstallationsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachineSparepartInstallations>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 

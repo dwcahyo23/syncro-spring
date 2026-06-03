@@ -9,6 +9,11 @@
 export interface InstallationRequest {
   machineId: string;
   sparepartId: string;
+  /**
+     * @minLength 0
+     * @maxLength 255
+     */
+  functionName: string;
   /** @minimum 1 */
   expectedProductionCount: number;
   /** @minimum 0 */

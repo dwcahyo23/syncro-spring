@@ -12,7 +12,6 @@ import com.syncro.auth.infrastructure.PlantRepository;
 import com.syncro.masterdata.application.MachineGroupService.CreateMachineGroupCommand;
 import com.syncro.masterdata.application.MachineGroupService.DuplicateMachineGroupNameException;
 import com.syncro.masterdata.application.MachineGroupService.MachineGroupDataIntegrityException;
-import com.syncro.masterdata.infrastructure.MachineGroupEntity;
 import com.syncro.masterdata.infrastructure.MachineGroupRepository;
 import java.sql.SQLException;
 import java.time.Clock;

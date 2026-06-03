@@ -18,7 +18,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import { DataTableSortHeader } from "@/components/ui/data-table-sort-header";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -89,6 +93,9 @@ export function MachineManagement() {
   const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("ALL");
   const [groupSearch, setGroupSearch] = useState("");
   const [machineSearch, setMachineSearch] = useState("");
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(25);
+  const [sort, setSort] = useState("code,asc");
   const effectivePlantId = selectedPlantId || availablePlants[0]?.id || "";
   const groupParams = {
     plantId: effectivePlantId,
@@ -109,14 +116,24 @@ export function MachineManagement() {
     machineGroupId: selectedGroupId === "ALL" ? undefined : selectedGroupId,
     status: selectedStatus === "ALL" ? undefined : selectedStatus,
     search: machineSearch.trim() || undefined,
-    page: 0,
-    size: 100,
-    sort: "code,asc",
+    page,
+    size,
+    sort,
   } satisfies ListMachinesParams;
   const machines = useListMachines(machineParams, {
     query: {
       enabled: Boolean(effectivePlantId) && !isAssignedEmpty,
-      queryKey: ["machines", activePlantId, effectivePlantId, selectedGroupId, selectedStatus, machineSearch.trim()],
+      queryKey: [
+        "machines",
+        activePlantId,
+        effectivePlantId,
+        selectedGroupId,
+        selectedStatus,
+        machineSearch.trim(),
+        page,
+        size,
+        sort,
+      ],
     },
   });
   const createMachine = useCreateMachine({ mutation: { onSuccess: invalidateMachineData } });
@@ -234,7 +251,7 @@ export function MachineManagement() {
           </CardAction>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[repeat(auto-fit,14rem)] sm:justify-start">
+          <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[repeat(auto-fill,minmax(14rem,14rem))] sm:justify-start">
             <PlantSelect
               plants={availablePlants}
               value={effectivePlantId}
@@ -248,12 +265,7 @@ export function MachineManagement() {
               placeholder="Search machines"
               disabled={!effectivePlantId || isAssignedEmpty}
             />
-            <Input
-              value={groupSearch}
-              onChange={(event) => setGroupSearch(event.target.value)}
-              placeholder="Search groups"
-              disabled={!effectivePlantId || isAssignedEmpty}
-            />
+
             <MachineGroupSelect
               groups={groupItems}
               value={selectedGroupId}
@@ -261,6 +273,8 @@ export function MachineManagement() {
               onChange={setSelectedGroupId}
               includeAll
               compact
+              onSearchChange={setGroupSearch}
+              search={groupSearch}
             />
             <StatusSelect
               value={selectedStatus}
@@ -275,7 +289,7 @@ export function MachineManagement() {
           {!isAssignedEmpty && !plants.isLoading && availablePlants.length === 0 ? (
             <MachineState title="No plants available" description="Create or assign a plant before adding machines." />
           ) : null}
-          {!isAssignedEmpty && effectivePlantId && !machineGroups.isLoading && groupItems.length === 0 ? (
+          {!isAssignedEmpty && effectivePlantId && !machineGroups.isLoading && groupItems.length === 0 && !groupSearch.trim() ? (
             <MachineState
               title="No machine groups available"
               description="Create a machine group for selected plant before adding machines."
@@ -299,25 +313,33 @@ export function MachineManagement() {
           {!machines.isLoading &&
           !machines.isError &&
           effectivePlantId &&
-          groupItems.length > 0 &&
-          machineItems.length === 0 ? (
+          machineItems.length === 0 &&
+          (groupItems.length > 0 || groupSearch.trim()) ? (
             <MachineState
-              title="No machines yet"
-              description="Create first registered machine for selected plant and group."
+              title={machineSearch || selectedGroupId !== "ALL" ? "No machines found" : "No machines yet"}
+              description={machineSearch || selectedGroupId !== "ALL" ? "Adjust your filters." : "Create first registered machine for selected plant and group."}
             />
           ) : null}
           {!machines.isLoading && !machines.isError && machineItems.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Name</TableHead>
+                  <TableHead>
+                    <DataTableSortHeader title="Code" field="code" sort={sort} onSortChange={setSort} />
+                  </TableHead>
+                  <TableHead>
+                    <DataTableSortHeader title="Name" field="name" sort={sort} onSortChange={setSort} />
+                  </TableHead>
                   <TableHead>Plant</TableHead>
                   <TableHead>Group</TableHead>
                   <TableHead>Manual status</TableHead>
                   <TableHead>Brand</TableHead>
-                  <TableHead>Installed</TableHead>
-                  <TableHead>Updated</TableHead>
+                  <TableHead>
+                    <DataTableSortHeader title="Installed" field="installedAt" sort={sort} onSortChange={setSort} />
+                  </TableHead>
+                  <TableHead>
+                    <DataTableSortHeader title="Updated" field="updatedAt" sort={sort} onSortChange={setSort} />
+                  </TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -355,6 +377,18 @@ export function MachineManagement() {
                 ))}
               </TableBody>
             </Table>
+          ) : null}
+          {!machines.isLoading && !machines.isError && machines.data?.data ? (
+            <DataTablePagination
+              page={page}
+              size={size}
+              totalElements={machines.data.data.totalElements}
+              onPageChange={setPage}
+              onSizeChange={(newSize) => {
+                setSize(newSize);
+                setPage(0);
+              }}
+            />
           ) : null}
         </CardContent>
       </Card>
@@ -444,16 +478,13 @@ export function MachineManagement() {
                 />
               </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="machine-installed">Installed date</Label>
-              <Input
-                id="machine-installed"
-                type="date"
-                value={form.installedAt ?? ""}
-                onChange={(event) => setForm((current) => ({ ...current, installedAt: event.target.value }))}
-                disabled={isSaving}
-              />
-            </div>
+            <DatePickerField
+              id="machine-installed"
+              label="Installed date"
+              value={form.installedAt ?? ""}
+              onChange={(installedAt) => setForm((current) => ({ ...current, installedAt }))}
+              disabled={isSaving}
+            />
             <div className="grid gap-2">
               <Label htmlFor="machine-notes">Notes</Label>
               <Textarea
@@ -536,6 +567,8 @@ function MachineGroupSelect({
   triggerId,
   includeAll,
   compact,
+  onSearchChange,
+  search,
 }: {
   groups: MachineGroupView[];
   value: string;
@@ -544,19 +577,37 @@ function MachineGroupSelect({
   triggerId?: string;
   includeAll?: boolean;
   compact?: boolean;
+  onSearchChange?: (value: string) => void;
+  search?: string;
 }) {
   return (
     <Select value={value} onValueChange={onChange} disabled={disabled}>
       <SelectTrigger id={triggerId} className={compact ? "w-full min-w-0" : "w-full min-w-0 sm:min-w-52"}>
-        <SelectValue placeholder="Select machine group" />
+        <SelectValue placeholder="Select machine group">
+          {groups.find((g) => g.id === value)?.name ?? (value === "ALL" ? "All groups" : "Select machine group")}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
+        {onSearchChange !== undefined ? (
+          <div className="p-2">
+            <Input
+              value={search}
+              placeholder="Search groups..."
+              onChange={(e) => onSearchChange(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+            />
+          </div>
+        ) : null}
         {includeAll ? <SelectItem value="ALL">All groups</SelectItem> : null}
         {groups.map((group) => (
           <SelectItem key={group.id ?? group.name} value={group.id ?? ""}>
             {group.name}
           </SelectItem>
         ))}
+        {groups.length === 0 ? (
+           <p className="px-2 py-3 text-center text-sm text-muted-foreground">No groups found</p>
+        ) : null}
       </SelectContent>
     </Select>
   );
@@ -588,6 +639,43 @@ function StatusSelect({
         <SelectItem value="INACTIVE">INACTIVE</SelectItem>
       </SelectContent>
     </Select>
+  );
+}
+
+function DatePickerField({
+  id,
+  label,
+  value,
+  onChange,
+  disabled,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  const selected = value ? new Date(`${value}T00:00:00Z`) : undefined;
+
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button id={id} type="button" variant="outline" className="justify-start font-normal" disabled={disabled}>
+            {value ? formatDateOnly(value) : "Select date"}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={selected}
+            onSelect={(date) => onChange(date ? date.toISOString().slice(0, 10) : "")}
+            defaultMonth={selected}
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }
 

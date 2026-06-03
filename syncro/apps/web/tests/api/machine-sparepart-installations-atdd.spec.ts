@@ -25,6 +25,7 @@ function installationPayload(overrides: Partial<InstallationRequest> = {}): Inst
   return {
     machineId: overrides.machineId ?? "11111111-1111-4111-8111-111111111126",
     sparepartId: overrides.sparepartId ?? "22222222-2222-4222-8222-222222222226",
+    functionName: overrides.functionName ?? "Primary",
     expectedProductionCount: overrides.expectedProductionCount ?? 1_000_000,
     baselineCounter: overrides.baselineCounter ?? 42_000,
     ...(Object.hasOwn(overrides, "thresholdPercentage") ? { thresholdPercentage: overrides.thresholdPercentage } : {}),
@@ -33,6 +34,7 @@ function installationPayload(overrides: Partial<InstallationRequest> = {}): Inst
 
 function installationUpdatePayload(overrides: Partial<InstallationUpdateRequest> = {}): InstallationUpdateRequest {
   return {
+    functionName: overrides.functionName ?? "Primary",
     expectedProductionCount: overrides.expectedProductionCount ?? 1_500_000,
     baselineCounter: overrides.baselineCounter ?? 12_000,
     thresholdPercentage: overrides.thresholdPercentage ?? 80,
@@ -91,7 +93,7 @@ test.describe("Story 2.6 ATDD API RED-PHASE scaffold: machine sparepart installa
 
     const nullResponse = await request.post(INSTALLATIONS_URL, {
       headers: authHeaders("MANAGE"),
-      data: installationPayload({ thresholdPercentage: null }),
+      data: installationPayload({ thresholdPercentage: null as unknown as number }),
     });
     expect(nullResponse.status()).toBe(201);
     await expectJsonMatches(nullResponse, { thresholdPercentage: 90 });

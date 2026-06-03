@@ -152,7 +152,7 @@ class SparepartTaxonomyServiceIntegrationTest {
 
     var result = taxonomyService.list(admin, SparepartTaxonomyDimension.BRAND);
 
-    assertThat(result).extracting("id").containsExactly(omron.id(), brand.id());
+    assertThat(result).extracting(taxonomy -> taxonomy.id()).containsExactly(omron.id(), brand.id());
   }
 
   @Test
@@ -168,11 +168,10 @@ class SparepartTaxonomyServiceIntegrationTest {
   @Test
   @DisplayName("2.4-SVC-007 P0 VIEWER can list taxonomy but cannot mutate")
   void viewerCanListButCannotMutateTaxonomy() {
-    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     var viewer = persistedUser(ApplicationRole.VIEWER, "viewer-taxonomy@syncro.dev");
     var entry = seededElectricCategory();
 
-    assertThat(taxonomyService.list(viewer, null)).extracting("id").containsExactly(entry.getId());
+    assertThat(taxonomyService.list(viewer, null)).extracting(taxonomy -> taxonomy.id()).containsExactly(entry.getId());
     assertThatThrownBy(() -> taxonomyService.create(viewer, command(SparepartTaxonomyDimension.BRAND, "WECON", "Wecon")))
         .isInstanceOf(SparepartTaxonomyMutationForbiddenException.class);
   }

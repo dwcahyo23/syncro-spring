@@ -77,7 +77,7 @@ class SparepartControllerTest {
     var brandId = UUID.randomUUID();
     var kindId = UUID.randomUUID();
     var typeId = UUID.randomUUID();
-    when(spareparts.list(eq(user), any())).thenReturn(new SparepartListView(List.of(view(sparepartId, categoryId, brandId, kindId, typeId)), 1, 0, 200));
+    when(spareparts.list(eq(user), any(), any())).thenReturn(new SparepartListView(List.of(view(sparepartId, categoryId, brandId, kindId, typeId)), 1, 0, 200, "code: ASC"));
 
     mockMvc.perform(get("/api/v1/spareparts")
         .param("categoryId", categoryId.toString())
@@ -89,7 +89,7 @@ class SparepartControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items[0].id").value(sparepartId.toString()))
         .andExpect(jsonPath("$.items[0].code").value("PLC-WECON-LX5"))
-        .andExpect(jsonPath("$.items[0].name").value("Wecon LX5 PLC"))
+        .andExpect(jsonPath("$.items[0].name").doesNotExist())
         .andExpect(jsonPath("$.items[0].category.id").value(categoryId.toString()))
         .andExpect(jsonPath("$.items[0].brand.id").value(brandId.toString()))
         .andExpect(jsonPath("$.items[0].kind.id").value(kindId.toString()))
@@ -117,21 +117,17 @@ class SparepartControllerTest {
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.id").value(sparepartId.toString()))
         .andExpect(jsonPath("$.code").value("PLC-WECON-LX5"))
-        .andExpect(jsonPath("$.name").value("Wecon LX5 PLC"));
+        .andExpect(jsonPath("$.name").doesNotExist());
   }
 
   @ParameterizedTest
   @DisplayName("2.5-API-004 P1 invalid sparepart requests return field errors")
   @ValueSource(strings = {
-      "{\"code\":\"\",\"name\":\"Wecon LX5 PLC\",\"machineId\":\"00000000-0000-0000-0000-000000000010\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
-      "{\"code\":\"PLC-WECON-LX5\",\"name\":\"\",\"machineId\":\"00000000-0000-0000-0000-000000000010\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
-      "{\"code\":null,\"name\":\"Wecon LX5 PLC\",\"machineId\":\"00000000-0000-0000-0000-000000000010\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
-      "{\"code\":\"PLC-WECON-LX5\",\"name\":null,\"machineId\":\"00000000-0000-0000-0000-000000000010\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
-      "{\"code\":\"PLC-WECON-LX5\",\"name\":\"Wecon LX5 PLC\",\"machineId\":null,\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
-      "{\"code\":\"PLC-WECON-LX5\",\"name\":\"Wecon LX5 PLC\",\"machineId\":\"00000000-0000-0000-0000-000000000010\",\"categoryId\":null,\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
-      "{\"code\":\"PLC-WECON-LX5\",\"name\":\"Wecon LX5 PLC\",\"machineId\":\"00000000-0000-0000-0000-000000000010\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":null,\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
-      "{\"code\":\"PLC-WECON-LX5\",\"name\":\"Wecon LX5 PLC\",\"machineId\":\"00000000-0000-0000-0000-000000000010\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":null,\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
-      "{\"code\":\"PLC-WECON-LX5\",\"name\":\"Wecon LX5 PLC\",\"machineId\":\"00000000-0000-0000-0000-000000000010\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":null}"
+      "{\"machineId\":null,\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
+      "{\"machineId\":\"00000000-0000-0000-0000-000000000010\",\"categoryId\":null,\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
+      "{\"machineId\":\"00000000-0000-0000-0000-000000000010\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":null,\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
+      "{\"machineId\":\"00000000-0000-0000-0000-000000000010\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":null,\"typeId\":\"00000000-0000-0000-0000-000000000004\"}",
+      "{\"machineId\":\"00000000-0000-0000-0000-000000000010\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":null}"
   })
   void invalidSparepartRequestReturnsFieldErrors(String payload) throws Exception {
     var user = user(ApplicationRole.MANAGE);
@@ -176,7 +172,7 @@ class SparepartControllerTest {
         .content(payload(categoryId, brandId, kindId, typeId)))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("DUPLICATE_SPAREPART"))
-        .andExpect(jsonPath("$.message").value("Sparepart code or name already exists."));
+        .andExpect(jsonPath("$.message").value("Sparepart identity already exists for this machine."));
   }
 
   @Test
@@ -317,7 +313,7 @@ class SparepartControllerTest {
 
   private static String payload(UUID categoryId, UUID brandId, UUID kindId, UUID typeId) {
     return """
-        {"code":"PLC-WECON-LX5","name":"Wecon LX5 PLC","machineId":"00000000-0000-0000-0000-000000000010","categoryId":"%s","brandId":"%s","kindId":"%s","typeId":"%s"}
+        {"machineId":"00000000-0000-0000-0000-000000000010","categoryId":"%s","brandId":"%s","kindId":"%s","typeId":"%s"}
         """.formatted(categoryId, brandId, kindId, typeId);
   }
 
@@ -325,7 +321,6 @@ class SparepartControllerTest {
     return new SparepartView(
         sparepartId,
         "PLC-WECON-LX5",
-        "Wecon LX5 PLC",
         new SparepartMachineRefView(
             UUID.fromString("00000000-0000-0000-0000-000000000010"),
             "MCH-1",

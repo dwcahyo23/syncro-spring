@@ -20,6 +20,7 @@ export interface InstallationView {
   sparepartId?: string;
   sparepartCode?: string;
   sparepartName?: string;
+  functionName?: string;
   category?: TaxonomyRefView;
   brand?: TaxonomyRefView;
   kind?: TaxonomyRefView;
