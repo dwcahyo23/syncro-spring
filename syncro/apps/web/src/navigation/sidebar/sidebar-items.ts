@@ -67,7 +67,7 @@ export const sidebarItems: NavGroup[] = [
           { title: "Machines", url: "/master-data/machines" },
           { title: "Spareparts", url: "/master-data/spareparts" },
           { title: "Installations", url: "/master-data/installations" },
-          { title: "Responsibility", url: "/master-data/responsibility" },
+          { title: "Responsibility", url: "/master-data/responsibilities" },
         ],
       },
       {
