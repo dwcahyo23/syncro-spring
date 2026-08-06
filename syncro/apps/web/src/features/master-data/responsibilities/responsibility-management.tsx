@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2Icon, Trash2, TriangleAlertIcon, Edit } from "lucide-react";
+import { Loader2Icon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -17,47 +18,47 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useAuth } from "@/lib/auth/auth-provider";
+import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
 import {
+  getListQueryKey,
+  useAssign,
+  useList,
   useListMachines,
-  useListMachineResponsibilities,
-  useAssignMachineResponsibility,
-  useUnassignMachineResponsibility,
   useListUsers,
-  getListMachineResponsibilitiesQueryKey
+  useUnassign,
 } from "@/lib/api/generated/syncro";
+import { useAuthUser } from "@/lib/auth/use-auth-user";
 
 export function ResponsibilityManagement() {
   const queryClient = useQueryClient();
-  const { user, currentPlant } = useAuth();
-  const isViewer = user?.role === "VIEWER";
+  const user = useAuthUser();
+  const plantScope = usePlantScope();
+  const isViewer = user?.applicationRole === "VIEWER";
+  const plantId = plantScope.activePlantId === "all" ? undefined : plantScope.activePlantId;
 
   const { data: machinesRes, isLoading: isLoadingMachines } = useListMachines({
-    plantId: currentPlant?.id,
+    plantId,
     page: 0,
     size: 100,
   });
 
   const { data: usersRes, isLoading: isLoadingUsers } = useListUsers();
 
-  const { data: responsibilitiesRes, isLoading: isLoadingResponsibilities } = useListMachineResponsibilities({
-    page: 0,
-    size: 100,
+  const { data: responsibilitiesRes, isLoading: isLoadingResponsibilities } = useList({
+    pageable: { page: 0, size: 100 },
   });
 
-  const { mutate: assign, isPending: isAssigning } = useAssignMachineResponsibility({
+  const { mutate: assign, isPending: isAssigning } = useAssign({
     mutation: {
       onSuccess: () => {
         toast.success("Successfully assigned responsibility");
         setMachineId("");
         setUserId("");
         setLevel("");
-        queryClient.invalidateQueries({ queryKey: getListMachineResponsibilitiesQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getListQueryKey() });
       },
       onError: (error: any) => {
         const errorData = error.response?.data;
@@ -66,21 +67,21 @@ export function ResponsibilityManagement() {
         } else {
           toast.error("Failed to assign responsibility");
         }
-      }
-    }
+      },
+    },
   });
 
-  const { mutate: unassign, isPending: isUnassigning } = useUnassignMachineResponsibility({
+  const { mutate: unassign, isPending: isUnassigning } = useUnassign({
     mutation: {
       onSuccess: () => {
         toast.success("Successfully unassigned responsibility");
         setResponsibilityToDelete(null);
-        queryClient.invalidateQueries({ queryKey: getListMachineResponsibilitiesQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getListQueryKey() });
       },
       onError: () => {
         toast.error("Failed to unassign responsibility");
-      }
-    }
+      },
+    },
   });
 
   const [machineId, setMachineId] = useState("");
@@ -100,7 +101,10 @@ export function ResponsibilityManagement() {
       <Card>
         <CardHeader>
           <CardTitle>Assign Responsibility</CardTitle>
-          <CardDescription>Assign a user responsibility for a specific machine. Note: The MANAGE application role is distinct from the MANAGER machine responsibility level.</CardDescription>
+          <CardDescription>
+            Assign a user responsibility for a specific machine. Note: The MANAGE application role is distinct from the
+            MANAGER machine responsibility level.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {isViewer ? (
@@ -116,8 +120,10 @@ export function ResponsibilityManagement() {
                     <SelectValue placeholder={isLoadingMachines ? "Loading..." : "Select machine"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {machinesRes?.items?.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>{m.code}</SelectItem>
+                    {machinesRes?.data?.items?.map((m) => (
+                      <SelectItem key={m.id} value={m.id ?? ""}>
+                        {m.code}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -130,8 +136,10 @@ export function ResponsibilityManagement() {
                     <SelectValue placeholder={isLoadingUsers ? "Loading..." : "Select user"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {usersRes?.map((u) => (
-                      <SelectItem key={u.id} value={u.id}>{u.loginIdentifier}</SelectItem>
+                    {usersRes?.data?.map((u) => (
+                      <SelectItem key={u.id} value={u.id ?? ""}>
+                        {u.loginIdentifier}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -184,25 +192,27 @@ export function ResponsibilityManagement() {
                     <Loader2Icon className="mx-auto h-6 w-6 animate-spin" />
                   </TableCell>
                 </TableRow>
-              ) : !responsibilitiesRes?.items?.length ? (
+              ) : !responsibilitiesRes?.data?.items?.length ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted-foreground h-24">
                     No responsibilities assigned.
                   </TableCell>
                 </TableRow>
               ) : (
-                responsibilitiesRes.items.map((r) => (
+                responsibilitiesRes.data.items.map((r) => (
                   <TableRow key={r.id}>
-                    <TableCell>{machinesRes?.items?.find((m) => m.id === r.machineId)?.code || r.machineId}</TableCell>
+                    <TableCell>
+                      {machinesRes?.data?.items?.find((m) => m.id === r.machineId)?.code || r.machineId}
+                    </TableCell>
                     <TableCell>{r.userName}</TableCell>
                     <TableCell>{r.level}</TableCell>
                     {!isViewer && (
                       <TableCell className="text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => setResponsibilityToDelete(r.id)}
+                          onClick={() => setResponsibilityToDelete(r.id ?? null)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

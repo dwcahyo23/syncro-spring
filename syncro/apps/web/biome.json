@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.15/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.7/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -40,6 +40,7 @@
       "!dist",
       "!out",
       "!src/components/ui",
+      "!src/components/calendar",
       "!src/lib/api/generated"
     ]
   },
@@ -59,7 +60,7 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "correctness": {
         "noUndeclaredVariables": "error",
         "noNestedComponentDefinitions": "error",
@@ -68,7 +69,6 @@
       "nursery": {
         "useSortedClasses": "on",
         "useNullishCoalescing": "error",
-        "noUnnecessaryConditions": "warn",
         "noFloatingPromises": "error",
         "noMisusedPromises": "error"
       },
@@ -81,6 +81,7 @@
         "noNamespace": "error",
         "useAsConstAssertion": "error",
         "useSelfClosingElements": "error",
+        "noNestedTernary": "warn",
         "noParameterAssign": "error",
         "noInferrableTypes": "error",
         "noUselessElse": "error",
@@ -91,7 +92,8 @@
         "noConstantBinaryExpressions": "error",
         "noEmptyBlockStatements": "error",
         "noUnknownAtRules": "off",
-        "noImportCycles": "error"
+        "noImportCycles": "error",
+        "noUnnecessaryConditions": "warn"
       },
       "complexity": {
         "noImportantStyles": "off"
