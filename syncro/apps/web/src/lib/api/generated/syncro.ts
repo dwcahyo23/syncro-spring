@@ -26,6 +26,7 @@ import type {
 
 import type {
   AuthUserView,
+  CreateMachineResponsibilityRequest,
   Health200,
   InstallationListResponse,
   InstallationRequest,
@@ -34,6 +35,7 @@ import type {
   ListMachineGroupsParams,
   ListMachineSparepartInstallationsParams,
   ListMachinesParams,
+  ListParams,
   ListSparepartTaxonomiesParams,
   ListSparepartsParams,
   LoginRequest,
@@ -44,7 +46,9 @@ import type {
   MachineGroupView,
   MachineListResponse,
   MachineRequest,
+  MachineResponsibilityResponse,
   MachineView,
+  PageResponseMachineResponsibilityResponse,
   PlantListResponse,
   PlantRequest,
   PlantScopeResponse,
@@ -54,7 +58,8 @@ import type {
   SparepartTaxonomyListResponse,
   SparepartTaxonomyRequest,
   SparepartTaxonomyView,
-  SparepartView
+  SparepartView,
+  UpdateMachineResponsibilityRequest
 } from './model';
 
 import { syncroFetch } from '../orval-mutator';
@@ -1814,6 +1819,171 @@ export const useDeleteMachineSparepartInstallation = <TError = void,
       return useMutation(getDeleteMachineSparepartInstallationMutationOptions(options), queryClient);
     }
 
+export type updateResponse200 = {
+  data: MachineResponsibilityResponse
+  status: 200
+}
+
+export type updateResponseSuccess = (updateResponse200) & {
+  headers: Headers;
+};
+;
+
+export type updateResponse = (updateResponseSuccess)
+
+export const getUpdateUrl = (id: string,) => {
+
+
+
+
+  return `/api/v1/machine-responsibilities/${id}`
+}
+
+/**
+ * @summary Update machine responsibility
+ */
+export const update = async (id: string,
+    updateMachineResponsibilityRequest: UpdateMachineResponsibilityRequest, options?: RequestInit): Promise<updateResponse> => {
+
+  return syncroFetch<updateResponse>(getUpdateUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateMachineResponsibilityRequest)
+  }
+);}
+
+
+
+
+export const getUpdateMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof update>>, TError,{id: string;data: UpdateMachineResponsibilityRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof update>>, TError,{id: string;data: UpdateMachineResponsibilityRequest}, TContext> => {
+
+const mutationKey = ['update'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof update>>, {id: string;data: UpdateMachineResponsibilityRequest}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  update(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMutationResult = NonNullable<Awaited<ReturnType<typeof update>>>
+    export type UpdateMutationBody = UpdateMachineResponsibilityRequest
+    export type UpdateMutationError = unknown
+
+    /**
+ * @summary Update machine responsibility
+ */
+export const useUpdate = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof update>>, TError,{id: string;data: UpdateMachineResponsibilityRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof update>>,
+        TError,
+        {id: string;data: UpdateMachineResponsibilityRequest},
+        TContext
+      > => {
+      return useMutation(getUpdateMutationOptions(options), queryClient);
+    }
+
+export type unassignResponse200 = {
+  data: void
+  status: 200
+}
+
+export type unassignResponseSuccess = (unassignResponse200) & {
+  headers: Headers;
+};
+;
+
+export type unassignResponse = (unassignResponseSuccess)
+
+export const getUnassignUrl = (id: string,) => {
+
+
+
+
+  return `/api/v1/machine-responsibilities/${id}`
+}
+
+/**
+ * @summary Delete machine responsibility
+ */
+export const unassign = async (id: string, options?: RequestInit): Promise<unassignResponse> => {
+
+  return syncroFetch<unassignResponse>(getUnassignUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getUnassignMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unassign>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unassign>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['unassign'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unassign>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  unassign(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnassignMutationResult = NonNullable<Awaited<ReturnType<typeof unassign>>>
+
+    export type UnassignMutationError = unknown
+
+    /**
+ * @summary Delete machine responsibility
+ */
+export const useUnassign = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unassign>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof unassign>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getUnassignMutationOptions(options), queryClient);
+    }
+
 export type getMachineGroupResponse200 = {
   data: MachineGroupView
   status: 200
@@ -3354,6 +3524,208 @@ export const useCreateMachineSparepartInstallation = <TError = InstallationView,
         TContext
       > => {
       return useMutation(getCreateMachineSparepartInstallationMutationOptions(options), queryClient);
+    }
+
+export type listResponse200 = {
+  data: PageResponseMachineResponsibilityResponse
+  status: 200
+}
+
+export type listResponseSuccess = (listResponse200) & {
+  headers: Headers;
+};
+;
+
+export type listResponse = (listResponseSuccess)
+
+export const getListUrl = (params: ListParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/machine-responsibilities?${stringifiedParams}` : `/api/v1/machine-responsibilities`
+}
+
+/**
+ * @summary List machine responsibilities
+ */
+export const list = async (params: ListParams, options?: RequestInit): Promise<listResponse> => {
+
+  return syncroFetch<listResponse>(getListUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListQueryKey = (params?: ListParams,) => {
+    return [
+    `/api/v1/machine-responsibilities`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListQueryOptions = <TData = Awaited<ReturnType<typeof list>>, TError = unknown>(params: ListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof list>>> = ({ signal }) => list(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof list>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListQueryResult = NonNullable<Awaited<ReturnType<typeof list>>>
+export type ListQueryError = unknown
+
+
+export function useList<TData = Awaited<ReturnType<typeof list>>, TError = unknown>(
+ params: ListParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof list>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof list>>,
+          TError,
+          Awaited<ReturnType<typeof list>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useList<TData = Awaited<ReturnType<typeof list>>, TError = unknown>(
+ params: ListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof list>>,
+          TError,
+          Awaited<ReturnType<typeof list>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useList<TData = Awaited<ReturnType<typeof list>>, TError = unknown>(
+ params: ListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List machine responsibilities
+ */
+
+export function useList<TData = Awaited<ReturnType<typeof list>>, TError = unknown>(
+ params: ListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof list>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export type assignResponse200 = {
+  data: MachineResponsibilityResponse
+  status: 200
+}
+
+export type assignResponseSuccess = (assignResponse200) & {
+  headers: Headers;
+};
+;
+
+export type assignResponse = (assignResponseSuccess)
+
+export const getAssignUrl = () => {
+
+
+
+
+  return `/api/v1/machine-responsibilities`
+}
+
+/**
+ * @summary Create machine responsibility
+ */
+export const assign = async (createMachineResponsibilityRequest: CreateMachineResponsibilityRequest, options?: RequestInit): Promise<assignResponse> => {
+
+  return syncroFetch<assignResponse>(getAssignUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createMachineResponsibilityRequest)
+  }
+);}
+
+
+
+
+export const getAssignMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assign>>, TError,{data: CreateMachineResponsibilityRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assign>>, TError,{data: CreateMachineResponsibilityRequest}, TContext> => {
+
+const mutationKey = ['assign'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assign>>, {data: CreateMachineResponsibilityRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  assign(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssignMutationResult = NonNullable<Awaited<ReturnType<typeof assign>>>
+    export type AssignMutationBody = CreateMachineResponsibilityRequest
+    export type AssignMutationError = unknown
+
+    /**
+ * @summary Create machine responsibility
+ */
+export const useAssign = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assign>>, TError,{data: CreateMachineResponsibilityRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof assign>>,
+        TError,
+        {data: CreateMachineResponsibilityRequest},
+        TContext
+      > => {
+      return useMutation(getAssignMutationOptions(options), queryClient);
     }
 
 export type listMachineGroupsResponse200 = {

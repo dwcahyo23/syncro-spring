@@ -41,6 +41,13 @@ public class AuthService {
     return new AuthUserView(user.id(), user.loginIdentifier(), user.applicationRole());
   }
 
+  @Transactional(readOnly = true)
+  public java.util.List<AuthUserView> listUsers() {
+    return users.findAll().stream()
+        .map(u -> new AuthUserView(u.getId().toString(), u.getLoginIdentifier(), u.getApplicationRole()))
+        .toList();
+  }
+
   public static class BadCredentialsException extends RuntimeException {
   }
 }

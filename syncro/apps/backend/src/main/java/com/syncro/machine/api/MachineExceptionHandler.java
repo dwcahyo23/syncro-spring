@@ -3,6 +3,7 @@ package com.syncro.machine.api;
 import com.syncro.auth.application.PlantScopeService.PlantAccessDeniedException;
 import com.syncro.masterdata.api.PlantDtos.ErrorResponse;
 import com.syncro.machine.application.MachineService.DuplicateMachineCodeException;
+import com.syncro.machine.application.MachineResponsibilityService;
 import com.syncro.machine.application.MachineService.MachineDataIntegrityException;
 import com.syncro.machine.application.MachineService.MachineGroupNotFoundForMachineException;
 import com.syncro.machine.application.MachineService.MachineGroupPlantMismatchException;
@@ -27,7 +28,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
-@RestControllerAdvice(assignableTypes = MachineController.class)
+@RestControllerAdvice(assignableTypes = {MachineController.class, MachineResponsibilityController.class})
 public class MachineExceptionHandler {
   private final Clock clock;
 
@@ -62,6 +63,11 @@ public class MachineExceptionHandler {
     return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", Map.of("code", "Invalid value."));
   }
 
+  @ExceptionHandler(MachineResponsibilityService.DuplicateResponsibilityException.class)
+  ResponseEntity<ErrorResponse> duplicateResponsibility() {
+    return error(HttpStatus.BAD_REQUEST, "DUPLICATE_RESPONSIBILITY", "User is already assigned to this machine.", Map.of());
+  }
+
   @ExceptionHandler(DuplicateMachineCodeException.class)
   ResponseEntity<ErrorResponse> duplicateMachineCode() {
     return error(HttpStatus.BAD_REQUEST, "DUPLICATE_MACHINE_CODE", "Machine code already exists for this plant.", Map.of());
@@ -82,7 +88,7 @@ public class MachineExceptionHandler {
     return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "You do not have permission to access this resource.", Map.of());
   }
 
-  @ExceptionHandler(MachineNotFoundException.class)
+  @ExceptionHandler({MachineNotFoundException.class, MachineResponsibilityService.ResponsibilityNotFoundException.class})
   ResponseEntity<ErrorResponse> machineNotFound() {
     return error(HttpStatus.NOT_FOUND, "MACHINE_NOT_FOUND", "Machine was not found.", Map.of());
   }

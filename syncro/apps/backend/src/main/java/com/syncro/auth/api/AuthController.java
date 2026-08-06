@@ -42,6 +42,12 @@ public class AuthController {
     return plantScopes.effectiveScope(user);
   }
 
+  @io.swagger.v3.oas.annotations.Operation(operationId = "listUsers", summary = "List users")
+  @GetMapping("/users")
+  public java.util.List<AuthUserView> listUsers() {
+    return auth.listUsers();
+  }
+
   @PostMapping("/logout")
   public Map<String, String> logout() {
     return Map.of("status", "OK");
