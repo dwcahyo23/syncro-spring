@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-25
-last_updated: 2026-05-30
+last_updated: 2026-06-03
 project: Syncro
 project_key: NOKEY
 tracking_system: file-system
@@ -62,7 +62,7 @@ development_status:
   2-5-manage-spareparts: done
   2-6-install-spareparts-on-machines-with-lifetime-baseline: done
   2-r-remediate-epic-2-master-data-dialogs-and-linked-sparepart-workflows: done
-  2-7-assign-machine-responsibility-levels: backlog
+  2-7-assign-machine-responsibility-levels: review
   2-8-show-setup-completeness: backlog
   2-9-implement-immutable-audit-log-for-master-data: backlog
   epic-2-retrospective: optional
