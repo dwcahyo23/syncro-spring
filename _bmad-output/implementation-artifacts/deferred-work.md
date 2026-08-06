@@ -9,3 +9,14 @@
 ## Deferred from: code review of 2-5-manage-spareparts (2026-05-28)
 
 - Hardcoded local ports in new web test config (`syncro/apps/web/playwright.config.ts:2`). Deferred because Playwright baseline and local test env defaults predate this story; not caused by Story 2.5 functional change.
+
+## Deferred from: code review of 2-7-assign-machine-responsibility-levels (2026-06-03)
+- Missing Audit Trails: No audit logging for assignments/removals — deferred, pre-existing (Epic 2 Task 2-9).
+
+## Deferred from: code review of 2-6-install-spareparts-on-machines-with-lifetime-baseline.md (2026-06-05)
+
+- Redundant DB Indexes Wasting Write Perf — deferred, pre-existing
+- Expensive Unindexed Joins with Order By — deferred, pre-existing
+- Brittle Next.js Server Command in Playwright — deferred, pre-existing
+- Worthless Skipped Test Suites — deferred, pre-existing
+- Missing Optimistic Locking on Installation Entity — deferred, pre-existing

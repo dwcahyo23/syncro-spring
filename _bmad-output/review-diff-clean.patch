@@ -1,0 +1,3081 @@
+﻿diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/api/MachineSparepartInstallationController.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/api/MachineSparepartInstallationController.java
+new file mode 100644
+index 0000000..13871d1
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/api/MachineSparepartInstallationController.java
+@@ -0,0 +1,135 @@
++package com.syncro.sparepart.api;
++
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.sparepart.api.MachineSparepartInstallationDtos.InstallationListResponse;
++import com.syncro.sparepart.api.MachineSparepartInstallationDtos.InstallationRequest;
++import com.syncro.sparepart.api.MachineSparepartInstallationDtos.InstallationUpdateRequest;
++import com.syncro.sparepart.api.MachineSparepartInstallationDtos.InstallationView;
++import com.syncro.sparepart.api.MachineSparepartInstallationDtos.TaxonomyRefView;
++import com.syncro.sparepart.application.MachineSparepartInstallationService;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationCommand;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationFilters;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationUpdateCommand;
++import io.swagger.v3.oas.annotations.Operation;
++import io.swagger.v3.oas.annotations.media.Content;
++import io.swagger.v3.oas.annotations.media.Schema;
++import io.swagger.v3.oas.annotations.responses.ApiResponse;
++import io.swagger.v3.oas.annotations.responses.ApiResponses;
++import jakarta.validation.Valid;
++import java.net.URI;
++import java.util.UUID;
++import org.springframework.http.ResponseEntity;
++import org.springframework.security.core.annotation.AuthenticationPrincipal;
++import org.springframework.web.bind.annotation.DeleteMapping;
++import org.springframework.web.bind.annotation.GetMapping;
++import org.springframework.web.bind.annotation.PathVariable;
++import org.springframework.web.bind.annotation.PostMapping;
++import org.springframework.web.bind.annotation.PutMapping;
++import org.springframework.web.bind.annotation.RequestBody;
++import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RequestParam;
++import org.springframework.web.bind.annotation.RestController;
++
++@RestController
++@RequestMapping("/api/v1/machine-sparepart-installations")
++public class MachineSparepartInstallationController {
++  private final MachineSparepartInstallationService installations;
++
++  public MachineSparepartInstallationController(MachineSparepartInstallationService installations) {
++    this.installations = installations;
++  }
++
++  @Operation(operationId = "listMachineSparepartInstallations", summary = "List machine sparepart installations")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Installations returned"),
++      @ApiResponse(responseCode = "400", description = "Invalid filter value"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden")
++  })
++  @GetMapping
++  public InstallationListResponse list(@AuthenticationPrincipal AuthenticatedUser user,
++      @RequestParam(required = false) UUID machineId,
++      @RequestParam(required = false) UUID sparepartId,
++      @RequestParam(required = false) UUID plantId,
++      @RequestParam(required = false) UUID machineGroupId,
++      @RequestParam(defaultValue = "100") int limit) {
++    return new InstallationListResponse(installations.list(user, new InstallationFilters(machineId, sparepartId, plantId, machineGroupId, limit))
++        .stream().map(this::toDto).toList());
++  }
++
++  @Operation(operationId = "getMachineSparepartInstallation", summary = "Get machine sparepart installation")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Installation returned"),
++      @ApiResponse(responseCode = "400", description = "Invalid installation id"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Installation not found")
++  })
++  @GetMapping("/{installationId}")
++  public InstallationView get(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID installationId) {
++    return toDto(installations.get(user, installationId));
++  }
++
++  @Operation(operationId = "createMachineSparepartInstallation", summary = "Create machine sparepart installation")
++  @ApiResponses({
++      @ApiResponse(responseCode = "201", description = "Installation created", content = @Content(schema = @Schema(implementation = InstallationView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation, malformed JSON, invalid machine, or invalid sparepart"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "409", description = "Installation data integrity conflict")
++  })
++  @PostMapping
++  public ResponseEntity<InstallationView> create(@AuthenticationPrincipal AuthenticatedUser user,
++      @Valid @RequestBody InstallationRequest request) {
++    var created = toDto(installations.create(user, command(request)));
++    return ResponseEntity.created(URI.create("/api/v1/machine-sparepart-installations/" + created.id())).body(created);
++  }
++
++  @Operation(operationId = "updateMachineSparepartInstallation", summary = "Update machine sparepart installation")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Installation updated"),
++      @ApiResponse(responseCode = "400", description = "Validation, malformed JSON, or invalid installation id"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Installation not found"),
++      @ApiResponse(responseCode = "409", description = "Installation data integrity conflict")
++  })
++  @PutMapping("/{installationId}")
++  public InstallationView update(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID installationId,
++      @Valid @RequestBody InstallationUpdateRequest request) {
++    return toDto(installations.update(user, installationId, new InstallationUpdateCommand(
++        request.expectedProductionCount(), request.baselineCounter(), request.thresholdPercentage())));
++  }
++
++  @Operation(operationId = "deleteMachineSparepartInstallation", summary = "Delete machine sparepart installation")
++  @ApiResponses({
++      @ApiResponse(responseCode = "204", description = "Installation deleted", content = @Content),
++      @ApiResponse(responseCode = "400", description = "Invalid installation id"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Installation not found"),
++      @ApiResponse(responseCode = "409", description = "Installation data integrity conflict")
++  })
++  @DeleteMapping("/{installationId}")
++  public ResponseEntity<Void> delete(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID installationId) {
++    installations.delete(user, installationId);
++    return ResponseEntity.noContent().build();
++  }
++
++  private InstallationCommand command(InstallationRequest request) {
++    return new InstallationCommand(request.machineId(), request.sparepartId(), request.expectedProductionCount(), request.baselineCounter(), request.thresholdPercentage());
++  }
++
++  private InstallationView toDto(MachineSparepartInstallationService.InstallationView installation) {
++    return new InstallationView(installation.id(), installation.machineId(), installation.machineCode(), installation.machineName(),
++        installation.plantId(), installation.plantCode(), installation.plantName(), installation.machineGroupId(), installation.machineGroupName(),
++        installation.sparepartId(), installation.sparepartCode(), installation.sparepartName(), toDto(installation.category()),
++        toDto(installation.brand()), toDto(installation.kind()), toDto(installation.type()), installation.expectedProductionCount(),
++        installation.baselineCounter(), installation.currentCount(), installation.consumedProductionCount(), installation.consumedPercentage(),
++        installation.thresholdPercentage(), installation.calculationBasis(), installation.installedAt(), installation.createdAt(), installation.updatedAt());
++  }
++
++  private TaxonomyRefView toDto(MachineSparepartInstallationService.TaxonomyRefView taxonomy) {
++    return new TaxonomyRefView(taxonomy.id(), taxonomy.code(), taxonomy.name());
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/api/MachineSparepartInstallationDtos.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/api/MachineSparepartInstallationDtos.java
+new file mode 100644
+index 0000000..2b99a54
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/api/MachineSparepartInstallationDtos.java
+@@ -0,0 +1,42 @@
++package com.syncro.sparepart.api;
++
++import jakarta.validation.constraints.Max;
++import jakarta.validation.constraints.Min;
++import jakarta.validation.constraints.NotNull;
++import java.math.BigDecimal;
++import java.time.Instant;
++import java.util.List;
++import java.util.UUID;
++
++public final class MachineSparepartInstallationDtos {
++  private MachineSparepartInstallationDtos() {
++  }
++
++  public record InstallationRequest(
++      @NotNull UUID machineId,
++      @NotNull UUID sparepartId,
++      @NotNull @Min(1) Long expectedProductionCount,
++      @NotNull @Min(0) Long baselineCounter,
++      @Min(1) @Max(100) Integer thresholdPercentage) {
++  }
++
++  public record InstallationUpdateRequest(
++      @NotNull @Min(1) Long expectedProductionCount,
++      @NotNull @Min(0) Long baselineCounter,
++      @Min(1) @Max(100) Integer thresholdPercentage) {
++  }
++
++  public record TaxonomyRefView(UUID id, String code, String name) {
++  }
++
++  public record InstallationView(UUID id, UUID machineId, String machineCode, String machineName, UUID plantId,
++      String plantCode, String plantName, UUID machineGroupId, String machineGroupName, UUID sparepartId,
++      String sparepartCode, String sparepartName, TaxonomyRefView category, TaxonomyRefView brand,
++      TaxonomyRefView kind, TaxonomyRefView type, long expectedProductionCount, long baselineCounter,
++      Long currentCount, Long consumedProductionCount, BigDecimal consumedPercentage, int thresholdPercentage,
++      String calculationBasis, Instant installedAt, Instant createdAt, Instant updatedAt) {
++  }
++
++  public record InstallationListResponse(List<InstallationView> items) {
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/api/MachineSparepartInstallationExceptionHandler.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/api/MachineSparepartInstallationExceptionHandler.java
+new file mode 100644
+index 0000000..7550b51
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/api/MachineSparepartInstallationExceptionHandler.java
+@@ -0,0 +1,97 @@
++package com.syncro.sparepart.api;
++
++import com.syncro.auth.application.PlantScopeService.PlantAccessDeniedException;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationDataIntegrityException;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationMutationForbiddenException;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationNotFoundException;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationPlantNotFoundException;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationPlantScopeEmptyException;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationValidationException;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.MachineForInstallationNotFoundException;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.SparepartForInstallationNotFoundException;
++import java.time.Clock;
++import java.time.Instant;
++import java.util.LinkedHashMap;
++import java.util.Map;
++import java.util.UUID;
++import org.springframework.core.Ordered;
++import org.springframework.core.annotation.Order;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.http.converter.HttpMessageNotReadableException;
++import org.springframework.web.bind.MethodArgumentNotValidException;
++import org.springframework.web.bind.annotation.ExceptionHandler;
++import org.springframework.web.bind.annotation.RestControllerAdvice;
++import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
++
++@Order(Ordered.HIGHEST_PRECEDENCE)
++@RestControllerAdvice(assignableTypes = MachineSparepartInstallationController.class)
++public class MachineSparepartInstallationExceptionHandler {
++  private final Clock clock;
++
++  public MachineSparepartInstallationExceptionHandler(Clock clock) {
++    this.clock = clock;
++  }
++
++  @ExceptionHandler(MethodArgumentNotValidException.class)
++  ResponseEntity<ErrorResponse> validationError(MethodArgumentNotValidException exception) {
++    var fieldErrors = new LinkedHashMap<String, String>();
++    for (var error : exception.getBindingResult().getFieldErrors()) {
++      fieldErrors.putIfAbsent(error.getField(), "Invalid value.");
++    }
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", fieldErrors);
++  }
++
++  @ExceptionHandler(HttpMessageNotReadableException.class)
++  ResponseEntity<ErrorResponse> malformedJson() {
++    return error(HttpStatus.BAD_REQUEST, "MALFORMED_JSON", "Request body is malformed.", Map.of());
++  }
++
++  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
++  ResponseEntity<ErrorResponse> invalidPathValue() {
++    return error(HttpStatus.BAD_REQUEST, "INVALID_PATH_VALUE", "Path value is invalid.", Map.of());
++  }
++
++  @ExceptionHandler(InstallationValidationException.class)
++  ResponseEntity<ErrorResponse> validation() {
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", Map.of());
++  }
++
++  @ExceptionHandler(MachineForInstallationNotFoundException.class)
++  ResponseEntity<ErrorResponse> machineNotFound() {
++    return error(HttpStatus.NOT_FOUND, "MACHINE_NOT_FOUND", "Machine was not found.", Map.of());
++  }
++
++  @ExceptionHandler(SparepartForInstallationNotFoundException.class)
++  ResponseEntity<ErrorResponse> sparepartNotFound() {
++    return error(HttpStatus.NOT_FOUND, "SPAREPART_NOT_FOUND", "Sparepart was not found.", Map.of());
++  }
++
++  @ExceptionHandler(InstallationNotFoundException.class)
++  ResponseEntity<ErrorResponse> installationNotFound() {
++    return error(HttpStatus.NOT_FOUND, "INSTALLATION_NOT_FOUND", "Machine sparepart installation was not found.", Map.of());
++  }
++
++  @ExceptionHandler({InstallationMutationForbiddenException.class, InstallationPlantScopeEmptyException.class, PlantAccessDeniedException.class})
++  ResponseEntity<ErrorResponse> forbidden() {
++    return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "You do not have permission to access this resource.", Map.of());
++  }
++
++  @ExceptionHandler(InstallationPlantNotFoundException.class)
++  ResponseEntity<ErrorResponse> plantNotFound() {
++    return error(HttpStatus.NOT_FOUND, "PLANT_NOT_FOUND", "Plant was not found.", Map.of());
++  }
++
++  @ExceptionHandler(InstallationDataIntegrityException.class)
++  ResponseEntity<ErrorResponse> dataIntegrity() {
++    return error(HttpStatus.CONFLICT, "INSTALLATION_DATA_INTEGRITY_VIOLATION", "Machine sparepart installation data conflicts with existing records.", Map.of());
++  }
++
++  private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message, Map<String, String> fieldErrors) {
++    return ResponseEntity.status(status)
++        .body(new ErrorResponse(code, message, fieldErrors, Instant.now(clock).toString(), UUID.randomUUID().toString()));
++  }
++
++  record ErrorResponse(String code, String message, Map<String, String> fieldErrors, String timestamp, String traceId) {
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/application/MachineSparepartInstallationService.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/application/MachineSparepartInstallationService.java
+new file mode 100644
+index 0000000..5b34112
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/application/MachineSparepartInstallationService.java
+@@ -0,0 +1,236 @@
++package com.syncro.sparepart.application;
++
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.application.PlantScopeService;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
++import com.syncro.auth.infrastructure.PlantRepository;
++import com.syncro.machine.infrastructure.MachineEntity;
++import com.syncro.machine.infrastructure.MachineRepository;
++import com.syncro.sparepart.infrastructure.MachineSparepartInstallationEntity;
++import com.syncro.sparepart.infrastructure.MachineSparepartInstallationRepository;
++import com.syncro.sparepart.infrastructure.SparepartEntity;
++import com.syncro.sparepart.infrastructure.SparepartRepository;
++import java.time.Clock;
++import java.time.Instant;
++import java.util.List;
++import java.util.UUID;
++import org.springframework.dao.DataIntegrityViolationException;
++import org.springframework.data.domain.Limit;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++
++@Service
++public class MachineSparepartInstallationService {
++  private static final int DEFAULT_THRESHOLD_PERCENTAGE = 90;
++
++  private final MachineSparepartInstallationRepository installations;
++  private final MachineRepository machines;
++  private final SparepartRepository spareparts;
++  private final PlantRepository plants;
++  private final PlantScopeService plantScopes;
++  private final AuthUserPlantAssignmentRepository assignments;
++  private final Clock clock;
++
++  public MachineSparepartInstallationService(MachineSparepartInstallationRepository installations,
++      MachineRepository machines, SparepartRepository spareparts, PlantRepository plants,
++      PlantScopeService plantScopes, AuthUserPlantAssignmentRepository assignments, Clock clock) {
++    this.installations = installations;
++    this.machines = machines;
++    this.spareparts = spareparts;
++    this.plants = plants;
++    this.plantScopes = plantScopes;
++    this.assignments = assignments;
++    this.clock = clock;
++  }
++
++  @Transactional(readOnly = true)
++  public List<InstallationView> list(AuthenticatedUser user, InstallationFilters filters) {
++    var superAdmin = user.applicationRole() == ApplicationRole.SUPER_ADMIN;
++    validateFilterScope(user, filters, superAdmin);
++    var result = superAdmin
++        ? installations.findAllUnscoped(filters.machineId(), filters.sparepartId(), filters.plantId(), filters.machineGroupId(), Limit.of(filters.limit()))
++        : installations.findAllScoped(scopedPlantIds(user), filters.machineId(), filters.sparepartId(), filters.plantId(), filters.machineGroupId(), Limit.of(filters.limit()));
++    return result.stream().map(this::toView).toList();
++  }
++
++  @Transactional(readOnly = true)
++  public InstallationView get(AuthenticatedUser user, UUID installationId) {
++    return toView(findScoped(user, installationId));
++  }
++
++  @Transactional
++  public InstallationView create(AuthenticatedUser user, InstallationCommand command) {
++    requireMutationRole(user);
++    var normalized = normalize(command);
++    var machine = resolveMachine(user, normalized.machineId());
++    var sparepart = resolveSparepart(normalized.sparepartId());
++    var now = Instant.now(clock);
++    return toView(save(new MachineSparepartInstallationEntity(UUID.randomUUID(), machine, sparepart,
++        normalized.expectedProductionCount(), normalized.baselineCounter(), normalized.thresholdPercentage(),
++        now, now, now)));
++  }
++
++  @Transactional
++  public InstallationView update(AuthenticatedUser user, UUID installationId, InstallationUpdateCommand command) {
++    requireMutationRole(user);
++    var installation = findScoped(user, installationId);
++    var normalized = normalize(command);
++    installation.update(normalized.expectedProductionCount(), normalized.baselineCounter(), normalized.thresholdPercentage(), Instant.now(clock));
++    return toView(save(installation));
++  }
++
++  @Transactional
++  public void delete(AuthenticatedUser user, UUID installationId) {
++    requireMutationRole(user);
++    var installation = findScoped(user, installationId);
++    try {
++      installations.delete(installation);
++      installations.flush();
++    } catch (DataIntegrityViolationException exception) {
++      throw new InstallationDataIntegrityException();
++    }
++  }
++
++  private void validateFilterScope(AuthenticatedUser user, InstallationFilters filters, boolean superAdmin) {
++    if (!superAdmin) {
++      if (filters.plantId() != null) {
++        plantScopes.requirePlantAccess(user, filters.plantId());
++      }
++      if (filters.machineId() != null) {
++        resolveMachine(user, filters.machineId());
++      }
++      var scopedPlantIds = scopedPlantIds(user);
++      if (scopedPlantIds.isEmpty()) {
++        throw new InstallationPlantScopeEmptyException();
++      }
++    } else if (filters.plantId() != null && !plants.existsById(filters.plantId())) {
++      throw new InstallationPlantNotFoundException();
++    }
++  }
++
++  private MachineEntity resolveMachine(AuthenticatedUser user, UUID machineId) {
++    var machine = machines.findByIdWithPlantAndGroup(machineId).orElseThrow(MachineForInstallationNotFoundException::new);
++    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN) {
++      plantScopes.requirePlantAccess(user, machine.getPlant().getId());
++    }
++    return machine;
++  }
++
++  private SparepartEntity resolveSparepart(UUID sparepartId) {
++    return spareparts.findById(sparepartId).orElseThrow(SparepartForInstallationNotFoundException::new);
++  }
++
++  private MachineSparepartInstallationEntity findScoped(AuthenticatedUser user, UUID installationId) {
++    var installation = installations.findByIdWithDetails(installationId).orElseThrow(InstallationNotFoundException::new);
++    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN) {
++      plantScopes.requirePlantAccess(user, installation.getMachine().getPlant().getId());
++    }
++    return installation;
++  }
++
++  private void requireMutationRole(AuthenticatedUser user) {
++    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN && user.applicationRole() != ApplicationRole.MANAGE) {
++      throw new InstallationMutationForbiddenException();
++    }
++  }
++
++  private MachineSparepartInstallationEntity save(MachineSparepartInstallationEntity installation) {
++    try {
++      return installations.saveAndFlush(installation);
++    } catch (DataIntegrityViolationException exception) {
++      throw new InstallationDataIntegrityException();
++    }
++  }
++
++  private List<UUID> scopedPlantIds(AuthenticatedUser user) {
++    return assignments.findByAuthUserId(UUID.fromString(user.id())).stream()
++        .map(assignment -> assignment.getPlantId())
++        .toList();
++  }
++
++  private InstallationCommand normalize(InstallationCommand command) {
++    if (command.machineId() == null || command.sparepartId() == null) {
++      throw new InstallationValidationException();
++    }
++    return new InstallationCommand(command.machineId(), command.sparepartId(), positive(command.expectedProductionCount()),
++        nonNegative(command.baselineCounter()), threshold(command.thresholdPercentage()));
++  }
++
++  private InstallationUpdateCommand normalize(InstallationUpdateCommand command) {
++    return new InstallationUpdateCommand(positive(command.expectedProductionCount()), nonNegative(command.baselineCounter()),
++        threshold(command.thresholdPercentage()));
++  }
++
++  private long positive(Long value) {
++    if (value == null || value <= 0) {
++      throw new InstallationValidationException();
++    }
++    return value;
++  }
++
++  private long nonNegative(Long value) {
++    if (value == null || value < 0) {
++      throw new InstallationValidationException();
++    }
++    return value;
++  }
++
++  private int threshold(Integer value) {
++    var threshold = value == null ? DEFAULT_THRESHOLD_PERCENTAGE : value;
++    if (threshold < 1 || threshold > 100) {
++      throw new InstallationValidationException();
++    }
++    return threshold;
++  }
++
++  private InstallationView toView(MachineSparepartInstallationEntity installation) {
++    var machine = installation.getMachine();
++    var plant = machine.getPlant();
++    var machineGroup = machine.getMachineGroup();
++    var sparepart = installation.getSparepart();
++    return new InstallationView(installation.getId(), machine.getId(), machine.getCode(), machine.getName(), plant.getId(),
++        plant.getCode(), plant.getName(), machineGroup.getId(), machineGroup.getName(), sparepart.getId(), sparepart.getCode(),
++        sparepart.getName(), new TaxonomyRefView(sparepart.getCategory().getId(), sparepart.getCategory().getCode(), sparepart.getCategory().getName()),
++        new TaxonomyRefView(sparepart.getBrand().getId(), sparepart.getBrand().getCode(), sparepart.getBrand().getName()),
++        new TaxonomyRefView(sparepart.getKind().getId(), sparepart.getKind().getCode(), sparepart.getKind().getName()),
++        new TaxonomyRefView(sparepart.getType().getId(), sparepart.getType().getCode(), sparepart.getType().getName()),
++        installation.getExpectedProductionCount(), installation.getBaselineCounter(), null, null, null,
++        installation.getThresholdPercentage(), "COUNTER_BASED", installation.getInstalledAt(), installation.getCreatedAt(), installation.getUpdatedAt());
++  }
++
++  public record InstallationCommand(UUID machineId, UUID sparepartId, Long expectedProductionCount, Long baselineCounter,
++      Integer thresholdPercentage) {
++  }
++
++  public record InstallationUpdateCommand(Long expectedProductionCount, Long baselineCounter, Integer thresholdPercentage) {
++  }
++
++  public record InstallationFilters(UUID machineId, UUID sparepartId, UUID plantId, UUID machineGroupId, int limit) {
++    public InstallationFilters {
++      if (limit < 1 || limit > 200) {
++        throw new InstallationValidationException();
++      }
++    }
++  }
++
++  public record TaxonomyRefView(UUID id, String code, String name) {
++  }
++
++  public record InstallationView(UUID id, UUID machineId, String machineCode, String machineName, UUID plantId,
++      String plantCode, String plantName, UUID machineGroupId, String machineGroupName, UUID sparepartId,
++      String sparepartCode, String sparepartName, TaxonomyRefView category, TaxonomyRefView brand,
++      TaxonomyRefView kind, TaxonomyRefView type, long expectedProductionCount, long baselineCounter,
++      Long currentCount, Long consumedProductionCount, java.math.BigDecimal consumedPercentage, int thresholdPercentage,
++      String calculationBasis, Instant installedAt, Instant createdAt, Instant updatedAt) {
++  }
++
++  public static class InstallationDataIntegrityException extends RuntimeException { }
++  public static class InstallationMutationForbiddenException extends RuntimeException { }
++  public static class InstallationNotFoundException extends RuntimeException { }
++  public static class InstallationPlantNotFoundException extends RuntimeException { }
++  public static class InstallationPlantScopeEmptyException extends RuntimeException { }
++  public static class InstallationValidationException extends RuntimeException { }
++  public static class MachineForInstallationNotFoundException extends RuntimeException { }
++  public static class SparepartForInstallationNotFoundException extends RuntimeException { }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/infrastructure/MachineSparepartInstallationEntity.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/infrastructure/MachineSparepartInstallationEntity.java
+new file mode 100644
+index 0000000..7101559
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/infrastructure/MachineSparepartInstallationEntity.java
+@@ -0,0 +1,79 @@
++package com.syncro.sparepart.infrastructure;
++
++import com.syncro.machine.infrastructure.MachineEntity;
++import jakarta.persistence.Column;
++import jakarta.persistence.Entity;
++import jakarta.persistence.FetchType;
++import jakarta.persistence.Id;
++import jakarta.persistence.JoinColumn;
++import jakarta.persistence.ManyToOne;
++import jakarta.persistence.Table;
++import java.time.Instant;
++import java.util.UUID;
++
++@Entity
++@Table(name = "machine_sparepart_installations")
++public class MachineSparepartInstallationEntity {
++  @Id
++  private UUID id;
++
++  @ManyToOne(fetch = FetchType.LAZY, optional = false)
++  @JoinColumn(name = "machine_id", nullable = false)
++  private MachineEntity machine;
++
++  @ManyToOne(fetch = FetchType.LAZY, optional = false)
++  @JoinColumn(name = "sparepart_id", nullable = false)
++  private SparepartEntity sparepart;
++
++  @Column(name = "expected_production_count", nullable = false)
++  private long expectedProductionCount;
++
++  @Column(name = "baseline_counter", nullable = false)
++  private long baselineCounter;
++
++  @Column(name = "threshold_percentage", nullable = false)
++  private int thresholdPercentage;
++
++  @Column(name = "installed_at", nullable = false)
++  private Instant installedAt;
++
++  @Column(name = "created_at", nullable = false)
++  private Instant createdAt;
++
++  @Column(name = "updated_at", nullable = false)
++  private Instant updatedAt;
++
++  protected MachineSparepartInstallationEntity() {
++  }
++
++  public MachineSparepartInstallationEntity(UUID id, MachineEntity machine, SparepartEntity sparepart,
++      long expectedProductionCount, long baselineCounter, int thresholdPercentage, Instant installedAt,
++      Instant createdAt, Instant updatedAt) {
++    this.id = id;
++    this.machine = machine;
++    this.sparepart = sparepart;
++    this.expectedProductionCount = expectedProductionCount;
++    this.baselineCounter = baselineCounter;
++    this.thresholdPercentage = thresholdPercentage;
++    this.installedAt = installedAt;
++    this.createdAt = createdAt;
++    this.updatedAt = updatedAt;
++  }
++
++  public UUID getId() { return id; }
++  public MachineEntity getMachine() { return machine; }
++  public SparepartEntity getSparepart() { return sparepart; }
++  public long getExpectedProductionCount() { return expectedProductionCount; }
++  public long getBaselineCounter() { return baselineCounter; }
++  public int getThresholdPercentage() { return thresholdPercentage; }
++  public Instant getInstalledAt() { return installedAt; }
++  public Instant getCreatedAt() { return createdAt; }
++  public Instant getUpdatedAt() { return updatedAt; }
++
++  public void update(long expectedProductionCount, long baselineCounter, int thresholdPercentage, Instant updatedAt) {
++    this.expectedProductionCount = expectedProductionCount;
++    this.baselineCounter = baselineCounter;
++    this.thresholdPercentage = thresholdPercentage;
++    this.updatedAt = updatedAt;
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/infrastructure/MachineSparepartInstallationRepository.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/infrastructure/MachineSparepartInstallationRepository.java
+new file mode 100644
+index 0000000..075a2ce
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/infrastructure/MachineSparepartInstallationRepository.java
+@@ -0,0 +1,73 @@
++package com.syncro.sparepart.infrastructure;
++
++import java.util.List;
++import java.util.Optional;
++import java.util.UUID;
++import org.springframework.data.domain.Limit;
++import org.springframework.data.jpa.repository.JpaRepository;
++import org.springframework.data.jpa.repository.Query;
++import org.springframework.data.repository.query.Param;
++
++public interface MachineSparepartInstallationRepository extends JpaRepository<MachineSparepartInstallationEntity, UUID> {
++  @Query("""
++      select installation from MachineSparepartInstallationEntity installation
++      join fetch installation.machine machine
++      join fetch machine.plant plant
++      join fetch machine.machineGroup machineGroup
++      join fetch installation.sparepart sparepart
++      join fetch sparepart.category category
++      join fetch sparepart.brand brand
++      join fetch sparepart.kind kind
++      join fetch sparepart.type type
++      where (:machineId is null or machine.id = :machineId)
++        and (:sparepartId is null or sparepart.id = :sparepartId)
++        and (:plantId is null or plant.id = :plantId)
++        and (:machineGroupId is null or machineGroup.id = :machineGroupId)
++      order by plant.code asc, machine.code asc, sparepart.code asc, installation.createdAt asc
++      """)
++  List<MachineSparepartInstallationEntity> findAllUnscoped(
++      @Param("machineId") UUID machineId,
++      @Param("sparepartId") UUID sparepartId,
++      @Param("plantId") UUID plantId,
++      @Param("machineGroupId") UUID machineGroupId,
++      Limit limit);
++
++  @Query("""
++      select installation from MachineSparepartInstallationEntity installation
++      join fetch installation.machine machine
++      join fetch machine.plant plant
++      join fetch machine.machineGroup machineGroup
++      join fetch installation.sparepart sparepart
++      join fetch sparepart.category category
++      join fetch sparepart.brand brand
++      join fetch sparepart.kind kind
++      join fetch sparepart.type type
++      where plant.id in :plantIds
++        and (:machineId is null or machine.id = :machineId)
++        and (:sparepartId is null or sparepart.id = :sparepartId)
++        and (:plantId is null or plant.id = :plantId)
++        and (:machineGroupId is null or machineGroup.id = :machineGroupId)
++      order by plant.code asc, machine.code asc, sparepart.code asc, installation.createdAt asc
++      """)
++  List<MachineSparepartInstallationEntity> findAllScoped(
++      @Param("plantIds") List<UUID> plantIds,
++      @Param("machineId") UUID machineId,
++      @Param("sparepartId") UUID sparepartId,
++      @Param("plantId") UUID plantId,
++      @Param("machineGroupId") UUID machineGroupId,
++      Limit limit);
++
++  @Query("""
++      select installation from MachineSparepartInstallationEntity installation
++      join fetch installation.machine machine
++      join fetch machine.plant
++      join fetch machine.machineGroup
++      join fetch installation.sparepart sparepart
++      join fetch sparepart.category
++      join fetch sparepart.brand
++      join fetch sparepart.kind
++      join fetch sparepart.type
++      where installation.id = :id
++      """)
++  Optional<MachineSparepartInstallationEntity> findByIdWithDetails(@Param("id") UUID id);
++}
+diff --git a/syncro/apps/backend/src/main/resources/db/migration/V8__create_machine_sparepart_installations.sql b/syncro/apps/backend/src/main/resources/db/migration/V8__create_machine_sparepart_installations.sql
+new file mode 100644
+index 0000000..d2a4531
+--- /dev/null
++++ b/syncro/apps/backend/src/main/resources/db/migration/V8__create_machine_sparepart_installations.sql
+@@ -0,0 +1,21 @@
++CREATE TABLE machine_sparepart_installations (
++  id UUID PRIMARY KEY,
++  machine_id UUID NOT NULL,
++  sparepart_id UUID NOT NULL,
++  expected_production_count BIGINT NOT NULL,
++  baseline_counter BIGINT NOT NULL,
++  threshold_percentage INTEGER NOT NULL DEFAULT 90,
++  installed_at TIMESTAMPTZ NOT NULL,
++  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++  CONSTRAINT fk_machine_sparepart_installations_machine_id FOREIGN KEY (machine_id) REFERENCES machines(id) ON DELETE RESTRICT,
++  CONSTRAINT fk_machine_sparepart_installations_sparepart_id FOREIGN KEY (sparepart_id) REFERENCES spareparts(id) ON DELETE RESTRICT,
++  CONSTRAINT ck_machine_sparepart_installations_expected_positive CHECK (expected_production_count > 0),
++  CONSTRAINT ck_machine_sparepart_installations_baseline_non_negative CHECK (baseline_counter >= 0),
++  CONSTRAINT ck_machine_sparepart_installations_threshold_range CHECK (threshold_percentage BETWEEN 1 AND 100),
++  CONSTRAINT uq_machine_sparepart_installations_machine_id_sparepart_id UNIQUE (machine_id, sparepart_id)
++);
++
++CREATE INDEX idx_machine_sparepart_installations_machine_id ON machine_sparepart_installations(machine_id);
++CREATE INDEX idx_machine_sparepart_installations_sparepart_id ON machine_sparepart_installations(sparepart_id);
++CREATE INDEX idx_machine_sparepart_installations_machine_id_sparepart_id ON machine_sparepart_installations(machine_id, sparepart_id);
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/sparepart/api/MachineSparepartInstallationControllerTest.java b/syncro/apps/backend/src/test/java/com/syncro/sparepart/api/MachineSparepartInstallationControllerTest.java
+new file mode 100644
+index 0000000..e1c247d
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/sparepart/api/MachineSparepartInstallationControllerTest.java
+@@ -0,0 +1,337 @@
++package com.syncro.sparepart.api;
++
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.eq;
++import static org.mockito.Mockito.doThrow;
++import static org.mockito.Mockito.when;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
++
++import com.syncro.TestJsonConfig;
++import com.syncro.auth.application.JwtTokenService;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.JwtAuthenticationFilter;
++import com.syncro.config.SecurityConfig;
++import com.syncro.config.TimeConfig;
++import com.syncro.sparepart.application.MachineSparepartInstallationService;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationDataIntegrityException;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationMutationForbiddenException;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationNotFoundException;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationView;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.MachineForInstallationNotFoundException;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.SparepartForInstallationNotFoundException;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.TaxonomyRefView;
++import java.time.Instant;
++import java.util.List;
++import java.util.UUID;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.params.ParameterizedTest;
++import org.junit.jupiter.params.provider.ValueSource;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
++import org.springframework.context.annotation.Import;
++import org.springframework.http.MediaType;
++import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
++import org.springframework.security.core.authority.SimpleGrantedAuthority;
++import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
++import org.springframework.test.context.bean.override.mockito.MockitoBean;
++import org.springframework.test.web.servlet.MockMvc;
++import org.springframework.test.web.servlet.request.RequestPostProcessor;
++
++@WebMvcTest(MachineSparepartInstallationController.class)
++@Import({SecurityConfig.class, MachineSparepartInstallationExceptionHandler.class, JwtAuthenticationFilter.class, TimeConfig.class, TestJsonConfig.class})
++class MachineSparepartInstallationControllerTest {
++  @Autowired
++  private MockMvc mockMvc;
++
++  @MockitoBean
++  private MachineSparepartInstallationService installations;
++
++  @MockitoBean
++  private JwtTokenService jwtTokenService;
++
++  @Test
++  @DisplayName("2.6-API-001 P0 unauthenticated users cannot list installations")
++  void listRequiresAuthentication() throws Exception {
++    mockMvc.perform(get("/api/v1/machine-sparepart-installations"))
++        .andExpect(status().isUnauthorized())
++        .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
++  }
++
++  @Test
++  @DisplayName("2.6-API-002 P0 VIEWER can list installations with nullable telemetry evidence")
++  void viewerCanListInstallations() throws Exception {
++    var user = user(ApplicationRole.VIEWER);
++    var installationId = UUID.randomUUID();
++    when(installations.list(eq(user), any())).thenReturn(List.of(view(installationId)));
++
++    mockMvc.perform(get("/api/v1/machine-sparepart-installations").with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.items[0].id").value(installationId.toString()))
++        .andExpect(jsonPath("$.items[0].machineCode").value("BF-08410"))
++        .andExpect(jsonPath("$.items[0].sparepartCode").value("PLC-WECON-LX5"))
++        .andExpect(jsonPath("$.items[0].expectedProductionCount").value(1000000))
++        .andExpect(jsonPath("$.items[0].baselineCounter").value(1200))
++        .andExpect(jsonPath("$.items[0].currentCount").isEmpty())
++        .andExpect(jsonPath("$.items[0].consumedProductionCount").isEmpty())
++        .andExpect(jsonPath("$.items[0].consumedPercentage").isEmpty())
++        .andExpect(jsonPath("$.items[0].thresholdPercentage").value(90))
++        .andExpect(jsonPath("$.items[0].calculationBasis").value("COUNTER_BASED"));
++  }
++
++  @Test
++  @DisplayName("2.6-API-003 P0 MANAGE can create installation")
++  void manageCanCreateInstallation() throws Exception {
++    var user = user(ApplicationRole.MANAGE);
++    var installationId = UUID.randomUUID();
++    when(installations.create(eq(user), any())).thenReturn(view(installationId));
++
++    mockMvc.perform(post("/api/v1/machine-sparepart-installations")
++        .with(auth(user))
++        .contentType(MediaType.APPLICATION_JSON)
++        .content(payload(90)))
++        .andExpect(status().isCreated())
++        .andExpect(jsonPath("$.id").value(installationId.toString()))
++        .andExpect(jsonPath("$.thresholdPercentage").value(90));
++  }
++
++  @ParameterizedTest
++  @DisplayName("2.6-API-004 P0 omitted and null threshold are accepted for defaulting")
++  @ValueSource(strings = {
++      "{\"machineId\":\"00000000-0000-0000-0000-000000000001\",\"sparepartId\":\"00000000-0000-0000-0000-000000000002\",\"expectedProductionCount\":1000000,\"baselineCounter\":1200}",
++      "{\"machineId\":\"00000000-0000-0000-0000-000000000001\",\"sparepartId\":\"00000000-0000-0000-0000-000000000002\",\"expectedProductionCount\":1000000,\"baselineCounter\":1200,\"thresholdPercentage\":null}"
++  })
++  void omittedAndNullThresholdAcceptedForDefaulting(String body) throws Exception {
++    var user = user(ApplicationRole.MANAGE);
++    when(installations.create(eq(user), any())).thenReturn(view(UUID.randomUUID()));
++
++    mockMvc.perform(post("/api/v1/machine-sparepart-installations")
++        .with(auth(user))
++        .contentType(MediaType.APPLICATION_JSON)
++        .content(body))
++        .andExpect(status().isCreated());
++  }
++
++  @Test
++  @DisplayName("2.6-API-004B P0 blank threshold is accepted for defaulting")
++  void blankThresholdAcceptedForDefaulting() throws Exception {
++    var user = user(ApplicationRole.MANAGE);
++    when(installations.create(eq(user), any())).thenReturn(view(UUID.randomUUID()));
++
++    mockMvc.perform(post("/api/v1/machine-sparepart-installations")
++        .with(auth(user))
++        .contentType(MediaType.APPLICATION_JSON)
++        .content("{\"machineId\":\"00000000-0000-0000-0000-000000000001\",\"sparepartId\":\"00000000-0000-0000-0000-000000000002\",\"expectedProductionCount\":1000000,\"baselineCounter\":1200,\"thresholdPercentage\":\"\"}"))
++        .andExpect(status().isCreated())
++        .andExpect(jsonPath("$.thresholdPercentage").value(90));
++  }
++
++  @ParameterizedTest
++  @DisplayName("2.6-API-005 P0 invalid installation requests return field errors")
++  @ValueSource(strings = {
++      "{\"machineId\":null,\"sparepartId\":\"00000000-0000-0000-0000-000000000002\",\"expectedProductionCount\":100,\"baselineCounter\":0,\"thresholdPercentage\":90}",
++      "{\"machineId\":\"00000000-0000-0000-0000-000000000001\",\"sparepartId\":null,\"expectedProductionCount\":100,\"baselineCounter\":0,\"thresholdPercentage\":90}",
++      "{\"machineId\":\"00000000-0000-0000-0000-000000000001\",\"sparepartId\":\"00000000-0000-0000-0000-000000000002\",\"expectedProductionCount\":0,\"baselineCounter\":0,\"thresholdPercentage\":90}",
++      "{\"machineId\":\"00000000-0000-0000-0000-000000000001\",\"sparepartId\":\"00000000-0000-0000-0000-000000000002\",\"expectedProductionCount\":100,\"baselineCounter\":-1,\"thresholdPercentage\":90}",
++      "{\"machineId\":\"00000000-0000-0000-0000-000000000001\",\"sparepartId\":\"00000000-0000-0000-0000-000000000002\",\"expectedProductionCount\":100,\"baselineCounter\":0,\"thresholdPercentage\":101}"
++  })
++  void invalidRequestsReturnFieldErrors(String body) throws Exception {
++    var user = user(ApplicationRole.MANAGE);
++
++    mockMvc.perform(post("/api/v1/machine-sparepart-installations")
++        .with(auth(user))
++        .contentType(MediaType.APPLICATION_JSON)
++        .content(body))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors").isNotEmpty());
++  }
++
++  @Test
++  @DisplayName("2.6-API-006 P0 malformed JSON returns safe error")
++  void malformedJsonReturnsSafeError() throws Exception {
++    var user = user(ApplicationRole.MANAGE);
++
++    mockMvc.perform(post("/api/v1/machine-sparepart-installations")
++        .with(auth(user))
++        .contentType(MediaType.APPLICATION_JSON)
++        .content("{\"machineId\":"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("MALFORMED_JSON"));
++  }
++
++  @Test
++  @DisplayName("2.6-API-007 P0 missing machine returns safe not-found error")
++  void missingMachineReturnsSafeNotFoundError() throws Exception {
++    var user = user(ApplicationRole.MANAGE);
++    doThrow(new MachineForInstallationNotFoundException()).when(installations).create(eq(user), any());
++
++    mockMvc.perform(post("/api/v1/machine-sparepart-installations")
++        .with(auth(user))
++        .contentType(MediaType.APPLICATION_JSON)
++        .content(payload(90)))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("MACHINE_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("2.6-API-008 P0 missing sparepart returns safe not-found error")
++  void missingSparepartReturnsSafeNotFoundError() throws Exception {
++    var user = user(ApplicationRole.MANAGE);
++    doThrow(new SparepartForInstallationNotFoundException()).when(installations).create(eq(user), any());
++
++    mockMvc.perform(post("/api/v1/machine-sparepart-installations")
++        .with(auth(user))
++        .contentType(MediaType.APPLICATION_JSON)
++        .content(payload(90)))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("SPAREPART_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("2.6-API-009 P0 VIEWER cannot update installation")
++  void viewerCannotUpdateInstallation() throws Exception {
++    var user = user(ApplicationRole.VIEWER);
++    var installationId = UUID.randomUUID();
++    doThrow(new InstallationMutationForbiddenException()).when(installations).update(eq(user), eq(installationId), any());
++
++    mockMvc.perform(put("/api/v1/machine-sparepart-installations/{installationId}", installationId)
++        .with(auth(user))
++        .contentType(MediaType.APPLICATION_JSON)
++        .content(updatePayload()))
++        .andExpect(status().isForbidden())
++        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
++  }
++
++  @Test
++  @DisplayName("2.6-API-010 P0 VIEWER cannot create installation")
++  void viewerCannotCreateInstallation() throws Exception {
++    var user = user(ApplicationRole.VIEWER);
++    doThrow(new InstallationMutationForbiddenException()).when(installations).create(eq(user), any());
++
++    mockMvc.perform(post("/api/v1/machine-sparepart-installations")
++        .with(auth(user))
++        .contentType(MediaType.APPLICATION_JSON)
++        .content(payload(90)))
++        .andExpect(status().isForbidden())
++        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
++  }
++
++  @Test
++  @DisplayName("2.6-API-011 P0 VIEWER cannot delete installation")
++  void viewerCannotDeleteInstallation() throws Exception {
++    var user = user(ApplicationRole.VIEWER);
++    var installationId = UUID.randomUUID();
++    doThrow(new InstallationMutationForbiddenException()).when(installations).delete(user, installationId);
++
++    mockMvc.perform(delete("/api/v1/machine-sparepart-installations/{installationId}", installationId).with(auth(user)))
++        .andExpect(status().isForbidden())
++        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
++  }
++
++  @Test
++  @DisplayName("2.6-API-012 P0 invalid list limit returns safe validation error")
++  void invalidListLimitReturnsSafeValidationError() throws Exception {
++    var user = user(ApplicationRole.MANAGE);
++
++    mockMvc.perform(get("/api/v1/machine-sparepart-installations?limit=0").with(auth(user)))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
++  }
++
++  @Test
++  @DisplayName("2.6-API-013 P0 update preserves installation identity")
++  void updateReturnsInstallation() throws Exception {
++    var user = user(ApplicationRole.MANAGE);
++    var installationId = UUID.randomUUID();
++    when(installations.update(eq(user), eq(installationId), any())).thenReturn(view(installationId));
++
++    mockMvc.perform(put("/api/v1/machine-sparepart-installations/{installationId}", installationId)
++        .with(auth(user))
++        .contentType(MediaType.APPLICATION_JSON)
++        .content(updatePayload()))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.id").value(installationId.toString()));
++  }
++
++  @Test
++  @DisplayName("2.6-API-011 P0 delete installation returns no content")
++  void deleteReturnsNoContent() throws Exception {
++    var user = user(ApplicationRole.MANAGE);
++    mockMvc.perform(delete("/api/v1/machine-sparepart-installations/{installationId}", UUID.randomUUID()).with(auth(user)))
++        .andExpect(status().isNoContent());
++  }
++
++  @Test
++  @DisplayName("2.6-API-012 P0 missing installation returns safe not-found error")
++  void missingInstallationReturnsSafeNotFoundError() throws Exception {
++    var user = user(ApplicationRole.MANAGE);
++    var installationId = UUID.randomUUID();
++    doThrow(new InstallationNotFoundException()).when(installations).get(user, installationId);
++
++    mockMvc.perform(get("/api/v1/machine-sparepart-installations/{installationId}", installationId).with(auth(user)))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("INSTALLATION_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("2.6-API-013 P0 delete conflict returns safe conflict error")
++  void deleteConflictReturnsSafeConflictError() throws Exception {
++    var user = user(ApplicationRole.MANAGE);
++    var installationId = UUID.randomUUID();
++    doThrow(new InstallationDataIntegrityException()).when(installations).delete(user, installationId);
++
++    mockMvc.perform(delete("/api/v1/machine-sparepart-installations/{installationId}", installationId).with(auth(user)))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("INSTALLATION_DATA_INTEGRITY_VIOLATION"));
++  }
++
++  @Test
++  @DisplayName("2.6-API-014 P0 invalid path UUID returns safe error")
++  void invalidPathUuidReturnsSafeError() throws Exception {
++    var user = user(ApplicationRole.MANAGE);
++
++    mockMvc.perform(get("/api/v1/machine-sparepart-installations/not-a-uuid").with(auth(user)))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("INVALID_PATH_VALUE"));
++  }
++
++  private static String payload(Integer thresholdPercentage) {
++    var threshold = thresholdPercentage == null ? "null" : thresholdPercentage.toString();
++    return """
++        {"machineId":"00000000-0000-0000-0000-000000000001","sparepartId":"00000000-0000-0000-0000-000000000002","expectedProductionCount":1000000,"baselineCounter":1200,"thresholdPercentage":%s}
++        """.formatted(threshold);
++  }
++
++  private static String updatePayload() {
++    return """
++        {"expectedProductionCount":2000000,"baselineCounter":1300,"thresholdPercentage":95}
++        """;
++  }
++
++  private static InstallationView view(UUID installationId) {
++    return new InstallationView(installationId, UUID.randomUUID(), "BF-08410", "JBF19", UUID.randomUUID(), "GM1", "GM1",
++        UUID.randomUUID(), "Forming", UUID.randomUUID(), "PLC-WECON-LX5", "Electric PLC Wecon LX5",
++        new TaxonomyRefView(UUID.randomUUID(), "ELEC", "Electric"), new TaxonomyRefView(UUID.randomUUID(), "WECON", "Wecon"),
++        new TaxonomyRefView(UUID.randomUUID(), "PLC", "PLC"), new TaxonomyRefView(UUID.randomUUID(), "LX5", "LX5"),
++        1_000_000L, 1_200L, null, null, null, 90, "COUNTER_BASED",
++        Instant.parse("2026-05-28T00:00:00Z"), Instant.parse("2026-05-28T00:00:00Z"), Instant.parse("2026-05-28T00:00:00Z"));
++  }
++
++  private static AuthenticatedUser user(ApplicationRole role) {
++    return new AuthenticatedUser(UUID.randomUUID().toString(), role.name().toLowerCase() + "@syncro.dev", role);
++  }
++
++  private static RequestPostProcessor auth(AuthenticatedUser user) {
++    return SecurityMockMvcRequestPostProcessors.authentication(new UsernamePasswordAuthenticationToken(
++        user,
++        null,
++        List.of(new SimpleGrantedAuthority("ROLE_" + user.applicationRole().name()))));
++  }
++}
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/sparepart/application/MachineSparepartInstallationServiceIntegrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/sparepart/application/MachineSparepartInstallationServiceIntegrationTest.java
+new file mode 100644
+index 0000000..69216ef
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/sparepart/application/MachineSparepartInstallationServiceIntegrationTest.java
+@@ -0,0 +1,336 @@
++package com.syncro.sparepart.application;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.api.Assertions.assertThatThrownBy;
++
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.application.PlantScopeService.PlantAccessDeniedException;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.AuthUserEntity;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentEntity;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
++import com.syncro.auth.infrastructure.AuthUserRepository;
++import com.syncro.auth.infrastructure.PlantEntity;
++import com.syncro.auth.infrastructure.PlantRepository;
++import com.syncro.machine.domain.MachineStatus;
++import com.syncro.machine.infrastructure.MachineEntity;
++import com.syncro.machine.infrastructure.MachineRepository;
++import com.syncro.masterdata.infrastructure.MachineGroupEntity;
++import com.syncro.masterdata.infrastructure.MachineGroupRepository;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationCommand;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationDataIntegrityException;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationFilters;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationMutationForbiddenException;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationUpdateCommand;
++import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationValidationException;
++import com.syncro.sparepart.domain.SparepartTaxonomyDimension;
++import com.syncro.sparepart.infrastructure.MachineSparepartInstallationRepository;
++import com.syncro.sparepart.infrastructure.SparepartEntity;
++import com.syncro.sparepart.infrastructure.SparepartRepository;
++import com.syncro.sparepart.infrastructure.SparepartTaxonomyEntity;
++import com.syncro.sparepart.infrastructure.SparepartTaxonomyRepository;
++import java.time.Instant;
++import java.time.LocalDate;
++import java.util.UUID;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.test.context.SpringBootTest;
++import org.springframework.dao.DataIntegrityViolationException;
++import org.springframework.jdbc.core.JdbcTemplate;
++import org.springframework.security.crypto.password.PasswordEncoder;
++import org.springframework.test.context.DynamicPropertyRegistry;
++import org.springframework.test.context.DynamicPropertySource;
++import org.springframework.transaction.PlatformTransactionManager;
++import org.springframework.transaction.TransactionDefinition;
++import org.springframework.transaction.annotation.Transactional;
++import org.springframework.transaction.support.TransactionTemplate;
++import org.testcontainers.junit.jupiter.Container;
++import org.testcontainers.junit.jupiter.Testcontainers;
++import org.testcontainers.postgresql.PostgreSQLContainer;
++
++@SpringBootTest(properties = {
++    "server.port=0",
++    "REDIS_HOST=localhost",
++    "REDIS_PORT=6379",
++    "INFLUXDB_HOST=localhost",
++    "INFLUXDB_PORT=8086",
++    "INFLUXDB_USERNAME=test",
++    "INFLUXDB_PASSWORD=test",
++    "INFLUXDB_TOKEN=test",
++    "INFLUXDB_ORG=test",
++    "INFLUXDB_BUCKET=test",
++    "SYNCRO_MQTT_HOST=localhost",
++    "SYNCRO_MQTT_PORT=1883",
++    "SYNCRO_MQTT_USERNAME=test",
++    "SYNCRO_MQTT_PASSWORD=test",
++    "SYNCRO_MQTT_CLIENT_ID=test",
++    "SYNCRO_MQTT_TOPIC_FILTER=syncro/+/telemetry",
++    "WAHA_HOST=localhost",
++    "WAHA_PORT=3000",
++    "WAHA_API_KEY=test",
++    "syncro.auth.jwt.secret=test-secret-for-auth-integration-32x",
++    "syncro.auth.jwt.issuer=syncro-test",
++    "syncro.auth.jwt.ttl-minutes=30",
++    "syncro.auth.local-admin.enabled=false",
++    "syncro.auth.local-admin.login-identifier=admin@syncro.dev",
++    "syncro.auth.local-admin.password=test-password"
++})
++@Testcontainers
++@Transactional
++class MachineSparepartInstallationServiceIntegrationTest {
++  @Container
++  static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
++
++  @DynamicPropertySource
++  static void postgresProperties(DynamicPropertyRegistry registry) {
++    registry.add("spring.datasource.url", postgres::getJdbcUrl);
++    registry.add("spring.datasource.username", postgres::getUsername);
++    registry.add("spring.datasource.password", postgres::getPassword);
++  }
++
++  @Autowired private MachineSparepartInstallationService service;
++  @Autowired private MachineSparepartInstallationRepository installations;
++  @Autowired private MachineRepository machines;
++  @Autowired private SparepartRepository spareparts;
++  @Autowired private SparepartTaxonomyRepository taxonomy;
++  @Autowired private MachineGroupRepository machineGroups;
++  @Autowired private PlantRepository plants;
++  @Autowired private AuthUserRepository users;
++  @Autowired private AuthUserPlantAssignmentRepository assignments;
++  @Autowired private PasswordEncoder passwordEncoder;
++  @Autowired private JdbcTemplate jdbc;
++  @Autowired private PlatformTransactionManager transactionManager;
++
++  @Test
++  @DisplayName("2.6-SVC-001 P0 create stores default threshold and nullable telemetry evidence")
++  void createStoresDefaultThresholdAndNullableTelemetryEvidence() {
++    var plant = plant("GM1");
++    var machine = machine(plant, "BF-08410");
++    var sparepart = sparepart("PLC-WECON-LX5");
++    var user = persistedUser(ApplicationRole.MANAGE, "manage-install@syncro.dev");
++    assign(user, plant);
++
++    var created = service.create(user, new InstallationCommand(machine.getId(), sparepart.getId(), 1_000_000L, 1_200L, null));
++
++    assertThat(created.thresholdPercentage()).isEqualTo(90);
++    assertThat(created.calculationBasis()).isEqualTo("COUNTER_BASED");
++    assertThat(created.currentCount()).isNull();
++    assertThat(created.consumedProductionCount()).isNull();
++    assertThat(created.consumedPercentage()).isNull();
++    assertThat(installations.findById(created.id())).isPresent();
++  }
++
++  @Test
++  @DisplayName("2.6-SVC-002 P0 threshold override and update preserve machine and sparepart links")
++  void updatePreservesLinks() {
++    var plant = plant("GM1");
++    var machine = machine(plant, "BF-08410");
++    var sparepart = sparepart("PLC-WECON-LX5");
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var created = service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), 1_000_000L, 1_200L, 85));
++
++    var updated = service.update(admin, created.id(), new InstallationUpdateCommand(2_000_000L, 1_300L, 95));
++
++    assertThat(updated.id()).isEqualTo(created.id());
++    assertThat(updated.machineId()).isEqualTo(machine.getId());
++    assertThat(updated.sparepartId()).isEqualTo(sparepart.getId());
++    assertThat(updated.expectedProductionCount()).isEqualTo(2_000_000L);
++    assertThat(updated.baselineCounter()).isEqualTo(1_300L);
++    assertThat(updated.thresholdPercentage()).isEqualTo(95);
++  }
++
++  @Test
++  @DisplayName("2.6-SVC-003 P0 invalid numeric values are rejected")
++  void invalidNumericValuesRejected() {
++    var plant = plant("GM1");
++    var machine = machine(plant, "BF-08410");
++    var sparepart = sparepart("PLC-WECON-LX5");
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++
++    assertThatThrownBy(() -> service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), 0L, 0L, 90)))
++        .isInstanceOf(InstallationValidationException.class);
++    assertThatThrownBy(() -> service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), 1L, -1L, 90)))
++        .isInstanceOf(InstallationValidationException.class);
++    assertThatThrownBy(() -> service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), 1L, 0L, 101)))
++        .isInstanceOf(InstallationValidationException.class);
++  }
++
++  @Test
++  @DisplayName("2.6-SVC-004 P0 VIEWER can read assigned plant but cannot mutate")
++  void viewerCanReadAssignedPlantButCannotMutate() {
++    var plant = plant("GM1");
++    var machine = machine(plant, "BF-08410");
++    var sparepart = sparepart("PLC-WECON-LX5");
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var viewer = persistedUser(ApplicationRole.VIEWER, "viewer-install@syncro.dev");
++    assign(viewer, plant);
++    var created = service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), 1_000_000L, 1_200L, null));
++
++    assertThat(service.list(viewer, new InstallationFilters(null, null, null, null, 100))).extracting("id").containsExactly(created.id());
++    assertThat(service.get(viewer, created.id()).id()).isEqualTo(created.id());
++    assertThatThrownBy(() -> service.delete(viewer, created.id())).isInstanceOf(InstallationMutationForbiddenException.class);
++  }
++
++  @Test
++  @DisplayName("2.6-SVC-005 P0 MANAGE cannot access out-of-scope machine installation")
++  void manageCannotAccessOutOfScopeMachineInstallation() {
++    var plant = plant("GM1");
++    var other = plant("GM2");
++    var machine = machine(other, "BF-08410");
++    var sparepart = sparepart("PLC-WECON-LX5");
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var manage = persistedUser(ApplicationRole.MANAGE, "manage-out-install@syncro.dev");
++    assign(manage, plant);
++    var created = service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), 1_000_000L, 1_200L, null));
++
++    assertThatThrownBy(() -> service.get(manage, created.id())).isInstanceOf(PlantAccessDeniedException.class);
++    assertThatThrownBy(() -> service.list(manage, new InstallationFilters(machine.getId(), null, null, null, 100)))
++        .isInstanceOf(PlantAccessDeniedException.class);
++    assertThatThrownBy(() -> service.create(manage, new InstallationCommand(machine.getId(), sparepart.getId(), 1L, 0L, null)))
++        .isInstanceOf(PlantAccessDeniedException.class);
++  }
++
++  @Test
++  @DisplayName("2.6-SVC-006 P0 delete removes installation without dependents")
++  void deleteRemovesInstallationWithoutDependents() {
++    var plant = plant("GM1");
++    var machine = machine(plant, "BF-08410");
++    var sparepart = sparepart("PLC-WECON-LX5");
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var created = service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), 1_000_000L, 1_200L, null));
++
++    service.delete(admin, created.id());
++
++    assertThat(installations.findById(created.id())).isEmpty();
++  }
++
++  @Test
++  @DisplayName("2.6-SVC-007 P0 machine delete conflict uses real installation FK")
++  void machineDeleteConflictUsesRealInstallationFk() {
++    var plant = plant("GM1");
++    var machine = machine(plant, "BF-08410");
++    var sparepart = sparepart("PLC-WECON-LX5");
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), 1_000_000L, 1_200L, null));
++
++    assertThatThrownBy(() -> jdbc.update("DELETE FROM machines WHERE id = ?", machine.getId()))
++        .isInstanceOf(DataIntegrityViolationException.class);
++  }
++
++  @Test
++  @DisplayName("2.6-SVC-008 P0 sparepart delete conflict uses real installation FK")
++  void sparepartDeleteConflictUsesRealInstallationFk() {
++    var plant = plant("GM1");
++    var machine = machine(plant, "BF-08410");
++    var sparepart = sparepart("PLC-WECON-LX5");
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), 1_000_000L, 1_200L, null));
++
++    assertThatThrownBy(() -> jdbc.update("DELETE FROM spareparts WHERE id = ?", sparepart.getId()))
++        .isInstanceOf(DataIntegrityViolationException.class);
++  }
++
++  @Test
++  @DisplayName("2.6-SVC-009 P0 database constraints reject invalid persisted values")
++  void databaseConstraintsRejectInvalidValues() {
++    var plant = plant("GM1");
++    var machine = machine(plant, "BF-08410");
++    var sparepart = sparepart("PLC-WECON-LX5");
++    var now = Instant.parse("2026-05-28T00:00:00Z");
++
++    assertThatThrownBy(() -> saveInvalidInstallation(machine, sparepart, 0, 0, 90, now))
++        .isInstanceOf(DataIntegrityViolationException.class);
++    assertThatThrownBy(() -> saveInvalidInstallation(machine, sparepart, 100, -1, 90, now))
++        .isInstanceOf(DataIntegrityViolationException.class);
++    assertThatThrownBy(() -> saveInvalidInstallation(machine, sparepart, 100, 0, 101, now))
++        .isInstanceOf(DataIntegrityViolationException.class);
++  }
++
++  @Test
++  @DisplayName("2.6-SVC-010 P0 duplicate machine sparepart baseline is rejected")
++  void duplicateMachineSparepartBaselineRejected() {
++    var plant = plant("GM1");
++    var machine = machine(plant, "BF-08410");
++    var sparepart = sparepart("PLC-WECON-LX5");
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), 1_000_000L, 1_200L, null));
++
++    assertThatThrownBy(() -> service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), 2_000_000L, 2_400L, 80)))
++        .isInstanceOf(InstallationDataIntegrityException.class);
++  }
++
++  @Test
++  @DisplayName("2.6-SVC-011 P1 list filters and orders installation evidence predictably")
++  void listFiltersAndOrdersInstallationEvidencePredictably() {
++    var plantA = plant("GM1");
++    var plantB = plant("GM2");
++    var machineB = machine(plantB, "BF-08410");
++    var machineA = machine(plantA, "AA-0001");
++    var sparepartB = sparepart("PLC-WECON-LX5");
++    var sparepartA = sparepart("PLC-ABB-001");
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var second = service.create(admin, new InstallationCommand(machineB.getId(), sparepartB.getId(), 1_000_000L, 1_200L, null));
++    var first = service.create(admin, new InstallationCommand(machineA.getId(), sparepartA.getId(), 1_000_000L, 1_200L, null));
++
++    assertThat(service.list(admin, new InstallationFilters(null, null, null, null, 100))).extracting("id").containsExactly(first.id(), second.id());
++    assertThat(service.list(admin, new InstallationFilters(machineA.getId(), null, null, null, 100))).extracting("id").containsExactly(first.id());
++    assertThat(service.list(admin, new InstallationFilters(null, sparepartB.getId(), null, null, 100))).extracting("id").containsExactly(second.id());
++    assertThat(service.list(admin, new InstallationFilters(null, null, plantB.getId(), null, 100))).extracting("id").containsExactly(second.id());
++    assertThat(service.list(admin, new InstallationFilters(null, null, null, machineA.getMachineGroup().getId(), 100))).extracting("id").containsExactly(first.id());
++  }
++
++  @Test
++  @DisplayName("2.6-SVC-012 P1 invalid list limit is rejected")
++  void invalidListLimitRejected() {
++    assertThatThrownBy(() -> new InstallationFilters(null, null, null, null, 0))
++        .isInstanceOf(InstallationValidationException.class);
++    assertThatThrownBy(() -> new InstallationFilters(null, null, null, null, 201))
++        .isInstanceOf(InstallationValidationException.class);
++  }
++
++  private void saveInvalidInstallation(MachineEntity machine, SparepartEntity sparepart, long expectedProductionCount,
++      long baselineCounter, int thresholdPercentage, Instant now) {
++    var transactions = new TransactionTemplate(transactionManager);
++    transactions.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
++    transactions.executeWithoutResult(status -> installations.saveAndFlush(new com.syncro.sparepart.infrastructure.MachineSparepartInstallationEntity(
++        UUID.randomUUID(), machine, sparepart, expectedProductionCount, baselineCounter, thresholdPercentage, now, now, now)));
++  }
++
++  private PlantEntity plant(String code) {
++    var now = Instant.parse("2026-05-28T00:00:00Z");
++    return plants.saveAndFlush(new PlantEntity(UUID.randomUUID(), code, "Plant " + code, now, now));
++  }
++
++  private MachineEntity machine(PlantEntity plant, String code) {
++    var now = Instant.parse("2026-05-28T00:00:00Z");
++    var group = machineGroups.saveAndFlush(new MachineGroupEntity(UUID.randomUUID(), plant, "Forming", now, now));
++    return machines.saveAndFlush(new MachineEntity(UUID.randomUUID(), plant, group, code, "JBF19", MachineStatus.ACTIVE,
++        "Juki", LocalDate.parse("2026-05-28"), null, now, now));
++  }
++
++  private SparepartEntity sparepart(String code) {
++    var now = Instant.parse("2026-05-28T00:00:00Z");
++    var suffix = code.replaceAll("[^A-Z0-9]", "");
++    var category = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.CATEGORY, "ELEC" + suffix, "Electric " + suffix, now, now));
++    var brand = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.BRAND, "WECON" + suffix, "Wecon " + suffix, now, now));
++    var kind = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.KIND, "PLC" + suffix, "PLC " + suffix, now, now));
++    var type = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.TYPE, "LX5" + suffix, "LX5 " + suffix, now, now));
++    return spareparts.saveAndFlush(new SparepartEntity(UUID.randomUUID(), code, "Electric PLC Wecon LX5 " + suffix, category, brand, kind, type, now, now));
++  }
++
++  private AuthenticatedUser persistedUser(ApplicationRole role, String loginIdentifier) {
++    var now = Instant.parse("2026-05-28T00:00:00Z");
++    var user = users.saveAndFlush(new AuthUserEntity(UUID.randomUUID(), loginIdentifier,
++        passwordEncoder.encode("syncro-test-password"), role, true, now, now));
++    return new AuthenticatedUser(user.getId().toString(), user.getLoginIdentifier(), role);
++  }
++
++  private void assign(AuthenticatedUser user, PlantEntity plant) {
++    assignments.saveAndFlush(new AuthUserPlantAssignmentEntity(UUID.fromString(user.id()), plant.getId(), Instant.parse("2026-05-28T00:00:00Z")));
++  }
++
++  private static AuthenticatedUser authenticatedUser(ApplicationRole role) {
++    return new AuthenticatedUser(UUID.randomUUID().toString(), role.name().toLowerCase() + "@syncro.dev", role);
++  }
++}
+diff --git a/syncro/apps/web/.env.example b/syncro/apps/web/.env.example
+index 58fe115..13018e0 100644
+--- a/syncro/apps/web/.env.example
++++ b/syncro/apps/web/.env.example
+@@ -2,4 +2,4 @@ TEST_ENV=local
+ BASE_URL=http://localhost:3001
+ API_URL=http://localhost:8080/api/v1
+ NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+-PLAYWRIGHT_WEB_SERVER_COMMAND=npm run dev
++PLAYWRIGHT_WEB_SERVER_COMMAND=npm run dev -- -p 3001
+diff --git a/syncro/apps/web/playwright.config.ts b/syncro/apps/web/playwright.config.ts
+index 7124095..ca58b1b 100644
+--- a/syncro/apps/web/playwright.config.ts
++++ b/syncro/apps/web/playwright.config.ts
+@@ -1,37 +1,48 @@
+ import { defineConfig, devices } from "@playwright/test";
+ 
+ const baseURL = process.env.BASE_URL ?? "http://localhost:3001";
+-const webServerCommand = process.env.PLAYWRIGHT_WEB_SERVER_COMMAND ?? "npm run dev";
++const webServerCommand =
++  process.env.PLAYWRIGHT_WEB_SERVER_COMMAND ??
++  "node --max-old-space-size=2048 ./node_modules/next/dist/bin/next dev -p 3001";
++const runAllBrowsers = Boolean(process.env.PLAYWRIGHT_ALL_BROWSERS);
++const isCi = Boolean(process.env.CI);
+ 
+ export default defineConfig({
+   testDir: "./tests/e2e",
+-  timeout: 60_000,
+-  fullyParallel: true,
+-  forbidOnly: Boolean(process.env.CI),
+-  retries: process.env.CI ? 2 : 0,
+-  workers: process.env.CI ? 2 : undefined,
++  globalTimeout: isCi ? 20 * 60_000 : 8 * 60_000,
++  timeout: 45_000,
++  expect: { timeout: 7_500 },
++  fullyParallel: false,
++  forbidOnly: isCi,
++  retries: isCi ? 2 : 0,
++  workers: isCi ? 2 : 1,
+   reporter: [["list"], ["html", { open: "never" }], ["junit", { outputFile: "test-results/e2e-junit.xml" }]],
++  preserveOutput: "failures-only",
+   use: {
+     baseURL,
+-    actionTimeout: 15_000,
+-    navigationTimeout: 30_000,
+-    trace: "retain-on-failure",
++    actionTimeout: 10_000,
++    navigationTimeout: 20_000,
++    trace: isCi ? "retain-on-failure" : "off",
+     screenshot: "only-on-failure",
+-    video: "retain-on-failure",
++    video: "off",
+   },
+   projects: [
+     {
+       name: "chromium",
+       use: { ...devices["Desktop Chrome"] },
+     },
+-    {
+-      name: "firefox",
+-      use: { ...devices["Desktop Firefox"] },
+-    },
+-    {
+-      name: "webkit",
+-      use: { ...devices["Desktop Safari"] },
+-    },
++    ...(runAllBrowsers
++      ? [
++          {
++            name: "firefox",
++            use: { ...devices["Desktop Firefox"] },
++          },
++          {
++            name: "webkit",
++            use: { ...devices["Desktop Safari"] },
++          },
++        ]
++      : []),
+   ],
+   webServer: process.env.PLAYWRIGHT_SKIP_WEB_SERVER
+     ? undefined
+diff --git a/syncro/apps/web/src/app/(main)/dashboard/master-data/installations/page.tsx b/syncro/apps/web/src/app/(main)/dashboard/master-data/installations/page.tsx
+index a540f76..f72935f 100644
+--- a/syncro/apps/web/src/app/(main)/dashboard/master-data/installations/page.tsx
++++ b/syncro/apps/web/src/app/(main)/dashboard/master-data/installations/page.tsx
+@@ -1,14 +1,10 @@
+-import { ModulePlaceholder } from "@/components/syncro/module-placeholder";
+ import { RoleGuard } from "@/components/syncro/role-guard";
++import { InstallationManagement } from "@/features/master-data/installations/installation-management";
+ 
+ export default function Page() {
+   return (
+-    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGE"]} title="Installations">
+-      <ModulePlaceholder
+-        title="Installations"
+-        description="Machine sparepart installation shell for lifetime baseline setup."
+-        sections={["Baseline counter", "Expected count", "Threshold percent"]}
+-      />
++    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGE", "VIEWER"]} title="Installations">
++      <InstallationManagement />
+     </RoleGuard>
+   );
+ }
+diff --git a/syncro/apps/web/src/features/master-data/installations/installation-management.tsx b/syncro/apps/web/src/features/master-data/installations/installation-management.tsx
+new file mode 100644
+index 0000000..4133d0a
+--- /dev/null
++++ b/syncro/apps/web/src/features/master-data/installations/installation-management.tsx
+@@ -0,0 +1,808 @@
++"use client";
++
++import { type FormEvent, useEffect, useMemo, useState } from "react";
++
++import { useQueryClient } from "@tanstack/react-query";
++import { Loader2Icon, Trash2, TriangleAlertIcon } from "lucide-react";
++import { toast } from "sonner";
++
++import {
++  AlertDialog,
++  AlertDialogCancel,
++  AlertDialogContent,
++  AlertDialogDescription,
++  AlertDialogFooter,
++  AlertDialogHeader,
++  AlertDialogTitle,
++} from "@/components/ui/alert-dialog";
++import { Badge } from "@/components/ui/badge";
++import { Button } from "@/components/ui/button";
++import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
++import {
++  Dialog,
++  DialogContent,
++  DialogDescription,
++  DialogFooter,
++  DialogHeader,
++  DialogTitle,
++} from "@/components/ui/dialog";
++import { Input } from "@/components/ui/input";
++import { Label } from "@/components/ui/label";
++import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
++import { Skeleton } from "@/components/ui/skeleton";
++import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
++import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
++import type {
++  InstallationRequest,
++  InstallationUpdateRequest,
++  InstallationView,
++  MachineView,
++  PlantView,
++  SparepartView,
++} from "@/lib/api/generated/model";
++import {
++  getListMachineSparepartInstallationsQueryKey,
++  getListMachinesQueryKey,
++  getListSparepartsQueryKey,
++  useCreateMachineSparepartInstallation,
++  useDeleteMachineSparepartInstallation,
++  useListMachineSparepartInstallations,
++  useListMachines,
++  useListPlants,
++  useListSpareparts,
++  useUpdateMachineSparepartInstallation,
++} from "@/lib/api/generated/syncro";
++import { SyncroApiError } from "@/lib/api/orval-mutator";
++import { useAuthUser } from "@/lib/auth/use-auth-user";
++
++type DialogMode = { type: "create"; installation?: never } | { type: "edit"; installation: InstallationView };
++type ErrorResponse = { code: string; message: string; fieldErrors?: Record<string, string> };
++type Filters = { plantId?: string; machineId?: string; sparepartId?: string };
++type InstallationForm = {
++  machineId: string;
++  sparepartId: string;
++  expectedProductionCount: string;
++  baselineCounter: string;
++  thresholdPercentage: string;
++};
++
++const ALL = "__all__";
++const ALL_PLANTS = "all";
++const EMPTY_FORM: InstallationForm = {
++  machineId: "",
++  sparepartId: "",
++  expectedProductionCount: "",
++  baselineCounter: "0",
++  thresholdPercentage: "90",
++};
++
++export function InstallationManagement() {
++  const user = useAuthUser();
++  const plantScope = usePlantScope();
++  const scope = plantScope.scope;
++  const activePlantId = plantScope.activePlantId;
++  const queryClient = useQueryClient();
++  const isAssignedEmpty = scope?.mode === "EMPTY";
++  const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGE";
++  const [filters, setFilters] = useState<Filters>({ plantId: normalizePlantId(activePlantId) });
++  const plants = useListPlants({ query: { enabled: Boolean(scope) && !isAssignedEmpty } });
++  const plantItems = plants.data?.data.items ?? [];
++  const availablePlants = useMemo(() => permittedPlants(plantItems, scope), [plantItems, scope]);
++  const selectedPlantId = normalizePlantId(activePlantId);
++  const filterPlantId = normalizePlantId(filters.plantId);
++  const machinePlantId = filterPlantId ?? selectedPlantId ?? availablePlants[0]?.id ?? "";
++  const machines = useListMachines(
++    { plantId: machinePlantId || undefined },
++    {
++      query: {
++        enabled: Boolean(machinePlantId) && !isAssignedEmpty,
++        queryKey: ["machines", "installations", machinePlantId],
++      },
++    },
++  );
++  const spareparts = useListSpareparts();
++  const machineItems = machines.data?.data.items ?? [];
++  const sparepartItems = spareparts.data?.data.items ?? [];
++  const installationParams = {
++    plantId: filterPlantId,
++    machineId: machineItems.some((machine) => machine.id === filters.machineId) ? filters.machineId : undefined,
++    sparepartId: filters.sparepartId,
++    limit: 100,
++  };
++  const installations = useListMachineSparepartInstallations(installationParams, {
++    query: {
++      enabled: Boolean(scope) && !isAssignedEmpty && availablePlants.length > 0,
++      queryKey: [
++        "machine-sparepart-installations",
++        activePlantId,
++        filters.plantId ?? ALL,
++        installationParams.machineId,
++        filters.sparepartId,
++      ],
++    },
++  });
++  const createInstallation = useCreateMachineSparepartInstallation({
++    mutation: { onSuccess: invalidateInstallationData },
++  });
++  const updateInstallation = useUpdateMachineSparepartInstallation({
++    mutation: { onSuccess: invalidateInstallationData },
++  });
++  const deleteInstallation = useDeleteMachineSparepartInstallation({
++    mutation: { onSuccess: invalidateInstallationData },
++  });
++  const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
++  const [form, setForm] = useState<InstallationForm>(EMPTY_FORM);
++  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
++  const [formError, setFormError] = useState<string | null>(null);
++  const [deleteTarget, setDeleteTarget] = useState<InstallationView | null>(null);
++  const [deleteError, setDeleteError] = useState<string | null>(null);
++  const installationItems = installations.data?.data.items ?? [];
++  const isLoading = plants.isLoading || machines.isLoading || spareparts.isLoading || installations.isLoading;
++  const isSaving = createInstallation.isPending || updateInstallation.isPending;
++  const loadError = [plants.error, machines.error, spareparts.error, installations.error]
++    .map(errorResponse)
++    .find((error) => error?.code === "FORBIDDEN");
++
++  useEffect(() => {
++    if (!filters.plantId && activePlantId) {
++      setFilters((current) => ({ ...current, plantId: activePlantId }));
++    }
++  }, [activePlantId, filters.plantId]);
++
++  function invalidateInstallationData() {
++    queryClient.invalidateQueries({ queryKey: ["machine-sparepart-installations", activePlantId] });
++    queryClient.invalidateQueries({ queryKey: getListMachineSparepartInstallationsQueryKey(installationParams) });
++    queryClient.invalidateQueries({ queryKey: getListMachinesQueryKey({ plantId: machinePlantId || undefined }) });
++    queryClient.invalidateQueries({ queryKey: getListSparepartsQueryKey() });
++  }
++
++  function openCreateDialog() {
++    setDialogMode({ type: "create" });
++    setForm({ ...EMPTY_FORM, machineId: machineItems[0]?.id ?? "", sparepartId: sparepartItems[0]?.id ?? "" });
++    setFieldErrors({});
++    setFormError(null);
++  }
++
++  function openEditDialog(installation: InstallationView) {
++    setDialogMode({ type: "edit", installation });
++    setForm({
++      machineId: installation.machineId ?? "",
++      sparepartId: installation.sparepartId ?? "",
++      expectedProductionCount: String(installation.expectedProductionCount ?? ""),
++      baselineCounter: String(installation.baselineCounter ?? "0"),
++      thresholdPercentage: String(installation.thresholdPercentage ?? "90"),
++    });
++    setFieldErrors({});
++    setFormError(null);
++  }
++
++  async function submitInstallation(event: FormEvent<HTMLFormElement>) {
++    event.preventDefault();
++    setFieldErrors({});
++    setFormError(null);
++
++    try {
++      const parsed = parseLifetimeFields(form);
++      if (!parsed.ok) {
++        setFieldErrors(parsed.fieldErrors);
++        return;
++      }
++      if (dialogMode?.type === "edit") {
++        const payload = updatePayload(form, parsed.values);
++        await updateInstallation.mutateAsync({ installationId: dialogMode.installation.id ?? "", data: payload });
++        toast.success("Installation updated.");
++      } else {
++        const payload = createPayload(form, parsed.values);
++        await createInstallation.mutateAsync({ data: payload });
++        toast.success("Installation created.");
++      }
++      setDialogMode(null);
++    } catch (error) {
++      const response = errorResponse(error);
++      setFieldErrors(response?.fieldErrors ?? {});
++      setFormError(response?.message ?? "Installation request failed.");
++      toast.error(response?.message ?? "Installation request failed.");
++    }
++  }
++
++  async function confirmDelete() {
++    if (!deleteTarget) {
++      return;
++    }
++    setDeleteError(null);
++
++    try {
++      await deleteInstallation.mutateAsync({ installationId: deleteTarget.id ?? "" });
++      toast.success("Installation deleted.");
++      setDeleteTarget(null);
++    } catch (error) {
++      const message = errorResponse(error)?.message ?? "Installation delete failed.";
++      setDeleteError(message);
++      toast.error(message);
++    }
++  }
++
++  const canCreate = canMutate && machineItems.length > 0 && sparepartItems.length > 0 && !isAssignedEmpty;
++
++  return (
++    <Card>
++      <CardHeader>
++        <CardTitle>Machine sparepart installations</CardTitle>
++        <CardDescription>Capture lifetime baseline counters for installed spareparts on machines.</CardDescription>
++        <CardAction>
++          <div className="flex flex-wrap items-center gap-2">
++            {!canMutate ? <Badge variant="secondary">Read-only</Badge> : null}
++            {canMutate ? (
++              <Button onClick={openCreateDialog} disabled={!canCreate || isLoading}>
++                Create installation
++              </Button>
++            ) : null}
++          </div>
++        </CardAction>
++      </CardHeader>
++      <CardContent className="space-y-4">
++        {isAssignedEmpty ? (
++          <InstallationState title="No plant assignment" description="Your account has no assigned plant scope." />
++        ) : null}
++        {isLoading ? <InstallationSkeleton /> : null}
++        {plants.isError || machines.isError || spareparts.isError || installations.isError ? (
++          <InstallationState
++            title={loadError ? "Installations access is forbidden" : "Installations could not be loaded"}
++            description={loadError?.message ?? "Refresh data or contact administrator if access should be available."}
++            action={
++              <Button
++                variant="outline"
++                onClick={() =>
++                  void Promise.all([
++                    plants.refetch(),
++                    machines.refetch(),
++                    spareparts.refetch(),
++                    installations.refetch(),
++                  ])
++                }
++              >
++                Retry
++              </Button>
++            }
++          />
++        ) : null}
++        {!isLoading && !isAssignedEmpty && availablePlants.length === 0 ? (
++          <InstallationState
++            title="No plants available"
++            description="Create or assign a plant before installing spareparts."
++          />
++        ) : null}
++        {!isLoading && !isAssignedEmpty && availablePlants.length > 0 && machineItems.length === 0 ? (
++          <InstallationState
++            title="No machines available"
++            description="Create a machine before installing spareparts."
++          />
++        ) : null}
++        {!isLoading && !spareparts.isError && sparepartItems.length === 0 ? (
++          <InstallationState
++            title="No spareparts available"
++            description="Create spareparts before installing them on machines."
++          />
++        ) : null}
++        {!isLoading && availablePlants.length > 0 && machineItems.length > 0 && sparepartItems.length > 0 ? (
++          <InstallationFilters
++            plants={availablePlants}
++            machines={machineItems}
++            spareparts={sparepartItems}
++            filters={filters}
++            onChange={setFilters}
++          />
++        ) : null}
++        {!isLoading &&
++        !installations.isError &&
++        installationItems.length === 0 &&
++        machineItems.length > 0 &&
++        sparepartItems.length > 0 ? (
++          <InstallationState
++            title="No installations yet"
++            description="Create the first baseline installation or adjust filters."
++          />
++        ) : null}
++        {!isLoading && !installations.isError && installationItems.length > 0 ? (
++          <InstallationTable
++            items={installationItems}
++            canMutate={canMutate}
++            onEdit={openEditDialog}
++            onDelete={(installation) => {
++              setDeleteError(null);
++              setDeleteTarget(installation);
++            }}
++          />
++        ) : null}
++      </CardContent>
++
++      <Dialog open={dialogMode !== null} onOpenChange={(open) => !open && setDialogMode(null)}>
++        <DialogContent className="max-w-2xl">
++          <form onSubmit={submitInstallation} className="space-y-4">
++            <DialogHeader>
++              <DialogTitle>{dialogMode?.type === "edit" ? "Edit installation" : "Create installation"}</DialogTitle>
++              <DialogDescription>
++                Lifetime consumption is counter-based from current counter minus baseline counter.
++              </DialogDescription>
++            </DialogHeader>
++            {formError ? (
++              <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{formError}</p>
++            ) : null}
++            <div className="grid gap-4 sm:grid-cols-2">
++              <MachineSelect
++                value={form.machineId}
++                error={fieldErrors.machineId}
++                disabled={isSaving || dialogMode?.type === "edit"}
++                items={machineItems}
++                onChange={(machineId) => setForm((current) => ({ ...current, machineId }))}
++              />
++              <SparepartSelect
++                value={form.sparepartId}
++                error={fieldErrors.sparepartId}
++                disabled={isSaving || dialogMode?.type === "edit"}
++                items={sparepartItems}
++                onChange={(sparepartId) => setForm((current) => ({ ...current, sparepartId }))}
++              />
++              <NumberField
++                id="installation-expected-count"
++                label="Expected production count"
++                value={form.expectedProductionCount}
++                error={fieldErrors.expectedProductionCount}
++                disabled={isSaving}
++                min={1}
++                onChange={(expectedProductionCount) => setForm((current) => ({ ...current, expectedProductionCount }))}
++              />
++              <NumberField
++                id="installation-baseline-counter"
++                label="Baseline counter"
++                value={form.baselineCounter}
++                error={fieldErrors.baselineCounter}
++                disabled={isSaving}
++                min={0}
++                onChange={(baselineCounter) => setForm((current) => ({ ...current, baselineCounter }))}
++              />
++              <NumberField
++                id="installation-threshold"
++                label="Threshold percentage"
++                value={form.thresholdPercentage}
++                error={fieldErrors.thresholdPercentage}
++                disabled={isSaving}
++                min={1}
++                max={100}
++                onChange={(thresholdPercentage) => setForm((current) => ({ ...current, thresholdPercentage }))}
++              />
++            </div>
++            <DialogFooter>
++              <Button type="button" variant="outline" onClick={() => setDialogMode(null)} disabled={isSaving}>
++                Cancel
++              </Button>
++              <Button type="submit" disabled={isSaving || !form.machineId || !form.sparepartId}>
++                {isSaving ? <Loader2Icon className="animate-spin" /> : null}
++                Save installation
++              </Button>
++            </DialogFooter>
++          </form>
++        </DialogContent>
++      </Dialog>
++
++      <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
++        <AlertDialogContent>
++          <AlertDialogHeader>
++            <AlertDialogTitle>Delete installation?</AlertDialogTitle>
++            <AlertDialogDescription>
++              This removes the baseline for {deleteTarget?.machineCode} ┬À {deleteTarget?.sparepartCode}. Future alert or
++              audit records may block deletion.
++            </AlertDialogDescription>
++            {deleteError ? (
++              <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{deleteError}</p>
++            ) : null}
++          </AlertDialogHeader>
++          <AlertDialogFooter>
++            <AlertDialogCancel disabled={deleteInstallation.isPending}>Cancel</AlertDialogCancel>
++            <Button variant="destructive" onClick={confirmDelete} disabled={deleteInstallation.isPending}>
++              {deleteInstallation.isPending ? <Loader2Icon className="animate-spin" /> : null}
++              Delete installation
++            </Button>
++          </AlertDialogFooter>
++        </AlertDialogContent>
++      </AlertDialog>
++    </Card>
++  );
++}
++
++function InstallationFilters({
++  plants,
++  machines,
++  spareparts,
++  filters,
++  onChange,
++}: {
++  plants: PlantView[];
++  machines: MachineView[];
++  spareparts: SparepartView[];
++  filters: Filters;
++  onChange: (filters: Filters) => void;
++}) {
++  return (
++    <div className="grid gap-3 rounded-lg border p-3 md:grid-cols-3">
++      <Select
++        value={filters.plantId ?? ALL}
++        onValueChange={(plantId) =>
++          onChange({
++            plantId: plantId === ALL ? undefined : plantId,
++            machineId: undefined,
++            sparepartId: filters.sparepartId,
++          })
++        }
++      >
++        <SelectTrigger>
++          <SelectValue placeholder="Plant" />
++        </SelectTrigger>
++        <SelectContent>
++          <SelectItem value={ALL}>All plants</SelectItem>
++          {plants
++            .filter((plant) => plant.id)
++            .map((plant) => (
++              <SelectItem key={plant.id} value={plant.id ?? ""}>
++                {plant.code} ┬À {plant.name}
++              </SelectItem>
++            ))}
++        </SelectContent>
++      </Select>
++      <Select
++        value={filters.machineId ?? ALL}
++        onValueChange={(machineId) => onChange({ ...filters, machineId: machineId === ALL ? undefined : machineId })}
++      >
++        <SelectTrigger>
++          <SelectValue placeholder="Machine" />
++        </SelectTrigger>
++        <SelectContent>
++          <SelectItem value={ALL}>All machines</SelectItem>
++          {machines
++            .filter((machine) => machine.id)
++            .map((machine) => (
++              <SelectItem key={machine.id} value={machine.id ?? ""}>
++                {machine.code} ┬À {machine.name || "Unnamed"}
++              </SelectItem>
++            ))}
++        </SelectContent>
++      </Select>
++      <Select
++        value={filters.sparepartId ?? ALL}
++        onValueChange={(sparepartId) =>
++          onChange({ ...filters, sparepartId: sparepartId === ALL ? undefined : sparepartId })
++        }
++      >
++        <SelectTrigger>
++          <SelectValue placeholder="Sparepart" />
++        </SelectTrigger>
++        <SelectContent>
++          <SelectItem value={ALL}>All spareparts</SelectItem>
++          {spareparts
++            .filter((sparepart) => sparepart.id)
++            .map((sparepart) => (
++              <SelectItem key={sparepart.id} value={sparepart.id ?? ""}>
++                {sparepart.code} ┬À {sparepart.name}
++              </SelectItem>
++            ))}
++        </SelectContent>
++      </Select>
++    </div>
++  );
++}
++
++function InstallationTable({
++  items,
++  canMutate,
++  onEdit,
++  onDelete,
++}: {
++  items: InstallationView[];
++  canMutate: boolean;
++  onEdit: (installation: InstallationView) => void;
++  onDelete: (installation: InstallationView) => void;
++}) {
++  return (
++    <div className="overflow-x-auto rounded-lg border">
++      <Table>
++        <TableHeader>
++          <TableRow>
++            <TableHead>Plant</TableHead>
++            <TableHead>Group</TableHead>
++            <TableHead>Machine</TableHead>
++            <TableHead>Sparepart</TableHead>
++            <TableHead>Expected</TableHead>
++            <TableHead>Baseline</TableHead>
++            <TableHead>Current</TableHead>
++            <TableHead>Consumed</TableHead>
++            <TableHead>Threshold</TableHead>
++            <TableHead>Basis</TableHead>
++            <TableHead>Created</TableHead>
++            <TableHead>Updated</TableHead>
++            <TableHead className="text-right">Actions</TableHead>
++          </TableRow>
++        </TableHeader>
++        <TableBody>
++          {items.map((installation) => (
++            <TableRow key={installation.id ?? `${installation.machineId}-${installation.sparepartId}`}>
++              <TableCell>
++                {installation.plantCode} ┬À {installation.plantName}
++              </TableCell>
++              <TableCell>{installation.machineGroupName ?? "-"}</TableCell>
++              <TableCell>
++                <div className="font-medium">{installation.machineCode}</div>
++                <div className="text-muted-foreground text-xs">{installation.machineName || "Unnamed"}</div>
++              </TableCell>
++              <TableCell>
++                <div className="font-medium">{installation.sparepartCode}</div>
++                <div className="text-muted-foreground text-xs">{installation.sparepartName}</div>
++                <div className="text-muted-foreground text-xs">
++                  {[
++                    installation.category?.name,
++                    installation.brand?.name,
++                    installation.kind?.name,
++                    installation.type?.name,
++                  ]
++                    .filter(Boolean)
++                    .join(" / ")}
++                </div>
++              </TableCell>
++              <TableCell>{formatNumber(installation.expectedProductionCount)}</TableCell>
++              <TableCell>{formatNumber(installation.baselineCounter)}</TableCell>
++              <TableCell>{formatNullableNumber(installation.currentCount)}</TableCell>
++              <TableCell>{formatConsumed(installation)}</TableCell>
++              <TableCell>{installation.thresholdPercentage ?? "-"}%</TableCell>
++              <TableCell>
++                <Badge variant="secondary">{installation.calculationBasis ?? "COUNTER_BASED"}</Badge>
++              </TableCell>
++              <TableCell>{installation.createdAt ? formatDateTime(installation.createdAt) : "-"}</TableCell>
++              <TableCell>{installation.updatedAt ? formatDateTime(installation.updatedAt) : "-"}</TableCell>
++              <TableCell className="text-right">
++                {canMutate ? (
++                  <div className="flex justify-end gap-2">
++                    <Button variant="outline" size="sm" onClick={() => onEdit(installation)}>
++                      Edit
++                    </Button>
++                    <Button variant="destructive" size="sm" onClick={() => onDelete(installation)}>
++                      <Trash2 />
++                      Delete
++                    </Button>
++                  </div>
++                ) : (
++                  <Badge variant="secondary">View only</Badge>
++                )}
++              </TableCell>
++            </TableRow>
++          ))}
++        </TableBody>
++      </Table>
++    </div>
++  );
++}
++
++function MachineSelect({
++  value,
++  error,
++  disabled,
++  items,
++  onChange,
++}: {
++  value: string;
++  error?: string;
++  disabled?: boolean;
++  items: MachineView[];
++  onChange: (value: string) => void;
++}) {
++  return (
++    <div className="grid gap-2">
++      <Label>Machine</Label>
++      <Select value={value} onValueChange={onChange} disabled={disabled ?? items.length === 0}>
++        <SelectTrigger aria-invalid={Boolean(error)}>
++          <SelectValue placeholder="Select machine" />
++        </SelectTrigger>
++        <SelectContent>
++          {items.map((machine) => (
++            <SelectItem key={machine.id ?? machine.code} value={machine.id ?? ""}>
++              {machine.code} ┬À {machine.name || "Unnamed"}
++            </SelectItem>
++          ))}
++        </SelectContent>
++      </Select>
++      {error ? <p className="text-destructive text-sm">{error}</p> : null}
++    </div>
++  );
++}
++
++function SparepartSelect({
++  value,
++  error,
++  disabled,
++  items,
++  onChange,
++}: {
++  value: string;
++  error?: string;
++  disabled?: boolean;
++  items: SparepartView[];
++  onChange: (value: string) => void;
++}) {
++  return (
++    <div className="grid gap-2">
++      <Label>Sparepart</Label>
++      <Select value={value} onValueChange={onChange} disabled={disabled ?? items.length === 0}>
++        <SelectTrigger aria-invalid={Boolean(error)}>
++          <SelectValue placeholder="Select sparepart" />
++        </SelectTrigger>
++        <SelectContent>
++          {items.map((sparepart) => (
++            <SelectItem key={sparepart.id ?? sparepart.code} value={sparepart.id ?? ""}>
++              {sparepart.code} ┬À {sparepart.name}
++            </SelectItem>
++          ))}
++        </SelectContent>
++      </Select>
++      {error ? <p className="text-destructive text-sm">{error}</p> : null}
++    </div>
++  );
++}
++
++function NumberField({
++  id,
++  label,
++  value,
++  error,
++  disabled,
++  min,
++  max,
++  onChange,
++}: {
++  id: string;
++  label: string;
++  value: string;
++  error?: string;
++  disabled?: boolean;
++  min: number;
++  max?: number;
++  onChange: (value: string) => void;
++}) {
++  return (
++    <div className="grid gap-2">
++      <Label htmlFor={id}>{label}</Label>
++      <Input
++        id={id}
++        type="number"
++        min={min}
++        max={max}
++        value={value}
++        onChange={(event) => onChange(event.target.value)}
++        aria-invalid={Boolean(error)}
++        disabled={disabled}
++      />
++      {error ? <p className="text-destructive text-sm">{error}</p> : null}
++    </div>
++  );
++}
++
++function InstallationState({
++  title,
++  description,
++  action,
++}: {
++  title: string;
++  description: string;
++  action?: React.ReactNode;
++}) {
++  return (
++    <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-6 text-center">
++      <TriangleAlertIcon className="size-8 text-muted-foreground" />
++      <div>
++        <h2 className="font-medium">{title}</h2>
++        <p className="text-muted-foreground text-sm">{description}</p>
++      </div>
++      {action}
++    </div>
++  );
++}
++
++function InstallationSkeleton() {
++  return (
++    <div className="space-y-3">
++      <Skeleton className="h-10 w-full" />
++      <Skeleton className="h-12 w-full" />
++      <Skeleton className="h-12 w-full" />
++      <Skeleton className="h-12 w-full" />
++    </div>
++  );
++}
++
++function normalizePlantId(plantId: string | undefined) {
++  return plantId === ALL || plantId === ALL_PLANTS ? undefined : plantId;
++}
++
++function permittedPlants(plants: PlantView[], scope: ReturnType<typeof usePlantScope>["scope"]) {
++  if (!scope || scope.mode === "EMPTY") {
++    return [];
++  }
++  if (scope.mode === "UNRESTRICTED") {
++    return plants;
++  }
++  const assignedIds = new Set((scope.availablePlants ?? []).map((plant) => plant.id));
++  return plants.filter((plant) => plant.id && assignedIds.has(plant.id));
++}
++
++type ParsedLifetimeFields = {
++  expectedProductionCount: number;
++  baselineCounter: number;
++  thresholdPercentage: number;
++};
++
++type ParseResult = { ok: true; values: ParsedLifetimeFields } | { ok: false; fieldErrors: Record<string, string> };
++
++function createPayload(form: InstallationForm, values: ParsedLifetimeFields): InstallationRequest {
++  return {
++    machineId: form.machineId,
++    sparepartId: form.sparepartId,
++    ...values,
++  };
++}
++
++function updatePayload(_form: InstallationForm, values: ParsedLifetimeFields): InstallationUpdateRequest {
++  return values;
++}
++
++function parseLifetimeFields(form: InstallationForm): ParseResult {
++  const fieldErrors: Record<string, string> = {};
++  const expectedProductionCount = parseRequiredNumber(form.expectedProductionCount);
++  const baselineCounter = parseRequiredNumber(form.baselineCounter);
++  const thresholdPercentage = parseRequiredNumber(form.thresholdPercentage);
++
++  if (expectedProductionCount === null || expectedProductionCount < 1) {
++    fieldErrors.expectedProductionCount = "Expected production count is required and must be positive.";
++  }
++  if (baselineCounter === null || baselineCounter < 0) {
++    fieldErrors.baselineCounter = "Baseline counter is required and cannot be negative.";
++  }
++  if (thresholdPercentage === null || thresholdPercentage < 1 || thresholdPercentage > 100) {
++    fieldErrors.thresholdPercentage = "Threshold percentage is required and must be between 1 and 100.";
++  }
++
++  if (Object.keys(fieldErrors).length > 0) {
++    return { ok: false, fieldErrors };
++  }
++
++  return { ok: true, values: { expectedProductionCount, baselineCounter, thresholdPercentage } };
++}
++
++function parseRequiredNumber(value: string) {
++  if (!value.trim()) {
++    return null;
++  }
++  return Number(value);
++}
++
++function errorResponse(error: unknown): ErrorResponse | null {
++  if (!(error instanceof SyncroApiError) || !error.payload || typeof error.payload !== "object") {
++    return null;
++  }
++  const payload = error.payload as ErrorResponse;
++  return typeof payload.code === "string" && typeof payload.message === "string" ? payload : null;
++}
++
++function formatNumber(value: number | undefined) {
++  return typeof value === "number" ? new Intl.NumberFormat("en").format(value) : "-";
++}
++
++function formatNullableNumber(value: number | undefined) {
++  return typeof value === "number" ? formatNumber(value) : "Not available";
++}
++
++function formatConsumed(installation: InstallationView) {
++  if (typeof installation.consumedProductionCount !== "number" || typeof installation.consumedPercentage !== "number") {
++    return "Not available";
++  }
++  return `${formatNumber(installation.consumedProductionCount)} (${installation.consumedPercentage.toFixed(2)}%)`;
++}
++
++function formatDateTime(value: string) {
++  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
++}
+diff --git a/syncro/apps/web/tests/api/machine-sparepart-installations-atdd.spec.ts b/syncro/apps/web/tests/api/machine-sparepart-installations-atdd.spec.ts
+new file mode 100644
+index 0000000..00c8df1
+--- /dev/null
++++ b/syncro/apps/web/tests/api/machine-sparepart-installations-atdd.spec.ts
+@@ -0,0 +1,357 @@
++import type { APIResponse } from "@playwright/test";
++import { expect, test } from "@playwright/test";
++
++import type {
++  InstallationRequest,
++  InstallationUpdateRequest,
++  InstallationView,
++} from "../../src/lib/api/generated/model";
++
++const API_BASE = process.env.SYNCRO_API_BASE_URL ?? "http://localhost:8080";
++const INSTALLATIONS_URL = `${API_BASE}/api/v1/machine-sparepart-installations`;
++const MACHINES_URL = `${API_BASE}/api/v1/machines`;
++const SPAREPARTS_URL = `${API_BASE}/api/v1/spareparts`;
++
++type RoleName = "SUPER_ADMIN" | "MANAGE" | "VIEWER";
++
++function authHeaders(role: RoleName) {
++  return {
++    Authorization: `Bearer ${process.env[`SYNCRO_ATDD_${role}_TOKEN`] ?? `${role.toLowerCase()}-token-red-phase`}`,
++    "Content-Type": "application/json",
++  };
++}
++
++function installationPayload(overrides: Partial<InstallationRequest> = {}): InstallationRequest {
++  return {
++    machineId: overrides.machineId ?? "11111111-1111-4111-8111-111111111126",
++    sparepartId: overrides.sparepartId ?? "22222222-2222-4222-8222-222222222226",
++    expectedProductionCount: overrides.expectedProductionCount ?? 1_000_000,
++    baselineCounter: overrides.baselineCounter ?? 42_000,
++    ...(Object.hasOwn(overrides, "thresholdPercentage") ? { thresholdPercentage: overrides.thresholdPercentage } : {}),
++  };
++}
++
++function installationUpdatePayload(overrides: Partial<InstallationUpdateRequest> = {}): InstallationUpdateRequest {
++  return {
++    expectedProductionCount: overrides.expectedProductionCount ?? 1_500_000,
++    baselineCounter: overrides.baselineCounter ?? 12_000,
++    thresholdPercentage: overrides.thresholdPercentage ?? 80,
++  };
++}
++
++test.describe("Story 2.6 ATDD API RED-PHASE scaffold: machine sparepart installations", () => {
++  test.skip("2.6-ATDD-API-001 P0 SUPER_ADMIN creates installation and response includes persisted baseline lifetime fields", async ({
++    request,
++  }) => {
++    const payload = installationPayload({ expectedProductionCount: 1_000_000, baselineCounter: 42_000 });
++
++    const createResponse = await request.post(INSTALLATIONS_URL, {
++      headers: authHeaders("SUPER_ADMIN"),
++      data: payload,
++    });
++
++    expect(createResponse.status()).toBe(201);
++    const created: InstallationView = await createResponse.json();
++    expect(created).toMatchObject({
++      expectedProductionCount: payload.expectedProductionCount,
++      baselineCounter: payload.baselineCounter,
++      thresholdPercentage: 90,
++      calculationBasis: "COUNTER_BASED",
++      currentCount: null,
++      consumedProductionCount: null,
++      consumedPercentage: null,
++    });
++    expect(created.machineId).toBe(payload.machineId);
++    expect(created.sparepartId).toBe(payload.sparepartId);
++    expect(created.createdAt).toEqual(expect.any(String));
++    expect(created.updatedAt).toEqual(expect.any(String));
++  });
++
++  test.skip("2.6-ATDD-API-002 P0 MANAGE creates installation with threshold override and VIEWER can read within plant scope", async ({
++    request,
++  }) => {
++    const payload = installationPayload({ thresholdPercentage: 75 });
++    const createResponse = await request.post(INSTALLATIONS_URL, { headers: authHeaders("MANAGE"), data: payload });
++    expect(createResponse.status()).toBe(201);
++    const created: InstallationView = await createResponse.json();
++    expect(created.thresholdPercentage).toBe(75);
++
++    const detailResponse = await request.get(`${INSTALLATIONS_URL}/${created.id}`, { headers: authHeaders("VIEWER") });
++    expect(detailResponse.status()).toBe(200);
++    await expectJsonMatches(detailResponse, { id: created.id, thresholdPercentage: 75 });
++  });
++
++  test.skip("2.6-ATDD-API-003 P0 defaults threshold to 90 when omitted or null", async ({ request }) => {
++    const omittedResponse = await request.post(INSTALLATIONS_URL, {
++      headers: authHeaders("MANAGE"),
++      data: installationPayload(),
++    });
++    expect(omittedResponse.status()).toBe(201);
++    await expectJsonMatches(omittedResponse, { thresholdPercentage: 90 });
++
++    const nullResponse = await request.post(INSTALLATIONS_URL, {
++      headers: authHeaders("MANAGE"),
++      data: installationPayload({ thresholdPercentage: null }),
++    });
++    expect(nullResponse.status()).toBe(201);
++    await expectJsonMatches(nullResponse, { thresholdPercentage: 90 });
++  });
++
++  test.skip("2.6-ATDD-API-004 P0 rejects invalid lifetime numeric ranges with safe validation shape", async ({
++    request,
++  }) => {
++    await expectStatus(
++      request.post(INSTALLATIONS_URL, {
++        headers: authHeaders("MANAGE"),
++        data: installationPayload({ expectedProductionCount: 0 }),
++      }),
++      400,
++    );
++    await expectStatus(
++      request.post(INSTALLATIONS_URL, {
++        headers: authHeaders("MANAGE"),
++        data: installationPayload({ baselineCounter: -1 }),
++      }),
++      400,
++    );
++    await expectStatus(
++      request.post(INSTALLATIONS_URL, {
++        headers: authHeaders("MANAGE"),
++        data: installationPayload({ thresholdPercentage: 0 }),
++      }),
++      400,
++    );
++    await expectStatus(
++      request.post(INSTALLATIONS_URL, {
++        headers: authHeaders("MANAGE"),
++        data: installationPayload({ thresholdPercentage: 101 }),
++      }),
++      400,
++    );
++  });
++
++  test.skip("2.6-ATDD-API-005 P0 rejects missing ids malformed JSON invalid UUID path and unknown references safely", async ({
++    request,
++  }) => {
++    await expectStatus(
++      request.post(INSTALLATIONS_URL, {
++        headers: authHeaders("MANAGE"),
++        data: { ...installationPayload(), machineId: null },
++      }),
++      400,
++    );
++    await expectStatus(
++      request.post(INSTALLATIONS_URL, {
++        headers: { ...authHeaders("MANAGE"), "Content-Type": "application/json" },
++        data: "{ malformed-json",
++      }),
++      400,
++    );
++    await expectStatus(request.get(`${INSTALLATIONS_URL}/not-a-uuid`, { headers: authHeaders("MANAGE") }), 400);
++    await expectStatus(
++      request.post(INSTALLATIONS_URL, {
++        headers: authHeaders("MANAGE"),
++        data: installationPayload({ machineId: "99999999-9999-4999-8999-999999999999" }),
++      }),
++      404,
++    );
++    await expectStatus(
++      request.post(INSTALLATIONS_URL, {
++        headers: authHeaders("MANAGE"),
++        data: installationPayload({ sparepartId: "88888888-8888-4888-8888-888888888888" }),
++      }),
++      404,
++    );
++  });
++
++  test.skip("2.6-ATDD-API-006 P0 lists installation evidence with machine plant group sparepart taxonomy and nullable current-count fields", async ({
++    request,
++  }) => {
++    const response = await request.get(INSTALLATIONS_URL, { headers: authHeaders("VIEWER") });
++
++    expect(response.status()).toBe(200);
++    const body = await response.json();
++    expect(body.items).toEqual(
++      expect.arrayContaining([
++        expect.objectContaining({
++          machineId: expect.any(String),
++          machineCode: expect.any(String),
++          plantId: expect.any(String),
++          sparepartId: expect.any(String),
++          sparepartCode: expect.any(String),
++          category: expect.any(Object),
++          expectedProductionCount: expect.any(Number),
++          baselineCounter: expect.any(Number),
++          thresholdPercentage: expect.any(Number),
++          calculationBasis: "COUNTER_BASED",
++          currentCount: null,
++          consumedProductionCount: null,
++          consumedPercentage: null,
++        }),
++      ]),
++    );
++  });
++
++  test.skip("2.6-ATDD-API-007 P0 updates lifetime fields without relinking machine or sparepart", async ({
++    request,
++  }) => {
++    const installationId = "00000000-0000-4000-8000-000000000226";
++    const updateResponse = await request.put(`${INSTALLATIONS_URL}/${installationId}`, {
++      headers: authHeaders("MANAGE"),
++      data: {
++        expectedProductionCount: 2_500_000,
++        baselineCounter: 80_000,
++        thresholdPercentage: 85,
++      },
++    });
++
++    expect(updateResponse.status()).toBe(200);
++    const updated: InstallationView = await updateResponse.json();
++    expect(updated).toMatchObject({
++      id: installationId,
++      expectedProductionCount: 2_500_000,
++      baselineCounter: 80_000,
++      thresholdPercentage: 85,
++    });
++    expect(updated.machineId).toEqual(expect.any(String));
++    expect(updated.sparepartId).toEqual(expect.any(String));
++  });
++
++  test.skip("2.6-ATDD-API-008 P0 deletes installation without dependents and subsequent get returns safe not found", async ({
++    request,
++  }) => {
++    const installationId = "00000000-0000-4000-8000-000000000227";
++    await expectStatus(
++      request.delete(`${INSTALLATIONS_URL}/${installationId}`, { headers: authHeaders("SUPER_ADMIN") }),
++      204,
++    );
++    await expectStatus(
++      request.get(`${INSTALLATIONS_URL}/${installationId}`, { headers: authHeaders("SUPER_ADMIN") }),
++      404,
++    );
++  });
++
++  test.skip("2.6-ATDD-API-009 P0 denies VIEWER create update and delete with safe forbidden response", async ({
++    request,
++  }) => {
++    await expectStatus(
++      request.post(INSTALLATIONS_URL, { headers: authHeaders("VIEWER"), data: installationPayload() }),
++      403,
++    );
++    await expectStatus(
++      request.put(`${INSTALLATIONS_URL}/00000000-0000-4000-8000-000000000228`, {
++        headers: authHeaders("VIEWER"),
++        data: installationUpdatePayload(),
++      }),
++      403,
++    );
++    await expectStatus(
++      request.delete(`${INSTALLATIONS_URL}/00000000-0000-4000-8000-000000000228`, { headers: authHeaders("VIEWER") }),
++      403,
++    );
++  });
++
++  test.skip("2.6-ATDD-API-010 P0 unauthenticated requests to every installation endpoint return safe auth error", async ({
++    request,
++  }) => {
++    await expectStatus(request.get(INSTALLATIONS_URL), 401);
++    await expectStatus(request.get(`${INSTALLATIONS_URL}/00000000-0000-4000-8000-000000000229`), 401);
++    await expectStatus(request.post(INSTALLATIONS_URL, { data: installationPayload() }), 401);
++    await expectStatus(
++      request.put(`${INSTALLATIONS_URL}/00000000-0000-4000-8000-000000000229`, {
++        data: installationUpdatePayload(),
++      }),
++      401,
++    );
++    await expectStatus(request.delete(`${INSTALLATIONS_URL}/00000000-0000-4000-8000-000000000229`), 401);
++  });
++
++  test.skip("2.6-ATDD-API-011 P0 enforces machine plant scope for MANAGE and VIEWER list detail update delete", async ({
++    request,
++  }) => {
++    const outOfScopeInstallationId = "00000000-0000-4000-8000-000000000230";
++    await expectStatus(
++      request.get(`${INSTALLATIONS_URL}?plantId=77777777-7777-4777-8777-777777777777`, {
++        headers: authHeaders("VIEWER"),
++      }),
++      403,
++    );
++    await expectStatus(
++      request.get(`${INSTALLATIONS_URL}/${outOfScopeInstallationId}`, { headers: authHeaders("VIEWER") }),
++      404,
++    );
++    await expectStatus(
++      request.put(`${INSTALLATIONS_URL}/${outOfScopeInstallationId}`, {
++        headers: authHeaders("MANAGE"),
++        data: installationUpdatePayload(),
++      }),
++      404,
++    );
++    await expectStatus(
++      request.delete(`${INSTALLATIONS_URL}/${outOfScopeInstallationId}`, { headers: authHeaders("MANAGE") }),
++      404,
++    );
++  });
++
++  test.skip("2.6-ATDD-API-012 P1 filters installations by machine sparepart plant and machine group with predictable ordering", async ({
++    request,
++  }) => {
++    await expectStatus(
++      request.get(`${INSTALLATIONS_URL}?machineId=11111111-1111-4111-8111-111111111126`, {
++        headers: authHeaders("VIEWER"),
++      }),
++      200,
++    );
++    await expectStatus(
++      request.get(`${INSTALLATIONS_URL}?sparepartId=22222222-2222-4222-8222-222222222226`, {
++        headers: authHeaders("VIEWER"),
++      }),
++      200,
++    );
++    await expectStatus(
++      request.get(
++        `${INSTALLATIONS_URL}?plantId=33333333-3333-4333-8333-333333333326&machineGroupId=44444444-4444-4444-8444-444444444426`,
++        {
++          headers: authHeaders("MANAGE"),
++        },
++      ),
++      200,
++    );
++  });
++
++  test.skip("2.6-ATDD-API-013 P0 machine and sparepart delete attempts prove real FK conflicts from installation rows", async ({
++    request,
++  }) => {
++    const machineId = "11111111-1111-4111-8111-111111111126";
++    const sparepartId = "22222222-2222-4222-8222-222222222226";
++
++    await expectConflict(request.delete(`${MACHINES_URL}/${machineId}`, { headers: authHeaders("MANAGE") }));
++    await expectConflict(request.delete(`${SPAREPARTS_URL}/${sparepartId}`, { headers: authHeaders("MANAGE") }));
++  });
++
++  test.skip("2.6-ATDD-API-014 P1 maps future installation delete integrity failures to safe 409 response", async ({
++    request,
++  }) => {
++    const installationWithFutureDependentsId = "00000000-0000-4000-8000-000000000231";
++    await expectConflict(
++      request.delete(`${INSTALLATIONS_URL}/${installationWithFutureDependentsId}`, {
++        headers: authHeaders("SUPER_ADMIN"),
++      }),
++    );
++  });
++});
++
++async function expectStatus(responsePromise: Promise<APIResponse>, status: number) {
++  const response = await responsePromise;
++  expect(response.status()).toBe(status);
++}
++
++async function expectConflict(responsePromise: Promise<APIResponse>) {
++  const response = await responsePromise;
++  expect(response.status()).toBe(409);
++  expect(await response.json()).toMatchObject({ message: expect.any(String) });
++}
++
++async function expectJsonMatches(response: APIResponse, shape: Record<string, unknown>) {
++  expect(await response.json()).toMatchObject(shape);
++}
+diff --git a/syncro/apps/web/tests/e2e/machine-sparepart-installations.atdd-red.spec.ts b/syncro/apps/web/tests/e2e/machine-sparepart-installations.atdd-red.spec.ts
+new file mode 100644
+index 0000000..6264b16
+--- /dev/null
++++ b/syncro/apps/web/tests/e2e/machine-sparepart-installations.atdd-red.spec.ts
+@@ -0,0 +1,331 @@
++import type { Page } from "@playwright/test";
++
++import type { InstallationView, MachineView, SparepartView } from "@/lib/api/generated/model";
++
++import { expect, test } from "../support/fixtures";
++
++type Role = "SUPER_ADMIN" | "MANAGE" | "VIEWER" | "STAFF";
++
++type InstallationItem = InstallationView;
++type MachineOption = MachineView;
++type SparepartOption = SparepartView;
++
++const routePath = "/dashboard/master-data/installations";
++const timestamp = "2026-05-28T00:00:00Z";
++
++const machines: MachineOption[] = [
++  {
++    id: "machine-pack-01",
++    code: "PKG-01",
++    name: "Packaging Line 01",
++    plantId: "plant-a",
++    plantCode: "PLT-A",
++    plantName: "Plant A",
++    machineGroupId: "group-pack",
++    machineGroupName: "Packaging",
++    status: "ACTIVE",
++  },
++];
++
++const spareparts: SparepartOption[] = [
++  {
++    id: "sparepart-bf-08410",
++    code: "BF-08410",
++    name: "Electric PLC Wecon LX5",
++    category: { id: "tax-category-bearing", code: "CAT-BRG", name: "Bearing" },
++    brand: { id: "tax-brand-wecon", code: "BRD-WEC", name: "Wecon" },
++    kind: { id: "tax-kind-plc", code: "KND-PLC", name: "PLC" },
++    type: { id: "tax-type-electric", code: "TYP-ELC", name: "Electric" },
++    createdAt: timestamp,
++    updatedAt: timestamp,
++  },
++];
++
++const installations: InstallationItem[] = [
++  {
++    id: "installation-pkg-01-plc",
++    machineId: "machine-pack-01",
++    machineCode: "PKG-01",
++    machineName: "Packaging Line 01",
++    plantId: "plant-a",
++    plantCode: "PLT-A",
++    plantName: "Plant A",
++    machineGroupId: "group-pack",
++    machineGroupName: "Packaging",
++    sparepartId: "sparepart-bf-08410",
++    sparepartCode: "BF-08410",
++    sparepartName: "Electric PLC Wecon LX5",
++    category: spareparts[0].category,
++    brand: spareparts[0].brand,
++    kind: spareparts[0].kind,
++    type: spareparts[0].type,
++    expectedProductionCount: 1_000_000,
++    baselineCounter: 42_000,
++    thresholdPercentage: 90,
++    currentCount: null,
++    consumedProductionCount: null,
++    consumedPercentage: null,
++    calculationBasis: "COUNTER_BASED",
++    installedAt: timestamp,
++    createdAt: timestamp,
++    updatedAt: timestamp,
++  },
++];
++
++test.describe("ATDD RED Story 2.6 machine sparepart installations", () => {
++  test.beforeEach(async ({ page }) => {
++    await setAuthUser(page, "MANAGE");
++  });
++
++  test.skip("2.6-E2E-001 P0 creates installation with shadcn machine and sparepart selectors", async ({ page }) => {
++    let createPayload: Record<string, unknown> | null = null;
++    let listItems: InstallationItem[] = [];
++    await mockReferenceData(page);
++    await mockStatefulInstallationList(page, () => listItems);
++    await page.route("**/api/v1/machine-sparepart-installations", async (route) => {
++      if (route.request().method() !== "POST") {
++        await route.fallback();
++        return;
++      }
++      createPayload = route.request().postDataJSON();
++      listItems = installations;
++      await route.fulfill(jsonResponse(installations[0], 201));
++    });
++
++    await page.goto(routePath, { waitUntil: "domcontentloaded" });
++    await page.getByRole("button", { name: "Create installation" }).click();
++    await expect(page.getByRole("dialog", { name: "Create installation" })).toBeVisible();
++    await selectByLabel(page, "Machine", "PKG-01 - Packaging Line 01");
++    await selectByLabel(page, "Sparepart", "BF-08410 - Electric PLC Wecon LX5");
++    await page.getByLabel("Expected production count").fill("1000000");
++    await page.getByLabel("Baseline counter").fill("42000");
++    await page.getByLabel("Threshold percentage").fill("75");
++    await page.getByRole("button", { name: "Save installation" }).click();
++
++    await expect
++      .poll(() => createPayload)
++      .toMatchObject({
++        machineId: "machine-pack-01",
++        sparepartId: "sparepart-bf-08410",
++        expectedProductionCount: 1_000_000,
++        baselineCounter: 42_000,
++        thresholdPercentage: 75,
++      });
++    await expect(page.getByRole("cell", { name: "PKG-01" })).toBeVisible();
++    await expect(page.getByRole("cell", { name: "BF-08410" })).toBeVisible();
++  });
++
++  test.skip("2.6-E2E-002 P0 lists baseline current expected threshold and counter-based evidence without fabricated current count", async ({
++    page,
++  }) => {
++    await mockReferenceData(page);
++    await mockInstallationList(page, installations);
++
++    await page.goto(routePath, { waitUntil: "domcontentloaded" });
++
++    await expect(page.getByRole("cell", { name: "Plant A" })).toBeVisible();
++    await expect(page.getByRole("cell", { name: "Packaging" })).toBeVisible();
++    await expect(page.getByRole("cell", { name: "PKG-01" })).toBeVisible();
++    await expect(page.getByRole("cell", { name: "BF-08410" })).toBeVisible();
++    await expect(page.getByRole("cell", { name: "1,000,000" })).toBeVisible();
++    await expect(page.getByRole("cell", { name: "42,000" })).toBeVisible();
++    await expect(page.getByRole("cell", { name: "90%" })).toBeVisible();
++    await expect(page.getByText("Current count unavailable")).toBeVisible();
++    await expect(page.getByText("Counter-based")).toBeVisible();
++  });
++
++  test.skip("2.6-E2E-003 P0 edits lifetime values and keeps machine sparepart links stable", async ({ page }) => {
++    let listItems = [...installations];
++    let updatePayload: Record<string, unknown> | null = null;
++    await mockReferenceData(page);
++    await mockStatefulInstallationList(page, () => listItems);
++    await page.route("**/api/v1/machine-sparepart-installations/installation-pkg-01-plc", async (route) => {
++      if (route.request().method() !== "PUT") {
++        await route.fallback();
++        return;
++      }
++      updatePayload = route.request().postDataJSON();
++      listItems = [
++        { ...installations[0], expectedProductionCount: 2_000_000, baselineCounter: 50_000, thresholdPercentage: 80 },
++      ];
++      await route.fulfill(jsonResponse(listItems[0]));
++    });
++
++    await page.goto(routePath, { waitUntil: "domcontentloaded" });
++    await page
++      .getByRole("row", { name: /PKG-01/ })
++      .getByRole("button", { name: "Edit" })
++      .click();
++    await page.getByLabel("Expected production count").fill("2000000");
++    await page.getByLabel("Baseline counter").fill("50000");
++    await page.getByLabel("Threshold percentage").fill("80");
++    await page.getByRole("button", { name: "Save installation" }).click();
++
++    await expect
++      .poll(() => updatePayload)
++      .toMatchObject({
++        expectedProductionCount: 2_000_000,
++        baselineCounter: 50_000,
++        thresholdPercentage: 80,
++      });
++    await expect(page.getByRole("cell", { name: "2,000,000" })).toBeVisible();
++  });
++
++  test.skip("2.6-E2E-004 P0 deletes installation with confirmation", async ({ page }) => {
++    let listItems = [...installations];
++    await mockReferenceData(page);
++    await mockStatefulInstallationList(page, () => listItems);
++    await page.route("**/api/v1/machine-sparepart-installations/installation-pkg-01-plc", async (route) => {
++      if (route.request().method() !== "DELETE") {
++        await route.fallback();
++        return;
++      }
++      listItems = [];
++      await route.fulfill({ status: 204, body: "" });
++    });
++
++    await page.goto(routePath, { waitUntil: "domcontentloaded" });
++    await page
++      .getByRole("row", { name: /PKG-01/ })
++      .getByRole("button", { name: "Delete" })
++      .click();
++    await expect(page.getByRole("alertdialog", { name: "Delete installation?" })).toBeVisible();
++    await page.getByRole("button", { name: "Delete installation" }).click();
++
++    await expect(page.getByText("Installation deleted.")).toBeVisible();
++    await expect(page.getByRole("row", { name: /PKG-01/ })).toHaveCount(0);
++  });
++
++  test.skip("2.6-E2E-005 P1 shows VIEWER read-only state and no mutation actions", async ({ page }) => {
++    await setAuthUser(page, "VIEWER");
++    await mockReferenceData(page);
++    await mockInstallationList(page, installations);
++
++    await page.goto(routePath, { waitUntil: "domcontentloaded" });
++
++    await expect(page.locator("main").getByText("Read-only").first()).toBeVisible();
++    await expect(page.getByRole("button", { name: "Create installation" })).toHaveCount(0);
++    await expect(page.getByRole("button", { name: "Edit" })).toHaveCount(0);
++    await expect(page.getByRole("button", { name: "Delete" })).toHaveCount(0);
++    await expect(page.getByRole("row", { name: /PKG-01/ }).getByText("View only")).toBeVisible();
++  });
++
++  test.skip("2.6-E2E-006 P1 shows forbidden loading empty setup prompt and API error durable states", async ({
++    page,
++  }) => {
++    await setAuthUser(page, "STAFF");
++    await page.goto(routePath, { waitUntil: "domcontentloaded" });
++    await expect(page.getByText("Permission denied")).toBeVisible();
++
++    await setAuthUser(page, "MANAGE");
++    await mockMachines(page, []);
++    await mockSpareparts(page, spareparts);
++    await mockInstallationList(page, []);
++    await page.goto(routePath, { waitUntil: "domcontentloaded" });
++    await expect(page.getByText("No machines available for installation setup")).toBeVisible();
++
++    await page.unroute("**/api/v1/machine-sparepart-installations**");
++    await mockReferenceData(page);
++    await page.route("**/api/v1/machine-sparepart-installations**", async (route) => {
++      await route.fulfill(
++        jsonResponse({ code: "INSTALLATION_LIST_FAILED", message: "Installations unavailable" }, 500),
++      );
++    });
++    await page.reload();
++    await expect(page.getByText("Installations could not be loaded")).toBeVisible();
++    await expect(page.getByRole("button", { name: "Retry installations" })).toBeVisible();
++  });
++
++  test.skip("2.6-E2E-007 P1 shows safe delete conflict message", async ({ page }) => {
++    await mockReferenceData(page);
++    await mockInstallationList(page, installations);
++    await page.route("**/api/v1/machine-sparepart-installations/installation-pkg-01-plc", async (route) => {
++      if (route.request().method() === "DELETE") {
++        await route.fulfill(
++          jsonResponse(
++            {
++              code: "INSTALLATION_IN_USE",
++              message: "Deletion blocked because dependent lifetime evidence references this installation.",
++            },
++            409,
++          ),
++        );
++        return;
++      }
++      await route.fallback();
++    });
++
++    await page.goto(routePath, { waitUntil: "domcontentloaded" });
++    await page
++      .getByRole("row", { name: /PKG-01/ })
++      .getByRole("button", { name: "Delete" })
++      .click();
++    await page.getByRole("button", { name: "Delete installation" }).click();
++
++    await expect(
++      page
++        .getByRole("alertdialog", { name: "Delete installation?" })
++        .getByText("Deletion blocked because dependent lifetime evidence references this installation."),
++    ).toBeVisible();
++  });
++});
++
++async function setAuthUser(page: Page, role: Role) {
++  const authUser = JSON.stringify({
++    id: `user-${role.toLowerCase()}`,
++    loginIdentifier: `${role.toLowerCase()}@syncro.local`,
++    applicationRole: role,
++  });
++
++  await page.context().addCookies(
++    ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"].flatMap((url) => [
++      { name: "syncro_auth_token", value: `token-${role.toLowerCase()}`, url },
++      { name: "syncro_auth_user", value: encodeURIComponent(authUser), url },
++    ]),
++  );
++}
++
++async function mockReferenceData(page: Page) {
++  await mockMachines(page, machines);
++  await mockSpareparts(page, spareparts);
++}
++
++async function mockMachines(page: Page, items = machines) {
++  await page.route("**/api/v1/machines**", async (route) => {
++    await route.fulfill(jsonResponse({ items, totalElements: items.length }));
++  });
++}
++
++async function mockSpareparts(page: Page, items = spareparts) {
++  await page.route("**/api/v1/spareparts**", async (route) => {
++    if (route.request().method() === "GET") {
++      await route.fulfill(jsonResponse({ items, totalElements: items.length }));
++      return;
++    }
++    await route.fallback();
++  });
++}
++
++async function mockInstallationList(page: Page, items = installations) {
++  await mockStatefulInstallationList(page, () => items);
++}
++
++async function mockStatefulInstallationList(page: Page, items: () => InstallationItem[]) {
++  await page.route("**/api/v1/machine-sparepart-installations**", async (route) => {
++    if (route.request().method() === "GET") {
++      const currentItems = items();
++      await route.fulfill(jsonResponse({ items: currentItems, totalElements: currentItems.length }));
++      return;
++    }
++    await route.fallback();
++  });
++}
++
++async function selectByLabel(page: Page, label: string, optionName: string) {
++  await page.locator("label").filter({ hasText: label }).locator("..").getByRole("combobox").click();
++  await page.getByRole("option", { name: optionName }).click();
++}
++
++function jsonResponse(body: unknown, status = 200) {
++  return { status, contentType: "application/json", body: JSON.stringify(body) };
++}
+diff --git a/syncro/apps/web/tests/e2e/spareparts.atdd-red.spec.ts b/syncro/apps/web/tests/e2e/spareparts.atdd-red.spec.ts
+index c000536..3b7f4da 100644
+--- a/syncro/apps/web/tests/e2e/spareparts.atdd-red.spec.ts
++++ b/syncro/apps/web/tests/e2e/spareparts.atdd-red.spec.ts
+@@ -284,7 +284,7 @@ async function setAuthUser(page: Page, role: Role) {
+   await page.context().addCookies(
+     ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"].flatMap((url) => [
+       { name: "syncro_auth_token", value: `token-${role.toLowerCase()}`, url },
+-      { name: "syncro_auth_user", value: authUser, url },
++      { name: "syncro_auth_user", value: encodeURIComponent(authUser), url },
+     ]),
+   );
+ }
+diff --git a/syncro/apps/web/tests/e2e/spareparts.spec.ts b/syncro/apps/web/tests/e2e/spareparts.spec.ts
+index 43f298c..4dbe893 100644
+--- a/syncro/apps/web/tests/e2e/spareparts.spec.ts
++++ b/syncro/apps/web/tests/e2e/spareparts.spec.ts
+@@ -252,11 +252,11 @@ function taxonomyItem(
+ }
+ 
+ async function setAuthUser(page: Page, role: Role) {
+-  const authUser = JSON.stringify({
++  const authUser = {
+     id: `user-${role.toLowerCase()}`,
+     loginIdentifier: `${role.toLowerCase()}@syncro.local`,
+     applicationRole: role,
+-  });
++  };
+ 
+   await page.context().addCookies(
+     ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"].flatMap((url) => [
+@@ -267,11 +267,21 @@ async function setAuthUser(page: Page, role: Role) {
+       },
+       {
+         name: "syncro_auth_user",
+-        value: authUser,
++        value: encodeURIComponent(JSON.stringify(authUser)),
+         url,
+       },
+     ]),
+   );
++  await page.route("**/api/v1/auth/plant-scope", async (route) => {
++    await route.fulfill(
++      jsonResponse({
++        mode: "UNRESTRICTED",
++        availablePlants: [{ id: "plant-main", code: "PLT-MAIN", name: "Main Plant" }],
++        defaultPlantId: "plant-main",
++        emptyReason: null,
++      }),
++    );
++  });
+ }
+ 
+ async function mockTaxonomy(page: Page, items = taxonomyItems) {
