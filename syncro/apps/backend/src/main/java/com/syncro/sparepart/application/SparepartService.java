@@ -1,5 +1,9 @@
 package com.syncro.sparepart.application;
 
+import com.syncro.audit.application.AuditLogWriter;
+import com.syncro.audit.application.AuditRecord;
+import com.syncro.audit.domain.AuditAction;
+import com.syncro.audit.domain.AuditEntityType;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
@@ -31,14 +35,16 @@ public class SparepartService {
   private final SparepartTaxonomyRepository taxonomy;
   private final MachineRepository machines;
   private final AuthUserPlantAssignmentRepository assignments;
+  private final AuditLogWriter auditLog;
   private final Clock clock;
 
   public SparepartService(SparepartRepository spareparts, SparepartTaxonomyRepository taxonomy, MachineRepository machines,
-      AuthUserPlantAssignmentRepository assignments, Clock clock) {
+      AuthUserPlantAssignmentRepository assignments, AuditLogWriter auditLog, Clock clock) {
     this.spareparts = spareparts;
     this.taxonomy = taxonomy;
     this.machines = machines;
     this.assignments = assignments;
+    this.auditLog = auditLog;
     this.clock = clock;
   }
 
@@ -65,7 +71,7 @@ public class SparepartService {
     var taxonomies = resolveTaxonomies(normalized);
     rejectDuplicateIdentity(machine, taxonomies);
     var generatedCode = nextBomCode(machine, taxonomies);
-    return toView(save(new SparepartEntity(
+    var saved = save(new SparepartEntity(
         UUID.randomUUID(),
         generatedCode,
         sparepartLabel(taxonomies),
@@ -75,13 +81,18 @@ public class SparepartService {
         taxonomies.kind(),
         taxonomies.type(),
         now,
-        now)));
+        now));
+    auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.SPAREPART, saved.getId(), saved.getCode(),
+        machine.getPlant().getId(), null, SparepartAuditValues.of(saved)));
+    return toView(saved);
   }
 
   @Transactional
   public SparepartView update(AuthenticatedUser user, UUID sparepartId, SparepartCommand command) {
     requireMutationRole(user);
     var sparepart = find(sparepartId);
+    var entityLabel = sparepart.getCode();
+    var previous = SparepartAuditValues.of(sparepart);
     var normalized = normalize(command);
     var machine = resolveMachine(user, normalized.machineId());
     var taxonomies = resolveTaxonomies(normalized);
@@ -95,16 +106,23 @@ public class SparepartService {
         taxonomies.kind(),
         taxonomies.type(),
         Instant.now(clock));
-    return toView(save(sparepart));
+    var saved = save(sparepart);
+    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.SPAREPART, sparepartId, entityLabel,
+        machine.getPlant().getId(), previous, SparepartAuditValues.of(saved)));
+    return toView(saved);
   }
 
   @Transactional
   public void delete(AuthenticatedUser user, UUID sparepartId) {
     requireMutationRole(user);
     var sparepart = find(sparepartId);
+    var entityLabel = sparepart.getCode();
+    var previous = SparepartAuditValues.of(sparepart);
     try {
       spareparts.delete(sparepart);
       spareparts.flush();
+      auditLog.record(user, new AuditRecord(AuditAction.DELETE, AuditEntityType.SPAREPART, sparepartId, entityLabel,
+          sparepart.getMachine().getPlant().getId(), previous, null));
     } catch (DataIntegrityViolationException exception) {
       throw new SparepartDataIntegrityException();
     }

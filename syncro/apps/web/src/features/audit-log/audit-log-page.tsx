@@ -1,0 +1,290 @@
+"use client";
+
+import { useMemo, useState } from "react";
+
+import { TriangleAlertIcon, XIcon } from "lucide-react";
+
+import { AuditLogTable } from "@/components/syncro/audit-log-table";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
+import type { ListAuditLogEntriesEntityType, ListAuditLogEntriesParams, PlantView } from "@/lib/api/generated/model";
+import {
+  ListAuditLogEntriesEntityType as EntityTypeValues,
+  useListAuditLogEntries,
+  useListPlants,
+} from "@/lib/api/generated/syncro";
+
+const ENTITY_TYPE_OPTIONS = EntityTypeValues.map((value) => ({ value, label: entityTypeLabel(value) }));
+
+type EntityFilter = "ALL" | ListAuditLogEntriesEntityType;
+type PlantFilter = "ALL" | string;
+
+export function AuditLogPage() {
+  const plantScope = usePlantScope();
+  const scope = plantScope.scope;
+  const isAssignedEmpty = scope?.mode === "EMPTY";
+  const plants = useListPlants({ query: { enabled: Boolean(scope) && !isAssignedEmpty } });
+  const plantItems = plants.data?.data.items ?? [];
+  const availablePlants = useMemo(() => permittedPlants(plantItems, scope), [plantItems, scope]);
+  const [entityType, setEntityType] = useState<EntityFilter>("ALL");
+  const [actor, setActor] = useState("");
+  const [plantId, setPlantId] = useState<PlantFilter>("ALL");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(50);
+  const [sort, setSort] = useState("createdAt,desc");
+
+  const hasFilters = entityType !== "ALL" || actor.trim() !== "" || plantId !== "ALL" || from !== "" || to !== "";
+
+  const params = {
+    entityType: entityType === "ALL" ? undefined : entityType,
+    actor: actor.trim() || undefined,
+    plantId: plantId === "ALL" ? undefined : plantId,
+    from: from ? `${from}T00:00:00.000Z` : undefined,
+    to: to ? `${to}T23:59:59.999Z` : undefined,
+    page,
+    size,
+    sort,
+  } satisfies ListAuditLogEntriesParams;
+
+  const entries = useListAuditLogEntries(params, {
+    query: {
+      enabled: Boolean(scope),
+      queryKey: ["audit-log", scope?.mode, entityType, actor.trim(), plantId, from, to, page, size, sort],
+    },
+  });
+  const items = entries.data?.data.items ?? [];
+  const plantNameById = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const plant of plantItems) {
+      if (plant.id) {
+        map[plant.id] = `${plant.code} · ${plant.name}`;
+      }
+    }
+    return map;
+  }, [plantItems]);
+
+  function resetFilters() {
+    setEntityType("ALL");
+    setActor("");
+    setPlantId("ALL");
+    setFrom("");
+    setTo("");
+    setPage(0);
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Audit Log</CardTitle>
+          <CardDescription>
+            Immutable history of master data changes. Entries can not be edited or deleted.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[repeat(auto-fill,minmax(13rem,13rem))] sm:justify-start">
+            <div className="grid min-w-0 gap-2">
+              <Label htmlFor="audit-entity-type">Entity type</Label>
+              <Select value={entityType} onValueChange={(value) => setEntityType(value as EntityFilter)}>
+                <SelectTrigger id="audit-entity-type" className="w-full min-w-0">
+                  <SelectValue placeholder="Entity type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All entity types</SelectItem>
+                  {ENTITY_TYPE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid min-w-0 gap-2">
+              <Label htmlFor="audit-actor">Actor</Label>
+              <Input
+                id="audit-actor"
+                value={actor}
+                onChange={(event) => setActor(event.target.value)}
+                placeholder="Actor name"
+                className="w-full min-w-0"
+              />
+            </div>
+            <div className="grid min-w-0 gap-2">
+              <Label htmlFor="audit-plant">Plant</Label>
+              <Select
+                value={plantId}
+                onValueChange={(value) => {
+                  setPlantId(value);
+                  setPage(0);
+                }}
+                disabled={isAssignedEmpty || plants.isLoading}
+              >
+                <SelectTrigger id="audit-plant" className="w-full min-w-0">
+                  <SelectValue placeholder="Plant" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All plants</SelectItem>
+                  {availablePlants.map((plant) => (
+                    <SelectItem key={plant.id ?? plant.code} value={plant.id ?? ""}>
+                      {plant.code} · {plant.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DatePickerField id="audit-from" label="From" value={from} onChange={setFrom} />
+            <DatePickerField id="audit-to" label="To" value={to} onChange={setTo} />
+            {hasFilters ? (
+              <Button variant="outline" className="self-end" onClick={resetFilters}>
+                <XIcon />
+                Reset filters
+              </Button>
+            ) : null}
+          </div>
+
+          {entries.isLoading ? <AuditLogSkeleton /> : null}
+          {entries.isError ? (
+            <AuditLogState
+              title="Audit log could not be loaded"
+              description="The change history could not be fetched. Retry to load it again."
+              action={
+                <Button variant="outline" onClick={() => void entries.refetch()}>
+                  Retry
+                </Button>
+              }
+            />
+          ) : null}
+          {!entries.isLoading && !entries.isError && items.length === 0 ? (
+            <AuditLogState
+              title={hasFilters ? "No matching entries" : "No audit entries yet"}
+              description={
+                hasFilters
+                  ? "No changes match the current filters."
+                  : "Master data changes will appear here once they are created or modified."
+              }
+              action={
+                hasFilters ? (
+                  <Button variant="outline" onClick={resetFilters}>
+                    Reset filters
+                  </Button>
+                ) : undefined
+              }
+            />
+          ) : null}
+          {!entries.isLoading && !entries.isError && items.length > 0 ? (
+            <AuditLogTable entries={items} plantNameById={plantNameById} sort={sort} onSortChange={setSort} />
+          ) : null}
+          {!entries.isLoading && !entries.isError && entries.data?.data ? (
+            <DataTablePagination
+              page={page}
+              size={size}
+              totalElements={entries.data.data.totalElements}
+              onPageChange={setPage}
+              onSizeChange={(newSize) => {
+                setSize(newSize);
+                setPage(0);
+              }}
+            />
+          ) : null}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function DatePickerField({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="grid min-w-0 gap-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        type="date"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full min-w-0"
+      />
+    </div>
+  );
+}
+
+function AuditLogSkeleton() {
+  return (
+    <div className="space-y-2">
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-10 w-full" />
+    </div>
+  );
+}
+
+function AuditLogState({
+  title,
+  description,
+  action,
+}: {
+  title: string;
+  description: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-8 text-center">
+      <TriangleAlertIcon className="size-8 text-muted-foreground" />
+      <div>
+        <h2 className="font-medium">{title}</h2>
+        <p className="text-muted-foreground text-sm">{description}</p>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function permittedPlants(plants: PlantView[], scope: ReturnType<typeof usePlantScope>["scope"]) {
+  if (!scope || scope.mode === "EMPTY") {
+    return [];
+  }
+  if (scope.mode === "UNRESTRICTED") {
+    return plants;
+  }
+  const assignedIds = new Set((scope.availablePlants ?? []).map((plant) => plant.id));
+  return plants.filter((plant) => plant.id && assignedIds.has(plant.id));
+}
+
+function entityTypeLabel(entityType: ListAuditLogEntriesEntityType | undefined) {
+  switch (entityType) {
+    case "PLANT":
+      return "Plant";
+    case "MACHINE_GROUP":
+      return "Machine group";
+    case "MACHINE":
+      return "Machine";
+    case "SPAREPART_TAXONOMY":
+      return "Sparepart taxonomy";
+    case "SPAREPART":
+      return "Sparepart";
+    case "INSTALLATION":
+      return "Installation";
+    case "RESPONSIBILITY":
+      return "Responsibility";
+    default:
+      return entityType ?? "Unknown";
+  }
+}

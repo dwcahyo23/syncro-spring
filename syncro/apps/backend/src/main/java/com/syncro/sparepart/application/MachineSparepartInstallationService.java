@@ -1,5 +1,9 @@
 package com.syncro.sparepart.application;
 
+import com.syncro.audit.application.AuditLogWriter;
+import com.syncro.audit.application.AuditRecord;
+import com.syncro.audit.domain.AuditAction;
+import com.syncro.audit.domain.AuditEntityType;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.application.PlantScopeService;
 import com.syncro.auth.domain.ApplicationRole;
@@ -30,17 +34,19 @@ public class MachineSparepartInstallationService {
   private final PlantRepository plants;
   private final PlantScopeService plantScopes;
   private final AuthUserPlantAssignmentRepository assignments;
+  private final AuditLogWriter auditLog;
   private final Clock clock;
 
   public MachineSparepartInstallationService(MachineSparepartInstallationRepository installations,
       MachineRepository machines, SparepartRepository spareparts, PlantRepository plants,
-      PlantScopeService plantScopes, AuthUserPlantAssignmentRepository assignments, Clock clock) {
+      PlantScopeService plantScopes, AuthUserPlantAssignmentRepository assignments, AuditLogWriter auditLog, Clock clock) {
     this.installations = installations;
     this.machines = machines;
     this.spareparts = spareparts;
     this.plants = plants;
     this.plantScopes = plantScopes;
     this.assignments = assignments;
+    this.auditLog = auditLog;
     this.clock = clock;
   }
 
@@ -68,28 +74,41 @@ public class MachineSparepartInstallationService {
     var sparepart = resolveSparepart(normalized.sparepartId());
     var now = Instant.now(clock);
     var installedAt = normalized.installedAt() != null ? normalized.installedAt() : now;
-    return toView(save(new MachineSparepartInstallationEntity(UUID.randomUUID(), machine, sparepart,
+    var saved = save(new MachineSparepartInstallationEntity(UUID.randomUUID(), machine, sparepart,
         normalized.functionName(), normalized.expectedProductionCount(), normalized.baselineCounter(), normalized.thresholdPercentage(),
-        installedAt, now, now)));
+        installedAt, now, now));
+    auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.INSTALLATION, saved.getId(),
+        machine.getCode() + " / " + sparepart.getCode(), machine.getPlant().getId(), null,
+        InstallationAuditValues.of(saved)));
+    return toView(saved);
   }
 
   @Transactional
   public InstallationView update(AuthenticatedUser user, UUID installationId, InstallationUpdateCommand command) {
     requireMutationRole(user);
     var installation = findScoped(user, installationId);
+    var entityLabel = installation.getMachine().getCode() + " / " + installation.getSparepart().getCode();
+    var previous = InstallationAuditValues.of(installation);
     var normalized = normalize(command);
     var threshold = normalized.thresholdPercentage() != null ? normalized.thresholdPercentage() : installation.getThresholdPercentage();
     installation.update(normalized.functionName(), normalized.expectedProductionCount(), normalized.baselineCounter(), threshold, Instant.now(clock));
-    return toView(save(installation));
+    var saved = save(installation);
+    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.INSTALLATION, installationId, entityLabel,
+        installation.getMachine().getPlant().getId(), previous, InstallationAuditValues.of(saved)));
+    return toView(saved);
   }
 
   @Transactional
   public void delete(AuthenticatedUser user, UUID installationId) {
     requireMutationRole(user);
     var installation = findScoped(user, installationId);
+    var entityLabel = installation.getMachine().getCode() + " / " + installation.getSparepart().getCode();
+    var previous = InstallationAuditValues.of(installation);
     try {
       installations.delete(installation);
       installations.flush();
+      auditLog.record(user, new AuditRecord(AuditAction.DELETE, AuditEntityType.INSTALLATION, installationId,
+          entityLabel, installation.getMachine().getPlant().getId(), previous, null));
     } catch (DataIntegrityViolationException exception) {
       throw new InstallationDataIntegrityException();
     }

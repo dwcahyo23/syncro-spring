@@ -1,5 +1,9 @@
 package com.syncro.machine.application;
 
+import com.syncro.audit.application.AuditLogWriter;
+import com.syncro.audit.application.AuditRecord;
+import com.syncro.audit.domain.AuditAction;
+import com.syncro.audit.domain.AuditEntityType;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.application.PlantScopeService;
 import com.syncro.auth.domain.ApplicationRole;
@@ -37,15 +41,17 @@ public class MachineService {
   private final MachineGroupRepository machineGroups;
   private final PlantScopeService plantScopes;
   private final AuthUserPlantAssignmentRepository assignments;
+  private final AuditLogWriter auditLog;
   private final Clock clock;
 
   public MachineService(MachineRepository machines, PlantRepository plants, MachineGroupRepository machineGroups,
-      PlantScopeService plantScopes, AuthUserPlantAssignmentRepository assignments, Clock clock) {
+      PlantScopeService plantScopes, AuthUserPlantAssignmentRepository assignments, AuditLogWriter auditLog, Clock clock) {
     this.machines = machines;
     this.plants = plants;
     this.machineGroups = machineGroups;
     this.plantScopes = plantScopes;
     this.assignments = assignments;
+    this.auditLog = auditLog;
     this.clock = clock;
   }
 
@@ -126,8 +132,11 @@ public class MachineService {
       throw new DuplicateMachineCodeException();
     }
     var now = Instant.now(clock);
-    return toView(saveMachine(new MachineEntity(UUID.randomUUID(), plant, machineGroup, code, normalizeOptional(command.name()),
-        command.status(), normalizeOptional(command.brand()), command.installedAt(), normalizeOptional(command.notes()), now, now)));
+    var machine = saveMachine(new MachineEntity(UUID.randomUUID(), plant, machineGroup, code, normalizeOptional(command.name()),
+        command.status(), normalizeOptional(command.brand()), command.installedAt(), normalizeOptional(command.notes()), now, now));
+    auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.MACHINE, machine.getId(), machine.getCode(),
+        command.plantId(), null, MachineAuditValues.of(machine)));
+    return toView(machine);
   }
 
   @Transactional
@@ -146,6 +155,8 @@ public class MachineService {
     if (!machineGroup.getPlant().getId().equals(plantId)) {
       throw new MachineGroupPlantMismatchException();
     }
+    var entityLabel = machine.getCode();
+    var previous = MachineAuditValues.of(machine);
     var code = normalizeCode(command.code());
     var existing = machines.findByPlantIdAndCodeIgnoreCase(plantId, code);
     if (existing.isPresent() && !existing.get().getId().equals(machineId)) {
@@ -153,16 +164,23 @@ public class MachineService {
     }
     machine.update(machineGroup, code, normalizeOptional(command.name()), command.status(), normalizeOptional(command.brand()),
         command.installedAt(), normalizeOptional(command.notes()), Instant.now(clock));
-    return toView(saveMachine(machine));
+    var saved = saveMachine(machine);
+    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.MACHINE, machineId, entityLabel, plantId,
+        previous, MachineAuditValues.of(saved)));
+    return toView(saved);
   }
 
   @Transactional
   public void delete(AuthenticatedUser user, UUID machineId) {
     requireMutationRole(user);
     var machine = findScoped(user, machineId);
+    var entityLabel = machine.getCode();
+    var previous = MachineAuditValues.of(machine);
     try {
       machines.delete(machine);
       machines.flush();
+      auditLog.record(user, new AuditRecord(AuditAction.DELETE, AuditEntityType.MACHINE, machineId, entityLabel,
+          machine.getPlant().getId(), previous, null));
     } catch (DataIntegrityViolationException exception) {
       throw new MachineDataIntegrityException();
     }

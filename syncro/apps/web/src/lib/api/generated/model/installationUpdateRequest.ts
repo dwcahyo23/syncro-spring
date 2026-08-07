@@ -8,15 +8,23 @@
 
 export interface InstallationUpdateRequest {
   /**
+     * Function or usage of the sparepart
      * @minLength 0
      * @maxLength 255
      */
   functionName: string;
-  /** @minimum 1 */
+  /**
+     * Expected production count
+     * @minimum 1
+     */
   expectedProductionCount: number;
-  /** @minimum 0 */
+  /**
+     * Baseline counter
+     * @minimum 0
+     */
   baselineCounter: number;
   /**
+     * Threshold percentage; null keeps the current value
      * @minimum 1
      * @maximum 100
      */

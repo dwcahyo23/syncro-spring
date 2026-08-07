@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import com.syncro.audit.application.AuditLogWriter;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.application.PlantScopeService;
 import com.syncro.auth.domain.ApplicationRole;
@@ -36,6 +37,9 @@ class MachineGroupServiceTest {
   @Mock
   private PlantScopeService plantScopes;
 
+  @Mock
+  private AuditLogWriter auditLog;
+
   private final Clock clock = Clock.fixed(Instant.parse("2026-05-27T00:00:00Z"), ZoneOffset.UTC);
 
   @Test
@@ -45,7 +49,7 @@ class MachineGroupServiceTest {
     when(plants.findById(plantId)).thenReturn(Optional.of(plant));
     when(machineGroups.existsByPlantIdAndNameIgnoreCase(plantId, "Forming")).thenReturn(false);
     when(machineGroups.saveAndFlush(any())).thenThrow(uniqueViolation("uq_machine_groups_plant_id_lower_name"));
-    var machineGroupService = new MachineGroupService(machineGroups, plants, plantScopes, clock);
+    var machineGroupService = new MachineGroupService(machineGroups, plants, plantScopes, auditLog, clock);
 
     assertThatThrownBy(() -> machineGroupService.create(
         user(ApplicationRole.SUPER_ADMIN),
@@ -60,7 +64,7 @@ class MachineGroupServiceTest {
     when(plants.findById(plantId)).thenReturn(Optional.of(plant));
     when(machineGroups.existsByPlantIdAndNameIgnoreCase(plantId, "Forming")).thenReturn(false);
     when(machineGroups.saveAndFlush(any())).thenThrow(uniqueViolation("other_constraint"));
-    var machineGroupService = new MachineGroupService(machineGroups, plants, plantScopes, clock);
+    var machineGroupService = new MachineGroupService(machineGroups, plants, plantScopes, auditLog, clock);
 
     assertThatThrownBy(() -> machineGroupService.create(
         user(ApplicationRole.SUPER_ADMIN),

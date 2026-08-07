@@ -1,5 +1,9 @@
 package com.syncro.masterdata.application;
 
+import com.syncro.audit.application.AuditLogWriter;
+import com.syncro.audit.application.AuditRecord;
+import com.syncro.audit.domain.AuditAction;
+import com.syncro.audit.domain.AuditEntityType;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.application.PlantScopeService;
 import com.syncro.auth.domain.ApplicationRole;
@@ -21,16 +25,19 @@ public class PlantService {
   private final PlantRepository plants;
   private final AuthUserPlantAssignmentRepository assignments;
   private final PlantScopeService plantScopes;
+  private final AuditLogWriter auditLog;
   private final Clock clock;
 
   public PlantService(
       PlantRepository plants,
       AuthUserPlantAssignmentRepository assignments,
       PlantScopeService plantScopes,
+      AuditLogWriter auditLog,
       Clock clock) {
     this.plants = plants;
     this.assignments = assignments;
     this.plantScopes = plantScopes;
+    this.auditLog = auditLog;
     this.clock = clock;
   }
 
@@ -71,6 +78,8 @@ public class PlantService {
     if (user.applicationRole() == ApplicationRole.MANAGE) {
       assignments.save(new AuthUserPlantAssignmentEntity(UUID.fromString(user.id()), plant.getId(), now));
     }
+    auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.PLANT, plant.getId(), plant.getCode(),
+        plant.getId(), null, PlantAuditValues.of(plant)));
     return toView(plant);
   }
 
@@ -81,13 +90,18 @@ public class PlantService {
       plantScopes.requirePlantAccess(user, plantId);
     }
     var plant = plants.findById(plantId).orElseThrow(PlantNotFoundException::new);
+    var entityLabel = plant.getCode();
+    var previous = PlantAuditValues.of(plant);
     var code = normalizeCode(command.code());
     var existing = plants.findByCodeIgnoreCase(code);
     if (existing.isPresent() && !existing.get().getId().equals(plantId)) {
       throw new DuplicatePlantCodeException();
     }
     plant.update(code, normalizeName(command.name()), Instant.now(clock));
-    return toView(savePlant(plant));
+    var saved = savePlant(plant);
+    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PLANT, plantId, entityLabel, plantId,
+        previous, PlantAuditValues.of(saved)));
+    return toView(saved);
   }
 
   @Transactional
@@ -96,11 +110,13 @@ public class PlantService {
     if (user.applicationRole() != ApplicationRole.SUPER_ADMIN) {
       plantScopes.requirePlantAccess(user, plantId);
     }
-    if (!plants.existsById(plantId)) {
-      throw new PlantNotFoundException();
-    }
-    plants.deleteById(plantId);
+    var plant = plants.findById(plantId).orElseThrow(PlantNotFoundException::new);
+    var entityLabel = plant.getCode();
+    var previous = PlantAuditValues.of(plant);
+    plants.delete(plant);
     plants.flush();
+    auditLog.record(user, new AuditRecord(AuditAction.DELETE, AuditEntityType.PLANT, plantId, entityLabel, null,
+        previous, null));
   }
 
   private void requireMutationRole(AuthenticatedUser user) {

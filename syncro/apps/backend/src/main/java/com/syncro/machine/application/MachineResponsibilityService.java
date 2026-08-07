@@ -1,5 +1,9 @@
 package com.syncro.machine.application;
 
+import com.syncro.audit.application.AuditLogWriter;
+import com.syncro.audit.application.AuditRecord;
+import com.syncro.audit.domain.AuditAction;
+import com.syncro.audit.domain.AuditEntityType;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.application.PlantScopeService;
 import com.syncro.auth.domain.ApplicationRole;
@@ -30,6 +34,7 @@ public class MachineResponsibilityService {
   private final MachineRepository machineRepository;
   private final AuthUserRepository userRepository;
   private final PlantScopeService plantScopeService;
+  private final AuditLogWriter auditLog;
   private final Clock clock;
 
   public MachineResponsibilityService(
@@ -37,11 +42,13 @@ public class MachineResponsibilityService {
       MachineRepository machineRepository,
       AuthUserRepository userRepository,
       PlantScopeService plantScopeService,
+      AuditLogWriter auditLog,
       Clock clock) {
     this.responsibilityRepository = responsibilityRepository;
     this.machineRepository = machineRepository;
     this.userRepository = userRepository;
     this.plantScopeService = plantScopeService;
+    this.auditLog = auditLog;
     this.clock = clock;
   }
 
@@ -75,6 +82,8 @@ public class MachineResponsibilityService {
       throw new DuplicateResponsibilityException();
     }
 
+    auditLog.record(currentUser, new AuditRecord(AuditAction.CREATE, AuditEntityType.RESPONSIBILITY, entity.getId(),
+        user.getLoginIdentifier(), machine.getPlant().getId(), null, ResponsibilityAuditValues.of(entity)));
     return toResponse(entity);
   }
 
@@ -86,8 +95,13 @@ public class MachineResponsibilityService {
 
     plantScopeService.requirePlantAccess(currentUser, entity.getMachine().getPlant().getId());
 
+    var entityLabel = entity.getUser().getLoginIdentifier();
+    var previous = ResponsibilityAuditValues.of(entity);
+    var plantId = entity.getMachine().getPlant().getId();
     entity.update(request.level(), clock.instant());
     entity = responsibilityRepository.save(entity);
+    auditLog.record(currentUser, new AuditRecord(AuditAction.UPDATE, AuditEntityType.RESPONSIBILITY, id, entityLabel,
+        plantId, previous, ResponsibilityAuditValues.of(entity)));
     return toResponse(entity);
   }
 
@@ -99,7 +113,12 @@ public class MachineResponsibilityService {
 
     plantScopeService.requirePlantAccess(currentUser, entity.getMachine().getPlant().getId());
 
+    var entityLabel = entity.getUser().getLoginIdentifier();
+    var previous = ResponsibilityAuditValues.of(entity);
+    var plantId = entity.getMachine().getPlant().getId();
     responsibilityRepository.delete(entity);
+    auditLog.record(currentUser, new AuditRecord(AuditAction.DELETE, AuditEntityType.RESPONSIBILITY, id, entityLabel,
+        plantId, previous, null));
   }
 
   private void requireMutationRole(AuthenticatedUser user) {

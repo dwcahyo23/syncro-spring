@@ -1,5 +1,9 @@
 package com.syncro.sparepart.application;
 
+import com.syncro.audit.application.AuditLogWriter;
+import com.syncro.audit.application.AuditRecord;
+import com.syncro.audit.domain.AuditAction;
+import com.syncro.audit.domain.AuditEntityType;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.sparepart.domain.SparepartTaxonomyDimension;
@@ -24,10 +28,12 @@ public class SparepartTaxonomyService {
   private static final Set<String> CONTROLLED_CATEGORY_CODES = Set.of("ELECTRIC", "MECHANIC", "PNEUMATIC", "HYDRAULIC", "ELECTRONIC");
 
   private final SparepartTaxonomyRepository taxonomy;
+  private final AuditLogWriter auditLog;
   private final Clock clock;
 
-  public SparepartTaxonomyService(SparepartTaxonomyRepository taxonomy, Clock clock) {
+  public SparepartTaxonomyService(SparepartTaxonomyRepository taxonomy, AuditLogWriter auditLog, Clock clock) {
     this.taxonomy = taxonomy;
+    this.auditLog = auditLog;
     this.clock = clock;
   }
 
@@ -65,7 +71,10 @@ public class SparepartTaxonomyService {
       throw new DuplicateSparepartTaxonomyException();
     }
     var now = Instant.now(clock);
-    return toView(save(new SparepartTaxonomyEntity(UUID.randomUUID(), command.dimension(), code, name, category, now, now)));
+    var saved = save(new SparepartTaxonomyEntity(UUID.randomUUID(), command.dimension(), code, name, category, now, now));
+    auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.SPAREPART_TAXONOMY, saved.getId(),
+        saved.getCode(), null, null, SparepartTaxonomyAuditValues.of(saved)));
+    return toView(saved);
   }
 
   @Transactional
@@ -76,6 +85,8 @@ public class SparepartTaxonomyService {
     if (command.dimension() != entry.getDimension()) {
       throw new SparepartTaxonomyValidationException();
     }
+    var entityLabel = entry.getCode();
+    var previous = SparepartTaxonomyAuditValues.of(entry);
     var code = normalizeCode(command.code());
     var name = normalizeName(command.name());
     validateControlledCategory(command.dimension(), code);
@@ -86,16 +97,23 @@ public class SparepartTaxonomyService {
       throw new DuplicateSparepartTaxonomyException();
     }
     entry.update(code, name, category, Instant.now(clock));
-    return toView(save(entry));
+    var saved = save(entry);
+    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.SPAREPART_TAXONOMY, taxonomyId, entityLabel,
+        null, previous, SparepartTaxonomyAuditValues.of(saved)));
+    return toView(saved);
   }
 
   @Transactional
   public void delete(AuthenticatedUser user, UUID taxonomyId) {
     requireMutationRole(user);
     var entry = find(taxonomyId);
+    var entityLabel = entry.getCode();
+    var previous = SparepartTaxonomyAuditValues.of(entry);
     try {
       taxonomy.delete(entry);
       taxonomy.flush();
+      auditLog.record(user, new AuditRecord(AuditAction.DELETE, AuditEntityType.SPAREPART_TAXONOMY, taxonomyId,
+          entityLabel, null, previous, null));
     } catch (DataIntegrityViolationException exception) {
       throw new SparepartTaxonomyDataIntegrityException();
     }

@@ -25,6 +25,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AuditLogListResponse,
   AuthUserView,
   CreateMachineResponsibilityRequest,
   Health200,
@@ -32,6 +33,7 @@ import type {
   InstallationRequest,
   InstallationUpdateRequest,
   InstallationView,
+  ListAuditLogEntriesParams,
   ListMachineGroupsParams,
   ListMachineResponsibilitiesParams,
   ListMachineSparepartInstallationsParams,
@@ -4667,6 +4669,143 @@ export function useMe<TData = Awaited<ReturnType<typeof me>>, TError = unknown>(
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getMeQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export type listAuditLogEntriesResponse200 = {
+  data: AuditLogListResponse
+  status: 200
+}
+
+export type listAuditLogEntriesResponse400 = {
+  data: AuditLogListResponse
+  status: 400
+}
+
+export type listAuditLogEntriesResponse401 = {
+  data: AuditLogListResponse
+  status: 401
+}
+
+export type listAuditLogEntriesResponse403 = {
+  data: AuditLogListResponse
+  status: 403
+}
+
+export type listAuditLogEntriesResponseSuccess = (listAuditLogEntriesResponse200) & {
+  headers: Headers;
+};
+export type listAuditLogEntriesResponseError = (listAuditLogEntriesResponse400 | listAuditLogEntriesResponse401 | listAuditLogEntriesResponse403) & {
+  headers: Headers;
+};
+
+export type listAuditLogEntriesResponse = (listAuditLogEntriesResponseSuccess | listAuditLogEntriesResponseError)
+
+export const getListAuditLogEntriesUrl = (params?: ListAuditLogEntriesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/audit-log?${stringifiedParams}` : `/api/v1/audit-log`
+}
+
+/**
+ * @summary List audit log entries
+ */
+export const listAuditLogEntries = async (params?: ListAuditLogEntriesParams, options?: RequestInit): Promise<listAuditLogEntriesResponse> => {
+
+  return syncroFetch<listAuditLogEntriesResponse>(getListAuditLogEntriesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAuditLogEntriesQueryKey = (params?: ListAuditLogEntriesParams,) => {
+    return [
+    `/api/v1/audit-log`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAuditLogEntriesQueryOptions = <TData = Awaited<ReturnType<typeof listAuditLogEntries>>, TError = AuditLogListResponse>(params?: ListAuditLogEntriesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAuditLogEntriesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAuditLogEntries>>> = ({ signal }) => listAuditLogEntries(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListAuditLogEntriesQueryResult = NonNullable<Awaited<ReturnType<typeof listAuditLogEntries>>>
+export type ListAuditLogEntriesQueryError = AuditLogListResponse
+
+
+export function useListAuditLogEntries<TData = Awaited<ReturnType<typeof listAuditLogEntries>>, TError = AuditLogListResponse>(
+ params: undefined |  ListAuditLogEntriesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAuditLogEntries>>,
+          TError,
+          Awaited<ReturnType<typeof listAuditLogEntries>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAuditLogEntries<TData = Awaited<ReturnType<typeof listAuditLogEntries>>, TError = AuditLogListResponse>(
+ params?: ListAuditLogEntriesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAuditLogEntries>>,
+          TError,
+          Awaited<ReturnType<typeof listAuditLogEntries>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAuditLogEntries<TData = Awaited<ReturnType<typeof listAuditLogEntries>>, TError = AuditLogListResponse>(
+ params?: ListAuditLogEntriesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List audit log entries
+ */
+
+export function useListAuditLogEntries<TData = Awaited<ReturnType<typeof listAuditLogEntries>>, TError = AuditLogListResponse>(
+ params?: ListAuditLogEntriesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListAuditLogEntriesQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

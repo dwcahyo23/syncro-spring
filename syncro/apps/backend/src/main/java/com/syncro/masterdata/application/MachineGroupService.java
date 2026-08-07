@@ -1,5 +1,9 @@
 package com.syncro.masterdata.application;
 
+import com.syncro.audit.application.AuditLogWriter;
+import com.syncro.audit.application.AuditRecord;
+import com.syncro.audit.domain.AuditAction;
+import com.syncro.audit.domain.AuditEntityType;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.application.PlantScopeService;
 import com.syncro.auth.domain.ApplicationRole;
@@ -27,16 +31,19 @@ public class MachineGroupService {
   private final MachineGroupRepository machineGroups;
   private final PlantRepository plants;
   private final PlantScopeService plantScopes;
+  private final AuditLogWriter auditLog;
   private final Clock clock;
 
   public MachineGroupService(
       MachineGroupRepository machineGroups,
       PlantRepository plants,
       PlantScopeService plantScopes,
+      AuditLogWriter auditLog,
       Clock clock) {
     this.machineGroups = machineGroups;
     this.plants = plants;
     this.plantScopes = plantScopes;
+    this.auditLog = auditLog;
     this.clock = clock;
   }
 
@@ -79,7 +86,10 @@ public class MachineGroupService {
       throw new DuplicateMachineGroupNameException();
     }
     var now = Instant.now(clock);
-    return toView(saveMachineGroup(new MachineGroupEntity(UUID.randomUUID(), plant, name, now, now)));
+    var saved = saveMachineGroup(new MachineGroupEntity(UUID.randomUUID(), plant, name, now, now));
+    auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.MACHINE_GROUP, saved.getId(),
+        saved.getName(), plantId, null, MachineGroupAuditValues.of(saved)));
+    return toView(saved);
   }
 
   @Transactional
@@ -91,22 +101,31 @@ public class MachineGroupService {
     if (!plantId.equals(command.plantId())) {
       throw new MachineGroupDataIntegrityException();
     }
+    var entityLabel = machineGroup.getName();
+    var previous = MachineGroupAuditValues.of(machineGroup);
     var name = normalizeName(command.name());
     var existing = machineGroups.findByPlantIdAndNameIgnoreCase(plantId, name);
     if (existing.isPresent() && !existing.get().getId().equals(machineGroupId)) {
       throw new DuplicateMachineGroupNameException();
     }
     machineGroup.update(plant, name, Instant.now(clock));
-    return toView(saveMachineGroup(machineGroup));
+    var saved = saveMachineGroup(machineGroup);
+    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.MACHINE_GROUP, machineGroupId, entityLabel,
+        plantId, previous, MachineGroupAuditValues.of(saved)));
+    return toView(saved);
   }
 
   @Transactional
   public void delete(AuthenticatedUser user, UUID machineGroupId) {
     requireMutationRole(user);
     var machineGroup = findScoped(user, machineGroupId);
+    var entityLabel = machineGroup.getName();
+    var previous = MachineGroupAuditValues.of(machineGroup);
     try {
       machineGroups.delete(machineGroup);
       machineGroups.flush();
+      auditLog.record(user, new AuditRecord(AuditAction.DELETE, AuditEntityType.MACHINE_GROUP, machineGroupId,
+          entityLabel, machineGroup.getPlant().getId(), previous, null));
     } catch (DataIntegrityViolationException exception) {
       throw new MachineGroupDataIntegrityException();
     }

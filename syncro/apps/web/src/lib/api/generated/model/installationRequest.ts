@@ -7,20 +7,32 @@
  */
 
 export interface InstallationRequest {
+  /** Machine the sparepart is installed on */
   machineId: string;
+  /** Sparepart being installed */
   sparepartId: string;
   /**
+     * Function or usage of the sparepart
      * @minLength 0
      * @maxLength 255
      */
   functionName: string;
-  /** @minimum 1 */
+  /**
+     * Expected production count
+     * @minimum 1
+     */
   expectedProductionCount: number;
-  /** @minimum 0 */
+  /**
+     * Baseline counter at installation time
+     * @minimum 0
+     */
   baselineCounter: number;
   /**
+     * Consumed lifetime threshold percentage, defaults to 90
      * @minimum 1
      * @maximum 100
      */
   thresholdPercentage?: number;
+  /** Actual installation date; defaults to now when omitted */
+  installedAt?: string;
 }

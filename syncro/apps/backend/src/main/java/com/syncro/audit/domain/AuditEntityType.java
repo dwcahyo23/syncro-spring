@@ -1,0 +1,11 @@
+package com.syncro.audit.domain;
+
+public enum AuditEntityType {
+  PLANT,
+  MACHINE_GROUP,
+  MACHINE,
+  SPAREPART_TAXONOMY,
+  SPAREPART,
+  INSTALLATION,
+  RESPONSIBILITY
+}

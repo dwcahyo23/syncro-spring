@@ -6,6 +6,12 @@
  * OpenAPI spec version: v1
  */
 
+export * from './auditLogEntryView';
+export * from './auditLogEntryViewAction';
+export * from './auditLogEntryViewEntityType';
+export * from './auditLogEntryViewNewValue';
+export * from './auditLogEntryViewPreviousValue';
+export * from './auditLogListResponse';
 export * from './authUserView';
 export * from './authUserViewApplicationRole';
 export * from './createMachineResponsibilityRequest';
@@ -15,6 +21,8 @@ export * from './installationListResponse';
 export * from './installationRequest';
 export * from './installationUpdateRequest';
 export * from './installationView';
+export * from './listAuditLogEntriesEntityType';
+export * from './listAuditLogEntriesParams';
 export * from './listMachineGroupsParams';
 export * from './listMachineResponsibilitiesParams';
 export * from './listMachinesParams';
