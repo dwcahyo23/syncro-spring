@@ -64,7 +64,7 @@ development_status:
   2-r-remediate-epic-2-master-data-dialogs-and-linked-sparepart-workflows: done
   2-7-assign-machine-responsibility-levels: done
   2-8-show-setup-completeness: done
-  2-9-implement-immutable-audit-log-for-master-data: backlog
+  2-9-implement-immutable-audit-log-for-master-data: awaiting-operator
   epic-2-retrospective: optional
 
   # Epic 3: Telemetry Ingestion & Latest Machine Visibility

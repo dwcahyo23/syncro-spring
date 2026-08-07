@@ -14,13 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
 import type { ListAuditLogEntriesEntityType, ListAuditLogEntriesParams, PlantView } from "@/lib/api/generated/model";
-import {
-  ListAuditLogEntriesEntityType as EntityTypeValues,
-  useListAuditLogEntries,
-  useListPlants,
-} from "@/lib/api/generated/syncro";
+import { ListAuditLogEntriesEntityType as EntityTypeValues } from "@/lib/api/generated/model";
+import { useListAuditLogEntries, useListPlants } from "@/lib/api/generated/syncro";
 
-const ENTITY_TYPE_OPTIONS = EntityTypeValues.map((value) => ({ value, label: entityTypeLabel(value) }));
+const ENTITY_TYPE_OPTIONS = Object.values(EntityTypeValues).map((value) => ({ value, label: entityTypeLabel(value) }));
 
 type EntityFilter = "ALL" | ListAuditLogEntriesEntityType;
 type PlantFilter = "ALL" | string;
