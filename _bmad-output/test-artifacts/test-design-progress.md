@@ -261,3 +261,103 @@ Story-level register (14 risks) mapped from code review of the shipped implement
 
 Workflow status: completed.
 
+---
+
+# Automation Run: dw-db-index-hygiene
+
+Run ID: `20260808-012337-779e` (bmad-testarch-automate, GREEN phase)
+Date: 2026-08-08
+Baseline: `a30e7f6c8466f36a08fc8008123dd78b56557210`
+
+## Mode
+
+Automation expansion for the `dw-db-index-hygiene` deferred-work bundle. The ATDD run left 4 RED-phase scaffolds `@Disabled`; this run activates them, adds a shared fixture, and makes them green.
+
+## Output
+
+- `syncro/apps/backend/src/test/java/com/syncro/db/DbIndexHygieneTestData.java` (new shared fixture)
+- `syncro/apps/backend/src/test/java/com/syncro/db/DbIndexHygieneAtddUpgradePathScaffoldTest.java` (activated, 1 test GREEN)
+- `syncro/apps/backend/src/test/java/com/syncro/db/DbIndexHygieneAtddGapScaffoldTest.java` (activated, 3 tests GREEN)
+- `_bmad-output/test-artifacts/automation-summary-dw-db-index-hygiene.md`
+
+## Verification
+
+- `mvn test` (JDK 25, Testcontainers): **10/10 GREEN** — `DbIndexHygieneMigrationTest` (6) + `DbIndexHygieneAtddUpgradePathScaffoldTest` (1) + `DbIndexHygieneAtddGapScaffoldTest` (3). BUILD SUCCESS.
+- Fixture fixes during activation: V15 `category_id` link constraint for non-CATEGORY taxonomy, V10 `spareparts.machine_id` NOT NULL, seed-data cleanup for `containsExactly`, multi-row `EXPLAIN` aggregation.
+- Static guard (T-DH-P2-01): satisfied (dropped objects referenced only by V17 + catalog assertions).
+
+Workflow status: completed.
+
+---
+
+# Story-Level Run: dw-db-index-hygiene
+
+Run ID: `20260808-012337-779e`
+Date: 2026-08-08
+Baseline: `a30e7f6c8466f36a08fc8008123dd78b56557210`
+
+## Mode
+
+Story-level risk + coverage design for the `dw-db-index-hygiene` deferred-work sweep bundle (DW-5/DW-6: redundant indexes + unindexed ORDER BY joins). Schema-only chore: V17 migration (6 drops, 3 creates) + Testcontainers migration test.
+
+## Output
+
+- `_bmad-output/test-artifacts/test-design-story-db-index-hygiene.md`
+
+## Risk Summary
+
+Story-level register (8 risks):
+
+- P1 (score 6): DH-04 non-deterministic `ORDER BY code` OFFSET pagination across plants (pre-existing, surfaced by new `idx_machines_code`).
+- P1 (score 4): DH-07 upgrade-path (V16->V17 on existing data) not directly tested.
+- P2 (score 4): DH-02 bare `(code)` indexes may under-deliver for plant-scoped ORDER BY; DH-03 non-CONCURRENTLY SHARE-lock write-block during migration; DH-05 full-context `@SpringBootTest` heaviness + gitignored `JwtTokenService` compile blocker.
+- P2 (score 2-3): DH-01 dropped-object regression surface, DH-06 `containsSubsequence` assertion weakness.
+- P3 (score 2): DH-08 forward-only discipline / assumed-dropped-index in future migrations.
+
+## Coverage Summary
+
+- P0: 3 scenarios — already covered by shipped `DbIndexHygieneMigrationTest` (0 incremental effort).
+- P1: 3 scenarios (~4-8 h) — upgrade-path probe, pagination-determinism probe, EXPLAIN plan validation.
+- P2: 4 scenarios (~2-4 h) — static unreferenced grep, strengthened assertions, lock-window note, lighter-harness note.
+- P3: 2 process/ops items.
+- Total ~6-14 h (~1-2 days), backend-integration-heavy, no frontend impact.
+
+## Follow-Up Gaps Flagged
+
+1. Add V16->V17 upgrade-path probe (only uncovered project rule: "from previous schema state").
+2. Decide pagination tiebreaker for `ORDER BY code` (add secondary sort key or document acceptance).
+3. EXPLAIN evidence for whether bare `(code)` indexes are actually used; record future composite `(plant_id, code)` tuning item.
+4. Track clean-checkout compile blocker (`JwtTokenService` gitignored) separately.
+5. Document V17 `SHARE`-lock maintenance window for production apply.
+
+Workflow status: completed.
+
+---
+
+# ATDD Gap-Closing Run: dw-db-index-hygiene
+
+Run ID: `20260808-012337-779e` (bmad-testarch-atdd, RED phase)
+Date: 2026-08-08
+Baseline: `a30e7f6c8466f36a08fc8008123dd78b56557210`
+
+## Mode
+
+Red-phase ATDD scaffold generation for the gaps identified in `test-design-story-db-index-hygiene.md` (story already implemented; this run produces RED scaffolds + implementation checklist).
+
+## Output
+
+- `_bmad-output/test-artifacts/atdd-checklist-dw-db-index-hygiene.md`
+- `syncro/apps/backend/src/test/java/com/syncro/db/DbIndexHygieneAtddUpgradePathScaffoldTest.java` (1 `@Disabled`) — standalone Testcontainers + programmatic Flyway (V16-only target) upgrade-path probe
+- `syncro/apps/backend/src/test/java/com/syncro/db/DbIndexHygieneAtddGapScaffoldTest.java` (3 `@Disabled`) — pagination-determinism probe, EXPLAIN plan evidence, exact-list assertion
+
+## Flagship RED Test
+
+- `DH-P1-01` T-DH-P1-01/DH-07: V17 upgrade path over an existing V16 schema with seeded data — the only behavioral gap (project rule "from previous schema state" not covered by the shipped fresh-DB test).
+
+## Verification
+
+- Backend scaffolds compile (`mvn test-compile`, JDK 25) — both classes produced.
+- Remaining scaffolds are decision/evidence/activation locks (DH-04 tiebreaker, DH-02 EXPLAIN evidence, DH-06 exact-list).
+
+Workflow status: completed.
+
