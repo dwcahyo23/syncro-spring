@@ -1,0 +1,41 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-08-08T06:16:03Z",
+  "repo": "Syncro",
+  "target": {
+    "type": "story",
+    "id": "dw-db-index-hygiene",
+    "label": "dw-db-index-hygiene"
+  },
+  "workflow": "testarch-nfr",
+  "collection_status": "COLLECTED",
+  "gate_basis": "nfr_evidence_audit",
+  "gate_status": "CONCERNS",
+  "blockers": false,
+  "rationale": "NFR evidence audit across 4 domains (security, performance, reliability, scalability): overall domain risk LOW, no FAIL findings, 0 blockers, 0 critical, 0 high-priority issues. All 4 acceptance criteria 100% covered by 11 active backend integration tests (green). CONCERNS are UNKNOWN thresholds (no SLOs defined in repo; none invented) and open decision/evidence locks (DH-04 pagination tiebreaker, DH-02 EXPLAIN index-usefulness, DH-03 SHARE-lock maintenance window, repo-wide CI gap) - all non-blocking and tracked. Change is safe to proceed/merge; aligns with prior trace gate PASS.",
+  "domain_risk": {
+    "security": "LOW",
+    "performance": "LOW",
+    "reliability": "LOW",
+    "scalability": "LOW"
+  },
+  "category_status": {
+    "testability_automation": "PASS",
+    "test_data_strategy": "PASS",
+    "scalability_availability": "CONCERNS",
+    "disaster_recovery": "N/A",
+    "security": "PASS",
+    "monitorability": "CONCERNS",
+    "qos_qoe": "CONCERNS",
+    "deployability": "CONCERNS"
+  },
+  "critical_open": 0,
+  "high_priority_open": 0,
+  "concerns": 7,
+  "evidence_gaps": 3,
+  "links": {
+    "nfr_report_path": "_bmad-output/test-artifacts/nfr-assessment-dw-db-index-hygiene.md",
+    "subagent_audits_dir": "C:\\Users\\Dell\\AppData\\Local\\Temp\\opencode\\tea-nfr-{security,performance,reliability,scalability}-20260808T061603.json",
+    "trace_report_path": "_bmad-output/test-artifacts/traceability-matrix-dw-db-index-hygiene.md"
+  }
+}

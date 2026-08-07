@@ -34,14 +34,18 @@ resolution: already resolved: MachineResponsibilityService.java:85,103,120 now r
 origin: migrated from legacy ledger ("Deferred from: code review of 2-6-install-spareparts-on-machines-with-lifetime-baseline.md (2026-06-05)"), 2026-08-07
 location: n/a
 reason: Redundant DB indexes wasting write perf — deferred, pre-existing.
-status: open
+status: done 2026-08-08
+resolution: resolved by sweep bundle dw-db-index-hygiene
+resolution-undo: 116e09ed8ca373373f2953aff0446ca01aca198accd121c508cb4c4e3d05415a 2026-08-08 7374617475733a206f70656e
 
 ### DW-6: Expensive unindexed joins with order by
 
 origin: migrated from legacy ledger ("Deferred from: code review of 2-6-install-spareparts-on-machines-with-lifetime-baseline.md (2026-06-05)"), 2026-08-07
 location: n/a
 reason: Expensive unindexed joins with order by — deferred, pre-existing.
-status: open
+status: done 2026-08-08
+resolution: resolved by sweep bundle dw-db-index-hygiene
+resolution-undo: 116e09ed8ca373373f2953aff0446ca01aca198accd121c508cb4c4e3d05415a 2026-08-08 7374617475733a206f70656e
 
 ### DW-7: Brittle Next.js server command in Playwright
 

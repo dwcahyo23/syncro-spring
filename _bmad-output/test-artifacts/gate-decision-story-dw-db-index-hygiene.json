@@ -1,0 +1,23 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-08-08T06:10:00Z",
+  "repo": "Syncro",
+  "target": {
+    "type": "story",
+    "id": "dw-db-index-hygiene",
+    "label": "dw-db-index-hygiene"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "PASS",
+  "rationale": "P0 coverage is 100% and overall coverage is 100% (minimum: 80%). No P1 requirements detected. All four acceptance criteria (AC1-AC4) are fully covered by 11 active backend integration tests that pass locally (verified this run).",
+  "p0_status": "MET",
+  "p1_status": "MET",
+  "overall_status": "MET",
+  "critical_open": 0,
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability-matrix-dw-db-index-hygiene.md",
+    "trace_report_url": "",
+    "artifact_url": ""
+  }
+}
