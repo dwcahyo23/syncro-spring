@@ -62,7 +62,7 @@ development_status:
   2-5-manage-spareparts: done
   2-6-install-spareparts-on-machines-with-lifetime-baseline: done
   2-r-remediate-epic-2-master-data-dialogs-and-linked-sparepart-workflows: done
-  2-7-assign-machine-responsibility-levels: review
+  2-7-assign-machine-responsibility-levels: done
   2-8-show-setup-completeness: done
   2-9-implement-immutable-audit-log-for-master-data: backlog
   epic-2-retrospective: optional
