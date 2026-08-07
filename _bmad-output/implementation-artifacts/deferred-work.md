@@ -26,7 +26,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 2-7-assign-machine-responsibility-levels (2026-06-03)"), 2026-08-07
 location: n/a
 reason: No audit logging for assignments/removals — deferred, pre-existing (Epic 2 Task 2-9).
-status: open
+status: done 2026-08-08
+resolution: already resolved: MachineResponsibilityService.java:85,103,120 now records CREATE/UPDATE/DELETE audit entries for RESPONSIBILITY via AuditLogWriter (AuditEntityType.RESPONSIBILITY), landed by story 2-9 (commit c386dba, merged ad00966).
 
 ### DW-5: Redundant DB indexes wasting write performance
 
