@@ -7,6 +7,10 @@ param(
     [int]$MaxRounds = 20
 )
 $ErrorActionPreference = "Stop"
+$env:BMAD_LOOP_HTTP_TIMEOUT_S = "300.0"
+$env:BMAD_LOOP_HTTP_CONNECT_TIMEOUT_S = "10.0"
+$env:BMAD_LOOP_HTTP_SSE_READ_TIMEOUT_S = "60.0"
+$env:BMAD_LOOP_HTTP_HEALTH_TIMEOUT_S = "60.0"
 $sprint = Join-Path $Project "_bmad-output\implementation-artifacts\sprint-status.yaml"
 
 function Get-ActionableCount {
