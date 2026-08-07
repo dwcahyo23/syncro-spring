@@ -207,15 +207,15 @@ Actual package names may differ if implementation chooses `com.syncro.machine` o
 - [x] [Review][Patch] Add API evidence for VIEWER create/delete denial [syncro/apps/backend/src/test/java/com/syncro/sparepart/api/MachineSparepartInstallationControllerTest.java:211]
 - [x] [Review][Patch] Add service evidence for list ordering/filtering and duplicate baseline rejection [syncro/apps/backend/src/test/java/com/syncro/sparepart/application/MachineSparepartInstallationServiceIntegrationTest.java:248]
 - [x] [Review][Evidence] Complete Dev Agent Record with refreshed backend/service integration evidence; manual/browser UI evidence remains limited by local infra start permission [syncro/apps/web/src/features/master-data/installations/installation-management.tsx:78]
-- [ ] [Review][Patch] Unique Constraint Blocks Valid Multi-Part Scenarios — The unique constraint on `(machine_id, sparepart_id)` assumes a strict 1:1 hardware mapping. This prevents a machine from having two identical spareparts installed.
-- [ ] [Review][Patch] Hardcoded Installation Timestamps Destroy History — The API hardcodes `installedAt` to `Instant.now()`. Technicians cannot retroactively log installations that occurred in the past.
-- [ ] [Review][Patch] Update Threshold Silently Overwrites Data [syncro/apps/backend/src/main/java/com/syncro/sparepart/application/MachineSparepartInstallationService.java]
-- [ ] [Review][Patch] UTF-8 Encoding Corruption in React Components [syncro/apps/web/src/features/master-data/installations/installation-management.tsx]
-- [ ] [Review][Patch] Hidden Validation Logic Corrupts API Schema [syncro/apps/backend/src/main/java/com/syncro/sparepart/api/MachineSparepartInstallationDtos.java]
-- [ ] [Review][Patch] Inner Join on MachineGroup Causes Data Loss and NPE [syncro/apps/backend/src/main/java/com/syncro/sparepart/infrastructure/MachineSparepartInstallationRepository.java]
-- [ ] [Review][Patch] Frontend Validation Blocks Default Threshold [syncro/apps/web/src/features/master-data/installations/installation-management.tsx]
-- [ ] [Review][Patch] Number input NaN validation bypassed [syncro/apps/web/src/features/master-data/installations/installation-management.tsx]
-- [ ] [Review][Patch] Missing Explicit Nullability in OpenAPI Schema [syncro/apps/backend/src/main/java/com/syncro/sparepart/api/MachineSparepartInstallationDtos.java]
+- [x] [Review][Patch] Unique Constraint Blocks Valid Multi-Part Scenarios — The unique constraint on `(machine_id, sparepart_id)` assumes a strict 1:1 hardware mapping. This prevents a machine from having two identical spareparts installed.
+- [x] [Review][Patch] Hardcoded Installation Timestamps Destroy History — The API hardcodes `installedAt` to `Instant.now()`. Technicians cannot retroactively log installations that occurred in the past.
+- [x] [Review][Patch] Update Threshold Silently Overwrites Data [syncro/apps/backend/src/main/java/com/syncro/sparepart/application/MachineSparepartInstallationService.java]
+- [x] [Review][Patch] UTF-8 Encoding Corruption in React Components [syncro/apps/web/src/features/master-data/installations/installation-management.tsx]
+- [x] [Review][Patch] Hidden Validation Logic Corrupts API Schema [syncro/apps/backend/src/main/java/com/syncro/sparepart/api/MachineSparepartInstallationDtos.java]
+- [x] [Review][Patch] Inner Join on MachineGroup Causes Data Loss and NPE [syncro/apps/backend/src/main/java/com/syncro/sparepart/infrastructure/MachineSparepartInstallationRepository.java]
+- [x] [Review][Patch] Frontend Validation Blocks Default Threshold [syncro/apps/web/src/features/master-data/installations/installation-management.tsx]
+- [x] [Review][Patch] Number input NaN validation bypassed [syncro/apps/web/src/features/master-data/installations/installation-management.tsx]
+- [x] [Review][Patch] Missing Explicit Nullability in OpenAPI Schema [syncro/apps/backend/src/main/java/com/syncro/sparepart/api/MachineSparepartInstallationDtos.java]
 - [x] [Review][Defer] Redundant DB Indexes Wasting Write Perf [V8__create_machine_sparepart_installations.sql] — deferred, pre-existing
 - [x] [Review][Defer] Expensive Unindexed Joins with Order By [MachineSparepartInstallationRepository.java] — deferred, pre-existing
 - [x] [Review][Defer] Brittle Next.js Server Command in Playwright [playwright.config.ts] — deferred, pre-existing

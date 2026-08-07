@@ -67,9 +67,10 @@ public class MachineSparepartInstallationService {
     var machine = resolveMachine(user, normalized.machineId());
     var sparepart = resolveSparepart(normalized.sparepartId());
     var now = Instant.now(clock);
+    var installedAt = normalized.installedAt() != null ? normalized.installedAt() : now;
     return toView(save(new MachineSparepartInstallationEntity(UUID.randomUUID(), machine, sparepart,
         normalized.functionName(), normalized.expectedProductionCount(), normalized.baselineCounter(), normalized.thresholdPercentage(),
-        now, now, now)));
+        installedAt, now, now)));
   }
 
   @Transactional
@@ -77,7 +78,8 @@ public class MachineSparepartInstallationService {
     requireMutationRole(user);
     var installation = findScoped(user, installationId);
     var normalized = normalize(command);
-    installation.update(normalized.functionName(), normalized.expectedProductionCount(), normalized.baselineCounter(), normalized.thresholdPercentage(), Instant.now(clock));
+    var threshold = normalized.thresholdPercentage() != null ? normalized.thresholdPercentage() : installation.getThresholdPercentage();
+    installation.update(normalized.functionName(), normalized.expectedProductionCount(), normalized.baselineCounter(), threshold, Instant.now(clock));
     return toView(save(installation));
   }
 
@@ -161,12 +163,19 @@ public class MachineSparepartInstallationService {
       throw new InstallationValidationException();
     }
     return new InstallationCommand(command.machineId(), command.sparepartId(), normalizeFunctionName(command.functionName()), positive(command.expectedProductionCount()),
-        nonNegative(command.baselineCounter()), threshold(command.thresholdPercentage()));
+        nonNegative(command.baselineCounter()), threshold(command.thresholdPercentage()), command.installedAt());
   }
 
   private InstallationUpdateCommand normalize(InstallationUpdateCommand command) {
     return new InstallationUpdateCommand(normalizeFunctionName(command.functionName()), positive(command.expectedProductionCount()), nonNegative(command.baselineCounter()),
-        threshold(command.thresholdPercentage()));
+        nullableThreshold(command.thresholdPercentage()));
+  }
+
+  private Integer nullableThreshold(Integer value) {
+    if (value == null) {
+      return null;
+    }
+    return threshold(value);
   }
 
   private String normalizeFunctionName(String value) {
@@ -218,7 +227,11 @@ public class MachineSparepartInstallationService {
   }
 
   public record InstallationCommand(UUID machineId, UUID sparepartId, String functionName, Long expectedProductionCount, Long baselineCounter,
-      Integer thresholdPercentage) {
+      Integer thresholdPercentage, Instant installedAt) {
+    public InstallationCommand(UUID machineId, UUID sparepartId, String functionName, Long expectedProductionCount, Long baselineCounter,
+        Integer thresholdPercentage) {
+      this(machineId, sparepartId, functionName, expectedProductionCount, baselineCounter, thresholdPercentage, null);
+    }
   }
 
   public record InstallationUpdateCommand(String functionName, Long expectedProductionCount, Long baselineCounter, Integer thresholdPercentage) {

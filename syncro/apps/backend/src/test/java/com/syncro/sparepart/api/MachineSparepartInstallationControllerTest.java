@@ -132,6 +132,34 @@ class MachineSparepartInstallationControllerTest {
         .andExpect(jsonPath("$.thresholdPercentage").value(90));
   }
 
+  @Test
+  @DisplayName("2.6-API-015 P1 explicit installedAt is accepted for retroactive logging")
+  void explicitInstalledAtAcceptedForRetroactiveLogging() throws Exception {
+    var user = user(ApplicationRole.MANAGE);
+    when(installations.create(eq(user), any())).thenReturn(view(UUID.randomUUID()));
+
+    mockMvc.perform(post("/api/v1/machine-sparepart-installations")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"machineId\":\"00000000-0000-0000-0000-000000000001\",\"sparepartId\":\"00000000-0000-0000-0000-000000000002\",\"functionName\":\"Primary\",\"expectedProductionCount\":1000000,\"baselineCounter\":1200,\"thresholdPercentage\":90,\"installedAt\":\"2026-01-15T08:30:00Z\"}"))
+        .andExpect(status().isCreated());
+  }
+
+  @Test
+  @DisplayName("2.6-API-016 P1 update with null threshold is accepted")
+  void updateWithNullThresholdAccepted() throws Exception {
+    var user = user(ApplicationRole.MANAGE);
+    var installationId = UUID.randomUUID();
+    when(installations.update(eq(user), eq(installationId), any())).thenReturn(view(installationId));
+
+    mockMvc.perform(put("/api/v1/machine-sparepart-installations/{installationId}", installationId)
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"functionName\":\"Secondary\",\"expectedProductionCount\":2000000,\"baselineCounter\":1300,\"thresholdPercentage\":null}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.thresholdPercentage").value(90));
+  }
+
   @ParameterizedTest
   @DisplayName("2.6-API-005 P0 invalid installation requests return field errors")
   @ValueSource(strings = {

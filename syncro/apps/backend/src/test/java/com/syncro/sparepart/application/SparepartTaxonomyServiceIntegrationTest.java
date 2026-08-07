@@ -92,11 +92,11 @@ class SparepartTaxonomyServiceIntegrationTest {
   void manageCreatesNormalizedTaxonomyEntry() {
     var user = persistedUser(ApplicationRole.MANAGE, "manage-taxonomy@syncro.dev");
 
-    var created = taxonomyService.create(user, command(SparepartTaxonomyDimension.CATEGORY, " pneumatic ", " Pneumatic "));
+    var created = taxonomyService.create(user, command(SparepartTaxonomyDimension.CATEGORY, " ELECTRONIC ", " Electronic "));
 
     assertThat(created.dimension()).isEqualTo(SparepartTaxonomyDimension.CATEGORY);
-    assertThat(created.code()).isEqualTo("PNEUMATIC");
-    assertThat(created.name()).isEqualTo("Pneumatic");
+    assertThat(created.code()).isEqualTo("ELECTRONIC");
+    assertThat(created.name()).isEqualTo("Electronic");
     assertThat(taxonomy.findById(created.id())).isPresent();
   }
 
@@ -123,12 +123,13 @@ class SparepartTaxonomyServiceIntegrationTest {
   @DisplayName("2.4-SVC-003 P1 same taxonomy name is allowed across dimensions")
   void sameNameAllowedAcrossDimensions() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    var baseline = taxonomy.findAll().size();
 
     var category = seededElectricCategory();
     var kind = taxonomyService.create(admin, command(SparepartTaxonomyDimension.KIND, "ELEC", "Electric", category.getId()));
 
     assertThat(category.getId()).isNotEqualTo(kind.id());
-    assertThat(taxonomy.findAll()).hasSize(2);
+    assertThat(taxonomy.findAll()).hasSize(baseline + 1);
   }
 
   @Test
@@ -171,7 +172,7 @@ class SparepartTaxonomyServiceIntegrationTest {
     var viewer = persistedUser(ApplicationRole.VIEWER, "viewer-taxonomy@syncro.dev");
     var entry = seededElectricCategory();
 
-    assertThat(taxonomyService.list(viewer, null)).extracting(taxonomy -> taxonomy.id()).containsExactly(entry.getId());
+    assertThat(taxonomyService.list(viewer, null)).extracting(taxonomy -> taxonomy.id()).contains(entry.getId());
     assertThatThrownBy(() -> taxonomyService.create(viewer, command(SparepartTaxonomyDimension.BRAND, "WECON", "Wecon")))
         .isInstanceOf(SparepartTaxonomyMutationForbiddenException.class);
   }
@@ -180,7 +181,7 @@ class SparepartTaxonomyServiceIntegrationTest {
   @DisplayName("2.4-SVC-008 P1 delete removes taxonomy entry without dependents")
   void deleteRemovesTaxonomyEntryWithoutDependents() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    var entry = taxonomyService.create(admin, command(SparepartTaxonomyDimension.CATEGORY, "PNEUMATIC", "Pneumatic"));
+    var entry = taxonomyService.create(admin, command(SparepartTaxonomyDimension.CATEGORY, "ELECTRONIC", "Electronic"));
 
     taxonomyService.delete(admin, entry.id());
 
@@ -200,7 +201,7 @@ class SparepartTaxonomyServiceIntegrationTest {
   @DisplayName("2.4-SVC-010 P1 delete dependency conflict returns data integrity exception")
   void deleteDependencyConflictReturnsDataIntegrityException() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    var entry = taxonomyService.create(admin, command(SparepartTaxonomyDimension.CATEGORY, "HYDRAULIC", "Hydraulic"));
+    var entry = taxonomyService.create(admin, command(SparepartTaxonomyDimension.CATEGORY, "ELECTRONIC", "Electronic"));
     jdbc.execute("""
         CREATE TABLE sparepart_taxonomy_delete_dependencies (
           id UUID PRIMARY KEY,

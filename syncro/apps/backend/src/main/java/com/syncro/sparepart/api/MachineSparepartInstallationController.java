@@ -119,7 +119,7 @@ public class MachineSparepartInstallationController {
   }
 
   private InstallationCommand command(InstallationRequest request) {
-    return new InstallationCommand(request.machineId(), request.sparepartId(), request.functionName(), request.expectedProductionCount(), request.baselineCounter(), request.thresholdPercentage());
+    return new InstallationCommand(request.machineId(), request.sparepartId(), request.functionName(), request.expectedProductionCount(), request.baselineCounter(), request.thresholdPercentage(), request.installedAt());
   }
 
   private InstallationView toDto(MachineSparepartInstallationService.InstallationView installation) {

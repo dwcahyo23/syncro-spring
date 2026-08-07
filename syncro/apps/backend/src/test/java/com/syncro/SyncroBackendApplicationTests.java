@@ -57,6 +57,9 @@ class SyncroBackendApplicationTests {
   private MachineRepository machineRepository;
 
   @MockitoBean
+  private com.syncro.machine.infrastructure.MachineResponsibilityRepository machineResponsibilityRepository;
+
+  @MockitoBean
   private com.syncro.sparepart.infrastructure.SparepartRepository sparepartRepository;
 
   @MockitoBean

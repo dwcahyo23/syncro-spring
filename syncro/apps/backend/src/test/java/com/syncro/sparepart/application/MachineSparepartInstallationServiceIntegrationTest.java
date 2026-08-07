@@ -143,6 +143,37 @@ class MachineSparepartInstallationServiceIntegrationTest {
   }
 
   @Test
+  @DisplayName("2.6-SVC-011 P1 explicit installedAt is honored for retroactive logging")
+  void createHonorsExplicitInstalledAt() {
+    var plant = plant("GM1");
+    var machine = machine(plant, "BF-08410");
+    var sparepart = sparepart("PLC-WECON-LX5");
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    var retroactive = Instant.parse("2026-01-15T08:30:00Z");
+
+    var created = service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), "Primary", 1_000_000L, 1_200L, 90, retroactive));
+
+    assertThat(created.installedAt()).isEqualTo(retroactive);
+    assertThat(installations.findById(created.id()).orElseThrow().getInstalledAt()).isEqualTo(retroactive);
+  }
+
+  @Test
+  @DisplayName("2.6-SVC-012 P1 update with null threshold keeps the existing value")
+  void updateWithNullThresholdKeepsExistingValue() {
+    var plant = plant("GM1");
+    var machine = machine(plant, "BF-08410");
+    var sparepart = sparepart("PLC-WECON-LX5");
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    var created = service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), "Primary", 1_000_000L, 1_200L, 80));
+
+    var updated = service.update(admin, created.id(), new InstallationUpdateCommand("Secondary", 2_000_000L, 1_300L, null));
+
+    assertThat(updated.expectedProductionCount()).isEqualTo(2_000_000L);
+    assertThat(updated.baselineCounter()).isEqualTo(1_300L);
+    assertThat(updated.thresholdPercentage()).isEqualTo(80);
+  }
+
+  @Test
   @DisplayName("2.6-SVC-003 P0 invalid numeric values are rejected")
   void invalidNumericValuesRejected() {
     var plant = plant("GM1");
