@@ -13,13 +13,13 @@ vi.mock("@/lib/api/generated/syncro", () => ({
     data: { data: [{ id: "user-1", loginIdentifier: "operator@syncro.dev" }] },
     isLoading: false,
   })),
-  useList: vi.fn(() => ({
+  useListMachineResponsibilities: vi.fn(() => ({
     data: { data: { items: [] } },
     isLoading: false,
   })),
-  useAssign: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
-  useUnassign: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
-  getListQueryKey: vi.fn(() => ["/api/v1/machine-responsibilities"]),
+  useAssignMachineResponsibility: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useUnassignMachineResponsibility: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  getListMachineResponsibilitiesQueryKey: vi.fn(() => ["/api/v1/machine-responsibilities"]),
 }));
 
 let mockUser = { id: "user-1", loginIdentifier: "admin@syncro.dev", applicationRole: "SUPER_ADMIN" };
