@@ -103,7 +103,8 @@ class MachineResponsibilityControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestJson))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Validation failed."));
+                .andExpect(jsonPath("$.code").value("DUPLICATE_RESPONSIBILITY"))
+                .andExpect(jsonPath("$.message").value("User is already assigned to this machine."));
     }
 
     @Test
