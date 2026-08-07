@@ -4,7 +4,7 @@ totalSteps: 5
 stepsCompleted: ['step-01-detect-mode', 'step-02-load-context', 'step-03-risk-and-testability', 'step-04-coverage-plan', 'step-05-generate-output']
 lastStep: 'step-05-generate-output'
 nextStep: ''
-lastSaved: '2026-05-27'
+lastSaved: '2026-08-07'
 ---
 
 # Step 1: Detect Mode & Prerequisites
@@ -184,6 +184,80 @@ Key open assumptions:
 - Admin table pagination threshold and max page size UNKNOWN.
 - Hard delete vs soft delete semantics partly unspecified.
 - Performance final verdict deferred until list size and pagination requirements exist.
+
+Workflow status: completed.
+
+---
+
+# ATDD Gap-Closing Run: 2-9 Immutable Audit Log for Master Data
+
+Run ID: `20260807-214614-fc56` (bmad-testarch-atdd, RED phase)
+Date: 2026-08-07
+Baseline: `283d36b232058a90af50ba734e896ea85041a3f1`
+
+## Mode
+
+Red-phase ATDD scaffold generation for the gaps identified in `test-design-story-2-9-immutable-audit-log.md` (story already implemented; this run produces RED scaffolds + implementation checklist).
+
+## Output
+
+- `_bmad-output/test-artifacts/atdd-checklist-2-9-implement-immutable-audit-log-for-master-data.md`
+- `syncro/apps/backend/src/test/java/com/syncro/audit/api/AuditLogAtddGapApiScaffoldTest.java` (4 `@Disabled`)
+- `syncro/apps/backend/src/test/java/com/syncro/audit/application/AuditLogAtddGapIntegrationScaffoldTest.java` (5 `@Disabled`)
+- `syncro/apps/web/src/features/audit-log/audit-log-page.atdd.test.tsx` (7 `it.skip`)
+- `syncro/apps/web/tests/e2e/audit-log.atdd-red.spec.ts` (5 `test.skip`)
+
+## Flagship RED Tests
+
+- `2.9-SVC-017` R-2.9-1: `UPDATE audit_log SET plant_id/id` must raise — FAILS today (trigger `OF`-list gap).
+- `[P0]` R-2.9-6: page resets to 0 on entityType/actor/from/to change — FAILS today (`audit-log-page.tsx`).
+
+## Verification
+
+- Backend scaffolds compile (`mvn test-compile`, JDK 25).
+- Frontend scaffold: Biome clean, Vitest runs 7 skipped.
+- Remaining P1/P2 items are activation locks (expected green once activated).
+
+Workflow status: completed.
+
+---
+
+# Story-Level Run: 2-9 Immutable Audit Log for Master Data
+
+Run ID: `20260807-214614-fc56`
+Date: 2026-08-07
+Baseline: `283d36b232058a90af50ba734e896ea85041a3f1`
+
+## Mode
+
+Story-level risk + coverage design for story 2-9, produced as evidence-grounded follow-up to the Epic 2 test design (story implementation already exists; this run verifies risk coverage against actual code).
+
+## Output
+
+- `_bmad-output/test-artifacts/test-design-story-2-9-immutable-audit-log.md`
+
+## Risk Summary
+
+Story-level register (14 risks) mapped from code review of the shipped implementation:
+
+- P0 (score 9): R-2.9-1 DB immutability trigger `OF`-list omits `plant_id`/`id` — `UPDATE audit_log SET plant_id` succeeds via direct SQL today (existing test only covers `actor_name`).
+- P0 (score 6): R-2.9-2 all 7 aggregate wiring, R-2.9-3 same-tx capture, R-2.9-4 plant-scope reads, R-2.9-5 payload fidelity.
+- P1 (score 4-6): R-2.9-6 frontend stale page on filter change, R-2.9-7 role/authn, R-2.9-8 invalid filter 400s, R-2.9-9 timezone boundary, R-2.9-10 Orval client drift.
+- P2/P3: FK SET NULL on plant delete, corrupt-JSON 500, LIKE escaping, composite-index NFR, retention/ops.
+
+## Coverage Summary
+
+- P0: 9 scenarios (~14-20 h), P1: 9 (~16-24 h), P2: 6 (~6-12 h), P3: 3 manual/ops (~2-6 h).
+- Total ~38-62 h. Reuses 22 existing tests (6 API + 8 service + 8 wiring).
+
+## Follow-Up Gaps Flagged
+
+1. Decide/fix R-2.9-1 (add `plant_id` handling or accept + document) + add Testcontainers probe.
+2. Frontend page-reset fix in `audit-log-page.tsx` (entityType/actor/from/to/sort do not reset page).
+3. No frontend test harness — add component-level coverage.
+4. Missing API 400 tests for bad `sort` and malformed `from`/`to`.
+5. Retention/cleanup decision for the append-only table (P3/ops).
+6. Operator actions remain the runtime/UI proof gate (spec status: awaiting-operator).
 
 Workflow status: completed.
 

@@ -1,0 +1,195 @@
+{
+  "phase": "PHASE_1_COMPLETE",
+  "generated_at": "2026-08-08T00:00:00.000Z",
+  "trace_target": {
+    "type": "story",
+    "id": "2-9-implement-immutable-audit-log-for-master-data",
+    "label": "2.9 Implement Immutable Audit Log for Master Data"
+  },
+  "collection_mode": "contract_static",
+  "allow_gate": true,
+  "collection_status": "COLLECTED",
+  "coverage_basis": "acceptance_criteria",
+  "summary_confidence": "high",
+  "oracle": {
+    "resolution_mode": "formal_requirements",
+    "confidence": "high",
+    "sources": [
+      "_bmad-output/implementation-artifacts/spec-2-9-implement-immutable-audit-log-for-master-data.md",
+      "_bmad-output/test-artifacts/test-design-story-2-9-immutable-audit-log.md",
+      "_bmad-output/test-artifacts/atdd-checklist-2-9-implement-immutable-audit-log-for-master-data.md",
+      "_bmad-output/test-artifacts/automation-summary-2-9-implement-immutable-audit-log-for-master-data.md"
+    ],
+    "external_pointer_status": "not_used",
+    "synthetic": false
+  },
+  "requirements": [
+    {
+      "id": "AC1",
+      "title": "Every master-data mutation (plant, machine group, machine, sparepart taxonomy, sparepart, installation, responsibility) records exactly one immutable entry with actor, action, entity type/id/label, plantId, previous/new value, timestamp",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        { "id": "2.9-SVC-009", "file": "syncro/apps/backend/src/test/java/com/syncro/audit/application/AuditLogWiringIntegrationTest.java", "title": "plant create/update/delete each record an entry", "level": "integration", "status": "active" },
+        { "id": "2.9-SVC-010", "file": "syncro/apps/backend/src/test/java/com/syncro/audit/application/AuditLogWiringIntegrationTest.java", "title": "machine group create/update/delete each record an entry", "level": "integration", "status": "active" },
+        { "id": "2.9-SVC-011", "file": "syncro/apps/backend/src/test/java/com/syncro/audit/application/AuditLogWiringIntegrationTest.java", "title": "manage user machine status update records one entry with before and after", "level": "integration", "status": "active" },
+        { "id": "2.9-SVC-012", "file": "syncro/apps/backend/src/test/java/com/syncro/audit/application/AuditLogWiringIntegrationTest.java", "title": "sparepart taxonomy mutations record entries without a plant", "level": "integration", "status": "active" },
+        { "id": "2.9-SVC-013", "file": "syncro/apps/backend/src/test/java/com/syncro/audit/application/AuditLogWiringIntegrationTest.java", "title": "sparepart mutations record entries scoped to the machine plant", "level": "integration", "status": "active" },
+        { "id": "2.9-SVC-014", "file": "syncro/apps/backend/src/test/java/com/syncro/audit/application/AuditLogWiringIntegrationTest.java", "title": "installation mutations record entries including threshold edits", "level": "integration", "status": "active" },
+        { "id": "2.9-SVC-015", "file": "syncro/apps/backend/src/test/java/com/syncro/audit/application/AuditLogWiringIntegrationTest.java", "title": "responsibility assign/update/unassign each record an entry", "level": "integration", "status": "active" },
+        { "id": "2.9-SVC-016", "file": "syncro/apps/backend/src/test/java/com/syncro/audit/application/AuditLogWiringIntegrationTest.java", "title": "a failed mutation writes no audit entry", "level": "integration", "status": "active" },
+        { "id": "2.9-SVC-001", "file": "syncro/apps/backend/src/test/java/com/syncro/audit/application/AuditLogServiceIntegrationTest.java", "title": "recorded entry is returned with full detail", "level": "integration", "status": "active" },
+        { "id": "2.9-API-001", "file": "syncro/apps/backend/src/test/java/com/syncro/audit/api/AuditLogControllerTest.java", "title": "audit log listing returns the full entry shape", "level": "api", "status": "active" },
+        { "id": "2.9-ATDD-API-SHAPE", "file": "syncro/apps/web/tests/api/audit-log.spec.ts", "title": "SUPER_ADMIN lists entries with the full response shape", "level": "api", "status": "skipped", "skip_reason": "env-gated: requires live backend + SYNCRO_ATDD_*_TOKEN" }
+      ]
+    },
+    {
+      "id": "AC2",
+      "title": "Audit log API filters by entity type, actor, plant, or date range; matching entries returned paginated newest-first",
+      "priority": "P1",
+      "coverage": "FULL",
+      "tests": [
+        { "id": "2.9-SVC-005", "file": "syncro/apps/backend/src/test/java/com/syncro/audit/application/AuditLogServiceIntegrationTest.java", "title": "entity type, actor, plant, and date range filters apply", "level": "integration", "status": "active" },
+        { "id": "2.9-SVC-006", "file": "syncro/apps/backend/src/test/java/com/syncro/audit/application/AuditLogServiceIntegrationTest.java", "title": "entries are ordered newest-first by default", "level": "integration", "status": "active" },
+        { "id": "2.9-API-002", "file": "syncro/apps/backend/src/test/java/com/syncro/audit/api/AuditLogControllerTest.java", "title": "filter parameters bind to the audit log query", "level": "api", "status": "active" },
+        { "id": "2.9-FE-001", "file": "syncro/apps/web/src/features/audit-log/audit-log-page.test.tsx", "title": "default query contract has no filters, page 0, size 50, newest-first sort", "level": "component", "status": "active" },
+        { "id": "2.9-FE-002", "file": "syncro/apps/web/src/features/audit-log/audit-log-page.test.tsx", "title": "from/to date filters send UTC day boundaries", "level": "component", "status": "active" },
+        { "id": "2.9-FE-003", "file": "syncro/apps/web/src/features/audit-log/audit-log-page.test.tsx", "title": "actor filter is trimmed and omitted when blank", "level": "component", "status": "active" },
+        { "id": "2.9-FE-004", "file": "syncro/apps/web/src/features/audit-log/audit-log-page.test.tsx", "title": "sorting by the Actor column toggles asc then desc", "level": "component", "status": "active" },
+        { "id": "2.9-FE-005", "file": "syncro/apps/web/src/features/audit-log/audit-log-page.test.tsx", "title": "pagination controls move the page parameter", "level": "component", "status": "active" },
+        { "id": "2.9-ATDD-API-FILTER", "file": "syncro/apps/web/tests/api/audit-log.spec.ts", "title": "filter parameters bind without error", "level": "api", "status": "skipped", "skip_reason": "env-gated: requires live backend + SYNCRO_ATDD_*_TOKEN" }
+      ]
+    },
+    {
+      "id": "AC3",
+      "title": "An attempt to edit or delete an audit entry (app or direct SQL) is rejected — no write API exists and the DB trigger raises",
+      "priority": "P0",
+      "coverage": "PARTIAL",
+      "tests": [
+        { "id": "2.9-SVC-007", "file": "syncro/apps/backend/src/test/java/com/syncro/audit/application/AuditLogServiceIntegrationTest.java", "title": "DB trigger rejects UPDATE on audit_log", "level": "integration", "status": "active" },
+        { "id": "2.9-SVC-008", "file": "syncro/apps/backend/src/test/java/com/syncro/audit/application/AuditLogServiceIntegrationTest.java", "title": "DB trigger rejects DELETE on audit_log", "level": "integration", "status": "active" },
+        { "id": "2.9-API-010", "file": "syncro/apps/backend/src/test/java/com/syncro/audit/api/AuditLogAtddGapApiScaffoldTest.java", "title": "no write endpoints exist for the audit log (PUT/DELETE 405)", "level": "api", "status": "skipped", "skip_reason": "RED scaffold @Disabled; activation lock for R-2.9-1" },
+        { "id": "2.9-SVC-017", "file": "syncro/apps/backend/src/test/java/com/syncro/audit/application/AuditLogAtddGapIntegrationScaffoldTest.java", "title": "DB trigger guards the primary key and plant_id columns", "level": "integration", "status": "skipped", "skip_reason": "RED flagship for R-2.9-1; verified to FAIL today (trigger OF-list omits id/plant_id)" },
+        { "id": "2.9-ATDD-API-NOWRITE", "file": "syncro/apps/web/tests/api/audit-log.spec.ts", "title": "no write endpoints exist for the audit log (405)", "level": "api", "status": "skipped", "skip_reason": "env-gated: requires live backend + SYNCRO_ATDD_*_TOKEN" }
+      ],
+      "gaps": [
+        "V16 trigger BEFORE UPDATE OF list omits id and plant_id; direct SQL can rewrite those columns (R-2.9-1, P0). Only the guarded columns (actor_id, actor_name, action, entity_type, entity_id, entity_label, previous_value, new_value, created_at) raise on UPDATE.",
+        "API immutability (PUT/DELETE -> 405) is asserted only by a RED scaffold and an env-gated spec; no active test."
+      ]
+    },
+    {
+      "id": "AC4",
+      "title": "SUPER_ADMIN, MANAGE (assigned), VIEWER (assigned/empty) listing is plant-scoped per effectiveScope; out-of-scope plant filters return 403",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        { "id": "2.9-SVC-002", "file": "syncro/apps/backend/src/test/java/com/syncro/audit/application/AuditLogServiceIntegrationTest.java", "title": "assigned user sees only own plant plus global entries", "level": "integration", "status": "active" },
+        { "id": "2.9-SVC-003", "file": "syncro/apps/backend/src/test/java/com/syncro/audit/application/AuditLogServiceIntegrationTest.java", "title": "EMPTY scope user sees only global entries without error", "level": "integration", "status": "active" },
+        { "id": "2.9-SVC-004", "file": "syncro/apps/backend/src/test/java/com/syncro/audit/application/AuditLogServiceIntegrationTest.java", "title": "out-of-scope plant filter is rejected", "level": "integration", "status": "active" },
+        { "id": "2.9-API-003", "file": "syncro/apps/backend/src/test/java/com/syncro/audit/api/AuditLogControllerTest.java", "title": "out-of-scope plant filter returns safe 403", "level": "api", "status": "active" },
+        { "id": "2.9-API-004", "file": "syncro/apps/backend/src/test/java/com/syncro/audit/api/AuditLogControllerTest.java", "title": "EMPTY scope returns an empty list without error", "level": "api", "status": "active" },
+        { "id": "2.9-API-006", "file": "syncro/apps/backend/src/test/java/com/syncro/audit/api/AuditLogControllerTest.java", "title": "unauthenticated users cannot list the audit log (401)", "level": "api", "status": "active" },
+        { "id": "2.9-FE-006", "file": "syncro/apps/web/src/features/audit-log/audit-log-page.test.tsx", "title": "EMPTY scope disables the plant selector", "level": "component", "status": "active" },
+        { "id": "2.9-ATDD-API-SCOPE", "file": "syncro/apps/web/tests/api/audit-log.spec.ts", "title": "MANAGE role and VIEWER role can read the audit log; unauth 401", "level": "api", "status": "skipped", "skip_reason": "env-gated: requires live backend + SYNCRO_ATDD_*_TOKEN" }
+      ]
+    },
+    {
+      "id": "AC5",
+      "title": "Audit Log page renders dense desktop table, mobile date-grouped stacked cards, expandable before/after detail, plus loading/error/empty/filtered-empty-with-reset states",
+      "priority": "P1",
+      "coverage": "PARTIAL",
+      "tests": [
+        { "id": "2.9-FE-001", "file": "syncro/apps/web/src/features/audit-log/audit-log-page.test.tsx", "title": "default query contract has no filters, page 0, size 50, newest-first sort", "level": "component", "status": "active" },
+        { "id": "2.9-FE-006", "file": "syncro/apps/web/src/features/audit-log/audit-log-page.test.tsx", "title": "EMPTY scope disables the plant selector", "level": "component", "status": "active" },
+        { "id": "2.9-FE-ATDD-001", "file": "syncro/apps/web/src/features/audit-log/audit-log-page.atdd.test.tsx", "title": "resets page to 0 when a filter changes while on page > 0 (R-2.9-6)", "level": "component", "status": "skipped", "skip_reason": "RED flagship for R-2.9-6; verified to FAIL today (setPage(0) only on plant/size/reset)" },
+        { "id": "2.9-FE-ATDD-002", "file": "syncro/apps/web/src/features/audit-log/audit-log-page.atdd.test.tsx", "title": "renders a skeleton while audit entries are loading", "level": "component", "status": "skipped", "skip_reason": "RED scaffold it.skip (loading state)" },
+        { "id": "2.9-FE-ATDD-003", "file": "syncro/apps/web/src/features/audit-log/audit-log-page.atdd.test.tsx", "title": "renders the error state and refetches when Retry is clicked", "level": "component", "status": "skipped", "skip_reason": "RED scaffold it.skip (error+retry state)" },
+        { "id": "2.9-FE-ATDD-004", "file": "syncro/apps/web/src/features/audit-log/audit-log-page.atdd.test.tsx", "title": "renders the empty state when there are no entries and no filters", "level": "component", "status": "skipped", "skip_reason": "RED scaffold it.skip (empty state)" },
+        { "id": "2.9-FE-ATDD-005", "file": "syncro/apps/web/src/features/audit-log/audit-log-page.atdd.test.tsx", "title": "renders filtered-empty state and Reset filters clears filters and page", "level": "component", "status": "skipped", "skip_reason": "RED scaffold it.skip (filtered-empty+reset state)" },
+        { "id": "2.9-FE-ATDD-006", "file": "syncro/apps/web/src/features/audit-log/audit-log-page.atdd.test.tsx", "title": "renders the desktop dense table with sortable headers and expandable before/after detail", "level": "component", "status": "skipped", "skip_reason": "RED scaffold it.skip (desktop table)" },
+        { "id": "2.9-FE-ATDD-007", "file": "syncro/apps/web/src/features/audit-log/audit-log-page.atdd.test.tsx", "title": "renders mobile cards grouped by date with expandable detail", "level": "component", "status": "skipped", "skip_reason": "RED scaffold it.skip (mobile cards)" },
+        { "id": "2.9-ATDD-E2E-001", "file": "syncro/apps/web/tests/e2e/audit-log.atdd-red.spec.ts", "title": "SUPER_ADMIN sees heading and a dense sortable desktop table", "level": "e2e", "status": "skipped", "skip_reason": "RED scaffold test.skip; requires running app + auth" },
+        { "id": "2.9-ATDD-E2E-002", "file": "syncro/apps/web/tests/e2e/audit-log.atdd-red.spec.ts", "title": "filtering by entity type refetches results and resets page to 0", "level": "e2e", "status": "skipped", "skip_reason": "RED scaffold test.skip; requires running app + auth" },
+        { "id": "2.9-ATDD-E2E-003", "file": "syncro/apps/web/tests/e2e/audit-log.atdd-red.spec.ts", "title": "empty list shows No audit entries yet", "level": "e2e", "status": "skipped", "skip_reason": "RED scaffold test.skip; requires running app + auth" },
+        { "id": "2.9-ATDD-E2E-004", "file": "syncro/apps/web/tests/e2e/audit-log.atdd-red.spec.ts", "title": "filtered-empty shows No matching entries and Reset restores the list", "level": "e2e", "status": "skipped", "skip_reason": "RED scaffold test.skip; requires running app + auth" },
+        { "id": "2.9-ATDD-E2E-005", "file": "syncro/apps/web/tests/e2e/audit-log.atdd-red.spec.ts", "title": "mobile shows date-grouped stacked cards with expandable detail", "level": "e2e", "status": "skipped", "skip_reason": "RED scaffold test.skip; requires running app + auth" }
+      ],
+      "gaps": [
+        "No ACTIVE evidence for the required UI states (loading, error+retry, empty, filtered-empty+reset) or the desktop table / mobile cards / expandable before-after rendering — those are only RED/skipped scaffolds.",
+        "Known R-2.9-6 page-reset-on-filter-change bug is unfixed; flagship component test is RED.",
+        "Operator browser verification of /dashboard/audit-log (spec operator action #5) is pending (awaiting-operator)."
+      ]
+    }
+  ],
+  "coverage_statistics": {
+    "total_requirements": 5,
+    "fully_covered": 3,
+    "partially_covered": 2,
+    "uncovered": 0,
+    "overall_coverage_percentage": 60,
+    "priority_breakdown": {
+      "P0": { "total": 3, "covered": 2, "percentage": 67 },
+      "P1": { "total": 2, "covered": 1, "percentage": 50 },
+      "P2": { "total": 0, "covered": 0, "percentage": 100 },
+      "P3": { "total": 0, "covered": 0, "percentage": 100 }
+    }
+  },
+  "gap_analysis": {
+    "critical_gaps": [
+      { "id": "AC3", "title": "Immutability is only partial: DB trigger guards 9 of 11 columns; id and plant_id are silently mutable via SQL (R-2.9-1)", "priority": "P0", "coverage": "PARTIAL" }
+    ],
+    "high_gaps": [
+      { "id": "AC5", "title": "UI rendering states and desktop/mobile/expandable evidence exist only as RED scaffolds; R-2.9-6 page-reset bug open", "priority": "P1", "coverage": "PARTIAL" }
+    ],
+    "medium_gaps": [],
+    "low_gaps": [],
+    "partial_coverage_items": ["AC3", "AC5"],
+    "unit_only_items": []
+  },
+  "coverage_heuristics": {
+    "endpoint_gaps": ["PUT/DELETE /api/v1/audit-log immutability (405) has no active test"],
+    "auth_negative_path_gaps": [],
+    "happy_path_only_gaps": ["AC5 UI states (loading/error/empty/filtered-empty/desktop/mobile)"],
+    "ui_journey_gaps": ["/dashboard/audit-log E2E journeys (5 RED scaffolds)"],
+    "ui_state_gaps": ["loading", "error+retry", "empty", "filtered-empty+reset", "desktop table expandable", "mobile cards expandable"],
+    "counts": {
+      "endpoints_without_tests": 1,
+      "auth_missing_negative_paths": 0,
+      "happy_path_only_criteria": 1,
+      "ui_journeys_without_e2e": 1,
+      "ui_states_missing_coverage": 6
+    }
+  },
+  "test_inventory": {
+    "summary": {
+      "files": 9,
+      "cases": 59,
+      "skipped_cases": 31,
+      "fixme_cases": 0,
+      "pending_cases": 0,
+      "by_level": {
+        "e2e": { "tests": 5, "criteria_covered": 1 },
+        "api": { "tests": 20, "criteria_covered": 4 },
+        "component": { "tests": 13, "criteria_covered": 3 },
+        "integration": { "tests": 21, "criteria_covered": 4 },
+        "other": { "tests": 0, "criteria_covered": 0 }
+      }
+    },
+    "tests": [],
+    "blockers": [
+      { "id": "2.9-SVC-017", "severity": "high", "reason": "RED flagship: DB trigger OF-list omits id/plant_id (R-2.9-1, P0)", "test_file": "AuditLogAtddGapIntegrationScaffoldTest.java", "test_title": "DB trigger guards the primary key and plant_id columns" },
+      { "id": "2.9-FE-ATDD-001", "severity": "high", "reason": "RED flagship: page not reset on filter change (R-2.9-6, P0)", "test_file": "audit-log-page.atdd.test.tsx", "test_title": "resets page to 0 when a filter changes while on page > 0" }
+    ]
+  },
+  "blockers": [
+    { "id": "2.9-SVC-017", "severity": "high", "reason": "RED flagship: DB trigger OF-list omits id/plant_id (R-2.9-1, P0)", "test_file": "AuditLogAtddGapIntegrationScaffoldTest.java", "test_title": "DB trigger guards the primary key and plant_id columns" },
+    { "id": "2.9-FE-ATDD-001", "severity": "high", "reason": "RED flagship: page not reset on filter change (R-2.9-6, P0)", "test_file": "audit-log-page.atdd.test.tsx", "test_title": "resets page to 0 when a filter changes while on page > 0" }
+  ],
+  "recommendations": [
+    { "priority": "URGENT", "action": "Resolve R-2.9-1: decide trigger fix (V17 migration guarding id and a plant_id-only trigger permitting the FK ON DELETE SET NULL nulling) or document plant_id mutability; activate 2.9-SVC-017 and re-verify 2.9-SVC-007/008/018", "requirements": ["AC3"] },
+    { "priority": "HIGH", "action": "Fix R-2.9-6 page-reset-on-filter-change in audit-log-page.tsx; activate the [P0] component test and the 6 [P1] UI-state acceptance locks (audit-log-page.atdd.test.tsx)", "requirements": ["AC5"] },
+    { "priority": "HIGH", "action": "Complete operator actions #1-#6 (boot + V16, API smokes 200/403/401, browser verify /dashboard/audit-log, psql immutability), then activate E2E (audit-log.atdd-red.spec.ts) and env-gated API (audit-log.spec.ts) tests", "requirements": ["AC3", "AC5"] },
+    { "priority": "MEDIUM", "action": "Add active component/E2E coverage for AC5 UI states (loading/error/empty/filtered-empty/desktop/mobile) once the R-2.9-6 fix lands", "requirements": ["AC5"] },
+    { "priority": "LOW", "action": "Run /bmad:tea:test-review on audit-log-page.test.tsx, audit-log-page.atdd.test.tsx, and tests/api/audit-log.spec.ts", "requirements": [] }
+  ]
+}

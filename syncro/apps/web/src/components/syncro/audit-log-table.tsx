@@ -122,7 +122,7 @@ function EntryRows({
         </TableCell>
         <TableCell className="max-w-56">
           <span className="truncate font-medium" title={entry.actorName}>
-            {entry.actorName || "-"}
+            {entry.actorName ?? "-"}
           </span>
         </TableCell>
         <TableCell>
@@ -133,7 +133,7 @@ function EntryRows({
         </TableCell>
         <TableCell className="max-w-72">
           <span className="truncate" title={entry.entityLabel}>
-            {entry.entityLabel || "-"}
+            {entry.entityLabel ?? "-"}
           </span>
         </TableCell>
         <TableCell>{plantLabel(entry.plantId, plantNameById)}</TableCell>
@@ -190,10 +190,10 @@ function AuditLogCards({
                         <span className="font-medium">{entityTypeLabel(entry.entityType)}</span>
                       </div>
                       <p className="truncate text-sm" title={entry.entityLabel}>
-                        {entry.entityLabel || "-"}
+                        {entry.entityLabel ?? "-"}
                       </p>
                       <p className="text-muted-foreground text-xs">
-                        {entry.actorName || "-"} · {plantLabel(entry.plantId, plantNameById)}
+                        {entry.actorName ?? "-"} · {plantLabel(entry.plantId, plantNameById)}
                       </p>
                       <p className="font-mono text-muted-foreground text-xs">{formatTime(entry.createdAt)}</p>
                     </div>

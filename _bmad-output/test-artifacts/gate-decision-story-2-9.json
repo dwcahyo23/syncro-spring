@@ -1,0 +1,24 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-08-08T00:00:00.000Z",
+  "repo": "Syncro",
+  "target": {
+    "type": "story",
+    "id": "2-9-implement-immutable-audit-log-for-master-data",
+    "label": "2.9 Implement Immutable Audit Log for Master Data"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "FAIL",
+  "rationale": "P0 coverage is 67% (required: 100%) because AC3 (immutability) is only PARTIAL: the V16 DB trigger BEFORE UPDATE OF list omits id and plant_id, so direct SQL can rewrite those columns today (R-2.9-1, P0; flagship RED scaffold 2.9-SVC-017). Overall coverage is 60% (minimum: 80%) and P1 coverage is 50% (minimum: 80%) because AC5 (UI rendering states: desktop table, mobile cards, expandable before/after, loading/error/empty/filtered-empty) has only RED/skipped component and E2E scaffolds, the R-2.9-6 page-reset bug is unfixed, and operator browser verification is still pending (awaiting-operator). AC1, AC2, and AC4 are fully covered by 28 active backend/component tests (all passing).",
+  "p0_status": "NOT_MET",
+  "p1_status": "NOT_MET",
+  "overall_status": "NOT_MET",
+  "critical_open": 1,
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability-matrix-2-9-implement-immutable-audit-log-for-master-data.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  }
+}

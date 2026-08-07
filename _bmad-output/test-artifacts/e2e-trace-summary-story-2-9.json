@@ -1,0 +1,112 @@
+{
+  "schema_version": "0.1.0",
+  "snapshot_at": "2026-08-08T00:00:00.000Z",
+  "repo": "Syncro",
+  "collection_mode": "contract_static",
+  "collection_status": "COLLECTED",
+  "inventory_basis": "acceptance_criteria",
+  "gate_basis": "priority_thresholds",
+  "source_sha": "45f8f37",
+  "target": {
+    "type": "story",
+    "id": "2-9-implement-immutable-audit-log-for-master-data",
+    "label": "2.9 Implement Immutable Audit Log for Master Data"
+  },
+  "decision_mode": "deterministic",
+  "evaluator": "Yusuf",
+  "confidence": "high",
+  "oracle": {
+    "resolution_mode": "formal_requirements",
+    "confidence": "high",
+    "sources": [
+      "_bmad-output/implementation-artifacts/spec-2-9-implement-immutable-audit-log-for-master-data.md",
+      "_bmad-output/test-artifacts/test-design-story-2-9-immutable-audit-log.md",
+      "_bmad-output/test-artifacts/atdd-checklist-2-9-implement-immutable-audit-log-for-master-data.md",
+      "_bmad-output/test-artifacts/automation-summary-2-9-implement-immutable-audit-log-for-master-data.md"
+    ],
+    "external_pointer_status": "not_used",
+    "synthetic": false
+  },
+  "coverage": {
+    "inventory": {
+      "covered": 3,
+      "total": 5,
+      "pct": 60
+    },
+    "priority_breakdown": {
+      "P0": { "total": 3, "covered": 2, "pct": 67 },
+      "P1": { "total": 2, "covered": 1, "pct": 50 },
+      "P2": { "total": 0, "covered": 0, "pct": 100 },
+      "P3": { "total": 0, "covered": 0, "pct": 100 }
+    },
+    "by_level": {
+      "e2e": { "tests": 5, "criteria_covered": 1 },
+      "api": { "tests": 20, "criteria_covered": 4 },
+      "component": { "tests": 13, "criteria_covered": 3 },
+      "integration": { "tests": 21, "criteria_covered": 4 },
+      "other": { "tests": 0, "criteria_covered": 0 }
+    }
+  },
+  "tests": {
+    "files": 9,
+    "cases": 59,
+    "skipped_cases": 31,
+    "fixme_cases": 0,
+    "pending_cases": 0
+  },
+  "risk_summary": {
+    "critical_open": 1,
+    "high_open": 1,
+    "medium_open": 0,
+    "low_open": 0
+  },
+  "heuristics": {
+    "endpoint_gaps": 1,
+    "auth_negative_path_status": "present",
+    "error_path_status": "partial",
+    "ui_journey_status": "none",
+    "ui_state_status": "none"
+  },
+  "blockers": [
+    {
+      "id": "2.9-SVC-017",
+      "severity": "high",
+      "reason": "RED flagship: DB trigger OF-list omits id/plant_id (R-2.9-1, P0)",
+      "test_file": "AuditLogAtddGapIntegrationScaffoldTest.java",
+      "test_title": "DB trigger guards the primary key and plant_id columns"
+    },
+    {
+      "id": "2.9-FE-ATDD-001",
+      "severity": "high",
+      "reason": "RED flagship: page not reset on filter change (R-2.9-6, P0)",
+      "test_file": "audit-log-page.atdd.test.tsx",
+      "test_title": "resets page to 0 when a filter changes while on page > 0"
+    }
+  ],
+  "recommendations": [
+    { "priority": "URGENT", "action": "Resolve R-2.9-1: decide trigger fix (V17 migration guarding id and a plant_id-only trigger permitting the FK ON DELETE SET NULL nulling) or document plant_id mutability; activate 2.9-SVC-017 and re-verify 2.9-SVC-007/008/018", "requirements": ["AC3"] },
+    { "priority": "HIGH", "action": "Fix R-2.9-6 page-reset-on-filter-change in audit-log-page.tsx; activate the [P0] component test and the 6 [P1] UI-state acceptance locks (audit-log-page.atdd.test.tsx)", "requirements": ["AC5"] },
+    { "priority": "HIGH", "action": "Complete operator actions #1-#6 (boot + V16, API smokes 200/403/401, browser verify /dashboard/audit-log, psql immutability), then activate E2E (audit-log.atdd-red.spec.ts) and env-gated API (audit-log.spec.ts) tests", "requirements": ["AC3", "AC5"] },
+    { "priority": "MEDIUM", "action": "Add active component/E2E coverage for AC5 UI states (loading/error/empty/filtered-empty/desktop/mobile) once the R-2.9-6 fix lands", "requirements": ["AC5"] },
+    { "priority": "LOW", "action": "Run /bmad:tea:test-review on audit-log-page.test.tsx, audit-log-page.atdd.test.tsx, and tests/api/audit-log.spec.ts", "requirements": [] }
+  ],
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability-matrix-2-9-implement-immutable-audit-log-for-master-data.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  },
+  "gate_status": "FAIL",
+  "gate_criteria": {
+    "p0_coverage_required": "100%",
+    "p0_coverage_actual": "67%",
+    "p0_status": "NOT_MET",
+    "p1_coverage_target": "90%",
+    "p1_coverage_minimum": "80%",
+    "p1_coverage_actual": "50%",
+    "p1_status": "NOT_MET",
+    "overall_coverage_minimum": "80%",
+    "overall_coverage_actual": "60%",
+    "overall_status": "NOT_MET"
+  }
+}
