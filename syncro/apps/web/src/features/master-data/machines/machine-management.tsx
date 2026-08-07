@@ -289,7 +289,11 @@ export function MachineManagement() {
           {!isAssignedEmpty && !plants.isLoading && availablePlants.length === 0 ? (
             <MachineState title="No plants available" description="Create or assign a plant before adding machines." />
           ) : null}
-          {!isAssignedEmpty && effectivePlantId && !machineGroups.isLoading && groupItems.length === 0 && !groupSearch.trim() ? (
+          {!isAssignedEmpty &&
+          effectivePlantId &&
+          !machineGroups.isLoading &&
+          groupItems.length === 0 &&
+          !groupSearch.trim() ? (
             <MachineState
               title="No machine groups available"
               description="Create a machine group for selected plant before adding machines."
@@ -317,7 +321,11 @@ export function MachineManagement() {
           (groupItems.length > 0 || groupSearch.trim()) ? (
             <MachineState
               title={machineSearch || selectedGroupId !== "ALL" ? "No machines found" : "No machines yet"}
-              description={machineSearch || selectedGroupId !== "ALL" ? "Adjust your filters." : "Create first registered machine for selected plant and group."}
+              description={
+                machineSearch || selectedGroupId !== "ALL"
+                  ? "Adjust your filters."
+                  : "Create first registered machine for selected plant and group."
+              }
             />
           ) : null}
           {!machines.isLoading && !machines.isError && machineItems.length > 0 ? (
@@ -606,7 +614,7 @@ function MachineGroupSelect({
           </SelectItem>
         ))}
         {groups.length === 0 ? (
-           <p className="px-2 py-3 text-center text-sm text-muted-foreground">No groups found</p>
+          <p className="px-2 py-3 text-center text-sm text-muted-foreground">No groups found</p>
         ) : null}
       </SelectContent>
     </Select>

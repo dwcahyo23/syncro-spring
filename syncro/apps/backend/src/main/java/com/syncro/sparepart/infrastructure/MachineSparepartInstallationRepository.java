@@ -11,6 +11,12 @@ import org.springframework.data.repository.query.Param;
 
 public interface MachineSparepartInstallationRepository extends JpaRepository<MachineSparepartInstallationEntity, UUID> {
   @Query("""
+      select count(installation) from MachineSparepartInstallationEntity installation
+      where installation.machine.plant.id in :plantIds
+      """)
+  long countByMachinePlantIdIn(@Param("plantIds") List<UUID> plantIds);
+
+  @Query("""
       select installation from MachineSparepartInstallationEntity installation
       join fetch installation.machine machine
       join fetch machine.plant plant

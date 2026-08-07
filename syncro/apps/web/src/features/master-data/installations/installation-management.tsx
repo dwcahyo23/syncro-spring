@@ -650,9 +650,7 @@ function InstallationFilters({
       <SearchableSelect
         label="Plant"
         value={filters.plantId}
-        options={plants
-          .filter((p) => p.id)
-          .map((p) => ({ id: p.id ?? "", label: `${p.code} · ${p.name}` }))}
+        options={plants.filter((p) => p.id).map((p) => ({ id: p.id ?? "", label: `${p.code} · ${p.name}` }))}
         onValueChange={(plantId) =>
           onChange({
             plantId: plantId === ALL ? undefined : plantId,
@@ -1294,11 +1292,16 @@ function SearchableSelect({
   const selected = options.find((o) => o.id === value);
 
   return (
-    <Select value={value ?? ALL} onValueChange={(v) => { onValueChange(v); setSearch(""); }} disabled={disabled}>
+    <Select
+      value={value ?? ALL}
+      onValueChange={(v) => {
+        onValueChange(v);
+        setSearch("");
+      }}
+      disabled={disabled}
+    >
       <SelectTrigger className="w-full min-w-0">
-        <SelectValue placeholder={`All ${label}`}>
-          {selected ? selected.label : `All ${label}`}
-        </SelectValue>
+        <SelectValue placeholder={`All ${label}`}>{selected ? selected.label : `All ${label}`}</SelectValue>
       </SelectTrigger>
       <SelectContent>
         <div className="p-2">

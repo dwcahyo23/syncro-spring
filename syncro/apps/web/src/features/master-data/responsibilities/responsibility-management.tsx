@@ -22,14 +22,16 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
+import type { CreateMachineResponsibilityRequest } from "@/lib/api/generated/model";
 import {
-  getListQueryKey,
-  useAssign,
-  useList,
+  getListMachineResponsibilitiesQueryKey,
+  useAssignMachineResponsibility,
+  useListMachineResponsibilities,
   useListMachines,
   useListUsers,
-  useUnassign,
+  useUnassignMachineResponsibility,
 } from "@/lib/api/generated/syncro";
+import { SyncroApiError } from "@/lib/api/orval-mutator";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
 
 export function ResponsibilityManagement() {
@@ -47,21 +49,21 @@ export function ResponsibilityManagement() {
 
   const { data: usersRes, isLoading: isLoadingUsers } = useListUsers();
 
-  const { data: responsibilitiesRes, isLoading: isLoadingResponsibilities } = useList({
+  const { data: responsibilitiesRes, isLoading: isLoadingResponsibilities } = useListMachineResponsibilities({
     pageable: { page: 0, size: 100 },
   });
 
-  const { mutate: assign, isPending: isAssigning } = useAssign({
+  const { mutate: assign, isPending: isAssigning } = useAssignMachineResponsibility({
     mutation: {
       onSuccess: () => {
         toast.success("Successfully assigned responsibility");
         setMachineId("");
         setUserId("");
         setLevel("");
-        queryClient.invalidateQueries({ queryKey: getListQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getListMachineResponsibilitiesQueryKey() });
       },
-      onError: (error: any) => {
-        const errorData = error.response?.data;
+      onError: (error) => {
+        const errorData = errorResponse(error);
         if (errorData?.code === "DUPLICATE_RESPONSIBILITY") {
           toast.error("User is already assigned to this machine");
         } else {
@@ -71,12 +73,12 @@ export function ResponsibilityManagement() {
     },
   });
 
-  const { mutate: unassign, isPending: isUnassigning } = useUnassign({
+  const { mutate: unassign, isPending: isUnassigning } = useUnassignMachineResponsibility({
     mutation: {
       onSuccess: () => {
         toast.success("Successfully unassigned responsibility");
         setResponsibilityToDelete(null);
-        queryClient.invalidateQueries({ queryKey: getListQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getListMachineResponsibilitiesQueryKey() });
       },
       onError: () => {
         toast.error("Failed to unassign responsibility");
@@ -93,7 +95,12 @@ export function ResponsibilityManagement() {
   const handleAssign = (e: React.FormEvent) => {
     e.preventDefault();
     if (!machineId || !userId || !level) return;
-    assign({ data: { machineId, userId, level: level as any } });
+    const request: CreateMachineResponsibilityRequest = {
+      machineId,
+      userId,
+      level: level as CreateMachineResponsibilityRequest["level"],
+    };
+    assign({ data: request });
   };
 
   return (
@@ -249,4 +256,14 @@ export function ResponsibilityManagement() {
       </AlertDialog>
     </div>
   );
+}
+
+type ErrorResponse = { code: string; message: string; fieldErrors?: Record<string, string> };
+
+function errorResponse(error: unknown): ErrorResponse | null {
+  if (!(error instanceof SyncroApiError) || !error.payload || typeof error.payload !== "object") {
+    return null;
+  }
+  const payload = error.payload as ErrorResponse;
+  return typeof payload.code === "string" && typeof payload.message === "string" ? payload : null;
 }

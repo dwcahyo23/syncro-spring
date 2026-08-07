@@ -43,9 +43,7 @@ import { SyncroApiError } from "@/lib/api/orval-mutator";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
 
 type TaxonomyFormState = Pick<SparepartTaxonomyRequest, "code" | "name">;
-type DialogMode =
-  | { type: "create"; entry?: never }
-  | { type: "edit"; entry: SparepartTaxonomyView };
+type DialogMode = { type: "create"; entry?: never } | { type: "edit"; entry: SparepartTaxonomyView };
 type ErrorResponse = { code: string; message: string; fieldErrors?: Record<string, string> };
 
 export function SparepartTaxonomyManagement() {
@@ -65,9 +63,7 @@ export function SparepartTaxonomyManagement() {
 
   // Only show Category entries
   const allItems = taxonomy.data?.data.items ?? [];
-  const categoryItems = allItems.filter(
-    (item) => item.dimension === SparepartTaxonomyRequestDimension.CATEGORY
-  );
+  const categoryItems = allItems.filter((item) => item.dimension === SparepartTaxonomyRequestDimension.CATEGORY);
   const isSaving = createTaxonomy.isPending || updateTaxonomy.isPending;
 
   function invalidateTaxonomyData() {
@@ -150,9 +146,7 @@ export function SparepartTaxonomyManagement() {
           <CardAction>
             <div className="flex items-center gap-2">
               {canMutate ? null : <Badge variant="secondary">Read-only</Badge>}
-              {canMutate ? (
-                <Button onClick={openCreateDialog}>Add category</Button>
-              ) : null}
+              {canMutate ? <Button onClick={openCreateDialog}>Add category</Button> : null}
             </div>
           </CardAction>
         </CardHeader>
@@ -170,10 +164,7 @@ export function SparepartTaxonomyManagement() {
             />
           ) : null}
           {!taxonomy.isLoading && !taxonomy.isError && categoryItems.length === 0 ? (
-            <CategoryState
-              title="No categories yet"
-              description="Create the first sparepart category entry."
-            />
+            <CategoryState title="No categories yet" description="Create the first sparepart category entry." />
           ) : null}
           {!taxonomy.isLoading && !taxonomy.isError && categoryItems.length > 0 ? (
             <CategoryTable
@@ -195,7 +186,8 @@ export function SparepartTaxonomyManagement() {
             <DialogHeader>
               <DialogTitle>{dialogMode?.type === "edit" ? "Edit category" : "Add category"}</DialogTitle>
               <DialogDescription>
-                Category code must match a backend-approved value (e.g. ELECTRIC, MECHANIC). Names must be unique within Category.
+                Category code must match a backend-approved value (e.g. ELECTRIC, MECHANIC). Names must be unique within
+                Category.
               </DialogDescription>
             </DialogHeader>
             {formError ? (
@@ -243,7 +235,8 @@ export function SparepartTaxonomyManagement() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete category?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes &ldquo;{deleteTarget?.name}&rdquo;. Deletion is blocked when existing sparepart records depend on this category.
+              This removes &ldquo;{deleteTarget?.name}&rdquo;. Deletion is blocked when existing sparepart records
+              depend on this category.
             </AlertDialogDescription>
             {deleteError ? (
               <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{deleteError}</p>

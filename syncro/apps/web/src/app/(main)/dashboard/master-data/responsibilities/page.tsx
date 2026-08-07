@@ -1,9 +1,10 @@
-import { ResponsibilityManagement } from '@/features/master-data/responsibilities/responsibility-management';
-import { Metadata } from 'next';
+import type { Metadata } from "next";
+
+import { ResponsibilityManagement } from "@/features/master-data/responsibilities/responsibility-management";
 
 export const metadata: Metadata = {
-  title: 'Machine Responsibilities | Syncro',
-  description: 'Manage machine responsibility assignments',
+  title: "Machine Responsibilities | Syncro",
+  description: "Manage machine responsibility assignments",
 };
 
 export default function ResponsibilitiesPage() {

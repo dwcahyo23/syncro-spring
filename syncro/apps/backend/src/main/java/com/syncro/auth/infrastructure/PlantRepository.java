@@ -11,4 +11,6 @@ public interface PlantRepository extends JpaRepository<PlantEntity, UUID> {
   Optional<PlantEntity> findByCodeIgnoreCase(String code);
 
   List<PlantEntity> findByIdIn(List<UUID> ids);
+
+  long countByIdIn(List<UUID> ids);
 }

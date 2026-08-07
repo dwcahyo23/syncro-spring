@@ -1,5 +1,6 @@
 package com.syncro.masterdata.infrastructure;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -20,4 +21,6 @@ public interface MachineGroupRepository extends JpaRepository<MachineGroupEntity
   Optional<MachineGroupEntity> findByPlantIdAndNameIgnoreCase(UUID plantId, String name);
 
   boolean existsByPlantIdAndNameIgnoreCase(UUID plantId, String name);
+
+  long countByPlantIdIn(List<UUID> plantIds);
 }

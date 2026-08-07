@@ -16,7 +16,10 @@ public interface MachineResponsibilityRepository extends JpaRepository<MachineRe
     Page<MachineResponsibilityEntity> findByMachineId(UUID machineId, Pageable pageable);
 
     @Query("SELECT mr FROM MachineResponsibilityEntity mr " +
-           "JOIN mr.machine m " +
-           "WHERE m.plant.id IN :plantIds")
+           "WHERE mr.machine.plant.id IN :plantIds")
     Page<MachineResponsibilityEntity> findAllByPlantIds(@Param("plantIds") List<UUID> plantIds, Pageable pageable);
+
+    @Query("SELECT count(mr) FROM MachineResponsibilityEntity mr " +
+           "WHERE mr.machine.plant.id IN :plantIds")
+    long countByMachinePlantIdIn(@Param("plantIds") List<UUID> plantIds);
 }

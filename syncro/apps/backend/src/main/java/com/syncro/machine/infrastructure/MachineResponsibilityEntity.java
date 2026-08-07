@@ -12,12 +12,11 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "machine_responsibility",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"machine_id", "user_id", "responsibility_level"}))
+@Table(name = "machine_responsibilities",
+       uniqueConstraints = @UniqueConstraint(columnNames = {"machine_id", "user_id"}))
 public class MachineResponsibilityEntity {
 
     @Id
-    @GeneratedValue
     private UUID id;
 
     @Column(name = "machine_id", nullable = false)
@@ -26,12 +25,9 @@ public class MachineResponsibilityEntity {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "responsibility_level", nullable = false)
+    @Column(name = "level", nullable = false)
     @Enumerated(EnumType.STRING)
     private ResponsibilityLevel responsibilityLevel;
-
-    @Column(name = "plant_id", nullable = false)
-    private UUID plantId;
 
     @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP WITH TIME ZONE DEFAULT now()")
     private Instant createdAt;
@@ -48,7 +44,6 @@ public class MachineResponsibilityEntity {
         this.machineId = machine.getId();
         this.userId = user.getId();
         this.responsibilityLevel = level;
-        this.plantId = machine.getPlant().getId();
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.machine = machine;
@@ -56,12 +51,11 @@ public class MachineResponsibilityEntity {
     }
 
     // Existing constructor for direct UUID usage
-    public MachineResponsibilityEntity(UUID id, UUID machineId, UUID userId, ResponsibilityLevel responsibilityLevel, UUID plantId, Instant createdAt, Instant updatedAt) {
+    public MachineResponsibilityEntity(UUID id, UUID machineId, UUID userId, ResponsibilityLevel responsibilityLevel, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.machineId = machineId;
         this.userId = userId;
         this.responsibilityLevel = responsibilityLevel;
-        this.plantId = plantId;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -77,7 +71,6 @@ public class MachineResponsibilityEntity {
     public UUID getUserId() { return userId; }
     public ResponsibilityLevel getResponsibilityLevel() { return responsibilityLevel; }
     public ResponsibilityLevel getLevel() { return responsibilityLevel; }
-    public UUID getPlantId() { return plantId; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 

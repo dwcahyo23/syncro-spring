@@ -5,9 +5,11 @@
  * Syncro backend REST API.
  * OpenAPI spec version: v1
  */
-import type { Pageable } from './pageable';
 
-export type ListParams = {
-machineId?: string;
-pageable: Pageable;
-};
+export interface Step {
+  key?: string;
+  label?: string;
+  status?: string;
+  nextAction?: string;
+  href?: string;
+}

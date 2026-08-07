@@ -84,6 +84,9 @@ class MachineResponsibilityServiceIntegrationTest {
   @Autowired
   private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
+  @jakarta.persistence.PersistenceContext
+  private jakarta.persistence.EntityManager entityManager;
+
   @Test
   @org.junit.jupiter.api.DisplayName("2.7-SVC-001 P0 should store machine responsibility mapping successfully")
   void shouldStoreMapping() {
@@ -153,7 +156,8 @@ class MachineResponsibilityServiceIntegrationTest {
       responsibilityRepository.flush();
       
       // When machine is deleted directly via JDBC to test DB cascade without JPA cache interference
-      jdbcTemplate.update("DELETE FROM machine WHERE id = ?", machine.getId());
+      jdbcTemplate.update("DELETE FROM machines WHERE id = ?", machine.getId());
+      entityManager.clear();
 
       // Then responsibility record is removed
       assertThat(responsibilityRepository.findById(response.id())).isEmpty();
