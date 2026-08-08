@@ -95,3 +95,13 @@ source_spec: `spec-web-e2e-config-hardening.md`
 severity: low
 reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260808-012337-779e; this entry preserves the lingering recommendation for a deliberate later review.
 status: open
+
+### DW-13: Validate MQTT connection properties in typed config
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-1-configure-mqtt-subscription-and-telemetry-contract.md`
+  summary: Add null/blank validation to `MqttProperties` (host, port, clientId, topicFilter) so a missing env value fails fast instead of producing `tcp://null:1883` or a runtime adapter NPE.
+  evidence: Real, surfaced by review of Story 3.1 — `MqttSubscriptionConfig.mqttConnectOptions` builds `tcp://" + host + ":" + port` with no guard, and `MqttProperties` has no validation constraints. Shared config hardening touching a class used by other stories; defer beyond Story 3.1 scope.
+
+### DW-14: Mid-session MQTT connectivity loss invisible to health indicator
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-1-configure-mqtt-subscription-and-telemetry-contract.md`
+  summary: `MqttConnectionStatus` stays `SUBSCRIBED`/UP throughout a broker outage that begins after the initial subscribe, because the Paho reconnect path handles the drop in its background thread and does not publish an `MqttConnectionFailedEvent` the way `doStart()`/`subscribe()` catch paths do.
+  evidence: Real, surfaced by review of Story 3.1 — with `setAutomaticReconnect(true)`, a mid-session drop does not emit the adapter's connection-failed event, so the sole observability signal (health) reports UP for the entire offline window. The Spring Integration adapter's event set exposes no connection-lost event observable by this listener; needs a later adapter-level or event-source investigation, out of Story 3.1 scope.
