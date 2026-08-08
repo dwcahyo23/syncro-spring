@@ -14,6 +14,8 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:report": "playwright show-report",
+    "test:api": "playwright test --config=playwright.api.config.ts",
+    "test:api:check": "node tests/support/check-api-collection.mjs",
     "test:unit": "vitest run",
     "prepare": "husky",
     "generate:api": "orval --config orval.config.ts",

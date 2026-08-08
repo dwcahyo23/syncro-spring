@@ -1,0 +1,141 @@
+{
+  "schema_version": "0.1.0",
+  "snapshot_at": "2026-08-08T01:49:49.652Z",
+  "repo": "Syncro",
+  "collection_mode": "contract_static",
+  "collection_status": "COLLECTED",
+  "inventory_basis": "acceptance_criteria",
+  "gate_basis": "priority_thresholds",
+  "source_sha": "c2065fd386fef37089b431ba46583c066b7cbf40",
+  "target": {
+    "type": "story",
+    "id": "dw-web-e2e-config-hardening",
+    "label": "dw-web-e2e-config-hardening (env-driven Playwright config, DW-3 + DW-7)"
+  },
+  "decision_mode": "deterministic",
+  "evaluator": "Yusuf",
+  "confidence": "high",
+  "oracle": {
+    "resolution_mode": "formal_requirements",
+    "confidence": "high",
+    "sources": [
+      "_bmad-output/implementation-artifacts/spec-web-e2e-config-hardening.md",
+      "_bmad-output/test-artifacts/test-design-story-web-e2e-config-hardening.md",
+      "_bmad-output/test-artifacts/atdd-checklist-dw-web-e2e-config-hardening.md",
+      "_bmad-output/test-artifacts/automation-summary-dw-web-e2e-config-hardening.md"
+    ],
+    "external_pointer_status": "not_used",
+    "synthetic": false
+  },
+  "coverage": {
+    "inventory": {
+      "covered": 3,
+      "total": 5,
+      "pct": 60
+    },
+    "priority_breakdown": {
+      "P0": { "total": 4, "covered": 3, "pct": 75 },
+      "P1": { "total": 1, "covered": 0, "pct": 0 },
+      "P2": { "total": 0, "covered": 0, "pct": 100 },
+      "P3": { "total": 0, "covered": 0, "pct": 100 }
+    },
+    "by_level": {
+      "unit": { "tests": 14, "criteria_covered": 5 },
+      "api": { "tests": 4, "criteria_covered": 3 },
+      "component": { "tests": 0, "criteria_covered": 0 },
+      "e2e": { "tests": 1, "criteria_covered": 1 },
+      "other": { "tests": 1, "criteria_covered": 2 }
+    }
+  },
+  "tests": {
+    "files": 7,
+    "cases": 20,
+    "skipped_cases": 4,
+    "fixme_cases": 0,
+    "pending_cases": 0
+  },
+  "risk_summary": {
+    "critical_open": 0,
+    "high_open": 0,
+    "medium_open": 2,
+    "low_open": 0
+  },
+  "heuristics": {
+    "endpoint_gaps": 0,
+    "auth_negative_path_status": "present",
+    "error_path_status": "present",
+    "ui_journey_status": "partial",
+    "ui_state_status": "present"
+  },
+  "gate_status": "FAIL",
+  "gate_criteria": {
+    "p0_coverage_required": "100%",
+    "p0_coverage_actual": "75%",
+    "p0_status": "NOT_MET",
+    "p1_coverage_target": "90%",
+    "p1_coverage_minimum": "80%",
+    "p1_coverage_actual": "0%",
+    "p1_status": "NOT_MET",
+    "overall_coverage_minimum": "80%",
+    "overall_coverage_actual": "60%",
+    "overall_status": "NOT_MET"
+  },
+  "blockers": [
+    {
+      "id": "API-SPAREPARTS",
+      "severity": "high",
+      "reason": "RED-phase scaffold, pre-existing; consumes shared apiBaseUrl() (bundle modifies call sites only).",
+      "test_file": "syncro/apps/web/tests/api/spareparts-atdd.spec.ts",
+      "test_title": "Story 2.5 ATDD API RED-PHASE scaffold: manage spareparts"
+    },
+    {
+      "id": "API-INSTALLATIONS",
+      "severity": "high",
+      "reason": "RED-phase scaffold, pre-existing; consumes shared apiBaseUrl() (bundle modifies call sites only).",
+      "test_file": "syncro/apps/web/tests/api/machine-sparepart-installations-atdd.spec.ts",
+      "test_title": "Story 2.6 ATDD API RED-PHASE scaffold: machine sparepart installations"
+    },
+    {
+      "id": "WH-AC1-E2E",
+      "severity": "high",
+      "reason": "RED-phase activation lock; requires a live dev server/browser. Kept skipped by design.",
+      "test_file": "syncro/apps/web/tests/e2e/config-hardening.atdd-red.spec.ts",
+      "test_title": "WH-AC1 [P0] the app is served at the baseURL derived from BASE_URL"
+    },
+    {
+      "id": "WH-P1-04-E2E",
+      "severity": "high",
+      "reason": "RED-phase activation lock; requires a live dev server/browser. Kept skipped by design.",
+      "test_file": "syncro/apps/web/tests/e2e/config-hardening.atdd-red.spec.ts",
+      "test_title": "WH-P1-04 [P1] the web server boots on the port parsed from BASE_URL"
+    }
+  ],
+  "recommendations": [
+    {
+      "priority": "HIGH",
+      "action": "Add E2E or component coverage for 1 inferred UI journey(s) — activate WH-AC1/WH-P1-04 E2E wiring scaffolds (remove test.skip) or add a config-level unit assertion on playwright.config.ts command derivation for AC-1",
+      "requirements": ["AC-1"]
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Complete coverage for 2 partially covered requirements (AC-1 webServer wiring, AC-5 toolchain/enumeration)",
+      "requirements": ["AC-1", "AC-5"]
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Wire test:api + test:api:check into CI with BASE_URL/API_URL exported (AC-5 enumeration evidence) and re-run biome check + tsc --noEmit in the parent repo before merge",
+      "requirements": ["AC-5"]
+    },
+    {
+      "priority": "LOW",
+      "action": "Run /bmad:tea:test-review to assess test quality",
+      "requirements": []
+    }
+  ],
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability-matrix-dw-web-e2e-config-hardening.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  }
+}

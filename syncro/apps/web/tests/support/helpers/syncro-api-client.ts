@@ -1,14 +1,13 @@
 import type { APIRequestContext } from "@playwright/test";
 
 import type { AuditLogListResponse, ListAuditLogEntriesParams } from "../../../src/lib/api/generated/model";
-
-const API_BASE = process.env.API_URL ?? "http://localhost:8080/api/v1";
+import { apiBaseUrl } from "../config";
 
 export class SyncroApiClient {
   constructor(private readonly request: APIRequestContext) {}
 
   async getHealth() {
-    return this.request.get(`${API_BASE}/health`);
+    return this.request.get(`${apiBaseUrl()}/health`);
   }
 
   async listAuditLog(params: ListAuditLogEntriesParams = {}, token?: string) {
@@ -20,7 +19,7 @@ export class SyncroApiClient {
     }
     const query = search.toString();
     const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-    const response = await this.request.get(`${API_BASE}/audit-log${query ? `?${query}` : ""}`, { headers });
+    const response = await this.request.get(`${apiBaseUrl()}/audit-log${query ? `?${query}` : ""}`, { headers });
     const body = (await response.json()) as AuditLogListResponse;
     return { response, body };
   }

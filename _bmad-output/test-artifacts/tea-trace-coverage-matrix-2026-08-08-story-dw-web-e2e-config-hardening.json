@@ -1,0 +1,345 @@
+{
+  "phase": "PHASE_1_COMPLETE",
+  "generated_at": "2026-08-08T01:49:49.652Z",
+  "trace_target": {
+    "type": "story",
+    "id": "dw-web-e2e-config-hardening",
+    "label": "dw-web-e2e-config-hardening (env-driven Playwright config, DW-3 + DW-7)"
+  },
+  "collection_mode": "contract_static",
+  "collection_status": "COLLECTED",
+  "allow_gate": true,
+  "coverage_basis": "acceptance_criteria",
+  "summary_confidence": "high",
+  "oracle": {
+    "resolution_mode": "formal_requirements",
+    "confidence": "high",
+    "sources": [
+      "_bmad-output/implementation-artifacts/spec-web-e2e-config-hardening.md",
+      "_bmad-output/test-artifacts/test-design-story-web-e2e-config-hardening.md",
+      "_bmad-output/test-artifacts/atdd-checklist-dw-web-e2e-config-hardening.md",
+      "_bmad-output/test-artifacts/automation-summary-dw-web-e2e-config-hardening.md"
+    ],
+    "external_pointer_status": "not_used",
+    "synthetic": false
+  },
+  "requirements": [
+    {
+      "id": "AC-1",
+      "priority": "P0",
+      "description": "Given BASE_URL set, when the Playwright config loads, then use.baseURL and webServer.url equal BASE_URL and the default webServer.command is the documented dev script (npm run dev -- -p <port from BASE_URL>), with no hardcoded port or next/dist/bin/next path in playwright.config.ts.",
+      "coverage": "PARTIAL",
+      "tests": [
+        {
+          "id": "CFG-UNIT-001",
+          "title": "[P0] webBaseUrl() returns BASE_URL with a trailing slash stripped",
+          "file": "syncro/apps/web/tests/support/config.test.ts",
+          "line": 35,
+          "level": "unit",
+          "status": "active"
+        },
+        {
+          "id": "CFG-UNIT-013",
+          "title": "[P2] a portless BASE_URL (deployed origin) resolves without error",
+          "file": "syncro/apps/web/tests/support/config.test.ts",
+          "line": 125,
+          "level": "unit",
+          "status": "active"
+        },
+        {
+          "id": "CFG-UNIT-014",
+          "title": "[P3] a default-port BASE_URL resolves without error",
+          "file": "syncro/apps/web/tests/support/config.test.ts",
+          "line": 133,
+          "level": "unit",
+          "status": "active"
+        },
+        {
+          "id": "WH-AC1-E2E",
+          "title": "WH-AC1 [P0] the app is served at the baseURL derived from BASE_URL",
+          "file": "syncro/apps/web/tests/e2e/config-hardening.atdd-red.spec.ts",
+          "line": 19,
+          "level": "e2e",
+          "status": "skipped",
+          "skip_reason": "RED-phase activation lock; requires a live dev server/browser. Kept skipped by design (atdd-checklist-dw-web-e2e-config-hardening)."
+        },
+        {
+          "id": "WH-P1-04-E2E",
+          "title": "WH-P1-04 [P1] the web server boots on the port parsed from BASE_URL",
+          "file": "syncro/apps/web/tests/e2e/config-hardening.atdd-red.spec.ts",
+          "line": 28,
+          "level": "e2e",
+          "status": "skipped",
+          "skip_reason": "RED-phase activation lock; requires a live dev server/browser. Kept skipped by design."
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "priority": "P0",
+      "description": "Given BASE_URL unset, when the Playwright config loads, then it fails fast with a descriptive error naming BASE_URL and pointing at syncro/apps/web/.env.example.",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "CFG-UNIT-002",
+          "title": "[P0] webBaseUrl() fails fast naming BASE_URL and the .env.example pointer when unset",
+          "file": "syncro/apps/web/tests/support/config.test.ts",
+          "line": 43,
+          "level": "unit",
+          "status": "active"
+        },
+        {
+          "id": "CFG-UNIT-003",
+          "title": "[P0] webBaseUrl() rejects a malformed BASE_URL with the descriptive contract error",
+          "file": "syncro/apps/web/tests/support/config.test.ts",
+          "line": 48,
+          "level": "unit",
+          "status": "active"
+        },
+        {
+          "id": "CFG-UNIT-004",
+          "title": "[P0] whitespace-only BASE_URL is treated as unset (requireEnv trims)",
+          "file": "syncro/apps/web/tests/support/config.test.ts",
+          "line": 55,
+          "level": "unit",
+          "status": "active"
+        },
+        {
+          "id": "WH-AC2-RED",
+          "title": "WH-AC2 [P0] webBaseUrl() fails fast naming BASE_URL and the .env.example pointer when unset",
+          "file": "syncro/apps/web/tests/api/config-contract.atdd-red.spec.ts",
+          "line": 50,
+          "level": "api",
+          "status": "skipped",
+          "skip_reason": "RED-phase activation lock; duplicate of active CFG-UNIT-002..004 unit coverage."
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "priority": "P0",
+      "description": "Given API_URL set, when SyncroApiClient, audit-log.spec.ts, spareparts-atdd.spec.ts, or machine-sparepart-installations-atdd.spec.ts resolves the backend base, then the base is API_URL (the /api/v1-suffixed URL) and no http://localhost:8080 remains in test source.",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "CFG-UNIT-005",
+          "title": "[P0] apiBaseUrl() returns API_URL including the /api/v1 base path as-is",
+          "file": "syncro/apps/web/tests/support/config.test.ts",
+          "line": 61,
+          "level": "unit",
+          "status": "active"
+        },
+        {
+          "id": "CFG-UNIT-006",
+          "title": "[P0] apiBaseUrl() rejects API_URL missing the /api/v1 suffix with a descriptive error",
+          "file": "syncro/apps/web/tests/support/config.test.ts",
+          "line": 69,
+          "level": "unit",
+          "status": "active"
+        },
+        {
+          "id": "CFG-UNIT-007",
+          "title": "[P0] apiBaseUrl() strips trailing slashes so helpers never produce double-slash URLs",
+          "file": "syncro/apps/web/tests/support/config.test.ts",
+          "line": 76,
+          "level": "unit",
+          "status": "active"
+        },
+        {
+          "id": "API-AUDIT-LOG",
+          "title": "Story 2.9 API client contract: audit log (9 live client-contract cases over apiBaseUrl())",
+          "file": "syncro/apps/web/tests/api/audit-log.spec.ts",
+          "line": 28,
+          "level": "api",
+          "status": "active",
+          "skip_reason": ""
+        },
+        {
+          "id": "API-SPAREPARTS",
+          "title": "Story 2.5 ATDD API RED-PHASE scaffold: manage spareparts (15 cases over apiBaseUrl())",
+          "file": "syncro/apps/web/tests/api/spareparts-atdd.spec.ts",
+          "line": 38,
+          "level": "api",
+          "status": "skipped",
+          "skip_reason": "RED-phase scaffold, pre-existing; consumes shared apiBaseUrl() (bundle modifies call sites only)."
+        },
+        {
+          "id": "API-INSTALLATIONS",
+          "title": "Story 2.6 ATDD API RED-PHASE scaffold: machine sparepart installations (14 cases over apiBaseUrl())",
+          "file": "syncro/apps/web/tests/api/machine-sparepart-installations-atdd.spec.ts",
+          "line": 54,
+          "level": "api",
+          "status": "skipped",
+          "skip_reason": "RED-phase scaffold, pre-existing; consumes shared apiBaseUrl() (bundle modifies call sites only)."
+        },
+        {
+          "id": "CHECK-API-COLLECTION",
+          "title": "test:api collection/enumeration CI gate (check-api-collection.mjs)",
+          "file": "syncro/apps/web/tests/support/check-api-collection.mjs",
+          "line": 73,
+          "level": "other",
+          "status": "active"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "priority": "P0",
+      "description": "Given API_URL unset, when a skipped atdd spec is imported, then the module loads and its tests skip cleanly; when a live api test actually runs, then apiBaseUrl() throws a descriptive error naming API_URL.",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "CFG-UNIT-008",
+          "title": "[P0] importing config with API_URL unset never throws; the descriptive error surfaces only at the call site",
+          "file": "syncro/apps/web/tests/support/config.test.ts",
+          "line": 84,
+          "level": "unit",
+          "status": "active"
+        },
+        {
+          "id": "CFG-UNIT-009",
+          "title": "[P1] whitespace-only API_URL is treated as unset (requireEnv trims)",
+          "file": "syncro/apps/web/tests/support/config.test.ts",
+          "line": 95,
+          "level": "unit",
+          "status": "active"
+        },
+        {
+          "id": "WH-AC4-RED",
+          "title": "WH-AC4 [P0] importing config with API_URL unset never throws; the descriptive error surfaces only at the call site",
+          "file": "syncro/apps/web/tests/api/config-contract.atdd-red.spec.ts",
+          "line": 93,
+          "level": "api",
+          "status": "skipped",
+          "skip_reason": "RED-phase activation lock; duplicate of active CFG-UNIT-008 unit coverage."
+        }
+      ]
+    },
+    {
+      "id": "AC-5",
+      "priority": "P1",
+      "description": "Given the suite, when biome check, tsc --noEmit, and playwright test --list (with env set) run, then all pass and the full spec set is enumerated.",
+      "coverage": "PARTIAL",
+      "tests": [
+        {
+          "id": "CFG-UNIT-SUITE",
+          "title": "config.ts unit suite (14 tests) — vitest green; foundation for biome/tsc clean",
+          "file": "syncro/apps/web/tests/support/config.test.ts",
+          "line": 13,
+          "level": "unit",
+          "status": "active"
+        },
+        {
+          "id": "CHECK-API-COLLECTION-2",
+          "title": "test:api enumeration check — 50 tests in 4 files enumerated; exit 0",
+          "file": "syncro/apps/web/tests/support/check-api-collection.mjs",
+          "line": 73,
+          "level": "other",
+          "status": "active"
+        }
+      ]
+    }
+  ],
+  "coverage_statistics": {
+    "total_requirements": 5,
+    "fully_covered": 3,
+    "partially_covered": 2,
+    "uncovered": 0,
+    "overall_coverage_percentage": 60,
+    "priority_breakdown": {
+      "P0": { "total": 4, "covered": 3, "percentage": 75 },
+      "P1": { "total": 1, "covered": 0, "percentage": 0 },
+      "P2": { "total": 0, "covered": 0, "percentage": 100 },
+      "P3": { "total": 0, "covered": 0, "percentage": 100 }
+    }
+  },
+  "gap_analysis": {
+    "critical_gaps": [],
+    "high_gaps": [],
+    "medium_gaps": [],
+    "low_gaps": [],
+    "partial_coverage_items": ["AC-1", "AC-5"],
+    "unit_only_items": []
+  },
+  "coverage_heuristics": {
+    "endpoint_gaps": [],
+    "auth_negative_path_gaps": [],
+    "happy_path_only_gaps": [],
+    "ui_journey_gaps": ["AC-1"],
+    "ui_state_gaps": [],
+    "counts": {
+      "endpoints_without_tests": 0,
+      "auth_missing_negative_paths": 0,
+      "happy_path_only_criteria": 0,
+      "ui_journeys_without_e2e": 1,
+      "ui_states_missing_coverage": 0
+    }
+  },
+  "test_inventory": {
+    "summary": {
+      "files": 7,
+      "cases": 20,
+      "skipped_cases": 4,
+      "fixme_cases": 0,
+      "pending_cases": 0,
+      "by_level": {
+        "unit": { "tests": 14, "criteria_covered": 5 },
+        "api": { "tests": 4, "criteria_covered": 3 },
+        "component": { "tests": 0, "criteria_covered": 0 },
+        "e2e": { "tests": 1, "criteria_covered": 1 },
+        "other": { "tests": 1, "criteria_covered": 2 }
+      }
+    },
+    "tests": [
+      { "id": "CFG-UNIT-001", "file": "syncro/apps/web/tests/support/config.test.ts", "line": 35, "title": "[P0] webBaseUrl() returns BASE_URL with a trailing slash stripped", "level": "unit", "status": "active", "skipped": false, "fixme": false, "pending": false, "blocker_reason": "" },
+      { "id": "CFG-UNIT-002", "file": "syncro/apps/web/tests/support/config.test.ts", "line": 43, "title": "[P0] webBaseUrl() fails fast naming BASE_URL and the .env.example pointer when unset", "level": "unit", "status": "active", "skipped": false, "fixme": false, "pending": false, "blocker_reason": "" },
+      { "id": "CFG-UNIT-003", "file": "syncro/apps/web/tests/support/config.test.ts", "line": 48, "title": "[P0] webBaseUrl() rejects a malformed BASE_URL with the descriptive contract error", "level": "unit", "status": "active", "skipped": false, "fixme": false, "pending": false, "blocker_reason": "" },
+      { "id": "CFG-UNIT-004", "file": "syncro/apps/web/tests/support/config.test.ts", "line": 55, "title": "[P0] whitespace-only BASE_URL is treated as unset (requireEnv trims)", "level": "unit", "status": "active", "skipped": false, "fixme": false, "pending": false, "blocker_reason": "" },
+      { "id": "CFG-UNIT-005", "file": "syncro/apps/web/tests/support/config.test.ts", "line": 61, "title": "[P0] apiBaseUrl() returns API_URL including the /api/v1 base path as-is", "level": "unit", "status": "active", "skipped": false, "fixme": false, "pending": false, "blocker_reason": "" },
+      { "id": "CFG-UNIT-006", "file": "syncro/apps/web/tests/support/config.test.ts", "line": 69, "title": "[P0] apiBaseUrl() rejects API_URL missing the /api/v1 suffix with a descriptive error", "level": "unit", "status": "active", "skipped": false, "fixme": false, "pending": false, "blocker_reason": "" },
+      { "id": "CFG-UNIT-007", "file": "syncro/apps/web/tests/support/config.test.ts", "line": 76, "title": "[P0] apiBaseUrl() strips trailing slashes so helpers never produce double-slash URLs", "level": "unit", "status": "active", "skipped": false, "fixme": false, "pending": false, "blocker_reason": "" },
+      { "id": "CFG-UNIT-008", "file": "syncro/apps/web/tests/support/config.test.ts", "line": 84, "title": "[P0] importing config with API_URL unset never throws; the descriptive error surfaces only at the call site", "level": "unit", "status": "active", "skipped": false, "fixme": false, "pending": false, "blocker_reason": "" },
+      { "id": "CFG-UNIT-009", "file": "syncro/apps/web/tests/support/config.test.ts", "line": 95, "title": "[P1] whitespace-only API_URL is treated as unset (requireEnv trims)", "level": "unit", "status": "active", "skipped": false, "fixme": false, "pending": false, "blocker_reason": "" },
+      { "id": "CFG-UNIT-010", "file": "syncro/apps/web/tests/support/config.test.ts", "line": 101, "title": "[P1] webBaseUrl() rejects a BASE_URL carrying a query string", "level": "unit", "status": "active", "skipped": false, "fixme": false, "pending": false, "blocker_reason": "" },
+      { "id": "CFG-UNIT-011", "file": "syncro/apps/web/tests/support/config.test.ts", "line": 109, "title": "[P1] apiBaseUrl() rejects an API_URL carrying a query string or fragment", "level": "unit", "status": "active", "skipped": false, "fixme": false, "pending": false, "blocker_reason": "" },
+      { "id": "CFG-UNIT-012", "file": "syncro/apps/web/tests/support/config.test.ts", "line": 118, "title": "[P1] apiBaseUrl() error hints at the legacy SYNCRO_API_BASE_URL when it is still exported", "level": "unit", "status": "active", "skipped": false, "fixme": false, "pending": false, "blocker_reason": "" },
+      { "id": "CFG-UNIT-013", "file": "syncro/apps/web/tests/support/config.test.ts", "line": 125, "title": "[P2] a portless BASE_URL (deployed origin) resolves without error", "level": "unit", "status": "active", "skipped": false, "fixme": false, "pending": false, "blocker_reason": "" },
+      { "id": "CFG-UNIT-014", "file": "syncro/apps/web/tests/support/config.test.ts", "line": 133, "title": "[P3] a default-port BASE_URL resolves without error", "level": "unit", "status": "active", "skipped": false, "fixme": false, "pending": false, "blocker_reason": "" },
+      { "id": "CFG-UNIT-SUITE", "file": "syncro/apps/web/tests/support/config.test.ts", "line": 13, "title": "config.ts unit suite (14 tests)", "level": "unit", "status": "active", "skipped": false, "fixme": false, "pending": false, "blocker_reason": "" },
+      { "id": "API-AUDIT-LOG", "file": "syncro/apps/web/tests/api/audit-log.spec.ts", "line": 28, "title": "Story 2.9 API client contract: audit log", "level": "api", "status": "active", "skipped": false, "fixme": false, "pending": false, "blocker_reason": "" },
+      { "id": "API-SPAREPARTS", "file": "syncro/apps/web/tests/api/spareparts-atdd.spec.ts", "line": 38, "title": "Story 2.5 ATDD API RED-PHASE scaffold: manage spareparts", "level": "api", "status": "skipped", "skipped": true, "fixme": false, "pending": false, "blocker_reason": "RED-phase scaffold, pre-existing; consumes shared apiBaseUrl() (bundle modifies call sites only)." },
+      { "id": "API-INSTALLATIONS", "file": "syncro/apps/web/tests/api/machine-sparepart-installations-atdd.spec.ts", "line": 54, "title": "Story 2.6 ATDD API RED-PHASE scaffold: machine sparepart installations", "level": "api", "status": "skipped", "skipped": true, "fixme": false, "pending": false, "blocker_reason": "RED-phase scaffold, pre-existing; consumes shared apiBaseUrl() (bundle modifies call sites only)." },
+      { "id": "WH-AC1-E2E", "file": "syncro/apps/web/tests/e2e/config-hardening.atdd-red.spec.ts", "line": 19, "title": "WH-AC1 [P0] the app is served at the baseURL derived from BASE_URL", "level": "e2e", "status": "skipped", "skipped": true, "fixme": false, "pending": false, "blocker_reason": "RED-phase activation lock; requires a live dev server/browser. Kept skipped by design." },
+      { "id": "WH-P1-04-E2E", "file": "syncro/apps/web/tests/e2e/config-hardening.atdd-red.spec.ts", "line": 28, "title": "WH-P1-04 [P1] the web server boots on the port parsed from BASE_URL", "level": "e2e", "status": "skipped", "skipped": true, "fixme": false, "pending": false, "blocker_reason": "RED-phase activation lock; requires a live dev server/browser. Kept skipped by design." },
+      { "id": "CHECK-API-COLLECTION", "file": "syncro/apps/web/tests/support/check-api-collection.mjs", "line": 73, "title": "test:api collection/enumeration CI gate", "level": "other", "status": "active", "skipped": false, "fixme": false, "pending": false, "blocker_reason": "" }
+    ],
+    "blockers": [
+      { "id": "API-SPAREPARTS", "severity": "high", "reason": "RED-phase scaffold, pre-existing; consumes shared apiBaseUrl() (bundle modifies call sites only).", "test_file": "syncro/apps/web/tests/api/spareparts-atdd.spec.ts", "test_title": "Story 2.5 ATDD API RED-PHASE scaffold: manage spareparts" },
+      { "id": "API-INSTALLATIONS", "severity": "high", "reason": "RED-phase scaffold, pre-existing; consumes shared apiBaseUrl() (bundle modifies call sites only).", "test_file": "syncro/apps/web/tests/api/machine-sparepart-installations-atdd.spec.ts", "test_title": "Story 2.6 ATDD API RED-PHASE scaffold: machine sparepart installations" },
+      { "id": "WH-AC1-E2E", "severity": "high", "reason": "RED-phase activation lock; requires a live dev server/browser. Kept skipped by design.", "test_file": "syncro/apps/web/tests/e2e/config-hardening.atdd-red.spec.ts", "test_title": "WH-AC1 [P0] the app is served at the baseURL derived from BASE_URL" },
+      { "id": "WH-P1-04-E2E", "severity": "high", "reason": "RED-phase activation lock; requires a live dev server/browser. Kept skipped by design.", "test_file": "syncro/apps/web/tests/e2e/config-hardening.atdd-red.spec.ts", "test_title": "WH-P1-04 [P1] the web server boots on the port parsed from BASE_URL" }
+    ]
+  },
+  "recommendations": [
+    {
+      "priority": "HIGH",
+      "action": "Add E2E or component coverage for 1 inferred UI journey(s) — activate WH-AC1/WH-P1-04 E2E wiring scaffolds (remove test.skip) or add a config-level unit assertion on playwright.config.ts command derivation for AC-1",
+      "requirements": ["AC-1"]
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Complete coverage for 2 partially covered requirements (AC-1 webServer wiring, AC-5 toolchain/enumeration)",
+      "requirements": ["AC-1", "AC-5"]
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Wire test:api + test:api:check into CI with BASE_URL/API_URL exported (AC-5 enumeration evidence) and re-run biome check + tsc --noEmit in the parent repo before merge",
+      "requirements": ["AC-5"]
+    },
+    {
+      "priority": "LOW",
+      "action": "Run /bmad:tea:test-review to assess test quality",
+      "requirements": []
+    }
+  ]
+}

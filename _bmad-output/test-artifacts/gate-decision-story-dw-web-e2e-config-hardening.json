@@ -1,0 +1,23 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-08-08T01:49:49.652Z",
+  "repo": "Syncro",
+  "target": {
+    "type": "story",
+    "id": "dw-web-e2e-config-hardening",
+    "label": "dw-web-e2e-config-hardening (env-driven Playwright config, DW-3 + DW-7)"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "FAIL",
+  "rationale": "P0 coverage is 75% (required: 100%). 1 P0 requirement is only PARTIALLY covered: AC-1 (playwright.config.ts webServer wiring / npm run dev -- -p <port> command derivation) is locked only by skipped RED-phase E2E scaffolds (WH-AC1, WH-P1-04) plus static/manual probes, not an active automated test. P1 coverage is 0% (AC-5 toolchain/enumeration evidence verified in a parent-repo isolated harness, not reproducible in this dependency-less worktree; full enumeration depends on test:api config). Overall coverage is 60% (minimum: 80%).",
+  "p0_status": "NOT_MET",
+  "p1_status": "NOT_MET",
+  "overall_status": "NOT_MET",
+  "critical_open": 0,
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability-matrix-dw-web-e2e-config-hardening.md",
+    "trace_report_url": "",
+    "artifact_url": ""
+  }
+}
