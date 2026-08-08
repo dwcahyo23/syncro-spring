@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-25
-last_updated: 2026-08-07
+last_updated: 2026-08-08
 project: Syncro
 project_key: NOKEY
 tracking_system: file-system
@@ -64,7 +64,7 @@ development_status:
   2-r-remediate-epic-2-master-data-dialogs-and-linked-sparepart-workflows: done
   2-7-assign-machine-responsibility-levels: done
   2-8-show-setup-completeness: done
-  2-9-implement-immutable-audit-log-for-master-data: awaiting-operator
+  2-9-implement-immutable-audit-log-for-master-data: done
   epic-2-retrospective: optional
 
   # Epic 3: Telemetry Ingestion & Latest Machine Visibility

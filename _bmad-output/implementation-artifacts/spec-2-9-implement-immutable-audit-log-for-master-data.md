@@ -2,7 +2,7 @@
 title: '2-9 Implement Immutable Audit Log for Master Data'
 type: 'feature'
 created: '2026-08-07'
-status: 'awaiting-operator'
+status: done
 baseline_revision: '283d36b232058a90af50ba734e896ea85041a3f1'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -174,3 +174,16 @@ All agent-implementable work is complete and verified:
 - `syncro/apps/backend/src/test/java/com/syncro/SyncroBackendApplicationTests.java` -- added `@MockitoBean AuditLogRepository` for contextLoads.
 
 **Blocking condition:** none. The story is finished as far as an agent can take it. Remaining items require a human/operator and are enumerated in the `operator_actions` frontmatter key above (runtime boot, API smoke checks, browser verification of the Audit Log route, and psql immutability proof).
+
+## Operator Confirmation
+
+Confirmed 2026-08-08: the external actions this story owed were carried out.
+
+- Start Docker postgres and run the backend (SPRING_PROFILES_ACTIVE=local) and confirm clean boot with Flyway V16 applied.
+- Log in as SUPER_ADMIN and call GET /api/v1/audit-log; confirm it returns 200 and entries appear after master data mutations.
+- Call GET /api/v1/audit-log?plantId=<other-plant> as a MANAGE user and confirm it returns 403 FORBIDDEN.
+- Call GET /api/v1/audit-log with no bearer token and confirm it returns 401.
+- Open /dashboard/audit-log in the browser; verify dense desktop table, date-grouped stacked mobile cards, expandable before/after detail, filter bar (entityType/actor/plant/from/to), sort, pagination, and loading/error/empty/filtered-empty-with-reset states.
+- Run UPDATE and DELETE statements against an audit_log row via psql and confirm the database trigger raises an exception (audit_log is immutable).
+
+_Appended by the bmad-loop orchestrator (`bmad-loop confirm`, #335): a human confirmed these external actions out of band, and the story was advanced from `awaiting-operator` to `done`._
