@@ -1,0 +1,62 @@
+{
+  "story_id": "dw-web-e2e-config-hardening",
+  "workflow_type": "testarch-nfr-assess",
+  "evaluated_at": "2026-08-08T02:27:00.000Z",
+  "evaluator": "Yusuf",
+  "assessment_file": "nfr-assessment-dw-web-e2e-config-hardening.md",
+  "evidence_mode": "contract-static",
+  "threshold_basis": "story test-design NFR plan (test-design-story-web-e2e-config-hardening.md section 6) + TEA risk_threshold p1",
+  "domain_risk": {
+    "security": "LOW",
+    "performance": "LOW",
+    "reliability": "MEDIUM",
+    "scalability": "LOW",
+    "overall": "MEDIUM"
+  },
+  "gate_status": "CONCERNS",
+  "gate_basis": "risk_threshold",
+  "blockers": false,
+  "critical_open": 0,
+  "high_priority_open": 0,
+  "medium_priority_open": 3,
+  "concerns_open": 3,
+  "fail_findings_open": 1,
+  "fail_findings": [
+    {
+      "id": "MON-CI-WORKFLOW",
+      "domain": "reliability",
+      "description": "No CI workflow exists in the worktree (no .github directory, no root .gitlab-ci.yml). None of the fail-fast env errors, the test:api:check DW-10 coverage signal, or the JUnit/HTML reporters is wired into a pipeline.",
+      "pre_existing": true,
+      "introduced_by_change": false,
+      "blocking": false
+    }
+  ],
+  "concern_findings": [
+    {
+      "id": "DW-10-STRICT",
+      "domain": "reliability",
+      "description": "Residual silent-green window: zero-default-collection is a warning (exit 0), the default probe is skipped when BASE_URL is unset, and token-gated/skipped API suites can still pass green.",
+      "recommendation": "Add CHECK_API_COLLECTION_STRICT=1 opt-in hard failure and assert a minimum executed-test count."
+    },
+    {
+      "id": "DW-11-PORTLESS",
+      "domain": "reliability",
+      "description": "Portless BASE_URL hangs up to the 120s webServer readiness timeout before failing.",
+      "recommendation": "Emit a fail-fast startup warning or refuse to boot the webServer unless PLAYWRIGHT_SKIP_WEB_SERVER is set."
+    },
+    {
+      "id": "SCALE-KNOBS",
+      "domain": "scalability",
+      "description": "Fixed CI workers (2) / retries (2) / globalTimeout (20m) bound future suite throughput; may hit the global timeout as the e2e suite grows.",
+      "recommendation": "Make workers/globalTimeout env-tunable or use CI-provider sharding via --shard."
+    }
+  ],
+  "decision": "CONCERNS - non-blocking. The change is test-tooling-only (no production code, auth, data, or endpoints touched) and is safe to proceed/merge; aligns with the story 'done' status. The single FAIL finding (no CI workflow) is a pre-existing repo-wide gap, not introduced by this change. Recommended non-blocking follow-ups before relying on automated enforcement: (1) wire a CI pipeline exporting BASE_URL/API_URL running test:e2e, test:api, and test:api:check, (2) add DW-10 strict mode + executed-test-count assertion, (3) harden the portless-BASE_URL (DW-11) fail-fast case.",
+  "links": {
+    "report_path": "_bmad-output/test-artifacts/nfr-assessment-dw-web-e2e-config-hardening.md",
+    "story_spec": "_bmad-output/implementation-artifacts/spec-web-e2e-config-hardening.md",
+    "test_design": "_bmad-output/test-artifacts/test-design-story-web-e2e-config-hardening.md",
+    "trace_gate_decision": "_bmad-output/test-artifacts/gate-decision-story-dw-web-e2e-config-hardening.json"
+  },
+  "notes": "Trace gate (trace workflow) remains FAIL on active acceptance coverage (P0 75%, P1 0%, overall 60%) because RED-phase scaffolds (WH-AC1, WH-P1-04) are intentionally skipped and AC-5 is only reproducible in the parent-repo harness. NFR gate is independent and non-blocking; both align that the change itself is safe, with active coverage to be locked before final story closeout."
+}

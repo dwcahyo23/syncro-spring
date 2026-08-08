@@ -7,10 +7,20 @@ import type {
   InstallationView,
 } from "../../src/lib/api/generated/model";
 
-const API_BASE = process.env.SYNCRO_API_BASE_URL ?? "http://localhost:8080";
-const INSTALLATIONS_URL = `${API_BASE}/api/v1/machine-sparepart-installations`;
-const MACHINES_URL = `${API_BASE}/api/v1/machines`;
-const SPAREPARTS_URL = `${API_BASE}/api/v1/spareparts`;
+import { apiBaseUrl } from "../support/config";
+
+// Resolved lazily so this module still loads when API_URL is unset and tests skip.
+function installationsUrl() {
+  return `${apiBaseUrl()}/machine-sparepart-installations`;
+}
+
+function machinesUrl() {
+  return `${apiBaseUrl()}/machines`;
+}
+
+function sparepartsUrl() {
+  return `${apiBaseUrl()}/spareparts`;
+}
 
 type RoleName = "SUPER_ADMIN" | "MANAGE" | "VIEWER";
 
@@ -47,7 +57,7 @@ test.describe("Story 2.6 ATDD API RED-PHASE scaffold: machine sparepart installa
   }) => {
     const payload = installationPayload({ expectedProductionCount: 1_000_000, baselineCounter: 42_000 });
 
-    const createResponse = await request.post(INSTALLATIONS_URL, {
+    const createResponse = await request.post(installationsUrl(), {
       headers: authHeaders("SUPER_ADMIN"),
       data: payload,
     });
@@ -73,25 +83,25 @@ test.describe("Story 2.6 ATDD API RED-PHASE scaffold: machine sparepart installa
     request,
   }) => {
     const payload = installationPayload({ thresholdPercentage: 75 });
-    const createResponse = await request.post(INSTALLATIONS_URL, { headers: authHeaders("MANAGE"), data: payload });
+    const createResponse = await request.post(installationsUrl(), { headers: authHeaders("MANAGE"), data: payload });
     expect(createResponse.status()).toBe(201);
     const created: InstallationView = await createResponse.json();
     expect(created.thresholdPercentage).toBe(75);
 
-    const detailResponse = await request.get(`${INSTALLATIONS_URL}/${created.id}`, { headers: authHeaders("VIEWER") });
+    const detailResponse = await request.get(`${installationsUrl()}/${created.id}`, { headers: authHeaders("VIEWER") });
     expect(detailResponse.status()).toBe(200);
     await expectJsonMatches(detailResponse, { id: created.id, thresholdPercentage: 75 });
   });
 
   test.skip("2.6-ATDD-API-003 P0 defaults threshold to 90 when omitted or null", async ({ request }) => {
-    const omittedResponse = await request.post(INSTALLATIONS_URL, {
+    const omittedResponse = await request.post(installationsUrl(), {
       headers: authHeaders("MANAGE"),
       data: installationPayload(),
     });
     expect(omittedResponse.status()).toBe(201);
     await expectJsonMatches(omittedResponse, { thresholdPercentage: 90 });
 
-    const nullResponse = await request.post(INSTALLATIONS_URL, {
+    const nullResponse = await request.post(installationsUrl(), {
       headers: authHeaders("MANAGE"),
       data: installationPayload({ thresholdPercentage: null as unknown as number }),
     });
@@ -103,28 +113,28 @@ test.describe("Story 2.6 ATDD API RED-PHASE scaffold: machine sparepart installa
     request,
   }) => {
     await expectStatus(
-      request.post(INSTALLATIONS_URL, {
+      request.post(installationsUrl(), {
         headers: authHeaders("MANAGE"),
         data: installationPayload({ expectedProductionCount: 0 }),
       }),
       400,
     );
     await expectStatus(
-      request.post(INSTALLATIONS_URL, {
+      request.post(installationsUrl(), {
         headers: authHeaders("MANAGE"),
         data: installationPayload({ baselineCounter: -1 }),
       }),
       400,
     );
     await expectStatus(
-      request.post(INSTALLATIONS_URL, {
+      request.post(installationsUrl(), {
         headers: authHeaders("MANAGE"),
         data: installationPayload({ thresholdPercentage: 0 }),
       }),
       400,
     );
     await expectStatus(
-      request.post(INSTALLATIONS_URL, {
+      request.post(installationsUrl(), {
         headers: authHeaders("MANAGE"),
         data: installationPayload({ thresholdPercentage: 101 }),
       }),
@@ -136,29 +146,29 @@ test.describe("Story 2.6 ATDD API RED-PHASE scaffold: machine sparepart installa
     request,
   }) => {
     await expectStatus(
-      request.post(INSTALLATIONS_URL, {
+      request.post(installationsUrl(), {
         headers: authHeaders("MANAGE"),
         data: { ...installationPayload(), machineId: null },
       }),
       400,
     );
     await expectStatus(
-      request.post(INSTALLATIONS_URL, {
+      request.post(installationsUrl(), {
         headers: { ...authHeaders("MANAGE"), "Content-Type": "application/json" },
         data: "{ malformed-json",
       }),
       400,
     );
-    await expectStatus(request.get(`${INSTALLATIONS_URL}/not-a-uuid`, { headers: authHeaders("MANAGE") }), 400);
+    await expectStatus(request.get(`${installationsUrl()}/not-a-uuid`, { headers: authHeaders("MANAGE") }), 400);
     await expectStatus(
-      request.post(INSTALLATIONS_URL, {
+      request.post(installationsUrl(), {
         headers: authHeaders("MANAGE"),
         data: installationPayload({ machineId: "99999999-9999-4999-8999-999999999999" }),
       }),
       404,
     );
     await expectStatus(
-      request.post(INSTALLATIONS_URL, {
+      request.post(installationsUrl(), {
         headers: authHeaders("MANAGE"),
         data: installationPayload({ sparepartId: "88888888-8888-4888-8888-888888888888" }),
       }),
@@ -169,7 +179,7 @@ test.describe("Story 2.6 ATDD API RED-PHASE scaffold: machine sparepart installa
   test.skip("2.6-ATDD-API-006 P0 lists installation evidence with machine plant group sparepart taxonomy and nullable current-count fields", async ({
     request,
   }) => {
-    const response = await request.get(INSTALLATIONS_URL, { headers: authHeaders("VIEWER") });
+    const response = await request.get(installationsUrl(), { headers: authHeaders("VIEWER") });
 
     expect(response.status()).toBe(200);
     const body = await response.json();
@@ -198,7 +208,7 @@ test.describe("Story 2.6 ATDD API RED-PHASE scaffold: machine sparepart installa
     request,
   }) => {
     const installationId = "00000000-0000-4000-8000-000000000226";
-    const updateResponse = await request.put(`${INSTALLATIONS_URL}/${installationId}`, {
+    const updateResponse = await request.put(`${installationsUrl()}/${installationId}`, {
       headers: authHeaders("MANAGE"),
       data: {
         expectedProductionCount: 2_500_000,
@@ -224,11 +234,11 @@ test.describe("Story 2.6 ATDD API RED-PHASE scaffold: machine sparepart installa
   }) => {
     const installationId = "00000000-0000-4000-8000-000000000227";
     await expectStatus(
-      request.delete(`${INSTALLATIONS_URL}/${installationId}`, { headers: authHeaders("SUPER_ADMIN") }),
+      request.delete(`${installationsUrl()}/${installationId}`, { headers: authHeaders("SUPER_ADMIN") }),
       204,
     );
     await expectStatus(
-      request.get(`${INSTALLATIONS_URL}/${installationId}`, { headers: authHeaders("SUPER_ADMIN") }),
+      request.get(`${installationsUrl()}/${installationId}`, { headers: authHeaders("SUPER_ADMIN") }),
       404,
     );
   });
@@ -237,18 +247,18 @@ test.describe("Story 2.6 ATDD API RED-PHASE scaffold: machine sparepart installa
     request,
   }) => {
     await expectStatus(
-      request.post(INSTALLATIONS_URL, { headers: authHeaders("VIEWER"), data: installationPayload() }),
+      request.post(installationsUrl(), { headers: authHeaders("VIEWER"), data: installationPayload() }),
       403,
     );
     await expectStatus(
-      request.put(`${INSTALLATIONS_URL}/00000000-0000-4000-8000-000000000228`, {
+      request.put(`${installationsUrl()}/00000000-0000-4000-8000-000000000228`, {
         headers: authHeaders("VIEWER"),
         data: installationUpdatePayload(),
       }),
       403,
     );
     await expectStatus(
-      request.delete(`${INSTALLATIONS_URL}/00000000-0000-4000-8000-000000000228`, { headers: authHeaders("VIEWER") }),
+      request.delete(`${installationsUrl()}/00000000-0000-4000-8000-000000000228`, { headers: authHeaders("VIEWER") }),
       403,
     );
   });
@@ -256,16 +266,16 @@ test.describe("Story 2.6 ATDD API RED-PHASE scaffold: machine sparepart installa
   test.skip("2.6-ATDD-API-010 P0 unauthenticated requests to every installation endpoint return safe auth error", async ({
     request,
   }) => {
-    await expectStatus(request.get(INSTALLATIONS_URL), 401);
-    await expectStatus(request.get(`${INSTALLATIONS_URL}/00000000-0000-4000-8000-000000000229`), 401);
-    await expectStatus(request.post(INSTALLATIONS_URL, { data: installationPayload() }), 401);
+    await expectStatus(request.get(installationsUrl()), 401);
+    await expectStatus(request.get(`${installationsUrl()}/00000000-0000-4000-8000-000000000229`), 401);
+    await expectStatus(request.post(installationsUrl(), { data: installationPayload() }), 401);
     await expectStatus(
-      request.put(`${INSTALLATIONS_URL}/00000000-0000-4000-8000-000000000229`, {
+      request.put(`${installationsUrl()}/00000000-0000-4000-8000-000000000229`, {
         data: installationUpdatePayload(),
       }),
       401,
     );
-    await expectStatus(request.delete(`${INSTALLATIONS_URL}/00000000-0000-4000-8000-000000000229`), 401);
+    await expectStatus(request.delete(`${installationsUrl()}/00000000-0000-4000-8000-000000000229`), 401);
   });
 
   test.skip("2.6-ATDD-API-011 P0 enforces machine plant scope for MANAGE and VIEWER list detail update delete", async ({
@@ -273,24 +283,24 @@ test.describe("Story 2.6 ATDD API RED-PHASE scaffold: machine sparepart installa
   }) => {
     const outOfScopeInstallationId = "00000000-0000-4000-8000-000000000230";
     await expectStatus(
-      request.get(`${INSTALLATIONS_URL}?plantId=77777777-7777-4777-8777-777777777777`, {
+      request.get(`${installationsUrl()}?plantId=77777777-7777-4777-8777-777777777777`, {
         headers: authHeaders("VIEWER"),
       }),
       403,
     );
     await expectStatus(
-      request.get(`${INSTALLATIONS_URL}/${outOfScopeInstallationId}`, { headers: authHeaders("VIEWER") }),
+      request.get(`${installationsUrl()}/${outOfScopeInstallationId}`, { headers: authHeaders("VIEWER") }),
       404,
     );
     await expectStatus(
-      request.put(`${INSTALLATIONS_URL}/${outOfScopeInstallationId}`, {
+      request.put(`${installationsUrl()}/${outOfScopeInstallationId}`, {
         headers: authHeaders("MANAGE"),
         data: installationUpdatePayload(),
       }),
       404,
     );
     await expectStatus(
-      request.delete(`${INSTALLATIONS_URL}/${outOfScopeInstallationId}`, { headers: authHeaders("MANAGE") }),
+      request.delete(`${installationsUrl()}/${outOfScopeInstallationId}`, { headers: authHeaders("MANAGE") }),
       404,
     );
   });
@@ -299,20 +309,20 @@ test.describe("Story 2.6 ATDD API RED-PHASE scaffold: machine sparepart installa
     request,
   }) => {
     await expectStatus(
-      request.get(`${INSTALLATIONS_URL}?machineId=11111111-1111-4111-8111-111111111126`, {
+      request.get(`${installationsUrl()}?machineId=11111111-1111-4111-8111-111111111126`, {
         headers: authHeaders("VIEWER"),
       }),
       200,
     );
     await expectStatus(
-      request.get(`${INSTALLATIONS_URL}?sparepartId=22222222-2222-4222-8222-222222222226`, {
+      request.get(`${installationsUrl()}?sparepartId=22222222-2222-4222-8222-222222222226`, {
         headers: authHeaders("VIEWER"),
       }),
       200,
     );
     await expectStatus(
       request.get(
-        `${INSTALLATIONS_URL}?plantId=33333333-3333-4333-8333-333333333326&machineGroupId=44444444-4444-4444-8444-444444444426`,
+        `${installationsUrl()}?plantId=33333333-3333-4333-8333-333333333326&machineGroupId=44444444-4444-4444-8444-444444444426`,
         {
           headers: authHeaders("MANAGE"),
         },
@@ -327,8 +337,8 @@ test.describe("Story 2.6 ATDD API RED-PHASE scaffold: machine sparepart installa
     const machineId = "11111111-1111-4111-8111-111111111126";
     const sparepartId = "22222222-2222-4222-8222-222222222226";
 
-    await expectConflict(request.delete(`${MACHINES_URL}/${machineId}`, { headers: authHeaders("MANAGE") }));
-    await expectConflict(request.delete(`${SPAREPARTS_URL}/${sparepartId}`, { headers: authHeaders("MANAGE") }));
+    await expectConflict(request.delete(`${machinesUrl()}/${machineId}`, { headers: authHeaders("MANAGE") }));
+    await expectConflict(request.delete(`${sparepartsUrl()}/${sparepartId}`, { headers: authHeaders("MANAGE") }));
   });
 
   test.skip("2.6-ATDD-API-014 P1 maps future installation delete integrity failures to safe 409 response", async ({
@@ -336,7 +346,7 @@ test.describe("Story 2.6 ATDD API RED-PHASE scaffold: machine sparepart installa
   }) => {
     const installationWithFutureDependentsId = "00000000-0000-4000-8000-000000000231";
     await expectConflict(
-      request.delete(`${INSTALLATIONS_URL}/${installationWithFutureDependentsId}`, {
+      request.delete(`${installationsUrl()}/${installationWithFutureDependentsId}`, {
         headers: authHeaders("SUPER_ADMIN"),
       }),
     );

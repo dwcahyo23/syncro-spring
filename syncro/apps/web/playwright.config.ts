@@ -1,9 +1,19 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const baseURL = process.env.BASE_URL ?? "http://localhost:3001";
-const webServerCommand =
-  process.env.PLAYWRIGHT_WEB_SERVER_COMMAND ??
-  "node --max-old-space-size=2048 ./node_modules/next/dist/bin/next dev -p 3001";
+import { webBaseUrl } from "./tests/support/config";
+
+const baseURL = webBaseUrl();
+const webServerPort = new URL(baseURL).port;
+const defaultWebServerCommand =
+  webServerPort && webServerPort !== "0" ? `npm run dev -- -p ${webServerPort}` : "npm run dev";
+const webServerCommand = process.env.PLAYWRIGHT_WEB_SERVER_COMMAND?.trim() || defaultWebServerCommand;
+// Append the memory guard only when the operator's NODE_OPTIONS does not already
+// set a heap size; a duplicate --max-old-space-size would silently override a
+// deliberately larger dev/CI heap (last flag wins).
+const existingNodeOptions = process.env.NODE_OPTIONS ?? "";
+const webServerNodeOptions = existingNodeOptions.includes("--max-old-space-size")
+  ? existingNodeOptions
+  : [existingNodeOptions, "--max-old-space-size=2048"].filter(Boolean).join(" ");
 const runAllBrowsers = Boolean(process.env.PLAYWRIGHT_ALL_BROWSERS);
 const isCi = Boolean(process.env.CI);
 
@@ -51,5 +61,8 @@ export default defineConfig({
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
+        env: {
+          NODE_OPTIONS: webServerNodeOptions,
+        },
       },
 });

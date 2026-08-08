@@ -334,6 +334,50 @@ Workflow status: completed.
 
 ---
 
+# Story-Level Run: dw-web-e2e-config-hardening
+
+Run ID: `20260808-012337-779e`
+Date: 2026-08-08
+Baseline: `caf12629fb344ffe7be5130c32948a85e488a7da`
+
+## Mode
+
+Story-level risk + coverage design for the `dw-web-e2e-config-hardening` deferred-work sweep bundle (DW-3 hardcoded ports + DW-7 brittle Next.js web server command). Test-infrastructure-only chore: new lazy env-driven `tests/support/config.ts` (BASE_URL/API_URL), derived Playwright base URL + web server command, `apiBaseUrl()` consumed across API helpers/specs.
+
+## Output
+
+- `_bmad-output/test-artifacts/test-design-story-web-e2e-config-hardening.md`
+
+## Risk Summary
+
+Story-level register (9 risks):
+
+- P1 (score 6): WH-01 default `testDir: ./tests/e2e` does not collect `tests/api/*.spec.ts` — the API suites (the bundle's primary `apiBaseUrl()` consumers) are silently omitted from the runner; CI can be green with zero API-suite execution (deferred DW-10).
+- P1 (score 4): WH-02 env-required contract is a breaking change from silent localhost fallbacks; a CI pipeline not exporting BASE_URL/API_URL fails at config load.
+- P2 (score 4): WH-03 portless BASE_URL + webServer enabled hangs on readiness (deferred DW-11); WH-04 `webServer.env.NODE_OPTIONS` replaces operator NODE_OPTIONS; WH-05 silent-skip discoverability with API_URL unset.
+- P2 (score 3): WH-06 memory guard must survive under `npm run dev` via webServer.env.
+- P3 (score 2): WH-07 stale override port, WH-08 `npm run dev` semantics drift, WH-09 default-port/IPv6 URL-parse edges.
+
+## Coverage Summary
+
+- P0: 5 scenarios — config-load + error contract probes already verified in the spec (0 incremental effort).
+- P1: 4 scenarios (~6-10 h) — API-suite collection, `config.ts` vitest unit suite, live audit-log API run, e2e wiring.
+- P2: 4 scenarios (~2-3 h) — portless pairing, NODE_OPTIONS merge probe, CI coverage-gap signal, override matrix.
+- P3: 3 scenarios (~1-2 h) — multi-browser smoke, URL-parse probes, docs review.
+- Total ~10-18 h (~1.5-2.5 days), test-infra-only.
+
+## Follow-Up Gaps Flagged
+
+1. DW-10/DW-11 referenced as "deferred to ledger" in the spec review log but NOT present in `deferred-work.md` (only DW-1..DW-9) — add ledger entries.
+2. Collect `tests/api/**` (T-WH-P1-01) so the bundle's primary config consumers actually run in CI.
+3. Add `config.ts` vitest unit suite (T-WH-P1-02) — the new module has zero unit tests.
+4. Decide `NODE_OPTIONS` append-vs-replace (WH-04) and document.
+5. Re-run `biome check` + `tsc --noEmit` in the parent repo before merge (not possible in this dependency-less worktree).
+
+Workflow status: completed.
+
+---
+
 # ATDD Gap-Closing Run: dw-db-index-hygiene
 
 Run ID: `20260808-012337-779e` (bmad-testarch-atdd, RED phase)
@@ -361,3 +405,30 @@ Red-phase ATDD scaffold generation for the gaps identified in `test-design-story
 
 Workflow status: completed.
 
+
+# ATDD Gap-Closing Run: dw-web-e2e-config-hardening
+
+Run ID: `20260808-012337-779e` (bmad-testarch-atdd, RED phase)
+Date: 2026-08-08
+Baseline: `caf12629fb344ffe7be5130c32948a85e488a7da`
+
+## Mode
+
+Red-phase ATDD scaffold generation for the working-tree config-hardening bundle (DW-3 + DW-7; story already implemented). This run produces RED scaffolds that lock the env-driven config contract + E2E wiring, plus an implementation checklist that closes the flagged gaps (WH-01 collection gap / DW-10, DW-11 ledger entries, `config.ts` unit suite, `NODE_OPTIONS` append-vs-replace decision).
+
+## Output
+
+- `_bmad-output/test-artifacts/atdd-checklist-dw-web-e2e-config-hardening.md`
+- `syncro/apps/web/tests/api/config-contract.atdd-red.spec.ts` (11 `test.skip`) - serial config-contract probes for `tests/support/config.ts` (trailing-slash strip, fail-fast BASE_URL/API_URL errors with `.env.example` pointer, malformed-URL rejection, whitespace trim, `/api/v1` suffix enforcement, lazy-skip import contract)
+- `syncro/apps/web/tests/e2e/config-hardening.atdd-red.spec.ts` (4 `test.skip`) - baseURL-from-BASE_URL wiring, port-parsed webServer boot, `NODE_OPTIONS` memory-guard evidence lock, `PLAYWRIGHT_WEB_SERVER_COMMAND` override matrix
+
+## Flagship RED Test
+
+- Config-contract suite (`WH-AC1..WH-AC4b`): activation/regression locks on the new `config.ts` module - the bundle's central deliverable. Expected green today; RED if the contract regresses.
+
+## Verification
+
+- Scaffolds NOT executed in this worktree (no `node_modules`); `biome check`/`tsc --noEmit` unverifiable here (recorded in checklist; re-run in parent repo).
+- Gap flags carried: `tests/api/**` collection fix (WH-01/DW-10), DW-10/DW-11 ledger entries missing from `deferred-work.md`, `NODE_OPTIONS` append-vs-replace decision (WH-04).
+
+Workflow status: completed.
