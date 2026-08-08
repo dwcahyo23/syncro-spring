@@ -12,6 +12,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# opencode-http timeouts: cold-start safe on Windows (see policy.toml adapter notes)
+$env:BMAD_LOOP_HTTP_TIMEOUT_S = "300.0"
+$env:BMAD_LOOP_HTTP_CONNECT_TIMEOUT_S = "10.0"
+$env:BMAD_LOOP_HTTP_SSE_READ_TIMEOUT_S = "60.0"
+$env:BMAD_LOOP_HTTP_HEALTH_TIMEOUT_S = "60.0"
+
 # psmux (installed via winget) lives on the user PATH; pick it up without a shell restart.
 $env:Path = [Environment]::GetEnvironmentVariable("Path", "User") + ";" + [Environment]::GetEnvironmentVariable("Path", "Machine")
 
