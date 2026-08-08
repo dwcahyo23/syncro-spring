@@ -96,6 +96,27 @@ class MqttTelemetryIngestHandlerTest {
   }
 
   @Test
+  void handleMessageLogsInactiveMachineRejectionWithReasonTraceIdAndTopic() {
+    var inactiveHandler = new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC),
+        new RejectingTelemetryValidationService("inactive_machine"));
+    var appender = attachAppender();
+    var message = MessageBuilder.withPayload("{\"running\":true}".getBytes(StandardCharsets.UTF_8))
+        .setHeader(MqttHeaders.RECEIVED_TOPIC, "factory/GM1/BF-08410/telemetry")
+        .build();
+
+    inactiveHandler.handleMessage(message);
+
+    assertThat(appender.list)
+        .anyMatch(event -> event.getLevel() == Level.WARN
+            && event.getFormattedMessage().startsWith("mqtt_telemetry_rejected")
+            && event.getFormattedMessage().contains("reason=inactive_machine")
+            && !event.getFormattedMessage().contains("field=")
+            && event.getFormattedMessage().contains("traceId=")
+            && event.getFormattedMessage().contains("topic=factory/GM1/BF-08410/telemetry"));
+    detachAppender(appender);
+  }
+
+  @Test
   void handleMessageSwallowsRejectionWithoutThrowing() {
     var rejectingHandler = new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC),
         new RejectingTelemetryValidationService());

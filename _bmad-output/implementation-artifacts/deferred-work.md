@@ -135,3 +135,8 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-2-validate-mqtt-topic-and-base-payload.md`
   summary: `TelemetryTopic.parse` only guards `isEmpty()` on segments, so `factory/ GM1/BF-08410/telemetry` and `factory/GM1/ /telemetry` parse successfully and then fail master-data lookup as `unknown_plant`/`unknown_machine`, misdirecting operators away from a malformed-topic root cause.
   evidence: Real, surfaced by review of Story 3.2 — no trimming or whitespace guard in `parse`; such topics can never match master data, so the reason points at master-data rather than the topic shape.
+
+### DW-21: Inactive-machine gate rejects by exclusion rather than inclusion
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-3-reject-inactive-machine-telemetry.md`
+  summary: `TelemetryValidationService` rejects only `MachineStatus.INACTIVE` and accepts any other status by default; when the enum grows (e.g. `DECOMMISSIONED`, `SUSPENDED`), telemetry for those machines would be silently accepted instead of rejected.
+  evidence: Real, surfaced by review of Story 3.3 — the gate at `TelemetryValidationService.validate` is `status == INACTIVE → reject`, equivalent to `!= ACTIVE → reject` today only because the enum is exactly `ACTIVE`/`INACTIVE`; an inclusion-based `status != ACTIVE → reject` would fail closed for future statuses. Deferred: spec intentionally names INACTIVE only; revisit when a new machine status is introduced.
