@@ -81,6 +81,36 @@ class TelemetryValidationServiceTest {
   }
 
   @Test
+  void rejectsInactiveMachine() {
+    var plant = plant();
+    var machine = machine(plant, "BF-08410", MachineStatus.INACTIVE);
+    when(plants.findByCodeIgnoreCase("GM1")).thenReturn(Optional.of(plant));
+    when(machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
+
+    var result = service.validate("factory/GM1/BF-08410/telemetry", "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
+
+    assertThat(result).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
+    var rejected = (TelemetryValidationService.Result.Rejected) result;
+    assertThat(rejected.reason()).isEqualTo("inactive_machine");
+    assertThat(rejected.field()).isNull();
+  }
+
+  @Test
+  void rejectsInactiveMachineBeforeParsingPayload() {
+    var plant = plant();
+    var machine = machine(plant, "BF-08410", MachineStatus.INACTIVE);
+    when(plants.findByCodeIgnoreCase("GM1")).thenReturn(Optional.of(plant));
+    when(machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
+
+    var result = service.validate("factory/GM1/BF-08410/telemetry", "not json");
+
+    assertThat(result).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
+    var rejected = (TelemetryValidationService.Result.Rejected) result;
+    assertThat(rejected.reason()).isEqualTo("inactive_machine");
+    assertThat(rejected.field()).isNull();
+  }
+
+  @Test
   void acceptsValidTopicAndPayload() {
     var plant = plant();
     var machine = machine(plant, "BF-08410");
@@ -100,8 +130,12 @@ class TelemetryValidationServiceTest {
   }
 
   private MachineEntity machine(PlantEntity plant, String code) {
+    return machine(plant, code, MachineStatus.ACTIVE);
+  }
+
+  private MachineEntity machine(PlantEntity plant, String code, MachineStatus status) {
     var group = new MachineGroupEntity(UUID.randomUUID(), plant, "Forming", NOW, NOW);
-    return new MachineEntity(UUID.randomUUID(), plant, group, code, "JBF19", MachineStatus.ACTIVE, "Juki",
-        LocalDate.parse("2026-05-27"), null, NOW, NOW);
+    return new MachineEntity(UUID.randomUUID(), plant, group, code, "JBF19", status, "Juki", LocalDate.parse("2026-05-27"),
+        null, NOW, NOW);
   }
 }

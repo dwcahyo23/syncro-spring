@@ -2,6 +2,7 @@ package com.syncro.telemetry.application;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.syncro.auth.infrastructure.PlantRepository;
+import com.syncro.machine.domain.MachineStatus;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
 import org.springframework.stereotype.Service;
@@ -38,6 +39,9 @@ public class TelemetryValidationService {
     var machine = machines.findByPlantIdAndCodeIgnoreCase(plant.get().getId(), parsedTopic.get().machineCode());
     if (machine.isEmpty()) {
       return new Result.Rejected("unknown_machine", null);
+    }
+    if (machine.get().getStatus() == MachineStatus.INACTIVE) {
+      return new Result.Rejected("inactive_machine", null);
     }
     return switch (TelemetryPayload.parse(payload, objectMapper)) {
       case TelemetryPayload.ParseResult.Rejected rejected -> new Result.Rejected(rejected.reason(), rejected.field());

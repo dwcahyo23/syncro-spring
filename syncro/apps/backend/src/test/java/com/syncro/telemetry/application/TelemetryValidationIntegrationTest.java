@@ -125,11 +125,55 @@ class TelemetryValidationIntegrationTest {
     assertThat(((TelemetryValidationService.Result.Accepted) result).machine().getCode()).isEqualTo("BF-08410");
   }
 
-  private void seedPlantAndMachine() {
+  @Test
+  @DisplayName("3.3-VAL-001 P0 inactive machine telemetry rejected")
+  void rejectsInactiveMachine() {
+    seedPlantAndMachine(MachineStatus.INACTIVE);
+
+    var result = validationService.validate("factory/GM1/BF-08410/telemetry",
+        "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
+
+    assertThat(result).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
+    var rejected = (TelemetryValidationService.Result.Rejected) result;
+    assertThat(rejected.reason()).isEqualTo("inactive_machine");
+    assertThat(rejected.field()).isNull();
+  }
+
+  @Test
+  @DisplayName("3.3-VAL-002 P0 active machine accepted alongside inactive rejected")
+  void acceptsActiveMachineWhileInactiveRejected() {
     var now = Instant.parse("2026-05-27T00:00:00Z");
     var plant = plants.saveAndFlush(new PlantEntity(UUID.randomUUID(), "GM1", "Plant GM1", now, now));
     var group = machineGroups.saveAndFlush(new MachineGroupEntity(UUID.randomUUID(), plant, "Forming", now, now));
     machines.saveAndFlush(new MachineEntity(UUID.randomUUID(), plant, group, "BF-08410", "JBF19",
+        MachineStatus.INACTIVE, "Juki", LocalDate.parse("2026-05-27"), null, now, now));
+    machines.saveAndFlush(new MachineEntity(UUID.randomUUID(), plant, group, "BF-08411", "JBF19",
         MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), null, now, now));
+
+    var inactive = validationService.validate("factory/GM1/BF-08410/telemetry",
+        "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
+
+    assertThat(inactive).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
+    var inactiveRejected = (TelemetryValidationService.Result.Rejected) inactive;
+    assertThat(inactiveRejected.reason()).isEqualTo("inactive_machine");
+    assertThat(inactiveRejected.field()).isNull();
+
+    var active = validationService.validate("factory/GM1/BF-08411/telemetry",
+        "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
+
+    assertThat(active).isInstanceOf(TelemetryValidationService.Result.Accepted.class);
+    assertThat(((TelemetryValidationService.Result.Accepted) active).machine().getCode()).isEqualTo("BF-08411");
+  }
+
+  private void seedPlantAndMachine() {
+    seedPlantAndMachine(MachineStatus.ACTIVE);
+  }
+
+  private void seedPlantAndMachine(MachineStatus status) {
+    var now = Instant.parse("2026-05-27T00:00:00Z");
+    var plant = plants.saveAndFlush(new PlantEntity(UUID.randomUUID(), "GM1", "Plant GM1", now, now));
+    var group = machineGroups.saveAndFlush(new MachineGroupEntity(UUID.randomUUID(), plant, "Forming", now, now));
+    machines.saveAndFlush(new MachineEntity(UUID.randomUUID(), plant, group, "BF-08410", "JBF19",
+        status, "Juki", LocalDate.parse("2026-05-27"), null, now, now));
   }
 }
