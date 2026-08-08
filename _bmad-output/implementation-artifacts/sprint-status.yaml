@@ -70,7 +70,7 @@ development_status:
   # Epic 3: Telemetry Ingestion & Latest Machine Visibility
   epic-3: in-progress
   3-1-configure-mqtt-subscription-and-telemetry-contract: done
-  3-2-validate-mqtt-topic-and-base-payload: backlog
+  3-2-validate-mqtt-topic-and-base-payload: done
   3-3-reject-inactive-machine-telemetry: backlog
   3-4-persist-accepted-telemetry-to-influxdb-and-redis: backlog
   3-5-calculate-production-count-delta-with-16-bit-wrap-support: backlog

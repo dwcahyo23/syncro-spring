@@ -30,7 +30,7 @@ class MqttTelemetryIngestAtddScaffoldTest {
   private static final Instant FIXED_NOW = Instant.parse("2026-08-08T10:00:00Z");
 
   private final MqttTelemetryIngestHandler handler =
-      new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC));
+      new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC), new AcceptingTelemetryValidationService());
 
   @Test
   void enrichToleratesNonByteStringPayload() {
