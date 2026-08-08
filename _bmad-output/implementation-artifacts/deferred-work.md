@@ -105,3 +105,33 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-1-configure-mqtt-subscription-and-telemetry-contract.md`
   summary: `MqttConnectionStatus` stays `SUBSCRIBED`/UP throughout a broker outage that begins after the initial subscribe, because the Paho reconnect path handles the drop in its background thread and does not publish an `MqttConnectionFailedEvent` the way `doStart()`/`subscribe()` catch paths do.
   evidence: Real, surfaced by review of Story 3.1 — with `setAutomaticReconnect(true)`, a mid-session drop does not emit the adapter's connection-failed event, so the sole observability signal (health) reports UP for the entire offline window. The Spring Integration adapter's event set exposes no connection-lost event observable by this listener; needs a later adapter-level or event-source investigation, out of Story 3.1 scope.
+
+### DW-15: Negative-value range validation for telemetry base fields
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-2-validate-mqtt-topic-and-base-payload.md`
+  summary: `TelemetryPayload.parse` accepts negative `runtimeHours` and negative `counting`; the epic mandates rejecting values outside physically plausible ranges.
+  evidence: Real, surfaced by review of Story 3.2 — the parse path has no lower-bound guard (`runtimeNode.doubleValue() < 0`, `countingNode.longValue() < 0`). Negative-count rejection is explicitly owned by Story 3.5's AC ("invalid negative/non-numeric count payloads are rejected by payload validation"); negative runtimeHours range validation has no owning story yet. Deferred to avoid range logic landing ahead of Story 3.5's counter-wrap semantics.
+
+### DW-16: Per-message DB round-trips on MQTT ingest thread without caching
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-2-validate-mqtt-topic-and-base-payload.md`
+  summary: `TelemetryValidationService.validate` performs two synchronous JPA lookups (`findByCodeIgnoreCase`, `findByPlantIdAndCodeIgnoreCase`) per inbound message on the QoS-1 ingest thread, with no caching or offload.
+  evidence: Real, surfaced by review of Story 3.2 — validation is the first DB-touching step on the ingest path (Story 3.1 was log-only). Acceptable for Phase-1 telemetry volume; cache/backpressure offload belongs with the bounded-queue ingest-worker story (Epic 3 backpressure NFR) rather than Story 3.2.
+
+### DW-17: Detached `MachineEntity` with lazy associations returned in `Accepted` result
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-2-validate-mqtt-topic-and-base-payload.md`
+  summary: `TelemetryValidationService.validate` returns the `MachineEntity` from `findByPlantIdAndCodeIgnoreCase` outside any transaction; its `plant`/`machineGroup` associations are LAZY, so Story 3.4's store write that touches `accepted.machine().getPlant()` will throw `LazyInitializationException`.
+  evidence: Real, surfaced by review of Story 3.2 — `validate()` is not `@Transactional` and the repository's implicit transaction closes on return, detaching the entity; `MachineEntity.plant`/`machineGroup` are `FetchType.LAZY`. Harmless today (no store write yet, Story 3.4) but guaranteed to detonate at the first downstream lazy access. Needs a contract decision (lightweight machine view vs entity fetched with joins kept within a transaction) before Story 3.4.
+
+### DW-18: Raw payload logged at INFO on every accepted telemetry message
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-2-validate-mqtt-topic-and-base-payload.md`
+  summary: `MqttTelemetryIngestHandler` logs the full unredacted payload in `mqtt_telemetry_received` at INFO for every accepted message, inflating log volume at telemetry rate.
+  evidence: Pre-existing from Story 3.1 (`payload={}` in `handleMessage` at baseline d14ce61), surfaced incidentally by review of Story 3.2 which split accepted vs rejected logging — the natural point to have trimmed accepted-path logging to traceId/topic.
+
+### DW-19: `MqttSubscriptionConfigTest` forced to mock DB-backed `TelemetryValidationService` to keep context alive
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-2-validate-mqtt-topic-and-base-payload.md`
+  summary: The handler's new `TelemetryValidationService` dependency drags DB-touching repositories into `MqttSubscriptionConfigTest`, which now must supply a mocked-repo bean purely to construct the handler.
+  evidence: Real, surfaced by review of Story 3.2 — `MqttSubscriptionConfigTest` added a `TestConfiguration` bean `new TelemetryValidationService(mock(PlantRepository.class), mock(MachineRepository.class))`; with Mockito defaults that bean's `validate()` rejects every message, so the wiring test's handler is non-functional in principle. A `@FunctionalInterface` validator abstraction or splitting the handler's logging from validation would decouple wiring tests.
+
+### DW-20: Whitespace/edge tokens in topic segments surface as `unknown_plant`/`unknown_machine` instead of `malformed_topic`
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-2-validate-mqtt-topic-and-base-payload.md`
+  summary: `TelemetryTopic.parse` only guards `isEmpty()` on segments, so `factory/ GM1/BF-08410/telemetry` and `factory/GM1/ /telemetry` parse successfully and then fail master-data lookup as `unknown_plant`/`unknown_machine`, misdirecting operators away from a malformed-topic root cause.
+  evidence: Real, surfaced by review of Story 3.2 — no trimming or whitespace guard in `parse`; such topics can never match master data, so the reason points at master-data rather than the topic shape.
