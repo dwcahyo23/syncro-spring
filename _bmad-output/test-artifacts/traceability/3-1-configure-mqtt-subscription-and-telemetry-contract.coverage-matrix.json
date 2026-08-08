@@ -1,0 +1,303 @@
+{
+  "phase": "PHASE_1_COMPLETE",
+  "trace_target": {
+    "type": "story",
+    "id": "3.1",
+    "label": "3-1-configure-mqtt-subscription-and-telemetry-contract"
+  },
+  "coverage_basis": "acceptance_criteria",
+  "oracle": {
+    "resolution_mode": "formal_requirements",
+    "confidence": "high",
+    "sources": [
+      "_bmad-output/implementation-artifacts/spec-3-1-configure-mqtt-subscription-and-telemetry-contract.md",
+      "_bmad-output/test-artifacts/test-design-story-3-1-configure-mqtt-subscription-and-telemetry-contract.md",
+      "_bmad-output/test-artifacts/atdd-checklist-3-1-configure-mqtt-subscription-and-telemetry-contract.md"
+    ],
+    "external_pointer_status": "not_used",
+    "synthetic": false
+  },
+  "collection_mode": "contract_static",
+  "allow_gate": true,
+  "collection_status": "COLLECTED",
+  "coverage_statistics": {
+    "total_requirements": 4,
+    "fully_covered": 4,
+    "partially_covered": 0,
+    "uncovered": 0,
+    "overall_coverage_percentage": 100,
+    "priority_breakdown": {
+      "P0": { "total": 4, "covered": 4, "percentage": 100 },
+      "P1": { "total": 0, "covered": 0, "percentage": 100 },
+      "P2": { "total": 0, "covered": 0, "percentage": 100 },
+      "P3": { "total": 0, "covered": 0, "percentage": 100 }
+    },
+    "by_level": {
+      "e2e": { "tests": 0, "criteria_covered": 0 },
+      "api": { "tests": 6, "criteria_covered": 1 },
+      "component": { "tests": 6, "criteria_covered": 2 },
+      "unit": { "tests": 16, "criteria_covered": 2 },
+      "other": { "tests": 0, "criteria_covered": 0 }
+    }
+  },
+  "test_inventory": {
+    "summary": {
+      "files": 8,
+      "cases": 28,
+      "skipped_cases": 10,
+      "fixme_cases": 0,
+      "pending_cases": 0,
+      "active_cases": 18
+    },
+    "blockers": [
+      {
+        "id": "MqttSubscriptionResilienceAtddScaffoldTest.contextLoadsAndHealthIsDownWhileBrokerUnreachable",
+        "severity": "high",
+        "reason": "ATDD RED phase - activation-gated P0 readiness lock (R-001 broker-down context resilience)",
+        "test_file": "syncro/apps/backend/src/test/java/com/syncro/telemetry/infrastructure/MqttSubscriptionResilienceAtddScaffoldTest.java",
+        "test_title": "contextLoadsAndHealthIsDownWhileBrokerUnreachable"
+      },
+      {
+        "id": "MqttSubscriptionResilienceAtddScaffoldTest.connectionOptionsCarryCredentialsAndReconnectSettings",
+        "severity": "medium",
+        "reason": "ATDD RED phase - activation-gated R-004/R-002 credentials carry lock",
+        "test_file": "syncro/apps/backend/src/test/java/com/syncro/telemetry/infrastructure/MqttSubscriptionResilienceAtddScaffoldTest.java",
+        "test_title": "connectionOptionsCarryCredentialsAndReconnectSettings"
+      },
+      {
+        "id": "MqttSubscriptionResilienceAtddScaffoldTest.healthIndicatorBeanIsRegistered",
+        "severity": "medium",
+        "reason": "ATDD RED phase - activation-gated R-010 health bean lock",
+        "test_file": "syncro/apps/backend/src/test/java/com/syncro/telemetry/infrastructure/MqttSubscriptionResilienceAtddScaffoldTest.java",
+        "test_title": "healthIndicatorBeanIsRegistered"
+      },
+      {
+        "id": "MqttTelemetryIngestAtddScaffoldTest.enrichToleratesNonByteStringPayload",
+        "severity": "medium",
+        "reason": "ATDD RED phase - activation-gated R-009 handler edge lock",
+        "test_file": "syncro/apps/backend/src/test/java/com/syncro/telemetry/application/MqttTelemetryIngestAtddScaffoldTest.java",
+        "test_title": "enrichToleratesNonByteStringPayload"
+      },
+      {
+        "id": "MqttTelemetryIngestAtddScaffoldTest.enrichToleratesMissingTopicHeader",
+        "severity": "medium",
+        "reason": "ATDD RED phase - activation-gated R-009 handler edge lock",
+        "test_file": "syncro/apps/backend/src/test/java/com/syncro/telemetry/application/MqttTelemetryIngestAtddScaffoldTest.java",
+        "test_title": "enrichToleratesMissingTopicHeader"
+      },
+      {
+        "id": "MqttTelemetryIngestAtddScaffoldTest.handleMessageSwallowsEnrichmentFailureToAdapter",
+        "severity": "medium",
+        "reason": "ATDD RED phase - activation-gated R-009 no-throw lock",
+        "test_file": "syncro/apps/backend/src/test/java/com/syncro/telemetry/application/MqttTelemetryIngestAtddScaffoldTest.java",
+        "test_title": "handleMessageSwallowsEnrichmentFailureToAdapter"
+      },
+      {
+        "id": "mqtt-telemetry-contract.atdd-red.spec.ts.exposesMqttComponent",
+        "severity": "medium",
+        "reason": "ATDD RED phase - activation-gated API health exposure lock (R-010)",
+        "test_file": "syncro/apps/web/tests/api/mqtt-telemetry-contract.atdd-red.spec.ts",
+        "test_title": "[P1] /actuator/health exposes an mqtt component"
+      },
+      {
+        "id": "mqtt-telemetry-contract.atdd-red.spec.ts.downWhenDisconnected",
+        "severity": "medium",
+        "reason": "ATDD RED phase - activation-gated API health DOWN lock (R-001)",
+        "test_file": "syncro/apps/web/tests/api/mqtt-telemetry-contract.atdd-red.spec.ts",
+        "test_title": "[P1] mqtt health is DOWN when the broker is not connected"
+      },
+      {
+        "id": "mqtt-telemetry-contract.atdd-red.spec.ts.downLastErrorDetail",
+        "severity": "medium",
+        "reason": "ATDD RED phase - activation-gated API health lastError lock",
+        "test_file": "syncro/apps/web/tests/api/mqtt-telemetry-contract.atdd-red.spec.ts",
+        "test_title": "[P2] mqtt health DOWN carries a lastError detail after a failure"
+      },
+      {
+        "id": "mqtt-telemetry-contract.atdd-red.spec.ts.upWhenSubscribed",
+        "severity": "medium",
+        "reason": "ATDD RED phase - activation-gated API health UP lock (requires live broker)",
+        "test_file": "syncro/apps/web/tests/api/mqtt-telemetry-contract.atdd-red.spec.ts",
+        "test_title": "[P1] mqtt health is UP once the adapter is subscribed"
+      }
+    ]
+  },
+  "gap_analysis": {
+    "critical_gaps": [],
+    "high_gaps": [],
+    "medium_gaps": [],
+    "low_gaps": []
+  },
+  "coverage_heuristics": {
+    "counts": {
+      "endpoints_without_tests": 0,
+      "auth_missing_negative_paths": 0,
+      "happy_path_only_criteria": 0,
+      "ui_journeys_without_e2e": 0,
+      "ui_states_missing_coverage": 0
+    }
+  },
+  "recommendations": [
+    {
+      "priority": "high",
+      "action": "Activate RED P0 readiness lock MqttSubscriptionResilienceAtddScaffoldTest.contextLoadsAndHealthIsDownWhileBrokerUnreachable (R-001); expected green.",
+      "requirements": ["AC-1", "AC-4"]
+    },
+    {
+      "priority": "high",
+      "action": "Install web node_modules, run npx biome check + npx tsc --noEmit on mqtt-health.spec.ts and syncro-api-client.ts.",
+      "requirements": ["AC-4"]
+    },
+    {
+      "priority": "high",
+      "action": "Run green API suite npm run test:api -- tests/api/mqtt-health.spec.ts against a live backend with API_URL set.",
+      "requirements": ["AC-4"]
+    },
+    {
+      "priority": "medium",
+      "action": "Activate remaining RED scaffolds (credentials R-004/R-002, health bean R-010, handler edges R-009, API health contract).",
+      "requirements": ["AC-2", "AC-3", "AC-4"]
+    },
+    {
+      "priority": "medium",
+      "action": "Perform manual broker E2E: publish to factory/GM1/BF-08410/telemetry and confirm mqtt_telemetry_received traceId; stop/start EMQX and confirm health DOWN/UP.",
+      "requirements": ["AC-3", "AC-4"]
+    },
+    {
+      "priority": "low",
+      "action": "Track DW-14 (broker mid-session outage invisibility) for adapter/event-source investigation in a later story.",
+      "requirements": ["AC-4"]
+    }
+  ],
+  "requirements": [
+    {
+      "id": "AC-1",
+      "title": "Backend subscribes to the configured telemetry topic filter at startup",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "MqttSubscriptionConfigTest.adapterSubscribesToConfiguredTopicAtQosOneAndAutoStart",
+          "file": "syncro/apps/backend/src/test/java/com/syncro/telemetry/infrastructure/MqttSubscriptionConfigTest.java",
+          "line": 49,
+          "title": "adapterSubscribesToConfiguredTopicAtQosOneAndAutoStart",
+          "level": "component",
+          "status": "active"
+        },
+        {
+          "id": "MqttSubscriptionResilienceAtddScaffoldTest.contextLoadsAndHealthIsDownWhileBrokerUnreachable",
+          "file": "syncro/apps/backend/src/test/java/com/syncro/telemetry/infrastructure/MqttSubscriptionResilienceAtddScaffoldTest.java",
+          "line": 61,
+          "title": "contextLoadsAndHealthIsDownWhileBrokerUnreachable",
+          "level": "component",
+          "status": "skipped"
+        }
+      ]
+    },
+    {
+      "id": "AC-2",
+      "title": "MQTT host/port/credentials/clientId/topicFilter all env-driven; no hardcoded EMQX URL",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "MqttSubscriptionConfigTest.clientFactoryCarriesConfiguredBrokerUri",
+          "file": "syncro/apps/backend/src/test/java/com/syncro/telemetry/infrastructure/MqttSubscriptionConfigTest.java",
+          "line": 56,
+          "title": "clientFactoryCarriesConfiguredBrokerUri",
+          "level": "component",
+          "status": "active"
+        },
+        {
+          "id": "MqttSubscriptionResilienceAtddScaffoldTest.connectionOptionsCarryCredentialsAndReconnectSettings",
+          "file": "syncro/apps/backend/src/test/java/com/syncro/telemetry/infrastructure/MqttSubscriptionResilienceAtddScaffoldTest.java",
+          "line": 71,
+          "title": "connectionOptionsCarryCredentialsAndReconnectSettings",
+          "level": "component",
+          "status": "skipped"
+        }
+      ]
+    },
+    {
+      "id": "AC-3",
+      "title": "Inbound MQTT message gets traceId logged with topic; handler never throws to the adapter",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "MqttTelemetryIngestHandlerTest",
+          "file": "syncro/apps/backend/src/test/java/com/syncro/telemetry/application/MqttTelemetryIngestHandlerTest.java",
+          "line": 21,
+          "title": "MqttTelemetryIngestHandlerTest (5 tests)",
+          "level": "unit",
+          "status": "active"
+        },
+        {
+          "id": "MqttTelemetryIngestAtddScaffoldTest",
+          "file": "syncro/apps/backend/src/test/java/com/syncro/telemetry/application/MqttTelemetryIngestAtddScaffoldTest.java",
+          "line": 36,
+          "title": "MqttTelemetryIngestAtddScaffoldTest (3 tests)",
+          "level": "unit",
+          "status": "skipped"
+        }
+      ]
+    },
+    {
+      "id": "AC-4",
+      "title": "Connection/subscription status observable via /actuator/health mqtt component",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "MqttHealthIndicatorTest",
+          "file": "syncro/apps/backend/src/test/java/com/syncro/telemetry/infrastructure/MqttHealthIndicatorTest.java",
+          "line": 21,
+          "title": "MqttHealthIndicatorTest (4 tests)",
+          "level": "unit",
+          "status": "active"
+        },
+        {
+          "id": "MqttConnectionStatusTest",
+          "file": "syncro/apps/backend/src/test/java/com/syncro/telemetry/infrastructure/MqttConnectionStatusTest.java",
+          "line": 20,
+          "title": "MqttConnectionStatusTest (4 tests)",
+          "level": "unit",
+          "status": "active"
+        },
+        {
+          "id": "mqtt-health.spec.ts.exposesMqttComponent",
+          "file": "syncro/apps/web/tests/api/mqtt-health.spec.ts",
+          "line": 29,
+          "title": "[P0] /actuator/health returns 200 and exposes an mqtt component",
+          "level": "api",
+          "status": "active"
+        },
+        {
+          "id": "mqtt-health.spec.ts.downLastErrorDetail",
+          "file": "syncro/apps/web/tests/api/mqtt-health.spec.ts",
+          "line": 40,
+          "title": "[P1] mqtt health DOWN carries a lastError detail after a failure",
+          "level": "api",
+          "status": "active"
+        },
+        {
+          "id": "MqttSubscriptionResilienceAtddScaffoldTest.healthIndicatorBeanIsRegistered",
+          "file": "syncro/apps/backend/src/test/java/com/syncro/telemetry/infrastructure/MqttSubscriptionResilienceAtddScaffoldTest.java",
+          "line": 84,
+          "title": "healthIndicatorBeanIsRegistered",
+          "level": "component",
+          "status": "skipped"
+        },
+        {
+          "id": "mqtt-telemetry-contract.atdd-red.spec.ts",
+          "file": "syncro/apps/web/tests/api/mqtt-telemetry-contract.atdd-red.spec.ts",
+          "line": 30,
+          "title": "mqtt-telemetry-contract.atdd-red.spec.ts (4 tests)",
+          "level": "api",
+          "status": "skipped"
+        }
+      ]
+    }
+  ],
+  "effective_oracle_confidence": "high"
+}

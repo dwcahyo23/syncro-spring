@@ -1,0 +1,34 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-08-08T14:05:32Z",
+  "repo": "Syncro",
+  "target": {
+    "type": "story",
+    "id": "3.1",
+    "label": "3-1-configure-mqtt-subscription-and-telemetry-contract"
+  },
+  "workflow": "bmad-testarch-nfr",
+  "overall_risk": "LOW",
+  "gate_status": "PASS",
+  "reason": "All four NFR domains (security, performance, reliability, scalability) assessed as LOW risk. No FAIL status, no critical/high-priority issues, no blockers. Security posture healthy within scope: env-driven credentials never logged, no hardcoded URLs, handler never throws, health observability exposed. Material gaps (plaintext tcp R-004, payload validation R-009, backpressure R-006, single-worker R-011, cleanSession loss R-008, full-payload logging R-007) are all explicitly deferred and waivered to later stories (3.2/3.3/3.8/3.12/3.13/6.2). Two low-severity in-scope CONCERNS (raw payload INFO-logging R-005; raw lastError on public health) tracked, non-blocking.",
+  "domain_risk": {
+    "security": "LOW",
+    "performance": "LOW",
+    "reliability": "LOW",
+    "scalability": "LOW"
+  },
+  "critical_issues": 0,
+  "high_priority_issues": 0,
+  "concerns": 6,
+  "blockers": false,
+  "compliance_summary": {
+    "SOC2": "PARTIAL",
+    "GDPR": "PARTIAL",
+    "ISO27001": "PARTIAL",
+    "SLA_99.9": "PARTIAL"
+  },
+  "links": {
+    "nfr_report_path": "_bmad-output/test-artifacts/nfr-assessment-3-1-configure-mqtt-subscription-and-telemetry-contract.md",
+    "trace_report_path": "_bmad-output/test-artifacts/traceability-matrix-3-1-configure-mqtt-subscription-and-telemetry-contract.md"
+  }
+}

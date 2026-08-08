@@ -1,0 +1,23 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-08-08T13:59:03Z",
+  "repo": "Syncro",
+  "target": {
+    "type": "story",
+    "id": "3.1",
+    "label": "3-1-configure-mqtt-subscription-and-telemetry-contract"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "PASS",
+  "rationale": "All four P0 acceptance criteria (AC-1 subscribe-on-startup, AC-2 env-driven config with no hardcoded URL, AC-3 traceId+topic logging with never-throw handler, AC-4 /actuator/health mqtt observability) are FULLY covered by active green-capable tests (16 hermetic backend + 2 env-gated HTTP API), giving P0 coverage 100% and overall coverage 100% against a high-confidence formal-requirements oracle. P0 coverage is 100%, P1 coverage is 100% (no P1 requirements present), and overall coverage is 100% (minimum: 80%). The 10 RED ATDD scaffolds are activation-gated regression locks for already-implemented behavior and are tracked as recommendations, not coverage gaps.",
+  "p0_status": "MET",
+  "p1_status": "MET",
+  "overall_status": "MET",
+  "critical_open": 0,
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability-matrix-3-1-configure-mqtt-subscription-and-telemetry-contract.md",
+    "trace_report_url": "",
+    "artifact_url": ""
+  }
+}
