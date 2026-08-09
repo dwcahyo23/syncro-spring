@@ -120,12 +120,12 @@ public class MachineController {
 
   private MachineCommand command(MachineRequest request) {
     return new MachineCommand(request.plantId(), request.machineGroupId(), request.code(), request.name(), request.status(),
-        request.brand(), request.installedAt(), request.notes());
+        request.brand(), request.installedAt(), request.notes(), request.optionalTelemetryFields());
   }
 
   private MachineView toDto(MachineService.MachineView machine) {
     return new MachineView(machine.id(), machine.plantId(), machine.plantCode(), machine.plantName(), machine.machineGroupId(),
         machine.machineGroupName(), machine.code(), machine.name(), machine.status(), machine.brand(), machine.installedAt(),
-        machine.notes(), machine.createdAt(), machine.updatedAt());
+        machine.notes(), machine.createdAt(), machine.updatedAt(), machine.optionalTelemetryFields());
   }
 }

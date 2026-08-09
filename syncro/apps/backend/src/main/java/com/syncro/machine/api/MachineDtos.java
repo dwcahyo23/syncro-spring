@@ -22,7 +22,8 @@ public final class MachineDtos {
       @NotNull MachineStatus status,
       @Size(max = 255) String brand,
       LocalDate installedAt,
-      @Size(max = 1000) String notes) {
+      @Size(max = 1000) String notes,
+      @Size(max = 10) List<String> optionalTelemetryFields) {
   }
 
   public record MachineView(
@@ -39,7 +40,8 @@ public final class MachineDtos {
       LocalDate installedAt,
       String notes,
       Instant createdAt,
-      Instant updatedAt) {
+      Instant updatedAt,
+      List<String> optionalTelemetryFields) {
   }
 
   public record MachineListResponse(List<MachineView> items, long totalElements, int page, int size, String sort) {

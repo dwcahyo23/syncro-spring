@@ -14,6 +14,8 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.influxdb.client.write.Point;
 import com.syncro.auth.infrastructure.PlantEntity;
 import com.syncro.config.TelemetryProperties;
@@ -26,6 +28,9 @@ import com.syncro.telemetry.infrastructure.RedisLatestTelemetryWriter;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -67,7 +72,7 @@ class TelemetryPersistenceServiceTest {
     var plant = new PlantEntity(UUID.randomUUID(), "GM1", "Plant GM1", NOW, NOW);
     var group = new MachineGroupEntity(UUID.randomUUID(), plant, "Forming", NOW, NOW);
     machine = new MachineEntity(UUID.randomUUID(), plant, group, "BF-08410", "JBF19", MachineStatus.ACTIVE, "Juki",
-        LocalDate.parse("2026-05-27"), null, NOW, NOW);
+        LocalDate.parse("2026-05-27"), null, List.of(), NOW, NOW);
     var payload = new TelemetryPayload(true, 12.5, 100);
     accepted = new TelemetryValidationService.Result.Accepted(machine, payload);
     envelope = new TelemetryEnvelope(TRACE_ID, "factory/GM1/BF-08410/telemetry", "{}", NOW);
@@ -254,6 +259,41 @@ class TelemetryPersistenceServiceTest {
     ArgumentCaptor<Map<String, String>> fieldsCaptor = ArgumentCaptor.forClass(Map.class);
     verify(redisLatestWriter).putLatest(any(UUID.class), fieldsCaptor.capture(), any(Duration.class));
     assertThat(fieldsCaptor.getValue()).containsEntry("countingDelta", "100");
+  }
+
+  @Test
+  void optionalFieldsFlowIntoPointAndLatestHash() {
+    accepted = new TelemetryValidationService.Result.Accepted(machine, payloadWithOptionalFields());
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+
+    service.persist(accepted, envelope);
+
+    var pointCaptor = ArgumentCaptor.forClass(Point.class);
+    verify(influxWriter).write(pointCaptor.capture(), anyString(), anyString());
+    assertThat(pointCaptor.getValue().toLineProtocol())
+        .contains("vibration=2.4")
+        .contains("rpm=1200i")
+        .contains("heaterOn=true")
+        .contains("qualityGrade=\"A\"");
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Map<String, String>> fieldsCaptor = ArgumentCaptor.forClass(Map.class);
+    verify(redisLatestWriter).putLatest(any(UUID.class), fieldsCaptor.capture(), any(Duration.class));
+    assertThat(fieldsCaptor.getValue())
+        .containsEntry("optional.vibration", "2.4")
+        .containsEntry("optional.rpm", "1200")
+        .containsEntry("optional.heaterOn", "true")
+        .containsEntry("optional.qualityGrade", "A");
+  }
+
+  private TelemetryPayload payloadWithOptionalFields() {
+    var nodeFactory = new ObjectMapper().getNodeFactory();
+    var optional = new LinkedHashMap<String, JsonNode>();
+    optional.put("vibration", nodeFactory.numberNode(2.4));
+    optional.put("rpm", nodeFactory.numberNode(1200));
+    optional.put("heaterOn", nodeFactory.booleanNode(true));
+    optional.put("qualityGrade", nodeFactory.textNode("A"));
+    return new TelemetryPayload(true, 12.5, 100, Collections.unmodifiableMap(optional));
   }
 
   private TelemetryValidationService.Result.Accepted acceptedWithCounting(long counting) {

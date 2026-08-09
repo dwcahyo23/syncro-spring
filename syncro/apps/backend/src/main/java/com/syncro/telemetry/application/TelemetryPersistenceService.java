@@ -6,7 +6,7 @@ import com.syncro.machine.domain.MachineStatus;
 import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.telemetry.infrastructure.InfluxTelemetryWriter;
 import com.syncro.telemetry.infrastructure.RedisLatestTelemetryWriter;
-import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,16 +69,20 @@ public class TelemetryPersistenceService {
     }
 
     try {
-      redisLatestWriter.putLatest(machineId, Map.of(
-          "machineId", machineId.toString(),
-          "machineCode", machineCode,
-          "plantCode", plantCode,
-          "running", Boolean.toString(accepted.payload().running()),
-          "runtimeHours", Double.toString(accepted.payload().runtimeHours()),
-          "counting", Long.toString(accepted.payload().counting()),
-          "countingDelta", Long.toString(countingDelta),
-          "receivedAt", envelope.receivedAt().toString(),
-          "traceId", envelope.traceId()), properties.latestTtl());
+      var latest = new LinkedHashMap<String, String>();
+      latest.put("machineId", machineId.toString());
+      latest.put("machineCode", machineCode);
+      latest.put("plantCode", plantCode);
+      latest.put("running", Boolean.toString(accepted.payload().running()));
+      latest.put("runtimeHours", Double.toString(accepted.payload().runtimeHours()));
+      latest.put("counting", Long.toString(accepted.payload().counting()));
+      latest.put("countingDelta", Long.toString(countingDelta));
+      latest.put("receivedAt", envelope.receivedAt().toString());
+      latest.put("traceId", envelope.traceId());
+      for (var entry : accepted.payload().optionalFields().entrySet()) {
+        latest.put("optional." + entry.getKey(), entry.getValue().asText());
+      }
+      redisLatestWriter.putLatest(machineId, latest, properties.latestTtl());
     } catch (RuntimeException exception) {
       throw exception;
     }

@@ -14,7 +14,10 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "machines")
@@ -49,6 +52,10 @@ public class MachineEntity {
   @Column(length = 1000)
   private String notes;
 
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "optional_telemetry_fields", columnDefinition = "jsonb")
+  private List<String> optionalTelemetryFields;
+
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
@@ -59,7 +66,8 @@ public class MachineEntity {
   }
 
   public MachineEntity(UUID id, PlantEntity plant, MachineGroupEntity machineGroup, String code, String name,
-      MachineStatus status, String brand, LocalDate installedAt, String notes, Instant createdAt, Instant updatedAt) {
+      MachineStatus status, String brand, LocalDate installedAt, String notes, List<String> optionalTelemetryFields,
+      Instant createdAt, Instant updatedAt) {
     this.id = id;
     this.plant = plant;
     this.machineGroup = machineGroup;
@@ -69,6 +77,7 @@ public class MachineEntity {
     this.brand = brand;
     this.installedAt = installedAt;
     this.notes = notes;
+    this.optionalTelemetryFields = optionalTelemetryFields;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
   }
@@ -109,6 +118,10 @@ public class MachineEntity {
     return notes;
   }
 
+  public List<String> getOptionalTelemetryFields() {
+    return optionalTelemetryFields;
+  }
+
   public Instant getCreatedAt() {
     return createdAt;
   }
@@ -118,7 +131,7 @@ public class MachineEntity {
   }
 
   public void update(MachineGroupEntity machineGroup, String code, String name, MachineStatus status, String brand,
-      LocalDate installedAt, String notes, Instant updatedAt) {
+      LocalDate installedAt, String notes, List<String> optionalTelemetryFields, Instant updatedAt) {
     this.machineGroup = machineGroup;
     this.code = code;
     this.name = name;
@@ -126,6 +139,7 @@ public class MachineEntity {
     this.brand = brand;
     this.installedAt = installedAt;
     this.notes = notes;
+    this.optionalTelemetryFields = optionalTelemetryFields;
     this.updatedAt = updatedAt;
   }
 }

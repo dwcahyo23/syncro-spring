@@ -5,6 +5,8 @@ import com.syncro.auth.infrastructure.PlantRepository;
 import com.syncro.machine.domain.MachineStatus;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
+import java.util.HashSet;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -43,9 +45,14 @@ public class TelemetryValidationService {
     if (machine.get().getStatus() == MachineStatus.INACTIVE) {
       return new Result.Rejected("inactive_machine", null);
     }
-    return switch (TelemetryPayload.parse(payload, objectMapper)) {
+    return switch (TelemetryPayload.parse(payload, objectMapper, configuredOptionalFields(machine.get()))) {
       case TelemetryPayload.ParseResult.Rejected rejected -> new Result.Rejected(rejected.reason(), rejected.field());
       case TelemetryPayload.ParseResult.Accepted accepted -> new Result.Accepted(machine.get(), accepted.payload());
     };
+  }
+
+  private static Set<String> configuredOptionalFields(MachineEntity machine) {
+    var configured = machine.getOptionalTelemetryFields();
+    return configured == null ? Set.of() : new HashSet<>(configured);
   }
 }

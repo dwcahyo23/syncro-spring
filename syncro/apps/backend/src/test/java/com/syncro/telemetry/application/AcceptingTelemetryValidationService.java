@@ -2,6 +2,7 @@ package com.syncro.telemetry.application;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import com.syncro.auth.infrastructure.PlantEntity;
 import com.syncro.machine.domain.MachineStatus;
@@ -20,7 +21,7 @@ class AcceptingTelemetryValidationService extends TelemetryValidationService {
     var plant = new PlantEntity(UUID.randomUUID(), "GM1", "Plant GM1", now, now);
     var group = new MachineGroupEntity(UUID.randomUUID(), plant, "Forming", now, now);
     var machine = new MachineEntity(UUID.randomUUID(), plant, group, "BF-08410", "JBF19", MachineStatus.ACTIVE,
-        "Juki", LocalDate.parse("2026-05-27"), null, now, now);
+        "Juki", LocalDate.parse("2026-05-27"), null, List.of(), now, now);
     return new Result.Accepted(machine, new TelemetryPayload(true, 12.5, 100));
   }
 }

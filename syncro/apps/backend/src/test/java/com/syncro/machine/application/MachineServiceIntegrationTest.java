@@ -17,6 +17,7 @@ import com.syncro.machine.application.MachineService.MachineCommand;
 import com.syncro.machine.application.MachineService.MachineDataIntegrityException;
 import com.syncro.machine.application.MachineService.MachineGroupPlantMismatchException;
 import com.syncro.machine.application.MachineService.MachineMutationForbiddenException;
+import com.syncro.machine.application.MachineService.MachineValidationException;
 import com.syncro.machine.domain.MachineStatus;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
@@ -24,6 +25,8 @@ import com.syncro.masterdata.infrastructure.MachineGroupEntity;
 import com.syncro.masterdata.infrastructure.MachineGroupRepository;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -155,10 +158,10 @@ class MachineServiceIntegrationTest {
     var group = group(plant, "Forming");
     var now = Instant.parse("2026-05-27T00:00:00Z");
     machines.saveAndFlush(new MachineEntity(UUID.randomUUID(), plant, group, "BF-08410", "JBF19", MachineStatus.ACTIVE,
-        "Juki", LocalDate.parse("2026-05-27"), null, now, now));
+        "Juki", LocalDate.parse("2026-05-27"), null, List.of(), now, now));
 
     assertThatThrownBy(() -> machines.saveAndFlush(new MachineEntity(UUID.randomUUID(), plant, group, "bf-08410", "JBF20",
-        MachineStatus.INACTIVE, null, null, null, now, now)))
+        MachineStatus.INACTIVE, null, null, null, List.of(), now, now)))
         .isInstanceOf(DataIntegrityViolationException.class);
   }
 
@@ -288,8 +291,134 @@ class MachineServiceIntegrationTest {
         .isInstanceOf(MachineDataIntegrityException.class);
   }
 
+  @Test
+  @DisplayName("3.6-SVC-001 P1 create round-trips configured optional telemetry fields")
+  void createRoundTripsConfiguredOptionalTelemetryFields() {
+    var plant = plant("GM1", "Plant GM1");
+    var group = group(plant, "Forming");
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+
+    var created = machineService.create(admin, command(plant.getId(), group.getId(), "BF-08410", MachineStatus.ACTIVE,
+        List.of("vibration", "rpm")));
+
+    assertThat(created.optionalTelemetryFields()).containsExactly("vibration", "rpm");
+    assertThat(machines.findById(created.id()).orElseThrow().getOptionalTelemetryFields())
+        .containsExactly("vibration", "rpm");
+  }
+
+  @Test
+  @DisplayName("3.6-SVC-002 P1 update round-trips configured optional telemetry fields")
+  void updateRoundTripsConfiguredOptionalTelemetryFields() {
+    var plant = plant("GM1", "Plant GM1");
+    var group = group(plant, "Forming");
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    var machine = machineService.create(admin, command(plant.getId(), group.getId(), "BF-08410", MachineStatus.ACTIVE,
+        List.of("vibration")));
+
+    var updated = machineService.update(admin, machine.id(), command(plant.getId(), group.getId(), "BF-08410",
+        MachineStatus.ACTIVE, List.of("rpm", "heaterOn")));
+
+    assertThat(updated.optionalTelemetryFields()).containsExactly("rpm", "heaterOn");
+    assertThat(machines.findById(machine.id()).orElseThrow().getOptionalTelemetryFields())
+        .containsExactly("rpm", "heaterOn");
+  }
+
+  @Test
+  @DisplayName("3.6-SVC-003 P1 null optional telemetry fields round-trip as empty list")
+  void nullOptionalTelemetryFieldsRoundTripAsEmptyList() {
+    var plant = plant("GM1", "Plant GM1");
+    var group = group(plant, "Forming");
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+
+    var created = machineService.create(admin, command(plant.getId(), group.getId(), "BF-08410", MachineStatus.ACTIVE));
+
+    assertThat(created.optionalTelemetryFields()).isEmpty();
+  }
+
+  @Test
+  @DisplayName("3.6-SVC-004 P0 duplicate names are deduped preserving first occurrence")
+  void duplicateNamesAreDedupedPreservingFirstOccurrence() {
+    var plant = plant("GM1", "Plant GM1");
+    var group = group(plant, "Forming");
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+
+    var created = machineService.create(admin, command(plant.getId(), group.getId(), "BF-08410", MachineStatus.ACTIVE,
+        List.of("vibration", "vibration", "rpm", "vibration")));
+
+    assertThat(created.optionalTelemetryFields()).containsExactly("vibration", "rpm");
+  }
+
+  @Test
+  @DisplayName("3.6-SVC-005 P0 config with more than 10 names is rejected")
+  void configOverTenNamesIsRejected() {
+    var plant = plant("GM1", "Plant GM1");
+    var group = group(plant, "Forming");
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    var overLimit = List.of("f01", "f02", "f03", "f04", "f05", "f06", "f07", "f08", "f09", "f10", "f11");
+
+    assertThatThrownBy(() -> machineService.create(admin, command(plant.getId(), group.getId(), "BF-08410",
+        MachineStatus.ACTIVE, overLimit)))
+        .isInstanceOf(MachineValidationException.class);
+  }
+
+  @Test
+  @DisplayName("3.6-SVC-006 P0 reserved base contract name in config is rejected")
+  void reservedNameInConfigIsRejected() {
+    var plant = plant("GM1", "Plant GM1");
+    var group = group(plant, "Forming");
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+
+    assertThatThrownBy(() -> machineService.create(admin, command(plant.getId(), group.getId(), "BF-08410",
+        MachineStatus.ACTIVE, List.of("counting"))))
+        .isInstanceOf(MachineValidationException.class);
+  }
+
+  @Test
+  @DisplayName("3.6-SVC-007 P0 name outside allowed pattern in config is rejected")
+  void badNamePatternInConfigIsRejected() {
+    var plant = plant("GM1", "Plant GM1");
+    var group = group(plant, "Forming");
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+
+    assertThatThrownBy(() -> machineService.create(admin, command(plant.getId(), group.getId(), "BF-08410",
+        MachineStatus.ACTIVE, List.of("bad-name"))))
+        .isInstanceOf(MachineValidationException.class);
+  }
+
+  @Test
+  @DisplayName("3.6-SVC-008 P1 blank and null config entries are dropped")
+  void blankAndNullConfigEntriesAreDropped() {
+    var plant = plant("GM1", "Plant GM1");
+    var group = group(plant, "Forming");
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+
+    var created = machineService.create(admin, command(plant.getId(), group.getId(), "BF-08410", MachineStatus.ACTIVE,
+        Arrays.asList("vibration", " ", null, "rpm", "")));
+
+    assertThat(created.optionalTelemetryFields()).containsExactly("vibration", "rpm");
+  }
+
+  @Test
+  @DisplayName("3.6-SVC-009 P0 underscore-prefixed name in config is rejected")
+  void underscorePrefixedNameInConfigIsRejected() {
+    var plant = plant("GM1", "Plant GM1");
+    var group = group(plant, "Forming");
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+
+    assertThatThrownBy(() -> machineService.create(admin, command(plant.getId(), group.getId(), "BF-08410",
+        MachineStatus.ACTIVE, List.of("_vibration"))))
+        .isInstanceOf(MachineValidationException.class);
+  }
+
   private MachineCommand command(UUID plantId, UUID groupId, String code, MachineStatus status) {
-    return new MachineCommand(plantId, groupId, code, "JBF19", status, "Juki", LocalDate.parse("2026-05-27"), "Pilot machine");
+    return new MachineCommand(plantId, groupId, code, "JBF19", status, "Juki", LocalDate.parse("2026-05-27"),
+        "Pilot machine", List.of());
+  }
+
+  private MachineCommand command(UUID plantId, UUID groupId, String code, MachineStatus status,
+      List<String> optionalTelemetryFields) {
+    return new MachineCommand(plantId, groupId, code, "JBF19", status, "Juki", LocalDate.parse("2026-05-27"),
+        "Pilot machine", optionalTelemetryFields);
   }
 
   private PlantEntity plant(String code, String name) {

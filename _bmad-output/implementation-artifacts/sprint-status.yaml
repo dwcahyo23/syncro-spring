@@ -74,7 +74,7 @@ development_status:
   3-3-reject-inactive-machine-telemetry: done
   3-4-persist-accepted-telemetry-to-influxdb-and-redis: done
   3-5-calculate-production-count-delta-with-16-bit-wrap-support: done
-  3-6-support-optional-machine-telemetry-fields: backlog
+  3-6-support-optional-machine-telemetry-fields: done
   3-7-show-latest-telemetry-dashboard: backlog
   3-8-show-machine-hub-with-telemetry-context: backlog
   3-9-enforce-telemetry-payload-contract-with-schema-version-messageid-and-timestamp: backlog
