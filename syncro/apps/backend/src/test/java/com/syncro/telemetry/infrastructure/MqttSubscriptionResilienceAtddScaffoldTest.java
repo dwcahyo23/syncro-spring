@@ -2,9 +2,15 @@ package com.syncro.telemetry.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import static org.mockito.Mockito.mock;
+
+import com.syncro.auth.infrastructure.PlantRepository;
 import com.syncro.config.MqttProperties;
 import com.syncro.config.TimeConfig;
+import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.telemetry.application.MqttTelemetryIngestHandler;
+import com.syncro.telemetry.application.TelemetryPersistenceService;
+import com.syncro.telemetry.application.TelemetryValidationService;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +19,7 @@ import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.Status;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.integration.mqtt.core.MqttPahoClientFactory;
 import org.springframework.integration.mqtt.inbound.MqttPahoMessageDrivenChannelAdapter;
 
@@ -89,5 +96,15 @@ class MqttSubscriptionResilienceAtddScaffoldTest {
   @TestConfiguration(proxyBeanMethods = false)
   @EnableConfigurationProperties(MqttProperties.class)
   static class MqttPropertiesTestConfiguration {
+
+    @Bean
+    TelemetryValidationService telemetryValidationService() {
+      return new TelemetryValidationService(mock(PlantRepository.class), mock(MachineRepository.class));
+    }
+
+    @Bean
+    TelemetryPersistenceService telemetryPersistenceService() {
+      return mock(TelemetryPersistenceService.class);
+    }
   }
 }

@@ -72,7 +72,7 @@ development_status:
   3-1-configure-mqtt-subscription-and-telemetry-contract: done
   3-2-validate-mqtt-topic-and-base-payload: done
   3-3-reject-inactive-machine-telemetry: done
-  3-4-persist-accepted-telemetry-to-influxdb-and-redis: backlog
+  3-4-persist-accepted-telemetry-to-influxdb-and-redis: done
   3-5-calculate-production-count-delta-with-16-bit-wrap-support: backlog
   3-6-support-optional-machine-telemetry-fields: backlog
   3-7-show-latest-telemetry-dashboard: backlog

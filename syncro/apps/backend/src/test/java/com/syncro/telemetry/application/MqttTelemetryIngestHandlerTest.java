@@ -3,6 +3,12 @@ package com.syncro.telemetry.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
@@ -20,8 +26,11 @@ class MqttTelemetryIngestHandlerTest {
 
   private static final Instant FIXED_NOW = Instant.parse("2026-08-08T10:00:00Z");
 
+  private final TelemetryPersistenceService persistence = mock(TelemetryPersistenceService.class);
+
   private final MqttTelemetryIngestHandler handler =
-      new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC), new AcceptingTelemetryValidationService());
+      new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC), new AcceptingTelemetryValidationService(),
+          persistence);
 
   @Test
   void enrichAssignsTraceIdAndCapturesTopicAndPayload() {
@@ -79,7 +88,7 @@ class MqttTelemetryIngestHandlerTest {
   @Test
   void handleMessageLogsRejectionWithReasonAndTraceId() {
     var rejectingHandler = new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC),
-        new RejectingTelemetryValidationService());
+        new RejectingTelemetryValidationService(), persistence);
     var appender = attachAppender();
     var message = MessageBuilder.withPayload("{\"running\":true}".getBytes(StandardCharsets.UTF_8))
         .setHeader(MqttHeaders.RECEIVED_TOPIC, "factory/GM1/BF-08410/telemetry")
@@ -98,7 +107,7 @@ class MqttTelemetryIngestHandlerTest {
   @Test
   void handleMessageLogsInactiveMachineRejectionWithReasonTraceIdAndTopic() {
     var inactiveHandler = new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC),
-        new RejectingTelemetryValidationService("inactive_machine"));
+        new RejectingTelemetryValidationService("inactive_machine"), persistence);
     var appender = attachAppender();
     var message = MessageBuilder.withPayload("{\"running\":true}".getBytes(StandardCharsets.UTF_8))
         .setHeader(MqttHeaders.RECEIVED_TOPIC, "factory/GM1/BF-08410/telemetry")
@@ -119,12 +128,46 @@ class MqttTelemetryIngestHandlerTest {
   @Test
   void handleMessageSwallowsRejectionWithoutThrowing() {
     var rejectingHandler = new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC),
-        new RejectingTelemetryValidationService());
+        new RejectingTelemetryValidationService(), persistence);
     var message = MessageBuilder.withPayload("{\"running\":true}".getBytes(StandardCharsets.UTF_8))
         .setHeader(MqttHeaders.RECEIVED_TOPIC, "factory/GM1/BF-08410/telemetry")
         .build();
 
     assertThatCode(() -> rejectingHandler.handleMessage(message)).doesNotThrowAnyException();
+  }
+
+  @Test
+  void persistIsInvokedOnAcceptedMessage() {
+    var message = MessageBuilder.withPayload("{\"running\":true}".getBytes(StandardCharsets.UTF_8))
+        .setHeader(MqttHeaders.RECEIVED_TOPIC, "factory/GM1/BF-08410/telemetry")
+        .build();
+
+    handler.handleMessage(message);
+
+    verify(persistence).persist(any(), any());
+  }
+
+  @Test
+  void persistIsNotInvokedOnRejectedMessage() {
+    var rejectingHandler = new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC),
+        new RejectingTelemetryValidationService(), persistence);
+    var message = MessageBuilder.withPayload("{\"running\":true}".getBytes(StandardCharsets.UTF_8))
+        .setHeader(MqttHeaders.RECEIVED_TOPIC, "factory/GM1/BF-08410/telemetry")
+        .build();
+
+    rejectingHandler.handleMessage(message);
+
+    verify(persistence, never()).persist(any(), any());
+  }
+
+  @Test
+  void handleMessageSwallowsPersistenceFailureWithoutThrowing() {
+    doThrow(new RuntimeException("persistence down")).when(persistence).persist(any(), any());
+    var message = MessageBuilder.withPayload("{\"running\":true}".getBytes(StandardCharsets.UTF_8))
+        .setHeader(MqttHeaders.RECEIVED_TOPIC, "factory/GM1/BF-08410/telemetry")
+        .build();
+
+    assertThatCode(() -> handler.handleMessage(message)).doesNotThrowAnyException();
   }
 
   @Test

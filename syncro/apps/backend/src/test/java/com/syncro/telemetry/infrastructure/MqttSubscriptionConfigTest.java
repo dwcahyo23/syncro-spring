@@ -9,6 +9,7 @@ import com.syncro.config.MqttProperties;
 import com.syncro.config.TimeConfig;
 import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.telemetry.application.MqttTelemetryIngestHandler;
+import com.syncro.telemetry.application.TelemetryPersistenceService;
 import com.syncro.telemetry.application.TelemetryValidationService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -80,6 +81,11 @@ class MqttSubscriptionConfigTest {
     @Bean
     TelemetryValidationService telemetryValidationService() {
       return new TelemetryValidationService(mock(PlantRepository.class), mock(MachineRepository.class));
+    }
+
+    @Bean
+    TelemetryPersistenceService telemetryPersistenceService() {
+      return mock(TelemetryPersistenceService.class);
     }
   }
 }
