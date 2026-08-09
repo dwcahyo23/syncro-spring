@@ -1,0 +1,200 @@
+package com.syncro.telemetry.application;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import com.influxdb.client.write.Point;
+import com.syncro.auth.infrastructure.PlantEntity;
+import com.syncro.config.TelemetryProperties;
+import com.syncro.machine.domain.MachineStatus;
+import com.syncro.machine.infrastructure.MachineEntity;
+import com.syncro.machine.infrastructure.MachineRepository;
+import com.syncro.masterdata.infrastructure.MachineGroupEntity;
+import com.syncro.telemetry.infrastructure.InfluxTelemetryWriter;
+import com.syncro.telemetry.infrastructure.RedisLatestTelemetryWriter;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
+
+@ExtendWith(MockitoExtension.class)
+class TelemetryPersistenceServiceTest {
+
+  private static final Instant NOW = Instant.parse("2026-08-08T10:00:00Z");
+  private static final String TRACE_ID = "trace-persist-1";
+
+  @Mock
+  private MachineRepository machines;
+  @Mock
+  private InfluxTelemetryWriter influxWriter;
+  @Mock
+  private RedisLatestTelemetryWriter redisLatestWriter;
+  @Mock
+  private StringRedisTemplate redis;
+  @Mock
+  private ValueOperations<String, String> valueOps;
+
+  private MachineEntity machine;
+  private TelemetryPersistenceService service;
+  private TelemetryValidationService.Result.Accepted accepted;
+  private TelemetryEnvelope envelope;
+  private String dedupeKey;
+
+  @BeforeEach
+  void setUp() {
+    var plant = new PlantEntity(UUID.randomUUID(), "GM1", "Plant GM1", NOW, NOW);
+    var group = new MachineGroupEntity(UUID.randomUUID(), plant, "Forming", NOW, NOW);
+    machine = new MachineEntity(UUID.randomUUID(), plant, group, "BF-08410", "JBF19", MachineStatus.ACTIVE, "Juki",
+        LocalDate.parse("2026-05-27"), null, NOW, NOW);
+    var payload = new TelemetryPayload(true, 12.5, 100);
+    accepted = new TelemetryValidationService.Result.Accepted(machine, payload);
+    envelope = new TelemetryEnvelope(TRACE_ID, "factory/GM1/BF-08410/telemetry", "{}", NOW);
+    dedupeKey = "syncro:machine:" + machine.getId() + ":telemetry:dedupe:true:12.5:100";
+    service = new TelemetryPersistenceService(machines, influxWriter, redisLatestWriter, redis,
+        new TelemetryProperties(Duration.parse("PT5M"), Duration.parse("PT30S")));
+    when(machines.findByIdWithPlantAndGroup(machine.getId())).thenReturn(Optional.of(machine));
+    lenient().when(redis.opsForValue()).thenReturn(valueOps);
+  }
+
+  @Test
+  void firstMessageProceedsAndDerivesPlantFromRefetchedMachine() {
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+
+    service.persist(accepted, envelope);
+
+    verify(machines).findByIdWithPlantAndGroup(machine.getId());
+    verify(influxWriter).write(any(Point.class), anyString(), anyString());
+    verify(redisLatestWriter).putLatest(any(UUID.class), any(), any(Duration.class));
+  }
+
+  @Test
+  void duplicateMessageSkipsBothWritesAndLogsDuplicate() {
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(false);
+    when(valueOps.get(dedupeKey)).thenReturn("trace-original-winner");
+    var appender = attachAppender();
+
+    service.persist(accepted, envelope);
+
+    assertThat(appender.list)
+        .anyMatch(event -> event.getLevel() == Level.WARN
+            && event.getFormattedMessage().startsWith("mqtt_telemetry_duplicate")
+            && event.getFormattedMessage().contains("traceId=" + TRACE_ID)
+            && event.getFormattedMessage().contains("machineCode=BF-08410")
+            && event.getFormattedMessage().contains("counting=100")
+            && event.getFormattedMessage().contains("winnerTraceId=trace-original-winner"));
+    verify(influxWriter, never()).write(any(Point.class), anyString(), anyString());
+    verify(redisLatestWriter, never()).putLatest(any(UUID.class), any(), any(Duration.class));
+    detachAppender(appender);
+  }
+
+  @Test
+  void influxFailureDeletesOwnedDedupeKeyAndRethrows() {
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+    when(valueOps.get(dedupeKey)).thenReturn(TRACE_ID);
+    doThrow(new RuntimeException("influx down")).when(influxWriter).write(any(Point.class), anyString(), anyString());
+
+    assertThatThrownBy(() -> service.persist(accepted, envelope))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("influx down");
+
+    verify(redis).delete(dedupeKey);
+    verify(redisLatestWriter, never()).putLatest(any(UUID.class), any(), any(Duration.class));
+  }
+
+  @Test
+  void redisLatestFailureRethrowsButKeepsDedupeGate() {
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+    doThrow(new RuntimeException("redis down")).when(redisLatestWriter)
+        .putLatest(any(UUID.class), any(), any(Duration.class));
+
+    assertThatThrownBy(() -> service.persist(accepted, envelope))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("redis down");
+
+    verify(redis, never()).delete(dedupeKey);
+  }
+
+  @Test
+  void failureDoesNotDeleteDedupeKeyOwnedByAnotherMessage() {
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+    when(valueOps.get(dedupeKey)).thenReturn("other-trace");
+    doThrow(new RuntimeException("influx down")).when(influxWriter).write(any(Point.class), anyString(), anyString());
+
+    assertThatThrownBy(() -> service.persist(accepted, envelope))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("influx down");
+
+    verify(redis, never()).delete(dedupeKey);
+  }
+
+  @Test
+  void cleanupFailureDoesNotMaskOriginalException() {
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+    when(valueOps.get(dedupeKey)).thenReturn(TRACE_ID);
+    doThrow(new RuntimeException("influx down")).when(influxWriter).write(any(Point.class), anyString(), anyString());
+    doThrow(new RuntimeException("cleanup down")).when(redis).delete(dedupeKey);
+
+    assertThatThrownBy(() -> service.persist(accepted, envelope))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("influx down");
+  }
+
+  @Test
+  void nullDedupeAcquisitionThrowsInsteadOfTreatingAsDuplicate() {
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(null);
+
+    assertThatThrownBy(() -> service.persist(accepted, envelope))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("dedupe gate unavailable");
+
+    verify(influxWriter, never()).write(any(Point.class), anyString(), anyString());
+    verify(redisLatestWriter, never()).putLatest(any(UUID.class), any(), any(Duration.class));
+  }
+
+  @Test
+  void machineVanishedBetweenValidationAndPersistenceThrowsAndWritesNothing() {
+    when(machines.findByIdWithPlantAndGroup(machine.getId())).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.persist(accepted, envelope))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("machine no longer exists");
+
+    verify(valueOps, never()).setIfAbsent(anyString(), anyString(), any());
+    verify(influxWriter, never()).write(any(Point.class), anyString(), anyString());
+    verify(redisLatestWriter, never()).putLatest(any(UUID.class), any(), any(Duration.class));
+  }
+
+  private static ListAppender<ILoggingEvent> attachAppender() {
+    Logger logger = (Logger) LoggerFactory.getLogger(TelemetryPersistenceService.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    return appender;
+  }
+
+  private static void detachAppender(ListAppender<ILoggingEvent> appender) {
+    Logger logger = (Logger) LoggerFactory.getLogger(TelemetryPersistenceService.class);
+    logger.detachAppender(appender);
+    appender.stop();
+  }
+}

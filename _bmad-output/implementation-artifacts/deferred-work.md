@@ -140,3 +140,21 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-3-reject-inactive-machine-telemetry.md`
   summary: `TelemetryValidationService` rejects only `MachineStatus.INACTIVE` and accepts any other status by default; when the enum grows (e.g. `DECOMMISSIONED`, `SUSPENDED`), telemetry for those machines would be silently accepted instead of rejected.
   evidence: Real, surfaced by review of Story 3.3 — the gate at `TelemetryValidationService.validate` is `status == INACTIVE → reject`, equivalent to `!= ACTIVE → reject` today only because the enum is exactly `ACTIVE`/`INACTIVE`; an inclusion-based `status != ACTIVE → reject` would fail closed for future statuses. Deferred: spec intentionally names INACTIVE only; revisit when a new machine status is introduced.
+
+### DW-22: Heartbeat-thinning dedupe relies on value-equality until Story 3.9 messageId
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-4-persist-accepted-telemetry-to-influxdb-and-redis.md`
+  summary: Dedupe keys on `machineId + running + runtimeHours + counting` (value-equality, TTL `dedupeWindow`) mean a machine reporting a constant heartbeat (same values) at intervals within the window is silently dropped as a duplicate even when each message is distinct in time.
+  evidence: Real, surfaced by review of Story 3.4 (BH-7) — the fallback idempotency rule intentionally trades this off until Story 3.9 delivers `messageId`/payload `timestamp`, which will become the dedupe key prefix and restore distinct-heartbeat persistence. Tracked here so the thinning semantics are revisited when 3.9 lands.
+
+### DW-23: QoS-1 redelivery dedupe is best-effort because `cleanSession(true)` drops in-flight messages
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-4-persist-accepted-telemetry-to-influxdb-and-redis.md`
+  summary: The dedupe SETNX gate only guards against duplicates that actually arrive; with Paho `cleanSession(true)` (Story 3.1 MQTT config), messages in-flight during a broker reconnect are discarded rather than redelivered, so the dedupe key cleanup on write failure cannot fully guarantee at-least-once semantics.
+  evidence: Real, surfaced by review of Story 3.4 (BH-10) — `cleanSession(true)` defeats the redelivery net that the dedupe-key-delete-on-failure cleanup was designed to support. Belongs to Story 3.1's MQTT connection config decision; revisit if at-least-once becomes a hard requirement.
+
+### DW-24: Follow-up review still recommended for 3-4-persist-accepted-telemetry-to-influxdb-and-redis after the damping cap was spent
+origin: review-budget-followup
+location: n/a
+source_spec: `spec-3-4-persist-accepted-telemetry-to-influxdb-and-redis.md`
+severity: low
+reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260808-181116-d9d3; this entry preserves the lingering recommendation for a deliberate later review.
+status: open

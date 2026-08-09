@@ -19,10 +19,13 @@ public class MqttTelemetryIngestHandler implements MessageHandler {
 
   private final Clock clock;
   private final TelemetryValidationService validationService;
+  private final TelemetryPersistenceService persistenceService;
 
-  public MqttTelemetryIngestHandler(Clock clock, TelemetryValidationService validationService) {
+  public MqttTelemetryIngestHandler(Clock clock, TelemetryValidationService validationService,
+      TelemetryPersistenceService persistenceService) {
     this.clock = clock;
     this.validationService = validationService;
+    this.persistenceService = persistenceService;
   }
 
   public TelemetryEnvelope enrich(Message<?> message) {
@@ -37,12 +40,17 @@ public class MqttTelemetryIngestHandler implements MessageHandler {
 
   @Override
   public void handleMessage(Message<?> message) throws MessagingException {
+    String traceId = null;
     try {
       TelemetryEnvelope envelope = enrich(message);
+      traceId = envelope.traceId();
       switch (validationService.validate(envelope.topic(), envelope.payload())) {
-        case TelemetryValidationService.Result.Accepted ignored -> log.info(
-            "mqtt_telemetry_received traceId={} topic={} payload={}",
-            envelope.traceId(), envelope.topic(), envelope.payload());
+        case TelemetryValidationService.Result.Accepted accepted -> {
+          log.info(
+              "mqtt_telemetry_received traceId={} topic={} payload={}",
+              envelope.traceId(), envelope.topic(), envelope.payload());
+          persistenceService.persist(accepted, envelope);
+        }
         case TelemetryValidationService.Result.Rejected rejected -> {
           if (rejected.field() == null) {
             log.warn("mqtt_telemetry_rejected reason={} traceId={} topic={}",
@@ -55,7 +63,8 @@ public class MqttTelemetryIngestHandler implements MessageHandler {
       }
     } catch (RuntimeException exception) {
       Object topicHeader = message.getHeaders().get(MqttHeaders.RECEIVED_TOPIC);
-      log.error("mqtt_telemetry_ingest_failed topic={}", topicHeader == null ? "" : topicHeader, exception);
+      log.error("mqtt_telemetry_ingest_failed traceId={} topic={}",
+          traceId == null ? "" : traceId, topicHeader == null ? "" : topicHeader, exception);
     }
   }
 }
