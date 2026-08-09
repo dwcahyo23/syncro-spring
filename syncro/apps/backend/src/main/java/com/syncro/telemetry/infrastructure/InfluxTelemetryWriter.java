@@ -24,13 +24,15 @@ public class InfluxTelemetryWriter {
     this.writeApi = client.getWriteApiBlocking();
   }
 
-  public static Point toPoint(TelemetryPayload payload, TelemetryEnvelope envelope, String plantCode, String machineCode) {
+  public static Point toPoint(TelemetryPayload payload, TelemetryEnvelope envelope, String plantCode, String machineCode,
+      long countingDelta) {
     return Point.measurement("telemetry")
         .addTag("plantCode", plantCode)
         .addTag("machineCode", machineCode)
         .addField("running", payload.running())
         .addField("runtimeHours", payload.runtimeHours())
         .addField("counting", payload.counting())
+        .addField("countingDelta", countingDelta)
         .addField("traceId", envelope.traceId())
         .time(envelope.receivedAt().getEpochSecond() * 1_000_000_000L + envelope.receivedAt().getNano(),
             WritePrecision.NS);

@@ -46,6 +46,9 @@ public record TelemetryPayload(boolean running, double runtimeHours, long counti
     if (!integralCounting || !countingNode.canConvertToLong()) {
       return new ParseResult.Rejected("invalid_field_type", "counting");
     }
+    if (countingNode.longValue() < 0) {
+      return new ParseResult.Rejected("out_of_range", "counting");
+    }
     return new ParseResult.Accepted(
         new TelemetryPayload(runningNode.booleanValue(), runtimeNode.doubleValue(), countingNode.longValue()));
   }

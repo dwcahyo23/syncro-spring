@@ -26,11 +26,13 @@ import com.syncro.telemetry.infrastructure.RedisLatestTelemetryWriter;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
@@ -182,6 +184,84 @@ class TelemetryPersistenceServiceTest {
     verify(valueOps, never()).setIfAbsent(anyString(), anyString(), any());
     verify(influxWriter, never()).write(any(Point.class), anyString(), anyString());
     verify(redisLatestWriter, never()).putLatest(any(UUID.class), any(), any(Duration.class));
+  }
+
+  @Test
+  void firstSampleComputesDeltaZeroAndWritesCountingDeltaField() {
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+
+    service.persist(accepted, envelope);
+
+    verify(redisLatestWriter).readCounting(machine.getId());
+    var pointCaptor = ArgumentCaptor.forClass(Point.class);
+    verify(influxWriter).write(pointCaptor.capture(), anyString(), anyString());
+    assertThat(pointCaptor.getValue().toLineProtocol()).contains("countingDelta=0i");
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Map<String, String>> fieldsCaptor = ArgumentCaptor.forClass(Map.class);
+    verify(redisLatestWriter).putLatest(any(UUID.class), fieldsCaptor.capture(), any(Duration.class));
+    assertThat(fieldsCaptor.getValue()).containsEntry("countingDelta", "0");
+  }
+
+  @Test
+  void readCountingFailureDeletesOwnedDedupeKeyAndRethrows() {
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+    when(valueOps.get(dedupeKey)).thenReturn(TRACE_ID);
+    when(redisLatestWriter.readCounting(machine.getId())).thenThrow(new RuntimeException("redis hiccup"));
+
+    assertThatThrownBy(() -> service.persist(accepted, envelope))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("redis hiccup");
+
+    verify(redis).delete(dedupeKey);
+    verify(influxWriter, never()).write(any(Point.class), anyString(), anyString());
+    verify(redisLatestWriter, never()).putLatest(any(UUID.class), any(), any(Duration.class));
+  }
+
+  @Test
+  void wrapFromMaxToZeroComputesDeltaOne() {
+    var countingZero = acceptedWithCounting(0);
+    String countingZeroDedupeKey = dedupeKeyFor(0);
+    when(valueOps.setIfAbsent(countingZeroDedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+    when(redisLatestWriter.readCounting(machine.getId())).thenReturn(Optional.of(65535L));
+
+    service.persist(countingZero, envelope);
+
+    var pointCaptor = ArgumentCaptor.forClass(Point.class);
+    verify(influxWriter).write(pointCaptor.capture(), anyString(), anyString());
+    assertThat(pointCaptor.getValue().toLineProtocol()).contains("countingDelta=1i");
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Map<String, String>> fieldsCaptor = ArgumentCaptor.forClass(Map.class);
+    verify(redisLatestWriter).putLatest(any(UUID.class), fieldsCaptor.capture(), any(Duration.class));
+    assertThat(fieldsCaptor.getValue()).containsEntry("countingDelta", "1");
+  }
+
+  @Test
+  void increaseComputesDirectDelta() {
+    var countingTwoHundred = acceptedWithCounting(200);
+    String countingTwoHundredDedupeKey = dedupeKeyFor(200);
+    when(valueOps.setIfAbsent(countingTwoHundredDedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+    when(redisLatestWriter.readCounting(machine.getId())).thenReturn(Optional.of(100L));
+
+    service.persist(countingTwoHundred, envelope);
+
+    var pointCaptor = ArgumentCaptor.forClass(Point.class);
+    verify(influxWriter).write(pointCaptor.capture(), anyString(), anyString());
+    assertThat(pointCaptor.getValue().toLineProtocol()).contains("countingDelta=100i");
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Map<String, String>> fieldsCaptor = ArgumentCaptor.forClass(Map.class);
+    verify(redisLatestWriter).putLatest(any(UUID.class), fieldsCaptor.capture(), any(Duration.class));
+    assertThat(fieldsCaptor.getValue()).containsEntry("countingDelta", "100");
+  }
+
+  private TelemetryValidationService.Result.Accepted acceptedWithCounting(long counting) {
+    return new TelemetryValidationService.Result.Accepted(machine, new TelemetryPayload(true, 12.5, counting));
+  }
+
+  private String dedupeKeyFor(long counting) {
+    return "syncro:machine:" + machine.getId() + ":telemetry:dedupe:true:12.5:" + counting;
   }
 
   private static ListAppender<ILoggingEvent> attachAppender() {

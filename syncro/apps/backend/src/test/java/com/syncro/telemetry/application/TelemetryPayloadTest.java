@@ -84,4 +84,24 @@ class TelemetryPayloadTest {
     assertThat(rejected.reason()).isEqualTo("invalid_field_type");
     assertThat(rejected.field()).isEqualTo("runtimeHours");
   }
+
+  @Test
+  void rejectsNegativeCounting() {
+    var result = TelemetryPayload.parse("{\"running\":true,\"runtimeHours\":12.5,\"counting\":-1}", objectMapper);
+
+    assertThat(result).isInstanceOf(TelemetryPayload.ParseResult.Rejected.class);
+    var rejected = (TelemetryPayload.ParseResult.Rejected) result;
+    assertThat(rejected.reason()).isEqualTo("out_of_range");
+    assertThat(rejected.field()).isEqualTo("counting");
+  }
+
+  @Test
+  void rejectsNegativeIntegralDoubleCounting() {
+    var result = TelemetryPayload.parse("{\"running\":true,\"runtimeHours\":12.5,\"counting\":-12.0}", objectMapper);
+
+    assertThat(result).isInstanceOf(TelemetryPayload.ParseResult.Rejected.class);
+    var rejected = (TelemetryPayload.ParseResult.Rejected) result;
+    assertThat(rejected.reason()).isEqualTo("out_of_range");
+    assertThat(rejected.field()).isEqualTo("counting");
+  }
 }

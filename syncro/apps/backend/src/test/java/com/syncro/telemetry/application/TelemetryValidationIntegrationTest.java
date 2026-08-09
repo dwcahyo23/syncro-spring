@@ -165,6 +165,20 @@ class TelemetryValidationIntegrationTest {
     assertThat(((TelemetryValidationService.Result.Accepted) active).machine().getCode()).isEqualTo("BF-08411");
   }
 
+  @Test
+  @DisplayName("3.5-VAL-001 negative counting payload rejected with out_of_range on counting")
+  void rejectsNegativeCounting() {
+    seedPlantAndMachine();
+
+    var result = validationService.validate("factory/GM1/BF-08410/telemetry",
+        "{\"running\":true,\"runtimeHours\":12.5,\"counting\":-1}");
+
+    assertThat(result).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
+    var rejected = (TelemetryValidationService.Result.Rejected) result;
+    assertThat(rejected.reason()).isEqualTo("out_of_range");
+    assertThat(rejected.field()).isEqualTo("counting");
+  }
+
   private void seedPlantAndMachine() {
     seedPlantAndMachine(MachineStatus.ACTIVE);
   }
