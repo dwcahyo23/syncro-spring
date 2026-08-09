@@ -1,5 +1,6 @@
 package com.syncro.telemetry.infrastructure;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.influxdb.client.InfluxDBClient;
 import com.influxdb.client.WriteApiBlocking;
 import com.influxdb.client.domain.WritePrecision;
@@ -26,16 +27,31 @@ public class InfluxTelemetryWriter {
 
   public static Point toPoint(TelemetryPayload payload, TelemetryEnvelope envelope, String plantCode, String machineCode,
       long countingDelta) {
-    return Point.measurement("telemetry")
+    var point = Point.measurement("telemetry")
         .addTag("plantCode", plantCode)
         .addTag("machineCode", machineCode)
         .addField("running", payload.running())
         .addField("runtimeHours", payload.runtimeHours())
         .addField("counting", payload.counting())
         .addField("countingDelta", countingDelta)
-        .addField("traceId", envelope.traceId())
-        .time(envelope.receivedAt().getEpochSecond() * 1_000_000_000L + envelope.receivedAt().getNano(),
-            WritePrecision.NS);
+        .addField("traceId", envelope.traceId());
+    for (var entry : payload.optionalFields().entrySet()) {
+      addOptionalField(point, entry.getKey(), entry.getValue());
+    }
+    return point.time(envelope.receivedAt().getEpochSecond() * 1_000_000_000L + envelope.receivedAt().getNano(),
+        WritePrecision.NS);
+  }
+
+  private static void addOptionalField(Point point, String name, JsonNode node) {
+    if (node.isIntegralNumber()) {
+      point.addField(name, node.longValue());
+    } else if (node.isFloatingPointNumber()) {
+      point.addField(name, node.doubleValue());
+    } else if (node.isBoolean()) {
+      point.addField(name, node.booleanValue());
+    } else {
+      point.addField(name, node.asText());
+    }
   }
 
   public void write(Point point, String machineCode, String traceId) {

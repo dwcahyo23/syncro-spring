@@ -175,7 +175,7 @@ class MachineResponsibilityServiceIntegrationTest {
 
   private com.syncro.machine.infrastructure.MachineEntity machine(com.syncro.auth.infrastructure.PlantEntity plant, com.syncro.masterdata.infrastructure.MachineGroupEntity group, String code) {
     var now = java.time.Instant.parse("2026-05-27T00:00:00Z");
-    return machines.saveAndFlush(new com.syncro.machine.infrastructure.MachineEntity(UUID.randomUUID(), plant, group, code, "Name", com.syncro.machine.domain.MachineStatus.ACTIVE, "Brand", null, null, now, now));
+    return machines.saveAndFlush(new com.syncro.machine.infrastructure.MachineEntity(UUID.randomUUID(), plant, group, code, "Name", com.syncro.machine.domain.MachineStatus.ACTIVE, "Brand", null, null, java.util.List.of(), now, now));
   }
 
   private com.syncro.auth.application.JwtTokenService.AuthenticatedUser persistedAuthUser(com.syncro.auth.domain.ApplicationRole role, String loginIdentifier) {

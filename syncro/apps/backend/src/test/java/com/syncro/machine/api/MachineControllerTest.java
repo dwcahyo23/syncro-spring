@@ -1,5 +1,6 @@
 package com.syncro.machine.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -21,6 +22,7 @@ import com.syncro.config.SecurityConfig;
 import com.syncro.config.TimeConfig;
 import com.syncro.machine.application.MachineService;
 import com.syncro.machine.application.MachineService.DuplicateMachineCodeException;
+import com.syncro.machine.application.MachineService.MachineCommand;
 import com.syncro.machine.application.MachineService.MachineDataIntegrityException;
 import com.syncro.machine.application.MachineService.MachineGroupPlantMismatchException;
 import com.syncro.machine.application.MachineService.MachineMutationForbiddenException;
@@ -36,6 +38,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -238,10 +241,47 @@ class MachineControllerTest {
         .andExpect(jsonPath("$.message").value("Query value is invalid."));
   }
 
+  @Test
+  @DisplayName("3.6-API-001 P1 optional telemetry fields map to machine command")
+  void optionalTelemetryFieldsMapToMachineCommand() throws Exception {
+    var user = user(ApplicationRole.MANAGE);
+    var plantId = UUID.randomUUID();
+    var groupId = UUID.randomUUID();
+    var machineId = UUID.randomUUID();
+    var commandCaptor = ArgumentCaptor.forClass(MachineCommand.class);
+    when(machines.create(eq(user), commandCaptor.capture())).thenReturn(view(machineId, plantId, groupId));
+
+    mockMvc.perform(post("/api/v1/machines")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"plantId\":\"" + plantId + "\",\"machineGroupId\":\"" + groupId
+            + "\",\"code\":\"BF-08410\",\"status\":\"ACTIVE\",\"optionalTelemetryFields\":[\"vibration\",\"rpm\"]}"))
+        .andExpect(status().isCreated());
+
+    assertThat(commandCaptor.getValue().optionalTelemetryFields()).containsExactly("vibration", "rpm");
+  }
+
+  @Test
+  @DisplayName("3.6-API-002 P1 more than 10 optional telemetry fields return field errors")
+  void overLimitOptionalTelemetryFieldsReturnFieldErrors() throws Exception {
+    var plantId = UUID.randomUUID();
+    var groupId = UUID.randomUUID();
+    String overLimit = "[\"f01\",\"f02\",\"f03\",\"f04\",\"f05\",\"f06\",\"f07\",\"f08\",\"f09\",\"f10\",\"f11\"]";
+
+    mockMvc.perform(post("/api/v1/machines")
+        .with(auth(user(ApplicationRole.MANAGE)))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"plantId\":\"" + plantId + "\",\"machineGroupId\":\"" + groupId
+            + "\",\"code\":\"BF-08410\",\"status\":\"ACTIVE\",\"optionalTelemetryFields\":" + overLimit + "}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.fieldErrors").isNotEmpty());
+  }
+
   private static MachineView view(UUID id, UUID plantId, UUID groupId) {
     return new MachineView(id, plantId, "GM1", "Plant GM1", groupId, "Forming", "BF-08410", "JBF19",
         MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Pilot machine",
-        Instant.parse("2026-05-27T00:00:00Z"), Instant.parse("2026-05-27T00:00:00Z"));
+        Instant.parse("2026-05-27T00:00:00Z"), Instant.parse("2026-05-27T00:00:00Z"), List.of());
   }
 
   private static String payload(UUID plantId, UUID groupId, String code, String status) {

@@ -11,6 +11,7 @@ import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.masterdata.infrastructure.MachineGroupEntity;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -125,6 +126,55 @@ class TelemetryValidationServiceTest {
     assertThat(accepted.payload()).isEqualTo(new TelemetryPayload(true, 12.5, 100));
   }
 
+  @Test
+  void acceptsConfiguredScalarOptionalFields() {
+    var plant = plant();
+    var machine = machine(plant, "BF-08410", MachineStatus.ACTIVE, List.of("vibration", "rpm"));
+    when(plants.findByCodeIgnoreCase("GM1")).thenReturn(Optional.of(plant));
+    when(machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
+
+    var result = service.validate("factory/GM1/BF-08410/telemetry",
+        "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100,\"vibration\":2.4,\"rpm\":1200}");
+
+    assertThat(result).isInstanceOf(TelemetryValidationService.Result.Accepted.class);
+    var accepted = (TelemetryValidationService.Result.Accepted) result;
+    assertThat(accepted.machine()).isSameAs(machine);
+    assertThat(accepted.payload().optionalFields()).containsOnlyKeys("vibration", "rpm");
+    assertThat(accepted.payload().optionalFields().get("vibration").asDouble()).isEqualTo(2.4);
+    assertThat(accepted.payload().optionalFields().get("rpm").asLong()).isEqualTo(1200L);
+  }
+
+  @Test
+  void rejectsConfiguredNonScalarOptionalField() {
+    var plant = plant();
+    var machine = machine(plant, "BF-08410", MachineStatus.ACTIVE, List.of("vibration"));
+    when(plants.findByCodeIgnoreCase("GM1")).thenReturn(Optional.of(plant));
+    when(machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
+
+    var result = service.validate("factory/GM1/BF-08410/telemetry",
+        "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100,\"vibration\":{\"x\":1}}");
+
+    assertThat(result).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
+    var rejected = (TelemetryValidationService.Result.Rejected) result;
+    assertThat(rejected.reason()).isEqualTo("invalid_field_type");
+    assertThat(rejected.field()).isEqualTo("vibration");
+  }
+
+  @Test
+  void toleratesDuplicateNamesInStoredConfig() {
+    var plant = plant();
+    var machine = machine(plant, "BF-08410", MachineStatus.ACTIVE, List.of("vibration", "vibration"));
+    when(plants.findByCodeIgnoreCase("GM1")).thenReturn(Optional.of(plant));
+    when(machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
+
+    var result = service.validate("factory/GM1/BF-08410/telemetry",
+        "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100,\"vibration\":2.4}");
+
+    assertThat(result).isInstanceOf(TelemetryValidationService.Result.Accepted.class);
+    var accepted = (TelemetryValidationService.Result.Accepted) result;
+    assertThat(accepted.payload().optionalFields()).containsOnlyKeys("vibration");
+  }
+
   private PlantEntity plant() {
     return new PlantEntity(UUID.randomUUID(), "GM1", "Plant GM1", NOW, NOW);
   }
@@ -134,8 +184,12 @@ class TelemetryValidationServiceTest {
   }
 
   private MachineEntity machine(PlantEntity plant, String code, MachineStatus status) {
+    return machine(plant, code, status, List.of());
+  }
+
+  private MachineEntity machine(PlantEntity plant, String code, MachineStatus status, List<String> optionalTelemetryFields) {
     var group = new MachineGroupEntity(UUID.randomUUID(), plant, "Forming", NOW, NOW);
     return new MachineEntity(UUID.randomUUID(), plant, group, code, "JBF19", status, "Juki", LocalDate.parse("2026-05-27"),
-        null, NOW, NOW);
+        null, optionalTelemetryFields, NOW, NOW);
   }
 }

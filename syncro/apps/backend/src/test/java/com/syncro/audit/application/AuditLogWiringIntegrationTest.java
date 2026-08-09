@@ -34,6 +34,7 @@ import com.syncro.sparepart.domain.SparepartTaxonomyDimension;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -176,7 +177,7 @@ class AuditLogWiringIntegrationTest {
     var plantView = plants.create(manage, new CreatePlantCommand("GM1", "Plant GM1"));
     var groupView = machineGroups.create(manage, new CreateMachineGroupCommand(plantView.id(), "Forming"));
     var machineView = machines.create(manage, new MachineCommand(plantView.id(), groupView.id(), "BF-08410",
-        "Blow Forming Line 1", MachineStatus.ACTIVE, "KHS", LocalDate.parse("2024-01-15"), null));
+        "Blow Forming Line 1", MachineStatus.ACTIVE, "KHS", LocalDate.parse("2024-01-15"), null, List.of()));
 
     var createEntry = entry(manage, AuditEntityType.MACHINE, AuditAction.CREATE);
     assertThat(createEntry.actorName()).isEqualTo("wiring-manage@syncro.dev");
@@ -188,7 +189,7 @@ class AuditLogWiringIntegrationTest {
         .containsEntry("installedAt", "2024-01-15");
 
     machines.update(manage, machineView.id(), new MachineCommand(plantView.id(), groupView.id(), "BF-08410",
-        "Blow Forming Line 1", MachineStatus.INACTIVE, "KHS", LocalDate.parse("2024-01-15"), null));
+        "Blow Forming Line 1", MachineStatus.INACTIVE, "KHS", LocalDate.parse("2024-01-15"), null, List.of()));
 
     var updateEntry = entry(manage, AuditEntityType.MACHINE, AuditAction.UPDATE);
     assertThat(updateEntry.plantId()).isEqualTo(plantView.id());
@@ -330,7 +331,7 @@ class AuditLogWiringIntegrationTest {
     var plantView = plants.create(admin, new CreatePlantCommand("GM1", "Plant GM1"));
     var groupView = machineGroups.create(admin, new CreateMachineGroupCommand(plantView.id(), "Forming"));
     return machines.create(admin, new MachineCommand(plantView.id(), groupView.id(), "BF-08410",
-        "Blow Forming Line 1", MachineStatus.ACTIVE, "KHS", LocalDate.parse("2024-01-15"), null));
+        "Blow Forming Line 1", MachineStatus.ACTIVE, "KHS", LocalDate.parse("2024-01-15"), null, List.of()));
   }
 
   private com.syncro.sparepart.application.SparepartService.SparepartView sparepartChain(AuthenticatedUser admin, UUID machineId) {

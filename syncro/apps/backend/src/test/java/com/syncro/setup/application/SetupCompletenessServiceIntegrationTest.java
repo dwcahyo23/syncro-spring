@@ -28,6 +28,7 @@ import com.syncro.sparepart.infrastructure.SparepartTaxonomyEntity;
 import com.syncro.sparepart.infrastructure.SparepartTaxonomyRepository;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -255,7 +256,7 @@ class SetupCompletenessServiceIntegrationTest {
   private MachineEntity machine(PlantEntity plant, MachineGroupEntity group, String code, String name) {
     var now = Instant.parse("2026-05-28T00:00:00Z");
     return machines.saveAndFlush(new MachineEntity(UUID.randomUUID(), plant, group, code, name, MachineStatus.ACTIVE,
-        "Juki", LocalDate.parse("2026-05-28"), null, now, now));
+        "Juki", LocalDate.parse("2026-05-28"), null, List.of(), now, now));
   }
 
   private SparepartEntity sparepart(PlantEntity plant, MachineEntity machine, String name) {

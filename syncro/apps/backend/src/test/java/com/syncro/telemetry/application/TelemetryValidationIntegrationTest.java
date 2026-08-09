@@ -11,6 +11,7 @@ import com.syncro.masterdata.infrastructure.MachineGroupEntity;
 import com.syncro.masterdata.infrastructure.MachineGroupRepository;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -146,9 +147,9 @@ class TelemetryValidationIntegrationTest {
     var plant = plants.saveAndFlush(new PlantEntity(UUID.randomUUID(), "GM1", "Plant GM1", now, now));
     var group = machineGroups.saveAndFlush(new MachineGroupEntity(UUID.randomUUID(), plant, "Forming", now, now));
     machines.saveAndFlush(new MachineEntity(UUID.randomUUID(), plant, group, "BF-08410", "JBF19",
-        MachineStatus.INACTIVE, "Juki", LocalDate.parse("2026-05-27"), null, now, now));
+        MachineStatus.INACTIVE, "Juki", LocalDate.parse("2026-05-27"), null, List.of(), now, now));
     machines.saveAndFlush(new MachineEntity(UUID.randomUUID(), plant, group, "BF-08411", "JBF19",
-        MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), null, now, now));
+        MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), null, List.of(), now, now));
 
     var inactive = validationService.validate("factory/GM1/BF-08410/telemetry",
         "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
@@ -179,15 +180,79 @@ class TelemetryValidationIntegrationTest {
     assertThat(rejected.field()).isEqualTo("counting");
   }
 
+  @Test
+  @DisplayName("3.6-VAL-001 configured scalar optional field accepted and carried on payload")
+  void acceptsConfiguredScalarOptionalField() {
+    seedPlantAndMachineWithOptionalFields(List.of("vibration", "rpm"));
+
+    var result = validationService.validate("factory/GM1/BF-08410/telemetry",
+        "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100,\"vibration\":2.4,\"rpm\":1200}");
+
+    assertThat(result).isInstanceOf(TelemetryValidationService.Result.Accepted.class);
+    var accepted = (TelemetryValidationService.Result.Accepted) result;
+    assertThat(accepted.payload().optionalFields()).containsOnlyKeys("vibration", "rpm");
+    assertThat(accepted.payload().optionalFields().get("vibration").asDouble()).isEqualTo(2.4);
+    assertThat(accepted.payload().optionalFields().get("rpm").asLong()).isEqualTo(1200L);
+  }
+
+  @Test
+  @DisplayName("3.6-VAL-002 unknown unconfigured field is ignored")
+  void ignoresUnknownUnconfiguredField() {
+    seedPlantAndMachineWithOptionalFields(List.of("vibration"));
+
+    var result = validationService.validate("factory/GM1/BF-08410/telemetry",
+        "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100,\"vibration\":2.4,\"temperature\":30}");
+
+    assertThat(result).isInstanceOf(TelemetryValidationService.Result.Accepted.class);
+    var accepted = (TelemetryValidationService.Result.Accepted) result;
+    assertThat(accepted.payload().optionalFields()).containsOnlyKeys("vibration");
+  }
+
+  @Test
+  @DisplayName("3.6-VAL-003 configured non-scalar optional field rejected")
+  void rejectsConfiguredNonScalarOptionalField() {
+    seedPlantAndMachineWithOptionalFields(List.of("vibration"));
+
+    var result = validationService.validate("factory/GM1/BF-08410/telemetry",
+        "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100,\"vibration\":{\"x\":1}}");
+
+    assertThat(result).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
+    var rejected = (TelemetryValidationService.Result.Rejected) result;
+    assertThat(rejected.reason()).isEqualTo("invalid_field_type");
+    assertThat(rejected.field()).isEqualTo("vibration");
+  }
+
+  @Test
+  @DisplayName("3.6-VAL-004 base field still required when optional fields configured")
+  void baseFieldStillRequiredWhenOptionalConfigured() {
+    seedPlantAndMachineWithOptionalFields(List.of("vibration"));
+
+    var result = validationService.validate("factory/GM1/BF-08410/telemetry",
+        "{\"running\":true,\"runtimeHours\":12.5,\"vibration\":2.4}");
+
+    assertThat(result).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
+    var rejected = (TelemetryValidationService.Result.Rejected) result;
+    assertThat(rejected.reason()).isEqualTo("missing_base_field");
+    assertThat(rejected.field()).isEqualTo("counting");
+  }
+
   private void seedPlantAndMachine() {
     seedPlantAndMachine(MachineStatus.ACTIVE);
   }
 
   private void seedPlantAndMachine(MachineStatus status) {
+    seedPlantAndMachine(status, List.of());
+  }
+
+  private void seedPlantAndMachineWithOptionalFields(List<String> optionalTelemetryFields) {
+    seedPlantAndMachine(MachineStatus.ACTIVE, optionalTelemetryFields);
+  }
+
+  private void seedPlantAndMachine(MachineStatus status, List<String> optionalTelemetryFields) {
     var now = Instant.parse("2026-05-27T00:00:00Z");
     var plant = plants.saveAndFlush(new PlantEntity(UUID.randomUUID(), "GM1", "Plant GM1", now, now));
     var group = machineGroups.saveAndFlush(new MachineGroupEntity(UUID.randomUUID(), plant, "Forming", now, now));
     machines.saveAndFlush(new MachineEntity(UUID.randomUUID(), plant, group, "BF-08410", "JBF19",
-        status, "Juki", LocalDate.parse("2026-05-27"), null, now, now));
+        status, "Juki", LocalDate.parse("2026-05-27"), null, optionalTelemetryFields, now, now));
   }
 }

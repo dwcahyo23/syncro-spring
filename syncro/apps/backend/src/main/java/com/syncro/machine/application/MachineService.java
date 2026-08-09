@@ -16,6 +16,7 @@ import com.syncro.masterdata.infrastructure.MachineGroupRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -35,6 +36,11 @@ public class MachineService {
   private static final int MAX_PAGE_SIZE = 200;
   private static final Set<String> ALLOWED_SORTS = Set.of("code", "name", "status", "createdAt", "updatedAt");
   private static final Pattern MACHINE_CODE_PATTERN = Pattern.compile("^[A-Z0-9][A-Z0-9._-]{0,63}$");
+  private static final Set<String> RESERVED_OPTIONAL_FIELDS = Set.of(
+      "running", "runtimeHours", "counting", "countingDelta", "plantCode", "machineCode", "traceId", "receivedAt");
+  private static final Pattern OPTIONAL_FIELD_PATTERN = Pattern.compile("^[A-Za-z0-9_]+$");
+  private static final int MAX_OPTIONAL_FIELDS = 10;
+  private static final int MAX_OPTIONAL_FIELD_LENGTH = 64;
 
   private final MachineRepository machines;
   private final PlantRepository plants;
@@ -113,7 +119,7 @@ public class MachineService {
   @Transactional
   public MachineView create(AuthenticatedUser user, MachineCommand command) {
     requireMutationRole(user);
-    validateCommand(command);
+    var optionalTelemetryFields = validateCommand(command);
     if (user.applicationRole() != ApplicationRole.SUPER_ADMIN) {
       plantScopes.requirePlantAccess(user, command.plantId());
     } else if (!plants.existsById(command.plantId())) {
@@ -133,7 +139,8 @@ public class MachineService {
     }
     var now = Instant.now(clock);
     var machine = saveMachine(new MachineEntity(UUID.randomUUID(), plant, machineGroup, code, normalizeOptional(command.name()),
-        command.status(), normalizeOptional(command.brand()), command.installedAt(), normalizeOptional(command.notes()), now, now));
+        command.status(), normalizeOptional(command.brand()), command.installedAt(), normalizeOptional(command.notes()),
+        optionalTelemetryFields, now, now));
     auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.MACHINE, machine.getId(), machine.getCode(),
         command.plantId(), null, MachineAuditValues.of(machine)));
     return toView(machine);
@@ -142,7 +149,7 @@ public class MachineService {
   @Transactional
   public MachineView update(AuthenticatedUser user, UUID machineId, MachineCommand command) {
     requireMutationRole(user);
-    validateCommand(command);
+    var optionalTelemetryFields = validateCommand(command);
     var machine = findScoped(user, machineId);
     var plantId = machine.getPlant().getId();
     if (!plantId.equals(command.plantId())) {
@@ -163,7 +170,7 @@ public class MachineService {
       throw new DuplicateMachineCodeException();
     }
     machine.update(machineGroup, code, normalizeOptional(command.name()), command.status(), normalizeOptional(command.brand()),
-        command.installedAt(), normalizeOptional(command.notes()), Instant.now(clock));
+        command.installedAt(), normalizeOptional(command.notes()), optionalTelemetryFields, Instant.now(clock));
     var saved = saveMachine(machine);
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.MACHINE, machineId, entityLabel, plantId,
         previous, MachineAuditValues.of(saved)));
@@ -223,10 +230,37 @@ public class MachineService {
     return false;
   }
 
-  private void validateCommand(MachineCommand command) {
+  private List<String> validateCommand(MachineCommand command) {
     if (command.plantId() == null || command.machineGroupId() == null || command.status() == null) {
       throw new MachineValidationException();
     }
+    return normalizeOptionalTelemetryFields(command.optionalTelemetryFields());
+  }
+
+  private List<String> normalizeOptionalTelemetryFields(List<String> configured) {
+    if (configured == null || configured.isEmpty()) {
+      return List.of();
+    }
+    var normalized = new ArrayList<String>();
+    for (String entry : configured) {
+      var trimmed = entry == null ? "" : entry.trim();
+      if (trimmed.isEmpty()) {
+        continue;
+      }
+      if (trimmed.length() > MAX_OPTIONAL_FIELD_LENGTH
+          || trimmed.startsWith("_")
+          || !OPTIONAL_FIELD_PATTERN.matcher(trimmed).matches()
+          || RESERVED_OPTIONAL_FIELDS.contains(trimmed)) {
+        throw new MachineValidationException();
+      }
+      if (!normalized.contains(trimmed)) {
+        normalized.add(trimmed);
+      }
+    }
+    if (normalized.size() > MAX_OPTIONAL_FIELDS) {
+      throw new MachineValidationException();
+    }
+    return List.copyOf(normalized);
   }
 
   private String normalizeSearch(String search) {
@@ -293,16 +327,17 @@ public class MachineService {
     var machineGroup = machine.getMachineGroup();
     return new MachineView(machine.getId(), plant.getId(), plant.getCode(), plant.getName(), machineGroup.getId(),
         machineGroup.getName(), machine.getCode(), machine.getName(), machine.getStatus(), machine.getBrand(),
-        machine.getInstalledAt(), machine.getNotes(), machine.getCreatedAt(), machine.getUpdatedAt());
+        machine.getInstalledAt(), machine.getNotes(), machine.getCreatedAt(), machine.getUpdatedAt(),
+        machine.getOptionalTelemetryFields() == null ? List.of() : machine.getOptionalTelemetryFields());
   }
 
   public record MachineCommand(UUID plantId, UUID machineGroupId, String code, String name, MachineStatus status,
-      String brand, LocalDate installedAt, String notes) {
+      String brand, LocalDate installedAt, String notes, List<String> optionalTelemetryFields) {
   }
 
   public record MachineView(UUID id, UUID plantId, String plantCode, String plantName, UUID machineGroupId,
       String machineGroupName, String code, String name, MachineStatus status, String brand, LocalDate installedAt,
-      String notes, Instant createdAt, Instant updatedAt) {
+      String notes, Instant createdAt, Instant updatedAt, List<String> optionalTelemetryFields) {
   }
 
   public record MachineListView(List<MachineView> items, long totalElements, int page, int size, String sort) {

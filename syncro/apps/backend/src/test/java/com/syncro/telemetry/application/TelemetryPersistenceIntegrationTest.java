@@ -278,6 +278,50 @@ class TelemetryPersistenceIntegrationTest {
         .findFirst().orElseThrow().getValueByKey("_value")).isEqualTo(1L);
   }
 
+  @Test
+  @DisplayName("3.6-PERS-001 configured optional fields stored in InfluxDB history with correct types")
+  void configuredOptionalFieldsStoredInInfluxDb() {
+    var machine = seedPlantAndMachine(List.of("vibration", "rpm", "heaterOn", "qualityGrade"));
+    String traceId = "trace-pers-601";
+    Instant receivedAt = uniqueReceivedAt();
+    String payload = "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100,\"vibration\":2.4,\"rpm\":1200,"
+        + "\"heaterOn\":true,\"qualityGrade\":\"A\",\"temperature\":30}";
+    var accepted = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, payload);
+    persistenceService.persist(accepted, envelope(traceId, receivedAt, payload));
+
+    var records = telemetryRecords(machine, receivedAt);
+
+    assertThat(records.stream().filter(record -> "vibration".equals(record.getField())).findFirst().orElseThrow()
+        .getValueByKey("_value")).isEqualTo(2.4);
+    assertThat(records.stream().filter(record -> "rpm".equals(record.getField())).findFirst().orElseThrow()
+        .getValueByKey("_value")).isEqualTo(1200L);
+    assertThat(records.stream().filter(record -> "heaterOn".equals(record.getField())).findFirst().orElseThrow()
+        .getValueByKey("_value")).isEqualTo(true);
+    assertThat(records.stream().filter(record -> "qualityGrade".equals(record.getField())).findFirst().orElseThrow()
+        .getValueByKey("_value")).isEqualTo("A");
+    assertThat(records).noneMatch(record -> "temperature".equals(record.getField()));
+  }
+
+  @Test
+  @DisplayName("3.6-PERS-002 configured optional fields stored in Redis latest hash with optional prefix")
+  void configuredOptionalFieldsStoredInRedisLatestHash() {
+    var machine = seedPlantAndMachine(List.of("vibration", "heaterOn", "qualityGrade"));
+    String traceId = "trace-pers-602";
+    Instant receivedAt = uniqueReceivedAt();
+    String payload = "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100,\"vibration\":2.4,"
+        + "\"heaterOn\":true,\"qualityGrade\":\"A\",\"temperature\":30}";
+    var accepted = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, payload);
+    persistenceService.persist(accepted, envelope(traceId, receivedAt, payload));
+
+    String key = "syncro:machine:" + machine.getId() + ":latest";
+    assertThat(redisTemplate.opsForHash().entries(key))
+        .containsEntry("optional.vibration", "2.4")
+        .containsEntry("optional.heaterOn", "true")
+        .containsEntry("optional.qualityGrade", "A")
+        .doesNotContainKey("optional.temperature")
+        .doesNotContainKey("temperature");
+  }
+
   private void persist(MachineEntity machine, String traceId, Instant receivedAt) {
     var accepted = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, PAYLOAD);
     persistenceService.persist(accepted, envelope(traceId, receivedAt));
@@ -318,10 +362,14 @@ class TelemetryPersistenceIntegrationTest {
   }
 
   private MachineEntity seedPlantAndMachine() {
+    return seedPlantAndMachine(List.of());
+  }
+
+  private MachineEntity seedPlantAndMachine(List<String> optionalTelemetryFields) {
     var now = Instant.parse("2026-05-27T00:00:00Z");
     var plant = plants.saveAndFlush(new PlantEntity(UUID.randomUUID(), "GM1", "Plant GM1", now, now));
     var group = machineGroups.saveAndFlush(new MachineGroupEntity(UUID.randomUUID(), plant, "Forming", now, now));
     return machines.saveAndFlush(new MachineEntity(UUID.randomUUID(), plant, group, "BF-08410", "JBF19",
-        MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), null, now, now));
+        MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), null, optionalTelemetryFields, now, now));
   }
 }

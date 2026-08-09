@@ -29,6 +29,7 @@ import com.syncro.sparepart.infrastructure.SparepartRepository;
 import com.syncro.sparepart.infrastructure.SparepartTaxonomyEntity;
 import com.syncro.sparepart.infrastructure.SparepartTaxonomyRepository;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -332,7 +333,7 @@ class SparepartServiceIntegrationTest {
         .orElseGet(() -> machineGroups.saveAndFlush(new MachineGroupEntity(UUID.randomUUID(), plant, "Assembly", now, now)));
     return machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), "MCH-1")
         .orElseGet(() -> machines.saveAndFlush(new MachineEntity(
-            UUID.randomUUID(), plant, group, "MCH-1", "Machine 1", MachineStatus.ACTIVE, null, null, null, now, now)));
+            UUID.randomUUID(), plant, group, "MCH-1", "Machine 1", MachineStatus.ACTIVE, null, null, null, List.of(), now, now)));
   }
 
   private TaxonomyRefs taxonomyRefs() {
