@@ -2,7 +2,10 @@ package com.syncro.telemetry.infrastructure;
 
 import java.time.Duration;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.RedisOperations;
 import org.springframework.data.redis.core.SessionCallback;
@@ -12,6 +15,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class RedisLatestTelemetryWriter {
 
+  private static final Logger log = LoggerFactory.getLogger(RedisLatestTelemetryWriter.class);
+
   private final StringRedisTemplate redis;
 
   public RedisLatestTelemetryWriter(StringRedisTemplate redis) {
@@ -19,7 +24,7 @@ public class RedisLatestTelemetryWriter {
   }
 
   public void putLatest(UUID machineId, Map<String, String> fields, Duration ttl) {
-    String key = "syncro:machine:" + machineId + ":latest";
+    String key = latestKey(machineId);
     Object result = redis.execute(new SessionCallback<Object>() {
       @Override
       public Object execute(RedisOperations operations) throws DataAccessException {
@@ -32,5 +37,22 @@ public class RedisLatestTelemetryWriter {
     if (result == null) {
       throw new IllegalStateException("latest-state transaction aborted for machine " + machineId);
     }
+  }
+
+  public Optional<Long> readCounting(UUID machineId) {
+    Object value = redis.opsForHash().get(latestKey(machineId), "counting");
+    if (value == null) {
+      return Optional.empty();
+    }
+    try {
+      return Optional.of(Long.parseLong(value.toString()));
+    } catch (NumberFormatException malformed) {
+      log.warn("mqtt_telemetry_latest_counting_malformed machineId={} rawValue={}", machineId, value);
+      return Optional.empty();
+    }
+  }
+
+  private static String latestKey(UUID machineId) {
+    return "syncro:machine:" + machineId + ":latest";
   }
 }

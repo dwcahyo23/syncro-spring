@@ -17,11 +17,12 @@ class InfluxTelemetryWriterTest {
     var payload = new TelemetryPayload(true, 12.5, 100);
     var envelope = new TelemetryEnvelope(traceId, "factory/GM1/BF-08410/telemetry", "{}", receivedAt);
 
-    var point = InfluxTelemetryWriter.toPoint(payload, envelope, "GM1", "BF-08410");
+    var point = InfluxTelemetryWriter.toPoint(payload, envelope, "GM1", "BF-08410", 0);
 
     assertThat(point.toLineProtocol())
         .startsWith("telemetry,machineCode=BF-08410,plantCode=GM1 ")
         .contains("counting=100i")
+        .contains("countingDelta=0i")
         .contains("running=true")
         .contains("runtimeHours=12.5")
         .contains("traceId=\"trace-123\"");
@@ -35,9 +36,11 @@ class InfluxTelemetryWriterTest {
     var envelope = new TelemetryEnvelope("trace-456", "factory/GM1/BF-08410/telemetry", "{}",
         Instant.parse("2026-08-08T10:00:00Z"));
 
-    var point = InfluxTelemetryWriter.toPoint(payload, envelope, "GM1", "BF-08410");
+    var point = InfluxTelemetryWriter.toPoint(payload, envelope, "GM1", "BF-08410", 7);
 
-    assertThat(point.toLineProtocol()).contains("counting=42i");
+    assertThat(point.toLineProtocol())
+        .contains("counting=42i")
+        .contains("countingDelta=7i");
   }
 
   @Test
@@ -46,10 +49,11 @@ class InfluxTelemetryWriterTest {
     var envelope = new TelemetryEnvelope("trace-789", "factory/GM1/BF-08410/telemetry", "{}",
         Instant.parse("2026-08-08T10:00:00Z"));
 
-    String lineProtocol = InfluxTelemetryWriter.toPoint(payload, envelope, "GM1", "BF-08410").toLineProtocol();
+    String lineProtocol = InfluxTelemetryWriter.toPoint(payload, envelope, "GM1", "BF-08410", 0).toLineProtocol();
 
     assertThat(lineProtocol)
         .contains("counting=" + Long.MAX_VALUE + "i")
+        .contains("countingDelta=0i")
         .contains("running=true")
         .contains("runtimeHours=");
     assertThat(Double.parseDouble(fieldValue(lineProtocol, "runtimeHours"))).isEqualTo(1.0E308);

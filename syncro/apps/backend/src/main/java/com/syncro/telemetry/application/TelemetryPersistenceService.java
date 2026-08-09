@@ -56,8 +56,12 @@ public class TelemetryPersistenceService {
       return;
     }
 
+    long countingDelta;
     try {
-      Point point = InfluxTelemetryWriter.toPoint(accepted.payload(), envelope, plantCode, machineCode);
+      countingDelta = redisLatestWriter.readCounting(machineId)
+          .map(previous -> CountingDeltaCalculator.delta(previous, accepted.payload().counting()))
+          .orElse(0L);
+      Point point = InfluxTelemetryWriter.toPoint(accepted.payload(), envelope, plantCode, machineCode, countingDelta);
       influxWriter.write(point, machineCode, envelope.traceId());
     } catch (RuntimeException exception) {
       deleteDedupeKey(dedupeKey, machineCode, envelope.traceId());
@@ -72,13 +76,15 @@ public class TelemetryPersistenceService {
           "running", Boolean.toString(accepted.payload().running()),
           "runtimeHours", Double.toString(accepted.payload().runtimeHours()),
           "counting", Long.toString(accepted.payload().counting()),
+          "countingDelta", Long.toString(countingDelta),
           "receivedAt", envelope.receivedAt().toString(),
           "traceId", envelope.traceId()), properties.latestTtl());
     } catch (RuntimeException exception) {
       throw exception;
     }
 
-    log.info("mqtt_telemetry_persisted traceId={} machineCode={}", envelope.traceId(), machineCode);
+    log.info("mqtt_telemetry_persisted traceId={} machineCode={} countingDelta={}",
+        envelope.traceId(), machineCode, countingDelta);
   }
 
   private void deleteDedupeKey(String dedupeKey, String machineCode, String traceId) {

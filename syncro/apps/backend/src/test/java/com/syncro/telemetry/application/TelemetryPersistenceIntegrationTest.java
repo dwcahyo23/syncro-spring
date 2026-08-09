@@ -149,6 +149,8 @@ class TelemetryPersistenceIntegrationTest {
         .getValueByKey("_value")).isEqualTo(12.5);
     assertThat(records.stream().filter(record -> "counting".equals(record.getField())).findFirst().orElseThrow()
         .getValueByKey("_value")).isEqualTo(100L);
+    assertThat(records.stream().filter(record -> "countingDelta".equals(record.getField())).findFirst().orElseThrow()
+        .getValueByKey("_value")).isEqualTo(0L);
     assertThat(records.stream().filter(record -> "traceId".equals(record.getField())).findFirst().orElseThrow()
         .getValueByKey("_value")).isEqualTo(traceId);
   }
@@ -222,6 +224,58 @@ class TelemetryPersistenceIntegrationTest {
     assertThat(records).isNotEmpty();
     assertThat(records).anyMatch(record -> "counting".equals(record.getField())
         && record.getValueByKey("_value").equals(100L));
+    assertThat(records.stream().filter(record -> "countingDelta".equals(record.getField())).findFirst().orElseThrow()
+        .getValueByKey("_value")).isEqualTo(0L);
+  }
+
+  @Test
+  @DisplayName("3.5-DELTA-001 first sample countingDelta is 0 in latest hash and InfluxDB point")
+  void firstSampleDeltaIsZero() {
+    var machine = seedPlantAndMachine();
+    String traceId = "trace-delta-001";
+    Instant receivedAt = uniqueReceivedAt();
+    persistCounting(machine, traceId, receivedAt, 100);
+
+    String key = "syncro:machine:" + machine.getId() + ":latest";
+    assertThat(redisTemplate.opsForHash().entries(key)).containsEntry("countingDelta", "0");
+
+    var records = telemetryRecords(machine, receivedAt);
+    assertThat(records.stream().filter(record -> "countingDelta".equals(record.getField())).findFirst().orElseThrow()
+        .getValueByKey("_value")).isEqualTo(0L);
+  }
+
+  @Test
+  @DisplayName("3.5-DELTA-002 consecutive increasing counting produces direct delta")
+  void consecutiveIncreaseProducesDirectDelta() {
+    var machine = seedPlantAndMachine();
+    Instant firstReceivedAt = uniqueReceivedAt();
+    Instant secondReceivedAt = uniqueReceivedAt();
+    persistCounting(machine, "trace-delta-002-a", firstReceivedAt, 100);
+    persistCounting(machine, "trace-delta-002-b", secondReceivedAt, 200);
+
+    String key = "syncro:machine:" + machine.getId() + ":latest";
+    assertThat(redisTemplate.opsForHash().entries(key)).containsEntry("countingDelta", "100");
+
+    var secondPointRecords = telemetryRecords(machine, secondReceivedAt);
+    assertThat(secondPointRecords.stream().filter(record -> "countingDelta".equals(record.getField()))
+        .findFirst().orElseThrow().getValueByKey("_value")).isEqualTo(100L);
+  }
+
+  @Test
+  @DisplayName("3.5-DELTA-003 counting wrap from 65535 to 0 produces delta 1")
+  void wrapFromMaxToZeroProducesDeltaOne() {
+    var machine = seedPlantAndMachine();
+    Instant firstReceivedAt = uniqueReceivedAt();
+    Instant secondReceivedAt = uniqueReceivedAt();
+    persistCounting(machine, "trace-delta-003-a", firstReceivedAt, 65535);
+    persistCounting(machine, "trace-delta-003-b", secondReceivedAt, 0);
+
+    String key = "syncro:machine:" + machine.getId() + ":latest";
+    assertThat(redisTemplate.opsForHash().entries(key)).containsEntry("countingDelta", "1");
+
+    var secondPointRecords = telemetryRecords(machine, secondReceivedAt);
+    assertThat(secondPointRecords.stream().filter(record -> "countingDelta".equals(record.getField()))
+        .findFirst().orElseThrow().getValueByKey("_value")).isEqualTo(1L);
   }
 
   private void persist(MachineEntity machine, String traceId, Instant receivedAt) {
@@ -229,8 +283,18 @@ class TelemetryPersistenceIntegrationTest {
     persistenceService.persist(accepted, envelope(traceId, receivedAt));
   }
 
+  private void persistCounting(MachineEntity machine, String traceId, Instant receivedAt, long counting) {
+    String payload = "{\"running\":true,\"runtimeHours\":12.5,\"counting\":" + counting + "}";
+    var accepted = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, payload);
+    persistenceService.persist(accepted, envelope(traceId, receivedAt, payload));
+  }
+
   private TelemetryEnvelope envelope(String traceId, Instant receivedAt) {
     return new TelemetryEnvelope(traceId, TOPIC, PAYLOAD, receivedAt);
+  }
+
+  private TelemetryEnvelope envelope(String traceId, Instant receivedAt, String payload) {
+    return new TelemetryEnvelope(traceId, TOPIC, payload, receivedAt);
   }
 
   private static Instant uniqueReceivedAt() {
