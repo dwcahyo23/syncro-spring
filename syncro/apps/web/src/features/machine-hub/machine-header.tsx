@@ -2,67 +2,59 @@
 
 import { Loader2Icon, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { MachineViewStatus } from "@/lib/api/generated/model";
+import type { MachineViewStatus, TelemetryData } from "@/lib/api/generated/model";
+import { StatusBadge } from "@/components/syncro/status-badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export interface MachineHeaderProps {
   machineCode: string;
   onRefresh: () => void;
   isLoading: boolean;
+  machineStatus?: MachineViewStatus;
+  freshnessState?: "ONLINE" | "OFFLINE" | "STALE";
 }
 
-interface CachedMachineData {
-  name?: string;
-  status?: MachineViewStatus;
-  brand?: string;
-  plantName?: string;
-  telemetry?: {
-    timestamp?: string;
-    isOnline?: boolean;
-  };
-}
-
-const cache = new Map<string, CachedMachineData>();
-
-export function MachineHeader({ machineCode, onRefresh, isLoading }: MachineHeaderProps) {
-  const data = useMemo(() => cache.get(machineCode), [machineCode]);
-
-  useEffect(() => {
-    if (data && data.telemetry?.timestamp) {
-      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-      const telemetryTime = new Date(data.telemetry.timestamp).getTime();
-      const isOnline = telemetryTime > fiveMinutesAgo;
-      cache.set(machineCode, { ...data, telemetry: { ...data.telemetry, isOnline } });
-    }
-  }, [machineCode, data]);
-
-  const cached = cache.get(machineCode);
-
+export function MachineHeader({
+  machineCode,
+  onRefresh,
+  isLoading,
+  machineStatus,
+  freshnessState,
+}: MachineHeaderProps) {
   return (
     <div className="rounded-lg border bg-card p-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold tracking-tight">{cached?.name || machineCode}</h1>
+          {isLoading ? (
+            <Skeleton className="h-8 w-[200px]" />
+          ) : (
+            <h1 className="text-2xl font-bold tracking-tight">{machineCode}</h1>
+          )}
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-            <span className="inline-flex items-center rounded-md px-2.5 py-0.5 bg-muted font-medium">
-              Code: {machineCode}
-            </span>
-            {cached?.status && (
-              <span className="inline-flex items-center gap-1.5">
-                <StatusBadge
-                  status={cached.status === "ACTIVE" ? "ONLINE" : "OFFLINE"}
-                  variant={cached.status === "ACTIVE" ? "success" : "destructive"}
-                />
-                Manual Status: {cached.status}
-              </span>
-            )}
-            {cached?.telemetry && (
-              <span className="inline-flex items-center gap-1.5">
-                <StatusBadge
-                  status={cached.telemetry.isOnline ? "ONLINE" : "STALE"}
-                  variant={cached.telemetry.isOnline ? "success" : "warning"}
-                />
-                Telemetry: {cached.telemetry.isOnline ? "Fresh" : "Stale"}
-              </span>
+            {!isLoading && (
+              <>
+                <span className="inline-flex items-center rounded-md px-2.5 py-0.5 bg-muted font-medium">
+                  Code: {machineCode}
+                </span>
+                {machineStatus && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <StatusBadge
+                      status={machineStatus === "ACTIVE" ? "ONLINE" : "OFFLINE"}
+                      variant={machineStatus === "ACTIVE" ? "success" : "destructive"}
+                    />
+                    Manual Status: {machineStatus}
+                  </span>
+                )}
+                {(freshnessState === "ONLINE" || freshnessState === "OFFLINE" || freshnessState === "STALE") && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <StatusBadge status={freshnessState} variant="outline" />
+                    Telemetry Freshness
+                  </span>
+                )}
+                {!machineStatus && !freshnessState && (
+                  <span className="text-muted-foreground italic">No data available</span>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -81,11 +73,6 @@ export function MachineHeader({ machineCode, onRefresh, isLoading }: MachineHead
           )}
         </Button>
       </div>
-      {cached?.plantName && (
-        <p className="mt-4 text-sm text-muted-foreground">
-          Plant: {cached.plantName} • Brand: {cached.brand || "Unknown"}
-        </p>
-      )}
     </div>
   );
 }

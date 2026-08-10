@@ -27,7 +27,7 @@ public class AuditLogController {
     this.service = service;
   }
 
-  @Operation(operationId = "listAuditLogEntries", summary = "List audit log entries")
+  @Operation(operationId = "listGlobalAuditLogEntries", summary = "List global audit log entries")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Audit log entries returned"),
       @ApiResponse(responseCode = "400", description = "Invalid filter"),
@@ -38,6 +38,7 @@ public class AuditLogController {
   public AuditLogListResponse list(@AuthenticationPrincipal AuthenticatedUser user,
       @RequestParam(required = false) AuditEntityType entityType,
       @RequestParam(required = false) String actor,
+      @RequestParam(required = false) UUID entityId,
       @RequestParam(required = false) UUID plantId,
       @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE_TIME) Instant from,
       @RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE_TIME) Instant to,

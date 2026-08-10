@@ -167,6 +167,12 @@ syncro/**/.ruff_cache/
 syncro/**/.cache/
 syncro/**/*.tsbuildinfo
 
+# Generated OpenAPI client (backend -> web)
+syncro/apps/web/src/lib/api/generated/
+**/src/lib/api/generated/
+**/openapi-generated/
+**/api-generated/
+
 # Syncro infrastructure runtime data
 syncro/**/data/
 syncro/**/.data/

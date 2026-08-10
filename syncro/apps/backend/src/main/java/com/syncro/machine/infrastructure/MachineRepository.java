@@ -55,6 +55,8 @@ public interface MachineRepository extends JpaRepository<MachineEntity, UUID> {
 
   Optional<MachineEntity> findByPlantIdAndCodeIgnoreCase(UUID plantId, String code);
 
+  Optional<MachineEntity> findByCodeIgnoreCase(String code);
+
   boolean existsByPlantIdAndCodeIgnoreCase(UUID plantId, String code);
 
   long countByPlantIdIn(List<UUID> plantIds);

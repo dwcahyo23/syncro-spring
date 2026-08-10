@@ -1,5 +1,7 @@
 package com.syncro.machine.api;
 
+import com.syncro.audit.application.AuditLogService;
+import com.syncro.audit.application.AuditLogService.AuditLogQuery;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.machine.api.MachineDtos.MachineListResponse;
 import com.syncro.machine.api.MachineDtos.MachineRequest;
@@ -7,6 +9,7 @@ import com.syncro.machine.api.MachineDtos.MachineView;
 import com.syncro.machine.application.MachineService;
 import com.syncro.machine.application.MachineService.MachineCommand;
 import com.syncro.machine.domain.MachineStatus;
+import com.syncro.sparepart.application.MachineSparepartInstallationService;
 import com.syncro.telemetry.application.LatestTelemetryQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -16,6 +19,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
@@ -37,10 +41,17 @@ public class MachineController {
   private final MachineService machines;
   private final LatestTelemetryQueryService telemetryQuery;
 
-  public MachineController(MachineService machines, LatestTelemetryQueryService telemetryQuery) {
+  public MachineController(MachineService machines, LatestTelemetryQueryService telemetryQuery, MachineSparepartInstallationService sparepartInstallations, AuditLogService auditLog) {
     this.machines = machines;
     this.telemetryQuery = telemetryQuery;
+    this.sparepartInstallations = sparepartInstallations;
+    this.auditLog = auditLog;
   }
+
+  private final MachineService machines;
+  private final LatestTelemetryQueryService telemetryQuery;
+  private final MachineSparepartInstallationService sparepartInstallations;
+  private final AuditLogService auditLog;
 
   @Operation(operationId = "listMachines", summary = "List machines")
   @ApiResponses({
@@ -148,13 +159,24 @@ public class MachineController {
   })
   @GetMapping("/{machineId}/spareparts")
   public ResponseEntity<Map<String, Object>> getSpareparts(@AuthenticationPrincipal AuthenticatedUser user, 
-                                                           @PathVariable UUID machineId) {
-    // Placeholder - implement actual sparepart fetching
-    var items = Map.<String, Object>of();
-    return ResponseEntity.ok(Map.of("items", items));
+                                                            @PathVariable UUID machineId) {
+    var result = sparepartInstallations.list(user, new MachineSparepartInstallationService.InstallationFilters(machineId, null, null, null), org.springframework.data.domain.Pageable.unpaged());
+    return ResponseEntity.ok(Map.of("items", result.items().stream().map(this::toSparepartDto).toList()));
   }
 
-  @Operation(operationId = "listAuditLogEntries", summary = "List audit log entries for a machine")
+  private Map<String, Object> toSparepartDto(MachineSparepartInstallationService.InstallationView installation) {
+    return Map.of(
+        "installationId", installation.id().toString(),
+        "sparepartCode", installation.sparepartCode(),
+        "sparepartName", installation.sparepartName(),
+        "functionName", installation.functionName(),
+        "lifetimeHours", installation.lifetimeHours(),
+        "installedAt", installation.installedAt().toString(),
+        "isRemoved", installation.isRemoved()
+    );
+  }
+
+  @Operation(operationId = "listMachineAuditLogEntries", summary = "List audit log entries for a machine")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Audit log entries returned"),
       @ApiResponse(responseCode = "401", description = "Authentication required"),
@@ -163,11 +185,23 @@ public class MachineController {
   })
   @GetMapping("/{machineId}/audit-log")
   public ResponseEntity<Map<String, Object>> getAuditLog(@AuthenticationPrincipal AuthenticatedUser user,
-                                                         @PathVariable UUID machineId,
-                                                         @RequestParam(defaultValue = "50") int pageSize) {
-    // Placeholder - implement actual audit log fetching
-    var items = Map.<String, Object>of();
-    return ResponseEntity.ok(Map.of("items", items));
+                                                          @PathVariable UUID machineId,
+                                                          @RequestParam(defaultValue = "50") int pageSize) {
+    var result = auditLog.list(user, new AuditLogQuery(com.syncro.audit.domain.AuditEntityType.MACHINE, null, null, null, null, 0, pageSize, "createdAt,desc"));
+    return ResponseEntity.ok(Map.of("items", result.items().stream().map(this::toAuditEntryDto).toList()));
+  }
+
+  private Map<String, Object> toAuditEntryDto(com.syncro.audit.api.AuditLogDtos.AuditLogEntryView entry) {
+    return Map.of(
+        "id", entry.id().toString(),
+        "action", entry.action().name(),
+        "entityType", entry.entityType().name(),
+        "entityLabel", entry.entityLabel(),
+        "actorName", entry.actorName(),
+        "timestamp", entry.createdAt().toString(),
+        "previousValue", entry.previousValue(),
+        "newValue", entry.newValue()
+    );
   }
 
   private static MachineCommand command(MachineRequest request) {

@@ -116,6 +116,20 @@ public class MachineService {
     return toView(findScoped(user, machineId));
   }
 
+  @Transactional(readOnly = true)
+  public MachineView getByCode(AuthenticatedUser user, String machineCode) {
+    var normalized = normalizeCode(machineCode);
+    var machine = machines.findByCodeIgnoreCase(normalized)
+        .orElseThrow(MachineNotFoundException::new);
+    
+    // Check plant assignment for non-SUPER_ADMIN users
+    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN) {
+      plantScopes.requirePlantAccess(user, machine.getPlant().getId());
+    }
+    
+    return toView(machine);
+  }
+
   @Transactional
   public MachineView create(AuthenticatedUser user, MachineCommand command) {
     requireMutationRole(user);
