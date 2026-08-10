@@ -15,6 +15,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -122,6 +124,50 @@ public class MachineController {
   public ResponseEntity<Void> delete(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID machineId) {
     machines.delete(user, machineId);
     return ResponseEntity.noContent().build();
+  }
+
+  @Operation(operationId = "getMachineByCode", summary = "Get machine by code")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Machine returned"),
+      @ApiResponse(responseCode = "400", description = "Invalid machine code"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Machine not found")
+  })
+  @GetMapping("/code/{machineCode}")
+  public MachineView getByCode(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable String machineCode) {
+    return hydrateWithLatestTelemetry(machines.getByCode(user, machineCode));
+  }
+
+  @Operation(operationId = "listMachineSpareparts", summary = "List spareparts for a machine")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Spareparts returned"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Machine not found")
+  })
+  @GetMapping("/{machineId}/spareparts")
+  public ResponseEntity<Map<String, Object>> getSpareparts(@AuthenticationPrincipal AuthenticatedUser user, 
+                                                           @PathVariable UUID machineId) {
+    // Placeholder - implement actual sparepart fetching
+    var items = Map.<String, Object>of();
+    return ResponseEntity.ok(Map.of("items", items));
+  }
+
+  @Operation(operationId = "listAuditLogEntries", summary = "List audit log entries for a machine")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Audit log entries returned"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Machine not found")
+  })
+  @GetMapping("/{machineId}/audit-log")
+  public ResponseEntity<Map<String, Object>> getAuditLog(@AuthenticationPrincipal AuthenticatedUser user,
+                                                         @PathVariable UUID machineId,
+                                                         @RequestParam(defaultValue = "50") int pageSize) {
+    // Placeholder - implement actual audit log fetching
+    var items = Map.<String, Object>of();
+    return ResponseEntity.ok(Map.of("items", items));
   }
 
   private static MachineCommand command(MachineRequest request) {
