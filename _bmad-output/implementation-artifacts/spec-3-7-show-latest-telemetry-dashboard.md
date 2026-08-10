@@ -3,10 +3,10 @@ title: '3-7 Show Latest Telemetry Dashboard'
 type: 'feature'
 created: '2026-08-10'
 baseline_revision: '5597e5a3870849174b5fc5baedabf3c9ae53ba3b'
-status: 'in-review'
-review_loop_iteration: 0
+status: 'done'
+review_loop_iteration: 1
 followup_review_recommended: false
-final_revision: ''
+final_revision: 'bdf673e9b1757b4d0db53cf153d7d0a5859265f6'
 context:
   - '_bmad-output/project-context.md'
   - '_bmad-output/implementation-artifacts/epic-3-context.md'

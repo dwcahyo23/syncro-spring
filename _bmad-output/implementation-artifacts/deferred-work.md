@@ -198,3 +198,21 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-6-support-optional-machine-telemetry-fields.md`
   summary: `MachineService.update` is full-replace, so a client that omits or sends `null` for `optionalTelemetryFields` on a routine machine edit (the frontend is explicitly untouched by Story 3.6 and does not yet send the field) normalizes to `List.of()` and silently erases the machine's previously configured optional telemetry fields; Stories 3.7/3.8 may later find the config gone.
   evidence: Real, surfaced by review of Story 3.6 (BH-6) — update always overwrites `optionalTelemetryFields` from the request (null ≡ empty per the intent-contract), while create/update paths are the only sanctioned writers of the config. Fixing requires either null-means-unchanged update semantics (a deviation from the documented null ≡ empty contract) or frontend field passthrough coordinated with Stories 3.7/3.8 — a design decision, not a local code fix.
+
+### DW-33: Sequential per-machine Redis reads on the machine list hydration path
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-7-show-latest-telemetry-dashboard.md`
+  summary: `MachineController` hydrates each machine's latest telemetry with an individual `readLatestAsMap` call; a page of 200 ACTIVE machines issues up to 200 sequential Redis round trips with no batch/pipeline.
+  evidence: Real, surfaced by review of Story 3.7 (Edge Case Hunter performance finding) — acceptable at current plant/fleet scale and the Design Notes explicitly defer batching (target p95 <500ms); candidate for a Redis pipeline/batch read when Epic 3 adds a performance hardening story.
+  status: open
+
+### DW-34: Dashboard fetch capped at 200 machines with no truncation indicator
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-7-show-latest-telemetry-dashboard.md`
+  summary: `useTelemetryDashboardQuery` requests `size: 200` and renders whatever returns; if a plant scope ever exceeds 200 ACTIVE machines the dashboard silently drops the remainder with no "showing first N" notice or pagination.
+  evidence: Real, surfaced by review of Story 3.7 — the spec's I/O matrix assumes plant-scoped counts well below 200; pagination/virtualization is out of Story 3.7 scope (spec Residual Risks already calls out future pagination). Revisit when any plant approaches the cap.
+  status: open
+
+### DW-35: Orval models stale for Story 3.7 `latestTelemetry` contract
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-7-show-latest-telemetry-dashboard.md`
+  summary: `syncro/apps/web/src/lib/api/generated/model/machineView.ts` lacks the `latestTelemetry` field; the dashboard uses interim manual types in `features/telemetry/types/index.ts` cast from `useListMachines`. Regeneration needs the backend OpenAPI endpoint (`/v3/api-docs`) which was unavailable at implementation time.
+  evidence: Real, surfaced during Story 3.7 implementation — tracked so the generated types are regenerated and the interim types removed once the backend contract is regenerated from the live OpenAPI doc (Epic 26 AR owns generation; this entry records the drift).
+  status: open
