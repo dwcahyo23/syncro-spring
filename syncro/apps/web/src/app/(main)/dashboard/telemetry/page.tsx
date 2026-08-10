@@ -1,11 +1,10 @@
-import { PlantScopedModulePlaceholder } from "@/features/plant-scope/plant-scoped-module-placeholder";
+import { RoleGuard } from "@/components/syncro/role-guard";
+import { TelemetryDashboardPage } from "@/features/telemetry/components/telemetry-dashboard-page";
 
 export default function Page() {
   return (
-    <PlantScopedModulePlaceholder
-      title="Telemetry"
-      description="Latest accepted telemetry views will render here after backend telemetry APIs exist."
-      sections={["Latest machine state", "Freshness states", "Configured fields placeholder"]}
-    />
+    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGE", "VIEWER"]} title="Telemetry">
+      <TelemetryDashboardPage />
+    </RoleGuard>
   );
 }

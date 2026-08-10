@@ -17,8 +17,12 @@ declare module "lucide-react" {
   export const ChevronUpIcon: LucideIcon;
   export const ChevronsUpDown: LucideIcon;
   export const Circle: LucideIcon;
+  export const CircleCheck: LucideIcon;
   export const CircleCheckIcon: LucideIcon;
+  export const CircleDashed: LucideIcon;
+  export const CircleSlash: LucideIcon;
   export const CircleUser: LucideIcon;
+  export const Clock: LucideIcon;
   export const Command: LucideIcon;
   export const CreditCard: LucideIcon;
   export const Database: LucideIcon;
@@ -30,6 +34,7 @@ declare module "lucide-react" {
   export const GalleryVerticalEnd: LucideIcon;
   export const Gauge: LucideIcon;
   export const Globe: LucideIcon;
+  export const Hash: LucideIcon;
   export const HeartPulse: LucideIcon;
   export const InfoIcon: LucideIcon;
   export const LayoutDashboard: LucideIcon;
@@ -52,6 +57,7 @@ declare module "lucide-react" {
   export const Plus: LucideIcon;
   export const PlusCircleIcon: LucideIcon;
   export const Radio: LucideIcon;
+  export const RefreshCw: LucideIcon;
   export const Search: LucideIcon;
   export const SearchIcon: LucideIcon;
   export const Settings: LucideIcon;

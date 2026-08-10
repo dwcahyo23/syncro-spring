@@ -7,6 +7,7 @@ import com.syncro.machine.api.MachineDtos.MachineView;
 import com.syncro.machine.application.MachineService;
 import com.syncro.machine.application.MachineService.MachineCommand;
 import com.syncro.machine.domain.MachineStatus;
+import com.syncro.telemetry.application.LatestTelemetryQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -30,10 +31,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/machines")
 public class MachineController {
-  private final MachineService machines;
 
-  public MachineController(MachineService machines) {
+  private final MachineService machines;
+  private final LatestTelemetryQueryService telemetryQuery;
+
+  public MachineController(MachineService machines, LatestTelemetryQueryService telemetryQuery) {
     this.machines = machines;
+    this.telemetryQuery = telemetryQuery;
   }
 
   @Operation(operationId = "listMachines", summary = "List machines")
@@ -55,8 +59,10 @@ public class MachineController {
       @RequestParam(defaultValue = "100") int size,
       @RequestParam(defaultValue = "code,asc") String sort) {
     var result = machines.list(user, plantId, machineGroupId, status, search, page, limit == null ? size : limit, sort);
-    return new MachineListResponse(
-        result.items().stream().map(this::toDto).toList(), result.totalElements(), result.page(), result.size(), result.sort());
+    var hydratedItems = result.items().stream()
+        .map(this::hydrateWithLatestTelemetry)
+        .toList();
+    return new MachineListResponse(hydratedItems, result.totalElements(), result.page(), result.size(), result.sort());
   }
 
   @Operation(operationId = "getMachine", summary = "Get machine")
@@ -69,7 +75,7 @@ public class MachineController {
   })
   @GetMapping("/{machineId}")
   public MachineView get(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID machineId) {
-    return toDto(machines.get(user, machineId));
+    return hydrateWithLatestTelemetry(machines.get(user, machineId));
   }
 
   @Operation(operationId = "createMachine", summary = "Create machine")
@@ -118,7 +124,7 @@ public class MachineController {
     return ResponseEntity.noContent().build();
   }
 
-  private MachineCommand command(MachineRequest request) {
+  private static MachineCommand command(MachineRequest request) {
     return new MachineCommand(request.plantId(), request.machineGroupId(), request.code(), request.name(), request.status(),
         request.brand(), request.installedAt(), request.notes(), request.optionalTelemetryFields());
   }
@@ -126,6 +132,13 @@ public class MachineController {
   private MachineView toDto(MachineService.MachineView machine) {
     return new MachineView(machine.id(), machine.plantId(), machine.plantCode(), machine.plantName(), machine.machineGroupId(),
         machine.machineGroupName(), machine.code(), machine.name(), machine.status(), machine.brand(), machine.installedAt(),
-        machine.notes(), machine.createdAt(), machine.updatedAt(), machine.optionalTelemetryFields());
+        machine.notes(), machine.createdAt(), machine.updatedAt(), machine.optionalTelemetryFields(), null);
+  }
+
+  private MachineView hydrateWithLatestTelemetry(MachineService.MachineView machine) {
+    var telemetry = telemetryQuery.latestTelemetry(machine.id(), machine.status());
+    return new MachineView(machine.id(), machine.plantId(), machine.plantCode(), machine.plantName(), machine.machineGroupId(),
+        machine.machineGroupName(), machine.code(), machine.name(), machine.status(), machine.brand(), machine.installedAt(),
+        machine.notes(), machine.createdAt(), machine.updatedAt(), machine.optionalTelemetryFields(), telemetry);
   }
 }

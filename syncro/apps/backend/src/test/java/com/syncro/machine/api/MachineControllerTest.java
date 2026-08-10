@@ -30,9 +30,12 @@ import com.syncro.machine.application.MachineService.MachineNotFoundException;
 import com.syncro.machine.application.MachineService.MachineListView;
 import com.syncro.machine.application.MachineService.MachineView;
 import com.syncro.machine.domain.MachineStatus;
+import com.syncro.telemetry.application.LatestTelemetryDto;
+import com.syncro.telemetry.application.LatestTelemetryQueryService;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -61,6 +64,9 @@ class MachineControllerTest {
 
   @MockitoBean
   private JwtTokenService jwtTokenService;
+
+  @MockitoBean
+  private LatestTelemetryQueryService telemetryQuery;
 
   @Test
   @DisplayName("2.3-API-001 P0 unauthenticated users cannot list machines")
@@ -287,6 +293,72 @@ class MachineControllerTest {
   private static String payload(UUID plantId, UUID groupId, String code, String status) {
     return "{\"plantId\":\"" + plantId + "\",\"machineGroupId\":\"" + groupId + "\",\"code\":\"" + code
         + "\",\"name\":\"JBF19\",\"status\":\"" + status + "\",\"brand\":\"Juki\",\"installedAt\":\"2026-05-27\",\"notes\":\"Pilot machine\"}";
+  }
+
+  @Test
+  @DisplayName("3-7-API-001 P1 list machines returns telemetry when available")
+  void listMachinesReturnsTelemetry() throws Exception {
+    var user = user(ApplicationRole.SUPER_ADMIN);
+    var plantId = UUID.randomUUID();
+    var groupId = UUID.randomUUID();
+    var machineId = UUID.randomUUID();
+    var machineView = new MachineService.MachineView(machineId, plantId, "GM1", "Plant GM1", groupId, "Forming",
+        "BF-08410", "JBF19", MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Active machine",
+        Instant.parse("2026-05-27T00:00:00Z"), Instant.parse("2026-05-27T00:00:00Z"), List.of());
+    var telemetryData = new LatestTelemetryDto.TelemetryData(machineId, true, 123.4, 1000L,
+        Instant.parse("2026-08-10T10:00:00Z"), LatestTelemetryDto.FreshnessState.ONLINE, Map.of(), false);
+    when(machines.list(user, plantId, null, null, null, 0, 100, "code,asc"))
+        .thenReturn(new MachineListView(List.of(machineView), 1, 0, 100, "code,asc"));
+    when(telemetryQuery.latestTelemetry(machineId, MachineStatus.ACTIVE)).thenReturn(telemetryData);
+
+    mockMvc.perform(get("/api/v1/machines")
+        .param("plantId", plantId.toString())
+        .with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items[0].id").value(machineId.toString()))
+        .andExpect(jsonPath("$.items[0].latestTelemetry.running").value(true))
+        .andExpect(jsonPath("$.items[0].latestTelemetry.runtimeHours").value(123.4))
+        .andExpect(jsonPath("$.items[0].latestTelemetry.counting").value(1000));
+  }
+
+  @Test
+  @DisplayName("3-7-API-002 P1 get machine returns telemetry when available")
+  void getMachineReturnsTelemetry() throws Exception {
+    var user = user(ApplicationRole.SUPER_ADMIN);
+    var machineId = UUID.randomUUID();
+    var machineView = new MachineService.MachineView(machineId, UUID.randomUUID(), "GM1", "Plant GM1", UUID.randomUUID(), "Forming",
+        "BF-08410", "JBF19", MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Active machine",
+        Instant.parse("2026-05-27T00:00:00Z"), Instant.parse("2026-05-27T00:00:00Z"), List.of());
+    var telemetryData = new LatestTelemetryDto.TelemetryData(machineId, true, 123.4, 1000L,
+        Instant.parse("2026-08-10T10:00:00Z"), LatestTelemetryDto.FreshnessState.OFFLINE, Map.of(), false);
+    when(machines.get(user, machineId)).thenReturn(machineView);
+    when(telemetryQuery.latestTelemetry(machineId, MachineStatus.ACTIVE)).thenReturn(telemetryData);
+
+    mockMvc.perform(get("/api/v1/machines/{id}", machineId).with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.latestTelemetry.running").value(true))
+        .andExpect(jsonPath("$.latestTelemetry.freshnessState").value("OFFLINE"));
+  }
+
+  @Test
+  @DisplayName("3-7-API-003 P1 list machines handles missing telemetry gracefully")
+  void listMachinesHandlesMissingTelemetry() throws Exception {
+    var user = user(ApplicationRole.SUPER_ADMIN);
+    var plantId = UUID.randomUUID();
+    var groupId = UUID.randomUUID();
+    var machineId = UUID.randomUUID();
+    var machineView = new MachineService.MachineView(machineId, plantId, "GM1", "Plant GM1", groupId, "Forming",
+        "BF-08410", "JBF19", MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Active machine",
+        Instant.parse("2026-05-27T00:00:00Z"), Instant.parse("2026-05-27T00:00:00Z"), List.of());
+    when(machines.list(user, plantId, null, null, null, 0, 100, "code,asc"))
+        .thenReturn(new MachineListView(List.of(machineView), 1, 0, 100, "code,asc"));
+    when(telemetryQuery.latestTelemetry(machineId, MachineStatus.ACTIVE)).thenReturn(null);
+
+    mockMvc.perform(get("/api/v1/machines")
+        .param("plantId", plantId.toString())
+        .with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items[0].latestTelemetry").doesNotExist());
   }
 
   private static AuthenticatedUser user(ApplicationRole role) {

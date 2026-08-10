@@ -1,6 +1,7 @@
 package com.syncro.machine.api;
 
 import com.syncro.machine.domain.MachineStatus;
+import com.syncro.telemetry.application.LatestTelemetryDto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -8,6 +9,7 @@ import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public final class MachineDtos {
@@ -41,7 +43,8 @@ public final class MachineDtos {
       String notes,
       Instant createdAt,
       Instant updatedAt,
-      List<String> optionalTelemetryFields) {
+      List<String> optionalTelemetryFields,
+      LatestTelemetryDto.TelemetryData latestTelemetry) {
   }
 
   public record MachineListResponse(List<MachineView> items, long totalElements, int page, int size, String sort) {

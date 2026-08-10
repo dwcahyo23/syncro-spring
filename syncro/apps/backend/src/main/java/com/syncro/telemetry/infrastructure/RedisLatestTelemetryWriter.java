@@ -1,6 +1,7 @@
 package com.syncro.telemetry.infrastructure;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -50,6 +51,20 @@ public class RedisLatestTelemetryWriter {
       log.warn("mqtt_telemetry_latest_counting_malformed machineId={} rawValue={}", machineId, value);
       return Optional.empty();
     }
+  }
+
+  public Map<String, String> readLatestAsMap(UUID machineId) {
+    Map<Object, Object> entries = redis.opsForHash().entries(latestKey(machineId));
+    if (entries.isEmpty()) {
+      return Map.of();
+    }
+    Map<String, String> result = new HashMap<>();
+    for (Map.Entry<Object, Object> entry : entries.entrySet()) {
+      if (entry.getKey() != null && entry.getValue() != null) {
+        result.put(entry.getKey().toString(), entry.getValue().toString());
+      }
+    }
+    return result;
   }
 
   private static String latestKey(UUID machineId) {
