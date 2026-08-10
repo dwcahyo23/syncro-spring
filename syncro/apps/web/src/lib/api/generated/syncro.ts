@@ -33,19 +33,10 @@ import type {
   InstallationRequest,
   InstallationUpdateRequest,
   InstallationView,
-  ListAuditLogEntries1Params,
-  ListAuditLogEntries200,
-  ListAuditLogEntries401,
-  ListAuditLogEntries403,
-  ListAuditLogEntries404,
   ListAuditLogEntriesParams,
   ListMachineGroupsParams,
   ListMachineResponsibilitiesParams,
   ListMachineSparepartInstallationsParams,
-  ListMachineSpareparts200,
-  ListMachineSpareparts401,
-  ListMachineSpareparts403,
-  ListMachineSpareparts404,
   ListMachinesParams,
   ListSparepartTaxonomiesParams,
   ListSparepartsParams,
@@ -4294,281 +4285,6 @@ export function useGetSetupCompleteness<TData = Awaited<ReturnType<typeof getSet
 
 
 
-export type listMachineSparepartsResponse200 = {
-  data: ListMachineSpareparts200
-  status: 200
-}
-
-export type listMachineSparepartsResponse401 = {
-  data: ListMachineSpareparts401
-  status: 401
-}
-
-export type listMachineSparepartsResponse403 = {
-  data: ListMachineSpareparts403
-  status: 403
-}
-
-export type listMachineSparepartsResponse404 = {
-  data: ListMachineSpareparts404
-  status: 404
-}
-
-export type listMachineSparepartsResponseSuccess = (listMachineSparepartsResponse200) & {
-  headers: Headers;
-};
-export type listMachineSparepartsResponseError = (listMachineSparepartsResponse401 | listMachineSparepartsResponse403 | listMachineSparepartsResponse404) & {
-  headers: Headers;
-};
-
-export type listMachineSparepartsResponse = (listMachineSparepartsResponseSuccess | listMachineSparepartsResponseError)
-
-export const getListMachineSparepartsUrl = (machineId: string,) => {
-
-
-
-
-  return `/api/v1/machines/${machineId}/spareparts`
-}
-
-/**
- * @summary List spareparts for a machine
- */
-export const listMachineSpareparts = async (machineId: string, options?: Parameters<typeof syncroFetch>[1]): Promise<listMachineSparepartsResponse> => {
-
-  return syncroFetch<listMachineSparepartsResponse>(getListMachineSparepartsUrl(machineId),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getListMachineSparepartsQueryKey = (machineId: string,) => {
-    return [
-    `/api/v1/machines/${machineId}/spareparts`
-    ] as const;
-    }
-
-
-export const getListMachineSparepartsQueryOptions = <TData = Awaited<ReturnType<typeof listMachineSpareparts>>, TError = ListMachineSpareparts401 | ListMachineSpareparts403 | ListMachineSpareparts404>(machineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachineSpareparts>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getListMachineSparepartsQueryKey(machineId);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMachineSpareparts>>> = ({ signal }) => listMachineSpareparts(machineId, { signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, enabled: machineId !== null && machineId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMachineSpareparts>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type ListMachineSparepartsQueryResult = NonNullable<Awaited<ReturnType<typeof listMachineSpareparts>>>
-export type ListMachineSparepartsQueryError = ListMachineSpareparts401 | ListMachineSpareparts403 | ListMachineSpareparts404
-
-
-export function useListMachineSpareparts<TData = Awaited<ReturnType<typeof listMachineSpareparts>>, TError = ListMachineSpareparts401 | ListMachineSpareparts403 | ListMachineSpareparts404>(
- machineId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachineSpareparts>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listMachineSpareparts>>,
-          TError,
-          Awaited<ReturnType<typeof listMachineSpareparts>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof syncroFetch>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListMachineSpareparts<TData = Awaited<ReturnType<typeof listMachineSpareparts>>, TError = ListMachineSpareparts401 | ListMachineSpareparts403 | ListMachineSpareparts404>(
- machineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachineSpareparts>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listMachineSpareparts>>,
-          TError,
-          Awaited<ReturnType<typeof listMachineSpareparts>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof syncroFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListMachineSpareparts<TData = Awaited<ReturnType<typeof listMachineSpareparts>>, TError = ListMachineSpareparts401 | ListMachineSpareparts403 | ListMachineSpareparts404>(
- machineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachineSpareparts>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary List spareparts for a machine
- */
-
-export function useListMachineSpareparts<TData = Awaited<ReturnType<typeof listMachineSpareparts>>, TError = ListMachineSpareparts401 | ListMachineSpareparts403 | ListMachineSpareparts404>(
- machineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listMachineSpareparts>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getListMachineSparepartsQueryOptions(machineId,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-
-export type listAuditLogEntriesResponse200 = {
-  data: ListAuditLogEntries200
-  status: 200
-}
-
-export type listAuditLogEntriesResponse401 = {
-  data: ListAuditLogEntries401
-  status: 401
-}
-
-export type listAuditLogEntriesResponse403 = {
-  data: ListAuditLogEntries403
-  status: 403
-}
-
-export type listAuditLogEntriesResponse404 = {
-  data: ListAuditLogEntries404
-  status: 404
-}
-
-export type listAuditLogEntriesResponseSuccess = (listAuditLogEntriesResponse200) & {
-  headers: Headers;
-};
-export type listAuditLogEntriesResponseError = (listAuditLogEntriesResponse401 | listAuditLogEntriesResponse403 | listAuditLogEntriesResponse404) & {
-  headers: Headers;
-};
-
-export type listAuditLogEntriesResponse = (listAuditLogEntriesResponseSuccess | listAuditLogEntriesResponseError)
-
-export const getListAuditLogEntriesUrl = (machineId: string,
-    params?: ListAuditLogEntriesParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : String(value))
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `/api/v1/machines/${machineId}/audit-log?${stringifiedParams}` : `/api/v1/machines/${machineId}/audit-log`
-}
-
-/**
- * @summary List audit log entries for a machine
- */
-export const listAuditLogEntries = async (machineId: string,
-    params?: ListAuditLogEntriesParams, options?: Parameters<typeof syncroFetch>[1]): Promise<listAuditLogEntriesResponse> => {
-
-  return syncroFetch<listAuditLogEntriesResponse>(getListAuditLogEntriesUrl(machineId,params),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getListAuditLogEntriesQueryKey = (machineId: string,
-    params?: ListAuditLogEntriesParams,) => {
-    return [
-    `/api/v1/machines/${machineId}/audit-log`, ...(params ? [params] : [])
-    ] as const;
-    }
-
-
-export const getListAuditLogEntriesQueryOptions = <TData = Awaited<ReturnType<typeof listAuditLogEntries>>, TError = ListAuditLogEntries401 | ListAuditLogEntries403 | ListAuditLogEntries404>(machineId: string,
-    params?: ListAuditLogEntriesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getListAuditLogEntriesQueryKey(machineId,params);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAuditLogEntries>>> = ({ signal }) => listAuditLogEntries(machineId,params, { signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, enabled: machineId !== null && machineId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type ListAuditLogEntriesQueryResult = NonNullable<Awaited<ReturnType<typeof listAuditLogEntries>>>
-export type ListAuditLogEntriesQueryError = ListAuditLogEntries401 | ListAuditLogEntries403 | ListAuditLogEntries404
-
-
-export function useListAuditLogEntries<TData = Awaited<ReturnType<typeof listAuditLogEntries>>, TError = ListAuditLogEntries401 | ListAuditLogEntries403 | ListAuditLogEntries404>(
- machineId: string,
-    params: undefined |  ListAuditLogEntriesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listAuditLogEntries>>,
-          TError,
-          Awaited<ReturnType<typeof listAuditLogEntries>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof syncroFetch>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListAuditLogEntries<TData = Awaited<ReturnType<typeof listAuditLogEntries>>, TError = ListAuditLogEntries401 | ListAuditLogEntries403 | ListAuditLogEntries404>(
- machineId: string,
-    params?: ListAuditLogEntriesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listAuditLogEntries>>,
-          TError,
-          Awaited<ReturnType<typeof listAuditLogEntries>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof syncroFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListAuditLogEntries<TData = Awaited<ReturnType<typeof listAuditLogEntries>>, TError = ListAuditLogEntries401 | ListAuditLogEntries403 | ListAuditLogEntries404>(
- machineId: string,
-    params?: ListAuditLogEntriesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary List audit log entries for a machine
- */
-
-export function useListAuditLogEntries<TData = Awaited<ReturnType<typeof listAuditLogEntries>>, TError = ListAuditLogEntries401 | ListAuditLogEntries403 | ListAuditLogEntries404>(
- machineId: string,
-    params?: ListAuditLogEntriesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getListAuditLogEntriesQueryOptions(machineId,params,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-
 export type getMachineByCodeResponse200 = {
   data: MachineView
   status: 200
@@ -5138,36 +4854,36 @@ export function useMe<TData = Awaited<ReturnType<typeof me>>, TError = unknown>(
 
 
 
-export type listAuditLogEntries1Response200 = {
+export type listAuditLogEntriesResponse200 = {
   data: AuditLogListResponse
   status: 200
 }
 
-export type listAuditLogEntries1Response400 = {
+export type listAuditLogEntriesResponse400 = {
   data: AuditLogListResponse
   status: 400
 }
 
-export type listAuditLogEntries1Response401 = {
+export type listAuditLogEntriesResponse401 = {
   data: AuditLogListResponse
   status: 401
 }
 
-export type listAuditLogEntries1Response403 = {
+export type listAuditLogEntriesResponse403 = {
   data: AuditLogListResponse
   status: 403
 }
 
-export type listAuditLogEntries1ResponseSuccess = (listAuditLogEntries1Response200) & {
+export type listAuditLogEntriesResponseSuccess = (listAuditLogEntriesResponse200) & {
   headers: Headers;
 };
-export type listAuditLogEntries1ResponseError = (listAuditLogEntries1Response400 | listAuditLogEntries1Response401 | listAuditLogEntries1Response403) & {
+export type listAuditLogEntriesResponseError = (listAuditLogEntriesResponse400 | listAuditLogEntriesResponse401 | listAuditLogEntriesResponse403) & {
   headers: Headers;
 };
 
-export type listAuditLogEntries1Response = (listAuditLogEntries1ResponseSuccess | listAuditLogEntries1ResponseError)
+export type listAuditLogEntriesResponse = (listAuditLogEntriesResponseSuccess | listAuditLogEntriesResponseError)
 
-export const getListAuditLogEntries1Url = (params?: ListAuditLogEntries1Params,) => {
+export const getListAuditLogEntriesUrl = (params?: ListAuditLogEntriesParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -5185,9 +4901,9 @@ export const getListAuditLogEntries1Url = (params?: ListAuditLogEntries1Params,)
 /**
  * @summary List audit log entries
  */
-export const listAuditLogEntries1 = async (params?: ListAuditLogEntries1Params, options?: Parameters<typeof syncroFetch>[1]): Promise<listAuditLogEntries1Response> => {
+export const listAuditLogEntries = async (params?: ListAuditLogEntriesParams, options?: Parameters<typeof syncroFetch>[1]): Promise<listAuditLogEntriesResponse> => {
 
-  return syncroFetch<listAuditLogEntries1Response>(getListAuditLogEntries1Url(params),
+  return syncroFetch<listAuditLogEntriesResponse>(getListAuditLogEntriesUrl(params),
   {
     ...options,
     method: 'GET'
@@ -5200,69 +4916,69 @@ export const listAuditLogEntries1 = async (params?: ListAuditLogEntries1Params, 
 
 
 
-export const getListAuditLogEntries1QueryKey = (params?: ListAuditLogEntries1Params,) => {
+export const getListAuditLogEntriesQueryKey = (params?: ListAuditLogEntriesParams,) => {
     return [
     `/api/v1/audit-log`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListAuditLogEntries1QueryOptions = <TData = Awaited<ReturnType<typeof listAuditLogEntries1>>, TError = AuditLogListResponse>(params?: ListAuditLogEntries1Params, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries1>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+export const getListAuditLogEntriesQueryOptions = <TData = Awaited<ReturnType<typeof listAuditLogEntries>>, TError = AuditLogListResponse>(params?: ListAuditLogEntriesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListAuditLogEntries1QueryKey(params);
+  const queryKey =  queryOptions?.queryKey ?? getListAuditLogEntriesQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAuditLogEntries1>>> = ({ signal }) => listAuditLogEntries1(params, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAuditLogEntries>>> = ({ signal }) => listAuditLogEntries(params, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries1>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type ListAuditLogEntries1QueryResult = NonNullable<Awaited<ReturnType<typeof listAuditLogEntries1>>>
-export type ListAuditLogEntries1QueryError = AuditLogListResponse
+export type ListAuditLogEntriesQueryResult = NonNullable<Awaited<ReturnType<typeof listAuditLogEntries>>>
+export type ListAuditLogEntriesQueryError = AuditLogListResponse
 
 
-export function useListAuditLogEntries1<TData = Awaited<ReturnType<typeof listAuditLogEntries1>>, TError = AuditLogListResponse>(
- params: undefined |  ListAuditLogEntries1Params, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries1>>, TError, TData>> & Pick<
+export function useListAuditLogEntries<TData = Awaited<ReturnType<typeof listAuditLogEntries>>, TError = AuditLogListResponse>(
+ params: undefined |  ListAuditLogEntriesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listAuditLogEntries1>>,
+          Awaited<ReturnType<typeof listAuditLogEntries>>,
           TError,
-          Awaited<ReturnType<typeof listAuditLogEntries1>>
+          Awaited<ReturnType<typeof listAuditLogEntries>>
         > , 'initialData'
       >, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListAuditLogEntries1<TData = Awaited<ReturnType<typeof listAuditLogEntries1>>, TError = AuditLogListResponse>(
- params?: ListAuditLogEntries1Params, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries1>>, TError, TData>> & Pick<
+export function useListAuditLogEntries<TData = Awaited<ReturnType<typeof listAuditLogEntries>>, TError = AuditLogListResponse>(
+ params?: ListAuditLogEntriesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listAuditLogEntries1>>,
+          Awaited<ReturnType<typeof listAuditLogEntries>>,
           TError,
-          Awaited<ReturnType<typeof listAuditLogEntries1>>
+          Awaited<ReturnType<typeof listAuditLogEntries>>
         > , 'initialData'
       >, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useListAuditLogEntries1<TData = Awaited<ReturnType<typeof listAuditLogEntries1>>, TError = AuditLogListResponse>(
- params?: ListAuditLogEntries1Params, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries1>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+export function useListAuditLogEntries<TData = Awaited<ReturnType<typeof listAuditLogEntries>>, TError = AuditLogListResponse>(
+ params?: ListAuditLogEntriesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
  * @summary List audit log entries
  */
 
-export function useListAuditLogEntries1<TData = Awaited<ReturnType<typeof listAuditLogEntries1>>, TError = AuditLogListResponse>(
- params?: ListAuditLogEntries1Params, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries1>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+export function useListAuditLogEntries<TData = Awaited<ReturnType<typeof listAuditLogEntries>>, TError = AuditLogListResponse>(
+ params?: ListAuditLogEntriesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAuditLogEntries>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getListAuditLogEntries1QueryOptions(params,options)
+  const queryOptions = getListAuditLogEntriesQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

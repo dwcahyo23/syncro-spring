@@ -60,6 +60,7 @@ public class AuditLogService {
     var sort = normalizeSort(query.sort());
     var result = auditLogs.search(
         query.entityType(),
+        query.entityId(),
         normalizeActor(query.actor()),
         query.plantId(),
         query.from() == null ? NO_LOWER_BOUND : query.from(),
@@ -138,6 +139,7 @@ public class AuditLogService {
 
   public record AuditLogQuery(
       AuditEntityType entityType,
+      UUID entityId,
       String actor,
       UUID plantId,
       Instant from,

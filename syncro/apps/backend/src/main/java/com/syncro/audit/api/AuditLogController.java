@@ -27,7 +27,7 @@ public class AuditLogController {
     this.service = service;
   }
 
-  @Operation(operationId = "listGlobalAuditLogEntries", summary = "List global audit log entries")
+  @Operation(operationId = "listAuditLogEntries", summary = "List audit log entries")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Audit log entries returned"),
       @ApiResponse(responseCode = "400", description = "Invalid filter"),
@@ -45,6 +45,6 @@ public class AuditLogController {
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "100") int size,
       @RequestParam(defaultValue = "createdAt,desc") String sort) {
-    return service.list(user, new AuditLogQuery(entityType, actor, plantId, from, to, page, size, sort));
+    return service.list(user, new AuditLogQuery(entityType, entityId, actor, plantId, from, to, page, size, sort));
   }
 }

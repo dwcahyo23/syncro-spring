@@ -323,7 +323,7 @@ class AuditLogWiringIntegrationTest {
     assertThatThrownBy(() -> plants.create(admin, new CreatePlantCommand("gm1", "Duplicate")))
         .isInstanceOf(DuplicatePlantCodeException.class);
 
-    var response = auditLog.list(admin, new AuditLogQuery(AuditEntityType.PLANT, null, null, null, null, 0, 100, "createdAt,asc"));
+    var response = auditLog.list(admin, new AuditLogQuery(AuditEntityType.PLANT, null, null, null, null, null, 0, 100, "createdAt,asc"));
     assertThat(response.totalElements()).isEqualTo(1);
   }
 
@@ -343,7 +343,7 @@ class AuditLogWiringIntegrationTest {
   }
 
   private AuditLogEntryView entry(AuthenticatedUser user, AuditEntityType type, AuditAction action) {
-    var response = auditLog.list(user, new AuditLogQuery(type, null, null, null, null, 0, 100, "createdAt,asc"));
+    var response = auditLog.list(user, new AuditLogQuery(type, null, null, null, null, null, 0, 100, "createdAt,asc"));
     return response.items().stream().filter(entry -> entry.action() == action).findFirst().orElseThrow();
   }
 

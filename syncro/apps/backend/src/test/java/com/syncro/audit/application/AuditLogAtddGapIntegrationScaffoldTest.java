@@ -137,7 +137,7 @@ class AuditLogAtddGapIntegrationScaffoldTest {
 
     var plantIdAfter = jdbcTemplate.queryForObject("SELECT plant_id::text FROM audit_log WHERE id = ?", String.class, auditId);
     assertThat(plantIdAfter).isNull();
-    var response = auditLog.list(admin, new AuditLogQuery(null, null, null, null, null, 0, 100, "createdAt,asc"));
+    var response = auditLog.list(admin, new AuditLogQuery(null, null, null, null, null, null, 0, 100, "createdAt,asc"));
     assertThat(response.totalElements()).isEqualTo(2);
     assertThat(response.items()).extracting(AuditLogEntryView::entityLabel).contains("GM1");
   }
@@ -157,7 +157,7 @@ class AuditLogAtddGapIntegrationScaffoldTest {
     try {
       jdbcTemplate.update("UPDATE audit_log SET previous_value = 'not-json' WHERE id = ?", auditId);
       assertThatThrownBy(() -> auditLog.list(actor,
-          new AuditLogQuery(null, null, null, null, null, 0, 100, "createdAt,desc")))
+          new AuditLogQuery(null, null, null, null, null, null, 0, 100, "createdAt,desc")))
           .isInstanceOf(IllegalStateException.class);
     } finally {
       jdbcTemplate.execute("ALTER TABLE audit_log ENABLE TRIGGER audit_log_immutable_before_update");
@@ -172,10 +172,10 @@ class AuditLogAtddGapIntegrationScaffoldTest {
     auditLogWriter.record(actor, new AuditRecord(AuditAction.CREATE, AuditEntityType.SPAREPART_TAXONOMY,
         UUID.randomUUID(), "ELEC", null, null, Map.of("code", "ELEC")));
 
-    var exact = auditLog.list(actor, new AuditLogQuery(null, "yusuf_dev", null, null, null, 0, 100, "createdAt,desc"));
+    var exact = auditLog.list(actor, new AuditLogQuery(null, null, "yusuf_dev", null, null, null, 0, 100, "createdAt,desc"));
     assertThat(exact.totalElements()).isEqualTo(1);
 
-    var wildcard = auditLog.list(actor, new AuditLogQuery(null, "yusuf%dev", null, null, null, 0, 100, "createdAt,desc"));
+    var wildcard = auditLog.list(actor, new AuditLogQuery(null, null, "yusuf%dev", null, null, null, 0, 100, "createdAt,desc"));
     assertThat(wildcard.totalElements()).isZero();
   }
 
@@ -189,7 +189,7 @@ class AuditLogAtddGapIntegrationScaffoldTest {
           UUID.randomUUID(), "ELEC-" + i, null, null, Map.of("code", "ELEC-" + i)));
     }
 
-    var response = auditLog.list(actor, new AuditLogQuery(null, null, null, null, null, 1, 2, "createdAt,asc"));
+    var response = auditLog.list(actor, new AuditLogQuery(null, null, null, null, null, null, 1, 2, "createdAt,asc"));
 
     assertThat(response.items()).hasSize(2);
     assertThat(response.totalElements()).isEqualTo(5);

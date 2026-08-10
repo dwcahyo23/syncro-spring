@@ -5,7 +5,16 @@
  * Syncro backend REST API.
  * OpenAPI spec version: v1
  */
+import type { ListAuditLogEntriesEntityType } from './listAuditLogEntriesEntityType';
 
 export type ListAuditLogEntriesParams = {
-pageSize?: number;
+entityType?: ListAuditLogEntriesEntityType;
+actor?: string;
+entityId?: string;
+plantId?: string;
+from?: string;
+to?: string;
+page?: number;
+size?: number;
+sort?: string;
 };

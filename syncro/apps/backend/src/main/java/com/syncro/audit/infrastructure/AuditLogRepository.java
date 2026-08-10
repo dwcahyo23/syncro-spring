@@ -14,6 +14,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLogEntity, UUID> 
   @Query("""
       select entry from AuditLogEntity entry
       where (:entityType is null or entry.entityType = :entityType)
+        and (:entityId is null or entry.entityId = :entityId)
         and (:actor is null or lower(entry.actorName) like :actor)
         and (:plantId is null or entry.plantId = :plantId)
         and entry.createdAt >= :from
@@ -22,6 +23,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLogEntity, UUID> 
       """)
   Page<AuditLogEntity> search(
       @Param("entityType") AuditEntityType entityType,
+      @Param("entityId") UUID entityId,
       @Param("actor") String actor,
       @Param("plantId") UUID plantId,
       @Param("from") Instant from,

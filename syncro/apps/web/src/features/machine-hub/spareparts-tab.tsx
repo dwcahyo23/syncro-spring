@@ -1,178 +1,83 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { SparepartMachineRefView } from "@/lib/api/generated/model";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useListMachineSparepartInstallations } from "@/lib/api/generated/syncro";
 
 export interface SparepartsTabProps {
-  machineCode: string;
+  machineId?: string;
 }
 
-interface CachedSparepartsData {
-  spareparts?: SparepartMachineRefView[];
-  loading?: boolean;
-}
+export function SparepartsTab({ machineId }: SparepartsTabProps) {
+  const { data, isLoading, isError } = useListMachineSparepartInstallations(
+    { machineId, pageable: { page: 0, size: 100, sort: ["installedAt,desc"] } },
+    { query: { enabled: Boolean(machineId), staleTime: 30_000 } },
+  );
 
-const cache = new Map<string, CachedSparepartsData>();
+  const items = data?.data?.items ?? [];
 
-export function SparepartsTab({ machineCode }: SparepartsTabProps) {
-  const [data, setData] = useState<CachedSparepartsData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const fetchSpareparts = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch(
-        `/api/v1/machines/${encodeURIComponent(machineCode)}/spareparts`
-      );
-      if (!response.ok) {
-        throw new Error(`Failed to fetch spareparts: ${response.statusText}`);
-      }
-      const result = await response.json();
-
-      const cachedData: CachedSparepartsData = {
-        spareparts: result.items || [],
-      };
-
-      cache.set(machineCode, cachedData);
-      setData(cachedData);
-    } catch (error) {
-      console.error("Error fetching spareparts:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const cached = cache.get(machineCode);
-    if (cached) {
-      setData(cached);
-      setIsLoading(false);
-    } else {
-      fetchSpareparts();
-    }
-  }, [machineCode]);
-
-  if (isLoading) {
+  if (!machineId || isLoading) {
     return (
-      <div className="flex min-h-[200px] items-center justify-center">
-        <p className="text-muted-foreground">Loading spareparts...</p>
+      <div className="space-y-3">
+        <Skeleton className="h-40 w-full" />
       </div>
     );
   }
 
-  if (!data?.spareparts || data.spareparts.length === 0) {
+  if (isError) {
+    return <EmptyState title="Spareparts unavailable" description="Failed to load installed spareparts." />;
+  }
+
+  if (items.length === 0) {
     return (
-      <EmptyState
-        title="No spareparts installed"
-        description="This machine currently has no spareparts installed."
-      />
+      <EmptyState title="No spareparts installed" description="This machine currently has no spareparts installed." />
     );
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Spareparts Installed on Machine</CardTitle>
-          <CardDescription>
-            List of spareparts currently installed and their lifetime information
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Sparepart Code</TableHead>
-                <TableHead>Installation Date</TableHead>
-                <TableHead>Lifetime Hours</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.spareparts.map((sparepart, index) => (
-                <TableRow key={index}>
-                  <TableCell className="font-medium">{sparepart.sparepartCode}</TableCell>
+    <Card>
+      <CardHeader>
+        <CardTitle>Installed Spareparts</CardTitle>
+        <CardDescription>Current installations and lifetime consumption</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Sparepart</TableHead>
+              <TableHead>Function</TableHead>
+              <TableHead className="hidden md:table-cell">Installed</TableHead>
+              <TableHead className="w-64">Lifetime Usage</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map((item) => {
+              const pct = Math.min(Number(item.consumedPercentage ?? 0), 100);
+              return (
+                <TableRow key={item.id}>
                   <TableCell>
-                    {sparepart.installationDate
-                      ? formatDate(sparepart.installationDate)
-                      : "-"}
+                    <div className="font-medium">{item.sparepartName ?? item.sparepartCode}</div>
+                    <div className="text-xs text-muted-foreground">{item.sparepartCode}</div>
+                  </TableCell>
+                  <TableCell>{item.functionName ?? "-"}</TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {item.installedAt ? new Date(item.installedAt).toLocaleDateString() : "-"}
                   </TableCell>
                   <TableCell>
-                    {sparepart.lifetimeHours !== undefined
-                      ? `${sparepart.lifetimeHours.toFixed(1)}h`
-                      : "-"}
-                  </TableCell>
-                  <TableCell>
-                    {sparepart.status ? (
-                      <span className="text-sm text-muted-foreground">{sparepart.status}</span>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <a
-                      href={`/dashboard/master-data/spareparts?code=${sparepart.sparepartCode}`}
-                      className="text-primary hover:underline"
-                    >
-                      View details
-                    </a>
+                    <div className="flex items-center gap-2">
+                      <Progress value={pct} className="h-2 flex-1" />
+                      <span className="w-12 text-right text-xs text-muted-foreground">{pct.toFixed(0)}%</span>
+                    </div>
                   </TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Sparepart Lifetime Summary</CardTitle>
-          <CardDescription>Overall statistics for spareparts on this machine</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <dl className="grid gap-4 sm:grid-cols-3">
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">Total Spareparts</dt>
-              <dd className="mt-1 text-2xl font-bold">{data.spareparts.length}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">Average Lifetime</dt>
-              <dd className="mt-1 text-2xl font-bold">
-                {getAverageLifetime(data.spareparts)}h
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-muted-foreground">Active Installations</dt>
-              <dd className="mt-1 text-2xl font-bold">
-                {data.spareparts.filter((s) => !s.isRemoved).length}
-              </dd>
-            </div>
-          </dl>
-        </CardContent>
-      </Card>
-    </div>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
-}
-
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
-
-function getAverageLifetime(spareparts: SparepartMachineRefView[]): number {
-  const validValues = spareparts
-    .map((s) => s.lifetimeHours)
-    .filter((h): h is number => typeof h === "number" && !isNaN(h));
-  
-  if (validValues.length === 0) return 0;
-  const sum = validValues.reduce((acc, val) => acc + val, 0);
-  return sum / validValues.length;
 }

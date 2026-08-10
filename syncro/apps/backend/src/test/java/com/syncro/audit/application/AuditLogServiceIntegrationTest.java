@@ -107,7 +107,7 @@ class AuditLogServiceIntegrationTest {
     auditLogWriter.record(actor, new AuditRecord(AuditAction.CREATE, AuditEntityType.PLANT, plant.getId(),
         plant.getCode(), plant.getId(), null, Map.of("code", "GM1", "name", "Plant GM1")));
 
-    var response = auditLog.list(actor, new AuditLogQuery(null, null, null, null, null, 0, 100, "createdAt,desc"));
+    var response = auditLog.list(actor, new AuditLogQuery(null, null, null, null, null, null, 0, 100, "createdAt,desc"));
 
     assertThat(response.totalElements()).isEqualTo(1);
     var entry = response.items().get(0);
@@ -138,7 +138,7 @@ class AuditLogServiceIntegrationTest {
     var manage = persistedUser(ApplicationRole.MANAGE, "scoped-manage@syncro.dev");
     assign(manage, plant1);
 
-    var response = auditLog.list(manage, new AuditLogQuery(null, null, null, null, null, 0, 100, "createdAt,desc"));
+    var response = auditLog.list(manage, new AuditLogQuery(null, null, null, null, null, null, 0, 100, "createdAt,desc"));
 
     assertThat(response.items()).extracting(AuditLogEntryView::entityLabel).containsExactlyInAnyOrder("GM1", "ELEC");
     assertThat(response.totalElements()).isEqualTo(2);
@@ -156,7 +156,7 @@ class AuditLogServiceIntegrationTest {
 
     var viewer = persistedUser(ApplicationRole.VIEWER, "empty-scope-viewer@syncro.dev");
 
-    var response = auditLog.list(viewer, new AuditLogQuery(null, null, null, null, null, 0, 100, "createdAt,desc"));
+    var response = auditLog.list(viewer, new AuditLogQuery(null, null, null, null, null, null, 0, 100, "createdAt,desc"));
 
     assertThat(response.items()).extracting(AuditLogEntryView::entityLabel).containsExactly("ELEC");
   }
@@ -169,7 +169,7 @@ class AuditLogServiceIntegrationTest {
     var manage = persistedUser(ApplicationRole.MANAGE, "scoped-manage@syncro.dev");
     assign(manage, plant1);
 
-    assertThatThrownBy(() -> auditLog.list(manage, new AuditLogQuery(null, null, plant2.getId(), null, null, 0, 100, "createdAt,desc")))
+    assertThatThrownBy(() -> auditLog.list(manage, new AuditLogQuery(null, null, null, plant2.getId(), null, null, 0, 100, "createdAt,desc")))
         .isInstanceOf(PlantAccessDeniedException.class);
   }
 
@@ -187,24 +187,24 @@ class AuditLogServiceIntegrationTest {
     auditLogWriter.record(admin, new AuditRecord(AuditAction.CREATE, AuditEntityType.PLANT, plant2.getId(), "GM2",
         plant2.getId(), null, Map.of("code", "GM2")));
 
-    var byType = auditLog.list(admin, new AuditLogQuery(AuditEntityType.MACHINE, null, null, null, null, 0, 100, "createdAt,desc"));
+    var byType = auditLog.list(admin, new AuditLogQuery(AuditEntityType.MACHINE, null, null, null, null, null, 0, 100, "createdAt,desc"));
     assertThat(byType.totalElements()).isEqualTo(1);
     assertThat(byType.items()).extracting(AuditLogEntryView::entityLabel).containsExactly("BF-08410");
 
-    var byActor = auditLog.list(admin, new AuditLogQuery(null, "YUSUF", null, null, null, 0, 100, "createdAt,desc"));
+    var byActor = auditLog.list(admin, new AuditLogQuery(null, null, "YUSUF", null, null, null, 0, 100, "createdAt,desc"));
     assertThat(byActor.totalElements()).isEqualTo(1);
     assertThat(byActor.items()).extracting(AuditLogEntryView::actorName).containsExactly("yusuf@syncro.dev");
 
-    var byPlant = auditLog.list(admin, new AuditLogQuery(null, null, plant2.getId(), null, null, 0, 100, "createdAt,desc"));
+    var byPlant = auditLog.list(admin, new AuditLogQuery(null, null, null, plant2.getId(), null, null, 0, 100, "createdAt,desc"));
     assertThat(byPlant.totalElements()).isEqualTo(1);
     assertThat(byPlant.items()).extracting(AuditLogEntryView::entityLabel).containsExactly("GM2");
 
     var from = Instant.now().minusSeconds(1);
     var to = Instant.now().plusSeconds(1);
-    var byRange = auditLog.list(admin, new AuditLogQuery(null, null, null, from, to, 0, 100, "createdAt,desc"));
+    var byRange = auditLog.list(admin, new AuditLogQuery(null, null, null, null, from, to, 0, 100, "createdAt,desc"));
     assertThat(byRange.totalElements()).isEqualTo(3);
 
-    var narrow = auditLog.list(admin, new AuditLogQuery(null, null, null, Instant.parse("2030-01-01T00:00:00Z"), null, 0, 100, "createdAt,desc"));
+    var narrow = auditLog.list(admin, new AuditLogQuery(null, null, null, null, Instant.parse("2030-01-01T00:00:00Z"), null, 0, 100, "createdAt,desc"));
     assertThat(narrow.totalElements()).isZero();
   }
 
@@ -219,7 +219,7 @@ class AuditLogServiceIntegrationTest {
     auditLogWriter.record(actor, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PLANT, plant.getId(), "GM1",
         plant.getId(), Map.of("code", "GM1"), Map.of("code", "GM1", "name", "Plant GM1 Updated")));
 
-    var response = auditLog.list(actor, new AuditLogQuery(null, null, null, null, null, 0, 100, "createdAt,desc"));
+    var response = auditLog.list(actor, new AuditLogQuery(null, null, null, null, null, null, 0, 100, "createdAt,desc"));
 
     assertThat(response.totalElements()).isEqualTo(2);
     assertThat(response.sort()).isEqualTo("createdAt,desc");

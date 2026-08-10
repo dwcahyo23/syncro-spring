@@ -110,7 +110,7 @@ describe("Telemetry Dashboard Page", () => {
   it("[P1] 3-7-WEB-003 machine without telemetry shows no-data label instead of error", () => {
     telemetryQuery = {
       ...telemetryQuery,
-      data: { data: { items: [machine({ latestTelemetry: null })], totalElements: 1 } },
+      data: { data: { items: [machine({ latestTelemetry: undefined })], totalElements: 1 } },
     };
     render(<TelemetryDashboardPage />, { wrapper: Wrapper });
 
