@@ -15,6 +15,7 @@ import com.syncro.sparepart.infrastructure.MachineSparepartInstallationEntity;
 import com.syncro.sparepart.infrastructure.MachineSparepartInstallationRepository;
 import com.syncro.sparepart.infrastructure.SparepartEntity;
 import com.syncro.sparepart.infrastructure.SparepartRepository;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -36,10 +37,12 @@ public class MachineSparepartInstallationService {
   private final AuthUserPlantAssignmentRepository assignments;
   private final AuditLogWriter auditLog;
   private final Clock clock;
+  private final SparepartLifetimeEvaluator evaluator;
 
   public MachineSparepartInstallationService(MachineSparepartInstallationRepository installations,
       MachineRepository machines, SparepartRepository spareparts, PlantRepository plants,
-      PlantScopeService plantScopes, AuthUserPlantAssignmentRepository assignments, AuditLogWriter auditLog, Clock clock) {
+      PlantScopeService plantScopes, AuthUserPlantAssignmentRepository assignments, AuditLogWriter auditLog,
+      Clock clock, SparepartLifetimeEvaluator evaluator) {
     this.installations = installations;
     this.machines = machines;
     this.spareparts = spareparts;
@@ -48,6 +51,7 @@ public class MachineSparepartInstallationService {
     this.assignments = assignments;
     this.auditLog = auditLog;
     this.clock = clock;
+    this.evaluator = evaluator;
   }
 
   @Transactional(readOnly = true)
@@ -235,13 +239,24 @@ public class MachineSparepartInstallationService {
     var plant = machine.getPlant();
     var machineGroup = machine.getMachineGroup();
     var sparepart = installation.getSparepart();
+    Long currentCount = null;
+    Long consumedProductionCount = null;
+    java.math.BigDecimal consumedPercentage = null;
+    try {
+      var evalResult = evaluator.evaluate(machine.getId(), installation.getId());
+      currentCount = evalResult.map(SparepartLifetimeEvaluator.EvaluationResult::currentCount).orElse(null);
+      consumedProductionCount = evalResult.map(SparepartLifetimeEvaluator.EvaluationResult::consumedProductionCount).orElse(null);
+      consumedPercentage = evalResult.map(SparepartLifetimeEvaluator.EvaluationResult::consumedPercentage).orElse(null);
+    } catch (Exception e) {
+      // Redis or transient failure — leave lifetime fields null, consistent with cache-miss behaviour
+    }
     return new InstallationView(installation.getId(), machine.getId(), machine.getCode(), machine.getName(), plant.getId(),
         plant.getCode(), plant.getName(), machineGroup.getId(), machineGroup.getName(), sparepart.getId(), sparepart.getCode(),
         sparepart.getName(), installation.getFunctionName(), new TaxonomyRefView(sparepart.getCategory().getId(), sparepart.getCategory().getCode(), sparepart.getCategory().getName()),
         new TaxonomyRefView(sparepart.getBrand().getId(), sparepart.getBrand().getCode(), sparepart.getBrand().getName()),
         new TaxonomyRefView(sparepart.getKind().getId(), sparepart.getKind().getCode(), sparepart.getKind().getName()),
         new TaxonomyRefView(sparepart.getType().getId(), sparepart.getType().getCode(), sparepart.getType().getName()),
-        installation.getExpectedProductionCount(), installation.getBaselineCounter(), null, null, null,
+        installation.getExpectedProductionCount(), installation.getBaselineCounter(), currentCount, consumedProductionCount, consumedPercentage,
         installation.getThresholdPercentage(), "COUNTER_BASED", installation.getInstalledAt(), installation.getCreatedAt(), installation.getUpdatedAt());
   }
 

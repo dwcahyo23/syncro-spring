@@ -86,7 +86,7 @@ development_status:
 
   # Epic 4: Sparepart Lifetime Alerting
   epic-4: backlog
-  4-1-evaluate-sparepart-lifetime-threshold-from-accepted-telemetry: backlog
+  4-1-evaluate-sparepart-lifetime-threshold-from-accepted-telemetry: done
   4-2-create-threshold-alert-with-duplicate-prevention: backlog
   4-3-show-alert-list-and-alert-detail: backlog
   4-4-acknowledge-open-alert: backlog
