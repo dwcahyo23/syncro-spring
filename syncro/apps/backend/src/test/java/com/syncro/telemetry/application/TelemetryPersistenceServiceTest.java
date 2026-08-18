@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -25,6 +26,7 @@ import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.masterdata.infrastructure.MachineGroupEntity;
 import com.syncro.telemetry.infrastructure.InfluxTelemetryWriter;
 import com.syncro.telemetry.infrastructure.RedisLatestTelemetryWriter;
+import com.syncro.sparepart.application.SparepartLifetimeEvaluator;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -60,6 +62,8 @@ class TelemetryPersistenceServiceTest {
   private StringRedisTemplate redis;
   @Mock
   private ValueOperations<String, String> valueOps;
+  @Mock
+  private SparepartLifetimeEvaluator evaluator;
 
   private MachineEntity machine;
   private TelemetryPersistenceService service;
@@ -79,7 +83,7 @@ class TelemetryPersistenceServiceTest {
     dedupeKey = "syncro:machine:" + machine.getId() + ":telemetry:dedupe:msg-persist-1";
     service = new TelemetryPersistenceService(machines, influxWriter, redisLatestWriter, redis,
         new TelemetryProperties(Duration.parse("PT5M"), Duration.parse("PT30S"),
-            new TelemetryProperties.Ingest(1000, 2)));
+            new TelemetryProperties.Ingest(1000, 2)), evaluator);
     when(machines.findByIdWithPlantAndGroup(machine.getId())).thenReturn(Optional.of(machine));
     lenient().when(redis.opsForValue()).thenReturn(valueOps);
   }
@@ -332,5 +336,27 @@ class TelemetryPersistenceServiceTest {
     Logger logger = (Logger) LoggerFactory.getLogger(TelemetryPersistenceService.class);
     logger.detachAppender(appender);
     appender.stop();
+  }
+
+  @Test
+  void persist_callsEvaluatorAfterRedisWrite() {
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+
+    service.persist(accepted, envelope);
+
+    var order = inOrder(redisLatestWriter, evaluator);
+    order.verify(redisLatestWriter).putLatest(any(), any(), any());
+    order.verify(evaluator).evaluateAll(machine.getId());
+  }
+
+  @Test
+  void persist_evaluatorException_doesNotPropagate() {
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+    doThrow(new RuntimeException("evaluator failure")).when(evaluator).evaluateAll(machine.getId());
+
+    // should complete without throwing
+    service.persist(accepted, envelope);
+
+    verify(evaluator).evaluateAll(machine.getId());
   }
 }
