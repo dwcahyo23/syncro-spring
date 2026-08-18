@@ -2,7 +2,7 @@
 id: SPEC-3-8
 type: feature
 created: 2026-08-10
-status: in-progress
+status: done
 review_loop_iteration: 0
 baseline_revision: dda559af049dd740c6a7324126af846f2dd3a34b
 context:

@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.integration.channel.QueueChannel;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.mqtt.core.DefaultMqttPahoClientFactory;
 import org.springframework.integration.mqtt.core.MqttPahoClientFactory;
@@ -45,7 +46,12 @@ public class MqttSubscriptionConfig {
   }
 
   @Bean
-  IntegrationFlow mqttInboundFlow(MqttPahoMessageDrivenChannelAdapter adapter, MqttTelemetryIngestHandler handler) {
-    return IntegrationFlow.from(adapter).handle(handler).get();
+  IntegrationFlow mqttInboundFlow(MqttPahoMessageDrivenChannelAdapter adapter,
+      QueueChannel telemetryIngestQueue,
+      MqttTelemetryIngestHandler handler) {
+    return IntegrationFlow.from(adapter)
+        .channel(telemetryIngestQueue)
+        .handle(handler)
+        .get();
   }
 }

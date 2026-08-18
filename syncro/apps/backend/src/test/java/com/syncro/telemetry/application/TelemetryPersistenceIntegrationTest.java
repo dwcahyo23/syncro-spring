@@ -68,9 +68,19 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 class TelemetryPersistenceIntegrationTest {
 
   private static final String TOPIC = "factory/GM1/BF-08410/telemetry";
-  private static final String PAYLOAD = "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100}";
   private static final Instant BASE_RECEIVED_AT = Instant.now().plusSeconds(3600);
   private static final AtomicInteger RECEIVED_AT_OFFSET = new AtomicInteger();
+  private static final AtomicInteger MESSAGE_ID_OFFSET = new AtomicInteger();
+
+  private static String payload(Instant timestamp) {
+    return payload(timestamp, 100);
+  }
+
+  private static String payload(Instant timestamp, long counting) {
+    return "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-int-" + MESSAGE_ID_OFFSET.incrementAndGet()
+        + "\",\"timestamp\":\"" + timestamp + "\",\"running\":true,\"runtimeHours\":12.5,\"counting\":" + counting
+        + "}";
+  }
 
   @Container
   static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
@@ -184,9 +194,10 @@ class TelemetryPersistenceIntegrationTest {
   void duplicatePayloadWritesSingleInfluxDbRecord() {
     var machine = seedPlantAndMachine();
     Instant receivedAt = uniqueReceivedAt();
-    var accepted = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, PAYLOAD);
-    persistenceService.persist(accepted, envelope("trace-pers-003", receivedAt));
-    persistenceService.persist(accepted, envelope("trace-pers-003-duplicate", receivedAt.plusSeconds(5)));
+    String payload = payload(receivedAt);
+    var accepted = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, payload);
+    persistenceService.persist(accepted, envelope("trace-pers-003", receivedAt, payload));
+    persistenceService.persist(accepted, envelope("trace-pers-003-duplicate", receivedAt.plusSeconds(5), payload));
 
     String flux = """
         from(bucket: "test")
@@ -284,8 +295,9 @@ class TelemetryPersistenceIntegrationTest {
     var machine = seedPlantAndMachine(List.of("vibration", "rpm", "heaterOn", "qualityGrade"));
     String traceId = "trace-pers-601";
     Instant receivedAt = uniqueReceivedAt();
-    String payload = "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100,\"vibration\":2.4,\"rpm\":1200,"
-        + "\"heaterOn\":true,\"qualityGrade\":\"A\",\"temperature\":30}";
+    String payload = "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-int-" + MESSAGE_ID_OFFSET.incrementAndGet()
+        + "\",\"timestamp\":\"" + receivedAt + "\",\"running\":true,\"runtimeHours\":12.5,\"counting\":100,"
+        + "\"vibration\":2.4,\"rpm\":1200,\"heaterOn\":true,\"qualityGrade\":\"A\",\"temperature\":30}";
     var accepted = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, payload);
     persistenceService.persist(accepted, envelope(traceId, receivedAt, payload));
 
@@ -308,8 +320,9 @@ class TelemetryPersistenceIntegrationTest {
     var machine = seedPlantAndMachine(List.of("vibration", "heaterOn", "qualityGrade"));
     String traceId = "trace-pers-602";
     Instant receivedAt = uniqueReceivedAt();
-    String payload = "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100,\"vibration\":2.4,"
-        + "\"heaterOn\":true,\"qualityGrade\":\"A\",\"temperature\":30}";
+    String payload = "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-int-" + MESSAGE_ID_OFFSET.incrementAndGet()
+        + "\",\"timestamp\":\"" + receivedAt + "\",\"running\":true,\"runtimeHours\":12.5,\"counting\":100,"
+        + "\"vibration\":2.4,\"heaterOn\":true,\"qualityGrade\":\"A\",\"temperature\":30}";
     var accepted = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, payload);
     persistenceService.persist(accepted, envelope(traceId, receivedAt, payload));
 
@@ -323,18 +336,15 @@ class TelemetryPersistenceIntegrationTest {
   }
 
   private void persist(MachineEntity machine, String traceId, Instant receivedAt) {
-    var accepted = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, PAYLOAD);
-    persistenceService.persist(accepted, envelope(traceId, receivedAt));
-  }
-
-  private void persistCounting(MachineEntity machine, String traceId, Instant receivedAt, long counting) {
-    String payload = "{\"running\":true,\"runtimeHours\":12.5,\"counting\":" + counting + "}";
+    String payload = payload(receivedAt);
     var accepted = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, payload);
     persistenceService.persist(accepted, envelope(traceId, receivedAt, payload));
   }
 
-  private TelemetryEnvelope envelope(String traceId, Instant receivedAt) {
-    return new TelemetryEnvelope(traceId, TOPIC, PAYLOAD, receivedAt);
+  private void persistCounting(MachineEntity machine, String traceId, Instant receivedAt, long counting) {
+    String payload = payload(receivedAt, counting);
+    var accepted = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, payload);
+    persistenceService.persist(accepted, envelope(traceId, receivedAt, payload));
   }
 
   private TelemetryEnvelope envelope(String traceId, Instant receivedAt, String payload) {

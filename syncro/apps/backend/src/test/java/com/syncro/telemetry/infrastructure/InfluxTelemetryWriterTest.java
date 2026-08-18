@@ -16,7 +16,8 @@ class InfluxTelemetryWriterTest {
   void buildsPointWithCanonicalSchema() {
     String traceId = "trace-123";
     Instant receivedAt = Instant.parse("2026-08-08T10:00:00Z");
-    var payload = new TelemetryPayload(true, 12.5, 100);
+    Instant payloadTimestamp = Instant.parse("2026-08-08T10:00:05Z");
+    var payload = new TelemetryPayload(true, 12.5, 100, "1.0", "m-1", payloadTimestamp);
     var envelope = new TelemetryEnvelope(traceId, "factory/GM1/BF-08410/telemetry", "{}", receivedAt);
 
     var point = InfluxTelemetryWriter.toPoint(payload, envelope, "GM1", "BF-08410", 0);
@@ -27,14 +28,46 @@ class InfluxTelemetryWriterTest {
         .contains("countingDelta=0i")
         .contains("running=true")
         .contains("runtimeHours=12.5")
-        .contains("traceId=\"trace-123\"");
-    assertThat(point.getTime()).isEqualTo(receivedAt.getEpochSecond() * 1_000_000_000L + receivedAt.getNano());
+        .contains("traceId=\"trace-123\"")
+        .doesNotContain("timestampInferred=true");
+    assertThat(point.getTime()).isEqualTo(
+        payloadTimestamp.getEpochSecond() * 1_000_000_000L + payloadTimestamp.getNano());
     assertThat(point.getPrecision()).isEqualTo(WritePrecision.NS);
   }
 
   @Test
+  void fallsBackToReceivedAtAndFlagsWhenPayloadTimestampAbsent() {
+    String traceId = "trace-abs";
+    Instant receivedAt = Instant.parse("2026-08-08T10:00:00Z");
+    var payload = new TelemetryPayload(true, 12.5, 100, "1.0", "m-2", null);
+    var envelope = new TelemetryEnvelope(traceId, "factory/GM1/BF-08410/telemetry", "{}", receivedAt);
+
+    var point = InfluxTelemetryWriter.toPoint(payload, envelope, "GM1", "BF-08410", 0);
+
+    assertThat(point.toLineProtocol()).contains("timestampInferred=true");
+    assertThat(point.getTime()).isEqualTo(receivedAt.getEpochSecond() * 1_000_000_000L + receivedAt.getNano());
+  }
+
+  @Test
+  void fallsBackToReceivedAtAndFlagsWhenPayloadTimestampOutsideWritableRange() {
+    String traceId = "trace-range";
+    Instant receivedAt = Instant.parse("2026-08-08T10:00:00Z");
+    var tooOld = new TelemetryPayload(true, 12.5, 100, "1.0", "m-old", Instant.parse("1600-01-01T00:00:00Z"));
+    var tooNew = new TelemetryPayload(true, 12.5, 100, "1.0", "m-new", Instant.parse("2300-01-01T00:00:00Z"));
+    var envelope = new TelemetryEnvelope(traceId, "factory/GM1/BF-08410/telemetry", "{}", receivedAt);
+
+    var oldPoint = InfluxTelemetryWriter.toPoint(tooOld, envelope, "GM1", "BF-08410", 0);
+    var newPoint = InfluxTelemetryWriter.toPoint(tooNew, envelope, "GM1", "BF-08410", 0);
+
+    assertThat(oldPoint.toLineProtocol()).contains("timestampInferred=true");
+    assertThat(oldPoint.getTime()).isEqualTo(receivedAt.getEpochSecond() * 1_000_000_000L + receivedAt.getNano());
+    assertThat(newPoint.toLineProtocol()).contains("timestampInferred=true");
+    assertThat(newPoint.getTime()).isEqualTo(receivedAt.getEpochSecond() * 1_000_000_000L + receivedAt.getNano());
+  }
+
+  @Test
   void countingIsStoredAsLongField() {
-    var payload = new TelemetryPayload(false, 3.5, 42);
+    var payload = new TelemetryPayload(false, 3.5, 42, "1.0", "m-3", Instant.parse("2026-08-08T10:00:05Z"));
     var envelope = new TelemetryEnvelope("trace-456", "factory/GM1/BF-08410/telemetry", "{}",
         Instant.parse("2026-08-08T10:00:00Z"));
 
@@ -47,7 +80,8 @@ class InfluxTelemetryWriterTest {
 
   @Test
   void handlesBoundaryFieldValues() {
-    var payload = new TelemetryPayload(true, 1.0E308, Long.MAX_VALUE);
+    var payload = new TelemetryPayload(true, 1.0E308, Long.MAX_VALUE, "1.0", "m-4",
+        Instant.parse("2026-08-08T10:00:05Z"));
     var envelope = new TelemetryEnvelope("trace-789", "factory/GM1/BF-08410/telemetry", "{}",
         Instant.parse("2026-08-08T10:00:00Z"));
 
@@ -65,7 +99,8 @@ class InfluxTelemetryWriterTest {
   @Test
   void writesOptionalFieldsWithInferredTypes() {
     var parsed = (TelemetryPayload.ParseResult.Accepted) TelemetryPayload.parse(
-        "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100,\"vibration\":2.4,\"rpm\":1200,\"heaterOn\":true,\"qualityGrade\":\"A\"}",
+        "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-opt-1\",\"timestamp\":\"2026-08-08T10:00:05Z\","
+            + "\"running\":true,\"runtimeHours\":12.5,\"counting\":100,\"vibration\":2.4,\"rpm\":1200,\"heaterOn\":true,\"qualityGrade\":\"A\"}",
         new ObjectMapper(), Set.of("vibration", "rpm", "heaterOn", "qualityGrade"));
     var envelope = new TelemetryEnvelope("trace-opt-1", "factory/GM1/BF-08410/telemetry", "{}",
         Instant.parse("2026-08-08T10:00:00Z"));

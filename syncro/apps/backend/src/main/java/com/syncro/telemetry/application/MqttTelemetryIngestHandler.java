@@ -20,12 +20,14 @@ public class MqttTelemetryIngestHandler implements MessageHandler {
   private final Clock clock;
   private final TelemetryValidationService validationService;
   private final TelemetryPersistenceService persistenceService;
+  private final TelemetryQuarantineService quarantineService;
 
   public MqttTelemetryIngestHandler(Clock clock, TelemetryValidationService validationService,
-      TelemetryPersistenceService persistenceService) {
+      TelemetryPersistenceService persistenceService, TelemetryQuarantineService quarantineService) {
     this.clock = clock;
     this.validationService = validationService;
     this.persistenceService = persistenceService;
+    this.quarantineService = quarantineService;
   }
 
   public TelemetryEnvelope enrich(Message<?> message) {
@@ -59,6 +61,7 @@ public class MqttTelemetryIngestHandler implements MessageHandler {
             log.warn("mqtt_telemetry_rejected reason={} field={} traceId={} topic={}",
                 rejected.reason(), rejected.field(), envelope.traceId(), envelope.topic());
           }
+          quarantineService.quarantine(envelope, rejected);
         }
       }
     } catch (RuntimeException exception) {

@@ -7,7 +7,24 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 @ConfigurationProperties(prefix = "syncro.telemetry")
 public record TelemetryProperties(
     @DefaultValue("PT5M") Duration latestTtl,
-    @DefaultValue("PT30S") Duration dedupeWindow) {
+    @DefaultValue("PT30S") Duration dedupeWindow,
+    @DefaultValue Ingest ingest) {
+
+  public record Ingest(
+      @DefaultValue("1000") int queueCapacity,
+      @DefaultValue("2") int workerThreads) {
+
+    public Ingest {
+      if (queueCapacity < 1) {
+        throw new IllegalArgumentException(
+            "syncro.telemetry.ingest.queue-capacity must be >= 1");
+      }
+      if (workerThreads < 1) {
+        throw new IllegalArgumentException(
+            "syncro.telemetry.ingest.worker-threads must be >= 1");
+      }
+    }
+  }
 
   public TelemetryProperties {
     if (latestTtl == null || latestTtl.isZero() || latestTtl.isNegative()) {

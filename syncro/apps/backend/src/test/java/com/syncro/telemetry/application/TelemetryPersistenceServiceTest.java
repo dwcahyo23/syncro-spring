@@ -73,12 +73,13 @@ class TelemetryPersistenceServiceTest {
     var group = new MachineGroupEntity(UUID.randomUUID(), plant, "Forming", NOW, NOW);
     machine = new MachineEntity(UUID.randomUUID(), plant, group, "BF-08410", "JBF19", MachineStatus.ACTIVE, "Juki",
         LocalDate.parse("2026-05-27"), null, List.of(), NOW, NOW);
-    var payload = new TelemetryPayload(true, 12.5, 100);
+    var payload = new TelemetryPayload(true, 12.5, 100, "1.0", "msg-persist-1", Instant.parse("2026-08-14T09:30:00Z"));
     accepted = new TelemetryValidationService.Result.Accepted(machine, payload);
     envelope = new TelemetryEnvelope(TRACE_ID, "factory/GM1/BF-08410/telemetry", "{}", NOW);
-    dedupeKey = "syncro:machine:" + machine.getId() + ":telemetry:dedupe:true:12.5:100";
+    dedupeKey = "syncro:machine:" + machine.getId() + ":telemetry:dedupe:msg-persist-1";
     service = new TelemetryPersistenceService(machines, influxWriter, redisLatestWriter, redis,
-        new TelemetryProperties(Duration.parse("PT5M"), Duration.parse("PT30S")));
+        new TelemetryProperties(Duration.parse("PT5M"), Duration.parse("PT30S"),
+            new TelemetryProperties.Ingest(1000, 2)));
     when(machines.findByIdWithPlantAndGroup(machine.getId())).thenReturn(Optional.of(machine));
     lenient().when(redis.opsForValue()).thenReturn(valueOps);
   }
@@ -107,11 +108,24 @@ class TelemetryPersistenceServiceTest {
             && event.getFormattedMessage().startsWith("mqtt_telemetry_duplicate")
             && event.getFormattedMessage().contains("traceId=" + TRACE_ID)
             && event.getFormattedMessage().contains("machineCode=BF-08410")
-            && event.getFormattedMessage().contains("counting=100")
+            && event.getFormattedMessage().contains("messageId=msg-persist-1")
             && event.getFormattedMessage().contains("winnerTraceId=trace-original-winner"));
     verify(influxWriter, never()).write(any(Point.class), anyString(), anyString());
     verify(redisLatestWriter, never()).putLatest(any(UUID.class), any(), any(Duration.class));
     detachAppender(appender);
+  }
+
+  @Test
+  void sameMessageIdDifferentCountingIsStillDeduplicated() {
+    var differentCounting = new TelemetryValidationService.Result.Accepted(machine,
+        new TelemetryPayload(true, 12.5, 999, "1.0", "msg-persist-1", Instant.parse("2026-08-14T09:30:00Z")));
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(false);
+    when(valueOps.get(dedupeKey)).thenReturn("trace-original-winner");
+
+    service.persist(differentCounting, envelope);
+
+    verify(influxWriter, never()).write(any(Point.class), anyString(), anyString());
+    verify(redisLatestWriter, never()).putLatest(any(UUID.class), any(), any(Duration.class));
   }
 
   @Test
@@ -265,7 +279,6 @@ class TelemetryPersistenceServiceTest {
   void optionalFieldsFlowIntoPointAndLatestHash() {
     accepted = new TelemetryValidationService.Result.Accepted(machine, payloadWithOptionalFields());
     when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
-
     service.persist(accepted, envelope);
 
     var pointCaptor = ArgumentCaptor.forClass(Point.class);
@@ -293,15 +306,18 @@ class TelemetryPersistenceServiceTest {
     optional.put("rpm", nodeFactory.numberNode(1200));
     optional.put("heaterOn", nodeFactory.booleanNode(true));
     optional.put("qualityGrade", nodeFactory.textNode("A"));
-    return new TelemetryPayload(true, 12.5, 100, Collections.unmodifiableMap(optional));
+    return new TelemetryPayload(true, 12.5, 100, "1.0", "msg-persist-1", Instant.parse("2026-08-14T09:30:00Z"),
+        Collections.unmodifiableMap(optional));
   }
 
   private TelemetryValidationService.Result.Accepted acceptedWithCounting(long counting) {
-    return new TelemetryValidationService.Result.Accepted(machine, new TelemetryPayload(true, 12.5, counting));
+    return new TelemetryValidationService.Result.Accepted(machine,
+        new TelemetryPayload(true, 12.5, counting, "1.0", "msg-count-" + counting,
+            Instant.parse("2026-08-14T09:30:00Z")));
   }
 
   private String dedupeKeyFor(long counting) {
-    return "syncro:machine:" + machine.getId() + ":telemetry:dedupe:true:12.5:" + counting;
+    return "syncro:machine:" + machine.getId() + ":telemetry:dedupe:msg-count-" + counting;
   }
 
   private static ListAppender<ILoggingEvent> attachAppender() {

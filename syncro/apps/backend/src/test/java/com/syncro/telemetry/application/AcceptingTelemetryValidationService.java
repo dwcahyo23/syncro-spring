@@ -22,6 +22,7 @@ class AcceptingTelemetryValidationService extends TelemetryValidationService {
     var group = new MachineGroupEntity(UUID.randomUUID(), plant, "Forming", now, now);
     var machine = new MachineEntity(UUID.randomUUID(), plant, group, "BF-08410", "JBF19", MachineStatus.ACTIVE,
         "Juki", LocalDate.parse("2026-05-27"), null, List.of(), now, now);
-    return new Result.Accepted(machine, new TelemetryPayload(true, 12.5, 100));
+    return new Result.Accepted(machine,
+        new TelemetryPayload(true, 12.5, 100, "1.0", "m-accept-1", Instant.parse("2026-08-14T09:30:00Z")));
   }
 }

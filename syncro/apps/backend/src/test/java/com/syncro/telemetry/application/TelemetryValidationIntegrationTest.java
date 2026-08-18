@@ -82,12 +82,13 @@ class TelemetryValidationIntegrationTest {
     seedPlantAndMachine();
 
     var result = validationService.validate("factory/GM1/BF-08410/telemetry",
-        "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
+        "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-int\",\"timestamp\":\"2026-08-14T09:30:00Z\",\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
 
     assertThat(result).isInstanceOf(TelemetryValidationService.Result.Accepted.class);
     var accepted = (TelemetryValidationService.Result.Accepted) result;
     assertThat(accepted.machine().getCode()).isEqualTo("BF-08410");
-    assertThat(accepted.payload()).isEqualTo(new TelemetryPayload(true, 12.5, 100));
+    assertThat(accepted.payload())
+        .isEqualTo(new TelemetryPayload(true, 12.5, 100, "1.0", "m-int", Instant.parse("2026-08-14T09:30:00Z")));
   }
 
   @Test
@@ -96,7 +97,7 @@ class TelemetryValidationIntegrationTest {
     seedPlantAndMachine();
 
     var result = validationService.validate("factory/GM1/UNKNOWN/telemetry",
-        "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
+        "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-int\",\"timestamp\":\"2026-08-14T09:30:00Z\",\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
 
     assertThat(result).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
     assertThat(((TelemetryValidationService.Result.Rejected) result).reason()).isEqualTo("unknown_machine");
@@ -108,7 +109,7 @@ class TelemetryValidationIntegrationTest {
     seedPlantAndMachine();
 
     var result = validationService.validate("factory/XX1/BF-08410/telemetry",
-        "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
+        "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-int\",\"timestamp\":\"2026-08-14T09:30:00Z\",\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
 
     assertThat(result).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
     assertThat(((TelemetryValidationService.Result.Rejected) result).reason()).isEqualTo("unknown_plant");
@@ -120,7 +121,7 @@ class TelemetryValidationIntegrationTest {
     seedPlantAndMachine();
 
     var result = validationService.validate("factory/gm1/bf-08410/telemetry",
-        "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
+        "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-int\",\"timestamp\":\"2026-08-14T09:30:00Z\",\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
 
     assertThat(result).isInstanceOf(TelemetryValidationService.Result.Accepted.class);
     assertThat(((TelemetryValidationService.Result.Accepted) result).machine().getCode()).isEqualTo("BF-08410");
@@ -132,7 +133,7 @@ class TelemetryValidationIntegrationTest {
     seedPlantAndMachine(MachineStatus.INACTIVE);
 
     var result = validationService.validate("factory/GM1/BF-08410/telemetry",
-        "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
+        "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-int\",\"timestamp\":\"2026-08-14T09:30:00Z\",\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
 
     assertThat(result).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
     var rejected = (TelemetryValidationService.Result.Rejected) result;
@@ -152,7 +153,7 @@ class TelemetryValidationIntegrationTest {
         MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), null, List.of(), now, now));
 
     var inactive = validationService.validate("factory/GM1/BF-08410/telemetry",
-        "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
+        "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-int\",\"timestamp\":\"2026-08-14T09:30:00Z\",\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
 
     assertThat(inactive).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
     var inactiveRejected = (TelemetryValidationService.Result.Rejected) inactive;
@@ -160,7 +161,7 @@ class TelemetryValidationIntegrationTest {
     assertThat(inactiveRejected.field()).isNull();
 
     var active = validationService.validate("factory/GM1/BF-08411/telemetry",
-        "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
+        "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-int\",\"timestamp\":\"2026-08-14T09:30:00Z\",\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
 
     assertThat(active).isInstanceOf(TelemetryValidationService.Result.Accepted.class);
     assertThat(((TelemetryValidationService.Result.Accepted) active).machine().getCode()).isEqualTo("BF-08411");
@@ -172,7 +173,7 @@ class TelemetryValidationIntegrationTest {
     seedPlantAndMachine();
 
     var result = validationService.validate("factory/GM1/BF-08410/telemetry",
-        "{\"running\":true,\"runtimeHours\":12.5,\"counting\":-1}");
+        "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-int\",\"timestamp\":\"2026-08-14T09:30:00Z\",\"running\":true,\"runtimeHours\":12.5,\"counting\":-1}");
 
     assertThat(result).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
     var rejected = (TelemetryValidationService.Result.Rejected) result;
@@ -186,7 +187,7 @@ class TelemetryValidationIntegrationTest {
     seedPlantAndMachineWithOptionalFields(List.of("vibration", "rpm"));
 
     var result = validationService.validate("factory/GM1/BF-08410/telemetry",
-        "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100,\"vibration\":2.4,\"rpm\":1200}");
+        "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-int\",\"timestamp\":\"2026-08-14T09:30:00Z\",\"running\":true,\"runtimeHours\":12.5,\"counting\":100,\"vibration\":2.4,\"rpm\":1200}");
 
     assertThat(result).isInstanceOf(TelemetryValidationService.Result.Accepted.class);
     var accepted = (TelemetryValidationService.Result.Accepted) result;
@@ -201,7 +202,7 @@ class TelemetryValidationIntegrationTest {
     seedPlantAndMachineWithOptionalFields(List.of("vibration"));
 
     var result = validationService.validate("factory/GM1/BF-08410/telemetry",
-        "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100,\"vibration\":2.4,\"temperature\":30}");
+        "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-int\",\"timestamp\":\"2026-08-14T09:30:00Z\",\"running\":true,\"runtimeHours\":12.5,\"counting\":100,\"vibration\":2.4,\"temperature\":30}");
 
     assertThat(result).isInstanceOf(TelemetryValidationService.Result.Accepted.class);
     var accepted = (TelemetryValidationService.Result.Accepted) result;
@@ -214,7 +215,7 @@ class TelemetryValidationIntegrationTest {
     seedPlantAndMachineWithOptionalFields(List.of("vibration"));
 
     var result = validationService.validate("factory/GM1/BF-08410/telemetry",
-        "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100,\"vibration\":{\"x\":1}}");
+        "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-int\",\"timestamp\":\"2026-08-14T09:30:00Z\",\"running\":true,\"runtimeHours\":12.5,\"counting\":100,\"vibration\":{\"x\":1}}");
 
     assertThat(result).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
     var rejected = (TelemetryValidationService.Result.Rejected) result;
@@ -228,12 +229,142 @@ class TelemetryValidationIntegrationTest {
     seedPlantAndMachineWithOptionalFields(List.of("vibration"));
 
     var result = validationService.validate("factory/GM1/BF-08410/telemetry",
-        "{\"running\":true,\"runtimeHours\":12.5,\"vibration\":2.4}");
+        "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-int\",\"timestamp\":\"2026-08-14T09:30:00Z\",\"running\":true,\"runtimeHours\":12.5,\"vibration\":2.4}");
 
     assertThat(result).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
     var rejected = (TelemetryValidationService.Result.Rejected) result;
     assertThat(rejected.reason()).isEqualTo("missing_base_field");
     assertThat(rejected.field()).isEqualTo("counting");
+  }
+
+  @Test
+  @DisplayName("3.9-VAL-001 missing schemaVersion rejected with missing_contract_field")
+  void rejectsMissingSchemaVersion() {
+    seedPlantAndMachine();
+
+    var result = validationService.validate("factory/GM1/BF-08410/telemetry",
+        "{\"messageId\":\"m-9a\",\"timestamp\":\"2026-08-14T09:30:00Z\","
+            + "\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
+
+    assertThat(result).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
+    var rejected = (TelemetryValidationService.Result.Rejected) result;
+    assertThat(rejected.reason()).isEqualTo("missing_contract_field");
+    assertThat(rejected.field()).isEqualTo("schemaVersion");
+  }
+
+  @Test
+  @DisplayName("3.9-VAL-002 unsupported schemaVersion rejected with unsupported_schema_version")
+  void rejectsUnsupportedSchemaVersion() {
+    seedPlantAndMachine();
+
+    var result = validationService.validate("factory/GM1/BF-08410/telemetry",
+        "{\"schemaVersion\":\"2.0\",\"messageId\":\"m-9b\",\"timestamp\":\"2026-08-14T09:30:00Z\","
+            + "\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
+
+    assertThat(result).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
+    var rejected = (TelemetryValidationService.Result.Rejected) result;
+    assertThat(rejected.reason()).isEqualTo("unsupported_schema_version");
+    assertThat(rejected.field()).isEqualTo("schemaVersion");
+  }
+
+  @Test
+  @DisplayName("3.9-VAL-003 missing messageId rejected with missing_contract_field")
+  void rejectsMissingMessageId() {
+    seedPlantAndMachine();
+
+    var result = validationService.validate("factory/GM1/BF-08410/telemetry",
+        "{\"schemaVersion\":\"1.0\",\"timestamp\":\"2026-08-14T09:30:00Z\","
+            + "\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
+
+    assertThat(result).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
+    var rejected = (TelemetryValidationService.Result.Rejected) result;
+    assertThat(rejected.reason()).isEqualTo("missing_contract_field");
+    assertThat(rejected.field()).isEqualTo("messageId");
+  }
+
+  @Test
+  @DisplayName("3.9-VAL-004 missing timestamp rejected with missing_contract_field")
+  void rejectsMissingTimestamp() {
+    seedPlantAndMachine();
+
+    var result = validationService.validate("factory/GM1/BF-08410/telemetry",
+        "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-9d\","
+            + "\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
+
+    assertThat(result).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
+    var rejected = (TelemetryValidationService.Result.Rejected) result;
+    assertThat(rejected.reason()).isEqualTo("missing_contract_field");
+    assertThat(rejected.field()).isEqualTo("timestamp");
+  }
+
+  @Test
+  @DisplayName("3.9-VAL-005 invalid timestamp rejected with invalid_timestamp")
+  void rejectsInvalidTimestamp() {
+    seedPlantAndMachine();
+
+    var result = validationService.validate("factory/GM1/BF-08410/telemetry",
+        "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-9e\",\"timestamp\":\"2026-08-14 09:30:00\","
+            + "\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
+
+    assertThat(result).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
+    var rejected = (TelemetryValidationService.Result.Rejected) result;
+    assertThat(rejected.reason()).isEqualTo("invalid_timestamp");
+    assertThat(rejected.field()).isEqualTo("timestamp");
+  }
+
+  @Test
+  @DisplayName("3.10-VAL-001 P0 machineCode mismatch in payload rejected")
+  void rejectsMachineCodeMismatch() {
+    seedPlantAndMachine();
+
+    var result = validationService.validate("factory/GM1/BF-08410/telemetry",
+        "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-10a\",\"timestamp\":\"2026-08-14T09:30:00Z\","
+            + "\"running\":true,\"runtimeHours\":12.5,\"counting\":100,\"machineCode\":\"BF-99999\"}");
+
+    assertThat(result).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
+    var rejected = (TelemetryValidationService.Result.Rejected) result;
+    assertThat(rejected.reason()).isEqualTo("identity_mismatch");
+    assertThat(rejected.field()).isEqualTo("machineCode");
+  }
+
+  @Test
+  @DisplayName("3.10-VAL-002 P0 plantCode mismatch in payload rejected")
+  void rejectsPlantCodeMismatch() {
+    seedPlantAndMachine();
+
+    var result = validationService.validate("factory/GM1/BF-08410/telemetry",
+        "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-10b\",\"timestamp\":\"2026-08-14T09:30:00Z\","
+            + "\"running\":true,\"runtimeHours\":12.5,\"counting\":100,\"plantCode\":\"XX1\"}");
+
+    assertThat(result).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
+    var rejected = (TelemetryValidationService.Result.Rejected) result;
+    assertThat(rejected.reason()).isEqualTo("identity_mismatch");
+    assertThat(rejected.field()).isEqualTo("plantCode");
+  }
+
+  @Test
+  @DisplayName("3.10-VAL-003 P1 payload without identity fields accepted")
+  void acceptsPayloadWithoutIdentityFields() {
+    seedPlantAndMachine();
+
+    var result = validationService.validate("factory/GM1/BF-08410/telemetry",
+        "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-10c\",\"timestamp\":\"2026-08-14T09:30:00Z\","
+            + "\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
+
+    assertThat(result).isInstanceOf(TelemetryValidationService.Result.Accepted.class);
+  }
+
+  @Test
+  @DisplayName("3.10-VAL-004 P1 case-insensitive identity match accepted")
+  void acceptsCaseInsensitiveIdentityMatch() {
+    seedPlantAndMachine();
+
+    var result = validationService.validate("factory/GM1/BF-08410/telemetry",
+        "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-10d\",\"timestamp\":\"2026-08-14T09:30:00Z\","
+            + "\"running\":true,\"runtimeHours\":12.5,\"counting\":100,"
+            + "\"machineCode\":\"bf-08410\",\"plantCode\":\"gm1\"}");
+
+    assertThat(result).isInstanceOf(TelemetryValidationService.Result.Accepted.class);
   }
 
   private void seedPlantAndMachine() {

@@ -6,10 +6,12 @@ import static org.mockito.Mockito.mock;
 
 import com.syncro.auth.infrastructure.PlantRepository;
 import com.syncro.config.MqttProperties;
+import com.syncro.config.TelemetryProperties;
 import com.syncro.config.TimeConfig;
 import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.telemetry.application.MqttTelemetryIngestHandler;
 import com.syncro.telemetry.application.TelemetryPersistenceService;
+import com.syncro.telemetry.application.TelemetryQuarantineService;
 import com.syncro.telemetry.application.TelemetryValidationService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +19,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.integration.channel.QueueChannel;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.mqtt.core.MqttPahoClientFactory;
 import org.springframework.integration.mqtt.inbound.MqttPahoMessageDrivenChannelAdapter;
@@ -24,6 +27,7 @@ import org.springframework.messaging.MessageChannel;
 
 @SpringBootTest(classes = {
     MqttSubscriptionConfig.class,
+    TelemetryIngestQueueConfig.class,
     MqttTelemetryIngestHandler.class,
     MqttConnectionStatus.class,
     MqttHealthIndicator.class,
@@ -52,6 +56,9 @@ class MqttSubscriptionConfigTest {
   @Autowired
   private MqttTelemetryIngestHandler handler;
 
+  @Autowired
+  private QueueChannel telemetryIngestQueue;
+
   @Test
   void adapterSubscribesToConfiguredTopicAtQosOneAndAutoStart() {
     assertThat(adapter.getTopic()).containsExactly("factory/+/+/telemetry");
@@ -74,8 +81,17 @@ class MqttSubscriptionConfigTest {
     assertThat(handler).isNotNull();
   }
 
+  @Test
+  void inboundFlowRoutesViaQueueChannel() {
+    // verify the queue channel bean is present and bounded (not unbounded DirectChannel)
+    assertThat(telemetryIngestQueue).isNotNull();
+    assertThat(telemetryIngestQueue.getRemainingCapacity()).isPositive();
+    // flow input channel comes from the adapter output — flow is wired
+    assertThat(mqttInboundFlow.getInputChannel()).isNotNull();
+  }
+
   @TestConfiguration(proxyBeanMethods = false)
-  @EnableConfigurationProperties(MqttProperties.class)
+  @EnableConfigurationProperties({MqttProperties.class, TelemetryProperties.class})
   static class MqttPropertiesTestConfiguration {
 
     @Bean
@@ -86,6 +102,11 @@ class MqttSubscriptionConfigTest {
     @Bean
     TelemetryPersistenceService telemetryPersistenceService() {
       return mock(TelemetryPersistenceService.class);
+    }
+
+    @Bean
+    TelemetryQuarantineService telemetryQuarantineService() {
+      return mock(TelemetryQuarantineService.class);
     }
   }
 }

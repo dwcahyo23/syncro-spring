@@ -29,6 +29,7 @@ management:
     health:
       probes:
         enabled: true
+      show-details: always
 
 syncro:
   auth:
@@ -57,3 +58,7 @@ syncro:
   waha:
     url: http://${WAHA_HOST}:${WAHA_PORT}
     api-key: ${WAHA_API_KEY}
+  telemetry:
+    ingest:
+      queue-capacity: 1000
+      worker-threads: 2

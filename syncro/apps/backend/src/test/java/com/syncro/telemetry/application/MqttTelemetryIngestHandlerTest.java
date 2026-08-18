@@ -27,10 +27,11 @@ class MqttTelemetryIngestHandlerTest {
   private static final Instant FIXED_NOW = Instant.parse("2026-08-08T10:00:00Z");
 
   private final TelemetryPersistenceService persistence = mock(TelemetryPersistenceService.class);
+  private final TelemetryQuarantineService quarantine = mock(TelemetryQuarantineService.class);
 
   private final MqttTelemetryIngestHandler handler =
       new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC), new AcceptingTelemetryValidationService(),
-          persistence);
+          persistence, quarantine);
 
   @Test
   void enrichAssignsTraceIdAndCapturesTopicAndPayload() {
@@ -88,7 +89,7 @@ class MqttTelemetryIngestHandlerTest {
   @Test
   void handleMessageLogsRejectionWithReasonAndTraceId() {
     var rejectingHandler = new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC),
-        new RejectingTelemetryValidationService(), persistence);
+        new RejectingTelemetryValidationService(), persistence, quarantine);
     var appender = attachAppender();
     var message = MessageBuilder.withPayload("{\"running\":true}".getBytes(StandardCharsets.UTF_8))
         .setHeader(MqttHeaders.RECEIVED_TOPIC, "factory/GM1/BF-08410/telemetry")
@@ -107,7 +108,7 @@ class MqttTelemetryIngestHandlerTest {
   @Test
   void handleMessageLogsInactiveMachineRejectionWithReasonTraceIdAndTopic() {
     var inactiveHandler = new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC),
-        new RejectingTelemetryValidationService("inactive_machine"), persistence);
+        new RejectingTelemetryValidationService("inactive_machine"), persistence, quarantine);
     var appender = attachAppender();
     var message = MessageBuilder.withPayload("{\"running\":true}".getBytes(StandardCharsets.UTF_8))
         .setHeader(MqttHeaders.RECEIVED_TOPIC, "factory/GM1/BF-08410/telemetry")
@@ -128,7 +129,7 @@ class MqttTelemetryIngestHandlerTest {
   @Test
   void handleMessageSwallowsRejectionWithoutThrowing() {
     var rejectingHandler = new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC),
-        new RejectingTelemetryValidationService(), persistence);
+        new RejectingTelemetryValidationService(), persistence, quarantine);
     var message = MessageBuilder.withPayload("{\"running\":true}".getBytes(StandardCharsets.UTF_8))
         .setHeader(MqttHeaders.RECEIVED_TOPIC, "factory/GM1/BF-08410/telemetry")
         .build();
@@ -150,7 +151,7 @@ class MqttTelemetryIngestHandlerTest {
   @Test
   void persistIsNotInvokedOnRejectedMessage() {
     var rejectingHandler = new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC),
-        new RejectingTelemetryValidationService(), persistence);
+        new RejectingTelemetryValidationService(), persistence, quarantine);
     var message = MessageBuilder.withPayload("{\"running\":true}".getBytes(StandardCharsets.UTF_8))
         .setHeader(MqttHeaders.RECEIVED_TOPIC, "factory/GM1/BF-08410/telemetry")
         .build();

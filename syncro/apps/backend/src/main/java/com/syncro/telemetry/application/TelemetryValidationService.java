@@ -1,11 +1,13 @@
 package com.syncro.telemetry.application;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.syncro.auth.infrastructure.PlantRepository;
 import com.syncro.machine.domain.MachineStatus;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 import org.springframework.stereotype.Service;
 
@@ -47,8 +49,35 @@ public class TelemetryValidationService {
     }
     return switch (TelemetryPayload.parse(payload, objectMapper, configuredOptionalFields(machine.get()))) {
       case TelemetryPayload.ParseResult.Rejected rejected -> new Result.Rejected(rejected.reason(), rejected.field());
-      case TelemetryPayload.ParseResult.Accepted accepted -> new Result.Accepted(machine.get(), accepted.payload());
+      case TelemetryPayload.ParseResult.Accepted accepted -> {
+        var identityRejection = checkIdentity(payload, parsedTopic.get());
+        if (identityRejection.isPresent()) {
+          yield identityRejection.get();
+        }
+        yield new Result.Accepted(machine.get(), accepted.payload());
+      }
     };
+  }
+
+  private Optional<Result.Rejected> checkIdentity(String rawPayload, TelemetryTopic topic) {
+    try {
+      JsonNode root = objectMapper.readTree(rawPayload);
+      JsonNode mc = root.get("machineCode");
+      if (mc != null && !mc.isNull()) {
+        if (!mc.isTextual() || !topic.machineCode().equalsIgnoreCase(mc.asText())) {
+          return Optional.of(new Result.Rejected("identity_mismatch", "machineCode"));
+        }
+      }
+      JsonNode pc = root.get("plantCode");
+      if (pc != null && !pc.isNull()) {
+        if (!pc.isTextual() || !topic.plantCode().equalsIgnoreCase(pc.asText())) {
+          return Optional.of(new Result.Rejected("identity_mismatch", "plantCode"));
+        }
+      }
+    } catch (Exception ignored) {
+      // payload already confirmed parseable by TelemetryPayload.parse; silently pass
+    }
+    return Optional.empty();
   }
 
   private static Set<String> configuredOptionalFields(MachineEntity machine) {

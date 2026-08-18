@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-25
-last_updated: 2026-08-10
+last_updated: 2026-08-18
 project: Syncro
 project_key: NOKEY
 tracking_system: file-system
@@ -76,11 +76,11 @@ development_status:
   3-5-calculate-production-count-delta-with-16-bit-wrap-support: done
   3-6-support-optional-machine-telemetry-fields: done
   3-7-show-latest-telemetry-dashboard: done
-  3-8-show-machine-hub-with-telemetry-context: ready-for-dev
-  3-9-enforce-telemetry-payload-contract-with-schema-version-messageid-and-timestamp: backlog
-  3-10-validate-payload-topic-machine-identity-match: backlog
-  3-11-implement-telemetry-quarantine-store-and-data-quality-validation: backlog
-  3-12-implement-backpressure-and-bounded-queue-behavior: backlog
+  3-8-show-machine-hub-with-telemetry-context: done
+  3-9-enforce-telemetry-payload-contract-with-schema-version-messageid-and-timestamp: done
+  3-10-validate-payload-topic-machine-identity-match: done
+  3-11-implement-telemetry-quarantine-store-and-data-quality-validation: done
+  3-12-implement-backpressure-and-bounded-queue-behavior: done
   3-13-configure-mqtt-security-tls-device-auth-acls: backlog
   epic-3-retrospective: optional
 

@@ -43,16 +43,16 @@ public class TelemetryPersistenceService {
     String machineCode = machine.getCode();
     UUID machineId = machine.getId();
 
-    String dedupeKey = "syncro:machine:" + machineId + ":telemetry:dedupe:" + accepted.payload().running() + ":"
-        + accepted.payload().runtimeHours() + ":" + accepted.payload().counting();
+    String dedupeKey = "syncro:machine:" + machineId + ":telemetry:dedupe:" + accepted.payload().messageId();
     Boolean acquired = redis.opsForValue().setIfAbsent(dedupeKey, envelope.traceId(), properties.dedupeWindow());
     if (acquired == null) {
       throw new IllegalStateException("dedupe gate unavailable for machine " + machineCode);
     }
     if (!acquired) {
       String winnerTraceId = redis.opsForValue().get(dedupeKey);
-      log.warn("mqtt_telemetry_duplicate traceId={} machineCode={} counting={} winnerTraceId={}",
-          envelope.traceId(), machineCode, accepted.payload().counting(), winnerTraceId == null ? "unknown" : winnerTraceId);
+      log.warn("mqtt_telemetry_duplicate traceId={} machineCode={} messageId={} winnerTraceId={}",
+          envelope.traceId(), machineCode, accepted.payload().messageId(),
+          winnerTraceId == null ? "unknown" : winnerTraceId);
       return;
     }
 
