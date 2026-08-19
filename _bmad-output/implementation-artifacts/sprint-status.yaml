@@ -92,7 +92,7 @@ development_status:
   4-4-acknowledge-open-alert: done
   4-5-resolve-acknowledged-alert: done
   4-6-allow-super-admin-direct-resolve-override: done
-  4-7-add-alert-state-to-machine-hub-and-operations-overview: backlog
+  4-7-add-alert-state-to-machine-hub-and-operations-overview: done
   epic-4-retrospective: optional
 
   # Epic 5: WAHA Escalation & Notification Evidence
