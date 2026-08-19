@@ -72,6 +72,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 2-6-install-
 location: Installation entity (backend)
 reason: Missing optimistic locking on Installation entity — deferred, pre-existing.
 status: open
+decision: 2026-08-19 Bundle it now — Add a @Version Long version field to InstallationEntity, update the corresponding migration, and propagate OptimisticLockException handling to the service and exception-handler layers.
 
 ### DW-10: tests/api suites not collected by the default Playwright testDir
 

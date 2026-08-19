@@ -7,5 +7,14 @@
     "key": "1",
     "label": "Bundle it now",
     "resolution": ""
+  },
+  "DW-9": {
+    "answered_at": "2026-08-19",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Add a @Version Long version field to InstallationEntity, update the corresponding migration, and propagate OptimisticLockException handling to the service and exception-handler layers.",
+    "key": "1",
+    "label": "Bundle it now",
+    "resolution": ""
   }
 }
