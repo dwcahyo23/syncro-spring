@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAcknowledgeAlert, useGetAlert } from "@/lib/api/generated/syncro";
+import { useAcknowledgeAlert, useGetAlert, useResolveAlert } from "@/lib/api/generated/syncro";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
 
 import { AlertStatusBadge } from "./alert-status-badge";
@@ -38,6 +38,22 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
           toast.error("Cannot acknowledge: invalid state transition.");
         } else {
           toast.error("Failed to acknowledge alert.");
+        }
+      },
+    },
+  });
+
+  const { mutate: resolve, isPending: isResolving } = useResolveAlert({
+    mutation: {
+      onSuccess: () => {
+        void refetch();
+        toast.success("Alert resolved.");
+      },
+      onError: (err: unknown) => {
+        if (err instanceof SyncroApiError && err.status === 409) {
+          toast.error("Cannot resolve: invalid state transition.");
+        } else {
+          toast.error("Failed to resolve alert.");
         }
       },
     },
@@ -139,6 +155,17 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
               aria-label="Acknowledge this alert"
             >
               {isAcknowledging ? "Acknowledging…" : "Acknowledge"}
+            </button>
+          )}
+          {alert.status === "ACKNOWLEDGED" && (
+            <button
+              type="button"
+              disabled={isResolving}
+              onClick={() => resolve({ alertId })}
+              className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+              aria-label="Resolve this alert"
+            >
+              {isResolving ? "Resolving…" : "Resolve"}
             </button>
           )}
         </div>

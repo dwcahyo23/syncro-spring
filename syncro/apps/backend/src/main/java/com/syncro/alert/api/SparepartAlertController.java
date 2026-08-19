@@ -3,6 +3,7 @@ package com.syncro.alert.api;
 import com.syncro.alert.api.SparepartAlertDtos.AcknowledgeRequest;
 import com.syncro.alert.api.SparepartAlertDtos.AlertListResponse;
 import com.syncro.alert.api.SparepartAlertDtos.AlertView;
+import com.syncro.alert.api.SparepartAlertDtos.ResolveRequest;
 import com.syncro.alert.application.SparepartAlertCommandService;
 import com.syncro.alert.application.SparepartAlertQueryService;
 import com.syncro.alert.application.SparepartAlertQueryService.AlertDetailView;
@@ -91,6 +92,24 @@ public class SparepartAlertController {
       @RequestBody(required = false) AcknowledgeRequest body) {
     var reason = body != null ? body.reason() : null;
     alertCommand.acknowledge(user, alertId, reason);
+  }
+
+  @Operation(operationId = "resolveAlert", summary = "Resolve an ACKNOWLEDGED alert")
+  @ApiResponses({
+      @ApiResponse(responseCode = "204", description = "Alert resolved"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Alert not found"),
+      @ApiResponse(responseCode = "409", description = "Invalid state transition")
+  })
+  @PostMapping("/{alertId}/resolve")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void resolve(
+      @AuthenticationPrincipal AuthenticatedUser user,
+      @PathVariable UUID alertId,
+      @RequestBody(required = false) ResolveRequest body) {
+    var reason = body != null ? body.reason() : null;
+    alertCommand.resolve(user, alertId, reason);
   }
 
   private AlertView toDto(AlertDetailView view) {

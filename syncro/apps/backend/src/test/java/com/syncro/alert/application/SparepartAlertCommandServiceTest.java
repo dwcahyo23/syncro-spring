@@ -268,4 +268,119 @@ class SparepartAlertCommandServiceTest {
     assertThat(a.getStatus()).isEqualTo(SparepartAlertStatus.ACKNOWLEDGED);
     assertThat(a.getStatusReason()).isNull();
   }
+
+  // --- resolve tests ---
+
+  @Test
+  void resolve_superAdmin_acknowledgedAlert_transitionsToResolved() {
+    var plantId = UUID.randomUUID();
+    var alertId = UUID.randomUUID();
+    var p = plant(plantId);
+    var g = machineGroup(UUID.randomUUID(), p);
+    var m = machine(UUID.randomUUID(), p, g);
+    var sp = sparepart(UUID.randomUUID());
+    var inst = installation(UUID.randomUUID(), m, sp);
+    var a = alert(alertId, inst, SparepartAlertStatus.ACKNOWLEDGED);
+
+    when(alertRepository.findByIdWithDetails(alertId)).thenReturn(Optional.of(a));
+    when(alertRepository.save(a)).thenReturn(a);
+
+    service().resolve(superAdmin(), alertId, "Replaced sparepart");
+
+    assertThat(a.getStatus()).isEqualTo(SparepartAlertStatus.RESOLVED);
+    assertThat(a.getStatusReason()).isEqualTo("Replaced sparepart");
+    assertThat(a.getUpdatedAt()).isEqualTo(Instant.now(clock));
+    verify(alertRepository).save(a);
+  }
+
+  @Test
+  void resolve_superAdmin_writesAuditEvent() {
+    var alertId = UUID.randomUUID();
+    var p = plant(UUID.randomUUID());
+    var g = machineGroup(UUID.randomUUID(), p);
+    var m = machine(UUID.randomUUID(), p, g);
+    var sp = sparepart(UUID.randomUUID());
+    var inst = installation(UUID.randomUUID(), m, sp);
+    var a = alert(alertId, inst, SparepartAlertStatus.ACKNOWLEDGED);
+
+    when(alertRepository.findByIdWithDetails(alertId)).thenReturn(Optional.of(a));
+    when(alertRepository.save(any())).thenReturn(a);
+
+    var user = superAdmin();
+    service().resolve(user, alertId, "reason");
+
+    var captor = ArgumentCaptor.forClass(AuditRecord.class);
+    verify(auditLogWriter).recordSystem(captor.capture());
+    var record = captor.getValue();
+    assertThat(record.entityId()).isEqualTo(alertId);
+    assertThat(record.previousValue()).containsEntry("actorId", user.id());
+    assertThat(record.newValue()).containsEntry("status", "RESOLVED");
+  }
+
+  @Test
+  void resolve_managedUser_scopedToPlant_succeeds() {
+    var userId = UUID.randomUUID();
+    var plantId = UUID.randomUUID();
+    var alertId = UUID.randomUUID();
+    var p = plant(plantId);
+    var g = machineGroup(UUID.randomUUID(), p);
+    var m = machine(UUID.randomUUID(), p, g);
+    var sp = sparepart(UUID.randomUUID());
+    var inst = installation(UUID.randomUUID(), m, sp);
+    var a = alert(alertId, inst, SparepartAlertStatus.ACKNOWLEDGED);
+
+    when(assignments.findByAuthUserId(userId))
+        .thenReturn(List.of(new AuthUserPlantAssignmentEntity(userId, plantId, Instant.now(clock))));
+    when(alertRepository.findByIdWithDetailsScopedToPlants(alertId, List.of(plantId)))
+        .thenReturn(Optional.of(a));
+    when(alertRepository.save(a)).thenReturn(a);
+
+    service().resolve(manageUser(userId), alertId, null);
+
+    assertThat(a.getStatus()).isEqualTo(SparepartAlertStatus.RESOLVED);
+    verify(alertRepository).save(a);
+  }
+
+  @Test
+  void resolve_openAlert_throwsInvalidTransition() {
+    var alertId = UUID.randomUUID();
+    var p = plant(UUID.randomUUID());
+    var g = machineGroup(UUID.randomUUID(), p);
+    var m = machine(UUID.randomUUID(), p, g);
+    var sp = sparepart(UUID.randomUUID());
+    var inst = installation(UUID.randomUUID(), m, sp);
+    var a = alert(alertId, inst, SparepartAlertStatus.OPEN);
+
+    when(alertRepository.findByIdWithDetails(alertId)).thenReturn(Optional.of(a));
+
+    assertThatThrownBy(() -> service().resolve(superAdmin(), alertId, null))
+        .isInstanceOf(AlertInvalidTransitionException.class)
+        .satisfies(ex -> {
+          var t = (AlertInvalidTransitionException) ex;
+          assertThat(t.getFrom()).isEqualTo(SparepartAlertStatus.OPEN);
+          assertThat(t.getTo()).isEqualTo(SparepartAlertStatus.RESOLVED);
+        });
+    verify(alertRepository, never()).save(any());
+  }
+
+  @Test
+  void resolve_alreadyResolved_throwsInvalidTransition() {
+    var alertId = UUID.randomUUID();
+    var p = plant(UUID.randomUUID());
+    var g = machineGroup(UUID.randomUUID(), p);
+    var m = machine(UUID.randomUUID(), p, g);
+    var sp = sparepart(UUID.randomUUID());
+    var inst = installation(UUID.randomUUID(), m, sp);
+    var a = alert(alertId, inst, SparepartAlertStatus.RESOLVED);
+
+    when(alertRepository.findByIdWithDetails(alertId)).thenReturn(Optional.of(a));
+
+    assertThatThrownBy(() -> service().resolve(superAdmin(), alertId, null))
+        .isInstanceOf(AlertInvalidTransitionException.class)
+        .satisfies(ex -> {
+          var t = (AlertInvalidTransitionException) ex;
+          assertThat(t.getFrom()).isEqualTo(SparepartAlertStatus.RESOLVED);
+        });
+    verify(alertRepository, never()).save(any());
+  }
 }

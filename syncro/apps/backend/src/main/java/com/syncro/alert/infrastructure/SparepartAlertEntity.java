@@ -108,6 +108,19 @@ public class SparepartAlertEntity {
     this.updatedAt = now;
   }
 
+  /**
+   * Transition ACKNOWLEDGED → RESOLVED.
+   * Throws {@link InvalidAlertTransitionException} if status is not ACKNOWLEDGED.
+   */
+  public void resolve(String reason, Instant now) {
+    if (this.status != SparepartAlertStatus.ACKNOWLEDGED) {
+      throw new InvalidAlertTransitionException(this.status, SparepartAlertStatus.RESOLVED);
+    }
+    this.status = SparepartAlertStatus.RESOLVED;
+    this.statusReason = reason;
+    this.updatedAt = now;
+  }
+
   public static class InvalidAlertTransitionException extends RuntimeException {
     private final SparepartAlertStatus from;
     private final SparepartAlertStatus to;

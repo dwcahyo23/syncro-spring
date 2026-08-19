@@ -67,6 +67,32 @@ public class SparepartAlertCommandService {
         Map.of("status", "ACKNOWLEDGED", "reason", reason != null ? reason : "")));
   }
 
+  /**
+   * Resolve an ACKNOWLEDGED alert (ACKNOWLEDGED → RESOLVED).
+   * Any authenticated user with plant access may resolve.
+   */
+  @Transactional
+  public void resolve(AuthenticatedUser user, UUID alertId, String reason) {
+    var alert = loadAndCheckAccess(user, alertId);
+
+    try {
+      alert.resolve(reason, clock.instant());
+    } catch (InvalidAlertTransitionException e) {
+      throw new AlertInvalidTransitionException(e.getFrom(), SparepartAlertStatus.RESOLVED);
+    }
+
+    alertRepository.save(alert);
+
+    auditLogWriter.recordSystem(new AuditRecord(
+        AuditAction.UPDATE,
+        AuditEntityType.ALERT,
+        alertId,
+        "ALERT:" + alertId,
+        resolvePlantId(alert),
+        Map.of("actorId", user.id(), "transition", "ACKNOWLEDGED→RESOLVED"),
+        Map.of("status", "RESOLVED", "reason", reason != null ? reason : "")));
+  }
+
   // ---------------------------------------------------------------------------
   // Shared helpers
   // ---------------------------------------------------------------------------
