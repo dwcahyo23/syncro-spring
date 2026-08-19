@@ -3,11 +3,12 @@
 import Link from "next/link";
 
 import { ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useGetAlert } from "@/lib/api/generated/syncro";
+import { useAcknowledgeAlert, useGetAlert } from "@/lib/api/generated/syncro";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
 
 import { AlertStatusBadge } from "./alert-status-badge";
@@ -23,6 +24,22 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
       staleTime: 15_000,
       retry: (failureCount: number, err: unknown) =>
         failureCount < 2 && !(err instanceof SyncroApiError && (err.status === 403 || err.status === 404)),
+    },
+  });
+
+  const { mutate: acknowledge, isPending: isAcknowledging } = useAcknowledgeAlert({
+    mutation: {
+      onSuccess: () => {
+        void refetch();
+        toast.success("Alert acknowledged.");
+      },
+      onError: (err: unknown) => {
+        if (err instanceof SyncroApiError && err.status === 409) {
+          toast.error("Cannot acknowledge: invalid state transition.");
+        } else {
+          toast.error("Failed to acknowledge alert.");
+        }
+      },
     },
   });
 
@@ -111,7 +128,20 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
             {alert.plantCode} · {alert.machineGroupName} · {alert.sparepartName ?? alert.sparepartCode}
           </p>
         </div>
-        <AlertStatusBadge status={alert.status} />
+        <div className="flex items-center gap-3">
+          <AlertStatusBadge status={alert.status} />
+          {alert.status === "OPEN" && (
+            <button
+              type="button"
+              disabled={isAcknowledging}
+              onClick={() => acknowledge({ alertId })}
+              className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              aria-label="Acknowledge this alert"
+            >
+              {isAcknowledging ? "Acknowledging…" : "Acknowledge"}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Why it fired */}

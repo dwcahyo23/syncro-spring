@@ -94,4 +94,31 @@ public class SparepartAlertEntity {
   public String getStatusReason() { return statusReason; }
   public Instant getCreatedAt() { return createdAt; }
   public Instant getUpdatedAt() { return updatedAt; }
+
+  /**
+   * Transition OPEN → ACKNOWLEDGED.
+   * Throws {@link InvalidAlertTransitionException} if status is not OPEN.
+   */
+  public void acknowledge(String reason, Instant now) {
+    if (this.status != SparepartAlertStatus.OPEN) {
+      throw new InvalidAlertTransitionException(this.status, SparepartAlertStatus.ACKNOWLEDGED);
+    }
+    this.status = SparepartAlertStatus.ACKNOWLEDGED;
+    this.statusReason = reason;
+    this.updatedAt = now;
+  }
+
+  public static class InvalidAlertTransitionException extends RuntimeException {
+    private final SparepartAlertStatus from;
+    private final SparepartAlertStatus to;
+
+    public InvalidAlertTransitionException(SparepartAlertStatus from, SparepartAlertStatus to) {
+      super("Invalid alert transition: " + from + " → " + to);
+      this.from = from;
+      this.to = to;
+    }
+
+    public SparepartAlertStatus getFrom() { return from; }
+    public SparepartAlertStatus getTo() { return to; }
+  }
 }

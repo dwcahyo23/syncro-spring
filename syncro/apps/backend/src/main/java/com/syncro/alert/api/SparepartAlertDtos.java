@@ -46,4 +46,8 @@ public final class SparepartAlertDtos {
       @Schema(nullable = false) int size,
       @Schema(nullable = false) String sort) {
   }
+
+  public record AcknowledgeRequest(
+      @Schema(nullable = true, description = "Optional reason for acknowledging the alert") String reason) {
+  }
 }

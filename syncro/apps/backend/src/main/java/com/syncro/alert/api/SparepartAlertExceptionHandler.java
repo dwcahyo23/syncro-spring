@@ -1,5 +1,6 @@
 package com.syncro.alert.api;
 
+import com.syncro.alert.application.SparepartAlertCommandService.AlertInvalidTransitionException;
 import com.syncro.alert.application.SparepartAlertQueryService.AlertNotFoundException;
 import com.syncro.auth.application.PlantScopeService.PlantAccessDeniedException;
 import java.time.Clock;
@@ -28,6 +29,12 @@ public class SparepartAlertExceptionHandler {
   @ExceptionHandler(AlertNotFoundException.class)
   ResponseEntity<ErrorResponse> alertNotFound() {
     return error(HttpStatus.NOT_FOUND, "ALERT_NOT_FOUND", "Alert was not found.");
+  }
+
+  @ExceptionHandler(AlertInvalidTransitionException.class)
+  ResponseEntity<ErrorResponse> invalidTransition(AlertInvalidTransitionException ex) {
+    return error(HttpStatus.CONFLICT, "INVALID_STATE_TRANSITION",
+        "Invalid alert state transition: " + ex.getFrom() + " → " + ex.getTo() + ".");
   }
 
   @ExceptionHandler(PlantAccessDeniedException.class)
