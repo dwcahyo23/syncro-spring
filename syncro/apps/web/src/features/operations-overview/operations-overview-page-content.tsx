@@ -7,7 +7,6 @@ import { AlertTriangle, Bell } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useListAlerts } from "@/lib/api/generated/syncro";
-import { SyncroApiError } from "@/lib/api/orval-mutator";
 import { AlertStatusBadge } from "@/features/alerts/alert-status-badge";
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
 

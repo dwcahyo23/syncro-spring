@@ -260,3 +260,11 @@ origin: code review Story 4.4 (2026-08-19)
 location: alert-detail-page-content.tsx
 reason: AC8 only requires 409-specific message; generic fallback for other status codes is acceptable per spec.
 status: open
+
+## Deferred from: code review of spec-4-7-add-alert-state-to-machine-hub-and-operations-overview (2026-08-19)
+
+### DW-43: timeAgo() returns negative string for future timestamps
+origin: code review Story 4.7 (2026-08-19)
+location: syncro/apps/web/src/features/operations-overview/operations-overview-page-content.tsx
+reason: No data path produces future createdAt values from alert API; acceptable risk at current scope.
+status: open

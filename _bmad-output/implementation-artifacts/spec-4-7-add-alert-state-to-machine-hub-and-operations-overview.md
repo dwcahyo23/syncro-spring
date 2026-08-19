@@ -194,6 +194,11 @@ claude-sonnet-4-5 (retroactive spec)
 - Placeholder metric tiles (Active Machines, Stale Telemetry, Health Status) are intentionally stubbed with `opacity-50` for Epic 5+
 - `timeAgo()` helper has no unit test; it is a pure utility function with straightforward boundary logic
 
+### Review Findings
+
+- [x] [Review][Patch] `SyncroApiError` unused import [operations-overview-page-content.tsx:10] — fixed, import removed
+- [x] [Review][Defer] `timeAgo()` returns negative string for future timestamps — no guard for negative diff [operations-overview-page-content.tsx] — deferred, no data path produces future `createdAt` values from alert API
+
 ### File List
 - `syncro/apps/web/src/features/operations-overview/operations-overview-page-content.tsx`
 - `syncro/apps/web/src/app/(main)/dashboard/operations-overview/page.tsx`
