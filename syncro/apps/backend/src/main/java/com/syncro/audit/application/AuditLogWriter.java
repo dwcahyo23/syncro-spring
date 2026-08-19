@@ -25,6 +25,22 @@ public class AuditLogWriter {
   }
 
   @Transactional(propagation = Propagation.REQUIRED)
+  public void recordSystem(AuditRecord record) {
+    auditLogs.save(new AuditLogEntity(
+        UUID.randomUUID(),
+        new UUID(0L, 0L),
+        "SYSTEM",
+        record.action(),
+        record.entityType(),
+        record.entityId(),
+        record.entityLabel(),
+        record.plantId(),
+        writeJson(record.previousValue()),
+        writeJson(record.newValue()),
+        Instant.now(clock)));
+  }
+
+  @Transactional(propagation = Propagation.REQUIRED)
   public void record(AuthenticatedUser actor, AuditRecord record) {
     auditLogs.save(new AuditLogEntity(
         UUID.randomUUID(),

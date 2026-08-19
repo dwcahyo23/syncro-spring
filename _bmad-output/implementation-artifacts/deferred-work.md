@@ -211,7 +211,19 @@ status: open
   evidence: Real, surfaced by review of Story 3.7 — the spec's I/O matrix assumes plant-scoped counts well below 200; pagination/virtualization is out of Story 3.7 scope (spec Residual Risks already calls out future pagination). Revisit when any plant approaches the cap.
   status: open
 
-### DW-35: Orval models stale for Story 3.7 `latestTelemetry` contract
+### DW-36: threshold_percentage CHECK constraint missing in sparepart_alerts
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-2-create-threshold-alert-with-duplicate-prevention.md`
+  summary: V19__create_sparepart_alerts.sql has no CHECK constraint on threshold_percentage column. Domain validation exists at Story 2.6 installation creation layer but DB has no guard against out-of-range values (negative or > 100).
+  evidence: Surfaced during Story 4.2 review — defer since upstream validation exists.
+  status: open
+
+### DW-37: evaluateAll and alert creation share one catch block in TelemetryPersistenceService
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-2-create-threshold-alert-with-duplicate-prevention.md`
+  summary: TelemetryPersistenceService.persist() wraps both evaluator.evaluateAll() and alertService.evaluateAndCreateAlerts() in one try/catch(Exception) block. A failure in evaluateAll silently skips alert creation with no separate signal.
+  evidence: Surfaced during Story 4.2 review — cosmetic observability improvement, not functionally blocking.
+  status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-7-show-latest-telemetry-dashboard.md`
   summary: `syncro/apps/web/src/lib/api/generated/model/machineView.ts` lacks the `latestTelemetry` field; the dashboard uses interim manual types in `features/telemetry/types/index.ts` cast from `useListMachines`. Regeneration needs the backend OpenAPI endpoint (`/v3/api-docs`) which was unavailable at implementation time.
   evidence: Real, surfaced during Story 3.7 implementation — tracked so the generated types are regenerated and the interim types removed once the backend contract is regenerated from the live OpenAPI doc (Epic 26 AR owns generation; this entry records the drift).

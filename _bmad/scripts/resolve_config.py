@@ -171,7 +171,7 @@ def main():
     else:
         output = merged
 
-    sys.stdout.write(json.dumps(output, indent=2, ensure_ascii=False) + "\n")
+    sys.stdout.buffer.write((json.dumps(output, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
 
 
 if __name__ == "__main__":

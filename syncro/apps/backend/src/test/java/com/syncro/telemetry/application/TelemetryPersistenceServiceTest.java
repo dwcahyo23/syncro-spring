@@ -26,6 +26,7 @@ import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.masterdata.infrastructure.MachineGroupEntity;
 import com.syncro.telemetry.infrastructure.InfluxTelemetryWriter;
 import com.syncro.telemetry.infrastructure.RedisLatestTelemetryWriter;
+import com.syncro.alert.application.SparepartAlertService;
 import com.syncro.sparepart.application.SparepartLifetimeEvaluator;
 import java.time.Duration;
 import java.time.Instant;
@@ -64,6 +65,8 @@ class TelemetryPersistenceServiceTest {
   private ValueOperations<String, String> valueOps;
   @Mock
   private SparepartLifetimeEvaluator evaluator;
+  @Mock
+  private SparepartAlertService alertService;
 
   private MachineEntity machine;
   private TelemetryPersistenceService service;
@@ -83,7 +86,7 @@ class TelemetryPersistenceServiceTest {
     dedupeKey = "syncro:machine:" + machine.getId() + ":telemetry:dedupe:msg-persist-1";
     service = new TelemetryPersistenceService(machines, influxWriter, redisLatestWriter, redis,
         new TelemetryProperties(Duration.parse("PT5M"), Duration.parse("PT30S"),
-            new TelemetryProperties.Ingest(1000, 2)), evaluator);
+            new TelemetryProperties.Ingest(1000, 2)), evaluator, alertService);
     when(machines.findByIdWithPlantAndGroup(machine.getId())).thenReturn(Optional.of(machine));
     lenient().when(redis.opsForValue()).thenReturn(valueOps);
   }

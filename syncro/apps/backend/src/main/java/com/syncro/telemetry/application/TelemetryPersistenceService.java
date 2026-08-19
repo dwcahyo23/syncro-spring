@@ -6,6 +6,7 @@ import com.syncro.machine.domain.MachineStatus;
 import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.telemetry.infrastructure.InfluxTelemetryWriter;
 import com.syncro.telemetry.infrastructure.RedisLatestTelemetryWriter;
+import com.syncro.alert.application.SparepartAlertService;
 import com.syncro.sparepart.application.SparepartLifetimeEvaluator;
 import java.util.LinkedHashMap;
 import java.util.UUID;
@@ -25,16 +26,18 @@ public class TelemetryPersistenceService {
   private final StringRedisTemplate redis;
   private final TelemetryProperties properties;
   private final SparepartLifetimeEvaluator evaluator;
+  private final SparepartAlertService alertService;
 
   public TelemetryPersistenceService(MachineRepository machines, InfluxTelemetryWriter influxWriter,
       RedisLatestTelemetryWriter redisLatestWriter, StringRedisTemplate redis, TelemetryProperties properties,
-      SparepartLifetimeEvaluator evaluator) {
+      SparepartLifetimeEvaluator evaluator, SparepartAlertService alertService) {
     this.machines = machines;
     this.influxWriter = influxWriter;
     this.redisLatestWriter = redisLatestWriter;
     this.redis = redis;
     this.properties = properties;
     this.evaluator = evaluator;
+    this.alertService = alertService;
   }
 
   public void persist(TelemetryValidationService.Result.Accepted accepted, TelemetryEnvelope envelope) {
@@ -92,9 +95,10 @@ public class TelemetryPersistenceService {
     }
 
     try {
-      evaluator.evaluateAll(machineId);
+      var results = evaluator.evaluateAll(machineId);
+      alertService.evaluateAndCreateAlerts(machineId, results, envelope.traceId());
     } catch (Exception e) {
-      log.warn("[traceId={}] SparepartLifetimeEvaluator.evaluateAll failed, skipping", envelope.traceId(), e);
+      log.warn("[traceId={}] SparepartLifetimeEvaluator.evaluateAll or alert creation failed, skipping", envelope.traceId(), e);
     }
 
     log.info("mqtt_telemetry_persisted traceId={} machineCode={} countingDelta={}",

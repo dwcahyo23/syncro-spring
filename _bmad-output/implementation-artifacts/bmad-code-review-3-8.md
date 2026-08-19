@@ -1,11 +1,13 @@
 ---
-status: in-review
+status: done
 created: 2026-08-10
+resolved: 2026-08-19
 spec_file: '_bmad-output/implementation-artifacts/spec-3-8-show-machine-hub-with-telemetry-context.md'
 reviewer: bmad-code-review skill
-blocking_issues: 5
+blocking_issues: 0
 low_priority_improvements: 7
 deferred: ['AC-Performance measurement', 'Historical charting Epic 6', 'Alert management Story 4.x']
+resolution: All 5 blocking issues fixed in commit 21511c5 (fix(3-8): correct all review findings from adversarial code review)
 ---
 
 # Code Review Summary: Story 3-8 Machine Hub
