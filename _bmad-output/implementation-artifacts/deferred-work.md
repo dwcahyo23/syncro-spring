@@ -228,7 +228,9 @@ origin: code review of spec-3-5-calculate-production-count-delta-with-16-bit-wra
 location: TelemetryPersistenceService.java, CountingDeltaCalculator.java
 severity: medium
 reason: Story 3.5 computes `countingDelta` from the previous `counting` in the Redis latest hash (`syncro:machine:{machineId}:latest`). That key expires after `latestTtl` (default PT5M), so a message arriving after a gap longer than the TTL finds no previous value and is treated as a first sample (`countingDelta = 0`). A durable per-machine counter-state store was deliberately NOT added to avoid scope creep. Revisit when Epic 4 sparepart consumption needs gap-spanning delta continuity.
-status: open
+status: done 2026-08-19
+resolution: resolved by sweep bundle dw-telemetry-persistence-atomicity
+resolution-undo: e392b4fb8e5ec2fa1bc7188ab8b27689c91d143df4b1ab322ec8c1961d1618ab 2026-08-19 7374617475733a206f70656e
 
 ### DW-26: Uniform 16-bit wrap rule cannot distinguish genuine counter decrease/reset/out-of-order delivery from a wrap
 
@@ -244,7 +246,9 @@ origin: code review of spec-3-5-calculate-production-count-delta-with-16-bit-wra
 location: TelemetryPersistenceService.java
 severity: high
 reason: `TelemetryPersistenceService.persist` computes the delta from the Redis latest hash `counting` and only updates that hash after the InfluxDB point is written. If `putLatest` fails after the point is persisted, the latest hash still holds the older `counting`, so the next message double-counts the span already written to history. No cheap fix at persist time; a durable counter baseline or chain-source from InfluxDB history is the Epic 4 / ingest-worker scope.
-status: open
+status: done 2026-08-19
+resolution: resolved by sweep bundle dw-telemetry-persistence-atomicity
+resolution-undo: e392b4fb8e5ec2fa1bc7188ab8b27689c91d143df4b1ab322ec8c1961d1618ab 2026-08-19 7374617475733a206f70656e
 
 ### DW-28: InfluxDB field-type conflict when a configured field's JSON value type varies across samples
 
@@ -276,7 +280,9 @@ origin: code review of spec-3-6-support-optional-machine-telemetry-fields.md
 location: TelemetryPersistenceService.java
 severity: low
 reason: Removing a field from `machines.optional_telemetry_fields` does not delete previously-written `optional.<name>` keys from the latest hash; they persist until `latestTtl` expiry, so consumers (Stories 3.7/3.8) can render values for no-longer-configured fields. Cleanup would couple machine CRUD to telemetry latest-state; TTL-bounded and low impact.
-status: open
+status: done 2026-08-19
+resolution: resolved by sweep bundle dw-telemetry-persistence-atomicity
+resolution-undo: e392b4fb8e5ec2fa1bc7188ab8b27689c91d143df4b1ab322ec8c1961d1618ab 2026-08-19 7374617475733a206f70656e
 
 ### DW-32: Machine PUT without `optionalTelemetryFields` wipes a machine's configured optional fields
 

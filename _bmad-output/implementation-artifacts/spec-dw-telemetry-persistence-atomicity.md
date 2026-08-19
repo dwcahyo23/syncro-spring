@@ -122,3 +122,4 @@ warnings: []
 **Verification:** Java 25 not available in CI environment; zero-error compilation confirmed against `--release=21` across all modified files. All original tests preserved. 7 new unit tests added.
 
 **Residual risks:** Sentinel `-1L` ambiguity if DB row is manually corrupted with negative counting; DB `save()` upsert behavior depends on Hibernate 7 merge semantics — if INSERT+UPDATE is not atomic, a concurrent first message for the same machine could fail with PK violation (extremely rare; acceptable given ingest is sequential per machineId).
+
