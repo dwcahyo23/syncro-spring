@@ -59,4 +59,46 @@ class TelemetryTopicTest {
   void rejectsEmptyMachineCodeSegment() {
     assertThat(TelemetryTopic.parse("factory/GM1//telemetry")).isEmpty();
   }
+
+  @Test
+  void acceptsAndTrimsPaddedPlantSegment() {
+    var result = TelemetryTopic.parse("factory/ GM1/BF-08410/telemetry");
+    assertThat(result).isPresent();
+    assertThat(result.get().plantCode()).isEqualTo("GM1");
+    assertThat(result.get().machineCode()).isEqualTo("BF-08410");
+  }
+
+  @Test
+  void acceptsAndTrimsPaddedMachineSegment() {
+    var result = TelemetryTopic.parse("factory/GM1/BF-08410 /telemetry");
+    assertThat(result).isPresent();
+    assertThat(result.get().plantCode()).isEqualTo("GM1");
+    assertThat(result.get().machineCode()).isEqualTo("BF-08410");
+  }
+
+  @Test
+  void rejectsBlankPlantSegment() {
+    assertThat(TelemetryTopic.parse("factory/   /BF-08410/telemetry")).isEmpty();
+  }
+
+  @Test
+  void rejectsBlankMachineSegment() {
+    assertThat(TelemetryTopic.parse("factory/GM1/   /telemetry")).isEmpty();
+  }
+
+  @Test
+  void acceptsAndTrimsBothPaddedSegments() {
+    var result = TelemetryTopic.parse("factory/ GM1 /BF-08410 /telemetry");
+    assertThat(result).isPresent();
+    assertThat(result.get().plantCode()).isEqualTo("GM1");
+    assertThat(result.get().machineCode()).isEqualTo("BF-08410");
+  }
+
+  @Test
+  void acceptsAndTrimsLeadingSpaceInMachineSegment() {
+    var result = TelemetryTopic.parse("factory/GM1/ BF-08410/telemetry");
+    assertThat(result).isPresent();
+    assertThat(result.get().plantCode()).isEqualTo("GM1");
+    assertThat(result.get().machineCode()).isEqualTo("BF-08410");
+  }
 }

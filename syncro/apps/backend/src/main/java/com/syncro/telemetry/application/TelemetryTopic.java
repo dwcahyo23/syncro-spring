@@ -15,9 +15,11 @@ public record TelemetryTopic(String plantCode, String machineCode) {
     if (!"factory".equals(segments[0]) || !"telemetry".equals(segments[3])) {
       return Optional.empty();
     }
-    if (segments[1].isEmpty() || segments[2].isEmpty()) {
+    String plantCode = segments[1].trim();
+    String machineCode = segments[2].trim();
+    if (plantCode.isBlank() || machineCode.isBlank()) {
       return Optional.empty();
     }
-    return Optional.of(new TelemetryTopic(segments[1], segments[2]));
+    return Optional.of(new TelemetryTopic(plantCode, machineCode));
   }
 }

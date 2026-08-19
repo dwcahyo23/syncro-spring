@@ -34,6 +34,13 @@ public class MqttConnectionStatus implements ApplicationListener<MqttIntegration
     } else if (event instanceof MqttConnectionFailedEvent failedEvent) {
       lastError = failedEvent.getCause() == null ? "unknown" : failedEvent.getCause().getMessage();
       setState(State.FAILED);
+      // TODO (DW-14): Spring Integration MQTT 7.x does not publish a mid-session disconnect event
+      // observable here. With setAutomaticReconnect(true), Paho handles drops in its background
+      // thread and does not emit MqttConnectionFailedEvent for reconnect cycles — only for initial
+      // connect failures. The health indicator therefore stays SUBSCRIBED during a broker outage
+      // that begins after initial subscribe. Revisit if a later Spring Integration version exposes
+      // a connection-lost event, or if a Paho IMqttActionListener/connectionLost callback can be
+      // wired to update this state.
     }
   }
 

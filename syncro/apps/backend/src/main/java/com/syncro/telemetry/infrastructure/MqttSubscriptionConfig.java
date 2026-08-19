@@ -25,6 +25,11 @@ public class MqttSubscriptionConfig {
     options.setUserName(properties.username());
     options.setPassword(properties.password() == null ? null : properties.password().toCharArray());
     options.setAutomaticReconnect(true);
+    // TODO: cleanSession(true) discards in-flight messages on reconnect, which defeats QoS-1
+    // at-least-once redelivery semantics. The dedupe SETNX gate in TelemetryPersistenceService
+    // only guards against duplicates that actually arrive; messages lost during reconnect are
+    // silently dropped. Switch to cleanSession(false) with a stable clientId if at-least-once
+    // delivery becomes a hard requirement (DW-23).
     options.setCleanSession(true);
     return options;
   }
