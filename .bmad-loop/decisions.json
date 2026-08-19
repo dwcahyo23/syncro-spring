@@ -1,0 +1,11 @@
+{
+  "DW-1": {
+    "answered_at": "2026-08-19",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Create a dev session that enables EMQX password authentication in docker-compose (EMQX_AUTH__MNESIA__PASSWORD_HASH or built-in DB), updates application.yml MQTT client credentials, and verifies the Spring MQTT client connects successfully with auth enforced.",
+    "key": "1",
+    "label": "Bundle it now",
+    "resolution": ""
+  }
+}

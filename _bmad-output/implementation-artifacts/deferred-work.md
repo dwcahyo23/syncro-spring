@@ -6,6 +6,7 @@ origin: migrated from legacy ledger ("Deferred from: code review of 1-3-initiali
 location: syncro backend MQTT/EMQX broker configuration
 reason: Local broker MQTT authentication belongs to later EMQX security/auth configuration scope, not Story 1.3 backend skeleton.
 status: open
+decision: 2026-08-19 Bundle it now — Create a dev session that enables EMQX password authentication in docker-compose (EMQX_AUTH__MNESIA__PASSWORD_HASH or built-in DB), updates application.yml MQTT client credentials, and verifies the Spring MQTT client connects successfully with auth enforced.
 
 ### DW-2: Add durable UI state evidence for AC11
 
