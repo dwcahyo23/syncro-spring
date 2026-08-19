@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-25
-  last_updated: 2026-08-19
+last_updated: 2026-08-19
 project: Syncro
 project_key: NOKEY
 tracking_system: file-system
