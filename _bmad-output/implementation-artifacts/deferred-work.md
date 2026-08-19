@@ -7,6 +7,7 @@ location: syncro backend MQTT/EMQX broker configuration
 reason: Local broker MQTT authentication belongs to later EMQX security/auth configuration scope, not Story 1.3 backend skeleton.
 status: open
 decision: 2026-08-19 Bundle it now — Create a dev session that enables EMQX password authentication in docker-compose (EMQX_AUTH__MNESIA__PASSWORD_HASH or built-in DB), updates application.yml MQTT client credentials, and verifies the Spring MQTT client connects successfully with auth enforced.
+decision: 2026-08-19 Bundle it now — Create a dev session that enables EMQX password authentication in docker-compose (EMQX_AUTH__MNESIA__PASSWORD_HASH or built-in DB), updates application.yml MQTT client credentials, and verifies the Spring MQTT client connects successfully with auth enforced.
 
 ### DW-2: Add durable UI state evidence for AC11
 
@@ -73,6 +74,7 @@ location: Installation entity (backend)
 reason: Missing optimistic locking on Installation entity — deferred, pre-existing.
 status: open
 decision: 2026-08-19 Bundle it now — Add a @Version Long version field to InstallationEntity, update the corresponding migration, and propagate OptimisticLockException handling to the service and exception-handler layers.
+decision: 2026-08-19 Bundle it now — Add a @Version Long version field to InstallationEntity, update the corresponding migration, and propagate OptimisticLockException handling to the service and exception-handler layers.
 
 ### DW-10: tests/api suites not collected by the default Playwright testDir
 
@@ -88,6 +90,7 @@ origin: flagged in spec-web-e2e-config-hardening review log (WH-03), 2026-08-08
 location: syncro/apps/web/playwright.config.ts (webServer derivation)
 reason: With a portless `BASE_URL` (e.g. a deployed origin like `https://app.example.com`), the derived default web server command degrades to plain `npm run dev` (Next default port 3000) while `webServer.url` is the portless origin — the server never reaches readiness and the run hangs until the 120s timeout. Pre-existing mismatch; the config-hardening derivation keeps it.
 status: open
+decision: 2026-08-19 New small bundle — Create a focused dev session: fix playwright.config.ts webServer baseURL to correctly derive or default the port from BASE_URL, and add or update tests/README.md to document PLAYWRIGHT_SKIP_WEB_SERVER.
 decision: 2026-08-19 New small bundle — Create a focused dev session: fix playwright.config.ts webServer baseURL to correctly derive or default the port from BASE_URL, and add or update tests/README.md to document PLAYWRIGHT_SKIP_WEB_SERVER.
 mitigation: documented in syncro/apps/web/tests/README.md — pair a portless `BASE_URL` with `PLAYWRIGHT_SKIP_WEB_SERVER=1` so Playwright targets the already-running origin without booting a local server.
 
@@ -197,6 +200,7 @@ source_spec: `spec-3-4-persist-accepted-telemetry-to-influxdb-and-redis.md`
 severity: low
 reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260808-181116-d9d3; this entry preserves the lingering recommendation for a deliberate later review.
 status: done 2026-08-19
+decision: 2026-08-19 Close — bundles cover it — The telemetry-persistence-atomicity, influx-optional-field-type-safety, and counting-delta-reliability bundles address the substantive gaps; a separate review session adds marginal value.
 resolution: closed by human decision: The telemetry-persistence-atomicity, influx-optional-field-type-safety, and counting-delta-reliability bundles address the substantive gaps; a separate review session adds marginal value.
 decision: 2026-08-19 Close — bundles cover it — The telemetry-persistence-atomicity, influx-optional-field-type-safety, and counting-delta-reliability bundles address the substantive gaps; a separate review session adds marginal value.
 
@@ -322,6 +326,7 @@ origin: code review Story 4.4 (2026-08-19)
 location: SparepartAlertCommandService.java, alert-detail-page-content.tsx
 reason: Entity in-memory guard prevents corrupt state; optimistic locking is a pre-existing gap across all entities.
 status: open
+decision: 2026-08-19 Full fix: @Version + disabled button — Add @Version Long version field to SparepartAlertEntity with a migration, propagate OptimisticLockException to a 409 response, and disable the acknowledge button in alert-detail-page-content.tsx while the mutation is in-flight (isPending guard).
 decision: 2026-08-19 Full fix: @Version + disabled button — Add @Version Long version field to SparepartAlertEntity with a migration, propagate OptimisticLockException to a 409 response, and disable the acknowledge button in alert-detail-page-content.tsx while the mutation is in-flight (isPending guard).
 
 ### DW-41: Empty string reason bypasses nullable contract — no @NotBlank or max-length guard
