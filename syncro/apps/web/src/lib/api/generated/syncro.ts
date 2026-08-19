@@ -4985,6 +4985,58 @@ export function useListAuditLogEntries<TData = Awaited<ReturnType<typeof listAud
   return withQueryKey(query, queryOptions.queryKey);
 }
 
+// ---------------------------------------------------------------------------
+// Alert stubs — generated after backend is running and `npm run generate:api`
+// ---------------------------------------------------------------------------
+import type { AlertListResponse, AlertView, SparepartAlertStatus } from './model';
+
+export type ListAlertsParams = {
+  machineId?: string;
+  plantId?: string;
+  status?: SparepartAlertStatus;
+  page?: number;
+  size?: number;
+  sort?: string;
+};
+
+export const listAlerts = (params?: ListAlertsParams, options?: RequestInit) =>
+  syncroFetch<{ data: AlertListResponse }>(`/api/v1/alerts${params ? `?${new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== null).map(([k, v]) => [k, String(v)])).toString()}` : ''}`, options);
+
+export const getAlert = (alertId: string, options?: RequestInit) =>
+  syncroFetch<{ data: AlertView }>(`/api/v1/alerts/${alertId}`, options);
+
+export const getListAlertsQueryKey = (params?: ListAlertsParams) =>
+  [`/api/v1/alerts`, ...(params ? [params] : [])] as const;
+
+export const getGetAlertQueryKey = (alertId: string) =>
+  [`/api/v1/alerts/${alertId}`] as const;
+
+export function useListAlerts<TData = Awaited<ReturnType<typeof listAlerts>>, TError = AlertListResponse>(
+  params?: ListAlertsParams,
+  options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listAlerts>>, TError, TData>>; request?: SecondParameter<typeof syncroFetch> },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getListAlertsQueryKey(params);
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listAlerts>>> = ({ signal }) =>
+    listAlerts(params, { signal, ...requestOptions } as RequestInit);
+  const query = useQuery({ queryKey, queryFn, ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof listAlerts>>, TError, TData>, queryClient) as UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+  return withQueryKey(query, queryKey);
+}
+
+export function useGetAlert<TData = Awaited<ReturnType<typeof getAlert>>, TError = AlertView>(
+  alertId: string,
+  options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getAlert>>, TError, TData>>; request?: SecondParameter<typeof syncroFetch> },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getGetAlertQueryKey(alertId);
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAlert>>> = ({ signal }) =>
+    getAlert(alertId, { signal, ...requestOptions } as RequestInit);
+  const query = useQuery({ queryKey, queryFn, enabled: Boolean(alertId), ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof getAlert>>, TError, TData>, queryClient) as UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+  return withQueryKey(query, queryKey);
+}
+
 
 
 

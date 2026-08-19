@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-25
-last_updated: 2026-08-18
+  last_updated: 2026-08-19
 project: Syncro
 project_key: NOKEY
 tracking_system: file-system
@@ -85,10 +85,10 @@ development_status:
   epic-3-retrospective: optional
 
   # Epic 4: Sparepart Lifetime Alerting
-  epic-4: backlog
+  epic-4: in-progress
   4-1-evaluate-sparepart-lifetime-threshold-from-accepted-telemetry: done
-  4-2-create-threshold-alert-with-duplicate-prevention: backlog
-  4-3-show-alert-list-and-alert-detail: backlog
+  4-2-create-threshold-alert-with-duplicate-prevention: done
+  4-3-show-alert-list-and-alert-detail: done
   4-4-acknowledge-open-alert: backlog
   4-5-resolve-acknowledged-alert: backlog
   4-6-allow-super-admin-direct-resolve-override: backlog

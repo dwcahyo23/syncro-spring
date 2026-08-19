@@ -1,11 +1,15 @@
 package com.syncro.alert.infrastructure;
 
 import com.syncro.alert.domain.SparepartAlertStatus;
+import com.syncro.sparepart.infrastructure.MachineSparepartInstallationEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -23,6 +27,10 @@ public class SparepartAlertEntity {
 
   @Column(name = "machine_sparepart_installation_id", nullable = false)
   private UUID machineSparepartInstallationId;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "machine_sparepart_installation_id", insertable = false, updatable = false)
+  private MachineSparepartInstallationEntity installation;
 
   @Column(name = "threshold_percentage", nullable = false)
   private int thresholdPercentage;
@@ -76,6 +84,7 @@ public class SparepartAlertEntity {
   public UUID getId() { return id; }
   public UUID getMachineId() { return machineId; }
   public UUID getMachineSparepartInstallationId() { return machineSparepartInstallationId; }
+  public MachineSparepartInstallationEntity getInstallation() { return installation; }
   public int getThresholdPercentage() { return thresholdPercentage; }
   public long getCurrentCounterSnapshot() { return currentCounterSnapshot; }
   public long getConsumedProductionCountSnapshot() { return consumedProductionCountSnapshot; }

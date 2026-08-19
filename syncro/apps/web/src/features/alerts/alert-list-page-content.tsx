@@ -6,26 +6,42 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useListAlerts } from "@/lib/api/generated/syncro";
+import type { SparepartAlertStatus } from "@/lib/api/generated/model";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
-import { AlertStatusBadge } from "@/features/alerts/alert-status-badge";
 
-export interface AlertsTabProps {
+import { AlertStatusBadge } from "./alert-status-badge";
+
+interface AlertListPageContentProps {
+  statusFilter?: SparepartAlertStatus;
   machineId?: string;
 }
 
-export function AlertsTab({ machineId }: AlertsTabProps) {
+export function AlertListPageContent({ statusFilter, machineId }: AlertListPageContentProps) {
   const router = useRouter();
 
-  const { data, isLoading, isError, refetch } = useListAlerts(
-    { machineId, page: 0, size: 50, sort: "createdAt,desc" },
-    { query: { enabled: Boolean(machineId), staleTime: 15_000 } },
+  const { data, isLoading, isError, error, refetch } = useListAlerts(
+    {
+      ...(statusFilter ? { status: statusFilter } : {}),
+      ...(machineId ? { machineId } : {}),
+      page: 0,
+      size: 50,
+      sort: "createdAt,desc",
+    },
+    {
+      query: {
+        staleTime: 15_000,
+        retry: (failureCount, err) =>
+          failureCount < 2 && !(err instanceof SyncroApiError && (err.status === 403 || err.status === 401)),
+      },
+    },
   );
 
   const items = data?.data?.items ?? [];
 
-  if (!machineId || isLoading) {
+  if (isLoading) {
     return (
       <div className="space-y-3">
+        <Skeleton className="h-10 w-full" />
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-10 w-full" />
       </div>
@@ -33,6 +49,14 @@ export function AlertsTab({ machineId }: AlertsTabProps) {
   }
 
   if (isError) {
+    if (error instanceof SyncroApiError && error.status === 403) {
+      return (
+        <div className="rounded-lg border p-6 text-center">
+          <h2 className="text-lg font-semibold">Access denied</h2>
+          <p className="mt-1 text-sm text-muted-foreground">You do not have access to alerts.</p>
+        </div>
+      );
+    }
     return (
       <div className="flex flex-col items-center gap-3 rounded-lg border p-6">
         <p className="text-sm text-muted-foreground">Failed to load alerts.</p>
@@ -51,7 +75,7 @@ export function AlertsTab({ machineId }: AlertsTabProps) {
     return (
       <EmptyState
         title="No alerts"
-        description="This machine has no active sparepart lifetime alerts."
+        description="No sparepart lifetime alerts match the current filter."
       />
     );
   }
@@ -61,10 +85,12 @@ export function AlertsTab({ machineId }: AlertsTabProps) {
       <TableHeader>
         <TableRow>
           <TableHead>Status</TableHead>
+          <TableHead>Machine</TableHead>
+          <TableHead className="hidden md:table-cell">Plant</TableHead>
           <TableHead>Sparepart</TableHead>
           <TableHead className="hidden sm:table-cell text-right">Threshold</TableHead>
           <TableHead className="hidden sm:table-cell text-right">Consumed</TableHead>
-          <TableHead className="hidden md:table-cell">Created</TableHead>
+          <TableHead className="hidden lg:table-cell">Created</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -80,10 +106,22 @@ export function AlertsTab({ machineId }: AlertsTabProps) {
                 router.push(`/alerts/${item.id}`);
               }
             }}
-            aria-label={`View alert: ${item.sparepartName ?? item.sparepartCode}`}
+            aria-label={`View alert for ${item.machineCode} — ${item.sparepartName ?? item.sparepartCode}`}
           >
             <TableCell>
-              <AlertStatusBadge status={item.status} />
+              <AlertStatusBadge status={item.status as SparepartAlertStatus} />
+            </TableCell>
+            <TableCell>
+              <div className="font-medium">{item.machineCode}</div>
+              {item.machineName && (
+                <div className="text-xs text-muted-foreground">{item.machineName}</div>
+              )}
+            </TableCell>
+            <TableCell className="hidden md:table-cell text-sm">
+              {item.plantCode}
+              {item.plantName && (
+                <span className="ml-1 text-muted-foreground">({item.plantName})</span>
+              )}
             </TableCell>
             <TableCell>
               <div className="font-medium">{item.sparepartName ?? item.sparepartCode}</div>
@@ -95,7 +133,7 @@ export function AlertsTab({ machineId }: AlertsTabProps) {
             <TableCell className="hidden sm:table-cell text-right tabular-nums">
               {Number(item.consumedPercentageSnapshot).toFixed(1)}%
             </TableCell>
-            <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+            <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
               {item.createdAt ? new Date(item.createdAt).toLocaleString() : "-"}
             </TableCell>
           </TableRow>

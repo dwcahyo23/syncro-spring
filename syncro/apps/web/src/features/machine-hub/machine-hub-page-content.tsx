@@ -107,7 +107,7 @@ export function MachineHubPageContent({ machineCode }: { machineCode: string }) 
         </TabsContent>
 
         <TabsContent value="alerts" className="mt-6">
-          <AlertsTab machineCode={machineCode} />
+          <AlertsTab machineId={machine?.id} />
         </TabsContent>
 
         <TabsContent value="audit" className="mt-6">
