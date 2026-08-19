@@ -196,7 +196,9 @@ location: n/a
 source_spec: `spec-3-4-persist-accepted-telemetry-to-influxdb-and-redis.md`
 severity: low
 reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260808-181116-d9d3; this entry preserves the lingering recommendation for a deliberate later review.
-status: open
+status: done 2026-08-19
+resolution: closed by human decision: The telemetry-persistence-atomicity, influx-optional-field-type-safety, and counting-delta-reliability bundles address the substantive gaps; a separate review session adds marginal value.
+decision: 2026-08-19 Close — bundles cover it — The telemetry-persistence-atomicity, influx-optional-field-type-safety, and counting-delta-reliability bundles address the substantive gaps; a separate review session adds marginal value.
 
 ### DW-25: Production-count delta continuity lost across gaps longer than the latest-state TTL
 
