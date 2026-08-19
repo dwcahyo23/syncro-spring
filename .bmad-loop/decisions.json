@@ -17,6 +17,15 @@
     "label": "New small bundle",
     "resolution": ""
   },
+  "DW-40": {
+    "answered_at": "2026-08-19",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Add @Version Long version field to SparepartAlertEntity with a migration, propagate OptimisticLockException to a 409 response, and disable the acknowledge button in alert-detail-page-content.tsx while the mutation is in-flight (isPending guard).",
+    "key": "1",
+    "label": "Full fix: @Version + disabled button",
+    "resolution": ""
+  },
   "DW-9": {
     "answered_at": "2026-08-19",
     "bundle_name": "",

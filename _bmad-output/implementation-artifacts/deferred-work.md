@@ -322,6 +322,7 @@ origin: code review Story 4.4 (2026-08-19)
 location: SparepartAlertCommandService.java, alert-detail-page-content.tsx
 reason: Entity in-memory guard prevents corrupt state; optimistic locking is a pre-existing gap across all entities.
 status: open
+decision: 2026-08-19 Full fix: @Version + disabled button — Add @Version Long version field to SparepartAlertEntity with a migration, propagate OptimisticLockException to a 409 response, and disable the acknowledge button in alert-detail-page-content.tsx while the mutation is in-flight (isPending guard).
 
 ### DW-41: Empty string reason bypasses nullable contract — no @NotBlank or max-length guard
 origin: code review Story 4.4 (2026-08-19)
