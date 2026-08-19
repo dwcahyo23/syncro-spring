@@ -130,7 +130,9 @@ origin: code review of spec-3-2-validate-mqtt-topic-and-base-payload.md
 location: TelemetryPayload.java
 severity: high
 reason: `TelemetryPayload.parse` accepts negative `runtimeHours` and negative `counting`; the epic mandates rejecting values outside physically plausible ranges. The parse path has no lower-bound guard. Negative-count rejection is explicitly owned by Story 3.5's AC; negative runtimeHours range validation has no owning story yet. Deferred to avoid range logic landing ahead of Story 3.5's counter-wrap semantics.
-status: open
+status: done 2026-08-19
+resolution: resolved by sweep bundle dw-telemetry-validation-robustness
+resolution-undo: d873197c6c80419806095fdec9b878935e7a628478cd0305fa551d254cb9d478 2026-08-19 7374617475733a206f70656e
 
 ### DW-16: Per-message DB round-trips on MQTT ingest thread without caching
 
@@ -138,7 +140,9 @@ origin: code review of spec-3-2-validate-mqtt-topic-and-base-payload.md
 location: TelemetryValidationService.java
 severity: medium
 reason: `TelemetryValidationService.validate` performs two synchronous JPA lookups (`findByCodeIgnoreCase`, `findByPlantIdAndCodeIgnoreCase`) per inbound message on the QoS-1 ingest thread, with no caching or offload. Acceptable for Phase-1 telemetry volume; cache/backpressure offload belongs with the bounded-queue ingest-worker story (Epic 3 backpressure NFR) rather than Story 3.2.
-status: open
+status: done 2026-08-19
+resolution: resolved by sweep bundle dw-telemetry-validation-robustness
+resolution-undo: d873197c6c80419806095fdec9b878935e7a628478cd0305fa551d254cb9d478 2026-08-19 7374617475733a206f70656e
 
 ### DW-17: Detached `MachineEntity` with lazy associations returned in `Accepted` result
 
@@ -146,7 +150,9 @@ origin: code review of spec-3-2-validate-mqtt-topic-and-base-payload.md
 location: TelemetryValidationService.java
 severity: high
 reason: `TelemetryValidationService.validate` returns the `MachineEntity` outside any transaction; its `plant`/`machineGroup` associations are LAZY, so Story 3.4's store write that touches `accepted.machine().getPlant()` will throw `LazyInitializationException`. `validate()` is not `@Transactional` and the repository's implicit transaction closes on return. Needs a contract decision (lightweight machine view vs entity fetched with joins kept within a transaction) before Story 3.4.
-status: open
+status: done 2026-08-19
+resolution: resolved by sweep bundle dw-telemetry-validation-robustness
+resolution-undo: d873197c6c80419806095fdec9b878935e7a628478cd0305fa551d254cb9d478 2026-08-19 7374617475733a206f70656e
 
 ### DW-18: Raw payload logged at INFO on every accepted telemetry message
 
@@ -182,7 +188,9 @@ origin: code review of spec-3-3-reject-inactive-machine-telemetry.md
 location: TelemetryValidationService.java
 severity: medium
 reason: `TelemetryValidationService` rejects only `MachineStatus.INACTIVE` and accepts any other status by default; when the enum grows (e.g. `DECOMMISSIONED`, `SUSPENDED`), telemetry for those machines would be silently accepted. An inclusion-based `status != ACTIVE → reject` would fail closed for future statuses. Deferred: spec intentionally names INACTIVE only; revisit when a new machine status is introduced.
-status: open
+status: done 2026-08-19
+resolution: resolved by sweep bundle dw-telemetry-validation-robustness
+resolution-undo: d873197c6c80419806095fdec9b878935e7a628478cd0305fa551d254cb9d478 2026-08-19 7374617475733a206f70656e
 
 ### DW-22: Heartbeat-thinning dedupe relies on value-equality until Story 3.9 messageId
 

@@ -479,6 +479,17 @@ class TelemetryPayloadTest {
   }
 
   @Test
+  void rejectsNegativeRuntimeHours() {
+    var result = TelemetryPayload.parse(
+        "{" + CONTRACT + "\"running\":true,\"runtimeHours\":-1.0,\"counting\":100}", objectMapper);
+
+    assertThat(result).isInstanceOf(TelemetryPayload.ParseResult.Rejected.class);
+    var rejected = (TelemetryPayload.ParseResult.Rejected) result;
+    assertThat(rejected.reason()).isEqualTo("out_of_range");
+    assertThat(rejected.field()).isEqualTo("runtimeHours");
+  }
+
+  @Test
   void acceptsOffsetTimestampAndNormalizesToInstant() {
     var result = TelemetryPayload.parse(
         "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-1\",\"timestamp\":\"2026-08-14T16:30:00+07:00\","

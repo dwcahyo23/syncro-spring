@@ -1,13 +1,13 @@
 package com.syncro.telemetry.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.syncro.auth.infrastructure.PlantEntity;
-import com.syncro.auth.infrastructure.PlantRepository;
 import com.syncro.machine.domain.MachineStatus;
 import com.syncro.machine.infrastructure.MachineEntity;
-import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.masterdata.infrastructure.MachineGroupEntity;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -26,16 +26,13 @@ class TelemetryValidationServiceTest {
   private static final Instant NOW = Instant.parse("2026-05-27T00:00:00Z");
 
   @Mock
-  private PlantRepository plants;
-
-  @Mock
-  private MachineRepository machines;
+  private TelemetryLookupCache lookupCache;
 
   private TelemetryValidationService service;
 
   @BeforeEach
   void setUp() {
-    service = new TelemetryValidationService(plants, machines);
+    service = new TelemetryValidationService(lookupCache);
   }
 
   @Test
@@ -48,7 +45,7 @@ class TelemetryValidationServiceTest {
 
   @Test
   void rejectsUnknownPlant() {
-    when(plants.findByCodeIgnoreCase("XX1")).thenReturn(Optional.empty());
+    when(lookupCache.findPlant("XX1")).thenReturn(Optional.empty());
 
     var result = service.validate("factory/XX1/BF-08410/telemetry", "{}");
 
@@ -59,8 +56,8 @@ class TelemetryValidationServiceTest {
   @Test
   void rejectsUnknownMachine() {
     var plant = plant();
-    when(plants.findByCodeIgnoreCase("GM1")).thenReturn(Optional.of(plant));
-    when(machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), "UNKNOWN")).thenReturn(Optional.empty());
+    when(lookupCache.findPlant("GM1")).thenReturn(Optional.of(plant));
+    when(lookupCache.findMachine(plant.getId(), "UNKNOWN")).thenReturn(Optional.empty());
 
     var result = service.validate("factory/GM1/UNKNOWN/telemetry", "{}");
 
@@ -72,8 +69,8 @@ class TelemetryValidationServiceTest {
   void rejectsInvalidPayload() {
     var plant = plant();
     var machine = machine(plant, "BF-08410");
-    when(plants.findByCodeIgnoreCase("GM1")).thenReturn(Optional.of(plant));
-    when(machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
+    when(lookupCache.findPlant("GM1")).thenReturn(Optional.of(plant));
+    when(lookupCache.findMachine(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
 
     var result = service.validate("factory/GM1/BF-08410/telemetry",
         "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-1\",\"timestamp\":\"2026-08-14T09:30:00Z\",\"running\":true}");
@@ -86,8 +83,8 @@ class TelemetryValidationServiceTest {
   void rejectsInactiveMachine() {
     var plant = plant();
     var machine = machine(plant, "BF-08410", MachineStatus.INACTIVE);
-    when(plants.findByCodeIgnoreCase("GM1")).thenReturn(Optional.of(plant));
-    when(machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
+    when(lookupCache.findPlant("GM1")).thenReturn(Optional.of(plant));
+    when(lookupCache.findMachine(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
 
     var result = service.validate("factory/GM1/BF-08410/telemetry", "{\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
 
@@ -101,8 +98,8 @@ class TelemetryValidationServiceTest {
   void rejectsInactiveMachineBeforeParsingPayload() {
     var plant = plant();
     var machine = machine(plant, "BF-08410", MachineStatus.INACTIVE);
-    when(plants.findByCodeIgnoreCase("GM1")).thenReturn(Optional.of(plant));
-    when(machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
+    when(lookupCache.findPlant("GM1")).thenReturn(Optional.of(plant));
+    when(lookupCache.findMachine(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
 
     var result = service.validate("factory/GM1/BF-08410/telemetry", "not json");
 
@@ -116,8 +113,8 @@ class TelemetryValidationServiceTest {
   void acceptsValidTopicAndPayload() {
     var plant = plant();
     var machine = machine(plant, "BF-08410");
-    when(plants.findByCodeIgnoreCase("GM1")).thenReturn(Optional.of(plant));
-    when(machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
+    when(lookupCache.findPlant("GM1")).thenReturn(Optional.of(plant));
+    when(lookupCache.findMachine(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
 
     var result = service.validate("factory/GM1/BF-08410/telemetry",
         "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-1\",\"timestamp\":\"2026-08-14T09:30:00Z\","
@@ -134,8 +131,8 @@ class TelemetryValidationServiceTest {
   void acceptsConfiguredScalarOptionalFields() {
     var plant = plant();
     var machine = machine(plant, "BF-08410", MachineStatus.ACTIVE, List.of("vibration", "rpm"));
-    when(plants.findByCodeIgnoreCase("GM1")).thenReturn(Optional.of(plant));
-    when(machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
+    when(lookupCache.findPlant("GM1")).thenReturn(Optional.of(plant));
+    when(lookupCache.findMachine(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
 
     var result = service.validate("factory/GM1/BF-08410/telemetry",
         "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-1\",\"timestamp\":\"2026-08-14T09:30:00Z\","
@@ -153,8 +150,8 @@ class TelemetryValidationServiceTest {
   void rejectsConfiguredNonScalarOptionalField() {
     var plant = plant();
     var machine = machine(plant, "BF-08410", MachineStatus.ACTIVE, List.of("vibration"));
-    when(plants.findByCodeIgnoreCase("GM1")).thenReturn(Optional.of(plant));
-    when(machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
+    when(lookupCache.findPlant("GM1")).thenReturn(Optional.of(plant));
+    when(lookupCache.findMachine(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
 
     var result = service.validate("factory/GM1/BF-08410/telemetry",
         "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-1\",\"timestamp\":\"2026-08-14T09:30:00Z\","
@@ -170,8 +167,8 @@ class TelemetryValidationServiceTest {
   void toleratesDuplicateNamesInStoredConfig() {
     var plant = plant();
     var machine = machine(plant, "BF-08410", MachineStatus.ACTIVE, List.of("vibration", "vibration"));
-    when(plants.findByCodeIgnoreCase("GM1")).thenReturn(Optional.of(plant));
-    when(machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
+    when(lookupCache.findPlant("GM1")).thenReturn(Optional.of(plant));
+    when(lookupCache.findMachine(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
 
     var result = service.validate("factory/GM1/BF-08410/telemetry",
         "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-1\",\"timestamp\":\"2026-08-14T09:30:00Z\","
@@ -186,8 +183,8 @@ class TelemetryValidationServiceTest {
   void rejectsNonTextualMachineCodeAsIdentityMismatch() {
     var plant = plant();
     var machine = machine(plant, "BF-08410");
-    when(plants.findByCodeIgnoreCase("GM1")).thenReturn(Optional.of(plant));
-    when(machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
+    when(lookupCache.findPlant("GM1")).thenReturn(Optional.of(plant));
+    when(lookupCache.findMachine(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
 
     var result = service.validate("factory/GM1/BF-08410/telemetry",
         "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-1\",\"timestamp\":\"2026-08-14T09:30:00Z\","
@@ -203,8 +200,8 @@ class TelemetryValidationServiceTest {
   void rejectsNonTextualPlantCodeAsIdentityMismatch() {
     var plant = plant();
     var machine = machine(plant, "BF-08410");
-    when(plants.findByCodeIgnoreCase("GM1")).thenReturn(Optional.of(plant));
-    when(machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
+    when(lookupCache.findPlant("GM1")).thenReturn(Optional.of(plant));
+    when(lookupCache.findMachine(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
 
     var result = service.validate("factory/GM1/BF-08410/telemetry",
         "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-1\",\"timestamp\":\"2026-08-14T09:30:00Z\","
@@ -220,8 +217,8 @@ class TelemetryValidationServiceTest {
   void rejectsMachineCodeMismatch() {
     var plant = plant();
     var machine = machine(plant, "BF-08410");
-    when(plants.findByCodeIgnoreCase("GM1")).thenReturn(Optional.of(plant));
-    when(machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
+    when(lookupCache.findPlant("GM1")).thenReturn(Optional.of(plant));
+    when(lookupCache.findMachine(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
 
     var result = service.validate("factory/GM1/BF-08410/telemetry",
         "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-1\",\"timestamp\":\"2026-08-14T09:30:00Z\","
@@ -237,8 +234,8 @@ class TelemetryValidationServiceTest {
   void rejectsPlantCodeMismatch() {
     var plant = plant();
     var machine = machine(plant, "BF-08410");
-    when(plants.findByCodeIgnoreCase("GM1")).thenReturn(Optional.of(plant));
-    when(machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
+    when(lookupCache.findPlant("GM1")).thenReturn(Optional.of(plant));
+    when(lookupCache.findMachine(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
 
     var result = service.validate("factory/GM1/BF-08410/telemetry",
         "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-1\",\"timestamp\":\"2026-08-14T09:30:00Z\","
@@ -254,8 +251,8 @@ class TelemetryValidationServiceTest {
   void acceptsMatchingMachineAndPlantCodes() {
     var plant = plant();
     var machine = machine(plant, "BF-08410");
-    when(plants.findByCodeIgnoreCase("GM1")).thenReturn(Optional.of(plant));
-    when(machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
+    when(lookupCache.findPlant("GM1")).thenReturn(Optional.of(plant));
+    when(lookupCache.findMachine(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
 
     var result = service.validate("factory/GM1/BF-08410/telemetry",
         "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-1\",\"timestamp\":\"2026-08-14T09:30:00Z\","
@@ -269,8 +266,8 @@ class TelemetryValidationServiceTest {
   void acceptsCaseInsensitiveMachineCodeMatch() {
     var plant = plant();
     var machine = machine(plant, "BF-08410");
-    when(plants.findByCodeIgnoreCase("GM1")).thenReturn(Optional.of(plant));
-    when(machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
+    when(lookupCache.findPlant("GM1")).thenReturn(Optional.of(plant));
+    when(lookupCache.findMachine(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
 
     var result = service.validate("factory/GM1/BF-08410/telemetry",
         "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-1\",\"timestamp\":\"2026-08-14T09:30:00Z\","
@@ -284,8 +281,8 @@ class TelemetryValidationServiceTest {
   void acceptsPayloadWithoutIdentityFields() {
     var plant = plant();
     var machine = machine(plant, "BF-08410");
-    when(plants.findByCodeIgnoreCase("GM1")).thenReturn(Optional.of(plant));
-    when(machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
+    when(lookupCache.findPlant("GM1")).thenReturn(Optional.of(plant));
+    when(lookupCache.findMachine(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
 
     var result = service.validate("factory/GM1/BF-08410/telemetry",
         "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-1\",\"timestamp\":\"2026-08-14T09:30:00Z\","
@@ -298,8 +295,8 @@ class TelemetryValidationServiceTest {
   void inactiveMachineRejectedBeforeIdentityCheck() {
     var plant = plant();
     var machine = machine(plant, "BF-08410", MachineStatus.INACTIVE);
-    when(plants.findByCodeIgnoreCase("GM1")).thenReturn(Optional.of(plant));
-    when(machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
+    when(lookupCache.findPlant("GM1")).thenReturn(Optional.of(plant));
+    when(lookupCache.findMachine(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
 
     var result = service.validate("factory/GM1/BF-08410/telemetry",
         "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-1\",\"timestamp\":\"2026-08-14T09:30:00Z\","
@@ -308,6 +305,50 @@ class TelemetryValidationServiceTest {
     assertThat(result).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
     var rejected = (TelemetryValidationService.Result.Rejected) result;
     assertThat(rejected.reason()).isEqualTo("inactive_machine");
+  }
+
+  @Test
+  void rejectsNonActiveMachineStatus() {
+    var plant = plant();
+    var machine = machine(plant, "BF-08410", MachineStatus.INACTIVE);
+    when(lookupCache.findPlant("GM1")).thenReturn(Optional.of(plant));
+    when(lookupCache.findMachine(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
+
+    var result = service.validate("factory/GM1/BF-08410/telemetry",
+        "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-1\",\"timestamp\":\"2026-08-14T09:30:00Z\","
+            + "\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
+
+    assertThat(result).isInstanceOf(TelemetryValidationService.Result.Rejected.class);
+    var rejected = (TelemetryValidationService.Result.Rejected) result;
+    assertThat(rejected.reason()).isEqualTo("inactive_machine");
+    assertThat(rejected.field()).isNull();
+  }
+
+  @Test
+  void delegatesPlantLookupToCache() {
+    when(lookupCache.findPlant("XX1")).thenReturn(Optional.empty());
+
+    service.validate("factory/XX1/BF-08410/telemetry", "{}");
+    service.validate("factory/XX1/BF-08410/telemetry", "{}");
+
+    verify(lookupCache, times(2)).findPlant("XX1");
+  }
+
+  @Test
+  void machineAssociationsAccessibleAfterValidation() {
+    var plant = plant();
+    var machine = machine(plant, "BF-08410");
+    when(lookupCache.findPlant("GM1")).thenReturn(Optional.of(plant));
+    when(lookupCache.findMachine(plant.getId(), "BF-08410")).thenReturn(Optional.of(machine));
+
+    var result = service.validate("factory/GM1/BF-08410/telemetry",
+        "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-1\",\"timestamp\":\"2026-08-14T09:30:00Z\","
+            + "\"running\":true,\"runtimeHours\":12.5,\"counting\":100}");
+
+    assertThat(result).isInstanceOf(TelemetryValidationService.Result.Accepted.class);
+    var accepted = (TelemetryValidationService.Result.Accepted) result;
+    assertThat(accepted.machine().getPlant()).isNotNull();
+    assertThat(accepted.machine().getMachineGroup()).isNotNull();
   }
 
   private PlantEntity plant() {

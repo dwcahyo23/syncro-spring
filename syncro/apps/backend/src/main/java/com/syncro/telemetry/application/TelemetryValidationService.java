@@ -2,14 +2,13 @@ package com.syncro.telemetry.application;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.syncro.auth.infrastructure.PlantRepository;
 import com.syncro.machine.domain.MachineStatus;
 import com.syncro.machine.infrastructure.MachineEntity;
-import com.syncro.machine.infrastructure.MachineRepository;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class TelemetryValidationService {
@@ -22,29 +21,28 @@ public class TelemetryValidationService {
     }
   }
 
-  private final PlantRepository plants;
-  private final MachineRepository machines;
+  private final TelemetryLookupCache lookupCache;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
-  public TelemetryValidationService(PlantRepository plants, MachineRepository machines) {
-    this.plants = plants;
-    this.machines = machines;
+  public TelemetryValidationService(TelemetryLookupCache lookupCache) {
+    this.lookupCache = lookupCache;
   }
 
+  @Transactional(readOnly = true)
   public Result validate(String topic, String payload) {
     var parsedTopic = TelemetryTopic.parse(topic);
     if (parsedTopic.isEmpty()) {
       return new Result.Rejected("malformed_topic", null);
     }
-    var plant = plants.findByCodeIgnoreCase(parsedTopic.get().plantCode());
+    var plant = lookupCache.findPlant(parsedTopic.get().plantCode());
     if (plant.isEmpty()) {
       return new Result.Rejected("unknown_plant", null);
     }
-    var machine = machines.findByPlantIdAndCodeIgnoreCase(plant.get().getId(), parsedTopic.get().machineCode());
+    var machine = lookupCache.findMachine(plant.get().getId(), parsedTopic.get().machineCode());
     if (machine.isEmpty()) {
       return new Result.Rejected("unknown_machine", null);
     }
-    if (machine.get().getStatus() == MachineStatus.INACTIVE) {
+    if (machine.get().getStatus() != MachineStatus.ACTIVE) {
       return new Result.Rejected("inactive_machine", null);
     }
     return switch (TelemetryPayload.parse(payload, objectMapper, configuredOptionalFields(machine.get()))) {
