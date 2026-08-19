@@ -210,3 +210,9 @@ claude-sonnet-4-5 (retroactive spec)
 - `syncro/apps/backend/src/test/java/com/syncro/alert/application/SparepartAlertCommandServiceTest.java`
 - `syncro/apps/web/src/features/alerts/alert-detail-page-content.tsx`
 - `syncro/apps/web/src/lib/api/generated/syncro.ts`
+
+### Review Findings
+
+- [x] [Review][Already Fixed] `actorId` written to `previousValue` instead of `newValue` [SparepartAlertCommandService.java] — resolved by patch Story 4.4 (commit 1492323)
+- [x] [Review][Already Fixed] Audit test assertion `previousValue` contains `actorId` [SparepartAlertCommandServiceTest.java] — resolved by patch Story 4.4 (commit 1492323)
+- [ ] [Review][Patch] No test for wrong-plant scoped access on `resolve` (user has plant A, alert belongs to plant B) [SparepartAlertCommandServiceTest.java] — fixed, added `resolve_managedUser_wrongPlant_throwsNotFound`

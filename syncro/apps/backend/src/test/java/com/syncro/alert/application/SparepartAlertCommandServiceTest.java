@@ -342,6 +342,30 @@ class SparepartAlertCommandServiceTest {
   }
 
   @Test
+  void resolve_managedUser_wrongPlant_throwsNotFound() {
+    var userId = UUID.randomUUID();
+    var userPlantId = UUID.randomUUID();   // plant the user has access to
+    var alertPlantId = UUID.randomUUID();  // different plant the alert belongs to
+    var alertId = UUID.randomUUID();
+    var p = plant(alertPlantId);
+    var g = machineGroup(UUID.randomUUID(), p);
+    var m = machine(UUID.randomUUID(), p, g);
+    var sp = sparepart(UUID.randomUUID());
+    var inst = installation(UUID.randomUUID(), m, sp);
+
+    // user is assigned only to userPlantId, not alertPlantId
+    when(assignments.findByAuthUserId(userId))
+        .thenReturn(List.of(new AuthUserPlantAssignmentEntity(userId, userPlantId, Instant.now(clock))));
+    // scoped query returns empty — alert not in user's plant
+    when(alertRepository.findByIdWithDetailsScopedToPlants(alertId, List.of(userPlantId)))
+        .thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service().resolve(manageUser(userId), alertId, null))
+        .isInstanceOf(AlertNotFoundException.class);
+    verify(alertRepository, never()).save(any());
+  }
+
+  @Test
   void resolve_openAlert_throwsInvalidTransition() {
     var alertId = UUID.randomUUID();
     var p = plant(UUID.randomUUID());
