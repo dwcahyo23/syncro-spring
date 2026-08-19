@@ -196,6 +196,12 @@ claude-sonnet-4-5 (retroactive spec)
 - `resolveOverride` on entity only accepts `OPEN` status; no other transition is supported even for SUPER_ADMIN
 - Frontend button visibility is driven by client-side role check (`isSuperAdmin`) rather than a backend `allowedActions` field — this is a known simplification vs. the AC wording "frontend only shows direct resolve action when backend allowed actions include it"
 
+### Review Findings
+
+- [x] [Review][Already Fixed] `actorId` written to `previousValue` instead of `newValue` [SparepartAlertCommandService.java] — resolved by patch Story 4.4 (commit 1492323)
+- [x] [Review][Already Fixed] Audit test assertion `previousValue` contains `actorId` [SparepartAlertCommandServiceTest.java] — resolved by patch Story 4.4 (commit 1492323)
+- [x] [Review][Dismiss] `AlertForbiddenException` duplicate check — single definition confirmed in SparepartAlertCommandService.java:176, no duplication
+
 ### File List
 - `syncro/apps/backend/src/main/java/com/syncro/alert/infrastructure/SparepartAlertEntity.java`
 - `syncro/apps/backend/src/main/java/com/syncro/alert/application/SparepartAlertCommandService.java`
