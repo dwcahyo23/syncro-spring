@@ -8,6 +8,15 @@
     "label": "Bundle it now",
     "resolution": ""
   },
+  "DW-11": {
+    "answered_at": "2026-08-19",
+    "bundle_name": "",
+    "effect": "build",
+    "intent": "Create a focused dev session: fix playwright.config.ts webServer baseURL to correctly derive or default the port from BASE_URL, and add or update tests/README.md to document PLAYWRIGHT_SKIP_WEB_SERVER.",
+    "key": "1",
+    "label": "New small bundle",
+    "resolution": ""
+  },
   "DW-9": {
     "answered_at": "2026-08-19",
     "bundle_name": "",
