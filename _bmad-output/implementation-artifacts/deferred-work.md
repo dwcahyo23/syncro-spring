@@ -258,6 +258,7 @@ location: InfluxTelemetryWriter.java
 severity: high
 reason: `InfluxTelemetryWriter.addOptionalField` infers Influx field types from the JSON node, so a configured field that alternates representation across samples (e.g. `vibration:2` vs `vibration:2.4`) triggers an InfluxDB field-type conflict that rejects subsequent points and silently drops telemetry. Fixing requires a type-stability strategy that changes the documented storage contract — architecture/Epic 6 scope per the spec's Block If boundary.
 status: open
+decision: 2026-08-20 Always coerce numeric to Double — Change addOptionalField in InfluxTelemetryWriter.java to always call point.addField(name, node.doubleValue()) for any numeric JSON node (both isIntegralNumber and isFloatingPointNumber), eliminating the Long vs Double type conflict. Update any downstream Flux queries that may rely on integer field semantics. Add a test asserting that integer and float samples for the same field name both write successfully.
 decision: 2026-08-19 Always coerce numeric to Double — Change addOptionalField in InfluxTelemetryWriter.java to always call point.addField(name, node.doubleValue()) for any numeric JSON node (both isIntegralNumber and isFloatingPointNumber), eliminating the Long vs Double type conflict. Update any downstream Flux queries that may rely on integer field semantics. Add a test asserting that integer and float samples for the same field name both write successfully.
 
 ### DW-29: Config-time reserved-name denylist not future-proof against base-field promotion or InfluxDB system keys
