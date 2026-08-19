@@ -228,3 +228,35 @@ status: open
   summary: `syncro/apps/web/src/lib/api/generated/model/machineView.ts` lacks the `latestTelemetry` field; the dashboard uses interim manual types in `features/telemetry/types/index.ts` cast from `useListMachines`. Regeneration needs the backend OpenAPI endpoint (`/v3/api-docs`) which was unavailable at implementation time.
   evidence: Real, surfaced during Story 3.7 implementation — tracked so the generated types are regenerated and the interim types removed once the backend contract is regenerated from the live OpenAPI doc (Epic 26 AR owns generation; this entry records the drift).
   status: open
+
+## Deferred from: code review of spec-4-4-acknowledge-open-alert (2026-08-19)
+
+### DW-38: auditLogWriter.recordSystem() has no try/catch in alert command service
+origin: code review Story 4.4 (2026-08-19)
+location: SparepartAlertCommandService.java
+reason: Pre-existing pattern across codebase — audit failure rolls back via @Transactional; deliberate design.
+status: open
+
+### DW-39: Alert list query not invalidated after acknowledge mutation
+origin: code review Story 4.4 (2026-08-19)
+location: alert-detail-page-content.tsx
+reason: AC8 only requires toast feedback; cross-page cache invalidation is UX polish deferred to later.
+status: open
+
+### DW-40: Double-submit race — no @Version on SparepartAlertEntity, no frontend debounce
+origin: code review Story 4.4 (2026-08-19)
+location: SparepartAlertCommandService.java, alert-detail-page-content.tsx
+reason: Entity in-memory guard prevents corrupt state; optimistic locking is a pre-existing gap across all entities.
+status: open
+
+### DW-41: Empty string reason bypasses nullable contract — no @NotBlank or max-length guard
+origin: code review Story 4.4 (2026-08-19)
+location: SparepartAlertDtos.java, SparepartAlertEntity.java
+reason: Pre-existing design across all alert mutations; reason field is intentionally permissive.
+status: open
+
+### DW-42: Frontend only handles 409 specifically — 403/404 indistinguishable to user
+origin: code review Story 4.4 (2026-08-19)
+location: alert-detail-page-content.tsx
+reason: AC8 only requires 409-specific message; generic fallback for other status codes is acceptable per spec.
+status: open

@@ -15,7 +15,6 @@ import com.syncro.alert.infrastructure.SparepartAlertRepository;
 import com.syncro.audit.application.AuditLogWriter;
 import com.syncro.audit.application.AuditRecord;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
-import com.syncro.auth.application.PlantScopeService;
 import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.auth.infrastructure.AuthUserPlantAssignmentEntity;
 import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
@@ -43,12 +42,11 @@ class SparepartAlertCommandServiceTest {
   @Mock private SparepartAlertRepository alertRepository;
   @Mock private AuditLogWriter auditLogWriter;
   @Mock private AuthUserPlantAssignmentRepository assignments;
-  @Mock private PlantScopeService plantScopes;
 
   private final Clock clock = Clock.fixed(Instant.parse("2026-08-19T10:00:00Z"), ZoneOffset.UTC);
 
   private SparepartAlertCommandService service() {
-    return new SparepartAlertCommandService(alertRepository, auditLogWriter, assignments, plantScopes, clock);
+    return new SparepartAlertCommandService(alertRepository, auditLogWriter, assignments, clock);
   }
 
   // --- helpers ---
@@ -156,7 +154,8 @@ class SparepartAlertCommandServiceTest {
     verify(auditLogWriter).recordSystem(captor.capture());
     var record = captor.getValue();
     assertThat(record.entityId()).isEqualTo(alertId);
-    assertThat(record.previousValue()).containsEntry("actorId", user.id());
+    assertThat(record.previousValue()).containsEntry("status", "OPEN");
+    assertThat(record.newValue()).containsEntry("actorId", user.id());
     assertThat(record.newValue()).containsEntry("status", "ACKNOWLEDGED");
   }
 
@@ -313,7 +312,8 @@ class SparepartAlertCommandServiceTest {
     verify(auditLogWriter).recordSystem(captor.capture());
     var record = captor.getValue();
     assertThat(record.entityId()).isEqualTo(alertId);
-    assertThat(record.previousValue()).containsEntry("actorId", user.id());
+    assertThat(record.previousValue()).containsEntry("status", "ACKNOWLEDGED");
+    assertThat(record.newValue()).containsEntry("actorId", user.id());
     assertThat(record.newValue()).containsEntry("status", "RESOLVED");
   }
 
@@ -460,7 +460,33 @@ class SparepartAlertCommandServiceTest {
     verify(auditLogWriter).recordSystem(captor.capture());
     var record = captor.getValue();
     assertThat(record.entityId()).isEqualTo(alertId);
-    assertThat(record.previousValue()).containsEntry("transition", "OPEN→RESOLVED(override)");
+    assertThat(record.previousValue()).containsEntry("status", "OPEN");
+    assertThat(record.newValue()).containsEntry("actorId", user.id());
     assertThat(record.newValue()).containsEntry("status", "RESOLVED");
+  }
+
+  @Test
+  void acknowledge_managedUser_wrongPlant_throwsNotFound() {
+    var userId = UUID.randomUUID();
+    var userPlantId = UUID.randomUUID();   // plant the user has access to
+    var alertPlantId = UUID.randomUUID();  // different plant the alert belongs to
+    var alertId = UUID.randomUUID();
+    var p = plant(alertPlantId);
+    var g = machineGroup(UUID.randomUUID(), p);
+    var m = machine(UUID.randomUUID(), p, g);
+    var sp = sparepart(UUID.randomUUID());
+    var inst = installation(UUID.randomUUID(), m, sp);
+    var a = alert(alertId, inst, SparepartAlertStatus.OPEN);
+
+    // user is assigned only to userPlantId, not alertPlantId
+    when(assignments.findByAuthUserId(userId))
+        .thenReturn(List.of(new AuthUserPlantAssignmentEntity(userId, userPlantId, Instant.now(clock))));
+    // scoped query returns empty — alert not in user's plant
+    when(alertRepository.findByIdWithDetailsScopedToPlants(alertId, List.of(userPlantId)))
+        .thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service().acknowledge(manageUser(userId), alertId, null))
+        .isInstanceOf(AlertNotFoundException.class);
+    verify(alertRepository, never()).save(any());
   }
 }

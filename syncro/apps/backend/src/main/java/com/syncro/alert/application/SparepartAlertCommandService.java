@@ -9,7 +9,6 @@ import com.syncro.audit.application.AuditRecord;
 import com.syncro.audit.domain.AuditAction;
 import com.syncro.audit.domain.AuditEntityType;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
-import com.syncro.auth.application.PlantScopeService;
 import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
 import java.time.Clock;
@@ -25,19 +24,16 @@ public class SparepartAlertCommandService {
   private final SparepartAlertRepository alertRepository;
   private final AuditLogWriter auditLogWriter;
   private final AuthUserPlantAssignmentRepository assignments;
-  private final PlantScopeService plantScopes;
   private final Clock clock;
 
   public SparepartAlertCommandService(
       SparepartAlertRepository alertRepository,
       AuditLogWriter auditLogWriter,
       AuthUserPlantAssignmentRepository assignments,
-      PlantScopeService plantScopes,
       Clock clock) {
     this.alertRepository = alertRepository;
     this.auditLogWriter = auditLogWriter;
     this.assignments = assignments;
-    this.plantScopes = plantScopes;
     this.clock = clock;
   }
 
@@ -63,8 +59,8 @@ public class SparepartAlertCommandService {
         alertId,
         "ALERT:" + alertId,
         resolvePlantId(alert),
-        Map.of("actorId", user.id(), "transition", "OPEN→ACKNOWLEDGED"),
-        Map.of("status", "ACKNOWLEDGED", "reason", reason != null ? reason : "")));
+        Map.of("status", "OPEN"),
+        Map.of("actorId", user.id(), "transition", "OPEN→ACKNOWLEDGED", "status", "ACKNOWLEDGED", "reason", reason != null ? reason : "")));
   }
 
   /**
@@ -89,8 +85,8 @@ public class SparepartAlertCommandService {
         alertId,
         "ALERT:" + alertId,
         resolvePlantId(alert),
-        Map.of("actorId", user.id(), "transition", "ACKNOWLEDGED→RESOLVED"),
-        Map.of("status", "RESOLVED", "reason", reason != null ? reason : "")));
+        Map.of("status", "ACKNOWLEDGED"),
+        Map.of("actorId", user.id(), "transition", "ACKNOWLEDGED→RESOLVED", "status", "RESOLVED", "reason", reason != null ? reason : "")));
   }
 
   /**
@@ -120,8 +116,8 @@ public class SparepartAlertCommandService {
         alertId,
         "ALERT:" + alertId,
         resolvePlantId(alert),
-        Map.of("actorId", user.id(), "transition", "OPEN→RESOLVED(override)"),
-        Map.of("status", "RESOLVED", "reason", reason != null ? reason : "")));
+        Map.of("status", "OPEN"),
+        Map.of("actorId", user.id(), "transition", "OPEN→RESOLVED(override)", "status", "RESOLVED", "reason", reason != null ? reason : "")));
   }
 
   // ---------------------------------------------------------------------------

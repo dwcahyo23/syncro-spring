@@ -6,7 +6,6 @@ import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAcknowledgeAlert, useGetAlert, useResolveAlert, useResolveAlertOverride } from "@/lib/api/generated/syncro";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
