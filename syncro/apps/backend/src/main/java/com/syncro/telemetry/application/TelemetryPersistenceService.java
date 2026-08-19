@@ -5,11 +5,17 @@ import com.syncro.config.TelemetryProperties;
 import com.syncro.machine.domain.MachineStatus;
 import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.telemetry.infrastructure.InfluxTelemetryWriter;
+import com.syncro.telemetry.infrastructure.MachineCounterStateEntity;
+import com.syncro.telemetry.infrastructure.MachineCounterStateRepository;
 import com.syncro.telemetry.infrastructure.RedisLatestTelemetryWriter;
 import com.syncro.alert.application.SparepartAlertService;
 import com.syncro.sparepart.application.SparepartLifetimeEvaluator;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -27,10 +33,12 @@ public class TelemetryPersistenceService {
   private final TelemetryProperties properties;
   private final SparepartLifetimeEvaluator evaluator;
   private final SparepartAlertService alertService;
+  private final MachineCounterStateRepository counterStateRepo;
 
   public TelemetryPersistenceService(MachineRepository machines, InfluxTelemetryWriter influxWriter,
       RedisLatestTelemetryWriter redisLatestWriter, StringRedisTemplate redis, TelemetryProperties properties,
-      SparepartLifetimeEvaluator evaluator, SparepartAlertService alertService) {
+      SparepartLifetimeEvaluator evaluator, SparepartAlertService alertService,
+      MachineCounterStateRepository counterStateRepo) {
     this.machines = machines;
     this.influxWriter = influxWriter;
     this.redisLatestWriter = redisLatestWriter;
@@ -38,6 +46,7 @@ public class TelemetryPersistenceService {
     this.properties = properties;
     this.evaluator = evaluator;
     this.alertService = alertService;
+    this.counterStateRepo = counterStateRepo;
   }
 
   public void persist(TelemetryValidationService.Result.Accepted accepted, TelemetryEnvelope envelope) {
@@ -65,9 +74,11 @@ public class TelemetryPersistenceService {
 
     long countingDelta;
     try {
-      countingDelta = redisLatestWriter.readCounting(machineId)
-          .map(previous -> CountingDeltaCalculator.delta(previous, accepted.payload().counting()))
-          .orElse(0L);
+      long previousCounting = redisLatestWriter.readCounting(machineId)
+          .or(() -> counterStateRepo.findById(machineId).map(MachineCounterStateEntity::getCounting))
+          .orElse(-1L);
+      countingDelta = (previousCounting < 0) ? 0L
+          : CountingDeltaCalculator.delta(previousCounting, accepted.payload().counting());
       Point point = InfluxTelemetryWriter.toPoint(accepted.payload(), envelope, plantCode, machineCode, countingDelta);
       influxWriter.write(point, machineCode, envelope.traceId());
     } catch (RuntimeException exception) {
@@ -75,24 +86,46 @@ public class TelemetryPersistenceService {
       throw exception;
     }
 
-    try {
-      var latest = new LinkedHashMap<String, String>();
-      latest.put("machineId", machineId.toString());
-      latest.put("machineCode", machineCode);
-      latest.put("plantCode", plantCode);
-      latest.put("running", Boolean.toString(accepted.payload().running()));
-      latest.put("runtimeHours", Double.toString(accepted.payload().runtimeHours()));
-      latest.put("counting", Long.toString(accepted.payload().counting()));
-      latest.put("countingDelta", Long.toString(countingDelta));
-      latest.put("receivedAt", envelope.receivedAt().toString());
-      latest.put("traceId", envelope.traceId());
-      for (var entry : accepted.payload().optionalFields().entrySet()) {
-        latest.put("optional." + entry.getKey(), entry.getValue().asText());
-      }
-      redisLatestWriter.putLatest(machineId, latest, properties.latestTtl());
-    } catch (RuntimeException exception) {
-      throw exception;
+    long currentCounting = accepted.payload().counting();
+    var latest = new LinkedHashMap<String, String>();
+    latest.put("machineId", machineId.toString());
+    latest.put("machineCode", machineCode);
+    latest.put("plantCode", plantCode);
+    latest.put("running", Boolean.toString(accepted.payload().running()));
+    latest.put("runtimeHours", Double.toString(accepted.payload().runtimeHours()));
+    latest.put("counting", Long.toString(accepted.payload().counting()));
+    latest.put("countingDelta", Long.toString(countingDelta));
+    latest.put("receivedAt", envelope.receivedAt().toString());
+    latest.put("traceId", envelope.traceId());
+    for (var entry : accepted.payload().optionalFields().entrySet()) {
+      latest.put("optional." + entry.getKey(), entry.getValue().asText());
     }
+    try {
+      Map<String, String> existingHash = redisLatestWriter.readLatestAsMap(machineId);
+      Set<String> currentOptionalKeys = accepted.payload().optionalFields().keySet().stream()
+          .map(k -> "optional." + k)
+          .collect(Collectors.toSet());
+      List<String> staleOptionalKeys = existingHash.keySet().stream()
+          .filter(k -> k.startsWith("optional.") && !currentOptionalKeys.contains(k))
+          .toList();
+      redisLatestWriter.hdel(machineId, staleOptionalKeys);
+    } catch (RuntimeException hdelEx) {
+      log.warn("redis_hdel_optional_failed machineId={} traceId={}", machineId, envelope.traceId(), hdelEx);
+    }
+    try {
+      redisLatestWriter.putLatest(machineId, latest, properties.latestTtl());
+    } catch (RuntimeException redisEx) {
+      log.warn("redis_latest_write_failed_baseline_may_be_stale machineId={} traceId={} counting={}",
+          machineId, envelope.traceId(), currentCounting, redisEx);
+      try {
+        counterStateRepo.save(new MachineCounterStateEntity(machineId, currentCounting));
+      } catch (RuntimeException dbEx) {
+        log.warn("counter_state_compensating_write_failed machineId={} traceId={}",
+            machineId, envelope.traceId(), dbEx);
+      }
+      throw redisEx;
+    }
+    counterStateRepo.save(new MachineCounterStateEntity(machineId, currentCounting));
 
     try {
       var results = evaluator.evaluateAll(machineId);

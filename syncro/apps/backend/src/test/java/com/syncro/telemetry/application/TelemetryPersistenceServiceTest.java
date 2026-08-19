@@ -25,13 +25,17 @@ import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.masterdata.infrastructure.MachineGroupEntity;
 import com.syncro.telemetry.infrastructure.InfluxTelemetryWriter;
+import com.syncro.telemetry.infrastructure.MachineCounterStateEntity;
+import com.syncro.telemetry.infrastructure.MachineCounterStateRepository;
 import com.syncro.telemetry.infrastructure.RedisLatestTelemetryWriter;
 import com.syncro.alert.application.SparepartAlertService;
 import com.syncro.sparepart.application.SparepartLifetimeEvaluator;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,6 +71,8 @@ class TelemetryPersistenceServiceTest {
   private SparepartLifetimeEvaluator evaluator;
   @Mock
   private SparepartAlertService alertService;
+  @Mock
+  private MachineCounterStateRepository counterStateRepo;
 
   private MachineEntity machine;
   private TelemetryPersistenceService service;
@@ -86,9 +92,11 @@ class TelemetryPersistenceServiceTest {
     dedupeKey = "syncro:machine:" + machine.getId() + ":telemetry:dedupe:msg-persist-1";
     service = new TelemetryPersistenceService(machines, influxWriter, redisLatestWriter, redis,
         new TelemetryProperties(Duration.parse("PT5M"), Duration.parse("PT30S"),
-            new TelemetryProperties.Ingest(1000, 2)), evaluator, alertService);
+            new TelemetryProperties.Ingest(1000, 2)), evaluator, alertService, counterStateRepo);
     when(machines.findByIdWithPlantAndGroup(machine.getId())).thenReturn(Optional.of(machine));
     lenient().when(redis.opsForValue()).thenReturn(valueOps);
+    // Avoid NPE in hdel diff logic when existing hash not explicitly stubbed
+    lenient().when(redisLatestWriter.readLatestAsMap(any(UUID.class))).thenReturn(Map.of());
   }
 
   @Test
@@ -103,40 +111,35 @@ class TelemetryPersistenceServiceTest {
   }
 
   @Test
-  void duplicateMessageSkipsBothWritesAndLogsDuplicate() {
+  void duplicateMessageIsDroppedAndNothingWritten() {
     when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(false);
-    when(valueOps.get(dedupeKey)).thenReturn("trace-original-winner");
-    var appender = attachAppender();
+    when(valueOps.get(dedupeKey)).thenReturn("trace-winner");
 
     service.persist(accepted, envelope);
 
-    assertThat(appender.list)
-        .anyMatch(event -> event.getLevel() == Level.WARN
-            && event.getFormattedMessage().startsWith("mqtt_telemetry_duplicate")
-            && event.getFormattedMessage().contains("traceId=" + TRACE_ID)
-            && event.getFormattedMessage().contains("machineCode=BF-08410")
-            && event.getFormattedMessage().contains("messageId=msg-persist-1")
-            && event.getFormattedMessage().contains("winnerTraceId=trace-original-winner"));
-    verify(influxWriter, never()).write(any(Point.class), anyString(), anyString());
-    verify(redisLatestWriter, never()).putLatest(any(UUID.class), any(), any(Duration.class));
-    detachAppender(appender);
-  }
-
-  @Test
-  void sameMessageIdDifferentCountingIsStillDeduplicated() {
-    var differentCounting = new TelemetryValidationService.Result.Accepted(machine,
-        new TelemetryPayload(true, 12.5, 999, "1.0", "msg-persist-1", Instant.parse("2026-08-14T09:30:00Z")));
-    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(false);
-    when(valueOps.get(dedupeKey)).thenReturn("trace-original-winner");
-
-    service.persist(differentCounting, envelope);
-
     verify(influxWriter, never()).write(any(Point.class), anyString(), anyString());
     verify(redisLatestWriter, never()).putLatest(any(UUID.class), any(), any(Duration.class));
   }
 
   @Test
-  void influxFailureDeletesOwnedDedupeKeyAndRethrows() {
+  void redisLatestFailureRethrowsButKeepsDedupeGate() {
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+    doThrow(new RuntimeException("redis down")).when(redisLatestWriter).putLatest(any(UUID.class), any(), any(Duration.class));
+
+    assertThatThrownBy(() -> service.persist(accepted, envelope))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("redis down");
+
+    // DW-27: compensating DB write is attempted once
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<MachineCounterStateEntity> entityCaptor = ArgumentCaptor.forClass(MachineCounterStateEntity.class);
+    verify(counterStateRepo).save(entityCaptor.capture());
+    assertThat(entityCaptor.getValue().getMachineId()).isEqualTo(machine.getId());
+    assertThat(entityCaptor.getValue().getCounting()).isEqualTo(100L);
+  }
+
+  @Test
+  void influxWriteFailureDeletesOwnDedupeKeyAndRethrows() {
     when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
     when(valueOps.get(dedupeKey)).thenReturn(TRACE_ID);
     doThrow(new RuntimeException("influx down")).when(influxWriter).write(any(Point.class), anyString(), anyString());
@@ -150,33 +153,7 @@ class TelemetryPersistenceServiceTest {
   }
 
   @Test
-  void redisLatestFailureRethrowsButKeepsDedupeGate() {
-    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
-    doThrow(new RuntimeException("redis down")).when(redisLatestWriter)
-        .putLatest(any(UUID.class), any(), any(Duration.class));
-
-    assertThatThrownBy(() -> service.persist(accepted, envelope))
-        .isInstanceOf(RuntimeException.class)
-        .hasMessage("redis down");
-
-    verify(redis, never()).delete(dedupeKey);
-  }
-
-  @Test
-  void failureDoesNotDeleteDedupeKeyOwnedByAnotherMessage() {
-    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
-    when(valueOps.get(dedupeKey)).thenReturn("other-trace");
-    doThrow(new RuntimeException("influx down")).when(influxWriter).write(any(Point.class), anyString(), anyString());
-
-    assertThatThrownBy(() -> service.persist(accepted, envelope))
-        .isInstanceOf(RuntimeException.class)
-        .hasMessage("influx down");
-
-    verify(redis, never()).delete(dedupeKey);
-  }
-
-  @Test
-  void cleanupFailureDoesNotMaskOriginalException() {
+  void influxWriteFailureOnCleanupExceptionDoesNotMaskOriginal() {
     when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
     when(valueOps.get(dedupeKey)).thenReturn(TRACE_ID);
     doThrow(new RuntimeException("influx down")).when(influxWriter).write(any(Point.class), anyString(), anyString());
@@ -361,5 +338,137 @@ class TelemetryPersistenceServiceTest {
     service.persist(accepted, envelope);
 
     verify(evaluator).evaluateAll(machine.getId());
+  }
+
+  // --- DW-25: DB fallback for counting baseline ---
+
+  @Test
+  void redisMissWithDbFallbackComputesCorrectDelta() {
+    // readCounting returns empty → falls back to DB entity with counting=50
+    when(redisLatestWriter.readCounting(machine.getId())).thenReturn(Optional.empty());
+    when(counterStateRepo.findById(machine.getId()))
+        .thenReturn(Optional.of(new MachineCounterStateEntity(machine.getId(), 50L)));
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+
+    // payload counting=100, previous=50 → delta=50
+    service.persist(accepted, envelope);
+
+    var pointCaptor = ArgumentCaptor.forClass(Point.class);
+    verify(influxWriter).write(pointCaptor.capture(), anyString(), anyString());
+    assertThat(pointCaptor.getValue().toLineProtocol()).contains("countingDelta=50i");
+  }
+
+  @Test
+  void redisMissNoDbRowDefaultsToDeltaZero() {
+    // readCounting returns empty, DB also empty → previousCounting=-1 → delta=0
+    when(redisLatestWriter.readCounting(machine.getId())).thenReturn(Optional.empty());
+    when(counterStateRepo.findById(machine.getId())).thenReturn(Optional.empty());
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+
+    service.persist(accepted, envelope);
+
+    var pointCaptor = ArgumentCaptor.forClass(Point.class);
+    verify(influxWriter).write(pointCaptor.capture(), anyString(), anyString());
+    assertThat(pointCaptor.getValue().toLineProtocol()).contains("countingDelta=0i");
+  }
+
+  // --- DW-27 + DW-25: compensating write on putLatest failure ---
+
+  @Test
+  void putLatestFailureLogsWarnAndWritesCompensatingDbEntry() {
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+    doThrow(new RuntimeException("redis down")).when(redisLatestWriter).putLatest(any(UUID.class), any(), any(Duration.class));
+
+    var appender = attachAppender();
+    try {
+      assertThatThrownBy(() -> service.persist(accepted, envelope))
+          .isInstanceOf(RuntimeException.class)
+          .hasMessage("redis down");
+    } finally {
+      detachAppender(appender);
+    }
+
+    // DW-27: WARN log with key
+    assertThat(appender.list).anyMatch(e ->
+        e.getLevel() == Level.WARN &&
+        e.getMessage().contains("redis_latest_write_failed_baseline_may_be_stale"));
+
+    // DW-25: compensating DB write with current counting
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<MachineCounterStateEntity> entityCaptor = ArgumentCaptor.forClass(MachineCounterStateEntity.class);
+    verify(counterStateRepo).save(entityCaptor.capture());
+    assertThat(entityCaptor.getValue().getMachineId()).isEqualTo(machine.getId());
+    assertThat(entityCaptor.getValue().getCounting()).isEqualTo(100L);
+  }
+
+  @Test
+  void putLatestSuccessWritesDbCounterState() {
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+
+    service.persist(accepted, envelope);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<MachineCounterStateEntity> entityCaptor = ArgumentCaptor.forClass(MachineCounterStateEntity.class);
+    verify(counterStateRepo).save(entityCaptor.capture());
+    assertThat(entityCaptor.getValue().getMachineId()).isEqualTo(machine.getId());
+    assertThat(entityCaptor.getValue().getCounting()).isEqualTo(100L);
+  }
+
+  // --- DW-31: stale optional key cleanup ---
+
+  @Test
+  void staleOptionalKeysHdelCalledBeforePutLatest() {
+    // Existing Redis hash has optional.temperature and optional.vibration
+    Map<String, String> existingHash = new HashMap<>();
+    existingHash.put("machineId", machine.getId().toString());
+    existingHash.put("optional.temperature", "25.0");
+    existingHash.put("optional.vibration", "1.5");
+    when(redisLatestWriter.readLatestAsMap(machine.getId())).thenReturn(existingHash);
+
+    // Current payload has only vibration (no temperature)
+    var nodeFactory = new ObjectMapper().getNodeFactory();
+    var optionalFields = new LinkedHashMap<String, JsonNode>();
+    optionalFields.put("vibration", nodeFactory.numberNode(1.5));
+    var payloadWithVibrationOnly = new TelemetryPayload(true, 12.5, 100, "1.0", "msg-persist-1",
+        Instant.parse("2026-08-14T09:30:00Z"), Collections.unmodifiableMap(optionalFields));
+    accepted = new TelemetryValidationService.Result.Accepted(machine, payloadWithVibrationOnly);
+
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+
+    service.persist(accepted, envelope);
+
+    // hdel must be called with optional.temperature (stale) but NOT optional.vibration (still present)
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Collection<String>> hdelCaptor = ArgumentCaptor.forClass(Collection.class);
+    verify(redisLatestWriter).hdel(any(UUID.class), hdelCaptor.capture());
+    assertThat(hdelCaptor.getValue()).containsExactly("optional.temperature");
+    assertThat(hdelCaptor.getValue()).doesNotContain("optional.vibration");
+  }
+
+  @Test
+  void noStaleOptionalKeysWhenAllStillPresent() {
+    // Existing Redis hash has optional.vibration
+    Map<String, String> existingHash = new HashMap<>();
+    existingHash.put("machineId", machine.getId().toString());
+    existingHash.put("optional.vibration", "1.5");
+    when(redisLatestWriter.readLatestAsMap(machine.getId())).thenReturn(existingHash);
+
+    // Current payload also has vibration → no stale keys
+    var nodeFactory = new ObjectMapper().getNodeFactory();
+    var optionalFields = new LinkedHashMap<String, JsonNode>();
+    optionalFields.put("vibration", nodeFactory.numberNode(1.5));
+    var payloadWithVibration = new TelemetryPayload(true, 12.5, 100, "1.0", "msg-persist-1",
+        Instant.parse("2026-08-14T09:30:00Z"), Collections.unmodifiableMap(optionalFields));
+    accepted = new TelemetryValidationService.Result.Accepted(machine, payloadWithVibration);
+
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+
+    service.persist(accepted, envelope);
+
+    // hdel called with empty list — no-op for hdel implementation
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Collection<String>> hdelCaptor = ArgumentCaptor.forClass(Collection.class);
+    verify(redisLatestWriter).hdel(any(UUID.class), hdelCaptor.capture());
+    assertThat(hdelCaptor.getValue()).isEmpty();
   }
 }

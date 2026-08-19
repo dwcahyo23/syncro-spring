@@ -335,6 +335,62 @@ class TelemetryPersistenceIntegrationTest {
         .doesNotContainKey("temperature");
   }
 
+  @Test
+  @DisplayName("DW-25 TTL expiry then new message reads fallback DB baseline and computes correct delta")
+  void ttlExpiryThenNewMessageReadsFallbackDbBaselineAndComputesCorrectDelta() {
+    var machine = seedPlantAndMachine();
+    Instant firstReceivedAt = uniqueReceivedAt();
+    Instant secondReceivedAt = uniqueReceivedAt();
+
+    // First persist: counting=100 — writes DB counter state baseline
+    persistCounting(machine, "trace-dw25-a", firstReceivedAt, 100);
+
+    // Simulate TTL expiry by deleting the Redis latest key directly
+    String latestKey = "syncro:machine:" + machine.getId() + ":latest";
+    redisTemplate.delete(latestKey);
+
+    // Second persist: counting=150 — Redis miss, falls back to DB baseline (100), delta should be 50
+    persistCounting(machine, "trace-dw25-b", secondReceivedAt, 150);
+
+    assertThat(redisTemplate.opsForHash().entries(latestKey)).containsEntry("countingDelta", "50");
+
+    var secondPointRecords = telemetryRecords(machine, secondReceivedAt);
+    assertThat(secondPointRecords.stream().filter(record -> "countingDelta".equals(record.getField()))
+        .findFirst().orElseThrow().getValueByKey("_value")).isEqualTo(50L);
+  }
+
+  @Test
+  @DisplayName("DW-31 removed optional field is absent from Redis hash after next persist")
+  void removedOptionalFieldAbsentFromRedisHashAfterNextPersist() {
+    var machine = seedPlantAndMachine(List.of("temperature", "vibration"));
+    Instant firstReceivedAt = uniqueReceivedAt();
+    Instant secondReceivedAt = uniqueReceivedAt();
+
+    // First persist: payload includes both temperature and vibration
+    String payloadWithBoth = "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-int-" + MESSAGE_ID_OFFSET.incrementAndGet()
+        + "\",\"timestamp\":\"" + firstReceivedAt + "\",\"running\":true,\"runtimeHours\":12.5,\"counting\":100"
+        + ",\"temperature\":25.0,\"vibration\":1.5}";
+    var acceptedFirst = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, payloadWithBoth);
+    persistenceService.persist(acceptedFirst, envelope("trace-dw31-a", firstReceivedAt, payloadWithBoth));
+
+    String latestKey = "syncro:machine:" + machine.getId() + ":latest";
+    assertThat(redisTemplate.opsForHash().entries(latestKey))
+        .containsKey("optional.temperature")
+        .containsKey("optional.vibration");
+
+    // Second persist: payload includes only vibration (temperature removed)
+    String payloadWithoutTemp = "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-int-" + MESSAGE_ID_OFFSET.incrementAndGet()
+        + "\",\"timestamp\":\"" + secondReceivedAt + "\",\"running\":true,\"runtimeHours\":12.5,\"counting\":200"
+        + ",\"vibration\":1.5}";
+    var acceptedSecond = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, payloadWithoutTemp);
+    persistenceService.persist(acceptedSecond, envelope("trace-dw31-b", secondReceivedAt, payloadWithoutTemp));
+
+    // optional.temperature must be absent; optional.vibration must still be present
+    assertThat(redisTemplate.opsForHash().entries(latestKey))
+        .doesNotContainKey("optional.temperature")
+        .containsKey("optional.vibration");
+  }
+
   private void persist(MachineEntity machine, String traceId, Instant receivedAt) {
     String payload = payload(receivedAt);
     var accepted = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, payload);

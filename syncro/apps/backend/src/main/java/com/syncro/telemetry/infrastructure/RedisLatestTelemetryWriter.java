@@ -1,6 +1,7 @@
 package com.syncro.telemetry.infrastructure;
 
 import java.time.Duration;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -65,6 +66,15 @@ public class RedisLatestTelemetryWriter {
       }
     }
     return result;
+  }
+
+  public void hdel(UUID machineId, Collection<String> fieldNames) {
+    if (fieldNames == null || fieldNames.isEmpty()) {
+      return;
+    }
+    String key = latestKey(machineId);
+    Object[] fields = fieldNames.toArray(new Object[0]);
+    redis.opsForHash().delete(key, fields);
   }
 
   private static String latestKey(UUID machineId) {
