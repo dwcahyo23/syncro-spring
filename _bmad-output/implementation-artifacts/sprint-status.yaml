@@ -91,7 +91,7 @@ development_status:
   4-3-show-alert-list-and-alert-detail: done
   4-4-acknowledge-open-alert: done
   4-5-resolve-acknowledged-alert: done
-  4-6-allow-super-admin-direct-resolve-override: backlog
+  4-6-allow-super-admin-direct-resolve-override: done
   4-7-add-alert-state-to-machine-hub-and-operations-overview: backlog
   epic-4-retrospective: optional
 

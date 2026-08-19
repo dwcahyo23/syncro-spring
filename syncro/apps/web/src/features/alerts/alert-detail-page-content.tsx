@@ -8,7 +8,8 @@ import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAcknowledgeAlert, useGetAlert, useResolveAlert } from "@/lib/api/generated/syncro";
+import { useAcknowledgeAlert, useGetAlert, useResolveAlert, useResolveAlertOverride } from "@/lib/api/generated/syncro";
+import { useAuthUser } from "@/lib/auth/use-auth-user";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
 
 import { AlertStatusBadge } from "./alert-status-badge";
@@ -19,6 +20,7 @@ interface AlertDetailPageContentProps {
 }
 
 export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps) {
+  const authUser = useAuthUser();
   const { data, isLoading, isError, error, refetch } = useGetAlert(alertId, {
     query: {
       staleTime: 15_000,
@@ -59,6 +61,25 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
     },
   });
 
+  const { mutate: resolveOverride, isPending: isResolvingOverride } = useResolveAlertOverride({
+    mutation: {
+      onSuccess: () => {
+        void refetch();
+        toast.success("Alert resolved (override).");
+      },
+      onError: (err: unknown) => {
+        if (err instanceof SyncroApiError && err.status === 403) {
+          toast.error("Only SUPER_ADMIN can use resolve override.");
+        } else if (err instanceof SyncroApiError && err.status === 409) {
+          toast.error("Cannot override: alert is not in OPEN state.");
+        } else {
+          toast.error("Failed to resolve alert.");
+        }
+      },
+    },
+  });
+
+  const isSuperAdmin = authUser?.applicationRole === "SUPER_ADMIN";
   const alert = data?.data;
 
   const backLink = (
@@ -155,6 +176,17 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
               aria-label="Acknowledge this alert"
             >
               {isAcknowledging ? "Acknowledging…" : "Acknowledge"}
+            </button>
+          )}
+          {alert.status === "OPEN" && isSuperAdmin && (
+            <button
+              type="button"
+              disabled={isResolvingOverride}
+              onClick={() => resolveOverride({ alertId })}
+              className="rounded-md bg-orange-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-50"
+              aria-label="Resolve this alert directly (SUPER_ADMIN override)"
+            >
+              {isResolvingOverride ? "Resolving…" : "Resolve Override"}
             </button>
           )}
           {alert.status === "ACKNOWLEDGED" && (

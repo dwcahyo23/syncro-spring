@@ -1,5 +1,6 @@
 package com.syncro.alert.api;
 
+import com.syncro.alert.application.SparepartAlertCommandService.AlertForbiddenException;
 import com.syncro.alert.application.SparepartAlertCommandService.AlertInvalidTransitionException;
 import com.syncro.alert.application.SparepartAlertQueryService.AlertNotFoundException;
 import com.syncro.auth.application.PlantScopeService.PlantAccessDeniedException;
@@ -35,6 +36,11 @@ public class SparepartAlertExceptionHandler {
   ResponseEntity<ErrorResponse> invalidTransition(AlertInvalidTransitionException ex) {
     return error(HttpStatus.CONFLICT, "INVALID_STATE_TRANSITION",
         "Invalid alert state transition: " + ex.getFrom() + " → " + ex.getTo() + ".");
+  }
+
+  @ExceptionHandler(AlertForbiddenException.class)
+  ResponseEntity<ErrorResponse> alertForbidden() {
+    return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "You do not have permission to perform this action.");
   }
 
   @ExceptionHandler(PlantAccessDeniedException.class)

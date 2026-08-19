@@ -383,4 +383,84 @@ class SparepartAlertCommandServiceTest {
         });
     verify(alertRepository, never()).save(any());
   }
+
+  // --- resolveOverride tests ---
+
+  @Test
+  void resolveOverride_superAdmin_openAlert_transitionsToResolved() {
+    var alertId = UUID.randomUUID();
+    var p = plant(UUID.randomUUID());
+    var g = machineGroup(UUID.randomUUID(), p);
+    var m = machine(UUID.randomUUID(), p, g);
+    var sp = sparepart(UUID.randomUUID());
+    var inst = installation(UUID.randomUUID(), m, sp);
+    var a = alert(alertId, inst, SparepartAlertStatus.OPEN);
+
+    when(alertRepository.findByIdWithDetails(alertId)).thenReturn(Optional.of(a));
+    when(alertRepository.save(a)).thenReturn(a);
+
+    service().resolveOverride(superAdmin(), alertId, "Urgent override");
+
+    assertThat(a.getStatus()).isEqualTo(SparepartAlertStatus.RESOLVED);
+    assertThat(a.getStatusReason()).isEqualTo("Urgent override");
+    assertThat(a.getUpdatedAt()).isEqualTo(Instant.now(clock));
+    verify(alertRepository).save(a);
+  }
+
+  @Test
+  void resolveOverride_nonSuperAdmin_throwsForbidden() {
+    var userId = UUID.randomUUID();
+    var alertId = UUID.randomUUID();
+
+    assertThatThrownBy(() -> service().resolveOverride(manageUser(userId), alertId, null))
+        .isInstanceOf(SparepartAlertCommandService.AlertForbiddenException.class);
+    verify(alertRepository, never()).findByIdWithDetails(any());
+    verify(alertRepository, never()).save(any());
+  }
+
+  @Test
+  void resolveOverride_acknowledgedAlert_throwsInvalidTransition() {
+    var alertId = UUID.randomUUID();
+    var p = plant(UUID.randomUUID());
+    var g = machineGroup(UUID.randomUUID(), p);
+    var m = machine(UUID.randomUUID(), p, g);
+    var sp = sparepart(UUID.randomUUID());
+    var inst = installation(UUID.randomUUID(), m, sp);
+    var a = alert(alertId, inst, SparepartAlertStatus.ACKNOWLEDGED);
+
+    when(alertRepository.findByIdWithDetails(alertId)).thenReturn(Optional.of(a));
+
+    assertThatThrownBy(() -> service().resolveOverride(superAdmin(), alertId, null))
+        .isInstanceOf(AlertInvalidTransitionException.class)
+        .satisfies(ex -> {
+          var t = (AlertInvalidTransitionException) ex;
+          assertThat(t.getFrom()).isEqualTo(SparepartAlertStatus.ACKNOWLEDGED);
+          assertThat(t.getTo()).isEqualTo(SparepartAlertStatus.RESOLVED);
+        });
+    verify(alertRepository, never()).save(any());
+  }
+
+  @Test
+  void resolveOverride_writesAuditEvent() {
+    var alertId = UUID.randomUUID();
+    var p = plant(UUID.randomUUID());
+    var g = machineGroup(UUID.randomUUID(), p);
+    var m = machine(UUID.randomUUID(), p, g);
+    var sp = sparepart(UUID.randomUUID());
+    var inst = installation(UUID.randomUUID(), m, sp);
+    var a = alert(alertId, inst, SparepartAlertStatus.OPEN);
+
+    when(alertRepository.findByIdWithDetails(alertId)).thenReturn(Optional.of(a));
+    when(alertRepository.save(any())).thenReturn(a);
+
+    var user = superAdmin();
+    service().resolveOverride(user, alertId, null);
+
+    var captor = ArgumentCaptor.forClass(AuditRecord.class);
+    verify(auditLogWriter).recordSystem(captor.capture());
+    var record = captor.getValue();
+    assertThat(record.entityId()).isEqualTo(alertId);
+    assertThat(record.previousValue()).containsEntry("transition", "OPEN→RESOLVED(override)");
+    assertThat(record.newValue()).containsEntry("status", "RESOLVED");
+  }
 }

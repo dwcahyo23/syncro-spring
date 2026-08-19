@@ -93,6 +93,37 @@ public class SparepartAlertCommandService {
         Map.of("status", "RESOLVED", "reason", reason != null ? reason : "")));
   }
 
+  /**
+   * SUPER_ADMIN override: resolve an OPEN alert directly (OPEN → RESOLVED).
+   * Only SUPER_ADMIN may call this.
+   */
+  @Transactional
+  public void resolveOverride(AuthenticatedUser user, UUID alertId, String reason) {
+    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN) {
+      throw new AlertForbiddenException();
+    }
+
+    var alert = alertRepository.findByIdWithDetails(alertId)
+        .orElseThrow(SparepartAlertQueryService.AlertNotFoundException::new);
+
+    try {
+      alert.resolveOverride(reason, clock.instant());
+    } catch (InvalidAlertTransitionException e) {
+      throw new AlertInvalidTransitionException(e.getFrom(), SparepartAlertStatus.RESOLVED);
+    }
+
+    alertRepository.save(alert);
+
+    auditLogWriter.recordSystem(new AuditRecord(
+        AuditAction.UPDATE,
+        AuditEntityType.ALERT,
+        alertId,
+        "ALERT:" + alertId,
+        resolvePlantId(alert),
+        Map.of("actorId", user.id(), "transition", "OPEN→RESOLVED(override)"),
+        Map.of("status", "RESOLVED", "reason", reason != null ? reason : "")));
+  }
+
   // ---------------------------------------------------------------------------
   // Shared helpers
   // ---------------------------------------------------------------------------
@@ -144,5 +175,11 @@ public class SparepartAlertCommandService {
 
     public SparepartAlertStatus getFrom() { return from; }
     public SparepartAlertStatus getTo() { return to; }
+  }
+
+  public static class AlertForbiddenException extends RuntimeException {
+    public AlertForbiddenException() {
+      super("You do not have permission to perform this action on the alert.");
+    }
   }
 }

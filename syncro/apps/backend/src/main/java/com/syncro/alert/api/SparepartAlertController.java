@@ -3,6 +3,7 @@ package com.syncro.alert.api;
 import com.syncro.alert.api.SparepartAlertDtos.AcknowledgeRequest;
 import com.syncro.alert.api.SparepartAlertDtos.AlertListResponse;
 import com.syncro.alert.api.SparepartAlertDtos.AlertView;
+import com.syncro.alert.api.SparepartAlertDtos.ResolveOverrideRequest;
 import com.syncro.alert.api.SparepartAlertDtos.ResolveRequest;
 import com.syncro.alert.application.SparepartAlertCommandService;
 import com.syncro.alert.application.SparepartAlertQueryService;
@@ -110,6 +111,24 @@ public class SparepartAlertController {
       @RequestBody(required = false) ResolveRequest body) {
     var reason = body != null ? body.reason() : null;
     alertCommand.resolve(user, alertId, reason);
+  }
+
+  @Operation(operationId = "resolveAlertOverride", summary = "SUPER_ADMIN: resolve an OPEN alert directly without acknowledging")
+  @ApiResponses({
+      @ApiResponse(responseCode = "204", description = "Alert resolved"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden — SUPER_ADMIN only"),
+      @ApiResponse(responseCode = "404", description = "Alert not found"),
+      @ApiResponse(responseCode = "409", description = "Invalid state transition")
+  })
+  @PostMapping("/{alertId}/resolve-override")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void resolveOverride(
+      @AuthenticationPrincipal AuthenticatedUser user,
+      @PathVariable UUID alertId,
+      @RequestBody(required = false) ResolveOverrideRequest body) {
+    var reason = body != null ? body.reason() : null;
+    alertCommand.resolveOverride(user, alertId, reason);
   }
 
   private AlertView toDto(AlertDetailView view) {

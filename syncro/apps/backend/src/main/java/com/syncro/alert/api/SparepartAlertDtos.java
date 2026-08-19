@@ -54,4 +54,8 @@ public final class SparepartAlertDtos {
   public record ResolveRequest(
       @Schema(nullable = true, description = "Optional reason for resolving the alert") String reason) {
   }
+
+  public record ResolveOverrideRequest(
+      @Schema(nullable = true, description = "Optional reason for SUPER_ADMIN direct resolve override") String reason) {
+  }
 }

@@ -5037,6 +5037,75 @@ export function useGetAlert<TData = Awaited<ReturnType<typeof getAlert>>, TError
   return withQueryKey(query, queryKey);
 }
 
+// ---------------------------------------------------------------------------
+// acknowledgeAlert stub — pending orval regeneration after backend is running
+// ---------------------------------------------------------------------------
+
+export type AcknowledgeAlertBody = { reason?: string };
+
+export const acknowledgeAlert = (alertId: string, body?: AcknowledgeAlertBody, options?: RequestInit) =>
+  syncroFetch<void>(`/api/v1/alerts/${alertId}/acknowledge`, {
+    method: 'POST',
+    body: body ? JSON.stringify(body) : undefined,
+    ...options,
+  });
+
+export function useAcknowledgeAlert<TError = unknown, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof acknowledgeAlert>>, TError, { alertId: string; body?: AcknowledgeAlertBody }, TContext> },
+): UseMutationResult<Awaited<ReturnType<typeof acknowledgeAlert>>, TError, { alertId: string; body?: AcknowledgeAlertBody }, TContext> {
+  const mutationOptions = options?.mutation ?? {};
+  return useMutation({
+    mutationFn: ({ alertId, body }) => acknowledgeAlert(alertId, body),
+    ...mutationOptions,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// resolveAlert stub — pending orval regeneration after backend is running
+// ---------------------------------------------------------------------------
+
+export type ResolveAlertBody = { reason?: string };
+
+export const resolveAlert = (alertId: string, body?: ResolveAlertBody, options?: RequestInit) =>
+  syncroFetch<void>(`/api/v1/alerts/${alertId}/resolve`, {
+    method: 'POST',
+    body: body ? JSON.stringify(body) : undefined,
+    ...options,
+  });
+
+export function useResolveAlert<TError = unknown, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof resolveAlert>>, TError, { alertId: string; body?: ResolveAlertBody }, TContext> },
+): UseMutationResult<Awaited<ReturnType<typeof resolveAlert>>, TError, { alertId: string; body?: ResolveAlertBody }, TContext> {
+  const mutationOptions = options?.mutation ?? {};
+  return useMutation({
+    mutationFn: ({ alertId, body }) => resolveAlert(alertId, body),
+    ...mutationOptions,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// resolveAlertOverride stub — pending orval regeneration after backend is running
+// ---------------------------------------------------------------------------
+
+export type ResolveAlertOverrideBody = { reason?: string };
+
+export const resolveAlertOverride = (alertId: string, body?: ResolveAlertOverrideBody, options?: RequestInit) =>
+  syncroFetch<void>(`/api/v1/alerts/${alertId}/resolve-override`, {
+    method: 'POST',
+    body: body ? JSON.stringify(body) : undefined,
+    ...options,
+  });
+
+export function useResolveAlertOverride<TError = unknown, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof resolveAlertOverride>>, TError, { alertId: string; body?: ResolveAlertOverrideBody }, TContext> },
+): UseMutationResult<Awaited<ReturnType<typeof resolveAlertOverride>>, TError, { alertId: string; body?: ResolveAlertOverrideBody }, TContext> {
+  const mutationOptions = options?.mutation ?? {};
+  return useMutation({
+    mutationFn: ({ alertId, body }) => resolveAlertOverride(alertId, body),
+    ...mutationOptions,
+  });
+}
+
 
 
 

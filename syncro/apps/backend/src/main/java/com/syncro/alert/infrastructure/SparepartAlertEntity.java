@@ -121,6 +121,19 @@ public class SparepartAlertEntity {
     this.updatedAt = now;
   }
 
+  /**
+   * SUPER_ADMIN override: OPEN → RESOLVED directly, skipping ACKNOWLEDGED.
+   * Throws {@link InvalidAlertTransitionException} if status is not OPEN.
+   */
+  public void resolveOverride(String reason, Instant now) {
+    if (this.status != SparepartAlertStatus.OPEN) {
+      throw new InvalidAlertTransitionException(this.status, SparepartAlertStatus.RESOLVED);
+    }
+    this.status = SparepartAlertStatus.RESOLVED;
+    this.statusReason = reason;
+    this.updatedAt = now;
+  }
+
   public static class InvalidAlertTransitionException extends RuntimeException {
     private final SparepartAlertStatus from;
     private final SparepartAlertStatus to;
