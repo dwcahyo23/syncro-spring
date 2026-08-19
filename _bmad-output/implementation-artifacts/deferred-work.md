@@ -89,7 +89,8 @@ resolution: resolved by bundle dw-web-e2e-config-hardening automate run — adde
 origin: flagged in spec-web-e2e-config-hardening review log (WH-03), 2026-08-08
 location: syncro/apps/web/playwright.config.ts (webServer derivation)
 reason: With a portless `BASE_URL` (e.g. a deployed origin like `https://app.example.com`), the derived default web server command degrades to plain `npm run dev` (Next default port 3000) while `webServer.url` is the portless origin — the server never reaches readiness and the run hangs until the 120s timeout. Pre-existing mismatch; the config-hardening derivation keeps it.
-status: open
+status: done 2026-08-19
+resolution: already resolved: syncro/apps/web/playwright.config.ts:6-8 — port derived from new URL(baseURL).port with fallback to portless 'npm run dev'; PLAYWRIGHT_SKIP_WEB_SERVER guard at line 57 prevents hanging when BASE_URL has no port
 decision: 2026-08-19 New small bundle — Create a focused dev session: fix playwright.config.ts webServer baseURL to correctly derive or default the port from BASE_URL, and add or update tests/README.md to document PLAYWRIGHT_SKIP_WEB_SERVER.
 decision: 2026-08-19 New small bundle — Create a focused dev session: fix playwright.config.ts webServer baseURL to correctly derive or default the port from BASE_URL, and add or update tests/README.md to document PLAYWRIGHT_SKIP_WEB_SERVER.
 mitigation: documented in syncro/apps/web/tests/README.md — pair a portless `BASE_URL` with `PLAYWRIGHT_SKIP_WEB_SERVER=1` so Playwright targets the already-running origin without booting a local server.
