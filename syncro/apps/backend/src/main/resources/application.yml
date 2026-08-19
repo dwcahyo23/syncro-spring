@@ -62,3 +62,7 @@ syncro:
     ingest:
       queue-capacity: 1000
       worker-threads: 2
+  cache:
+    telemetry:
+      ttl-minutes: 5
+      max-size: 1000

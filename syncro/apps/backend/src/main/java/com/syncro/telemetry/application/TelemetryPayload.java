@@ -98,6 +98,9 @@ public record TelemetryPayload(boolean running, double runtimeHours, long counti
     if (!runtimeNode.isNumber() || !Double.isFinite(runtimeNode.doubleValue())) {
       return new ParseResult.Rejected("invalid_field_type", "runtimeHours");
     }
+    if (runtimeNode.doubleValue() < 0) {
+      return new ParseResult.Rejected("out_of_range", "runtimeHours");
+    }
     JsonNode countingNode = root.get("counting");
     if (countingNode == null || countingNode.isNull()) {
       return new ParseResult.Rejected("missing_base_field", "counting");

@@ -55,6 +55,17 @@ public interface MachineRepository extends JpaRepository<MachineEntity, UUID> {
 
   Optional<MachineEntity> findByPlantIdAndCodeIgnoreCase(UUID plantId, String code);
 
+  @Query("""
+      select machine from MachineEntity machine
+      join fetch machine.plant
+      join fetch machine.machineGroup
+      where machine.plant.id = :plantId
+        and lower(machine.code) = lower(:code)
+      """)
+  Optional<MachineEntity> findByPlantIdAndCodeIgnoreCaseWithPlantAndGroup(
+      @Param("plantId") UUID plantId,
+      @Param("code") String code);
+
   Optional<MachineEntity> findByCodeIgnoreCase(String code);
 
   boolean existsByPlantIdAndCodeIgnoreCase(UUID plantId, String code);
