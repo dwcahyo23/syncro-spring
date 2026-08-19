@@ -80,6 +80,11 @@ class MqttTelemetryIngestHandlerTest {
 
     assertThat(appender.list)
         .anyMatch(event -> event.getLevel() == Level.INFO
+            && event.getFormattedMessage().startsWith("mqtt_telemetry_accepted")
+            && event.getFormattedMessage().contains("topic=factory/GM1/BF-08410/telemetry")
+            && event.getFormattedMessage().contains("traceId="));
+    assertThat(appender.list)
+        .anyMatch(event -> event.getLevel() == Level.DEBUG
             && event.getFormattedMessage().startsWith("mqtt_telemetry_received")
             && event.getFormattedMessage().contains("topic=factory/GM1/BF-08410/telemetry")
             && event.getFormattedMessage().contains("traceId="));

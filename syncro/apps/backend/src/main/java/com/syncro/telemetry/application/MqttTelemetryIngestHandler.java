@@ -48,7 +48,9 @@ public class MqttTelemetryIngestHandler implements MessageHandler {
       traceId = envelope.traceId();
       switch (validationService.validate(envelope.topic(), envelope.payload())) {
         case TelemetryValidationService.Result.Accepted accepted -> {
-          log.info(
+          log.info("mqtt_telemetry_accepted traceId={} topic={}",
+              envelope.traceId(), envelope.topic());
+          log.debug(
               "mqtt_telemetry_received traceId={} topic={} payload={}",
               envelope.traceId(), envelope.topic(), envelope.payload());
           persistenceService.persist(accepted, envelope);

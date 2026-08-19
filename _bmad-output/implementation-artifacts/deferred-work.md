@@ -110,7 +110,9 @@ origin: code review of spec-3-1-configure-mqtt-subscription-and-telemetry-contra
 location: MqttProperties.java, MqttSubscriptionConfig.java
 severity: high
 reason: Add null/blank validation to `MqttProperties` (host, port, clientId, topicFilter) so a missing env value fails fast instead of producing `tcp://null:1883` or a runtime adapter NPE. Shared config hardening touching a class used by other stories; defer beyond Story 3.1 scope.
-status: open
+status: done 2026-08-19
+resolution: resolved by sweep bundle dw-mqtt-ingest-hardening
+resolution-undo: 2aab570a2e12b0e9048c9f1d1c99c10d652ac3874b5f4e13571efd5754194040 2026-08-19 7374617475733a206f70656e
 
 ### DW-14: Mid-session MQTT connectivity loss invisible to health indicator
 
@@ -118,7 +120,9 @@ origin: code review of spec-3-1-configure-mqtt-subscription-and-telemetry-contra
 location: MqttConnectionStatus.java, MqttSubscriptionConfig.java
 severity: high
 reason: `MqttConnectionStatus` stays `SUBSCRIBED`/UP throughout a broker outage that begins after the initial subscribe, because the Paho reconnect path handles the drop in its background thread and does not publish an `MqttConnectionFailedEvent`. With `setAutomaticReconnect(true)`, a mid-session drop does not emit the adapter's connection-failed event; the Spring Integration adapter's event set exposes no connection-lost event observable by this listener. Needs a later adapter-level or event-source investigation, out of Story 3.1 scope.
-status: open
+status: done 2026-08-19
+resolution: resolved by sweep bundle dw-mqtt-ingest-hardening
+resolution-undo: 2aab570a2e12b0e9048c9f1d1c99c10d652ac3874b5f4e13571efd5754194040 2026-08-19 7374617475733a206f70656e
 
 ### DW-15: Negative-value range validation for telemetry base fields
 
@@ -150,7 +154,9 @@ origin: code review of spec-3-2-validate-mqtt-topic-and-base-payload.md
 location: MqttTelemetryIngestHandler.java
 severity: low
 reason: `MqttTelemetryIngestHandler` logs the full unredacted payload in `mqtt_telemetry_received` at INFO for every accepted message, inflating log volume at telemetry rate. Pre-existing from Story 3.1 (`payload={}` in `handleMessage`), surfaced incidentally by review of Story 3.2 — the natural point to trim accepted-path logging to traceId/topic was missed.
-status: open
+status: done 2026-08-19
+resolution: resolved by sweep bundle dw-mqtt-ingest-hardening
+resolution-undo: 2aab570a2e12b0e9048c9f1d1c99c10d652ac3874b5f4e13571efd5754194040 2026-08-19 7374617475733a206f70656e
 
 ### DW-19: `MqttSubscriptionConfigTest` forced to mock DB-backed `TelemetryValidationService` to keep context alive
 
@@ -166,7 +172,9 @@ origin: code review of spec-3-2-validate-mqtt-topic-and-base-payload.md
 location: TelemetryTopic.java
 severity: medium
 reason: `TelemetryTopic.parse` only guards `isEmpty()` on segments, so `factory/ GM1/BF-08410/telemetry` and `factory/GM1/ /telemetry` parse successfully and then fail master-data lookup as `unknown_plant`/`unknown_machine`, misdirecting operators away from a malformed-topic root cause. No trimming or whitespace guard in `parse`; such topics can never match master data.
-status: open
+status: done 2026-08-19
+resolution: resolved by sweep bundle dw-mqtt-ingest-hardening
+resolution-undo: 2aab570a2e12b0e9048c9f1d1c99c10d652ac3874b5f4e13571efd5754194040 2026-08-19 7374617475733a206f70656e
 
 ### DW-21: Inactive-machine gate rejects by exclusion rather than inclusion
 
@@ -191,7 +199,9 @@ origin: code review of spec-3-4-persist-accepted-telemetry-to-influxdb-and-redis
 location: MqttSubscriptionConfig.java
 severity: medium
 reason: The dedupe SETNX gate only guards against duplicates that actually arrive; with Paho `cleanSession(true)` (Story 3.1 MQTT config), messages in-flight during a broker reconnect are discarded rather than redelivered, so the dedupe key cleanup on write failure cannot fully guarantee at-least-once semantics. `cleanSession(true)` defeats the redelivery net. Belongs to Story 3.1's MQTT connection config decision; revisit if at-least-once becomes a hard requirement.
-status: open
+status: done 2026-08-19
+resolution: resolved by sweep bundle dw-mqtt-ingest-hardening
+resolution-undo: 2aab570a2e12b0e9048c9f1d1c99c10d652ac3874b5f4e13571efd5754194040 2026-08-19 7374617475733a206f70656e
 
 ### DW-24: Follow-up review still recommended for 3-4-persist-accepted-telemetry-to-influxdb-and-redis after the damping cap was spent
 origin: review-budget-followup
