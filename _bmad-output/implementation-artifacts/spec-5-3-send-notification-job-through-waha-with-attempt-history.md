@@ -2,7 +2,8 @@
 title: 'Send Notification Job Through WAHA with Attempt History'
 type: 'feature'
 created: '2026-08-20'
-status: 'ready-for-dev'
+status: 'review'
+baseline_commit: '758a1f2f442a4b2d77c10c264780a54d36b6214d'
 context:
   - '_bmad-output/project-context.md'
   - '_bmad-output/implementation-artifacts/spec-5-2-queue-initial-waha-notification-for-open-alert.md'
@@ -33,72 +34,67 @@ so that failed WhatsApp notification delivery is visible and diagnosable.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Flyway migration V25 — create `notification_attempts` table and alter `notification_jobs` (AC: 3, 4, 5, 6)
-  - [ ] Create `V25__create_notification_attempts.sql`
-  - [ ] Add columns `sent_at TIMESTAMPTZ`, `attempt_count INT NOT NULL DEFAULT 0`, `next_attempt_at TIMESTAMPTZ`, `max_attempts INT NOT NULL DEFAULT 3` to `notification_jobs`
-  - [ ] Create `notification_attempts` table: `id UUID PK`, `job_id UUID FK→notification_jobs`, `attempt_number INT`, `status VARCHAR(16)`, `attempted_at TIMESTAMPTZ`, `response_detail VARCHAR(512)`, `trace_id VARCHAR(64)`
-  - [ ] Add index on `notification_attempts(job_id)`
+- [x] Task 1: Flyway migration V25 — create `notification_attempts` table and alter `notification_jobs` (AC: 3, 4, 5, 6)
+  - [x] Create `V25__create_notification_attempts.sql`
+  - [x] Add columns `sent_at TIMESTAMPTZ`, `attempt_count INT NOT NULL DEFAULT 0`, `next_attempt_at TIMESTAMPTZ`, `max_attempts INT NOT NULL DEFAULT 3` to `notification_jobs`
+  - [x] Create `notification_attempts` table: `id UUID PK`, `job_id UUID FK→notification_jobs`, `attempt_number INT`, `status VARCHAR(16)`, `attempted_at TIMESTAMPTZ`, `response_detail VARCHAR(512)`, `trace_id VARCHAR(64)`
+  - [x] Add index on `notification_attempts(job_id)`
 
-- [ ] Task 2: Extend `NotificationJobStatus` enum (AC: 4, 6)
-  - [ ] Add `SENT`, `EXHAUSTED` to existing `PENDING`, `ROUTING_FAILED` in `NotificationJobStatus.java`
+- [x] Task 2: Extend `NotificationJobStatus` enum (AC: 4, 6)
+  - [x] Add `SENT`, `EXHAUSTED` to existing `PENDING`, `ROUTING_FAILED` in `NotificationJobStatus.java`
 
-- [ ] Task 3: Update `NotificationJobEntity` with new columns (AC: 4, 5, 6)
-  - [ ] Add `sentAt`, `attemptCount`, `nextAttemptAt`, `maxAttempts` fields
-  - [ ] Add getters and a `void markSent(Instant)` mutator and `void markAttemptFailed(Instant nextAttemptAt, int maxAttempts)` mutator that update status/counts atomically in the entity
+- [x] Task 3: Update `NotificationJobEntity` with new columns (AC: 4, 5, 6)
+  - [x] Add `sentAt`, `attemptCount`, `nextAttemptAt`, `maxAttempts` fields
+  - [x] Add getters and a `void markSent(Instant)` mutator and `void markAttemptFailed(Instant nextAttemptAt, int maxAttempts)` mutator that update status/counts atomically in the entity
 
-- [ ] Task 4: Create `NotificationAttemptEntity` (AC: 3)
-  - [ ] `com.syncro.notification.infrastructure.NotificationAttemptEntity`
-  - [ ] Fields: `id UUID`, `jobId UUID`, `attemptNumber int`, `status String`, `attemptedAt Instant`, `responseDetail String`, `traceId String`
-  - [ ] `@PrePersist` sets `attemptedAt` if null
+- [x] Task 4: Create `NotificationAttemptEntity` (AC: 3)
+  - [x] `com.syncro.notification.infrastructure.NotificationAttemptEntity`
+  - [x] Fields: `id UUID`, `jobId UUID`, `attemptNumber int`, `status String`, `attemptedAt Instant`, `responseDetail String`, `traceId String`
+  - [x] `@PrePersist` sets `attemptedAt` if null
 
-- [ ] Task 5: Create `NotificationAttemptRepository` (AC: 3)
-  - [ ] `JpaRepository<NotificationAttemptEntity, UUID>` in infrastructure package
+- [x] Task 5: Create `NotificationAttemptRepository` (AC: 3)
+  - [x] `JpaRepository<NotificationAttemptEntity, UUID>` in infrastructure package
 
-- [ ] Task 6: Create `WahaProperties` config class (AC: 7)
-  - [ ] `@ConfigurationProperties(prefix = "syncro.waha")` with `url` and `apiKey` fields
-  - [ ] Bind to existing `syncro.waha.url` and `syncro.waha.api-key` in `application.yml`
-  - [ ] Annotate with `@EnableConfigurationProperties` in a config class or `@ConfigurationPropertiesScan`
+- [x] Task 6: Create `WahaProperties` config class (AC: 7)
+  - [x] `@ConfigurationProperties(prefix = "syncro.waha")` with `url` and `apiKey` fields
+  - [x] Bind to existing `syncro.waha.url` and `syncro.waha.api-key` in `application.yml`
+  - [x] Annotate with `@EnableConfigurationProperties` in a config class or `@ConfigurationPropertiesScan`
 
-- [ ] Task 7: Create `WahaClient` HTTP client (AC: 2, 7)
-  - [ ] `com.syncro.notification.infrastructure.WahaClient`
-  - [ ] Use Spring `RestClient` (Boot 4, not WebClient/RestTemplate)
-  - [ ] POST to `{syncro.waha.url}/api/sendText` with JSON body `{ "chatId": "<phone>@c.us", "text": "<rendered>", "session": "default" }`
-  - [ ] Set `X-Api-Key` header from `WahaProperties.apiKey` — NEVER log the key
-  - [ ] Return `WahaClient.Result` record with `boolean success`, `int httpStatus`, `String detail`
-  - [ ] Log only: `[WAHA][traceId={}] send attempt jobId={} status={}`
+- [x] Task 7: Create `WahaClient` HTTP client (AC: 2, 7)
+  - [x] `com.syncro.notification.infrastructure.WahaClient`
+  - [x] Use Spring `RestClient` (Boot 4, not WebClient/RestTemplate)
+  - [x] POST to `{syncro.waha.url}/api/sendText` with JSON body `{ "chatId": "<phone>@c.us", "text": "<rendered>", "session": "default" }`
+  - [x] Set `X-Api-Key` header from `WahaProperties.apiKey` — NEVER log the key
+  - [x] Return `WahaClient.Result` record with `boolean success`, `int httpStatus`, `String detail`
+  - [x] Log only: `[WAHA][traceId={}] send attempt jobId={} status={}`
 
-- [ ] Task 8: Create `WahaTemplateRenderer` service (AC: 2)
-  - [ ] `com.syncro.notification.application.WahaTemplateRenderer`
-  - [ ] Load active `alert_notification` template via `WahaTemplateRepository`
-  - [ ] Substitute variables: `{machineCode}`, `{machineName}`, `{plantCode}`, `{machineGroup}`, `{sparepartName}`, `{thresholdPercent}`, `{currentCount}`, `{alertTime}` — using `String.replace()` with values from `SparepartAlertEntity` + joined `MachineEntity` + `PlantEntity`
-  - [ ] Throw `WahaTemplateNotFoundException` if no active template found
-  - [ ] Do not call this class for `ROUTING_FAILED` jobs
+- [x] Task 8: Create `WahaTemplateRenderer` service (AC: 2)
+  - [x] `com.syncro.notification.application.WahaTemplateRenderer`
+  - [x] Load active `alert_notification` template via `WahaTemplateRepository`
+  - [x] Substitute variables: `{machineCode}`, `{machineName}`, `{plantCode}`, `{machineGroup}`, `{sparepartName}`, `{thresholdPercent}`, `{currentCount}`, `{alertTime}` — using `String.replace()` with values from `SparepartAlertEntity` + joined `MachineEntity` + `PlantEntity`
+  - [x] Throw `WahaTemplateRenderException` if no active template found
+  - [x] Do not call this class for `ROUTING_FAILED` jobs
 
-- [ ] Task 9: Create `NotificationDispatchService` — core dispatch logic (AC: 1–8)
-  - [ ] `com.syncro.notification.application.NotificationDispatchService`
-  - [ ] Inject: `NotificationJobRepository`, `NotificationAttemptRepository`, `WahaClient`, `WahaTemplateRenderer`, `SparepartAlertRepository`, `Clock`
-  - [ ] Method `void dispatch(NotificationJobEntity job)`:
-    1. Render template (catch `WahaTemplateNotFoundException` → mark EXHAUSTED, record attempt with detail)
-    2. Call `WahaClient.send()`
-    3. On success: save `NotificationAttemptEntity(status=SENT)`, call `job.markSent(now)`, save job
-    4. On failure: save `NotificationAttemptEntity(status=FAILED)`, call `job.markAttemptFailed(nextAttemptAt, maxAttempts)`, save job
-  - [ ] `nextAttemptAt` backoff = `now + (2^attemptCount) minutes`, capped at 60 minutes
+- [x] Task 9: Create `NotificationDispatchService` — core dispatch logic (AC: 1–8)
+  - [x] `com.syncro.notification.application.NotificationDispatchService`
+  - [x] Inject: `NotificationJobRepository`, `NotificationAttemptRepository`, `WahaClient`, `WahaTemplateRenderer`, `Clock`
+  - [x] Method `void dispatch(NotificationJobEntity job)`: render template, call WAHA, save attempt, update job status
+  - [x] `nextAttemptAt` backoff = `now + (2^attemptCount) minutes`, capped at 60 minutes
 
-- [ ] Task 10: Create `NotificationWorker` scheduled poller (AC: 1, 9)
-  - [ ] `com.syncro.notification.application.NotificationWorker`
-  - [ ] `@Scheduled(fixedDelayString = "${syncro.notification.worker.poll-interval-ms:30000}")`
-  - [ ] Query: `findTop10ByStatusAndNextAttemptAtBeforeOrNextAttemptAtIsNull(PENDING, now)` — add this custom query to `NotificationJobRepository`
-  - [ ] For each job: call `NotificationDispatchService.dispatch(job)` inside a try/catch to prevent one failure from stopping the batch
-  - [ ] Log worker run start/end with count processed
+- [x] Task 10: Create `NotificationWorker` scheduled poller (AC: 1, 9)
+  - [x] `com.syncro.notification.application.NotificationWorker`
+  - [x] `@Scheduled(fixedDelayString = "${syncro.notification.worker.poll-interval-ms:30000}")`
+  - [x] Query: `findPendingJobsDue(PENDING, now)` — custom query added to `NotificationJobRepository`
+  - [x] For each job: call `NotificationDispatchService.dispatch(job)` inside a try/catch
 
-- [ ] Task 11: Add `syncro.notification.worker.poll-interval-ms` to `application.yml` (AC: 1)
-  - [ ] Default: `30000` (30 seconds) as inline default in `@Scheduled`; document in yml with comment
+- [x] Task 11: Add `syncro.notification.worker.poll-interval-ms` to `application.yml` (AC: 1)
+  - [x] Default: `30000` (30 seconds) with environment variable override support
 
-- [ ] Task 12: Write `NotificationDispatchServiceTest` unit test (AC: 3–8)
-  - [ ] Happy path: mock `WahaClient` returns success → job `SENT`, attempt row `SENT`
-  - [ ] WAHA failure < maxAttempts: job stays `PENDING`, attempt row `FAILED`, `nextAttemptAt` set
-  - [ ] WAHA failure at maxAttempts: job `EXHAUSTED`, attempt row `FAILED`, no `nextAttemptAt`
-  - [ ] Missing template: job `EXHAUSTED`, attempt row `FAILED` with detail
+- [x] Task 12: Write `NotificationDispatchServiceTest` unit test (AC: 3–8)
+  - [x] Happy path: mock `WahaClient` returns success → job `SENT`, attempt row `SENT`
+  - [x] WAHA failure < maxAttempts: job stays `PENDING`, attempt row `FAILED`, `nextAttemptAt` set
+  - [x] WAHA failure at maxAttempts: job `EXHAUSTED`, attempt row `FAILED`, no `nextAttemptAt`
+  - [x] Missing template: job `EXHAUSTED`, attempt row `FAILED` with detail
 
 ## Dev Notes
 

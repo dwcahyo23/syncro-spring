@@ -47,7 +47,19 @@ public class NotificationJobEntity {
   @Column(name = "error_detail", length = 512)
   private String errorDetail;
 
-  @Column(name = "created_at", nullable = false)
+  @Column(name = "sent_at")
+  private Instant sentAt;
+
+  @Column(name = "attempt_count", nullable = false)
+  private int attemptCount = 0;
+
+  @Column(name = "next_attempt_at")
+  private Instant nextAttemptAt;
+
+  @Column(name = "max_attempts", nullable = false)
+  private int maxAttempts = 3;
+
+  @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
   @Column(name = "updated_at", nullable = false)
@@ -67,6 +79,30 @@ public class NotificationJobEntity {
     this.idempotencyKey = idempotencyKey;
     this.traceId = traceId;
     this.errorDetail = errorDetail;
+  }
+
+  public void markSent(Instant now) {
+    this.status = NotificationJobStatus.SENT;
+    this.sentAt = now;
+    this.updatedAt = now;
+  }
+
+  public void markExhausted(Instant now) {
+    this.status = NotificationJobStatus.EXHAUSTED;
+    this.nextAttemptAt = null;
+    this.updatedAt = now;
+  }
+
+  public void markAttemptFailed(Instant now, Instant nextAttemptAt) {
+    this.attemptCount++;
+    this.updatedAt = now;
+    if (this.attemptCount >= this.maxAttempts) {
+      this.status = NotificationJobStatus.EXHAUSTED;
+      this.nextAttemptAt = null;
+    } else {
+      this.status = NotificationJobStatus.PENDING;
+      this.nextAttemptAt = nextAttemptAt;
+    }
   }
 
   @PrePersist
@@ -115,6 +151,22 @@ public class NotificationJobEntity {
 
   public String getErrorDetail() {
     return errorDetail;
+  }
+
+  public Instant getSentAt() {
+    return sentAt;
+  }
+
+  public int getAttemptCount() {
+    return attemptCount;
+  }
+
+  public Instant getNextAttemptAt() {
+    return nextAttemptAt;
+  }
+
+  public int getMaxAttempts() {
+    return maxAttempts;
   }
 
   public Instant getCreatedAt() {

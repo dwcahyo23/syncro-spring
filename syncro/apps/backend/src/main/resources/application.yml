@@ -55,6 +55,10 @@ syncro:
   waha:
     url: http://${WAHA_HOST}:${WAHA_PORT}
     api-key: ${WAHA_API_KEY}
+  notification:
+    worker:
+      # Poll interval in milliseconds for the notification dispatch worker (default: 30 seconds)
+      poll-interval-ms: ${SYNCRO_NOTIFICATION_WORKER_POLL_INTERVAL_MS:30000}
   telemetry:
     ingest:
       queue-capacity: 1000

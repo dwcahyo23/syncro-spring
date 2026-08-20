@@ -30,6 +30,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class SparepartAlertServiceTest {
@@ -46,11 +47,14 @@ class SparepartAlertServiceTest {
   @Mock
   private MachineRepository machineRepository;
 
+  @Mock
+  private ApplicationEventPublisher eventPublisher;
+
   private final Clock clock = Clock.fixed(Instant.parse("2026-08-19T00:00:00Z"), ZoneOffset.UTC);
 
   private SparepartAlertService service() {
     return new SparepartAlertService(alertRepository, auditLogWriter, installationRepository,
-        machineRepository, clock);
+        machineRepository, clock, eventPublisher);
   }
 
   // --- helpers ---
