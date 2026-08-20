@@ -8,6 +8,7 @@
 
 export * from './alertListResponse';
 export * from './alertView';
+export * from './notificationSummary';
 export * from './sparepartAlertStatus';
 export * from './auditLogEntryView';
 export * from './auditLogEntryViewAction';

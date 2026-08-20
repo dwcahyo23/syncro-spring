@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useListAlerts } from "@/lib/api/generated/syncro";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
 import { AlertStatusBadge } from "@/features/alerts/alert-status-badge";
+import { NotificationStatePill } from "@/features/alerts/notification-state-pill";
 
 export interface AlertsTabProps {
   machineId?: string;
@@ -61,6 +62,7 @@ export function AlertsTab({ machineId }: AlertsTabProps) {
       <TableHeader>
         <TableRow>
           <TableHead>Status</TableHead>
+          <TableHead className="hidden sm:table-cell">Notification</TableHead>
           <TableHead>Sparepart</TableHead>
           <TableHead className="hidden sm:table-cell text-right">Threshold</TableHead>
           <TableHead className="hidden sm:table-cell text-right">Consumed</TableHead>
@@ -84,6 +86,9 @@ export function AlertsTab({ machineId }: AlertsTabProps) {
           >
             <TableCell>
               <AlertStatusBadge status={item.status} />
+            </TableCell>
+            <TableCell className="hidden sm:table-cell">
+              <NotificationStatePill summary={item.notificationSummary} />
             </TableCell>
             <TableCell>
               <div className="font-medium">{item.sparepartName ?? item.sparepartCode}</div>

@@ -7,12 +7,18 @@ import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.application.PlantScopeService;
 import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
+import com.syncro.notification.domain.NotificationJobStatus;
+import com.syncro.notification.infrastructure.NotificationJobEntity;
+import com.syncro.notification.infrastructure.NotificationJobRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,14 +28,17 @@ public class SparepartAlertQueryService {
   private final SparepartAlertRepository alertRepository;
   private final AuthUserPlantAssignmentRepository assignments;
   private final PlantScopeService plantScopes;
+  private final NotificationJobRepository notificationJobRepository;
 
   public SparepartAlertQueryService(
       SparepartAlertRepository alertRepository,
       AuthUserPlantAssignmentRepository assignments,
-      PlantScopeService plantScopes) {
+      PlantScopeService plantScopes,
+      NotificationJobRepository notificationJobRepository) {
     this.alertRepository = alertRepository;
     this.assignments = assignments;
     this.plantScopes = plantScopes;
+    this.notificationJobRepository = notificationJobRepository;
   }
 
   @Transactional(readOnly = true)
@@ -51,12 +60,41 @@ public class SparepartAlertQueryService {
         ? alertRepository.findAllUnscoped(machineId, plantId, status, pageable)
         : alertRepository.findAllScoped(scopedPlantIds, machineId, plantId, status, pageable);
 
+    var alertIds = result.getContent().stream().map(SparepartAlertEntity::getId).toList();
+    var summaryMap = buildNotificationSummaryMap(alertIds);
+
     return new AlertListView(
-        result.getContent().stream().map(this::toView).toList(),
+        result.getContent().stream().map(a -> toView(a, summaryMap.get(a.getId()))).toList(),
         result.getTotalElements(),
         pageable.getPageNumber(),
         pageable.getPageSize(),
         sort);
+  }
+
+  /**
+   * Batch-fetches the most relevant notification job per alert to avoid N+1 queries.
+   * Prefers non-CANCELLED jobs; falls back to CANCELLED-only alerts via a second query.
+   */
+  private Map<UUID, NotificationJobEntity> buildNotificationSummaryMap(List<UUID> alertIds) {
+    if (alertIds.isEmpty()) {
+      return Map.of();
+    }
+    // Primary: prefer non-CANCELLED jobs
+    var nonCancelled = notificationJobRepository
+        .findMostRecentNonCancelledJobsForAlerts(alertIds, NotificationJobStatus.CANCELLED);
+    Map<UUID, NotificationJobEntity> summaryMap = new HashMap<>();
+    for (var job : nonCancelled) {
+      summaryMap.putIfAbsent(job.getAlertId(), job);
+    }
+    // Fallback: for alert IDs not yet in the map, fetch any job (covers CANCELLED-only alerts)
+    var missing = alertIds.stream().filter(id -> !summaryMap.containsKey(id)).toList();
+    if (!missing.isEmpty()) {
+      var fallback = notificationJobRepository.findMostRecentJobsForAlerts(missing);
+      for (var job : fallback) {
+        summaryMap.putIfAbsent(job.getAlertId(), job);
+      }
+    }
+    return summaryMap;
   }
 
   @Transactional(readOnly = true)
@@ -75,15 +113,26 @@ public class SparepartAlertQueryService {
       alert = alertRepository.findByIdWithDetailsScopedToPlants(alertId, scopedPlantIds)
           .orElseThrow(AlertNotFoundException::new);
     }
-    return toView(alert);
+    // Single-alert detail view: no notification summary (detail page loads it separately)
+    return toView(alert, null);
   }
 
-  private AlertDetailView toView(SparepartAlertEntity alert) {
+  private AlertDetailView toView(SparepartAlertEntity alert,
+      @Nullable NotificationJobEntity notificationJob) {
     var installation = alert.getInstallation();
     var machine = installation.getMachine();
     var plant = machine.getPlant();
     var machineGroup = machine.getMachineGroup();
     var sparepart = installation.getSparepart();
+
+    NotificationSummary notificationSummary = null;
+    if (notificationJob != null) {
+      notificationSummary = new NotificationSummary(
+          notificationJob.getStatus().name(),
+          notificationJob.getEscalationLevel(),
+          notificationJob.getSentAt(),
+          notificationJob.getErrorDetail());
+    }
 
     return new AlertDetailView(
         alert.getId(),
@@ -110,7 +159,8 @@ public class SparepartAlertQueryService {
         alert.getStatusReason(),
         alert.getTraceId(),
         alert.getCreatedAt(),
-        alert.getUpdatedAt());
+        alert.getUpdatedAt(),
+        notificationSummary);
   }
 
   private Sort parseSort(String sort) {
@@ -131,6 +181,17 @@ public class SparepartAlertQueryService {
   }
 
   // --- View records ---
+
+  /**
+   * Summary of the most relevant notification job for an alert.
+   * Null when the alert has no notification jobs.
+   */
+  public record NotificationSummary(
+      String status,
+      @Nullable String escalationLevel,
+      @Nullable Instant sentAt,
+      @Nullable String errorDetail) {
+  }
 
   public record AlertDetailView(
       UUID id,
@@ -157,7 +218,8 @@ public class SparepartAlertQueryService {
       String statusReason,
       String traceId,
       Instant createdAt,
-      Instant updatedAt) {
+      Instant updatedAt,
+      @Nullable NotificationSummary notificationSummary) {
   }
 
   public record AlertListView(

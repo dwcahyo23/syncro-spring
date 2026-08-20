@@ -6,9 +6,21 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.lang.Nullable;
 
 public final class SparepartAlertDtos {
   private SparepartAlertDtos() {
+  }
+
+  /**
+   * Summary of the most relevant notification job for an alert.
+   * Null when the alert has no notification jobs at all.
+   */
+  public record NotificationSummary(
+      @Schema(nullable = false) String status,
+      @Schema(nullable = true) @Nullable String escalationLevel,
+      @Schema(nullable = true) @Nullable Instant sentAt,
+      @Schema(nullable = true) @Nullable String errorDetail) {
   }
 
   public record AlertView(
@@ -36,7 +48,8 @@ public final class SparepartAlertDtos {
       @Schema(nullable = true) String statusReason,
       @Schema(nullable = false) String traceId,
       @Schema(nullable = false) Instant createdAt,
-      @Schema(nullable = false) Instant updatedAt) {
+      @Schema(nullable = false) Instant updatedAt,
+      @Schema(nullable = true) @Nullable NotificationSummary notificationSummary) {
   }
 
   public record AlertListResponse(

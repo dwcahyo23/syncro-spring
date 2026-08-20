@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useListAlerts } from "@/lib/api/generated/syncro";
 import { AlertStatusBadge } from "@/features/alerts/alert-status-badge";
+import { NotificationStatePill } from "@/features/alerts/notification-state-pill";
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
 
 function timeAgo(dateStr?: string): string {
@@ -207,6 +208,7 @@ export function OperationsOverviewPageContent() {
                     >
                       <div className="flex items-center gap-3">
                         <AlertStatusBadge status={item.status} />
+                        <NotificationStatePill summary={item.notificationSummary} />
                         <div>
                           <p className="text-sm font-medium">
                             {item.machineCode}
