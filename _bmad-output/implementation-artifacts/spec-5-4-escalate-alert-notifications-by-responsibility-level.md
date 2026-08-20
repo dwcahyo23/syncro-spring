@@ -2,7 +2,7 @@
 title: 'Escalate Alert Notifications by Responsibility Level'
 type: 'feature'
 created: '2026-08-20'
-status: 'review'
+status: 'done'
 baseline_commit: '1861a7c'
 context:
   - '_bmad-output/project-context.md'
@@ -168,6 +168,18 @@ Story 5.3 introduced `markAttemptFailed(Instant now, Instant nextAttemptAt)` and
 - Flyway latest V26: [Source: db/migration/V26__notification_job_idempotency_and_constraints.sql]
 - `notification_jobs` schema (V24 + V25 + V26): unique constraint `uq_notification_jobs_alert_level (alert_id, escalation_level)`, `@Version` column, `sent_at` column
 - Architecture escalation flow: [Source: _bmad-output/planning-artifacts/architecture.md#WAHA Escalation]
+
+### Review Findings
+
+- [x] [Review][Patch] Infinite retry — missing alert leaves job in SENT forever → mark ESCALATED [EscalationService.java:58]
+- [x] [Review][Defer] Infinite retry — closed/resolved alert leaves job in SENT forever — deferred, behavior is correct per AC10; permanent closed-alert loop is addressed by alert lifecycle story
+- [x] [Review][Patch] Infinite retry — invalid escalation level string leaves job in SENT [EscalationService.java:76]
+- [x] [Review][Patch] currentIndex == -1 silently treated as end-of-chain, no error log [EscalationService.java:82]
+- [x] [Review][Patch] JPQL uses string literal `'SENT'` instead of enum parameter — refactor risk [NotificationJobRepository.java:26]
+- [x] [Review][Patch] Dead code `userWithPhone()` helper never called in test [EscalationServiceTest.java]
+- [x] [Review][Patch] Fully-qualified import in EscalationWorker instead of top-level import [EscalationWorker.java:18]
+- [x] [Review][Defer] ROUTING_FAILED jobs are never re-queried for escalation retry [EscalationService.java] — deferred, pre-existing design decision (ROUTING_FAILED is a terminal state by design)
+- [x] [Review][Defer] `sentAt` column has no DB NOT NULL constraint despite being required for SENT-status jobs [NotificationJobEntity.java:52] — deferred, pre-existing
 
 ## Dev Agent Record
 

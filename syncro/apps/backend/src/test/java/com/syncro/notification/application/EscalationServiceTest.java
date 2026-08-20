@@ -82,17 +82,6 @@ class EscalationServiceTest {
         FIXED_NOW.minusSeconds(7200), FIXED_NOW.minusSeconds(7200));
   }
 
-  private AuthUserEntity userWithPhone(String phone) {
-    var user = new AuthUserEntity(
-        USER_ID, "user@test.com", "hash",
-        com.syncro.auth.domain.ApplicationRole.MANAGE, true,
-        FIXED_NOW.minusSeconds(7200), FIXED_NOW.minusSeconds(7200));
-    // whatsappNumber set via reflection not available on entity — use spy or real field
-    // AuthUserEntity has no setWhatsappNumber; we need a test constructor or reflection
-    // Since AuthUserEntity only exposes getWhatsappNumber(), use a subclass spy approach
-    return user;
-  }
-
   private AuthUserEntity userWithPhoneViaReflection(String phone) throws Exception {
     var user = new AuthUserEntity(
         USER_ID, "user@test.com", "hash",
@@ -259,13 +248,14 @@ class EscalationServiceTest {
   // ---- Tests: alert not found ----
 
   @Test
-  void escalate_whenAlertNotFound_skipsGracefully() {
+  void escalate_whenAlertNotFound_marksEscalatedToStopRetry() {
     var job = sentJob("TECHNICIAN");
     when(sparepartAlertRepository.findById(ALERT_ID)).thenReturn(Optional.empty());
+    when(notificationJobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     service.escalate(job);
 
-    verify(notificationJobRepository, never()).save(any());
-    assertThat(job.getStatus()).isEqualTo(NotificationJobStatus.SENT);
+    verify(notificationJobRepository).save(job);
+    assertThat(job.getStatus()).isEqualTo(NotificationJobStatus.ESCALATED);
   }
 }

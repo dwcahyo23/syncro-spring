@@ -53,11 +53,13 @@ public class EscalationService {
   public void escalate(NotificationJobEntity job) {
     Instant now = Instant.now(clock);
 
-    // 1. Load alert — abort if missing
+    // 1. Load alert — mark ESCALATED if missing (no retry on permanently gone alert)
     var alertOpt = sparepartAlertRepository.findById(job.getAlertId());
     if (alertOpt.isEmpty()) {
-      log.error("[EscalationService][traceId={}] Alert {} not found for job {} — skipping",
+      log.error("[EscalationService][traceId={}] Alert {} not found for job {} — marking ESCALATED to stop retry",
           job.getTraceId(), job.getAlertId(), job.getId());
+      job.markEscalated(now);
+      notificationJobRepository.save(job);
       return;
     }
     var alert = alertOpt.get();
@@ -74,13 +76,22 @@ public class EscalationService {
     try {
       currentLevel = ResponsibilityLevel.valueOf(job.getEscalationLevel());
     } catch (IllegalArgumentException e) {
-      log.error("[EscalationService][traceId={}] Unknown escalation level '{}' on job {} — skipping",
+      log.error("[EscalationService][traceId={}] Unknown escalation level '{}' on job {} — marking ESCALATED to stop retry",
           job.getTraceId(), job.getEscalationLevel(), job.getId());
+      job.markEscalated(now);
+      notificationJobRepository.save(job);
       return;
     }
 
     int currentIndex = ESCALATION_ORDER.indexOf(currentLevel);
-    boolean hasNext = currentIndex >= 0 && currentIndex + 1 < ESCALATION_ORDER.size();
+    if (currentIndex < 0) {
+      log.error("[EscalationService][traceId={}] Level '{}' on job {} is not in escalation chain — marking ESCALATED",
+          job.getTraceId(), currentLevel, job.getId());
+      job.markEscalated(now);
+      notificationJobRepository.save(job);
+      return;
+    }
+    boolean hasNext = currentIndex + 1 < ESCALATION_ORDER.size();
 
     // 4. End of chain — mark escalated with no further queuing (AC: 7)
     if (!hasNext) {

@@ -1,5 +1,7 @@
 package com.syncro.notification.application;
 
+import com.syncro.notification.domain.NotificationJobStatus;
+import com.syncro.notification.infrastructure.NotificationJobRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -15,7 +17,7 @@ public class EscalationWorker {
 
   private static final Logger log = LoggerFactory.getLogger(EscalationWorker.class);
 
-  private final com.syncro.notification.infrastructure.NotificationJobRepository jobRepository;
+  private final NotificationJobRepository jobRepository;
   private final EscalationService escalationService;
   private final Clock clock;
 
@@ -23,7 +25,7 @@ public class EscalationWorker {
   private long escalationIntervalMs;
 
   public EscalationWorker(
-      com.syncro.notification.infrastructure.NotificationJobRepository jobRepository,
+      NotificationJobRepository jobRepository,
       EscalationService escalationService,
       Clock clock) {
     this.jobRepository = jobRepository;
@@ -35,7 +37,7 @@ public class EscalationWorker {
   public void poll() {
     Instant now = Instant.now(clock);
     Instant cutoff = now.minus(escalationIntervalMs, ChronoUnit.MILLIS);
-    var jobs = jobRepository.findSentJobsDueForEscalation(cutoff);
+    var jobs = jobRepository.findSentJobsDueForEscalation(NotificationJobStatus.SENT, cutoff);
     if (jobs.isEmpty()) {
       return;
     }

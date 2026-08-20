@@ -395,3 +395,9 @@ status: open
 - **DW-46: Plaintext credentials in auth-bootstrap.csv committed to git** — `auth-bootstrap.csv:2-3` contains literal MQTT passwords for `syncro_backend` and `device_BF-08410_GM1`. Dev-environment pattern consistent with all other infra files; production credential management out of scope for story 3-13.
 - **DW-47: Hardcoded SEED_SECRET in docker-entrypoint.sh committed to git** — `docker-entrypoint.sh:37` hardcodes the administrator API key secret. Same dev-infra pattern; secret rotation and production secrets management out of scope.
 - **DW-48: Erlang cluster cookie is a weak committed value** — `emqx.conf:4` sets `cookie = "emqxsyncrodev"`. Single-node dev setup; Erlang cluster security out of scope.
+
+## Deferred from: code review of spec-5-4-escalate-alert-notifications-by-responsibility-level (2026-08-20)
+
+- **DW-49: ROUTING_FAILED jobs never re-queried for escalation retry** — `EscalationService.java` — ROUTING_FAILED is a terminal state by design; re-routing workflow belongs to a future admin/correction story. Pre-existing design decision consistent with DW-44 pattern.
+- **DW-50: `sentAt` column has no DB NOT NULL constraint despite being required for SENT-status jobs** — `NotificationJobEntity.java:52` — `sentAt` is set by `markSent()` before any job reaches SENT status; NULL-safety is enforced at application layer, not DB layer. Low risk; adding NOT NULL requires a Flyway migration coordinated with existing data.
+- **DW-51: Infinite retry — closed/resolved alert leaves job in SENT forever** — `EscalationService.java:66` — AC10 by design requires job to stay SENT when alert is non-OPEN (protects re-open scenario). Permanent loop is theoretical; alert lifecycle cleanup (RESOLVED/DELETED) belongs to a future alert lifecycle story.

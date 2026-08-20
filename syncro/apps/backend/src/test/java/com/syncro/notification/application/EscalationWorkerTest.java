@@ -56,7 +56,7 @@ class EscalationWorkerTest {
   void poll_withPendingJobs_callsEscalateForEach() {
     var job1 = sentJob("TECHNICIAN");
     var job2 = sentJob("STAFF");
-    when(jobRepository.findSentJobsDueForEscalation(any())).thenReturn(List.of(job1, job2));
+    when(jobRepository.findSentJobsDueForEscalation(any(), any())).thenReturn(List.of(job1, job2));
 
     worker.poll();
 
@@ -66,7 +66,7 @@ class EscalationWorkerTest {
 
   @Test
   void poll_withNoJobs_doesNotCallEscalate() {
-    when(jobRepository.findSentJobsDueForEscalation(any())).thenReturn(List.of());
+    when(jobRepository.findSentJobsDueForEscalation(any(), any())).thenReturn(List.of());
 
     worker.poll();
 
@@ -79,7 +79,7 @@ class EscalationWorkerTest {
   void poll_whenOptimisticLockOnFirstJob_skipsItAndProcessesSecond() {
     var job1 = sentJob("TECHNICIAN");
     var job2 = sentJob("STAFF");
-    when(jobRepository.findSentJobsDueForEscalation(any())).thenReturn(List.of(job1, job2));
+    when(jobRepository.findSentJobsDueForEscalation(any(), any())).thenReturn(List.of(job1, job2));
     doThrow(new ObjectOptimisticLockingFailureException("NotificationJobEntity", null))
         .when(escalationService).escalate(job1);
 
@@ -96,7 +96,7 @@ class EscalationWorkerTest {
   void poll_whenGenericExceptionOnFirstJob_skipsItAndProcessesSecond() {
     var job1 = sentJob("TECHNICIAN");
     var job2 = sentJob("LEADER");
-    when(jobRepository.findSentJobsDueForEscalation(any())).thenReturn(List.of(job1, job2));
+    when(jobRepository.findSentJobsDueForEscalation(any(), any())).thenReturn(List.of(job1, job2));
     doThrow(new RuntimeException("unexpected"))
         .when(escalationService).escalate(job1);
 
@@ -110,11 +110,11 @@ class EscalationWorkerTest {
 
   @Test
   void poll_passesCutoffComputedFromClockAndInterval() {
-    when(jobRepository.findSentJobsDueForEscalation(any())).thenReturn(List.of());
+    when(jobRepository.findSentJobsDueForEscalation(any(), any())).thenReturn(List.of());
 
     worker.poll();
 
     var expectedCutoff = FIXED_NOW.minusMillis(INTERVAL_MS);
-    verify(jobRepository).findSentJobsDueForEscalation(expectedCutoff);
+    verify(jobRepository).findSentJobsDueForEscalation(NotificationJobStatus.SENT, expectedCutoff);
   }
 }
