@@ -150,6 +150,15 @@ public class SparepartAlertController {
   }
 
   private AlertView toDto(AlertDetailView view) {
+    SparepartAlertDtos.NotificationSummary notificationSummary = null;
+    if (view.notificationSummary() != null) {
+      var ns = view.notificationSummary();
+      notificationSummary = new SparepartAlertDtos.NotificationSummary(
+          ns.status(),
+          ns.escalationLevel(),
+          ns.sentAt(),
+          ns.errorDetail());
+    }
     return new AlertView(
         view.id(),
         view.machineId(),
@@ -175,6 +184,7 @@ public class SparepartAlertController {
         view.statusReason(),
         view.traceId(),
         view.createdAt(),
-        view.updatedAt());
+        view.updatedAt(),
+        notificationSummary);
   }
 }

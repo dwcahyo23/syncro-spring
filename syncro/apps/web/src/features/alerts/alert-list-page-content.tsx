@@ -10,6 +10,7 @@ import type { SparepartAlertStatus } from "@/lib/api/generated/model";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
 
 import { AlertStatusBadge } from "./alert-status-badge";
+import { NotificationStatePill } from "./notification-state-pill";
 
 interface AlertListPageContentProps {
   statusFilter?: SparepartAlertStatus;
@@ -85,6 +86,7 @@ export function AlertListPageContent({ statusFilter, machineId }: AlertListPageC
       <TableHeader>
         <TableRow>
           <TableHead>Status</TableHead>
+          <TableHead className="hidden sm:table-cell">Notification</TableHead>
           <TableHead>Machine</TableHead>
           <TableHead className="hidden md:table-cell">Plant</TableHead>
           <TableHead>Sparepart</TableHead>
@@ -110,6 +112,9 @@ export function AlertListPageContent({ statusFilter, machineId }: AlertListPageC
           >
             <TableCell>
               <AlertStatusBadge status={item.status as SparepartAlertStatus} />
+            </TableCell>
+            <TableCell className="hidden sm:table-cell">
+              <NotificationStatePill summary={item.notificationSummary} />
             </TableCell>
             <TableCell>
               <div className="font-medium">{item.machineCode}</div>

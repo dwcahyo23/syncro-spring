@@ -80,4 +80,41 @@ public interface NotificationJobRepository extends JpaRepository<NotificationJob
       @Param("activeStatuses") Collection<NotificationJobStatus> activeStatuses,
       @Param("cancelled") NotificationJobStatus cancelled,
       @Param("now") Instant now);
+
+  /**
+   * Returns the most recently updated non-CANCELLED job for each alertId in the
+   * given collection. Uses a subquery on MAX(updatedAt) per alertId to select
+   * the single representative row without window functions.
+   *
+   * <p>Called from {@code SparepartAlertQueryService.list()} to batch-populate
+   * notification summaries without issuing N+1 queries per alert row.
+   */
+  @Query("""
+      select j from NotificationJobEntity j
+      where j.alertId in :alertIds
+        and j.status <> :cancelled
+        and j.updatedAt = (
+          select max(j2.updatedAt) from NotificationJobEntity j2
+          where j2.alertId = j.alertId
+            and j2.status <> :cancelled
+        )
+      """)
+  List<NotificationJobEntity> findMostRecentNonCancelledJobsForAlerts(
+      @Param("alertIds") Collection<UUID> alertIds,
+      @Param("cancelled") NotificationJobStatus cancelled);
+
+  /**
+   * Fallback: returns the most recently updated job (any status) for each
+   * alertId in the given collection. Used when an alert has only CANCELLED jobs.
+   */
+  @Query("""
+      select j from NotificationJobEntity j
+      where j.alertId in :alertIds
+        and j.updatedAt = (
+          select max(j2.updatedAt) from NotificationJobEntity j2
+          where j2.alertId = j.alertId
+        )
+      """)
+  List<NotificationJobEntity> findMostRecentJobsForAlerts(
+      @Param("alertIds") Collection<UUID> alertIds);
 }
