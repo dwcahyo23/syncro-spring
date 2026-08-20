@@ -2,7 +2,7 @@ name: syncro-spring
 
 services:
   postgres:
-    image: postgres:16
+    image: postgres:18
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
@@ -11,7 +11,7 @@ services:
     ports:
       - "${POSTGRES_PORT:?POSTGRES_PORT is required}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
@@ -20,7 +20,7 @@ services:
       retries: 5
 
   pgadmin:
-    image: dpage/pgadmin4:8
+    image: dpage/pgadmin4:latest
     restart: unless-stopped
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:?PGADMIN_EMAIL is required}
@@ -34,7 +34,7 @@ services:
       - pgadmin_data:/var/lib/pgadmin
 
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     ports:
@@ -48,29 +48,27 @@ services:
       retries: 5
 
   influxdb:
-    image: influxdb:2.7
+    image: influxdb:3-core
     restart: unless-stopped
+    entrypoint: ["/bin/sh", "/etc/influxdb3/entrypoint.sh"]
     environment:
-      DOCKER_INFLUXDB_INIT_MODE: setup
-      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUXDB_USERNAME:?INFLUXDB_USERNAME is required}
-      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_PASSWORD:?INFLUXDB_PASSWORD is required}
-      DOCKER_INFLUXDB_INIT_ORG: ${INFLUXDB_ORG:?INFLUXDB_ORG is required}
-      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_BUCKET:?INFLUXDB_BUCKET is required}
-      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_TOKEN:?INFLUXDB_TOKEN is required}
+      INFLUXDB3_ADMIN_TOKEN: ${INFLUXDB_TOKEN:?INFLUXDB_TOKEN is required}
     ports:
-      - "${INFLUXDB_PORT:?INFLUXDB_PORT is required}:8086"
+      - "${INFLUXDB_PORT:?INFLUXDB_PORT is required}:8181"
     volumes:
-      - influxdb_data:/var/lib/influxdb2
-      - influxdb_config:/etc/influxdb2
+      - influxdb_data:/var/lib/influxdb3
+      - ./influxdb/entrypoint.sh:/etc/influxdb3/entrypoint.sh:ro
     healthcheck:
-      test: ["CMD", "influx", "ping"]
+      test: ["CMD", "curl", "-sf", "http://localhost:8181/health"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 20s
 
   emqx:
-    image: emqx/emqx:5.8
+    image: emqx/emqx:6.2.2
     restart: unless-stopped
+    entrypoint: ["/bin/sh", "/opt/emqx/etc/syncro/docker-entrypoint.sh"]
     environment:
       EMQX_DASHBOARD__DEFAULT_USERNAME: ${SYNCRO_MQTT_USERNAME:?SYNCRO_MQTT_USERNAME is required}
       EMQX_DASHBOARD__DEFAULT_PASSWORD: ${SYNCRO_MQTT_PASSWORD:?SYNCRO_MQTT_PASSWORD is required}
@@ -80,12 +78,15 @@ services:
     volumes:
       - emqx_data:/opt/emqx/data
       - emqx_log:/opt/emqx/log
-      - ./emqx/etc:/opt/emqx/etc/syncro:ro
+      - ./emqx/etc/emqx.conf:/opt/emqx/etc/emqx.conf:ro
+      - ./emqx/etc/auth-bootstrap.csv:/opt/emqx/etc/syncro/auth-bootstrap.csv:ro
+      - ./emqx/etc/docker-entrypoint.sh:/opt/emqx/etc/syncro/docker-entrypoint.sh:ro
     healthcheck:
       test: ["CMD", "/opt/emqx/bin/emqx", "ctl", "status"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
 
   waha:
     image: devlikeapro/waha:latest
@@ -104,7 +105,7 @@ volumes:
   pgadmin_data:
   redis_data:
   influxdb_data:
-  influxdb_config:
+
   emqx_data:
   emqx_log:
   waha_sessions:

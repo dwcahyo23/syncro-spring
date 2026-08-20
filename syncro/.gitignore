@@ -62,6 +62,7 @@ coverage/
 **/build/
 
 # Local infra data
+infra/emqx/etc/auth-bootstrap.csv
 infra/**/data/
 infra/**/.data/
 infra/**/volumes/
