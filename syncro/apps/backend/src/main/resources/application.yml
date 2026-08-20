@@ -59,6 +59,11 @@ syncro:
     worker:
       # Poll interval in milliseconds for the notification dispatch worker (default: 30 seconds)
       poll-interval-ms: ${SYNCRO_NOTIFICATION_WORKER_POLL_INTERVAL_MS:30000}
+    escalation:
+      # Escalation interval in milliseconds — how long a SENT job must age before escalating (default: 15 minutes)
+      interval-ms: ${SYNCRO_NOTIFICATION_ESCALATION_INTERVAL_MS:900000}
+      # Poll interval in milliseconds for the escalation worker (default: 60 seconds)
+      poll-interval-ms: ${SYNCRO_NOTIFICATION_ESCALATION_POLL_INTERVAL_MS:60000}
   telemetry:
     ingest:
       queue-capacity: 1000

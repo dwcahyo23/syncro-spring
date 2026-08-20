@@ -4,5 +4,6 @@ public enum NotificationJobStatus {
   PENDING,
   ROUTING_FAILED,
   SENT,
-  EXHAUSTED
+  EXHAUSTED,
+  ESCALATED
 }

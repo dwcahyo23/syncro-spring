@@ -98,6 +98,11 @@ public class NotificationJobEntity {
     this.updatedAt = now;
   }
 
+  public void markEscalated(Instant now) {
+    this.status = NotificationJobStatus.ESCALATED;
+    this.updatedAt = now;
+  }
+
   public void markAttemptFailed(Instant now, Instant nextAttemptAt) {
     this.attemptCount++;
     this.updatedAt = now;

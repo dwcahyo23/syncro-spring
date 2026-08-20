@@ -20,4 +20,14 @@ public interface NotificationJobRepository extends JpaRepository<NotificationJob
   List<NotificationJobEntity> findPendingJobsDue(
       @Param("status") NotificationJobStatus status,
       @Param("now") Instant now);
+
+  @Query("""
+      select j from NotificationJobEntity j
+      where j.status = 'SENT'
+        and j.sentAt <= :cutoff
+      order by j.sentAt asc
+      limit 10
+      """)
+  List<NotificationJobEntity> findSentJobsDueForEscalation(
+      @Param("cutoff") Instant cutoff);
 }
