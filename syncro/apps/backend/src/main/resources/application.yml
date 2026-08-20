@@ -64,6 +64,10 @@ syncro:
       interval-ms: ${SYNCRO_NOTIFICATION_ESCALATION_INTERVAL_MS:900000}
       # Poll interval in milliseconds for the escalation worker (default: 60 seconds)
       poll-interval-ms: ${SYNCRO_NOTIFICATION_ESCALATION_POLL_INTERVAL_MS:60000}
+    rate-limit:
+      # Deduplication window in milliseconds — prevents re-sending to the same alert+recipient
+      # within this window after a successful WAHA send (default: 5 minutes)
+      window-ms: ${SYNCRO_NOTIFICATION_RATE_LIMIT_WINDOW_MS:300000}
   telemetry:
     ingest:
       queue-capacity: 1000

@@ -103,6 +103,12 @@ public class NotificationJobEntity {
     this.updatedAt = now;
   }
 
+  public void markRateLimited(Instant now, Instant retryAfter) {
+    this.status = NotificationJobStatus.RATE_LIMITED;
+    this.nextAttemptAt = retryAfter;
+    this.updatedAt = now;
+  }
+
   public void markAttemptFailed(Instant now, Instant nextAttemptAt) {
     this.attemptCount++;
     this.updatedAt = now;

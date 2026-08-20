@@ -27,15 +27,23 @@ public interface NotificationJobRepository extends JpaRepository<NotificationJob
       """)
   List<NotificationJobEntity> findByAlertIdOrderByEscalationOrder(@Param("alertId") UUID alertId);
 
+  /**
+   * Returns up to 10 jobs that are ready for dispatch: either {@code PENDING} (never attempted
+   * or failed with a retry scheduled) or {@code RATE_LIMITED} (suppressed within the deduplication
+   * window but now past their {@code nextAttemptAt}).
+   *
+   * <p>Both statuses share the same {@code nextAttemptAt} guard so the single poll loop handles
+   * normal retries and post-rate-limit retries identically.
+   */
   @Query("""
       select j from NotificationJobEntity j
-      where j.status = :status
+      where j.status in :statuses
         and (j.nextAttemptAt is null or j.nextAttemptAt <= :now)
       order by j.createdAt asc
       limit 10
       """)
   List<NotificationJobEntity> findPendingJobsDue(
-      @Param("status") NotificationJobStatus status,
+      @Param("statuses") java.util.Collection<NotificationJobStatus> statuses,
       @Param("now") Instant now);
 
   @Query("""
