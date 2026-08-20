@@ -125,23 +125,21 @@ export function EscalationTimeline({
 
   return (
     <div className="space-y-3">
-      {/* Desktop timeline + mobile when expanded */}
-      <div className={cn("relative", !showAll && "md:block hidden")}>
-        {/* When collapsed on mobile, we hide desktop timeline and show card below */}
-        {showAll ? (
-          <div className="relative">
-            <div className="absolute left-[7px] top-2 bottom-2 w-px bg-border" aria-hidden="true" />
-            <ol className="space-y-4" aria-label="Escalation timeline">
-              {steps.map((step, idx) => {
-                const cfg = STATUS_VARIANT_MAP[step.status] ?? STATUS_VARIANT_MAP.pending;
-                const ts = formatTimestamp(step.timestamp);
-                const nextAt = formatTimestamp(step.nextSendAt);
-                return (
-                  <li
-                    key={`${step.level}-${idx}`}
-                    className="relative flex gap-3 pl-6"
-                    aria-label={`${step.level} ${step.recipientDisplayName ?? ""} ${step.status} ${ts ?? ""}`}
-                  >
+      {/* Desktop timeline — always expanded on desktop per spec */}
+      <div className="relative hidden md:block">
+        <div className="relative">
+          <div className="absolute left-[7px] top-2 bottom-2 w-px bg-border" aria-hidden="true" />
+          <ol className="space-y-4" aria-label="Escalation timeline">
+            {steps.map((step, idx) => {
+              const cfg = STATUS_VARIANT_MAP[step.status] ?? STATUS_VARIANT_MAP.pending;
+              const ts = formatTimestamp(step.timestamp);
+              const nextAt = formatTimestamp(step.nextSendAt);
+              return (
+                <li
+                  key={step.level}
+                  className="relative flex gap-3 pl-6"
+                  aria-label={`${step.level} ${step.recipientDisplayName ?? ""} ${step.status} ${ts ?? ""}`}
+                >
                     <span
                       className={cn(
                         "absolute left-0 top-1.5 h-3.5 w-3.5 rounded-full border-2 border-background shadow-sm",
@@ -190,18 +188,17 @@ export function EscalationTimeline({
                 );
               })}
             </ol>
-          </div>
-        ) : null}
+        </div>
       </div>
 
-      {/* Mobile stacked cards — visible when collapsed */}
+      {/* Mobile stacked cards */}
       <div className="md:hidden">
         {!showAll ? (
           <div className="space-y-2">
-            {displaySteps.map((step, idx) => {
+            {displaySteps.map((step) => {
               const ts = formatTimestamp(step.timestamp);
               return (
-                <div key={`mob-${step.level}-${idx}`} className="rounded-lg border p-3 space-y-1.5">
+                <div key={step.level} className="rounded-lg border p-3 space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm font-semibold">{step.level}</span>
                     <StepBadge status={step.status} rawStatus={step.rawStatus} />
@@ -225,10 +222,25 @@ export function EscalationTimeline({
           </div>
         ) : (
           <div className="space-y-2">
-            {/* When expanded on mobile, the desktop timeline is already shown above due to hidden md:block; for mobile expanded we need to render same timeline but mobile-friendly */}
-            <div className="md:hidden space-y-2">
-              {/* Already rendered desktop timeline when showAll=true — but hide duplicate on mobile */}
-            </div>
+            {steps.map((step) => {
+              const ts = formatTimestamp(step.timestamp);
+              return (
+                <div key={step.level} className="rounded-lg border p-3 space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold">{step.level}</span>
+                    <StepBadge status={step.status} rawStatus={step.rawStatus} />
+                  </div>
+                  <p className="text-sm">
+                    {step.recipientDisplayName ? `${step.recipientDisplayName}` : "—"}
+                    {step.recipientPhoneMasked ? ` · ${step.recipientPhoneMasked}` : ""}
+                  </p>
+                  {ts ? <p className="font-mono-tight text-xs text-muted-foreground">{ts}</p> : null}
+                  {step.deliveryResult ? (
+                    <p className="break-words text-xs text-muted-foreground">{step.deliveryResult.slice(0, 120)}</p>
+                  ) : null}
+                </div>
+              );
+            })}
             {steps.length > 1 ? (
               <Button variant="ghost" size="sm" className="w-full" onClick={() => setShowAll(false)}>
                 Show less

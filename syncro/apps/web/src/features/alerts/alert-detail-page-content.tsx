@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -98,6 +99,7 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
   } = useGetAlertNotifications(alertId, {
     query: {
       staleTime: 15_000,
+      refetchInterval: 60_000,
       retry: 1,
       enabled: Boolean(alert) && !isError,
     },
@@ -122,21 +124,32 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
   const history = notifData?.data;
   const auditEntries = auditData?.data.items ?? undefined;
 
+  // Force recompute stale banner every 60s so threshold crossing appears without manual refetch
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   // stale banner: OPEN and last sent >15m ago with no PENDING queued and not cancelled
+  // Fallback to alert creation time when no sentAt exists (e.g., only ROUTING_FAILED) so never-sent alerts still surface stale
   const isStale = (() => {
     if (!alert || alert.status !== "OPEN" || !history || history.items.length === 0) return false;
     const hasPending = history.items.some((j) => j.status === "PENDING");
     const hasCancelled = history.items.some((j) => j.status === "CANCELLED");
     if (hasPending || hasCancelled) return false;
-    // find latest sentAt
     const sentTimes = history.items
       .map((j) => j.sentAt)
       .filter((v): v is string => Boolean(v))
       .map((v) => new Date(v).getTime())
       .filter((t) => !Number.isNaN(t));
-    if (sentTimes.length === 0) return false;
+    if (sentTimes.length === 0) {
+      const created = alert.createdAt ? new Date(alert.createdAt).getTime() : NaN;
+      if (Number.isNaN(created)) return false;
+      return nowTick - created > 15 * 60 * 1000;
+    }
     const lastSent = Math.max(...sentTimes);
-    return Date.now() - lastSent > 15 * 60 * 1000;
+    return nowTick - lastSent > 15 * 60 * 1000;
   })();
 
   const backLink = (
@@ -318,26 +331,19 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
         </div>
       ) : null}
 
-      {/* Escalation Timeline + Notification History + Audit Evidence */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Escalation & Notification History</CardTitle>
-          <CardDescription>Backend-driven timeline and WAHA delivery evidence for this alert.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AlertNotificationHistory
-            history={history}
-            auditEntries={auditEntries}
-            isLoadingHistory={notifLoading}
-            isLoadingAudit={auditLoading}
-            errorHistory={notifError ? notifErr : null}
-            errorAudit={auditError ? auditErr : null}
-            onRetryHistory={() => void refetchNotif()}
-            onRetryAudit={() => void refetchAudit()}
-            alertStatus={alert.status as "OPEN" | "ACKNOWLEDGED" | "RESOLVED"}
-          />
-        </CardContent>
-      </Card>
+      {/* Escalation Timeline — first-class section per page-spec §3 */}
+      <AlertNotificationHistory
+        history={history}
+        auditEntries={auditEntries}
+        isLoadingHistory={notifLoading}
+        isLoadingAudit={auditLoading}
+        errorHistory={notifError ? notifErr : null}
+        errorAudit={auditError ? auditErr : null}
+        onRetryHistory={() => void refetchNotif()}
+        onRetryAudit={() => void refetchAudit()}
+        alertStatus={alert?.status as "OPEN" | "ACKNOWLEDGED" | "RESOLVED"}
+        alertCreatedAt={alert?.createdAt ?? null}
+      />
 
       {/* Machine & Sparepart details */}
       <Card>

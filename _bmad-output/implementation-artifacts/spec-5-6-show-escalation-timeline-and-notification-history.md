@@ -2,7 +2,7 @@
 title: 'Show Escalation Timeline and Notification History'
 type: 'feature'
 created: '2026-08-20'
-status: 'review'
+status: 'done'
 baseline_commit: '16f6943'
 context:
   - '_bmad-output/project-context.md'
@@ -18,7 +18,7 @@ warnings: []
 
 # Story 5.6: Show Escalation Timeline and Notification History
 
-Status: review
+Status: done
 
 ## Story
 
@@ -142,6 +142,30 @@ so that I know who was notified, when, and what happened.
     5) Exhausted job → failed with "retries exhausted".
     6) Empty notification set → empty guidance card.
     7) Plant-scoped VIEWER without assignment → alert 404 and therefore no notification fetch (guard via dependent query `enabled: !!alert`).
+
+### Review Findings
+
+- [x] [Review][Patch] Combined card violates page-spec section order — page-spec §3 requires order What Happened → Threshold Evidence → Escalation Timeline → Action Panel → Notification History → Audit Evidence → Machine & Sparepart → Metadata as separate first-class sections. Current `alert-detail-page-content.tsx:313` groups timeline + history + audit into one `Card "Escalation & Notification History"`; decide to keep combined or split into 3 Cards per spec.
+
+- [x] [Review][Patch] Stale banner never fires for never-sent alerts and uses client clock without interval [syncro/apps/web/src/features/alerts/alert-detail-page-content.tsx:124] — `sentTimes` empty → `isStale=false` (ROUTING_FAILED/EXHAUSTED only never warns); uses `Date.now()` render-time with `staleTime:15000` and no `refetchInterval` so threshold crossing never appears; checks `status==="PENDING"`/`"CANCELLED"` strings, future `RATE_LIMITED` bypasses.
+- [x] [Review][Patch] Null-crash risk on `alert.status` [syncro/apps/web/src/features/alerts/alert-detail-page-content.tsx:335] — passes `alert.status as ...` while `alert` may be undefined during loading; add `alert?.status` guard or conditional render.
+- [x] [Review][Patch] UUID.fromString without validation throws 500 not 404 [syncro/apps/backend/src/main/java/com/syncro/notification/application/NotificationHistoryQueryService.java:53] — `UUID.fromString(user.id())` can throw `IllegalArgumentException` for non-UUID JWT sub; wrap and throw `AlertNotFoundException` to preserve 404 enumeration protection.
+- [x] [Review][Patch] OpenAPI documents 403 for plant-scope sub-resource contradicts AC5/AC6 [syncro/apps/backend/src/main/java/com/syncro/alert/api/SparepartAlertController.java:142] — `@ApiResponse 403 Forbidden` listed but spec requires 404 to avoid plant enumeration; remove 403 or change to 404.
+- [x] [Review][Patch] Log correlation missing when history empty or first traceId null [syncro/apps/backend/src/main/java/com/syncro/notification/application/NotificationHistoryQueryService.java:105] — falls back to no `[traceId=...]` prefix; should use MDC/request traceId, not `views.getFirst().traceId()` (attacker-controlled DB value).
+- [x] [Review][Patch] Empty state missing alert creation timestamp (AC6) [syncro/apps/web/src/features/alerts/alert-notification-history.tsx:223] — renders guidance without `alert.createdAt`; spec requires empty card with timestamp of alert creation.
+- [x] [Review][Patch] Error state missing traceId and SUPER_ADMIN detail (AC6) [syncro/apps/web/src/features/alerts/alert-notification-history.tsx:210] — generic message only, never extracts `error.traceId`/`code`; should differentiate SUPER_ADMIN technical detail.
+- [x] [Review][Patch] PENDING never maps to `queued` variant (AC2/AC7) [syncro/apps/web/src/features/alerts/alert-notification-history.tsx:167] — `mapStatus` returns `"pending"` for `PENDING` unconditionally; `queued→info` variant in `escalation-timeline.tsx:36` never used and `nextSendAt` not displayed as scheduled vs queued.
+- [x] [Review][Patch] ESCALATED handoff uses `sentAt` not `updatedAt` (AC2) [syncro/apps/web/src/features/alerts/alert-notification-history.tsx:124] — `timestamp: job.sentAt ?? job.updatedAt` feeds handoff `"Escalated to {nextLevel} at {ts}"`; spec requires `updatedAt`.
+- [x] [Review][Patch] Frontend does not enforce escalation order sort (AC1) [syncro/apps/web/src/features/alerts/alert-notification-history.tsx:118] — maps `history.items` directly without `ESCALATION_ORDER` constant `["TECHNICIAN","STAFF","LEADER","SPV","MANAGER"]`; relies solely on backend CASE order.
+- [x] [Review][Patch] Unknown future status fallback shows blue pending not neutral (AC2) [syncro/apps/web/src/features/alerts/alert-notification-history.tsx:177] — defaults to `"pending"`→`info` blue; spec requires unknown/future (`RATE_LIMITED`,`CIRCUIT_OPEN`) → `pending`/`rate-limited` with neutral/warning styling plus raw label.
+- [x] [Review][Patch] Responsive breakage when expanded (UX) [syncro/apps/web/src/components/syncro/escalation-timeline.tsx:105] — `cn("relative", !showAll && "md:block hidden")` renders desktop timeline on mobile when `showAll=true`; mobile `showAll=true` branch renders empty div.
+- [x] [Review][Patch] React key collisions [syncro/apps/web/src/components/syncro/escalation-timeline.tsx:127 / syncro/apps/web/src/features/alerts/alert-notification-history.tsx:280] — keys by `${level}-${idx}` and fragment `<>` without key; fallback audit key `${createdAt}-${action}` collides; use `job.id`/`entry.id`.
+- [x] [Review][Patch] Dead state `expandedJobs` never read [syncro/apps/web/src/features/alerts/alert-notification-history.tsx:239] — `expandedJobs`/`toggleJob` declared but never wired; remove or wire.
+- [x] [Review][Patch] Audit diff renders `[object Object]` [syncro/apps/web/src/features/alerts/alert-notification-history.tsx:622] — `ValueCell` does `String(value)` for objects; `previousValue` may be JSON string causing char-index keys; stringify with depth limit.
+
+- [x] [Review][Defer] Manual hand-edit of generated file will be overwritten [syncro/apps/web/src/lib/api/generated/model/auditLogEntryViewEntityType.ts:20] — `ALERT` added by hand; next `generate:api` will delete unless `openapi.yaml` updated; re-generate after backend boots — deferred, pre-existing generation flow.
+- [x] [Review][Defer] Duplicated DTOs `NotificationJobView` mirrored in `syncro.ts` and `alert-notification-history.tsx` [syncro/apps/web/src/features/alerts/alert-notification-history.tsx:14] — intentional per Task 8 TODO to stay diff-free until next generate; defer until Orval regen.
+- [x] [Review][Defer] Attempt truncation `slice(0,3)` and CASE `ELSE 99` ordering ambiguity [syncro/apps/web/src/features/alerts/alert-notification-history.tsx:373 / syncro/apps/backend/src/main/java/com/syncro/notification/infrastructure/NotificationJobRepository.java:17] — `maxAttempts=3` today, unknown levels go to 99 without secondary sort; deferred, not actionable without schema change.
 
 ## Dev Notes
 
@@ -279,6 +303,7 @@ muse-spark-1.2-contributor-free (5.6 implementation)
 - mvn test EscalationServiceTest, NotificationDispatchServiceTest, SparepartAlertQueryServiceTest, SparepartAlertCommandServiceTest: 42 tests passed
 
 ### Completion Notes List
+- Review patches applied (2026-08-20): split combined Card into 3 per page-spec, fixed stale banner with fallback+interval, fixed UUID NPE, OpenAPI 403, log correlation sanitized, empty/error traceId, PENDING queued, ESCALATED updatedAt, frontend sort, unknown neutral, responsive keys, dead state, audit JSON.stringify — all 15 patches applied, 3 deferred.
 - Backend DTOs expose masked phone only (maskPhone keeps first 3/last 3); OpenAPI enum exposed; timestamps ISO-8601 UTC.
 - Repository ordering via CASE escalationLevel guarantees TECHNICIAN->MANAGER order regardless of createdAt.
 - NotificationHistoryQueryService enforces plant scope exactly as SparepartAlertQueryService.get (SUPER_ADMIN bypass, 404 for out-of-scope) and batch-loads attempts + resolves displayName via auth_users.loginIdentifier.

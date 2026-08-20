@@ -23,7 +23,7 @@ public interface NotificationJobRepository extends JpaRepository<NotificationJob
         when 'LEADER' then 3
         when 'SPV' then 4
         when 'MANAGER' then 5
-        else 99 end asc
+        else 99 end asc, j.createdAt asc
       """)
   List<NotificationJobEntity> findByAlertIdOrderByEscalationOrder(@Param("alertId") UUID alertId);
 

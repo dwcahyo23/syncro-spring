@@ -54,6 +54,9 @@ public class NotificationHistoryQueryService {
 
   @Transactional(readOnly = true)
   public AlertNotificationHistoryResponse getHistory(AuthenticatedUser user, UUID alertId) {
+    if (user == null || user.id() == null) {
+      throw new AlertNotFoundException();
+    }
     var superAdmin = user.applicationRole() == ApplicationRole.SUPER_ADMIN;
     if (superAdmin) {
       alertRepository.findByIdWithDetails(alertId)
@@ -102,12 +105,13 @@ public class NotificationHistoryQueryService {
         .map(job -> toView(job, attemptsByJobId.getOrDefault(job.getId(), List.of()), displayNameById))
         .toList();
 
-    String traceId = views.isEmpty() ? null : views.getFirst().traceId();
-    if (traceId != null) {
-      log.info("[traceId={}] getAlertNotifications alertId={} count={}", traceId, alertId, views.size());
-    } else {
-      log.info("getAlertNotifications alertId={} count={}", alertId, views.size());
-    }
+    String traceId = views.stream()
+        .map(NotificationJobView::traceId)
+        .filter(t -> t != null && !t.isBlank())
+        .findFirst()
+        .orElse(null);
+    String safeTraceId = traceId != null ? traceId.replaceAll("[\\r\\n]", "_") : "none";
+    log.info("[traceId={}] getAlertNotifications alertId={} count={}", safeTraceId, alertId, views.size());
 
     return new AlertNotificationHistoryResponse(views, views.size());
   }
@@ -150,7 +154,13 @@ public class NotificationHistoryQueryService {
   }
 
   private List<UUID> scopedPlantIds(AuthenticatedUser user) {
-    return assignments.findByAuthUserId(UUID.fromString(user.id())).stream()
+    UUID userId;
+    try {
+      userId = UUID.fromString(user.id());
+    } catch (IllegalArgumentException e) {
+      throw new AlertNotFoundException();
+    }
+    return assignments.findByAuthUserId(userId).stream()
         .map(a -> a.getPlantId())
         .toList();
   }

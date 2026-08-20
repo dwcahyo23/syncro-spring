@@ -118,7 +118,7 @@ public class SparepartAlertController {
     alertCommand.resolve(user, alertId, reason);
   }
 
-   @Operation(operationId = "resolveAlertOverride", summary = "SUPER_ADMIN: resolve an OPEN alert directly without acknowledging")
+  @Operation(operationId = "resolveAlertOverride", summary = "SUPER_ADMIN: resolve an OPEN alert directly without acknowledging")
   @ApiResponses({
       @ApiResponse(responseCode = "204", description = "Alert resolved"),
       @ApiResponse(responseCode = "401", description = "Authentication required"),
@@ -136,11 +136,10 @@ public class SparepartAlertController {
     alertCommand.resolveOverride(user, alertId, reason);
   }
 
-  @Operation(operationId = "getAlertNotifications", summary = "Get notification history for an alert")
+   @Operation(operationId = "getAlertNotifications", summary = "Get notification history for an alert")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "Notification history returned"),
       @ApiResponse(responseCode = "401", description = "Authentication required"),
-      @ApiResponse(responseCode = "403", description = "Forbidden"),
       @ApiResponse(responseCode = "404", description = "Alert not found")
   })
   @GetMapping("/{alertId}/notifications")

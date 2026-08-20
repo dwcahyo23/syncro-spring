@@ -3,13 +3,16 @@
 import { useState } from "react";
 
 import { ChevronDownIcon, ChevronUpIcon, CopyIcon } from "lucide-react";
+import { toast } from "sonner";
 
 import { type EscalationStep, EscalationTimeline } from "@/components/syncro/escalation-timeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { AuditLogEntryView } from "@/lib/api/generated/model";
+import { SyncroApiError } from "@/lib/api/orval-mutator";
 
 // ---------------------------------------------------------------------------
 // DTO types — mirrored from backend. Keep names identical so that Orval
@@ -62,11 +65,14 @@ export interface AlertNotificationHistoryProps {
   readonly onRetryHistory?: () => void;
   readonly onRetryAudit?: () => void;
   readonly alertStatus?: "OPEN" | "ACKNOWLEDGED" | "RESOLVED";
+  readonly alertCreatedAt?: string | null;
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Constants & Helpers
 // ---------------------------------------------------------------------------
+
+const ESCALATION_ORDER = ["TECHNICIAN", "STAFF", "LEADER", "SPV", "MANAGER"] as const;
 
 function formatTs(iso?: string | null) {
   if (!iso) return "-";
@@ -94,13 +100,36 @@ function truncate120(value: string | null | undefined) {
 async function copyText(value: string) {
   try {
     await navigator.clipboard.writeText(value);
+    toast.success("Copied");
   } catch {
-    // ignore
+    toast.error("Copy failed — not in secure context");
   }
 }
 
+function extractTraceId(error: unknown): string | null {
+  if (error instanceof SyncroApiError) {
+    const payload = error.payload as Record<string, unknown> | null;
+    if (payload && typeof payload.traceId === "string") return payload.traceId as string;
+    if (payload && typeof (payload as Record<string, unknown>).trace_id === "string") return (payload as Record<string, unknown>).trace_id as string;
+  }
+  if (error && typeof error === "object" && "traceId" in error && typeof (error as Record<string, unknown>).traceId === "string") {
+    return (error as Record<string, unknown>).traceId as string;
+  }
+  return null;
+}
+
+function extractErrorMessage(error: unknown): string {
+  if (error instanceof SyncroApiError) {
+    const payload = error.payload as Record<string, unknown> | null;
+    if (payload && typeof payload.message === "string") return payload.message as string;
+    if (payload && typeof payload.code === "string") return `${payload.code as string}: ${payload.message ?? "Request failed"}`;
+  }
+  if (error instanceof Error) return error.message;
+  return "Something went wrong. Please try again.";
+}
+
 // ---------------------------------------------------------------------------
-// Main composition
+// Main composition — now renders 3 first-class Cards per page-spec §3
 // ---------------------------------------------------------------------------
 
 export function AlertNotificationHistory({
@@ -113,15 +142,25 @@ export function AlertNotificationHistory({
   onRetryHistory,
   onRetryAudit,
   alertStatus = "OPEN",
+  alertCreatedAt = null,
 }: AlertNotificationHistoryProps) {
-  // Map jobs to EscalationStep for timeline (ordered already by backend escalation order)
-  const steps: EscalationStep[] = (history?.items ?? []).map((job) => ({
+  // Enforce escalation order on frontend as well (AC1) — do not rely solely on backend
+  const sortedItems = [...(history?.items ?? [])].sort((a, b) => {
+    const ia = ESCALATION_ORDER.indexOf(a.escalationLevel as typeof ESCALATION_ORDER[number]);
+    const ib = ESCALATION_ORDER.indexOf(b.escalationLevel as typeof ESCALATION_ORDER[number]);
+    const rankA = ia === -1 ? 99 : ia;
+    const rankB = ib === -1 ? 99 : ib;
+    if (rankA !== rankB) return rankA - rankB;
+    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  });
+
+  const steps: EscalationStep[] = sortedItems.map((job) => ({
     level: job.escalationLevel,
     recipientDisplayName: job.recipientDisplayName,
     recipientPhoneMasked: job.recipientPhoneMasked,
-    status: mapStatus(job.status),
+    status: mapStatus(job.status, job.nextAttemptAt),
     rawStatus: job.status,
-    timestamp: job.sentAt ?? job.updatedAt ?? job.createdAt,
+    timestamp: job.status === "ESCALATED" ? job.updatedAt : (job.sentAt ?? job.updatedAt ?? job.createdAt),
     nextSendAt: job.nextAttemptAt ?? undefined,
     deliveryResult: job.errorDetail?.slice(0, 512) ?? undefined,
     traceId: job.traceId ?? undefined,
@@ -129,43 +168,69 @@ export function AlertNotificationHistory({
 
   return (
     <div className="space-y-6">
-      {/* Escalation Timeline */}
-      <TimelineSection
-        steps={steps}
-        alertStatus={alertStatus}
-        isLoading={isLoadingHistory}
-        error={errorHistory}
-        isEmpty={history ? history.items.length === 0 : false}
-        onRetry={onRetryHistory}
-      />
+      {/* Escalation Timeline — first-class section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Escalation Timeline</CardTitle>
+          <CardDescription>Backend-driven escalation chain ordered TECHNICIAN → MANAGER</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <TimelineSection
+            steps={steps}
+            alertStatus={alertStatus}
+            isLoading={isLoadingHistory}
+            error={errorHistory}
+            isEmpty={sortedItems.length === 0 && !isLoadingHistory && !errorHistory}
+            onRetry={onRetryHistory}
+            alertCreatedAt={alertCreatedAt}
+          />
+        </CardContent>
+      </Card>
 
       {/* Notification history table */}
-      <HistoryTableSection
-        items={history?.items}
-        isLoading={isLoadingHistory}
-        error={errorHistory}
-        onRetry={onRetryHistory}
-      />
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Notification History</CardTitle>
+          <CardDescription>Per-level delivery evidence with masked phone and attempt history</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <HistoryTableSection
+            items={sortedItems}
+            isLoading={isLoadingHistory}
+            error={errorHistory}
+            onRetry={onRetryHistory}
+          />
+        </CardContent>
+      </Card>
 
       {/* Audit evidence */}
-      <AuditEvidenceSection
-        entries={auditEntries}
-        isLoading={isLoadingAudit}
-        error={errorAudit}
-        onRetry={onRetryAudit}
-      />
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Audit Evidence</CardTitle>
+          <CardDescription>Immutable audit trail for this alert (entityType=ALERT)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AuditEvidenceSection
+            entries={auditEntries}
+            isLoading={isLoadingAudit}
+            error={errorAudit}
+            onRetry={onRetryAudit}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
-function mapStatus(raw: string): EscalationStep["status"] {
+function mapStatus(raw: string, nextAttemptAt?: string | null): EscalationStep["status"] {
   switch (raw) {
     case "SENT":
       return "sent";
     case "ESCALATED":
       return "sent";
     case "PENDING":
-      return "pending";
+      // AC2: PENDING → pending/queued (if nextAttemptAt present, pending else queued)
+      return nextAttemptAt ? "pending" : "queued";
     case "ROUTING_FAILED":
       return "failed";
     case "EXHAUSTED":
@@ -175,8 +240,9 @@ function mapStatus(raw: string): EscalationStep["status"] {
     case "RATE_LIMITED":
       return "rate-limited";
     default:
-      // unknown/future per AC 2 -> pending/rate-limited neutral styling with raw label visible
-      return "pending";
+      // unknown/future per AC2 → neutral styling with raw label visible — never crash
+      if (raw.includes("RATE_LIMITED") || raw.includes("CIRCUIT")) return "rate-limited";
+      return "stopped";
   }
 }
 
@@ -191,6 +257,7 @@ function TimelineSection({
   error,
   isEmpty,
   onRetry,
+  alertCreatedAt,
 }: {
   steps: EscalationStep[];
   alertStatus: "OPEN" | "ACKNOWLEDGED" | "RESOLVED";
@@ -198,20 +265,26 @@ function TimelineSection({
   error: unknown | null;
   isEmpty: boolean;
   onRetry?: () => void;
+  alertCreatedAt?: string | null;
 }) {
   if (isLoading) {
     return (
-      <div className="rounded-md border p-4 space-y-3">
-        <div className="h-4 w-32 bg-muted animate-pulse rounded" />
-        <div className="h-20 w-full bg-muted animate-pulse rounded" />
+      <div className="space-y-3">
+        <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+        <div className="h-20 w-full animate-pulse rounded bg-muted" />
       </div>
     );
   }
   if (error) {
+    const traceId = extractTraceId(error);
+    const message = extractErrorMessage(error);
+    const isSuperAdmin = typeof window !== "undefined" && document.cookie.includes("SUPER_ADMIN");
+    // Use role-agnostic detail but show traceId where available per AC6
     return (
-      <div className="rounded-md border border-destructive/30 p-4 space-y-2">
+      <div className="space-y-2 rounded-md border border-destructive/30 p-4">
         <p className="text-sm font-medium text-destructive">Failed to load escalation timeline.</p>
-        <p className="text-xs text-muted-foreground">Something went wrong. Please try again.</p>
+        <p className="text-xs text-muted-foreground">{isSuperAdmin ? message : "Something went wrong. Please try again."}</p>
+        {traceId ? <p className="font-mono-tight text-xs text-muted-foreground">traceId: {traceId}</p> : null}
         {onRetry ? (
           <Button variant="outline" size="sm" onClick={onRetry}>
             Retry
@@ -222,11 +295,12 @@ function TimelineSection({
   }
   if (isEmpty) {
     return (
-      <div className="rounded-md border p-4 text-center">
+      <div className="p-4 text-center">
         <p className="text-sm text-muted-foreground">
           No notifications queued for this alert yet. A TECHNICIAN job is created when the alert opens; escalation
           follows every 15 minutes.
         </p>
+        {alertCreatedAt ? <p className="font-mono-tight mt-1 text-xs text-muted-foreground">Alert created: {formatTs(alertCreatedAt)}</p> : null}
       </div>
     );
   }
@@ -249,18 +323,9 @@ function HistoryTableSection({
   error: unknown | null;
   onRetry?: () => void;
 }) {
-  const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
   const [expandedAttempts, setExpandedAttempts] = useState<Set<string>>(new Set());
   const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set());
 
-  function toggleJob(id: string) {
-    setExpandedJobs((cur) => {
-      const next = new Set(cur);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
   function toggleAttempts(id: string) {
     setExpandedAttempts((cur) => {
       const next = new Set(cur);
@@ -280,16 +345,20 @@ function HistoryTableSection({
 
   if (isLoading) {
     return (
-      <div className="rounded-md border p-4 space-y-2">
-        <div className="h-4 w-48 bg-muted animate-pulse rounded" />
-        <div className="h-32 w-full bg-muted animate-pulse rounded" />
+      <div className="space-y-2 p-4">
+        <div className="h-4 w-48 animate-pulse rounded bg-muted" />
+        <div className="h-32 w-full animate-pulse rounded bg-muted" />
       </div>
     );
   }
   if (error) {
+    const traceId = extractTraceId(error);
+    const message = extractErrorMessage(error);
     return (
-      <div className="rounded-md border border-destructive/30 p-4 space-y-2">
+      <div className="space-y-2 rounded-md border border-destructive/30 p-4">
         <p className="text-sm font-medium text-destructive">Failed to load notification history.</p>
+        <p className="text-xs text-muted-foreground">{message}</p>
+        {traceId ? <p className="font-mono-tight text-xs text-muted-foreground">traceId: {traceId}</p> : null}
         {onRetry ? (
           <Button variant="outline" size="sm" onClick={onRetry}>
             Retry
@@ -299,16 +368,17 @@ function HistoryTableSection({
     );
   }
   if (!items || items.length === 0) {
-    // Empty already handled by timeline; still show guidance if history empty but timeline not shown separately
-    return null;
+    return (
+      <div className="p-4 text-center">
+        <p className="text-sm text-muted-foreground">No notification jobs for this alert.</p>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold">Notification History</h3>
-
       {/* Desktop table */}
-      <div className="hidden md:block overflow-hidden rounded-md border">
+      <div className="hidden overflow-hidden rounded-md border md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -325,102 +395,90 @@ function HistoryTableSection({
           </TableHeader>
           <TableBody>
             {items.map((job) => {
-              const isOpen = expandedJobs.has(job.id);
               const isAttOpen = expandedAttempts.has(job.id);
               const isErrOpen = expandedErrors.has(job.id);
               const ts = job.sentAt ?? job.createdAt;
               return (
-                <>
-                  <TableRow key={job.id}>
-                    <TableCell className="font-medium">{job.escalationLevel}</TableCell>
-                    <TableCell className="max-w-36 truncate" title={job.recipientDisplayName ?? undefined}>
-                      {job.recipientDisplayName ?? "-"}
-                    </TableCell>
-                    <TableCell className="font-mono-tight" title={job.recipientPhoneMasked ?? undefined}>
-                      {job.recipientPhoneMasked ?? "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="font-mono-tight">
-                        {job.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {job.attemptCount}/{job.maxAttempts}
-                    </TableCell>
-                    <TableCell className="font-mono-tight text-xs whitespace-nowrap">{formatTs(ts)}</TableCell>
-                    <TableCell className="max-w-48">
-                      {job.errorDetail ? (
-                        <span className="text-xs break-words" title={job.errorDetail}>
-                          {isErrOpen ? job.errorDetail.slice(0, 512) : truncate120(job.errorDetail)}
-                          {job.errorDetail.length > 120 ? (
-                            <button
-                              type="button"
-                              className="ml-1 text-primary underline"
-                              onClick={() => toggleError(job.id)}
-                            >
-                              {isErrOpen ? "less" : "more"}
-                            </button>
-                          ) : null}
+                <TableRow key={job.id}>
+                  <TableCell className="font-medium">{job.escalationLevel}</TableCell>
+                  <TableCell className="max-w-36 truncate" title={job.recipientDisplayName ?? undefined}>
+                    {job.recipientDisplayName ?? "-"}
+                  </TableCell>
+                  <TableCell className="font-mono-tight" title={job.recipientPhoneMasked ?? undefined}>
+                    {job.recipientPhoneMasked ?? "-"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="font-mono-tight">
+                      {job.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="tabular-nums">
+                    {job.attemptCount}/{job.maxAttempts}
+                  </TableCell>
+                  <TableCell className="font-mono-tight whitespace-nowrap text-xs">{formatTs(ts)}</TableCell>
+                  <TableCell className="max-w-48">
+                    {job.errorDetail ? (
+                      <span className="break-words text-xs" title={job.errorDetail}>
+                        {isErrOpen ? job.errorDetail.slice(0, 512) : truncate120(job.errorDetail)}
+                        {job.errorDetail.length > 120 ? (
+                          <button type="button" className="ml-1 text-primary underline" onClick={() => toggleError(job.id)}>
+                            {isErrOpen ? "less" : "more"}
+                          </button>
+                        ) : null}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="font-mono-tight text-xs">
+                    {job.traceId ? (
+                      <span className="inline-flex items-center gap-1">
+                        <span className="max-w-20 truncate" title={job.traceId}>
+                          {job.traceId.slice(0, 8)}…
                         </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="font-mono-tight text-xs">
-                      {job.traceId ? (
-                        <span className="inline-flex items-center gap-1">
-                          <span className="truncate max-w-20" title={job.traceId}>
-                            {job.traceId.slice(0, 8)}…
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-6"
-                            aria-label="Copy trace ID"
-                            onClick={() => copyText(job.traceId!)}
-                          >
-                            <CopyIcon className="size-3" />
-                          </Button>
-                        </span>
-                      ) : (
-                        "—"
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {job.attempts.length > 0 ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="size-8 p-0"
-                          onClick={() => toggleAttempts(job.id)}
-                          aria-label="Toggle attempts"
-                        >
-                          {isAttOpen ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />}
+                        <Button variant="ghost" size="icon" className="size-6" aria-label="Copy trace ID" onClick={() => copyText(job.traceId ?? "")}>
+                          <CopyIcon className="size-3" />
                         </Button>
-                      ) : null}
-                    </TableCell>
-                  </TableRow>
-                  {isAttOpen && job.attempts.length > 0 ? (
-                    <TableRow className="hover:bg-transparent">
-                      <TableCell colSpan={9}>
-                        <AttemptTable attempts={job.attempts} />
-                      </TableCell>
-                    </TableRow>
-                  ) : null}
-                </>
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {job.attempts.length > 0 ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="size-8 p-0"
+                        onClick={() => toggleAttempts(job.id)}
+                        aria-label="Toggle attempts"
+                      >
+                        {isAttOpen ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />}
+                      </Button>
+                    ) : null}
+                  </TableCell>
+                </TableRow>
               );
             })}
           </TableBody>
         </Table>
+        {/* Attempts rendered as separate row below table for simplicity - use expanded area under table */}
+        {items.map((job) =>
+          expandedAttempts.has(job.id) && job.attempts.length > 0 ? (
+            <div key={`${job.id}-attempts`} className="border-t p-3">
+              <AttemptTable attempts={job.attempts} />
+            </div>
+          ) : null,
+        )}
       </div>
 
       {/* Mobile stacked cards */}
-      <div className="md:hidden space-y-2">
+      <div className="space-y-2 md:hidden">
         {items.map((job) => {
           const isAttOpen = expandedAttempts.has(job.id);
           const ts = job.sentAt ?? job.createdAt;
           return (
-            <div key={job.id} className="rounded-lg border p-3 space-y-1.5">
+            <div key={job.id} className="space-y-1.5 rounded-lg border p-3">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-semibold">{job.escalationLevel}</span>
                 <Badge variant="outline" className="font-mono-tight text-xs">
@@ -431,20 +489,20 @@ function HistoryTableSection({
                 {job.recipientDisplayName ?? "-"}
                 {job.recipientPhoneMasked ? ` · ${job.recipientPhoneMasked}` : ""}
               </p>
-              <p className="text-xs text-muted-foreground font-mono-tight">{formatTs(ts)}</p>
-              <p className="text-xs tabular-nums">
+              <p className="font-mono-tight text-xs text-muted-foreground">{formatTs(ts)}</p>
+              <p className="tabular-nums text-xs">
                 Attempts: {job.attemptCount}/{job.maxAttempts}
               </p>
               {job.errorDetail ? (
-                <p className="text-xs break-words text-muted-foreground">
+                <p className="break-words text-xs text-muted-foreground">
                   {job.errorDetail.slice(0, 120)}
                   {job.errorDetail.length > 120 ? "…" : ""}
                 </p>
               ) : null}
               {job.traceId ? (
-                <p className="font-mono-tight text-xs flex items-center gap-1">
+                <p className="font-mono-tight flex items-center gap-1 text-xs">
                   <span className="truncate">{job.traceId.slice(0, 12)}…</span>
-                  <button type="button" className="text-primary" onClick={() => copyText(job.traceId!)}>
+                  <button type="button" className="text-primary" onClick={() => copyText(job.traceId ?? "")}>
                     <CopyIcon className="size-3" />
                   </button>
                 </p>
@@ -453,8 +511,7 @@ function HistoryTableSection({
                 <Collapsible open={isAttOpen} onOpenChange={() => toggleAttempts(job.id)}>
                   <CollapsibleTrigger asChild>
                     <Button variant="ghost" size="sm" className="w-full justify-between">
-                      Attempts ({job.attempts.length}){" "}
-                      {isAttOpen ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />}
+                      Attempts ({job.attempts.length}) {isAttOpen ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />}
                     </Button>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="pt-2">
@@ -503,17 +560,13 @@ function AttemptTable({ attempts }: { attempts: NotificationAttemptView[] }) {
                     {a.status}
                   </Badge>
                 </td>
-                <td className="px-3 py-1.5 font-mono-tight whitespace-nowrap">{formatTimeOnly(a.attemptedAt)}</td>
-                <td className="px-3 py-1.5 max-w-48 break-words">
+                <td className="font-mono-tight whitespace-nowrap px-3 py-1.5">{formatTimeOnly(a.attemptedAt)}</td>
+                <td className="max-w-48 break-words px-3 py-1.5">
                   {a.responseDetail ? (
                     <span title={a.responseDetail}>
                       {isOpen ? a.responseDetail.slice(0, 512) : truncate120(a.responseDetail)}
                       {a.responseDetail.length > 120 ? (
-                        <button
-                          type="button"
-                          className="ml-1 text-primary underline"
-                          onClick={() => toggle(a.attemptNumber)}
-                        >
+                        <button type="button" className="ml-1 text-primary underline" onClick={() => toggle(a.attemptNumber)}>
                           {isOpen ? "less" : "more"}
                         </button>
                       ) : null}
@@ -522,11 +575,11 @@ function AttemptTable({ attempts }: { attempts: NotificationAttemptView[] }) {
                     "—"
                   )}
                 </td>
-                <td className="px-3 py-1.5 font-mono-tight">
+                <td className="font-mono-tight px-3 py-1.5">
                   {a.traceId ? (
                     <span className="inline-flex items-center gap-1">
                       {a.traceId.slice(0, 8)}…
-                      <button type="button" aria-label="Copy trace ID" onClick={() => copyText(a.traceId!)}>
+                      <button type="button" aria-label="Copy trace ID" onClick={() => copyText(a.traceId ?? "")}>
                         <CopyIcon className="size-3" />
                       </button>
                     </span>
@@ -570,16 +623,20 @@ function AuditEvidenceSection({
 
   if (isLoading) {
     return (
-      <div className="rounded-md border p-4 space-y-2">
-        <div className="h-4 w-36 bg-muted animate-pulse rounded" />
-        <div className="h-20 w-full bg-muted animate-pulse rounded" />
+      <div className="space-y-2 p-4">
+        <div className="h-4 w-36 animate-pulse rounded bg-muted" />
+        <div className="h-20 w-full animate-pulse rounded bg-muted" />
       </div>
     );
   }
   if (error) {
+    const traceId = extractTraceId(error);
+    const message = extractErrorMessage(error);
     return (
-      <div className="rounded-md border border-destructive/30 p-4 space-y-2">
+      <div className="space-y-2 rounded-md border border-destructive/30 p-4">
         <p className="text-sm font-medium text-destructive">Failed to load audit evidence.</p>
+        <p className="text-xs text-muted-foreground">{message}</p>
+        {traceId ? <p className="font-mono-tight text-xs text-muted-foreground">traceId: {traceId}</p> : null}
         {onRetry ? (
           <Button variant="outline" size="sm" onClick={onRetry}>
             Retry
@@ -590,20 +647,16 @@ function AuditEvidenceSection({
   }
   if (!entries || entries.length === 0) {
     return (
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold">Audit Evidence</h3>
-        <div className="rounded-md border p-4 text-center">
-          <p className="text-sm text-muted-foreground">No audit evidence yet.</p>
-        </div>
+      <div className="p-4 text-center">
+        <p className="text-sm text-muted-foreground">No audit evidence yet.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold">Audit Evidence</h3>
       {/* Desktop table */}
-      <div className="hidden md:block overflow-hidden rounded-md border">
+      <div className="hidden overflow-hidden rounded-md border md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -616,56 +669,48 @@ function AuditEvidenceSection({
           </TableHeader>
           <TableBody>
             {entries.map((entry) => {
-              const id = entry.id ?? `${entry.createdAt}-${entry.action}`;
+              const id = entry.id ?? `${entry.createdAt}-${entry.action}-${entry.entityId}`;
               const isOpen = expanded.has(id);
               return (
-                <>
-                  <TableRow key={id}>
-                    <TableCell className="font-mono-tight text-xs whitespace-nowrap">
-                      {formatTs(entry.createdAt)}
-                    </TableCell>
-                    <TableCell className="max-w-32 truncate" title={entry.actorName}>
-                      {entry.actorName ?? "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{entry.action}</Badge>
-                    </TableCell>
-                    <TableCell className="max-w-64 truncate" title={entry.entityLabel}>
-                      {entry.entityLabel ?? entry.entityType ?? "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="size-8 p-0"
-                        onClick={() => toggle(id)}
-                        aria-label="Toggle change detail"
-                      >
-                        {isOpen ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  {isOpen ? (
-                    <TableRow className="hover:bg-transparent">
-                      <TableCell colSpan={5}>
-                        <ValueDiff entry={entry} />
-                      </TableCell>
-                    </TableRow>
-                  ) : null}
-                </>
+                <TableRow key={id}>
+                  <TableCell className="font-mono-tight whitespace-nowrap text-xs">{formatTs(entry.createdAt)}</TableCell>
+                  <TableCell className="max-w-32 truncate" title={entry.actorName ?? undefined}>
+                    {entry.actorName ?? "-"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{entry.action}</Badge>
+                  </TableCell>
+                  <TableCell className="max-w-64 truncate" title={entry.entityLabel ?? undefined}>
+                    {entry.entityLabel ?? entry.entityType ?? "-"}
+                  </TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="sm" className="size-8 p-0" onClick={() => toggle(id)} aria-label="Toggle change detail">
+                      {isOpen ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />}
+                    </Button>
+                  </TableCell>
+                </TableRow>
               );
             })}
           </TableBody>
         </Table>
+        {entries.map((entry) => {
+          const id = entry.id ?? `${entry.createdAt}-${entry.action}-${entry.entityId}`;
+          const isOpen = expanded.has(id);
+          return isOpen ? (
+            <div key={`${id}-diff`} className="border-t p-3">
+              <ValueDiff entry={entry} />
+            </div>
+          ) : null;
+        })}
       </div>
 
       {/* Mobile stacked */}
-      <div className="md:hidden space-y-2">
+      <div className="space-y-2 md:hidden">
         {entries.map((entry) => {
-          const id = entry.id ?? `${entry.createdAt}-${entry.action}`;
+          const id = entry.id ?? `${entry.createdAt}-${entry.action}-${entry.entityId}`;
           const isOpen = expanded.has(id);
           return (
-            <div key={id} className="rounded-lg border p-3 space-y-1.5">
+            <div key={id} className="space-y-1.5 rounded-lg border p-3">
               <div className="flex items-center justify-between gap-2">
                 <Badge variant="outline">{entry.action}</Badge>
                 <span className="font-mono-tight text-xs text-muted-foreground">{formatTimeOnly(entry.createdAt)}</span>
@@ -673,7 +718,7 @@ function AuditEvidenceSection({
               <p className="text-sm">
                 {entry.actorName ?? "-"} · {entry.entityType}
               </p>
-              <p className="text-xs text-muted-foreground truncate" title={entry.entityLabel}>
+              <p className="truncate text-xs text-muted-foreground" title={entry.entityLabel ?? undefined}>
                 {entry.entityLabel ?? "-"}
               </p>
               <Button variant="ghost" size="sm" className="w-full justify-between" onClick={() => toggle(id)}>
@@ -695,7 +740,7 @@ function ValueDiff({ entry }: { entry: AuditLogEntryView }) {
   const hasChanges = keys.length > 0 && (Object.keys(previous).length > 0 || Object.keys(next).length > 0);
   if (!hasChanges) {
     return (
-      <p className="text-sm text-muted-foreground py-1">
+      <p className="py-1 text-sm text-muted-foreground">
         {entry.action === "CREATE"
           ? "Record created."
           : entry.action === "DELETE"
@@ -717,11 +762,11 @@ function ValueDiff({ entry }: { entry: AuditLogEntryView }) {
         <tbody>
           {keys.map((key) => (
             <tr key={key} className="border-t">
-              <td className="px-3 py-1.5 font-medium align-top">{key}</td>
-              <td className="px-3 py-1.5 text-muted-foreground align-top break-words">
+              <td className="px-3 py-1.5 align-top font-medium">{key}</td>
+              <td className="break-words px-3 py-1.5 align-top text-muted-foreground">
                 <ValueCell value={previous[key]} />
               </td>
-              <td className="px-3 py-1.5 align-top break-words">
+              <td className="break-words px-3 py-1.5 align-top">
                 <ValueCell value={next[key]} />
               </td>
             </tr>
@@ -735,5 +780,6 @@ function ValueDiff({ entry }: { entry: AuditLogEntryView }) {
 function ValueCell({ value }: { value: unknown }) {
   if (value === null || value === undefined || value === "") return <span className="text-muted-foreground">—</span>;
   if (typeof value === "boolean") return <span>{value ? "true" : "false"}</span>;
+  if (typeof value === "object") return <span className="break-words">{JSON.stringify(value)}</span>;
   return <span className="break-words">{String(value)}</span>;
 }
