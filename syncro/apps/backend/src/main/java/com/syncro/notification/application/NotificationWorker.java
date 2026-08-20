@@ -4,6 +4,7 @@ import com.syncro.notification.domain.NotificationJobStatus;
 import com.syncro.notification.infrastructure.NotificationJobRepository;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -26,10 +27,13 @@ public class NotificationWorker {
     this.clock = clock;
   }
 
+  private static final List<NotificationJobStatus> DISPATCHABLE_STATUSES =
+      List.of(NotificationJobStatus.PENDING, NotificationJobStatus.RATE_LIMITED);
+
   @Scheduled(fixedDelayString = "${syncro.notification.worker.poll-interval-ms:30000}")
   public void poll() {
     Instant now = Instant.now(clock);
-    var jobs = jobRepository.findPendingJobsDue(NotificationJobStatus.PENDING, now);
+    var jobs = jobRepository.findPendingJobsDue(DISPATCHABLE_STATUSES, now);
     if (jobs.isEmpty()) {
       return;
     }

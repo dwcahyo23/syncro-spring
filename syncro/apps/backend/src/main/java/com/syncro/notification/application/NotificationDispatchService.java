@@ -1,6 +1,7 @@
 package com.syncro.notification.application;
 
 import com.syncro.notification.application.WahaTemplateRenderer.WahaTemplateRenderException;
+import com.syncro.notification.domain.NotificationJobStatus;
 import com.syncro.notification.infrastructure.NotificationAttemptEntity;
 import com.syncro.notification.infrastructure.NotificationAttemptRepository;
 import com.syncro.notification.infrastructure.NotificationJobEntity;
@@ -26,17 +27,20 @@ public class NotificationDispatchService {
   private final NotificationAttemptRepository attemptRepository;
   private final WahaClient wahaClient;
   private final WahaTemplateRenderer templateRenderer;
+  private final WahaRateLimiter rateLimiter;
   private final Clock clock;
 
   public NotificationDispatchService(NotificationJobRepository jobRepository,
       NotificationAttemptRepository attemptRepository,
       WahaClient wahaClient,
       WahaTemplateRenderer templateRenderer,
+      WahaRateLimiter rateLimiter,
       Clock clock) {
     this.jobRepository = jobRepository;
     this.attemptRepository = attemptRepository;
     this.wahaClient = wahaClient;
     this.templateRenderer = templateRenderer;
+    this.rateLimiter = rateLimiter;
     this.clock = clock;
   }
 
@@ -44,6 +48,16 @@ public class NotificationDispatchService {
   public void dispatch(NotificationJobEntity job) {
     Instant now = Instant.now(clock);
     int nextAttemptNumber = job.getAttemptCount() + 1;
+
+    // Check rate limit before doing any work
+    if (rateLimiter.isRateLimited(job.getAlertId(), job.getRecipientPhone())) {
+      Instant retryAfter = rateLimiter.getRateLimitExpiry(job.getAlertId(), job.getRecipientPhone());
+      job.markRateLimited(now, retryAfter);
+      jobRepository.save(job);
+      log.info("[WAHA][traceId={}] Job {} rate-limited, retryAfter={}", job.getTraceId(),
+          job.getId(), retryAfter);
+      return;
+    }
 
     // Render template
     String messageText;
@@ -62,10 +76,12 @@ public class NotificationDispatchService {
     }
 
     // Send via WAHA
-    WahaClient.Result result = wahaClient.send(job.getRecipientPhone(), messageText,
-        job.getTraceId());
+    var result = wahaClient.send(job.getRecipientPhone(), messageText, job.getTraceId());
 
     if (result.success()) {
+      // Record rate-limit key so duplicates are suppressed within the window
+      rateLimiter.acquire(job.getAlertId(), job.getRecipientPhone());
+
       var attempt = new NotificationAttemptEntity(
           job.getId(), nextAttemptNumber, STATUS_SENT,
           truncate(result.detail()), job.getTraceId());

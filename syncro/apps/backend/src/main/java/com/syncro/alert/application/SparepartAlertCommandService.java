@@ -62,7 +62,8 @@ public class SparepartAlertCommandService {
     // jobs must not escalate, all in the same transaction as the acknowledge.
     int escalationCancelledCount = notificationJobRepository.cancelActiveForAlert(
         alertId,
-        List.of(NotificationJobStatus.PENDING, NotificationJobStatus.SENT),
+        List.of(NotificationJobStatus.PENDING, NotificationJobStatus.SENT,
+            NotificationJobStatus.RATE_LIMITED),
         NotificationJobStatus.CANCELLED,
         clock.instant());
 
