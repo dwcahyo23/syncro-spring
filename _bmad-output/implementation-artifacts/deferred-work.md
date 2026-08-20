@@ -374,3 +374,23 @@ origin: code review Story 4.7 (2026-08-19)
 location: syncro/apps/web/src/features/operations-overview/operations-overview-page-content.tsx
 reason: No data path produces future createdAt values from alert API; acceptable risk at current scope.
 status: open
+
+## Deferred from: code review of spec-5-1-waha-template-editor (2026-08-20)
+
+### DW-44: Race condition — concurrent upsert tanpa ON CONFLICT guard
+origin: code review Story 5.1 (2026-08-20)
+location: syncro/apps/backend/src/main/java/com/syncro/notification/application/WahaTemplateService.java:44
+reason: Single-template config entity; concurrent admin edit extremely unlikely in pilot phase. findByTemplateKey + save is not atomic but risk window is negligible at current user load.
+status: open
+
+### DW-45: WahaTemplateView tidak expose createdAt
+origin: code review Story 5.1 (2026-08-20)
+location: syncro/apps/backend/src/main/java/com/syncro/notification/api/WahaTemplateDtos.java
+reason: By design — frontend tidak butuh createdAt saat ini. Jika dibutuhkan di masa depan perlu tambah field ke DTO dan frontend.
+status: open
+
+## Deferred from: code review of 3-13-configure-mqtt-security-tls-device-auth-acls (2026-08-20)
+
+- **DW-46: Plaintext credentials in auth-bootstrap.csv committed to git** — `auth-bootstrap.csv:2-3` contains literal MQTT passwords for `syncro_backend` and `device_BF-08410_GM1`. Dev-environment pattern consistent with all other infra files; production credential management out of scope for story 3-13.
+- **DW-47: Hardcoded SEED_SECRET in docker-entrypoint.sh committed to git** — `docker-entrypoint.sh:37` hardcodes the administrator API key secret. Same dev-infra pattern; secret rotation and production secrets management out of scope.
+- **DW-48: Erlang cluster cookie is a weak committed value** — `emqx.conf:4` sets `cookie = "emqxsyncrodev"`. Single-node dev setup; Erlang cluster security out of scope.

@@ -127,6 +127,25 @@ class WahaTemplateControllerTest {
   }
 
   @Test
+  @DisplayName("5.1-API-007 P1 MANAGE role PUT valid template returns 200")
+  void manageRoleCanUpsertValidTemplate() throws Exception {
+    var user = user(ApplicationRole.MANAGE);
+    var templateId = UUID.randomUUID();
+    var now = Instant.parse("2026-08-20T08:00:00Z");
+    var body = "Alert: {machineCode} sparepart {sparepartName} at {thresholdPercent}%";
+    when(templateService.upsertTemplate(eq(body), any())).thenReturn(
+        new WahaTemplate(templateId, WahaTemplate.DEFAULT_KEY, body, now, now));
+
+    mockMvc.perform(put("/api/v1/notification/templates")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"body\":\"" + body + "\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(templateId.toString()))
+        .andExpect(jsonPath("$.body").value(body));
+  }
+
+  @Test
   @DisplayName("5.1-API-006 P1 PUT with empty body returns 400 VALIDATION_ERROR")
   void putWithEmptyBodyReturnsValidationError() throws Exception {
     var user = user(ApplicationRole.SUPER_ADMIN);

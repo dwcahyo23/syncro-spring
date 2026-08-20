@@ -81,7 +81,7 @@ development_status:
   3-10-validate-payload-topic-machine-identity-match: done
   3-11-implement-telemetry-quarantine-store-and-data-quality-validation: done
   3-12-implement-backpressure-and-bounded-queue-behavior: done
-  3-13-configure-mqtt-security-tls-device-auth-acls: in-progress
+  3-13-configure-mqtt-security-tls-device-auth-acls: review
   epic-3-retrospective: optional
 
   # Epic 4: Sparepart Lifetime Alerting
@@ -97,7 +97,7 @@ development_status:
 
   # Epic 5: WAHA Escalation & Notification Evidence
   epic-5: in-progress
-  5-1-create-waha-template-editor: review
+  5-1-create-waha-template-editor: done
   5-2-queue-initial-waha-notification-for-open-alert: backlog
   5-3-send-notification-job-through-waha-with-attempt-history: backlog
   5-4-escalate-alert-notifications-by-responsibility-level: backlog

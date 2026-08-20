@@ -34,7 +34,7 @@ public class WahaTemplateController {
       @ApiResponse(responseCode = "404", description = "Template not found")
   })
   @GetMapping
-  public WahaTemplateView getActive(@AuthenticationPrincipal AuthenticatedUser user) {
+  public WahaTemplateView getActive() {
     WahaTemplate template = templateService.getActiveTemplate();
     return toView(template);
   }

@@ -140,3 +140,14 @@ private static final Set<String> KNOWN_VARIABLES = Set.of(
 - `cd syncro/apps/backend && mvn compile` -- expected: BUILD SUCCESS, no Jakarta/javax errors
 - `cd syncro/apps/web && npm run build` -- expected: no TypeScript errors, no missing import errors
 - `cd syncro/apps/web && npm run lint` -- expected: no biome lint errors in new files
+
+### Review Findings
+
+- [ ] [Review][Decision] Orval stub di `syncro.ts` akan terhapus saat regen berikutnya — manual stub ditambahkan ke file generated karena backend belum running saat codegen; stub ini akan dihapus saat `npm run generate:api` dijalankan. Opsi: (a) biarkan stub sampai orval regen dijalankan di environment dengan backend running, (b) pindahkan stub ke file handwritten terpisah hingga orval regen selesai.
+- [ ] [Review][Patch] Double `Instant.now(clock)` pada new entity — createdAt dan updatedAt bisa berbeda nilai [WahaTemplateService.java:45-50]
+- [ ] [Review][Patch] `@Column(updatable=false)` tidak ada pada `created_at` di WahaTemplateEntity [WahaTemplateEntity.java:23]
+- [ ] [Review][Patch] MANAGE role tidak memiliki test PUT success — AC2 path MANAGE belum tercover [WahaTemplateControllerTest.java]
+- [ ] [Review][Patch] `@AuthenticationPrincipal AuthenticatedUser user` unused di GET handler [WahaTemplateController.java:38]
+- [ ] [Review][Patch] `HashMap` di `invalidVariables` handler — non-deterministic key order untuk `body[0]`, `body[1]` dari Set iteration [WahaTemplateExceptionHandler.java:41-44]
+- [x] [Review][Defer] Race condition concurrent upsert tanpa ON CONFLICT guard [WahaTemplateService.java:44] — deferred, single-template config entity, concurrent admin edit unlikely in pilot phase
+- [x] [Review][Defer] `WahaTemplateView` tidak expose `createdAt` [WahaTemplateDtos.java] — deferred, by design, frontend tidak butuh createdAt saat ini

@@ -5,7 +5,7 @@ import com.syncro.notification.application.WahaTemplateService.WahaTemplateNotFo
 import com.syncro.notification.application.WahaTemplateService.WahaTemplateValidationException;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.core.Ordered;
@@ -38,9 +38,9 @@ public class WahaTemplateExceptionHandler {
 
   @ExceptionHandler(WahaTemplateValidationException.class)
   ResponseEntity<ErrorResponse> invalidVariables(WahaTemplateValidationException ex) {
-    Map<String, String> fieldErrors = new HashMap<>();
+    Map<String, String> fieldErrors = new LinkedHashMap<>();
     int i = 0;
-    for (String unknown : ex.getUnknownVariables()) {
+    for (String unknown : new java.util.TreeSet<>(ex.getUnknownVariables())) {
       fieldErrors.put("body[" + i++ + "]", "Unknown variable: " + unknown);
     }
     return error(HttpStatus.BAD_REQUEST, "TEMPLATE_INVALID_VARIABLES",
@@ -49,7 +49,7 @@ public class WahaTemplateExceptionHandler {
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
   ResponseEntity<ErrorResponse> validationError(MethodArgumentNotValidException ex) {
-    Map<String, String> fieldErrors = new HashMap<>();
+    Map<String, String> fieldErrors = new LinkedHashMap<>();
     ex.getBindingResult().getFieldErrors()
         .forEach(fe -> fieldErrors.put(fe.getField(), fe.getDefaultMessage()));
     return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Request validation failed.", fieldErrors);
