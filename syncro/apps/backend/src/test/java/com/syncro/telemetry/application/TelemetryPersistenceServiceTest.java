@@ -17,7 +17,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.influxdb.client.write.Point;
+import com.influxdb.v3.client.Point;
 import com.syncro.auth.infrastructure.PlantEntity;
 import com.syncro.config.TelemetryProperties;
 import com.syncro.machine.domain.MachineStatus;

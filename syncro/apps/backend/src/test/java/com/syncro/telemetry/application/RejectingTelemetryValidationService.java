@@ -7,7 +7,7 @@ class RejectingTelemetryValidationService extends TelemetryValidationService {
   }
 
   RejectingTelemetryValidationService(String reason) {
-    super(null, null);
+    super(null);
     this.reason = reason;
   }
 

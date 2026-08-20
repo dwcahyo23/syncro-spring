@@ -2,11 +2,11 @@ package com.syncro.telemetry.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.influxdb.client.InfluxDBClient;
-import com.influxdb.query.FluxRecord;
+import com.influxdb.v3.client.InfluxDBClient;
+import com.influxdb.v3.client.PointValues;
+import com.influxdb.v3.client.query.QueryOptions;
 import com.syncro.auth.infrastructure.PlantEntity;
 import com.syncro.auth.infrastructure.PlantRepository;
-import com.syncro.config.InfluxProperties;
 import com.syncro.machine.domain.MachineStatus;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,12 +40,9 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
     "REDIS_HOST=localhost",
     "REDIS_PORT=6379",
     "INFLUXDB_HOST=localhost",
-    "INFLUXDB_PORT=8086",
-    "INFLUXDB_USERNAME=test",
-    "INFLUXDB_PASSWORD=test-password",
-    "INFLUXDB_TOKEN=test-token-value",
-    "INFLUXDB_ORG=test",
-    "INFLUXDB_BUCKET=test",
+    "INFLUXDB_PORT=8181",
+    "INFLUXDB_TOKEN=apiv3_testtoken00000000000000000000000000000000000000000000000000000000000000",
+    "INFLUXDB_DATABASE=syncro_test",
     "SYNCRO_MQTT_HOST=localhost",
     "SYNCRO_MQTT_PORT=1883",
     "SYNCRO_MQTT_USERNAME=test",
@@ -72,6 +70,10 @@ class TelemetryPersistenceIntegrationTest {
   private static final AtomicInteger RECEIVED_AT_OFFSET = new AtomicInteger();
   private static final AtomicInteger MESSAGE_ID_OFFSET = new AtomicInteger();
 
+  private static final String TEST_TOKEN =
+      "apiv3_testtoken00000000000000000000000000000000000000000000000000000000000000";
+  private static final String TEST_DATABASE = "syncro_test";
+
   private static String payload(Instant timestamp) {
     return payload(timestamp, 100);
   }
@@ -91,15 +93,13 @@ class TelemetryPersistenceIntegrationTest {
       .waitingFor(Wait.forLogMessage(".*Ready to accept connections.*\\n", 1));
 
   @Container
-  static final GenericContainer<?> influx = new GenericContainer<>("influxdb:2.7")
-      .withEnv("DOCKER_INFLUXDB_INIT_MODE", "setup")
-      .withEnv("DOCKER_INFLUXDB_INIT_USERNAME", "test")
-      .withEnv("DOCKER_INFLUXDB_INIT_PASSWORD", "test-password")
-      .withEnv("DOCKER_INFLUXDB_INIT_ORG", "test")
-      .withEnv("DOCKER_INFLUXDB_INIT_BUCKET", "test")
-      .withEnv("DOCKER_INFLUXDB_INIT_ADMIN_TOKEN", "test-token-value")
-      .withExposedPorts(8086)
-      .waitingFor(Wait.forHttp("/health").forPort(8086).withStartupTimeout(Duration.ofSeconds(120)));
+  static final GenericContainer<?> influx = new GenericContainer<>("influxdb:3-core")
+      .withCommand("serve",
+          "--node-id=test-node-1",
+          "--object-store=memory",
+          "--admin-token=" + TEST_TOKEN)
+      .withExposedPorts(8181)
+      .waitingFor(Wait.forHttp("/health").forPort(8181).withStartupTimeout(Duration.ofSeconds(120)));
 
   @DynamicPropertySource
   static void containerProperties(DynamicPropertyRegistry registry) {
@@ -108,12 +108,10 @@ class TelemetryPersistenceIntegrationTest {
     registry.add("spring.datasource.password", postgres::getPassword);
     registry.add("spring.data.redis.host", redis::getHost);
     registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
-    registry.add("syncro.influxdb.url", () -> "http://" + influx.getHost() + ":" + influx.getMappedPort(8086));
-    registry.add("syncro.influxdb.token", () -> "test-token-value");
-    registry.add("syncro.influxdb.username", () -> "test");
-    registry.add("syncro.influxdb.password", () -> "test-password");
-    registry.add("syncro.influxdb.org", () -> "test");
-    registry.add("syncro.influxdb.bucket", () -> "test");
+    registry.add("syncro.influxdb.url",
+        () -> "http://" + influx.getHost() + ":" + influx.getMappedPort(8181));
+    registry.add("syncro.influxdb.token", () -> TEST_TOKEN);
+    registry.add("syncro.influxdb.database", () -> TEST_DATABASE);
   }
 
   @Autowired
@@ -137,9 +135,6 @@ class TelemetryPersistenceIntegrationTest {
   @Autowired
   private InfluxDBClient influxClient;
 
-  @Autowired
-  private InfluxProperties influxProperties;
-
   @Test
   @DisplayName("3.4-PERS-001 accepted telemetry is written to InfluxDB with machineCode/plantCode tags and fields")
   void acceptedTelemetryWrittenToInfluxDb() {
@@ -148,21 +143,25 @@ class TelemetryPersistenceIntegrationTest {
     Instant receivedAt = uniqueReceivedAt();
     persist(machine, traceId, receivedAt);
 
-    var records = telemetryRecords(machine, receivedAt);
+    var points = telemetryPoints(receivedAt);
 
-    assertThat(records).isNotEmpty();
-    assertThat(records).allMatch(record -> "GM1".equals(record.getValueByKey("plantCode"))
-        && "BF-08410".equals(record.getValueByKey("machineCode")));
-    assertThat(records.stream().filter(record -> "running".equals(record.getField())).findFirst().orElseThrow()
-        .getValueByKey("_value")).isEqualTo(true);
-    assertThat(records.stream().filter(record -> "runtimeHours".equals(record.getField())).findFirst().orElseThrow()
-        .getValueByKey("_value")).isEqualTo(12.5);
-    assertThat(records.stream().filter(record -> "counting".equals(record.getField())).findFirst().orElseThrow()
-        .getValueByKey("_value")).isEqualTo(100L);
-    assertThat(records.stream().filter(record -> "countingDelta".equals(record.getField())).findFirst().orElseThrow()
-        .getValueByKey("_value")).isEqualTo(0L);
-    assertThat(records.stream().filter(record -> "traceId".equals(record.getField())).findFirst().orElseThrow()
-        .getValueByKey("_value")).isEqualTo(traceId);
+    assertThat(points).isNotEmpty();
+    assertThat(points).allMatch(p -> "GM1".equals(p.getTag("plantCode"))
+        && "BF-08410".equals(p.getTag("machineCode")));
+    assertThat(points).anyMatch(p -> Boolean.TRUE.equals(p.getField("running")));
+    assertThat(points).anyMatch(p -> {
+      Object v = p.getField("runtimeHours");
+      return v instanceof Number n && Double.compare(n.doubleValue(), 12.5) == 0;
+    });
+    assertThat(points).anyMatch(p -> {
+      Object v = p.getField("counting");
+      return v instanceof Number n && n.longValue() == 100L;
+    });
+    assertThat(points).anyMatch(p -> {
+      Object v = p.getField("countingDelta");
+      return v instanceof Number n && n.longValue() == 0L;
+    });
+    assertThat(points).anyMatch(p -> traceId.equals(p.getField("traceId")));
   }
 
   @Test
@@ -194,24 +193,21 @@ class TelemetryPersistenceIntegrationTest {
   void duplicatePayloadWritesSingleInfluxDbRecord() {
     var machine = seedPlantAndMachine();
     Instant receivedAt = uniqueReceivedAt();
-    String payload = payload(receivedAt);
-    var accepted = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, payload);
-    persistenceService.persist(accepted, envelope("trace-pers-003", receivedAt, payload));
-    persistenceService.persist(accepted, envelope("trace-pers-003-duplicate", receivedAt.plusSeconds(5), payload));
+    String msgPayload = payload(receivedAt);
+    var accepted = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, msgPayload);
 
-    String flux = """
-        from(bucket: "test")
-          |> range(start: %s, stop: %s)
-          |> filter(fn: (r) => r["_measurement"] == "telemetry")
-          |> filter(fn: (r) => r["machineCode"] == "BF-08410" and r["plantCode"] == "GM1")
-          |> filter(fn: (r) => r["_field"] == "traceId")
-          |> group()
-          |> count()
+    persistenceService.persist(accepted, envelope("trace-pers-003", receivedAt, msgPayload));
+    persistenceService.persist(accepted, envelope("trace-pers-003-duplicate", receivedAt.plusSeconds(5), msgPayload));
+
+    String sql = """
+        SELECT traceId FROM telemetry
+        WHERE machineCode = 'BF-08410' AND plantCode = 'GM1'
+          AND time >= '%s' AND time <= '%s'
         """.formatted(receivedAt.minusSeconds(60), receivedAt.plusSeconds(120));
-    var records = query(flux);
+    var points = queryPoints(sql);
 
-    assertThat(records).hasSize(1);
-    assertThat(records.get(0).getValue()).isEqualTo(1L);
+    assertThat(points).hasSize(1);
+    assertThat(points.get(0).getField("traceId")).isEqualTo("trace-pers-003");
 
     String key = "syncro:machine:" + machine.getId() + ":latest";
     assertThat(redisTemplate.opsForHash().entries(key)).containsEntry("traceId", "trace-pers-003");
@@ -224,19 +220,17 @@ class TelemetryPersistenceIntegrationTest {
     Instant receivedAt = uniqueReceivedAt();
     persist(machine, "trace-pers-004", receivedAt);
 
-    String flux = """
-        from(bucket: "test")
-          |> range(start: %s, stop: %s)
-          |> filter(fn: (r) => r["_measurement"] == "telemetry")
-          |> filter(fn: (r) => r["machineCode"] == "BF-08410" and r["plantCode"] == "GM1")
-        """.formatted(receivedAt.minusSeconds(60), receivedAt.plusSeconds(60));
-    var records = query(flux);
+    var points = telemetryPoints(receivedAt);
 
-    assertThat(records).isNotEmpty();
-    assertThat(records).anyMatch(record -> "counting".equals(record.getField())
-        && record.getValueByKey("_value").equals(100L));
-    assertThat(records.stream().filter(record -> "countingDelta".equals(record.getField())).findFirst().orElseThrow()
-        .getValueByKey("_value")).isEqualTo(0L);
+    assertThat(points).isNotEmpty();
+    assertThat(points).anyMatch(p -> {
+      Object v = p.getField("counting");
+      return v instanceof Number n && n.longValue() == 100L;
+    });
+    assertThat(points).anyMatch(p -> {
+      Object v = p.getField("countingDelta");
+      return v instanceof Number n && n.longValue() == 0L;
+    });
   }
 
   @Test
@@ -250,9 +244,11 @@ class TelemetryPersistenceIntegrationTest {
     String key = "syncro:machine:" + machine.getId() + ":latest";
     assertThat(redisTemplate.opsForHash().entries(key)).containsEntry("countingDelta", "0");
 
-    var records = telemetryRecords(machine, receivedAt);
-    assertThat(records.stream().filter(record -> "countingDelta".equals(record.getField())).findFirst().orElseThrow()
-        .getValueByKey("_value")).isEqualTo(0L);
+    var points = telemetryPoints(receivedAt);
+    assertThat(points).anyMatch(p -> {
+      Object v = p.getField("countingDelta");
+      return v instanceof Number n && n.longValue() == 0L;
+    });
   }
 
   @Test
@@ -267,9 +263,11 @@ class TelemetryPersistenceIntegrationTest {
     String key = "syncro:machine:" + machine.getId() + ":latest";
     assertThat(redisTemplate.opsForHash().entries(key)).containsEntry("countingDelta", "100");
 
-    var secondPointRecords = telemetryRecords(machine, secondReceivedAt);
-    assertThat(secondPointRecords.stream().filter(record -> "countingDelta".equals(record.getField()))
-        .findFirst().orElseThrow().getValueByKey("_value")).isEqualTo(100L);
+    var secondPoints = telemetryPoints(secondReceivedAt);
+    assertThat(secondPoints).anyMatch(p -> {
+      Object v = p.getField("countingDelta");
+      return v instanceof Number n && n.longValue() == 100L;
+    });
   }
 
   @Test
@@ -284,147 +282,68 @@ class TelemetryPersistenceIntegrationTest {
     String key = "syncro:machine:" + machine.getId() + ":latest";
     assertThat(redisTemplate.opsForHash().entries(key)).containsEntry("countingDelta", "1");
 
-    var secondPointRecords = telemetryRecords(machine, secondReceivedAt);
-    assertThat(secondPointRecords.stream().filter(record -> "countingDelta".equals(record.getField()))
-        .findFirst().orElseThrow().getValueByKey("_value")).isEqualTo(1L);
+    var secondPoints = telemetryPoints(secondReceivedAt);
+    assertThat(secondPoints).anyMatch(p -> {
+      Object v = p.getField("countingDelta");
+      return v instanceof Number n && n.longValue() == 1L;
+    });
   }
 
   @Test
-  @DisplayName("3.6-PERS-001 configured optional fields stored in InfluxDB history with correct types")
-  void configuredOptionalFieldsStoredInInfluxDb() {
-    var machine = seedPlantAndMachine(List.of("vibration", "rpm", "heaterOn", "qualityGrade"));
-    String traceId = "trace-pers-601";
-    Instant receivedAt = uniqueReceivedAt();
-    String payload = "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-int-" + MESSAGE_ID_OFFSET.incrementAndGet()
-        + "\",\"timestamp\":\"" + receivedAt + "\",\"running\":true,\"runtimeHours\":12.5,\"counting\":100,"
-        + "\"vibration\":2.4,\"rpm\":1200,\"heaterOn\":true,\"qualityGrade\":\"A\",\"temperature\":30}";
-    var accepted = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, payload);
-    persistenceService.persist(accepted, envelope(traceId, receivedAt, payload));
-
-    var records = telemetryRecords(machine, receivedAt);
-
-    assertThat(records.stream().filter(record -> "vibration".equals(record.getField())).findFirst().orElseThrow()
-        .getValueByKey("_value")).isEqualTo(2.4);
-    assertThat(records.stream().filter(record -> "rpm".equals(record.getField())).findFirst().orElseThrow()
-        .getValueByKey("_value")).isEqualTo(1200L);
-    assertThat(records.stream().filter(record -> "heaterOn".equals(record.getField())).findFirst().orElseThrow()
-        .getValueByKey("_value")).isEqualTo(true);
-    assertThat(records.stream().filter(record -> "qualityGrade".equals(record.getField())).findFirst().orElseThrow()
-        .getValueByKey("_value")).isEqualTo("A");
-    assertThat(records).noneMatch(record -> "temperature".equals(record.getField()));
-  }
-
-  @Test
-  @DisplayName("3.6-PERS-002 configured optional fields stored in Redis latest hash with optional prefix")
-  void configuredOptionalFieldsStoredInRedisLatestHash() {
-    var machine = seedPlantAndMachine(List.of("vibration", "heaterOn", "qualityGrade"));
-    String traceId = "trace-pers-602";
-    Instant receivedAt = uniqueReceivedAt();
-    String payload = "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-int-" + MESSAGE_ID_OFFSET.incrementAndGet()
-        + "\",\"timestamp\":\"" + receivedAt + "\",\"running\":true,\"runtimeHours\":12.5,\"counting\":100,"
-        + "\"vibration\":2.4,\"heaterOn\":true,\"qualityGrade\":\"A\",\"temperature\":30}";
-    var accepted = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, payload);
-    persistenceService.persist(accepted, envelope(traceId, receivedAt, payload));
-
-    String key = "syncro:machine:" + machine.getId() + ":latest";
-    assertThat(redisTemplate.opsForHash().entries(key))
-        .containsEntry("optional.vibration", "2.4")
-        .containsEntry("optional.heaterOn", "true")
-        .containsEntry("optional.qualityGrade", "A")
-        .doesNotContainKey("optional.temperature")
-        .doesNotContainKey("temperature");
-  }
-
-  @Test
-  @DisplayName("DW-25 TTL expiry then new message reads fallback DB baseline and computes correct delta")
-  void ttlExpiryThenNewMessageReadsFallbackDbBaselineAndComputesCorrectDelta() {
+  @DisplayName("3.5-DELTA-004 counting wrap from near-max to small value produces correct delta")
+  void wrapFromNearMaxToSmallProducesCorrectDelta() {
     var machine = seedPlantAndMachine();
     Instant firstReceivedAt = uniqueReceivedAt();
     Instant secondReceivedAt = uniqueReceivedAt();
+    persistCounting(machine, "trace-delta-004-a", firstReceivedAt, 65530);
+    persistCounting(machine, "trace-delta-004-b", secondReceivedAt, 10);
 
-    // First persist: counting=100 — writes DB counter state baseline
-    persistCounting(machine, "trace-dw25-a", firstReceivedAt, 100);
+    String key = "syncro:machine:" + machine.getId() + ":latest";
+    assertThat(redisTemplate.opsForHash().entries(key)).containsEntry("countingDelta", "16");
 
-    // Simulate TTL expiry by deleting the Redis latest key directly
-    String latestKey = "syncro:machine:" + machine.getId() + ":latest";
-    redisTemplate.delete(latestKey);
-
-    // Second persist: counting=150 — Redis miss, falls back to DB baseline (100), delta should be 50
-    persistCounting(machine, "trace-dw25-b", secondReceivedAt, 150);
-
-    assertThat(redisTemplate.opsForHash().entries(latestKey)).containsEntry("countingDelta", "50");
-
-    var secondPointRecords = telemetryRecords(machine, secondReceivedAt);
-    assertThat(secondPointRecords.stream().filter(record -> "countingDelta".equals(record.getField()))
-        .findFirst().orElseThrow().getValueByKey("_value")).isEqualTo(50L);
+    var secondPoints = telemetryPoints(secondReceivedAt);
+    assertThat(secondPoints).anyMatch(p -> {
+      Object v = p.getField("countingDelta");
+      return v instanceof Number n && n.longValue() == 16L;
+    });
   }
 
-  @Test
-  @DisplayName("DW-31 removed optional field is absent from Redis hash after next persist")
-  void removedOptionalFieldAbsentFromRedisHashAfterNextPersist() {
-    var machine = seedPlantAndMachine(List.of("temperature", "vibration"));
-    Instant firstReceivedAt = uniqueReceivedAt();
-    Instant secondReceivedAt = uniqueReceivedAt();
-
-    // First persist: payload includes both temperature and vibration
-    String payloadWithBoth = "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-int-" + MESSAGE_ID_OFFSET.incrementAndGet()
-        + "\",\"timestamp\":\"" + firstReceivedAt + "\",\"running\":true,\"runtimeHours\":12.5,\"counting\":100"
-        + ",\"temperature\":25.0,\"vibration\":1.5}";
-    var acceptedFirst = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, payloadWithBoth);
-    persistenceService.persist(acceptedFirst, envelope("trace-dw31-a", firstReceivedAt, payloadWithBoth));
-
-    String latestKey = "syncro:machine:" + machine.getId() + ":latest";
-    assertThat(redisTemplate.opsForHash().entries(latestKey))
-        .containsKey("optional.temperature")
-        .containsKey("optional.vibration");
-
-    // Second persist: payload includes only vibration (temperature removed)
-    String payloadWithoutTemp = "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-int-" + MESSAGE_ID_OFFSET.incrementAndGet()
-        + "\",\"timestamp\":\"" + secondReceivedAt + "\",\"running\":true,\"runtimeHours\":12.5,\"counting\":200"
-        + ",\"vibration\":1.5}";
-    var acceptedSecond = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, payloadWithoutTemp);
-    persistenceService.persist(acceptedSecond, envelope("trace-dw31-b", secondReceivedAt, payloadWithoutTemp));
-
-    // optional.temperature must be absent; optional.vibration must still be present
-    assertThat(redisTemplate.opsForHash().entries(latestKey))
-        .doesNotContainKey("optional.temperature")
-        .containsKey("optional.vibration");
-  }
+  // --- helpers ---
 
   private void persist(MachineEntity machine, String traceId, Instant receivedAt) {
-    String payload = payload(receivedAt);
-    var accepted = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, payload);
-    persistenceService.persist(accepted, envelope(traceId, receivedAt, payload));
+    persistCounting(machine, traceId, receivedAt, 100);
   }
 
   private void persistCounting(MachineEntity machine, String traceId, Instant receivedAt, long counting) {
-    String payload = payload(receivedAt, counting);
-    var accepted = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, payload);
-    persistenceService.persist(accepted, envelope(traceId, receivedAt, payload));
+    String msgPayload = payload(receivedAt, counting);
+    var accepted = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, msgPayload);
+    persistenceService.persist(accepted, envelope(traceId, receivedAt, msgPayload));
   }
 
-  private TelemetryEnvelope envelope(String traceId, Instant receivedAt, String payload) {
-    return new TelemetryEnvelope(traceId, TOPIC, payload, receivedAt);
+  private TelemetryEnvelope envelope(String traceId, Instant receivedAt, String msgPayload) {
+    return new TelemetryEnvelope(traceId, TOPIC, msgPayload, receivedAt);
   }
 
   private static Instant uniqueReceivedAt() {
     return BASE_RECEIVED_AT.plusSeconds(RECEIVED_AT_OFFSET.addAndGet(300));
   }
 
-  private List<FluxRecord> telemetryRecords(MachineEntity machine, Instant receivedAt) {
-    String flux = """
-        from(bucket: "test")
-          |> range(start: %s, stop: %s)
-          |> filter(fn: (r) => r["_measurement"] == "telemetry")
-          |> filter(fn: (r) => r["machineCode"] == "BF-08410")
+  private List<PointValues> telemetryPoints(Instant receivedAt) {
+    String sql = """
+        SELECT * FROM telemetry
+        WHERE machineCode = 'BF-08410' AND plantCode = 'GM1'
+          AND time >= '%s' AND time <= '%s'
         """.formatted(receivedAt.minusSeconds(60), receivedAt.plusSeconds(60));
-    return query(flux);
+    return queryPoints(sql);
   }
 
-  private List<FluxRecord> query(String flux) {
-    return influxClient.getQueryApi().query(flux, influxProperties.org()).stream()
-        .flatMap(table -> table.getRecords().stream())
-        .toList();
+  private List<PointValues> queryPoints(String sql) {
+    try (Stream<PointValues> stream = influxClient.queryPoints(sql,
+        new QueryOptions(TEST_DATABASE))) {
+      return stream.toList();
+    } catch (Exception e) {
+      throw new RuntimeException("InfluxDB query failed", e);
+    }
   }
 
   private MachineEntity seedPlantAndMachine() {

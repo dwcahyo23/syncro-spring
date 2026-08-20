@@ -4,11 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import static org.mockito.Mockito.mock;
 
-import com.syncro.auth.infrastructure.PlantRepository;
 import com.syncro.config.MqttProperties;
 import com.syncro.config.TelemetryProperties;
 import com.syncro.config.TimeConfig;
-import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.telemetry.application.MqttTelemetryIngestHandler;
 import com.syncro.telemetry.application.TelemetryPersistenceService;
 import com.syncro.telemetry.application.TelemetryQuarantineService;
@@ -96,7 +94,7 @@ class MqttSubscriptionConfigTest {
 
     @Bean
     TelemetryValidationService telemetryValidationService() {
-      return new TelemetryValidationService(mock(PlantRepository.class), mock(MachineRepository.class));
+      return mock(TelemetryValidationService.class);
     }
 
     @Bean

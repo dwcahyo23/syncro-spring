@@ -12,7 +12,7 @@ import com.syncro.masterdata.infrastructure.MachineGroupEntity;
 class AcceptingTelemetryValidationService extends TelemetryValidationService {
 
   AcceptingTelemetryValidationService() {
-    super(null, null);
+    super(null);
   }
 
   @Override
