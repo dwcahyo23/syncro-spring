@@ -8,6 +8,7 @@ import com.syncro.audit.application.AuditRecord;
 import com.syncro.audit.domain.AuditAction;
 import com.syncro.audit.domain.AuditEntityType;
 import com.syncro.machine.infrastructure.MachineRepository;
+import com.syncro.notification.domain.AlertOpenedEvent;
 import com.syncro.sparepart.application.SparepartLifetimeEvaluator;
 import com.syncro.sparepart.infrastructure.MachineSparepartInstallationRepository;
 import java.math.BigDecimal;
@@ -17,6 +18,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,17 +33,20 @@ public class SparepartAlertService {
   private final MachineSparepartInstallationRepository installationRepository;
   private final MachineRepository machineRepository;
   private final Clock clock;
+  private final ApplicationEventPublisher eventPublisher;
 
   public SparepartAlertService(SparepartAlertRepository alertRepository,
       AuditLogWriter auditLogWriter,
       MachineSparepartInstallationRepository installationRepository,
       MachineRepository machineRepository,
-      Clock clock) {
+      Clock clock,
+      ApplicationEventPublisher eventPublisher) {
     this.alertRepository = alertRepository;
     this.auditLogWriter = auditLogWriter;
     this.installationRepository = installationRepository;
     this.machineRepository = machineRepository;
     this.clock = clock;
+    this.eventPublisher = eventPublisher;
   }
 
   @Transactional
@@ -111,6 +116,8 @@ public class SparepartAlertService {
             traceId, installationId, thresholdPercentage);
         continue;
       }
+
+      eventPublisher.publishEvent(new AlertOpenedEvent(alertId, machineId, traceId));
 
       auditLogWriter.recordSystem(new AuditRecord(
           AuditAction.CREATE,

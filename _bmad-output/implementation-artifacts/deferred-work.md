@@ -369,8 +369,9 @@ reason: AC8 only requires 409-specific message; generic fallback for other statu
 status: done 2026-08-19
 resolution: already resolved: alert-detail-page-content.tsx:103-130 — 404 and 403 now handled with distinct UI messages; no longer indistinguishable to the user
 
-### DW-43: timeAgo() returns negative string for future timestamps
-origin: code review Story 4.7 (2026-08-19)
-location: syncro/apps/web/src/features/operations-overview/operations-overview-page-content.tsx
-reason: No data path produces future createdAt values from alert API; acceptable risk at current scope.
+### DW-44: notification_jobs unique constraint prevents ROUTING_FAILED→PENDING re-routing
+
+origin: code review Story 5.2 (2026-08-20)
+location: syncro/apps/backend/src/main/resources/db/migration/V22__create_notification_jobs.sql
+reason: UNIQUE (alert_id, escalation_level) means once a ROUTING_FAILED row exists for a pair, a subsequent PENDING row for the same pair cannot be inserted. If a technician is assigned a WhatsApp number after initial routing failure, a new job cannot be queued without manual deletion of the failed row. Acceptable for Story 5.2 scope — re-routing belongs to a future admin/correction workflow.
 status: open

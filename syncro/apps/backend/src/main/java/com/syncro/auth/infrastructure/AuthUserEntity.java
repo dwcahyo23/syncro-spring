@@ -30,6 +30,9 @@ public class AuthUserEntity {
   @Column(nullable = false)
   private boolean enabled;
 
+  @Column(name = "whatsapp_number", length = 32)
+  private String whatsappNumber;
+
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
@@ -68,5 +71,9 @@ public class AuthUserEntity {
 
   public boolean isEnabled() {
     return enabled;
+  }
+
+  public String getWhatsappNumber() {
+    return whatsappNumber;
   }
 }
