@@ -81,7 +81,7 @@ development_status:
   3-10-validate-payload-topic-machine-identity-match: done
   3-11-implement-telemetry-quarantine-store-and-data-quality-validation: done
   3-12-implement-backpressure-and-bounded-queue-behavior: done
-  3-13-configure-mqtt-security-tls-device-auth-acls: review
+  3-13-configure-mqtt-security-tls-device-auth-acls: done
   epic-3-retrospective: optional
 
   # Epic 4: Sparepart Lifetime Alerting

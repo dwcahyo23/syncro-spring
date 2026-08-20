@@ -324,7 +324,7 @@ Project initialization should be the first implementation story and must verify 
 **Important Decisions (Shape Architecture):**
 
 - PostgreSQL supported current major/minor, using Flyway.
-- InfluxDB 3 Core for time-series telemetry history, with v2 line protocol compatibility as fallback if Java client support creates friction.
+- InfluxDB 3 Core for time-series telemetry history using `influxdb3-java` client (v1.10.0+). Java client integration confirmed working — v2 line protocol fallback no longer needed.
 - Redis for latest telemetry and cache.
 - MQTT broker choice deferred to infra decision, but protocol contract fixed.
 - Queue implementation: start with PostgreSQL-backed outbox/job table for Phase 1; upgrade to dedicated broker later if needed.
@@ -346,7 +346,7 @@ Project initialization should be the first implementation story and must verify 
 ### Data Architecture
 
 - **PostgreSQL:** system of record for users, roles, job scopes, plants, machine groups, machines, sparepart taxonomy, spareparts, machine sparepart installations, responsibility chains, alerts, notification jobs, WAHA templates, audit events, health snapshots, and telemetry quarantine log.
-- **InfluxDB 3 Core:** telemetry history for accepted machine telemetry. If Java integration support becomes a blocker, use InfluxDB v2 line protocol compatibility.
+- **InfluxDB 3 Core:** telemetry history for accepted machine telemetry. Uses `influxdb3-java` client (v1.10.0+) with token-only auth and database-based namespace (no org/bucket). Java v3 client integration confirmed working.
 - **Redis:** latest telemetry state, freshness cache, lightweight lookup cache, WAHA rate-limit deduplication keys.
 - **Flyway:** PostgreSQL schema migrations.
 - **Outbox/job table:** Phase 1 queue mechanism for WAHA notification dispatch and retry.
@@ -387,10 +387,10 @@ Rationale: reduces moving parts for Phase 1 while preserving clear ownership and
 
 **MQTT Security:**
 
-- EMQX shall authenticate each connecting device using credentials or certificates.
+- EMQX 6 authenticates backend and device connections using built-in database auth (password hash). User bootstrap seeded via `infra/emqx/etc/auth-bootstrap.csv` on first start.
 - Each device is authorized to publish only to its own machine telemetry topic via ACL rules. Deny-by-default policy applies.
 - MQTT connections shall use TLS in production. Development environments may use plaintext for convenience.
-- EMQX ACL configuration lives in `infra/emqx/etc/` and maps device identity to allowed topic patterns.
+- EMQX configuration lives in `infra/emqx/etc/emqx.conf`; dashboard password is set via `admins passwd` in `docker-entrypoint.sh` (not via env var, which is unreliable on first boot).
 - Backend MQTT consumer credentials are separate from device credentials.
 
 **Frontend Security Boundary:**
