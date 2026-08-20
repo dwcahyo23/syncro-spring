@@ -82,8 +82,8 @@
     </dependency>
     <dependency>
       <groupId>com.influxdb</groupId>
-      <artifactId>influxdb-client-java</artifactId>
-      <version>7.3.0</version>
+      <artifactId>influxdb3-java</artifactId>
+      <version>1.10.0</version>
     </dependency>
     <dependency>
       <groupId>org.springdoc</groupId>
@@ -151,6 +151,12 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <configuration>
+          <jvmArguments>
+            --add-opens=java.base/java.nio=ALL-UNNAMED
+            --sun-misc-unsafe-memory-access=allow
+          </jvmArguments>
+        </configuration>
       </plugin>
     </plugins>
   </build>

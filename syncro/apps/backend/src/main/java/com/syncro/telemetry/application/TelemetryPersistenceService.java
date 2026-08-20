@@ -1,6 +1,6 @@
 package com.syncro.telemetry.application;
 
-import com.influxdb.client.write.Point;
+import com.influxdb.v3.client.Point;
 import com.syncro.config.TelemetryProperties;
 import com.syncro.machine.domain.MachineStatus;
 import com.syncro.machine.infrastructure.MachineRepository;

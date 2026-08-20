@@ -1,11 +1,8 @@
 package com.syncro.telemetry.infrastructure;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.influxdb.client.InfluxDBClient;
-import com.influxdb.client.WriteApiBlocking;
-import com.influxdb.client.domain.WritePrecision;
-import com.influxdb.client.write.Point;
-import com.influxdb.exceptions.InfluxException;
+import com.influxdb.v3.client.InfluxDBClient;
+import com.influxdb.v3.client.Point;
 import com.syncro.telemetry.application.TelemetryEnvelope;
 import com.syncro.telemetry.application.TelemetryPayload;
 import java.time.Instant;
@@ -22,42 +19,42 @@ public class InfluxTelemetryWriter {
   private static final Instant INFLUX_MIN_WRITABLE = Instant.parse("1677-09-21T00:12:43.145224192Z");
   private static final Instant INFLUX_MAX_WRITABLE = Instant.parse("2262-04-11T23:47:16.854775807Z");
 
-  private final WriteApiBlocking writeApi;
+  private final InfluxDBClient client;
 
   public InfluxTelemetryWriter(InfluxDBClient client) {
-    this.writeApi = client.getWriteApiBlocking();
+    this.client = client;
   }
 
-  public static Point toPoint(TelemetryPayload payload, TelemetryEnvelope envelope, String plantCode, String machineCode,
-      long countingDelta) {
+  public static Point toPoint(TelemetryPayload payload, TelemetryEnvelope envelope, String plantCode,
+      String machineCode, long countingDelta) {
     var point = Point.measurement("telemetry")
-        .addTag("plantCode", plantCode)
-        .addTag("machineCode", machineCode)
-        .addField("running", payload.running())
-        .addField("runtimeHours", payload.runtimeHours())
-        .addField("counting", payload.counting())
-        .addField("countingDelta", countingDelta)
-        .addField("traceId", envelope.traceId());
+        .setTag("plantCode", plantCode)
+        .setTag("machineCode", machineCode)
+        .setField("running", payload.running())
+        .setField("runtimeHours", payload.runtimeHours())
+        .setField("counting", payload.counting())
+        .setField("countingDelta", countingDelta)
+        .setField("traceId", envelope.traceId());
     for (var entry : payload.optionalFields().entrySet()) {
       addOptionalField(point, entry.getKey(), entry.getValue());
     }
     Instant pointTime = payload.timestamp();
     if (pointTime == null || pointTime.isBefore(INFLUX_MIN_WRITABLE) || pointTime.isAfter(INFLUX_MAX_WRITABLE)) {
       pointTime = envelope.receivedAt();
-      point.addField("timestampInferred", true);
+      point.setField("timestampInferred", true);
     }
-    return point.time(pointTime.getEpochSecond() * 1_000_000_000L + pointTime.getNano(), WritePrecision.NS);
+    return point.setTimestamp(pointTime);
   }
 
   private static void addOptionalField(Point point, String name, JsonNode node) {
     if (node.isIntegralNumber()) {
-      point.addField(name, node.longValue());
+      point.setField(name, node.longValue());
     } else if (node.isFloatingPointNumber()) {
-      point.addField(name, node.doubleValue());
+      point.setField(name, node.doubleValue());
     } else if (node.isBoolean()) {
-      point.addField(name, node.booleanValue());
+      point.setField(name, node.booleanValue());
     } else {
-      point.addField(name, node.asText());
+      point.setField(name, node.asText());
     }
   }
 
@@ -65,30 +62,31 @@ public class InfluxTelemetryWriter {
     RuntimeException failure = null;
     for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       try {
-        writeApi.writePoint(point);
+        client.writePoint(point);
         log.info("mqtt_telemetry_influx_write machineCode={} traceId={}", machineCode, traceId);
         return;
-      } catch (InfluxException exception) {
+      } catch (Exception exception) {
+        RuntimeException rte = (exception instanceof RuntimeException re) ? re
+            : new RuntimeException(exception);
         if (!isTransient(exception)) {
-          throw exception;
+          throw rte;
         }
-        failure = exception;
+        failure = rte;
         if (attempt < MAX_ATTEMPTS) {
-          sleep(BACKOFF_BASE_MILLIS * attempt, exception);
-        }
-      } catch (RuntimeException exception) {
-        failure = exception;
-        if (attempt < MAX_ATTEMPTS) {
-          sleep(BACKOFF_BASE_MILLIS * attempt, exception);
+          sleep(BACKOFF_BASE_MILLIS * attempt, rte);
         }
       }
     }
     throw failure;
   }
 
-  private static boolean isTransient(InfluxException exception) {
-    int status = exception.status();
-    return status == 0 || status == 429 || status >= 500;
+  private static boolean isTransient(Exception exception) {
+    String msg = exception.getMessage();
+    if (msg == null) {
+      return true;
+    }
+    // Treat HTTP 429 and 5xx as transient
+    return msg.contains("429") || msg.contains("5");
   }
 
   private static void sleep(long millis, RuntimeException pendingFailure) {

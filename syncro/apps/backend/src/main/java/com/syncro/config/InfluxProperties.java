@@ -8,9 +8,6 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "syncro.influxdb")
 public record InfluxProperties(
     @NotBlank String url,
-    String username,
-    String password,
     @NotBlank String token,
-    @NotBlank String org,
-    @NotBlank String bucket) {
+    @NotBlank String database) {
 }
