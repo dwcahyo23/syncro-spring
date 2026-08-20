@@ -5162,5 +5162,68 @@ export function useUpsertWahaTemplate<TError = unknown, TContext = unknown>(
   });
 }
 
+// ---------------------------------------------------------------------------
+// getAlertNotifications stub — TODO(5.6): remove stub after next generate:api
+// Backend: GET /api/v1/alerts/{alertId}/notifications -> AlertNotificationHistoryResponse
+// ---------------------------------------------------------------------------
+
+export type NotificationAttemptView = {
+  attemptNumber: number;
+  status: string;
+  attemptedAt: string;
+  responseDetail: string | null;
+  traceId: string | null;
+};
+
+export type NotificationJobView = {
+  id: string;
+  alertId: string;
+  escalationLevel: string;
+  status: string;
+  recipientUserId: string | null;
+  recipientDisplayName: string | null;
+  recipientPhoneMasked: string | null;
+  attemptCount: number;
+  maxAttempts: number;
+  sentAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  nextAttemptAt: string | null;
+  errorDetail: string | null;
+  traceId: string | null;
+  attempts: NotificationAttemptView[];
+};
+
+export type AlertNotificationHistoryResponse = {
+  items: NotificationJobView[];
+  total: number;
+};
+
+export const getAlertNotifications = (alertId: string, options?: RequestInit) =>
+  syncroFetch<{ data: AlertNotificationHistoryResponse }>(`/api/v1/alerts/${alertId}/notifications`, options);
+
+export const getGetAlertNotificationsQueryKey = (alertId: string) =>
+  [`/api/v1/alerts/${alertId}/notifications`] as const;
+
+export function useGetAlertNotifications<TData = Awaited<ReturnType<typeof getAlertNotifications>>, TError = unknown>(
+  alertId: string,
+  options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getAlertNotifications>>, TError, TData>>; request?: SecondParameter<typeof syncroFetch> },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getGetAlertNotificationsQueryKey(alertId);
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAlertNotifications>>> = ({ signal }) =>
+    getAlertNotifications(alertId, { signal, ...requestOptions } as RequestInit);
+  const query = useQuery(
+    { queryKey, queryFn, enabled: Boolean(alertId), ...queryOptions } as UseQueryOptions<
+      Awaited<ReturnType<typeof getAlertNotifications>>,
+      TError,
+      TData
+    >,
+    queryClient,
+  ) as UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+  return withQueryKey(query, queryKey);
+}
+
 
 

@@ -10,6 +10,8 @@ import com.syncro.alert.application.SparepartAlertQueryService;
 import com.syncro.alert.application.SparepartAlertQueryService.AlertDetailView;
 import com.syncro.alert.domain.SparepartAlertStatus;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
+import com.syncro.notification.api.NotificationHistoryDtos.AlertNotificationHistoryResponse;
+import com.syncro.notification.application.NotificationHistoryQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -31,11 +33,14 @@ public class SparepartAlertController {
 
   private final SparepartAlertQueryService alertQuery;
   private final SparepartAlertCommandService alertCommand;
+  private final NotificationHistoryQueryService notificationHistoryQuery;
 
   public SparepartAlertController(SparepartAlertQueryService alertQuery,
-      SparepartAlertCommandService alertCommand) {
+      SparepartAlertCommandService alertCommand,
+      NotificationHistoryQueryService notificationHistoryQuery) {
     this.alertQuery = alertQuery;
     this.alertCommand = alertCommand;
+    this.notificationHistoryQuery = notificationHistoryQuery;
   }
 
   @Operation(operationId = "listAlerts", summary = "List sparepart lifetime alerts")
@@ -113,7 +118,7 @@ public class SparepartAlertController {
     alertCommand.resolve(user, alertId, reason);
   }
 
-  @Operation(operationId = "resolveAlertOverride", summary = "SUPER_ADMIN: resolve an OPEN alert directly without acknowledging")
+   @Operation(operationId = "resolveAlertOverride", summary = "SUPER_ADMIN: resolve an OPEN alert directly without acknowledging")
   @ApiResponses({
       @ApiResponse(responseCode = "204", description = "Alert resolved"),
       @ApiResponse(responseCode = "401", description = "Authentication required"),
@@ -129,6 +134,20 @@ public class SparepartAlertController {
       @RequestBody(required = false) ResolveOverrideRequest body) {
     var reason = body != null ? body.reason() : null;
     alertCommand.resolveOverride(user, alertId, reason);
+  }
+
+  @Operation(operationId = "getAlertNotifications", summary = "Get notification history for an alert")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Notification history returned"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Alert not found")
+  })
+  @GetMapping("/{alertId}/notifications")
+  public AlertNotificationHistoryResponse getAlertNotifications(
+      @AuthenticationPrincipal AuthenticatedUser user,
+      @PathVariable UUID alertId) {
+    return notificationHistoryQuery.getHistory(user, alertId);
   }
 
   private AlertView toDto(AlertDetailView view) {

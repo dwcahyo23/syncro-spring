@@ -17,4 +17,5 @@ export const AuditLogEntryViewEntityType = {
   SPAREPART: 'SPAREPART',
   INSTALLATION: 'INSTALLATION',
   RESPONSIBILITY: 'RESPONSIBILITY',
+  ALERT: 'ALERT',
 } as const;

@@ -7,12 +7,20 @@ import { toast } from "sonner";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAcknowledgeAlert, useGetAlert, useResolveAlert, useResolveAlertOverride } from "@/lib/api/generated/syncro";
+import {
+  useAcknowledgeAlert,
+  useGetAlert,
+  useGetAlertNotifications,
+  useListAuditLogEntries,
+  useResolveAlert,
+  useResolveAlertOverride,
+} from "@/lib/api/generated/syncro";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
 
 import { AlertStatusBadge } from "./alert-status-badge";
 import { LifetimeProgress } from "./lifetime-progress";
+import { AlertNotificationHistory } from "./alert-notification-history";
 
 interface AlertDetailPageContentProps {
   alertId: string;
@@ -80,6 +88,56 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
 
   const isSuperAdmin = authUser?.applicationRole === "SUPER_ADMIN";
   const alert = data?.data;
+
+  const {
+    data: notifData,
+    isLoading: notifLoading,
+    isError: notifError,
+    error: notifErr,
+    refetch: refetchNotif,
+  } = useGetAlertNotifications(alertId, {
+    query: {
+      staleTime: 15_000,
+      retry: 1,
+      enabled: Boolean(alert) && !isError,
+    },
+  });
+
+  const {
+    data: auditData,
+    isLoading: auditLoading,
+    isError: auditError,
+    error: auditErr,
+    refetch: refetchAudit,
+  } = useListAuditLogEntries(
+    { entityType: "ALERT", entityId: alertId, size: 50, sort: "createdAt,desc" },
+    {
+      query: {
+        staleTime: 15_000,
+        enabled: Boolean(alert) && !isError,
+      },
+    },
+  );
+
+  const history = notifData?.data;
+  const auditEntries = auditData?.data.items ?? undefined;
+
+  // stale banner: OPEN and last sent >15m ago with no PENDING queued and not cancelled
+  const isStale = (() => {
+    if (!alert || alert.status !== "OPEN" || !history || history.items.length === 0) return false;
+    const hasPending = history.items.some((j) => j.status === "PENDING");
+    const hasCancelled = history.items.some((j) => j.status === "CANCELLED");
+    if (hasPending || hasCancelled) return false;
+    // find latest sentAt
+    const sentTimes = history.items
+      .map((j) => j.sentAt)
+      .filter((v): v is string => Boolean(v))
+      .map((v) => new Date(v).getTime())
+      .filter((t) => !Number.isNaN(t));
+    if (sentTimes.length === 0) return false;
+    const lastSent = Math.max(...sentTimes);
+    return Date.now() - lastSent > 15 * 60 * 1000;
+  })();
 
   const backLink = (
     <Link
@@ -249,6 +307,34 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
             consumedProductionCountSnapshot={alert.consumedProductionCountSnapshot ?? 0}
             consumedPercentageSnapshot={alert.consumedPercentageSnapshot ?? 0}
             thresholdPercentage={alert.thresholdPercentage ?? 0}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Stale escalation banner */}
+      {isStale ? (
+        <div className="rounded-md border border-amber-500/30 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-300" role="status">
+          Next escalation pending — check worker status in System Health.
+        </div>
+      ) : null}
+
+      {/* Escalation Timeline + Notification History + Audit Evidence */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Escalation & Notification History</CardTitle>
+          <CardDescription>Backend-driven timeline and WAHA delivery evidence for this alert.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AlertNotificationHistory
+            history={history}
+            auditEntries={auditEntries}
+            isLoadingHistory={notifLoading}
+            isLoadingAudit={auditLoading}
+            errorHistory={notifError ? notifErr : null}
+            errorAudit={auditError ? auditErr : null}
+            onRetryHistory={() => void refetchNotif()}
+            onRetryAudit={() => void refetchAudit()}
+            alertStatus={alert.status as "OPEN" | "ACKNOWLEDGED" | "RESOLVED"}
           />
         </CardContent>
       </Card>

@@ -12,6 +12,21 @@ import org.springframework.data.repository.query.Param;
 
 public interface NotificationJobRepository extends JpaRepository<NotificationJobEntity, UUID> {
 
+  List<NotificationJobEntity> findByAlertIdOrderByCreatedAtAsc(UUID alertId);
+
+  @Query("""
+      select j from NotificationJobEntity j
+      where j.alertId = :alertId
+      order by case j.escalationLevel
+        when 'TECHNICIAN' then 1
+        when 'STAFF' then 2
+        when 'LEADER' then 3
+        when 'SPV' then 4
+        when 'MANAGER' then 5
+        else 99 end asc
+      """)
+  List<NotificationJobEntity> findByAlertIdOrderByEscalationOrder(@Param("alertId") UUID alertId);
+
   @Query("""
       select j from NotificationJobEntity j
       where j.status = :status
