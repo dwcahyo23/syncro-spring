@@ -5106,9 +5106,61 @@ export function useResolveAlertOverride<TError = unknown, TContext = unknown>(
   });
 }
 
+// ---------------------------------------------------------------------------
+// getActiveWahaTemplate stub — pending orval regeneration after backend is running
+// ---------------------------------------------------------------------------
 
+export type WahaTemplateView = {
+  templateKey: string;
+  body: string;
+  updatedAt: string;
+};
 
+export type WahaTemplateViewResponse = { data: WahaTemplateView };
 
+export const getActiveWahaTemplate = (options?: RequestInit) =>
+  syncroFetch<WahaTemplateViewResponse>(`/api/v1/notification/templates`, {
+    method: 'GET',
+    ...options,
+  });
+
+export const getGetActiveWahaTemplateQueryKey = () =>
+  [`/api/v1/notification/templates`] as const;
+
+export function useGetActiveWahaTemplate<TData = Awaited<ReturnType<typeof getActiveWahaTemplate>>, TError = unknown>(
+  options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getActiveWahaTemplate>>, TError, TData>>; request?: SecondParameter<typeof syncroFetch> },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getGetActiveWahaTemplateQueryKey();
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getActiveWahaTemplate>>> = ({ signal }) =>
+    getActiveWahaTemplate({ signal, ...requestOptions } as RequestInit);
+  const query = useQuery({ queryKey, queryFn, ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof getActiveWahaTemplate>>, TError, TData>, queryClient) as UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+  return withQueryKey(query, queryKey);
+}
+
+// ---------------------------------------------------------------------------
+// upsertWahaTemplate stub — pending orval regeneration after backend is running
+// ---------------------------------------------------------------------------
+
+export type UpsertWahaTemplateBody = { body: string };
+
+export const upsertWahaTemplate = (body: UpsertWahaTemplateBody, options?: RequestInit) =>
+  syncroFetch<WahaTemplateViewResponse>(`/api/v1/notification/templates`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+    ...options,
+  });
+
+export function useUpsertWahaTemplate<TError = unknown, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof upsertWahaTemplate>>, TError, { data: UpsertWahaTemplateBody }, TContext> },
+): UseMutationResult<Awaited<ReturnType<typeof upsertWahaTemplate>>, TError, { data: UpsertWahaTemplateBody }, TContext> {
+  const mutationOptions = options?.mutation ?? {};
+  return useMutation({
+    mutationFn: ({ data }) => upsertWahaTemplate(data),
+    ...mutationOptions,
+  });
+}
 
 
 

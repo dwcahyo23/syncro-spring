@@ -1,14 +1,15 @@
-import { ModulePlaceholder } from "@/components/syncro/module-placeholder";
-import { RoleGuard } from "@/components/syncro/role-guard";
+import { WahaTemplatePageContent } from "@/features/waha-templates/waha-template-page-content";
 
 export default function Page() {
   return (
-    <RoleGuard allowedRoles={["SUPER_ADMIN"]} title="WAHA Templates">
-      <ModulePlaceholder
-        title="WAHA Templates"
-        description="WhatsApp alert message template shell."
-        sections={["Template editor placeholder", "Variable picker placeholder", "Preview placeholder"]}
-      />
-    </RoleGuard>
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-xl font-semibold">WAHA Templates</h1>
+        <p className="text-sm text-muted-foreground">
+          WhatsApp alert message templates for sparepart threshold notifications.
+        </p>
+      </div>
+      <WahaTemplatePageContent />
+    </div>
   );
 }
