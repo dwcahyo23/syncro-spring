@@ -21,6 +21,8 @@ import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
 import com.syncro.auth.infrastructure.PlantEntity;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.masterdata.infrastructure.MachineGroupEntity;
+import com.syncro.notification.domain.NotificationJobStatus;
+import com.syncro.notification.infrastructure.NotificationJobRepository;
 import com.syncro.sparepart.infrastructure.MachineSparepartInstallationEntity;
 import com.syncro.sparepart.infrastructure.SparepartEntity;
 import java.math.BigDecimal;
@@ -42,11 +44,13 @@ class SparepartAlertCommandServiceTest {
   @Mock private SparepartAlertRepository alertRepository;
   @Mock private AuditLogWriter auditLogWriter;
   @Mock private AuthUserPlantAssignmentRepository assignments;
+  @Mock private NotificationJobRepository notificationJobRepository;
 
   private final Clock clock = Clock.fixed(Instant.parse("2026-08-19T10:00:00Z"), ZoneOffset.UTC);
 
   private SparepartAlertCommandService service() {
-    return new SparepartAlertCommandService(alertRepository, auditLogWriter, assignments, clock);
+    return new SparepartAlertCommandService(
+        alertRepository, auditLogWriter, assignments, notificationJobRepository, clock);
   }
 
   // --- helpers ---
@@ -266,6 +270,94 @@ class SparepartAlertCommandServiceTest {
 
     assertThat(a.getStatus()).isEqualTo(SparepartAlertStatus.ACKNOWLEDGED);
     assertThat(a.getStatusReason()).isNull();
+  }
+
+  // --- acknowledge cancellation tests ---
+
+  @Test
+  void acknowledge_cancelsActiveNotificationJobs() {
+    var alertId = UUID.randomUUID();
+    var p = plant(UUID.randomUUID());
+    var g = machineGroup(UUID.randomUUID(), p);
+    var m = machine(UUID.randomUUID(), p, g);
+    var sp = sparepart(UUID.randomUUID());
+    var inst = installation(UUID.randomUUID(), m, sp);
+    var a = alert(alertId, inst, SparepartAlertStatus.OPEN);
+
+    when(alertRepository.findByIdWithDetails(alertId)).thenReturn(Optional.of(a));
+    when(alertRepository.save(a)).thenReturn(a);
+
+    service().acknowledge(superAdmin(), alertId, "reason");
+
+    verify(notificationJobRepository).cancelActiveForAlert(
+        alertId,
+        List.of(NotificationJobStatus.PENDING, NotificationJobStatus.SENT),
+        NotificationJobStatus.CANCELLED,
+        Instant.now(clock));
+  }
+
+  @Test
+  void acknowledge_writesEscalationCancelledCountInAudit() {
+    var alertId = UUID.randomUUID();
+    var p = plant(UUID.randomUUID());
+    var g = machineGroup(UUID.randomUUID(), p);
+    var m = machine(UUID.randomUUID(), p, g);
+    var sp = sparepart(UUID.randomUUID());
+    var inst = installation(UUID.randomUUID(), m, sp);
+    var a = alert(alertId, inst, SparepartAlertStatus.OPEN);
+
+    when(alertRepository.findByIdWithDetails(alertId)).thenReturn(Optional.of(a));
+    when(alertRepository.save(any())).thenReturn(a);
+    when(notificationJobRepository.cancelActiveForAlert(any(), any(), any(), any())).thenReturn(2);
+
+    var user = superAdmin();
+    service().acknowledge(user, alertId, "reason");
+
+    var captor = ArgumentCaptor.forClass(AuditRecord.class);
+    verify(auditLogWriter).recordSystem(captor.capture());
+    var record = captor.getValue();
+    assertThat(record.newValue()).containsEntry("escalationCancelledCount", 2);
+  }
+
+  @Test
+  void acknowledge_zeroCancelledJobs_stillWritesAudit() {
+    var alertId = UUID.randomUUID();
+    var p = plant(UUID.randomUUID());
+    var g = machineGroup(UUID.randomUUID(), p);
+    var m = machine(UUID.randomUUID(), p, g);
+    var sp = sparepart(UUID.randomUUID());
+    var inst = installation(UUID.randomUUID(), m, sp);
+    var a = alert(alertId, inst, SparepartAlertStatus.OPEN);
+
+    when(alertRepository.findByIdWithDetails(alertId)).thenReturn(Optional.of(a));
+    when(alertRepository.save(any())).thenReturn(a);
+    when(notificationJobRepository.cancelActiveForAlert(any(), any(), any(), any())).thenReturn(0);
+
+    var user = superAdmin();
+    service().acknowledge(user, alertId, "reason");
+
+    var captor = ArgumentCaptor.forClass(AuditRecord.class);
+    verify(auditLogWriter).recordSystem(captor.capture());
+    var record = captor.getValue();
+    assertThat(record.newValue()).containsEntry("escalationCancelledCount", 0);
+  }
+
+  @Test
+  void acknowledge_invalidTransition_doesNotCancelJobs() {
+    var alertId = UUID.randomUUID();
+    var p = plant(UUID.randomUUID());
+    var g = machineGroup(UUID.randomUUID(), p);
+    var m = machine(UUID.randomUUID(), p, g);
+    var sp = sparepart(UUID.randomUUID());
+    var inst = installation(UUID.randomUUID(), m, sp);
+    var a = alert(alertId, inst, SparepartAlertStatus.ACKNOWLEDGED);
+
+    when(alertRepository.findByIdWithDetails(alertId)).thenReturn(Optional.of(a));
+
+    assertThatThrownBy(() -> service().acknowledge(superAdmin(), alertId, null))
+        .isInstanceOf(AlertInvalidTransitionException.class);
+
+    verify(notificationJobRepository, never()).cancelActiveForAlert(any(), any(), any(), any());
   }
 
   // --- resolve tests ---

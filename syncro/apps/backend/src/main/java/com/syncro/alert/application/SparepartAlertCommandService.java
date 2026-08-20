@@ -11,6 +11,8 @@ import com.syncro.audit.domain.AuditEntityType;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
+import com.syncro.notification.domain.NotificationJobStatus;
+import com.syncro.notification.infrastructure.NotificationJobRepository;
 import java.time.Clock;
 import java.util.List;
 import java.util.Map;
@@ -24,16 +26,19 @@ public class SparepartAlertCommandService {
   private final SparepartAlertRepository alertRepository;
   private final AuditLogWriter auditLogWriter;
   private final AuthUserPlantAssignmentRepository assignments;
+  private final NotificationJobRepository notificationJobRepository;
   private final Clock clock;
 
   public SparepartAlertCommandService(
       SparepartAlertRepository alertRepository,
       AuditLogWriter auditLogWriter,
       AuthUserPlantAssignmentRepository assignments,
+      NotificationJobRepository notificationJobRepository,
       Clock clock) {
     this.alertRepository = alertRepository;
     this.auditLogWriter = auditLogWriter;
     this.assignments = assignments;
+    this.notificationJobRepository = notificationJobRepository;
     this.clock = clock;
   }
 
@@ -53,6 +58,14 @@ public class SparepartAlertCommandService {
 
     alertRepository.save(alert);
 
+    // Stop escalation for this alert: PENDING jobs must not dispatch and SENT
+    // jobs must not escalate, all in the same transaction as the acknowledge.
+    int escalationCancelledCount = notificationJobRepository.cancelActiveForAlert(
+        alertId,
+        List.of(NotificationJobStatus.PENDING, NotificationJobStatus.SENT),
+        NotificationJobStatus.CANCELLED,
+        clock.instant());
+
     auditLogWriter.recordSystem(new AuditRecord(
         AuditAction.UPDATE,
         AuditEntityType.ALERT,
@@ -60,7 +73,7 @@ public class SparepartAlertCommandService {
         "ALERT:" + alertId,
         resolvePlantId(alert),
         Map.of("status", "OPEN"),
-        Map.of("actorId", user.id(), "transition", "OPEN→ACKNOWLEDGED", "status", "ACKNOWLEDGED", "reason", reason != null ? reason : "")));
+        Map.of("actorId", user.id(), "transition", "OPEN→ACKNOWLEDGED", "status", "ACKNOWLEDGED", "reason", reason != null ? reason : "", "escalationCancelledCount", escalationCancelledCount)));
   }
 
   /**
