@@ -1,0 +1,62 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "influxdb-docs": {
+      "type": "remote",
+      "url": "https://influxdb-docs.mcp.kapa.ai",
+      "enabled": true
+    },
+    "spring-docs": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@enokdev/springdocs-mcp@latest"
+      ],
+      "enabled": true
+    },
+    "context7": {
+      "type": "remote",
+      "url": "https://mcp.context7.com/mcp",
+      "enabled": false
+    },
+    "postgres": {
+      "type": "local",
+      "command": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "syncro/scripts/postgres-mcp.ps1"
+      ],
+      "enabled": true
+    },
+    "next-devtools": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "next-devtools-mcp@latest"
+      ],
+      "enabled": true
+    },
+    "playwright": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@playwright/mcp@latest"
+      ],
+      "enabled": true
+    },
+    "chrome-devtools": {
+      "type": "local",
+      "command": [
+        "pwsh",
+        "-NoProfile",
+        "-File",
+        "syncro/scripts/chrome-devtools-mcp.ps1"
+      ],
+      "enabled": true
+    }
+  }
+}

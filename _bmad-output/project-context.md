@@ -1,11 +1,11 @@
 ---
 project_name: 'Syncro'
 user_name: 'Yusuf'
-date: '2026-05-26'
+date: '2026-08-20'
 status: 'complete'
-rule_count: 212
+rule_count: 236
 optimized_for_llm: true
-sections_completed: ['discovery', 'technology_stack', 'language_specific_rules', 'framework_specific_rules', 'testing_rules', 'code_quality_style_rules', 'development_workflow_rules', 'critical_dont_miss_rules']
+sections_completed: ['discovery', 'technology_stack', 'documentation_mcp_rules', 'language_specific_rules', 'framework_specific_rules', 'testing_rules', 'code_quality_style_rules', 'development_workflow_rules', 'critical_dont_miss_rules']
 existing_patterns_found: 31
 source_artifacts:
   - _bmad-output/planning-artifacts/architecture.md
@@ -13,6 +13,9 @@ source_artifacts:
   - _bmad-output/planning-artifacts/ux-design-specification.md
   - _bmad-output/planning-artifacts/frontend-hardening-specification.md
   - _bmad-output/planning-artifacts/page-specifications.md
+  - opencode.json
+  - syncro/scripts/postgres-mcp.ps1
+  - syncro/scripts/chrome-devtools-mcp.ps1
 ---
 
 # Project Context for AI Agents
@@ -39,6 +42,31 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - WAHA API, webhook payloads, session names, URLs, and auth secrets are external contracts; configure through env/properties and do not hardcode them in source.
 - Testcontainers tests must use container-provided mapped ports and service images compatible with local infra contracts; do not hardcode host ports.
 - Architecture docs may mention Spring Boot `3.5.14`; current backend source uses Spring Boot `4.0.6` and is implementation authority. If docs conflict with manifests/config, source wins and docs need separate update.
+
+## Documentation MCP Reference (Anti-Hallucination)
+
+> **Wajib cek MCP/docs sebelum jawab atau coding — jangan halu. Jika ragu API/config/schema, panggil MCP yang relevan terlebih dulu.**
+
+- MCP adalah sumber kebenaran untuk API, config, dan schema — lebih autoritatif dari memori model. Jangan tebak signature, annotation, atau column name.
+- Konfigurasi MCP ada di `opencode.json` (`mcp` key); kredensial Postgres di-load dari `syncro/.env` via `syncro/scripts/postgres-mcp.ps1`, jangan hardcode di config.
+- **Kapan pakai MCP apa (wajib sebelum implementasi/jawab):**
+
+  | Topik / Keraguan | MCP yang dipakai | Kapan wajib dipanggil |
+  |---|---|---|
+  | Spring Boot 4, Spring Security, JPA, Validation, Actuator, Maven Jakarta namespace | `spring-docs` (local `npx @enokdev/springdocs-mcp@latest`) | Setiap cek annotation, config properties, API break dari Boot 3 → 4, atau contoh `javax.*` vs `jakarta.*` |
+  | Schema PostgreSQL, Flyway migrations, constraints, indexes, enum, seed data | `postgres` (local `syncro/scripts/postgres-mcp.ps1` → `@modelcontextprotocol/server-postgres` read-only) | Sebelum tulis query/migration/entity/DTO — cek tabel/kolom aktual, jangan karang nama kolom |
+  | InfluxDB bucket/measurement/tags/fields/retention | `influxdb-docs` (remote `https://influxdb-docs.mcp.kapa.ai`) | Sebelum tambah ingest, query, atau tag/field baru |
+  | Next.js 16, React 19, App Router, Server/Client Component, rewrites | `next-devtools` (local `npx next-devtools-mcp@latest`) | Sebelum ubah `app/*` routing, `next.config.mjs`, atau boundary `"use client"` |
+  | Verifikasi UI, E2E, interaksi browser, screenshot | `playwright` (local `npx @playwright/mcp@latest`) | Untuk bukti visual / cek loading-empty-error-stale states |
+  | Debug frontend, a11y, performance, inspect Chrome | `chrome-devtools` (local `syncro/scripts/chrome-devtools-mcp.ps1` → `chrome-devtools-mcp@latest`) | Saat butuh inspect DOM, console, network, atau contrast/focus |
+  | Library umum (Tailwind, Radix, shadcn, Recharts, Zustand, RHF+Zod) | `context7` (remote `https://mcp.context7.com/mcp`, currently `enabled:false`) | Enable (`enabled:true` di `opencode.json`) lalu query jika butuh versi/API terbaru — jangan tebak props |
+
+- Alur anti-halu: `1) identifikasi domain keraguan → 2) panggil MCP terkait → 3) kutip hasil MCP di jawaban/code → 4) baru implement`. Jika MCP tidak menjawab, fallback ke `Read` source manifests (`pom.xml`, `package.json`, `syncro/.env.example`, `app/*`), bukan mengarang.
+- Untuk Spring Boot 4 / Jakarta: selalu verifikasi via `spring-docs` — jangan copy contoh Boot 3 / `javax.*` dari internet tanpa cek MCP.
+- Untuk DB/Influx: `postgres` MCP itu read-only — gunakan untuk `list_tables`, `describe_table`, `query` selektif; jangan asumsikan `ddl-auto` atau kolom ada.
+- Jika butuh enable `context7`, ubah `enabled:false→true` di `opencode.json` dan restart opencode, lalu query dengan `library + version` eksplisit (mis. `tailwind 4.1.5`).
+- Simpan bukti: sebutkan MCP/tools yang dipakai di commit/PR notes dan di pemetaan `AC -> evidence` saat claim selesai.
+
 ## Critical Implementation Rules
 
 ### Language-Specific Rules
@@ -260,6 +288,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - Read this file before implementing any code.
 - Follow all rules exactly as documented.
 - When in doubt, prefer the more restrictive option.
+- **Anti-halu wajib:** jika butuh fakta API/schema/config, panggil MCP di `## Documentation MCP Reference` dulu (spring-docs / postgres / influxdb-docs / next-devtools / context7) — jangan jawab dari memori.
 - Update this file if new non-obvious patterns emerge.
 
 **For Humans:**
@@ -269,4 +298,4 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - Review periodically for outdated rules.
 - Remove rules that become obvious or duplicated elsewhere.
 
-Last Updated: 2026-05-26
+Last Updated: 2026-08-20 (added Documentation MCP Reference — anti-hallucination via opencode.json MCPs)
