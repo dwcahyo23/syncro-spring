@@ -99,7 +99,7 @@ development_status:
   epic-5: in-progress
   5-1-create-waha-template-editor: done
   5-2-queue-initial-waha-notification-for-open-alert: done
-  5-3-send-notification-job-through-waha-with-attempt-history: review
+  5-3-send-notification-job-through-waha-with-attempt-history: done
   5-4-escalate-alert-notifications-by-responsibility-level: backlog
   5-5-stop-escalation-when-alert-is-acknowledged: backlog
   5-6-show-escalation-timeline-and-notification-history: backlog

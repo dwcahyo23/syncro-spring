@@ -191,6 +191,13 @@ Existing test pattern from `WahaTemplateControllerTest`:
 - `NotificationJobEntity` existing fields: [Source: notification/infrastructure/NotificationJobEntity.java]
 - `NotificationJobRepository` (extend here): [Source: notification/infrastructure/NotificationJobRepository.java]
 
+### Review Findings
+
+- [x] [Review][Patch] No idempotency lock — concurrent pollers can double-process the same job (AC 9) [NotificationJobRepository.java:13]
+- [x] [Review][Patch] No UNIQUE constraint on (job_id, attempt_number) in notification_attempts — duplicate attempt records possible [V25__create_notification_attempts.sql]
+- [x] [Review][Patch] No composite index on (status, next_attempt_at) on notification_jobs — full table scan on every poll [V25__create_notification_attempts.sql]
+- [x] [Review][Patch] No CHECK (max_attempts > 0) constraint — maxAttempts=0 exhausts a job before first dispatch [V25__create_notification_attempts.sql]
+
 ## Dev Agent Record
 
 ### Agent Model Used

@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -58,6 +59,10 @@ public class NotificationJobEntity {
 
   @Column(name = "max_attempts", nullable = false)
   private int maxAttempts = 3;
+
+  @Version
+  @Column(name = "version", nullable = false)
+  private long version;
 
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
@@ -175,5 +180,9 @@ public class NotificationJobEntity {
 
   public Instant getUpdatedAt() {
     return updatedAt;
+  }
+
+  public long getVersion() {
+    return version;
   }
 }
