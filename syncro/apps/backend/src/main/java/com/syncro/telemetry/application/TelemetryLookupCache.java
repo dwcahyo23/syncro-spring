@@ -20,12 +20,12 @@ class TelemetryLookupCache {
     this.machines = machines;
   }
 
-  @Cacheable(value = "telemetry-plants", key = "#plantCode.toLowerCase()", unless = "#result.isEmpty()")
+  @Cacheable(value = "telemetry-plants", key = "#plantCode.toLowerCase()", unless = "#result == null")
   public Optional<PlantEntity> findPlant(String plantCode) {
     return plants.findByCodeIgnoreCase(plantCode);
   }
 
-  @Cacheable(value = "telemetry-machines", key = "#plantId + ':' + #machineCode.toLowerCase()", unless = "#result.isEmpty()")
+  @Cacheable(value = "telemetry-machines", key = "#plantId + ':' + #machineCode.toLowerCase()", unless = "#result == null")
   public Optional<MachineEntity> findMachine(UUID plantId, String machineCode) {
     return machines.findByPlantIdAndCodeIgnoreCaseWithPlantAndGroup(plantId, machineCode);
   }

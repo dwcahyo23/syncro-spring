@@ -2,6 +2,7 @@ package com.syncro.telemetry.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.influxdb.v3.client.InfluxDBClient;
 import com.syncro.auth.infrastructure.PlantEntity;
 import com.syncro.auth.infrastructure.PlantRepository;
 import com.syncro.machine.domain.MachineStatus;
@@ -13,13 +14,16 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cache.CacheManager;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -30,11 +34,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
     "REDIS_PORT=6379",
     "INFLUXDB_HOST=localhost",
     "INFLUXDB_PORT=8086",
-    "INFLUXDB_USERNAME=test",
-    "INFLUXDB_PASSWORD=test",
-    "INFLUXDB_TOKEN=test",
-    "INFLUXDB_ORG=test",
-    "INFLUXDB_BUCKET=test",
+    "INFLUXDB_TOKEN=apiv3_testtoken00000000000000000000000000000000000000000000000000000000000000",
+    "INFLUXDB_DATABASE=syncro_test",
     "SYNCRO_MQTT_HOST=localhost",
     "SYNCRO_MQTT_PORT=1883",
     "SYNCRO_MQTT_USERNAME=test",
@@ -57,6 +58,9 @@ class TelemetryValidationIntegrationTest {
   @Container
   static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
 
+  @MockitoBean
+  InfluxDBClient influxDBClient;
+
   @DynamicPropertySource
   static void postgresProperties(DynamicPropertyRegistry registry) {
     registry.add("spring.datasource.url", postgres::getJdbcUrl);
@@ -75,6 +79,17 @@ class TelemetryValidationIntegrationTest {
 
   @Autowired
   private MachineRepository machines;
+
+  @Autowired
+  private CacheManager cacheManager;
+
+  @BeforeEach
+  void clearCaches() {
+    cacheManager.getCacheNames().forEach(name -> {
+      var cache = cacheManager.getCache(name);
+      if (cache != null) cache.clear();
+    });
+  }
 
   @Test
   @DisplayName("3.2-VAL-001 P0 valid topic and payload accepted for registered machine")
