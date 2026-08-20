@@ -12,7 +12,7 @@ warnings: []
 
 # Story 5.5: Stop Escalation When Alert Is Acknowledged
 
-Status: review
+Status: done
 
 ## Story
 
@@ -224,3 +224,8 @@ claude-sonnet-4.6 (openagentic/claude-sonnet-4.6)
 - `syncro/apps/backend/src/test/java/com/syncro/alert/application/SparepartAlertCommandServiceTest.java`
 - `syncro/apps/backend/src/test/java/com/syncro/notification/infrastructure/NotificationJobEntityTest.java`
 - `syncro/apps/backend/src/test/java/com/syncro/notification/infrastructure/NotificationJobCancelIntegrationTest.java`
+
+### Review Findings
+
+- [x] [Review][Decision] CHECK constraint in V28 lacks NOT VALID — will fail migration if any existing rows carry an unrecognised status string — `V28__notification_job_cancelled_status.sql:8`. Decision: keep as-is (option c) — DB is known-clean, all inserts are enum-guarded via JPA.
+- [x] [Review][Patch] `markCancelled()` on `NotificationJobEntity` is unreachable dead code — no production call site exists [`NotificationJobEntity.java:103`] — fixed: method and its 2 unit tests removed.
