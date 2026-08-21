@@ -4,7 +4,7 @@ baseline_commit: 4a226b4aab155ecb0d896f88c697ff625b2c65ac
 
 # Story 6.2: Report Telemetry Ingest Worker Status
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -136,4 +136,12 @@ deepseek-v4-flash-free (openagentic), 2026-08-21
 ## Change Log
 
 - 2026-08-21: Implemented story 6.2 — telemetry ingest worker status endpoint; 21 new/updated tests; no regressions vs. baseline (Failures: 2, Errors: 134 pre-existing).
+
+### Review Findings (2026-08-21)
+
+- [x] [Review][Decision] `recordAccepted()` fires before persist succeeds — false-green RUNNING when persistence fails or duplicates arrive — `MqttTelemetryIngestHandler.java:54`. The spec (Task 1) explicitly directed `recordAccepted()` BEFORE `persistenceService.persist()`, so the code complies with the spec. However, when persist throws (dedupe gate unavailable, machine deleted, Influx/Redis write fail), the tracker already recorded acceptance, and the message is silently dropped. The status endpoint reports RUNNING with fresh `lastAcceptedAt` while telemetry is NOT entering Syncro (AC 3/4 intent). Also, duplicates return early inside `persist()` (line 72) but already bumped `acceptedCount`/`lastAcceptedAt`. Options: (a) keep spec-directed validation-accept semantics, (b) move `recordAccepted()` after successful persist. **Resolved: (a) keep spec semantics — validation-accept point, matches `mqtt_telemetry_accepted` log semantics (user decision 2026-08-21).**
+- [x] [Review][Decision] Raw broker error text exposed in `statusReason` — `IngestWorkerStatusService.java:63`. The `IngestWorkerStatus` javadoc explicitly allows it (SUPER_ADMIN-only endpoint), but it contradicts the project's sanitisation decision in `MqttHealthIndicator` (sanitized for unauthenticated /actuator/health). **Resolved: (a) keep raw text — endpoint is SUPER_ADMIN-only, javadoc-documented (user decision 2026-08-21).**
+- [x] [Review][Decision] Stale threshold boundary semantics — `IngestWorkerStatusService.java:69`. `Duration.between(lastAcceptedAt, now).compareTo(staleThreshold) <= 0` means at exactly elapsed == threshold, still RUNNING. AC 4: "telemetry has not been accepted for the stale threshold" — at exact equality, the condition is arguably satisfied. **Resolved: (b) keep `<=` — stale only when elapsed > threshold (user decision 2026-08-21).**
+- [x] [Review][Patch] Negative elapsed guard — `IngestWorkerStatusService.java:69`. If clock moves backward (NTP adjustment), `elapsed.isNegative()` causes RUNNING without staleness check. **Fixed 2026-08-21: negative elapsed treated as fresh (RUNNING), consistent with stale-only-when-elapsed>threshold decision.**
+- [x] [Review][Patch] Concurrent `recordAccepted` race — `TelemetryIngestTracker.java:29`. Two worker threads (workerThreads=2) can write `lastAcceptedAt` out of order, regressing the timestamp. **Fixed 2026-08-21: `recordAccepted()` made `synchronized` with monotonic `now.isAfter(lastAcceptedAt)` guard.**
 

@@ -66,13 +66,17 @@ public class IngestWorkerStatusService {
         if (lastAcceptedAt == null) {
           state = IngestWorkerState.RUNNING;
           reason = null;
-        } else if (Duration.between(lastAcceptedAt, now).compareTo(staleThreshold) <= 0) {
-          state = IngestWorkerState.RUNNING;
-          reason = null;
         } else {
-          state = IngestWorkerState.DEGRADED;
-          reason = "No telemetry accepted since " + lastAcceptedAt;
-          staleSince = lastAcceptedAt.plus(staleThreshold);
+          Duration elapsed = Duration.between(lastAcceptedAt, now);
+          boolean stale = !elapsed.isNegative() && elapsed.compareTo(staleThreshold) > 0;
+          if (stale) {
+            state = IngestWorkerState.DEGRADED;
+            reason = "No telemetry accepted since " + lastAcceptedAt;
+            staleSince = lastAcceptedAt.plus(staleThreshold);
+          } else {
+            state = IngestWorkerState.RUNNING;
+            reason = null;
+          }
         }
       }
       default -> {

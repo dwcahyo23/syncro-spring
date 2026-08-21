@@ -25,8 +25,11 @@ public class TelemetryIngestTracker {
   }
 
   /** Records an accepted telemetry message; {@code lastAcceptedAt} becomes {@code now}. */
-  public void recordAccepted() {
-    lastAcceptedAt = Instant.now(clock);
+  public synchronized void recordAccepted() {
+    Instant now = Instant.now(clock);
+    if (lastAcceptedAt == null || now.isAfter(lastAcceptedAt)) {
+      lastAcceptedAt = now;
+    }
     acceptedCount.incrementAndGet();
   }
 
