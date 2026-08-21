@@ -2,7 +2,7 @@
 title: 'Provide Pilot MQTT Payload Fixtures'
 type: 'feature'
 created: '2026-08-22'
-status: 'ready-for-dev'
+status: 'review'
 review_loop_iteration: 0
 followup_review_recommended: false
 baseline_commit: d75efee
@@ -107,11 +107,11 @@ warnings: []
 
 **Execution:**
 
-- [ ] `syncro/tests/fixtures/mqtt-jbf19-before-threshold-payload.json` -- NEW -- exact content per Code Map (BOM-less UTF-8, 2-space indent, trailing newline; `counting=890`). [AC 7.2-1, AC 7.2-2, AC 7.2-4, AC 7.2-5, AC 7.2-6]
-- [ ] `syncro/tests/fixtures/mqtt-jbf19-threshold-payload.json` -- NEW -- exact content per Code Map (`counting=900`). [AC 7.2-1, AC 7.2-3, AC 7.2-4, AC 7.2-5, AC 7.2-6]
-- [ ] `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/PilotMqttPayloadFixtureTest.java` -- NEW -- the three test methods + repo-path fixture resolver per Code Map; production parser/topic/calculator only; no Spring context, no containers, no new dependencies. [AC 7.2-7]
-- [ ] Verify: run `mvn -q -f syncro/apps/backend/pom.xml test -Dtest="PilotMqttPayloadFixtureTest"` → BUILD SUCCESS (no Docker required — pure parse-level test). No frontend changes → no web checks needed; state this explicitly in the completion record. [all ACs]
-- [ ] Verify scope: `git status --short` shows exactly the three NEW files plus story/sprint artifacts; zero modifications to existing source, seed, migrations, config, or anything under `syncro/apps/web/`. [all ACs]
+- [x] `syncro/tests/fixtures/mqtt-jbf19-before-threshold-payload.json` -- NEW -- exact content per Code Map (BOM-less UTF-8, 2-space indent, trailing newline; `counting=890`). [AC 7.2-1, AC 7.2-2, AC 7.2-4, AC 7.2-5, AC 7.2-6]
+- [x] `syncro/tests/fixtures/mqtt-jbf19-threshold-payload.json` -- NEW -- exact content per Code Map (`counting=900`). [AC 7.2-1, AC 7.2-3, AC 7.2-4, AC 7.2-5, AC 7.2-6]
+- [x] `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/PilotMqttPayloadFixtureTest.java` -- NEW -- the three test methods + repo-path fixture resolver per Code Map; production parser/topic/calculator only; no Spring context, no containers, no new dependencies. [AC 7.2-7]
+- [x] Verify: run `mvn -q -f syncro/apps/backend/pom.xml test -Dtest="PilotMqttPayloadFixtureTest"` → BUILD SUCCESS (no Docker required — pure parse-level test). No frontend changes → no web checks needed; state this explicitly in the completion record. [all ACs]
+- [x] Verify scope: `git status --short` shows exactly the three NEW files plus story/sprint artifacts; zero modifications to existing source, seed, migrations, config, or anything under `syncro/apps/web/`. [all ACs]
 
 **Acceptance Criteria:**
 
@@ -126,6 +126,7 @@ warnings: []
 ## Spec Change Log
 
 - 2026-08-22: Spec created (draft → ready-for-dev). Ultimate context engine analysis completed — comprehensive developer guide created.
+- 2026-08-22: Implemented via dev-story workflow — both fixtures + hermetic verification test created, all Verification commands green (3/3 tests, scope check clean), status ready-for-dev → in-progress → review.
 
 ## Design Notes
 
@@ -152,8 +153,30 @@ warnings: []
 
 ### Agent Model Used
 
+- builtin:zai-start-plan/GLM-5.3 (ZCode `bmad-dev-story` session, 2026-08-22)
+
 ### Debug Log References
+
+- First `mvn -q -f syncro/apps/backend/pom.xml test -Dtest="PilotMqttPayloadFixtureTest"` run: testCompile failure — `unreported exception java.io.IOException` at the two acceptance test methods that call the identity helper; fixed by declaring `throws IOException` on both test methods (no other changes).
+- Canonical verification run (final): surefire `com.syncro.telemetry.application.PilotMqttPayloadFixtureTest` — `Tests run: 3, Failures: 0, Errors: 0, Skipped: 0` (0.551 s), Maven exit code 0 (BUILD SUCCESS). No Docker required.
+- Negative control (proves the test bites on fixture drift): temp-dir copies with `counting` mutated 890→891 and an added `extraField`, run with `-Dsyncro.pilot.fixtures.dir=<temp>` → `Tests run: 3, Failures: 2` — `beforeThresholdFixtureIsAcceptedWirePayloadBelowAlertBoundary` (expected 890L) and `fixturesContainExactlyTheCanonicalFieldSet` (key-set mismatch), BUILD FAILURE. Also proves the resolver's system-property override reaches the forked surefire JVM. Temp dir deleted afterwards.
+- Fixture byte inspection: both files start `7b 0a` (no UTF-8 BOM) and end `7d 0a` (trailing LF newline).
+- `git status --short` at HEAD `b4046e9`: exactly the three NEW deliverable files plus this spec and sprint-status.yaml; zero modifications anywhere else (no production code, seed, migrations, config, nothing under `syncro/apps/web/`).
 
 ### Completion Notes List
 
+- Implemented exactly per the Code Map: both fixture files wire-verbatim (`counting` 890/900, messageIds `pilot-jbf19-before-threshold-890` / `pilot-jbf19-threshold-900`, monotone example timestamps `2026-08-22T00:00:00Z` / `2026-08-22T00:01:00Z`, identity `GM1` / `BF-08410`) and the hermetic `PilotMqttPayloadFixtureTest` (plain JUnit 5 + AssertJ + Jackson; production `TelemetryPayload.parse` / `TelemetryTopic.parse` / `CountingDeltaCalculator` plus the `SparepartLifetimeEvaluator` percentage formula and `SparepartAlertService` comparator semantics recomputed via `BigDecimal` HALF_UP 2dp + `compareTo`; no Spring context, no containers, no new dependencies).
+- AC evidence mapping: AC 7.2-1 → the two files exist at `syncro/tests/fixtures/` and nothing else added there (git status); AC 7.2-2 → `beforeThresholdFixtureIsAcceptedWirePayloadBelowAlertBoundary` (parse Accepted, delta 890, 89.00% `compareTo(90) < 0`); AC 7.2-3 → `thresholdFixtureIsAcceptedWirePayloadReachingAlertBoundary` (delta 900, 90.00% `compareTo(90) >= 0`); AC 7.2-4 / 7.2-5 / 7.2-6 → `fixturesContainExactlyTheCanonicalFieldSet` (exact 8-key set, non-blank distinct messageIds ≤ 255 chars, `Instant.parse` succeeds, BOM-less + trailing newline, data-only content); AC 7.2-7 → the test loads the actual files via the repo-path resolver (`syncro.pilot.fixtures.dir` override, `../../tests/fixtures` for surefire cwd, `tests/fixtures` for repo-root cwd).
+- Red/green note: this story's deliverable is itself the verification test over spec-pinned data, so the spec's fixtures-first task sequence was followed as written; the RED side (assertions actually fail on bad input) is evidenced by the negative-control run above, the GREEN side by the canonical run.
+- No frontend changes → no web checks needed (explicit per spec Task 4).
+- TDD task order note: story task sequence (fixtures → test → verify) followed exactly as written; no HALT conditions were hit (no new dependencies, no config gaps, no 3 consecutive failures — the single compile error was fixed on the first retry).
+- Residual risks: none within this story's scope. Deferred by design: end-to-end alert/notification behavior is 7-4/7-5 scope; 7-3 must implement the recorded consumer contract (publish file body verbatim, SHOULD refresh only `timestamp` at publish time, keep `messageId` verbatim for the dedupe-window evidence).
+- Pre-existing unrelated test failures (SparepartAlertCommandServiceTest, WahaRateLimiterTest, influxdb/DbIndexHygiene @SpringBootTest stalls) were not touched and are out of scope per story instructions; the story's own verification gate (`PilotMqttPayloadFixtureTest`) is fully green.
+
 ### File List
+
+- `syncro/tests/fixtures/mqtt-jbf19-before-threshold-payload.json` (NEW)
+- `syncro/tests/fixtures/mqtt-jbf19-threshold-payload.json` (NEW)
+- `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/PilotMqttPayloadFixtureTest.java` (NEW)
+- `_bmad-output/implementation-artifacts/spec-7-2-provide-pilot-mqtt-payload-fixtures.md` (MODIFIED — frontmatter status, Tasks checkboxes, Dev Agent Record, Spec Change Log)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (MODIFIED — story 7-2 → review)
