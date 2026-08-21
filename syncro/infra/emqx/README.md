@@ -33,6 +33,8 @@ All other actions are denied.
 
 Note: the `auth-bootstrap.csv` credential for a device only loads on first EMQX data-volume creation (bootstrap is first-start-only), while the ACL rules in `docker-entrypoint.sh` are upserted on every container start — after editing the CSV on an existing stack, add the credential via the EMQX dashboard/API and restart the container to pick up the ACL rule (see "Adding a New Device").
 
+- Legacy note: on stacks bootstrapped BEFORE the username/topic convention fix, the old swapped rule (`device_BF-08410_GM1` -> `factory/BF-08410/GM1/telemetry`) lingers in the EMQX built-in DB (upserts never delete) and can be removed via the EMQX Dashboard (Access Control -> ACL) or the Management API; fresh stacks only get the corrected rule.
+
 ### Device Credential Convention
 
 Each registered machine gets its own MQTT credential:
@@ -120,6 +122,8 @@ Development uses plaintext TCP on port 1883. Production requires TLS on port 888
 
 Requires `mosquitto-clients` installed locally.
 
+(replace <device-password> with the device row's password from the local auth-bootstrap.csv)
+
 ```sh
 # Should SUCCEED: backend subscribes to all telemetry
 mosquitto_sub -h localhost -p 1883 \
@@ -132,16 +136,16 @@ mosquitto_pub -h localhost -p 1883 \
 
 # Should SUCCEED: device publishes to its own topic
 mosquitto_pub -h localhost -p 1883 \
-  -u device_GM1_BF-08410 -P "Device@Mqtt#2026!Dev" \
+  -u device_GM1_BF-08410 -P "<device-password>" \
   -t "factory/GM1/BF-08410/telemetry" -m '{"running":true}'
 
 # Should FAIL: device publishes to a different machine topic
 mosquitto_pub -h localhost -p 1883 \
-  -u device_GM1_BF-08410 -P "Device@Mqtt#2026!Dev" \
+  -u device_GM1_BF-08410 -P "<device-password>" \
   -t "factory/GM1/CNC-01/telemetry" -m '{"running":true}'
 
 # Should FAIL: device tries to subscribe (not permitted)
 mosquitto_sub -h localhost -p 1883 \
-  -u device_GM1_BF-08410 -P "Device@Mqtt#2026!Dev" \
+  -u device_GM1_BF-08410 -P "<device-password>" \
   -t "factory/#" -C 1 -W 3
 ```

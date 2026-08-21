@@ -7,10 +7,12 @@
     Reads ONLY state the production pipeline already persists, through the established
     in-container exec patterns (no host tooling, no credentials):
       - PostgreSQL via: docker compose --env-file <env> -f <compose> exec -T postgres `
-            sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -A -c "<sql>"'
-        (machine_counter_states, sparepart_alerts, notification_jobs, telemetry_quarantine,
-        plus the 7-1 canonical seed rows). $POSTGRES_USER/$POSTGRES_DB expand inside the
-        container - container-local trust, no password involved.
+            sh -c 'psql -v ON_ERROR_STOP=1 -U $POSTGRES_USER -d $POSTGRES_DB -t -A'
+        (the SQL is piped to that command over stdin - never passed as a -c argument, so no
+        SQL quoting is needed on any PowerShell version; machine_counter_states,
+        sparepart_alerts, notification_jobs, telemetry_quarantine, plus the 7-1 canonical
+        seed rows). $POSTGRES_USER/$POSTGRES_DB expand inside the container - container-local
+        trust, no password involved.
       - Redis via: docker compose ... exec -T redis redis-cli --raw HGETALL `
             syncro:machine:{machineId}:latest
         (best-effort latest-telemetry hash; TTL 5 minutes, so an absent hash is INFO, not FAIL -
@@ -57,6 +59,14 @@
 
     Same, with an explicit backend health URL.
 
+.EXAMPLE
+    powershell -NoProfile -File syncro/scripts/verify-pilot.ps1 -ExpectCounting 900
+
+    Same, but hard-asserts the pilot machine's persisted counting value: the TELEMETRY
+    section FAILs unless machine_counter_states holds exactly counting=900 (use after
+    publishing the threshold fixture with the backend running). Without -ExpectCounting
+    the observed counting is only reported, never asserted.
+
 .NOTES
     Prerequisites: the docker compose stack up (postgres + redis at minimum). The EMQX and
     backend probes are optional (warn-only). All connection values come from parameters, the
@@ -69,7 +79,8 @@ param(
     [string]$EnvFile,
     [string]$ComposeFile,
     [string]$BackendHealthUrl = 'http://localhost:8080/api/v1/health',
-    [string]$WebUrl = 'http://localhost:3000'
+    [string]$WebUrl = 'http://localhost:3000',
+    [Nullable[long]]$ExpectCounting
 )
 
 $ErrorActionPreference = 'Stop'
@@ -81,12 +92,15 @@ if (-not $ComposeFile) { $ComposeFile = Join-Path $SyncroRoot 'infra\docker-comp
 foreach ($requiredFile in @($EnvFile, $ComposeFile)) {
     if (-not (Test-Path -LiteralPath $requiredFile -PathType Leaf)) {
         Write-Host "ERROR: required file not found: $requiredFile"
+        Write-Host 'RESULT: FAIL (required file not found)'
         exit 1
     }
 }
 $EnvFile = (Resolve-Path -LiteralPath $EnvFile).Path
 $ComposeFile = (Resolve-Path -LiteralPath $ComposeFile).Path
 
+# UTF-8 pipe guard (same as seed-pilot.ps1): Windows PowerShell 5.1 pipes ASCII by default.
+$OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 try { [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false) } catch { Write-Verbose "console encoding left unchanged: $($_.Exception.Message)" }
 
 # Load env file into the process environment (syncro/scripts/start-backend.ps1 parsing idiom)
@@ -97,7 +111,21 @@ Get-Content $EnvFile | ForEach-Object {
     }
 }
 
+# Whitespace guard (same as seed-pilot.ps1): the query-path psql invocation expands
+# $POSTGRES_USER / $POSTGRES_DB UNQUOTED inside the container's sh, so whitespace in either
+# value would word-split the psql command line into mangled arguments.
+foreach ($pgVar in @('POSTGRES_USER', 'POSTGRES_DB')) {
+    $pgValue = [Environment]::GetEnvironmentVariable($pgVar, 'Process')
+    if ($null -ne $pgValue -and $pgValue -match '\s') {
+        Write-Host "ERROR: $pgVar from the env file contains whitespace ('$pgValue') - the in-container psql query expands it unquoted and would break; fix the env file and re-run."
+        Write-Host ''
+        Write-Host 'RESULT: FAIL (POSTGRES_USER/POSTGRES_DB contain whitespace)'
+        exit 1
+    }
+}
+
 $script:FailCount = 0
+$script:RedisUnavailable = $false
 
 function Write-Section { param([Parameter(Mandatory = $true)][string]$Name)
     Write-Host ''
@@ -106,6 +134,7 @@ function Write-Section { param([Parameter(Mandatory = $true)][string]$Name)
 function Print-Pass { param([Parameter(Mandatory = $true)][string]$Message) Write-Host "  [PASS] $Message" }
 function Print-Fail { param([Parameter(Mandatory = $true)][string]$Message) $script:FailCount++; Write-Host "  [FAIL] $Message" }
 function Print-Info { param([Parameter(Mandatory = $true)][string]$Message) Write-Host "  [INFO] $Message" }
+function Print-Warn { param([Parameter(Mandatory = $true)][string]$Message) Write-Host "  [WARN] $Message" }
 
 function Invoke-PilotSql {
     param([Parameter(Mandatory = $true)][string]$Sql)
@@ -114,7 +143,7 @@ function Invoke-PilotSql {
     # them). The SQL itself travels over stdin, so no quoting of SQL is needed on any
     # PowerShell version (embedded double quotes in a native argument would be stripped by
     # Windows PowerShell 5.1's legacy argument passing - live-verified).
-    $shCommand = 'psql -U $POSTGRES_USER -d $POSTGRES_DB -t -A'
+    $shCommand = 'psql -v ON_ERROR_STOP=1 -U $POSTGRES_USER -d $POSTGRES_DB -t -A'
     $output = $Sql + ';' | & docker compose --env-file $script:EnvFile -f $script:ComposeFile exec -T postgres sh -c $shCommand
     if ($LASTEXITCODE -ne 0) {
         throw "psql query failed with exit code $($LASTEXITCODE): $Sql"
@@ -150,6 +179,8 @@ try {
     Print-Fail "postgres unreachable: $($_.Exception.Message)"
     Print-Info  'Hard failure - cannot verify anything else. Start the stack:'
     Print-Info  "  docker compose --env-file `"$EnvFile`" -f `"$ComposeFile`" up -d"
+    Write-Host ''
+    Write-Host 'RESULT: FAIL (postgres unreachable)'
     exit 1
 }
 try {
@@ -158,13 +189,14 @@ try {
         Print-Pass 'redis reachable (PING via docker compose exec)'
     } else {
         Print-Fail "redis PING returned unexpected value: '$redisPong'"
+        Write-Host ''
+        Write-Host 'RESULT: FAIL (redis PING returned unexpected value)'
         exit 1
     }
 } catch {
-    Print-Fail "redis unreachable: $($_.Exception.Message)"
-    Print-Info  'Hard failure - cannot verify latest-hash evidence. Start the stack:'
-    Print-Info  "  docker compose --env-file `"$EnvFile`" -f `"$ComposeFile`" up -d"
-    exit 1
+    # Redis is a 5-minute-TTL cache, not an authority: skip its evidence instead of failing.
+    $script:RedisUnavailable = $true
+    Print-Warn "redis unreachable ($($_.Exception.Message)) - latest-hash evidence will be skipped; persisted postgres evidence is authoritative"
 }
 
 $MqttHost = if ($env:SYNCRO_MQTT_HOST) { $env:SYNCRO_MQTT_HOST } else { 'localhost' }
@@ -251,32 +283,51 @@ if ($machineId) {
     if ($counterLine) {
         $counterParts = $counterLine -split '\|', 2
         $countingValue = $counterParts[0]
-        Print-Pass "machine_counter_states: counting=$($counterParts[0]) updated_at=$($counterParts[1]) (saved on every accepted persist)"
+        if ($null -ne $ExpectCounting) {
+            if ([long]$countingValue -ne [long]$ExpectCounting) {
+                Print-Fail "expected counting=$ExpectCounting, got $countingValue"
+            } else {
+                Print-Pass "machine_counter_states: counting=$($counterParts[0]) updated_at=$($counterParts[1]) (saved on every accepted persist)"
+            }
+        } else {
+            Print-Pass "machine_counter_states: counting=$($counterParts[0]) updated_at=$($counterParts[1]) (saved on every accepted persist)"
+        }
+    } elseif ($null -ne $ExpectCounting) {
+        Print-Fail "expected counting=$ExpectCounting but no counter state exists (ingestion missing - was the backend running at publish?)"
     } else {
         Print-Info 'no telemetry yet (machine_counter_states row absent) - pre-publish baseline state.'
     }
 
-    $redisKey = "syncro:machine:$machineId`:latest"
-    $hashLines = @()
-    try {
-        $hashLines = @(Invoke-PilotRedis @('HGETALL', $redisKey) | Where-Object { $_ -ne '' })
-    } catch {
-        Print-Info "cannot read redis latest hash: $($_.Exception.Message)"
-    }
-    if ($hashLines.Count -gt 0) {
-        $hash = @{}
-        for ($i = 0; $i -lt $hashLines.Count - 1; $i = $i + 2) {
-            $hash[[string]$hashLines[$i]] = [string]$hashLines[$i + 1]
-        }
-        $missingFields = @('counting', 'countingDelta', 'receivedAt', 'traceId') | Where-Object { -not $hash.ContainsKey($_) }
-        if ($missingFields.Count -eq 0) {
-            Print-Pass "redis latest hash ($redisKey): counting=$($hash['counting']) countingDelta=$($hash['countingDelta']) receivedAt=$($hash['receivedAt']) traceId=$($hash['traceId'])"
-        } else {
-            Print-Fail "redis latest hash ($redisKey) missing expected field(s): $($missingFields -join ', '); present: $(($hash.Keys | Sort-Object) -join ', ')"
-        }
+    if ($script:RedisUnavailable) {
+        Print-Info "redis latest hash skipped (redis was unreachable at preflight; syncro:machine:$machineId`:latest not queried)"
+        Print-Info 'persisted postgres evidence is authoritative.'
     } else {
-        Print-Info "redis latest hash absent ($redisKey) - TTL is 5 minutes, an absent hash does not mean"
-        Print-Info 'missing telemetry; machine_counter_states is the durable authority.'
+        $redisKey = "syncro:machine:$machineId`:latest"
+        $hashLines = @()
+        try {
+            $hashLines = @(Invoke-PilotRedis @('HGETALL', $redisKey) | Where-Object { $_ -ne '' })
+        } catch {
+            Print-Info "cannot read redis latest hash: $($_.Exception.Message)"
+        }
+        if ($hashLines.Count -gt 0) {
+            if (($hashLines.Count % 2) -ne 0) {
+                Print-Warn 'redis hash returned an odd number of lines (possible empty/multiline value) - skipping field pairing'
+            } else {
+                $hash = @{}
+                for ($i = 0; $i -lt $hashLines.Count - 1; $i = $i + 2) {
+                    $hash[[string]$hashLines[$i]] = [string]$hashLines[$i + 1]
+                }
+                $missingFields = @('counting', 'countingDelta', 'receivedAt', 'traceId') | Where-Object { -not $hash.ContainsKey($_) }
+                if ($missingFields.Count -eq 0) {
+                    Print-Pass "redis latest hash ($redisKey): counting=$($hash['counting']) countingDelta=$($hash['countingDelta']) receivedAt=$($hash['receivedAt']) traceId=$($hash['traceId'])"
+                } else {
+                    Print-Fail "redis latest hash ($redisKey) missing expected field(s): $($missingFields -join ', '); present: $(($hash.Keys | Sort-Object) -join ', ')"
+                }
+            }
+        } else {
+            Print-Info "redis latest hash absent ($redisKey) - TTL is 5 minutes, an absent hash does not mean"
+            Print-Info 'missing telemetry; machine_counter_states is the durable authority.'
+        }
     }
 }
 
@@ -326,7 +377,7 @@ if ($activeAlertRows.Count -gt 0) {
 
 if ($null -eq $countingValue) {
     if ($activeAlertRows.Count -eq 0) {
-        Print-Pass 'no counter state and no non-RESOLVED alert - consistent pre-publish baseline'
+        Print-Info 'no counter state and no non-RESOLVED alert - consistent pre-publish baseline'
     } else {
         Print-Fail "non-RESOLVED alert(s) exist ($($activeAlertRows.Count)) without counter state - inconsistent state"
     }
@@ -347,7 +398,7 @@ if ($null -eq $countingValue) {
             Print-Fail "consumed_percentage_snapshot expected 90.00 for counting=900, got $alertSnapshot"
         }
     } else {
-        Print-Fail "$($activeAlertRows.Count) non-RESOLVED alerts exist - expected exactly one (the V19 partial unique index should prevent this)"
+        Print-Fail "$($activeAlertRows.Count) non-RESOLVED alerts exist - expected exactly one. Note: the V19 partial unique index is per (machine_sparepart_installation_id, threshold_percentage), NOT per machine, so multiple installations can legitimately each hold one non-RESOLVED alert; the pilot's exactly-one expectation assumes the single seeded installation."
     }
 } else {
     Print-Info "counter counting=$countingValue is not a canonical pilot boundary (890/900) - alert state reported as-is"
@@ -433,7 +484,7 @@ Print-Info "System health:       $WebUrl/dashboard/system-health"
 Print-Info "Backend health:      $BackendHealthUrl"
 Print-Info '(web dev server assumed at the URL above: npm --prefix syncro/apps/web run dev)'
 Print-Info 'pgAdmin:             local/dev evidence tool only, not a product feature (see syncro/docs/local-development.md)'
-$influxQuery = 'docker compose --env-file ' + "`"$EnvFile`"" + ' -f ' + "`"$ComposeFile`"" + ' exec -T influxdb influxdb3 query --token "$INFLUXDB3_ADMIN_TOKEN" --database syncro "SELECT * FROM telemetry ORDER BY time DESC LIMIT 5"'
+$influxQuery = 'docker compose --env-file ' + "`"$EnvFile`"" + ' -f ' + "`"$ComposeFile`"" + ' exec -T influxdb sh -c ' + "'influxdb3 query --token `"`$INFLUXDB3_ADMIN_TOKEN`" --database syncro `"SELECT * FROM telemetry ORDER BY time DESC LIMIT 5`"'"
 Print-Info "InfluxDB (optional): $influxQuery"
 Print-Info '(token expands in-container; measurement is telemetry per InfluxTelemetryWriter.toPoint)'
 

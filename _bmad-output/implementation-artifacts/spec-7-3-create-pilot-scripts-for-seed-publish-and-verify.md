@@ -2,7 +2,7 @@
 title: 'Create Pilot Scripts for Seed, Publish, and Verify'
 type: 'feature'
 created: '2026-08-22'
-status: 'review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 baseline_commit: 6205594
@@ -110,12 +110,37 @@ warnings: []
 
 ### Review Findings
 
-(review fills this section)
+3-layer adversarial review (Blind Hunter, Edge Case Hunter, Acceptance Auditor) on 2026-08-22. Auditor verdict: no AC fails (7/7 PASS); 4 low-severity doc/edge findings. 23 patches applied across the four scripts + README, 3 dismissed (publish-script duplication — the architecture tree pins both entry-point scripts; DB-derived UUIDs interpolated into read-only SQL — server-generated values over stdin transport; fixture-drift matrix wording — the scripts' stricter abort-on-missing-contract-field behavior is accepted as the evidence-truthful reading and documented here).
+
+- [x] [Review][Patch] seed-pilot tripwire was console-only: canonical-row mismatch still exited 0, so automation read a drifted seed as success; mismatches now exit 1 (blind+edge, MAJOR)
+- [x] [Review][Patch] Timestamp refresh could silently no-op (no regex-match check → stale fixture timestamp published while the summary printed "now") and the replace-all normalized colon spacing, breaking the verbatim-body contract; now requires exactly one match (else abort) and preserves original spacing via capture groups (blind MAJOR + edge)
+- [x] [Review][Patch] verify-pilot could false-green a lost publish (counter absent = "consistent pre-publish baseline" PASS); new `-ExpectCounting <n>` parameter FAILs on missing/mismatched counter — live-proven with 890 PASS / 900 FAIL (edge MAJOR)
+- [x] [Review][Patch] Committed README carried the device MQTT password in plaintext smoke examples (contradicting AC 7.3-5 hygiene and the `.env.example` CHANGE_ME convention); replaced with `<device-password>` + pointer to the gitignored CSV (blind MAJOR)
+- [x] [Review][Patch] psql query path lacked `-v ON_ERROR_STOP=1`, making the `$LASTEXITCODE` guard dead (SQL errors exited 0); added — live-proven (failing SELECT now exits 3) (edge)
+- [x] [Review][Patch] `counting` extraction degraded to `'?'` and still published a payload the backend would quarantine; now aborts like the messageId guard (blind+edge)
+- [x] [Review][Patch] EMQX login/publish calls got `-TimeoutSec 15` (verify's probes already had 5s; a hung broker stalled ~100s) (blind+edge)
+- [x] [Review][Patch] Publish verdict honesty: reason_code 0/empty → PASS, no_matching_subscribers → PASS+note, any other nonzero code → WARN "treat as unverified" instead of unconditional PASS (blind)
+- [x] [Review][Patch] Redis preflight failure downgraded from hard exit to WARN (consistent with the script's own best-effort redis philosophy; postgres stays hard-fail), with the TELEMETRY redis section degrading to INFO (blind)
+- [x] [Review][Patch] Hard-fail paths now print the documented `RESULT: FAIL` banner before exit 1 (postgres catch, redis exit, required-file exit) (blind)
+- [x] [Review][Patch] ALERT section no longer prints a PASS baseline verdict immediately after a machine-not-found FAIL (changed to INFO) (blind)
+- [x] [Review][Patch] "V19 partial unique index should prevent this" rationale corrected: the index is per (installation, threshold), not per machine; exactly-one assumes the single seeded installation (edge)
+- [x] [Review][Patch] Influx evidence pointer wrapped in `sh -c` so the token actually expands in-container (previously guaranteed-broken in every shell) (edge)
+- [x] [Review][Patch] HGETALL pairing skipped with a WARN on odd line counts (empty/multiline hash values could silently shift every field/value pair) (edge)
+- [x] [Review][Patch] Env-file parser strips surrounding quotes and skips indented comments (compose-style values no longer keep literal quotes) (blind)
+- [x] [Review][Patch] Whitespace guard on POSTGRES_USER/POSTGRES_DB (the unquoted query-path expansion breaks on space-containing values; now fails with a clear message) (edge)
+- [x] [Review][Patch] verify-pilot gained the `$OutputEncoding` UTF-8 pipe guard seed-pilot documents as load-bearing (blind)
+- [x] [Review][Patch] Stale `.DESCRIPTION` mechanism text updated to the stdin psql form (auditor)
+- [x] [Review][Patch] Preflight catch now also suggests "Is the stack up? docker compose ... up -d" (stack-down was mislabeled as unmigrated-DB) (auditor)
+- [x] [Review][Patch] Frozen "(30 on the current schema)" prose removed from the preflight PASS (blind)
+- [x] [Review][Patch] README documents removing the lingering pre-fix swapped ACL rule via Dashboard/API on already-bootstrapped stacks (auditor; closes the matrix's cleanup-note clause)
+- [x] [Review][Patch] P7 replacement uses `${1}`/`${2}` group references — `$1` followed by a digit-leading timestamp parses as group `$12026…` and mangles the body (found during patch verification; offline-proven)
+- [x] [Review][Patch] Patch messages use ASCII dashes only — a UTF-8 em-dash hard-fails PowerShell 5.1 parsing in the BOM-less publish scripts (found during patch verification; both parsers now clean)
 
 ## Spec Change Log
 
 - 2026-08-22: Spec created (draft → ready-for-dev). Ultimate context engine analysis completed — comprehensive developer guide created.
 - 2026-08-22: Implemented by dev-story workflow. All tasks complete; live verification on the running local stack recorded in Dev Agent Record; two grounded deviations documented (EMQX publish response does not echo topic/payload on 6.2.2; PS 5.1 strips unescaped embedded double quotes from native arguments → queries moved to stdin, apply payload conditionally escaped to stay byte-identical). Status → review.
+- 2026-08-22: Code review (3-layer adversarial) — 23 patches (tripwire exit gate, guarded spacing-preserving timestamp refresh, -ExpectCounting anti-false-green, ON_ERROR_STOP, credential hygiene in README, verdict/exit-code honesty, redis downgrade, Influx pointer fix, parser/guard hardening, README ACL-cleanup note), 3 dismissed; re-verified live (seed x2 exit 0 with 15x INSERT 0 0, verify PASS, -ExpectCounting 890 PASS / 900 FAIL exit 1, AST parse clean on 5.1+7); status → done.
 
 ## Design Notes
 

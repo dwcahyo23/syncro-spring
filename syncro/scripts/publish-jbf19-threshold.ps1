@@ -101,14 +101,28 @@ if (-not $messageIdMatch.Success) {
 }
 $messageId = $messageIdMatch.Groups[1].Value
 $countingMatch = [regex]::Match($bodyText, '"counting"\s*:\s*([0-9]+)')
-$counting = if ($countingMatch.Success) { $countingMatch.Groups[1].Value } else { '?' }
+if (-not $countingMatch.Success) {
+    Write-Host "ERROR: cannot find counting in fixture (fixture drift?) - refusing to publish a payload the backend would quarantine."
+    exit 1
+}
+$counting = $countingMatch.Groups[1].Value
 
 $publishedTimestamp = '(verbatim from fixture)'
 if (-not $NoTimestampRefresh) {
+    # Exactly one "timestamp" field is a precondition for a safe refresh: with zero or
+    # several, a blind regex replace would publish a body we cannot reason about.
+    $timestampFieldCount = [regex]::Matches($bodyText, '"timestamp"\s*:\s*"[^"]*"').Count
+    if ($timestampFieldCount -ne 1) {
+        Write-Host "ERROR: expected exactly one `"timestamp`" field in fixture, found $timestampFieldCount (fixture drift?) - refusing to publish a body whose timestamp cannot be safely refreshed. Use -NoTimestampRefresh to publish the fixture verbatim."
+        exit 1
+    }
     $publishedTimestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", [System.Globalization.CultureInfo]::InvariantCulture)
     # Targeted regex replace on the RAW text: only the timestamp value changes, every other
-    # byte (messageId included) stays exactly as committed in the fixture file.
-    $bodyText = [regex]::Replace($bodyText, '"timestamp"\s*:\s*"[^"]*"', '"timestamp": "' + $publishedTimestamp + '"')
+    # byte (messageId included) stays exactly as committed in the fixture file. The captured
+    # groups reproduce the original key/colon spacing verbatim - nothing is normalized.
+    # (${1}/${2} braced references are load-bearing: the timestamp starts with a digit, so a
+    # bare $1 would read as an invalid group "$12026..." and stay literal.)
+    $bodyText = [regex]::Replace($bodyText, '("timestamp"\s*:\s*")[^"]*(")', '${1}' + $publishedTimestamp + '${2}')
 }
 
 # Runtime guard against mangling of the prepared body before it leaves the host.
@@ -130,7 +144,7 @@ Write-Host '--- EMQX login (/api/v5/login) ---'
 $token = $null
 try {
     $loginBody = @{ username = $env:SYNCRO_MQTT_USERNAME; password = $env:SYNCRO_MQTT_PASSWORD } | ConvertTo-Json
-    $login = Invoke-RestMethod -Method Post -Uri "$BaseUrl/api/v5/login" -ContentType 'application/json; charset=utf-8' -Body $loginBody -UseBasicParsing
+    $login = Invoke-RestMethod -Method Post -Uri "$BaseUrl/api/v5/login" -ContentType 'application/json; charset=utf-8' -Body $loginBody -TimeoutSec 15 -UseBasicParsing
     $token = $login.token
 } catch {
     Write-Host "ERROR: EMQX login failed: $($_.Exception.Message)"
@@ -149,7 +163,7 @@ Write-Host '--- Publish (/api/v5/publish, QoS 1, retain false) ---'
 $publishBody = @{ topic = $Topic; payload = $bodyText; qos = 1; retain = $false } | ConvertTo-Json
 $publish = $null
 try {
-    $publish = Invoke-RestMethod -Method Post -Uri "$BaseUrl/api/v5/publish" -Headers @{ Authorization = "Bearer $token" } -ContentType 'application/json; charset=utf-8' -Body $publishBody -UseBasicParsing
+    $publish = Invoke-RestMethod -Method Post -Uri "$BaseUrl/api/v5/publish" -Headers @{ Authorization = "Bearer $token" } -ContentType 'application/json; charset=utf-8' -Body $publishBody -TimeoutSec 15 -UseBasicParsing
 } catch {
     Write-Host "ERROR: EMQX publish failed: $($_.Exception.Message)"
     Write-Host "       topic was: $Topic"
@@ -162,11 +176,17 @@ $brokerMessage = ''
 if ($publish.PSObject.Properties['message']) { $brokerMessage = [string]$publish.message }
 $brokerReasonCode = ''
 if ($publish.PSObject.Properties['reason_code']) { $brokerReasonCode = [string]$publish.reason_code }
-Write-Host "PASS: publish accepted (broker message: '$brokerMessage', reason_code: $brokerReasonCode)"
-if ($brokerMessage -eq 'no_matching_subscribers') {
+# Verdict honesty: reason_code 0/empty is a clean accept; 16 / no_matching_subscribers is the
+# documented backend-down accept; anything else is unexpected and must not read as a PASS.
+if ($brokerReasonCode -eq '' -or $brokerReasonCode -eq '0') {
+    Write-Host 'PASS: publish accepted by broker'
+} elseif ($brokerReasonCode -eq '16' -or $brokerMessage -eq 'no_matching_subscribers') {
+    Write-Host "PASS: publish accepted (broker message: '$brokerMessage', reason_code: $brokerReasonCode)"
     Write-Host '      no subscriber was online at publish time (backend stopped?) - the message is not'
     Write-Host '      retained (retain=false) and the backend uses cleanSession(true), so a stopped'
     Write-Host '      backend never receives it: no alert/job state is created (that proof belongs to 7-5).'
+} else {
+    Write-Host "WARN: publish returned unexpected reason_code=$brokerReasonCode message='$brokerMessage' - treat as unverified"
 }
 
 Write-Host ''

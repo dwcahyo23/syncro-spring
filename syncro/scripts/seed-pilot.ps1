@@ -86,13 +86,40 @@ if (Get-Variable -Name PSNativeCommandArgumentPassing -ErrorAction SilentlyConti
     if ($PSNativeCommandArgumentPassing -ne 'Legacy') { $script:ModernNativePassing = $true }
 }
 
+# Load env file into the process environment (same idiom as the other pilot scripts), with
+# compose-style value handling: one pair of surrounding single/double quotes is stripped
+# (KEY="value" / KEY='value'), and comment lines (trimmed start '#') are skipped.
+Get-Content $EnvFile | ForEach-Object {
+    $envLine = $_.Trim()
+    if ($envLine.StartsWith('#')) { return }
+    if ($envLine -match '^([^#=][^=]*)=(.*)$') {
+        $envValue = $matches[2].Trim()
+        if ($envValue.Length -ge 2) {
+            if ($envValue.StartsWith('"') -and $envValue.EndsWith('"')) { $envValue = $envValue.Substring(1, $envValue.Length - 2) }
+            elseif ($envValue.StartsWith("'") -and $envValue.EndsWith("'")) { $envValue = $envValue.Substring(1, $envValue.Length - 2) }
+        }
+        [Environment]::SetEnvironmentVariable($matches[1].Trim(), $envValue, 'Process')
+    }
+}
+
+# Whitespace guard: the query-path psql invocation expands $POSTGRES_USER / $POSTGRES_DB
+# UNQUOTED inside the container's sh, so whitespace in either value would word-split the
+# psql command line into mangled arguments.
+foreach ($pgVar in @('POSTGRES_USER', 'POSTGRES_DB')) {
+    $pgValue = [Environment]::GetEnvironmentVariable($pgVar, 'Process')
+    if ($null -ne $pgValue -and $pgValue -match '\s') {
+        Write-Host "ERROR: $pgVar from the env file contains whitespace ('$pgValue') - the in-container psql query expands it unquoted and would break; fix the env file and re-run."
+        exit 1
+    }
+}
+
 function Invoke-PilotSql {
     param([Parameter(Mandatory = $true)][string]$Sql)
     # $POSTGRES_USER / $POSTGRES_DB expand INSIDE the container (single-quoted PS string, no
     # host expansion; the compose env values are space-free so sh needs no quotes around
     # them). The SQL itself travels over stdin, so no quoting of SQL is needed on any
     # PowerShell version.
-    $shCommand = 'psql -U $POSTGRES_USER -d $POSTGRES_DB -t -A'
+    $shCommand = 'psql -v ON_ERROR_STOP=1 -U $POSTGRES_USER -d $POSTGRES_DB -t -A'
     $output = $Sql + ';' | & docker compose --env-file $script:EnvFile -f $script:ComposeFile exec -T postgres sh -c $shCommand
     if ($LASTEXITCODE -ne 0) {
         throw "psql query failed with exit code $($LASTEXITCODE): $Sql"
@@ -114,6 +141,7 @@ try {
     Write-Host "ERROR: cannot read flyway_schema_history (schema not created yet?). $($_.Exception.Message)"
     Write-Host 'Guidance: boot the backend once against the local stack, or run'
     Write-Host '          mvn -f syncro/apps/backend/pom.xml flyway:migrate'
+    Write-Host "          Is the stack up? Start it with: docker compose --env-file `"$EnvFile`" -f `"$ComposeFile`" up -d"
     exit 1
 }
 $parsedCount = 0
@@ -127,7 +155,7 @@ if ($parsedCount -le 0) {
     Write-Host '          mvn -f syncro/apps/backend/pom.xml flyway:migrate'
     exit 1
 }
-Write-Host "PASS: Flyway migrations applied: $parsedCount (30 on the current schema)"
+Write-Host "PASS: Flyway migrations applied: $parsedCount"
 
 Write-Host ''
 Write-Host '--- Applying pilot seed (in-container psql, atomic BEGIN/COMMIT) ---'
@@ -166,12 +194,18 @@ $summary = @(
 )
 $summary | Format-Table -AutoSize | Out-String -Width 220 | ForEach-Object { $_.TrimEnd() } | Write-Host
 
+$mismatchFound = $false
 foreach ($row in $summary) {
     if ([string]$row.Actual -ne [string]$row.Expected) {
+        $mismatchFound = $true
         Write-Warning "row '$($row.'Canonical row')': expected '$($row.Expected)', got '$($row.Actual)' - see the seed header's pre-existing-data notes"
     }
 }
 
 Write-Host ''
+if ($mismatchFound) {
+    Write-Host 'Seed apply finished WITH MISMATCHES'
+    exit 1
+}
 Write-Host 'Seed apply complete. Re-run safe: guarded INSERTs, so a second run prints INSERT 0 0 and the identical summary.'
 exit 0
