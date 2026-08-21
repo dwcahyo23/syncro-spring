@@ -1,0 +1,4 @@
+# Wire-byte fixtures: story 7-3 publishes these file bodies VERBATIM to EMQX,
+# so every checkout must materialize identical LF bytes (PilotMqttPayloadFixtureTest
+# additionally asserts no CR anywhere in the files).
+*.json text eol=lf

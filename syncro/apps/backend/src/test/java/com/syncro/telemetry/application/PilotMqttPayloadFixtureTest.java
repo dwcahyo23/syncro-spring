@@ -2,6 +2,7 @@ package com.syncro.telemetry.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -12,7 +13,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -72,6 +72,13 @@ class PilotMqttPayloadFixtureTest {
 
   private final ObjectMapper objectMapper = new ObjectMapper();
 
+  /**
+   * Stricter mapper for the fixture-integrity assertions only: rejects duplicate JSON keys
+   * (readTree silently collapses them last-wins, which would mask a drifted fixture).
+   */
+  private final ObjectMapper assertionsMapper = new ObjectMapper()
+      .enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
+
   @Test
   void beforeThresholdFixtureIsAcceptedWirePayloadBelowAlertBoundary() throws IOException {
     String json = readFixture(BEFORE_THRESHOLD_FILE);
@@ -109,8 +116,8 @@ class PilotMqttPayloadFixtureTest {
     String beforeThresholdRaw = readFixture(BEFORE_THRESHOLD_FILE);
     String thresholdRaw = readFixture(THRESHOLD_FILE);
 
-    JsonNode beforeThresholdRoot = objectMapper.readTree(beforeThresholdRaw);
-    JsonNode thresholdRoot = objectMapper.readTree(thresholdRaw);
+    JsonNode beforeThresholdRoot = assertionsMapper.readTree(beforeThresholdRaw);
+    JsonNode thresholdRoot = assertionsMapper.readTree(thresholdRaw);
     assertThat(beforeThresholdRoot.isObject()).as("%s root must be a JSON object", BEFORE_THRESHOLD_FILE).isTrue();
     assertThat(thresholdRoot.isObject()).as("%s root must be a JSON object", THRESHOLD_FILE).isTrue();
 
@@ -132,34 +139,50 @@ class PilotMqttPayloadFixtureTest {
     assertThat(Instant.parse(thresholdRoot.get("timestamp").asText()))
         .isEqualTo(Instant.parse("2026-08-22T00:01:00Z"));
 
-    // Files stay stable, parseable, BOM-less UTF-8 with a trailing newline.
+    // Files stay stable, parseable, BOM-less UTF-8, LF-only, with a trailing newline.
+    // No-CR matters beyond cosmetics: story 7-3 publishes these bytes VERBATIM, and a
+    // CRLF checkout would change the wire bytes per machine (syncro/tests/fixtures/
+    // .gitattributes pins eol=lf so this can never regress silently).
     for (String raw : List.of(beforeThresholdRaw, thresholdRaw)) {
       assertThat(raw).endsWith("\n");
+      assertThat(raw).doesNotContain("\r");
       assertThat(raw.charAt(0)).isNotEqualTo('\uFEFF');
     }
   }
 
   /**
-   * Payload identity fields vs the canonical topic, mirroring
-   * {@code TelemetryValidationService.checkIdentity} (case-insensitive {@code equalsIgnoreCase},
-   * validated only when present).
+   * Payload identity fields vs the canonical topic, mirroring the production
+   * {@code TelemetryValidationService.checkIdentity} match (case-insensitive). Unlike
+   * production — which skips validation when the identity fields are absent/null — these
+   * fixtures are REQUIRED to carry them, so absence is a failure, not a skip.
    */
   private void assertIdentityMatchesCanonicalTopic(String json) throws IOException {
-    Optional<TelemetryTopic> topic = TelemetryTopic.parse(CANONICAL_TOPIC);
-    assertThat(topic).as("canonical topic %s must parse", CANONICAL_TOPIC).isPresent();
-    assertThat(topic.orElseThrow().plantCode()).isEqualTo("GM1");
-    assertThat(topic.orElseThrow().machineCode()).isEqualTo("BF-08410");
+    Optional<TelemetryTopic> parsedTopic = TelemetryTopic.parse(CANONICAL_TOPIC);
+    assertThat(parsedTopic).as("canonical topic %s must parse", CANONICAL_TOPIC).isPresent();
+    TelemetryTopic topic = parsedTopic.orElseThrow();
+    assertThat(topic.plantCode()).isEqualTo("GM1");
+    assertThat(topic.machineCode()).isEqualTo("BF-08410");
 
-    JsonNode root = objectMapper.readTree(json);
-    assertThat(topic.orElseThrow().plantCode().equalsIgnoreCase(root.get("plantCode").asText())).isTrue();
-    assertThat(topic.orElseThrow().machineCode().equalsIgnoreCase(root.get("machineCode").asText())).isTrue();
+    JsonNode root = assertionsMapper.readTree(json);
+    JsonNode plantCode = root.get("plantCode");
+    JsonNode machineCode = root.get("machineCode");
+    assertThat(plantCode).as("plantCode must be present").isNotNull();
+    assertThat(plantCode.isTextual()).as("plantCode must be textual").isTrue();
+    assertThat(machineCode).as("machineCode must be present").isNotNull();
+    assertThat(machineCode.isTextual()).as("machineCode must be textual").isTrue();
+    assertThat(topic.plantCode().equalsIgnoreCase(plantCode.asText())).isTrue();
+    assertThat(topic.machineCode().equalsIgnoreCase(machineCode.asText())).isTrue();
   }
 
   /**
    * Recomputes the exact evaluator chain so the fixtures can never drift across the alert boundary:
    * {@code CountingDeltaCalculator.delta(baseline, counting)} then the
    * {@code SparepartLifetimeEvaluator} percentage (HALF_UP, 2 decimals) then the
-   * {@code SparepartAlertService} comparator semantics (skip when {@code compareTo < 0}).
+   * {@code SparepartAlertService} comparator semantics (skip when {@code compareTo < 0}, i.e.
+   * fires at {@code >=} — SparepartAlertService.java line 83). The delta call IS production
+   * code; the percentage and comparator are a verified mirror because
+   * {@code SparepartLifetimeEvaluator} requires a repository and cannot run hermetically
+   * (extracting a pure function is deferred as DW-74).
    */
   private void assertBoundaryMath(long counting, long expectedConsumed, String expectedPercentage,
       boolean belowThreshold) {
@@ -196,21 +219,30 @@ class PilotMqttPayloadFixtureTest {
 
   /**
    * Repo-relative fixture resolution (single source of truth under {@code syncro/tests/fixtures/}):
-   * system-property override first, then {@code ../../tests/fixtures} relative to the Maven surefire
-   * working directory (module basedir {@code syncro/apps/backend}), then {@code tests/fixtures} for
-   * a repo-root working directory ({@code syncro/}).
+   * the system-property override is AUTHORITATIVE — when set but invalid it fails immediately
+   * instead of silently testing the committed copies. Relative candidates cover the Maven surefire
+   * working directory (module basedir {@code syncro/apps/backend}), a {@code syncro/} working
+   * directory, and the git repo root.
    */
   private static Path resolveFixturesDirectory() {
-    List<Path> candidates = new ArrayList<>();
     String override = System.getProperty(FIXTURES_DIR_PROPERTY);
     if (override != null && !override.isBlank()) {
-      candidates.add(Path.of(override));
+      Path overrideDir = Path.of(override);
+      if (!hasBothFixtures(overrideDir)) {
+        throw new IllegalStateException(
+            "System property " + FIXTURES_DIR_PROPERTY + " points at " + overrideDir.toAbsolutePath()
+                + " which does not contain both pilot fixtures (" + BEFORE_THRESHOLD_FILE + ", "
+                + THRESHOLD_FILE + "); refusing to fall back to other copies.");
+      }
+      return overrideDir;
     }
-    candidates.add(Path.of("..", "..", "tests", "fixtures"));
-    candidates.add(Path.of("tests", "fixtures"));
+
+    List<Path> candidates = List.of(
+        Path.of("..", "..", "tests", "fixtures"),
+        Path.of("tests", "fixtures"),
+        Path.of("syncro", "tests", "fixtures"));
     for (Path candidate : candidates) {
-      if (Files.isRegularFile(candidate.resolve(BEFORE_THRESHOLD_FILE))
-          && Files.isRegularFile(candidate.resolve(THRESHOLD_FILE))) {
+      if (hasBothFixtures(candidate)) {
         return candidate;
       }
     }
@@ -218,5 +250,10 @@ class PilotMqttPayloadFixtureTest {
         "Cannot locate the pilot MQTT payload fixtures (" + BEFORE_THRESHOLD_FILE + ", " + THRESHOLD_FILE
             + "); tried directories: " + candidates + ". Use -D" + FIXTURES_DIR_PROPERTY
             + "=<dir> to point at syncro/tests/fixtures explicitly.");
+  }
+
+  private static boolean hasBothFixtures(Path directory) {
+    return Files.isRegularFile(directory.resolve(BEFORE_THRESHOLD_FILE))
+        && Files.isRegularFile(directory.resolve(THRESHOLD_FILE));
   }
 }

@@ -2,7 +2,7 @@
 title: 'Provide Pilot MQTT Payload Fixtures'
 type: 'feature'
 created: '2026-08-22'
-status: 'review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 baseline_commit: d75efee
@@ -123,10 +123,23 @@ warnings: []
 - Given the fixtures are committed, then they are data-only (no secrets, credentials, broker/auth config, scripts, or placeholders) and remain stable JSON — any field addition, removal, or rename fails `PilotMqttPayloadFixtureTest.fixturesContainExactlyTheCanonicalFieldSet`. [AC 7.2-6]
 - Given CI or a developer machine, when `PilotMqttPayloadFixtureTest` runs, then it loads the actual files from `syncro/tests/fixtures/` (single source of truth, no embedded copies) and proves wire-contract acceptance, topic/identity consistency, exact field set, and the 89.00%-below / 90.00%-at-threshold boundary math using the production parser, topic parser, delta calculator, and the evaluator's percentage formula. [AC 7.2-7]
 
+### Review Findings
+
+3-layer adversarial review (Blind Hunter, Edge Case Hunter, Acceptance Auditor) on 2026-08-22. Auditor verdict: APPROVE, 7/7 ACs PASS, all Always/Never constraints and edge-matrix rows verified. 6 patches applied, 1 deferral (DW-74), 8 dismissed (runtimeHours gauge pair physically inconsistent with the 60s timestamp gap — spec-pinned Code Map values, cosmetic gauges; exact-instant timestamp assertions — intended single-source-of-truth tightening per auditor; two-arg parse vs optional-fields precondition — pinned by PilotSeedTest in 7-1; bare default ObjectMapper — matches the established TelemetryPayloadTest idiom; type drift inside the key set — guarded by production-parse acceptance; jbf19-vs-BF-08410 naming — canonical machine name vs code per 7-1; change-log in-progress narration — cosmetic; seed-constant duplication — deferred with the evaluator mirror below).
+
+- [x] [Review][Patch] Wire-byte contract unprotected against CRLF checkouts: BOM/newline assertions pass under CRLF and no .gitattributes covered the fixtures; added `syncro/tests/fixtures/.gitattributes` (`*.json text eol=lf`) plus a no-CR assertion so 7-3's verbatim publish can never drift per checkout (blind+edge, MAJOR both)
+- [x] [Review][Patch] Identity assertion NPE'd on absent identity fields and false-passed on JSON-null (production skips when null; fixtures REQUIRE them); now asserts presence+textual+equalsIgnoreCase (edge, MAJOR)
+- [x] [Review][Patch] `-Dsyncro.pilot.fixtures.dir` override silently fell through to relative candidates when mistyped — a false-green negative control was possible; the override is now authoritative and fails fast when invalid (blind+edge)
+- [x] [Review][Patch] Resolver had no candidate for the git-repo-root working directory (common IDE default) and mislabeled `syncro/` as repo root; added the `syncro/tests/fixtures` candidate and fixed the javadoc (blind+edge)
+- [x] [Review][Patch] Duplicate JSON keys were invisible (readTree collapses last-wins); integrity assertions now run on a STRICT_DUPLICATE_DETECTION mapper (edge)
+- [x] [Review][Patch] Boundary-math javadoc now states exactly what is production code (CountingDeltaCalculator) vs verified mirror (evaluator percentage, alert comparator at SparepartAlertService.java:83) and why hermetic delegation is impossible today; micro-cleanup of the repeated `topic.orElseThrow()` unwrapping (blind+edge, fold of several MINORs)
+- [x] [Review][Defer] Percentage/comparator mirror + seed-constant literals cannot detect production evaluator or seed drift (extracting a pure function needs a production refactor out of this story's additive scope) — deferred → DW-74
+
 ## Spec Change Log
 
 - 2026-08-22: Spec created (draft → ready-for-dev). Ultimate context engine analysis completed — comprehensive developer guide created.
 - 2026-08-22: Implemented via dev-story workflow — both fixtures + hermetic verification test created, all Verification commands green (3/3 tests, scope check clean), status ready-for-dev → in-progress → review.
+- 2026-08-22: Code review (3-layer adversarial) — 6 patches (LF pinning via fixtures .gitattributes + no-CR assertion, identity presence assertions, authoritative fixtures-dir override, repo-root resolver candidate, duplicate-key detection, boundary-math documentation), 1 deferral (DW-74), 8 dismissed; PilotMqttPayloadFixtureTest 3/3 green after patches; status → done.
 
 ## Design Notes
 
