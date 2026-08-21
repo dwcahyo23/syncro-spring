@@ -2,7 +2,7 @@
 title: 'Create Canonical Pilot Seed Data'
 type: 'feature'
 created: '2026-08-22'
-status: 'ready-for-dev'
+status: 'review'
 review_loop_iteration: 0
 followup_review_recommended: false
 baseline_commit: eb33f45
@@ -88,11 +88,11 @@ warnings: []
 
 **Execution:**
 
-- [ ] `syncro/apps/backend/src/main/resources/db/seed/pilot-seed.sql` -- NEW -- header documentation block + the 10 idempotent statement groups from the Code Map, using fixed UUIDs for fresh rows, natural-key `WHERE NOT EXISTS` guards, login/code-resolved FKs for dependent rows, plain single statements only (ScriptUtils-compatible). [AC 7.1-1, AC 7.1-2, AC 7.1-3, AC 7.1-4, AC 7.1-5, AC 7.1-6, AC 7.1-7]
-- [ ] Generate the bcrypt hash for the pilot password via Spring Security (`new BCryptPasswordEncoder().encode("syncro-pilot-dev")`, e.g. in a scratch test or jshell with `spring-security-crypto` from the local `~/.m2`), embed the `$2a$` literal in the seed, and record the plaintext in the header comment. [AC 7.1-5, AC 7.1-6]
-- [ ] `syncro/apps/backend/src/test/java/com/syncro/db/PilotSeedTest.java` -- NEW -- the four test methods per Code Map, container image `postgres:17-alpine`, seed read from classpath `/db/seed/pilot-seed.sql`, no Spring context. [AC 7.1-1, AC 7.1-2, AC 7.1-3, AC 7.1-4, AC 7.1-5, AC 7.1-6, AC 7.1-7]
-- [ ] Verify: run `mvn -q -f syncro/apps/backend/pom.xml test -Dtest="PilotSeedTest"` → BUILD SUCCESS (requires Docker for Testcontainers; postgres-only, no Influx container involved). No frontend changes → no web checks needed; state this explicitly in the completion record. [all ACs]
-- [ ] Manual evidence (optional, if local stack is up): apply the seed to the local dev database with the documented `docker compose ... psql` command and spot-check via pgAdmin (local/dev evidence tool only, not a product feature) that GM1/Forming/BF-08410 appear in the Machines master data and the installation shows 90%. [AC 7.1-1..7.1-5]
+- [x] `syncro/apps/backend/src/main/resources/db/seed/pilot-seed.sql` -- NEW -- header documentation block + the 10 idempotent statement groups from the Code Map, using fixed UUIDs for fresh rows, natural-key `WHERE NOT EXISTS` guards, login/code-resolved FKs for dependent rows, plain single statements only (ScriptUtils-compatible). [AC 7.1-1, AC 7.1-2, AC 7.1-3, AC 7.1-4, AC 7.1-5, AC 7.1-6, AC 7.1-7]
+- [x] Generate the bcrypt hash for the pilot password via Spring Security (`new BCryptPasswordEncoder().encode("syncro-pilot-dev")`, e.g. in a scratch test or jshell with `spring-security-crypto` from the local `~/.m2`), embed the `$2a$` literal in the seed, and record the plaintext in the header comment. [AC 7.1-5, AC 7.1-6]
+- [x] `syncro/apps/backend/src/test/java/com/syncro/db/PilotSeedTest.java` -- NEW -- the four test methods per Code Map, container image `postgres:17-alpine`, seed read from classpath `/db/seed/pilot-seed.sql`, no Spring context. [AC 7.1-1, AC 7.1-2, AC 7.1-3, AC 7.1-4, AC 7.1-5, AC 7.1-6, AC 7.1-7]
+- [x] Verify: run `mvn -q -f syncro/apps/backend/pom.xml test -Dtest="PilotSeedTest"` → BUILD SUCCESS (requires Docker for Testcontainers; postgres-only, no Influx container involved). No frontend changes → no web checks needed; state this explicitly in the completion record. [all ACs]
+- [x] Manual evidence (optional, if local stack is up): apply the seed to the local dev database with the documented `docker compose ... psql` command and spot-check via pgAdmin (local/dev evidence tool only, not a product feature) that GM1/Forming/BF-08410 appear in the Machines master data and the installation shows 90%. [AC 7.1-1..7.1-5]
 
 **Acceptance Criteria:**
 
@@ -107,6 +107,7 @@ warnings: []
 ## Spec Change Log
 
 - 2026-08-22: Spec created (draft → ready-for-dev). Ultimate context engine analysis completed — comprehensive developer guide created.
+- 2026-08-22: Implemented (ready-for-dev → review). Pilot seed + PilotSeedTest delivered; all 5 execution tasks complete; verification green (4/4 tests + local-stack manual evidence). See Dev Agent Record for the one evidence-backed literal deviation (sparepart code includes the machine-code dash).
 
 ## Design Notes
 
@@ -137,6 +138,42 @@ GLM-5.3 (ZCode, builtin:zai-start-plan/GLM-5.3)
 
 ### Debug Log References
 
+- `mvn -q -f syncro/apps/backend/pom.xml test -Dtest="PilotSeedTest"` (first run) -- compilation error: `ScriptUtils.executeDatabaseScript(Connection, String, String)` no longer exists in spring-jdbc 7.0.7 (Spring Framework 7 removed the deprecated String-based API; verified via `javap` against the local jar). Fixed by switching `applySeed` to `ScriptUtils.executeSqlScript(connection, new EncodedResource(new ClassPathResource("db/seed/pilot-seed.sql"), UTF_8))` -- same class, Framework-7 replacement API.
+- `mvn -f syncro/apps/backend/pom.xml test -Dtest="PilotSeedTest"` -- `Tests run: 4, Failures: 0, Errors: 0, Skipped: 0` / `BUILD SUCCESS` (run twice, both green; second run elapsed 12.75 s).
+- Targeted regression `mvn -f syncro/apps/backend/pom.xml test -Dtest="DbIndexHygiene*"`: `DbIndexHygieneAtddUpgradePathScaffoldTest` (plain-JDBC, same pattern as PilotSeedTest) green; `DbIndexHygieneMigrationTest` (7 errors) and `DbIndexHygieneAtddGapScaffoldTest` (3 errors) fail with `Failed to load ApplicationContext ... Could not initialize class org.apache.arrow.memory.RootAllocator` on the `influxDbClient` bean -- the documented pre-existing `@SpringBootTest`+InfluxDB environment failure category, unrelated to this additive-only change (this story adds two new files and modifies no existing code).
+- bcrypt hash generated via `new BCryptPasswordEncoder().encode("syncro-pilot-dev")` on Java 25 with `spring-security-crypto-7.0.5.jar` from the local `~/.m2`; round-trip verified (`matches` true, wrong password rejected) before embedding.
+
 ### Completion Notes List
 
+- Implemented exactly the two NEW artifacts from the Code Map: `syncro/apps/backend/src/main/resources/db/seed/pilot-seed.sql` (header + 15 guarded statements in 9 dependency-ordered groups: plant, group, machine, taxonomy x3, sparepart, installation, users x3, composite plant assignments, responsibilities x3) and `syncro/apps/backend/src/test/java/com/syncro/db/PilotSeedTest.java` (4 test methods, `@Testcontainers` + `PostgreSQLContainer("postgres:17-alpine")` + full Flyway migrate + `ScriptUtils` seed apply, no Spring context, shared `@BeforeAll` migrate+seed so all methods are order-independent).
+- **Spec literal deviation (auto-resolved, evidence-backed): sparepart code uses `BF-08410GM1ELEPLCWEC000` (WITH the dash), not the spec's literal `BF08410GM1ELEPLCWEC000`.** The spec's own formula ("raw `machine.getCode()` `BF-08410` + plant `GM1` + ELE + PLC + WEC + series 000"), its Design Notes ("`bomPrefix` concatenates the RAW machine code including the dash"), and the codebase (SparepartServiceIntegrationTest asserts `MCH-1PLANT-1ELEPLCWEC000` for machine `MCH-1`) all prove the backend keeps the dash verbatim. A dash-less code would be impossible to produce through `SparepartService.create`, violating AC 7.1-3's "backend-exact generated code" and the architecture rule the spec quotes. The seed header documents the derivation so 7-2/7-3 consumers read the canonical value from the seed/test.
+- API deviation (forced): Spring Framework 7 removed `ScriptUtils.executeDatabaseScript(Connection, String, String)`; the test uses the replacement `ScriptUtils.executeSqlScript(Connection, EncodedResource)` with UTF-8 encoding (the `·` label round-trips correctly).
+- Taxonomy guards use exact-code `WHERE NOT EXISTS` (V13/V15 idiom, per spec "guards on `(dimension, code)`"); machines/installation guards use `lower(...)` exactly where the spec pins expression-index semantics (`uq_machines_plant_id_lower_code`, V12 `lower(function_name)` index).
+- AC 7.1-6 note: `auth_users` count is exactly 3 after seeding (no admin row) because LocalAdminBootstrap is disabled in the verification paths; the seed never inserts `admin@syncro.dev`.
+- No frontend involvement: zero files under `syncro/apps/web/` changed (confirmed via `git status --short`), so no web checks were run.
+- Full backend regression suite intentionally not run: the environment's documented pre-existing failures (SparepartAlertCommandServiceTest, WahaRateLimiterTest, InfluxDB/Arrow context-loading stalls — reconfirmed live in the Debug Log above) are outside this story, and this change is purely additive (2 new files). Targeted verification: PilotSeedTest green twice + postgres-only db-package sibling test green.
+- Optional manual evidence WAS performed (local stack was up): local dev DB (container `syncro-spring-postgres-1`, PostgreSQL 18, database `syncro`) was empty, so Flyway V1-V30 was applied first via the official `flyway/flyway` Docker image (forward-only bootstrap of an empty DB; nothing reset), then the seed was applied through the documented `docker exec -i ... psql ... < seed` flow with `ON_ERROR_STOP=1`. Spot-checks confirmed every canonical row (GM1/Plant GM1, Forming, BF-08410/JBF19/ACTIVE, sparepart `BF-08410GM1ELEPLCWEC000` / `Electric · PLC · Wecon · LX5`, installation 1000/0/90/`Primary`, 3 users, 3 assignments, LEADER/STAFF/TECHNICIAN, runtime tables 0 rows, waha_templates 1). Second apply returned `INSERT 0 0` for all 15 statements with identical counts. pgAdmin itself was not opened; the spec's Verification section explicitly allows `psql` counts as the equivalent evidence.
+
+### Verification Performed
+
+- AC 7.1-1 -> `PilotSeedTest.migrationsThenSeedProduceCanonicalRows`: plant GM1/`Plant GM1` + group `Forming` under GM1 asserted via JdbcTemplate against the real container (also re-verified locally via psql).
+- AC 7.1-2 -> same test: machine `BF-08410` / name `JBF19` / `ACTIVE` / brand `Juki` / group `Forming` under GM1.
+- AC 7.1-3 -> same test: sparepart code `BF-08410GM1ELEPLCWEC000` + name `Electric · PLC · Wecon · LX5` + machine/taxonomy identity (ELECTRIC/WECON/PLC/LX5) + WECON/PLC/LX5 all linked to the single `Electric` CATEGORY row + installation `function_name='Primary'`.
+- AC 7.1-4 -> same test: installation `expected_production_count=1000`, `baseline_counter=0`, `threshold_percentage=90` (890 -> 89.00% / 900 -> 90.00% boundary math pinned in the seed header for 7-2/7-4/7-5).
+- AC 7.1-5 -> same test: exactly one TECHNICIAN/STAFF/LEADER responsibility over three distinct enabled VIEWER users, each with non-blank `whatsapp_number` (6281234567801/02/03) and a GM1 plant assignment.
+- AC 7.1-6 -> `seedCreatesNoRuntimeOwnedRows`: counts of `machine_counter_states`, `sparepart_alerts`, `notification_jobs`, `notification_attempts`, `telemetry_quarantine`, `audit_log` all 0; `waha_templates` exactly the V22 `alert_notification` row; `seedIsIdempotent`: all touched-table counts identical after a second apply (plus exact canonical counts: 1/1/1/8/1/1/3/3/3); local DB double-apply showed `INSERT 0 0` x15; `auth_users`=3 (no admin row).
+- AC 7.1-7 -> `PilotSeedTest` as a whole (Testcontainers postgres:17-alpine + full Flyway V1-V30 migrate + ScriptUtils seed apply) and `embeddedHashMatchesDocumentedPassword`: `new BCryptPasswordEncoder().matches("syncro-pilot-dev", hash-from-db)` true for all three users.
+- Spec verification commands: `mvn -q -f syncro/apps/backend/pom.xml test -Dtest="PilotSeedTest"` -> exit 0 / BUILD SUCCESS, `Tests run: 4, Failures: 0, Errors: 0, Skipped: 0` (surefire: `com.syncro.db.PilotSeedTest`); `git status --short` -> exactly the two new files under `syncro/apps/backend/src/` plus the story/sprint artifacts, zero changes under `syncro/apps/web/`.
+
+### Residual Risks
+
+- Placeholder WhatsApp numbers (`6281234567801/02/03`) cannot receive real WAHA messages -- by design; the seed header instructs replacing them before a live pilot (jobs still queue PENDING with attempt-failure evidence for 7-5/7-6).
+- The bcrypt hash is a committed local-dev secret for `syncro-pilot-dev` (documented in the header, never production).
+- Case-variant pre-existing taxonomy rows (e.g. BRAND `Wecon` with different casing) would hit `uq_sparepart_taxonomy_dimension_lower_code` loudly on seed apply -- accepted documented local-dev edge consistent with the spec's loud-failure philosophy; exact-code pre-existence (the spec's documented case) is handled by the guards.
+- The local dev database now contains the canonical pilot data (migrations V1-V30 + seed applied during manual evidence). Story 7-3's `seed-pilot.ps1` will wrap the same flow.
+- `DbIndexHygieneMigrationTest` / `DbIndexHygieneAtddGapScaffoldTest` remain red in this environment for the pre-existing InfluxDB/Arrow context-loading reason (not this story's scope).
+
 ### File List
+
+- `syncro/apps/backend/src/main/resources/db/seed/pilot-seed.sql` -- NEW -- canonical idempotent pilot seed (header + 15 guarded INSERT...SELECT...WHERE NOT EXISTS statements).
+- `syncro/apps/backend/src/test/java/com/syncro/db/PilotSeedTest.java` -- NEW -- Testcontainers verification test (4 methods: canonical rows, no runtime-owned rows, idempotency, bcrypt hash check).
