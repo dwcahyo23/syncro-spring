@@ -8,6 +8,7 @@ import com.syncro.config.NotificationProperties;
 import com.syncro.notification.domain.NotificationJobStatus;
 import com.syncro.notification.infrastructure.NotificationAttemptEntity;
 import com.syncro.notification.infrastructure.NotificationAttemptRepository;
+import com.syncro.notification.infrastructure.NotificationJobEntity;
 import com.syncro.notification.infrastructure.NotificationJobRepository;
 import com.syncro.notification.infrastructure.WahaClient;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
@@ -226,9 +227,66 @@ class NotificationWorkerStatusServiceTest {
     assertThat(status.timestamp()).isEqualTo(FIXED_NOW.toString());
   }
 
+  @Test
+  void lastFailedAttemptResolvesAlertIdFromItsJob() {
+    tracker.recordPoll();
+
+    UUID jobId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    UUID alertId = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    stubNoPendingAndNoCounts();
+    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW)))
+        .thenReturn(Optional.of(attempt(jobId, "FAILED", "HTTP 500: internal error")));
+    when(jobRepository.findById(jobId))
+        .thenReturn(Optional.of(new NotificationJobEntity(alertId, "TECHNICIAN",
+            NotificationJobStatus.PENDING, null, "+628123456789", "idem", "trace", null)));
+
+    NotificationWorkerStatus status = service.status();
+
+    assertThat(status.lastFailedAlertId()).isEqualTo(alertId);
+  }
+
+  @Test
+  void noFailedAttemptLeavesLastFailedAlertIdNull() {
+    tracker.recordPoll();
+
+    stubNoPendingAndNoCounts();
+    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW)))
+        .thenReturn(Optional.empty());
+
+    NotificationWorkerStatus status = service.status();
+
+    assertThat(status.lastFailedAlertId()).isNull();
+  }
+
+  @Test
+  void missingJobLeavesLastFailedAlertIdNull() {
+    tracker.recordPoll();
+
+    UUID jobId = UUID.fromString("00000000-0000-0000-0000-000000000003");
+    stubNoPendingAndNoCounts();
+    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW)))
+        .thenReturn(Optional.of(attempt(jobId, "FAILED", "HTTP 500: internal error")));
+    when(jobRepository.findById(jobId)).thenReturn(Optional.empty());
+
+    NotificationWorkerStatus status = service.status();
+
+    assertThat(status.lastFailedAlertId()).isNull();
+  }
+
+  private void stubNoPendingAndNoCounts() {
+    when(jobRepository.countByStatusIn(java.util.List.of(
+        NotificationJobStatus.PENDING, NotificationJobStatus.RATE_LIMITED))).thenReturn(0L);
+    when(attemptRepository.countByStatusAndAttemptedAtAfter(eq("FAILED"),
+        eq(FIXED_NOW.minus(FAILED_WINDOW)))).thenReturn(0L);
+  }
+
   private static NotificationAttemptEntity attempt(String status, String detail) {
+    return attempt(UUID.randomUUID(), status, detail);
+  }
+
+  private static NotificationAttemptEntity attempt(UUID jobId, String status, String detail) {
     var attempt = new NotificationAttemptEntity(
-        UUID.randomUUID(), 1, status, detail, "trace");
+        jobId, 1, status, detail, "trace");
     ReflectionTestUtils.setField(attempt, "attemptedAt", FIXED_NOW);
     return attempt;
   }

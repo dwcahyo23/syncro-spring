@@ -65,6 +65,26 @@ export type NotificationWorkerStatus = {
   pendingJobCount: number;
   recentFailedCount: number;
   lastFailureReason: string | null;
+  lastFailedAlertId: string | null;
   lastSuccessfulSendAt: string | null;
   circuitBreakerState: string | null;
+};
+
+// Per-machine stale-telemetry evidence payload. Field names mirror the backend records:
+// StaleMachineStatus.java / StaleMachineItem.java. `freshnessState` is the enum name
+// (OFFLINE/STALE); `lastReceivedAt` is null for machines that never sent telemetry.
+
+export type StaleMachineItem = {
+  machineId: string;
+  machineCode: string;
+  plantCode: string;
+  freshnessState: string;
+  statusLabel: string;
+  lastReceivedAt: string | null;
+};
+
+export type StaleMachineStatus = {
+  timestamp: string;
+  staleMachineCount: number;
+  items: StaleMachineItem[];
 };

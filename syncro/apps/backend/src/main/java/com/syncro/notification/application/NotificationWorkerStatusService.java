@@ -4,6 +4,7 @@ import com.syncro.config.NotificationProperties;
 import com.syncro.notification.domain.NotificationJobStatus;
 import com.syncro.notification.infrastructure.NotificationAttemptEntity;
 import com.syncro.notification.infrastructure.NotificationAttemptRepository;
+import com.syncro.notification.infrastructure.NotificationJobEntity;
 import com.syncro.notification.infrastructure.NotificationJobRepository;
 import com.syncro.notification.infrastructure.WahaClient;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
@@ -11,6 +12,8 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 /**
@@ -92,10 +95,17 @@ public class NotificationWorkerStatusService {
     Instant failedWindowStart = now.minus(properties.worker().failedWindow());
     long recentFailedCount = attemptRepository.countByStatusAndAttemptedAtAfter("FAILED", failedWindowStart);
 
-    String lastFailureReason = attemptRepository
-        .findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("FAILED", failedWindowStart)
+    Optional<NotificationAttemptEntity> lastFailedAttempt = attemptRepository
+        .findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("FAILED", failedWindowStart);
+
+    String lastFailureReason = lastFailedAttempt
         .map(NotificationAttemptEntity::getResponseDetail)
         .map(this::truncate)
+        .orElse(null);
+
+    UUID lastFailedAlertId = lastFailedAttempt
+        .flatMap(attempt -> jobRepository.findById(attempt.getJobId()))
+        .map(NotificationJobEntity::getAlertId)
         .orElse(null);
 
     String lastSuccessfulSendAt = attemptRepository
@@ -114,6 +124,7 @@ public class NotificationWorkerStatusService {
         pendingJobCount,
         recentFailedCount,
         lastFailureReason,
+        lastFailedAlertId,
         lastSuccessfulSendAt,
         circuitState.name());
   }

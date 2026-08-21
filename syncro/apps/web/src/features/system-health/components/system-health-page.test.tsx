@@ -9,6 +9,7 @@ import type {
   ActuatorHealthResponse,
   IngestWorkerStatus,
   NotificationWorkerStatus,
+  StaleMachineStatus,
   TelemetryFreshnessStatus,
 } from "@/features/system-health/types";
 
@@ -25,6 +26,7 @@ let ingestQuery: WorkerQueryState;
 let notifQuery: WorkerQueryState;
 let quarantineQuery: QuarantineQueryState;
 let freshnessQuery: FreshnessQueryState;
+let staleMachinesQuery: StaleMachinesQueryState;
 
 vi.mock("@/features/system-health/hooks/use-actuator-health-query", () => ({
   SYSTEM_HEALTH_REFRESH_INTERVAL_MS: 30_000,
@@ -45,6 +47,10 @@ vi.mock("@/features/system-health/hooks/use-quarantine-log", () => ({
 
 vi.mock("@/features/system-health/hooks/use-telemetry-freshness", () => ({
   useTelemetryFreshness: () => freshnessQuery,
+}));
+
+vi.mock("@/features/system-health/hooks/use-stale-machines", () => ({
+  useStaleMachines: () => staleMachinesQuery,
 }));
 
 let mockUser: { id: string; loginIdentifier: string; applicationRole: string } | null = null;
@@ -80,6 +86,15 @@ type WorkerQueryState = {
 
 type FreshnessQueryState = {
   data: TelemetryFreshnessStatus | undefined;
+  dataUpdatedAt?: number;
+  isLoading: boolean;
+  isError: boolean;
+  isFetching: boolean;
+  refetch: ReturnType<typeof vi.fn>;
+};
+
+type StaleMachinesQueryState = {
+  data: StaleMachineStatus | undefined;
   dataUpdatedAt?: number;
   isLoading: boolean;
   isError: boolean;
@@ -156,6 +171,7 @@ const healthyNotif: NotificationWorkerStatus = {
   pendingJobCount: 3,
   recentFailedCount: 0,
   lastFailureReason: null,
+  lastFailedAlertId: null,
   lastSuccessfulSendAt: "2026-08-21T09:55:00.000Z",
   circuitBreakerState: "CLOSED",
 };
@@ -169,6 +185,15 @@ function healthyFreshness(overrides: Partial<TelemetryFreshnessStatus> = {}): Te
     timestamp: "2026-08-21T10:00:00.000Z",
     lastAcceptedAt: "2026-08-21T09:59:00.000Z",
     staleSince: null,
+    ...overrides,
+  };
+}
+
+function healthyStaleMachines(overrides: Partial<StaleMachineStatus> = {}): StaleMachineStatus {
+  return {
+    timestamp: "2026-08-21T10:00:00.000Z",
+    staleMachineCount: 0,
+    items: [],
     ...overrides,
   };
 }
@@ -227,6 +252,14 @@ describe("System Health Page", () => {
     };
     freshnessQuery = {
       data: healthyFreshness(),
+      dataUpdatedAt: now,
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    };
+    staleMachinesQuery = {
+      data: healthyStaleMachines(),
       dataUpdatedAt: now,
       isLoading: false,
       isError: false,
@@ -567,6 +600,240 @@ describe("System Health Page", () => {
     const noDataCard = freshnessCard();
     expect(noDataCard).toHaveTextContent("—");
     expect(noDataCard).not.toHaveTextContent(formatDateTimeUtc(backendTimestamp));
+  });
+
+  it("6-6-AC1 a DOWN dependency card shows its Next step hint while healthy cards do not", () => {
+    const dbDown: ActuatorHealthComponent = {
+      status: "DOWN",
+      details: {
+        statusLabel: "Down",
+        statusSeverity: "CRITICAL",
+        statusReason: "CONNECTION_FAILED",
+        timestamp: "2026-08-21T10:00:00.000Z",
+      },
+    };
+    actuatorQuery = {
+      ...actuatorQuery,
+      data: healthyActuator({ components: { ...healthyComponents(), db: dbDown } }),
+    };
+
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    const pgCard = screen.getByText("PostgreSQL").closest('[data-slot="card"]');
+    if (!pgCard) throw new Error("PostgreSQL card not found");
+    expect(pgCard).toHaveTextContent("Next step");
+    expect(pgCard).toHaveTextContent("Verify the PostgreSQL service is running");
+
+    const redisCard = screen.getByText("Redis").closest('[data-slot="card"]');
+    if (!redisCard) throw new Error("Redis card not found");
+    expect(redisCard).not.toHaveTextContent("Next step");
+  });
+
+  it("6-6-AC1 a DEGRADED worker card shows its Next step hint", () => {
+    ingestQuery = {
+      ...ingestQuery,
+      data: {
+        ...healthyIngest,
+        status: "DEGRADED",
+        statusLabel: "Degraded",
+        statusSeverity: "WARNING",
+        statusReason: "MQTT disconnected",
+      },
+    };
+
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    const ingestCard = screen.getByText("Telemetry Ingest Worker").closest('[data-slot="card"]');
+    if (!ingestCard) throw new Error("Ingest card not found");
+    expect(ingestCard).toHaveTextContent("Next step");
+    expect(ingestCard).toHaveTextContent("Check the ingest worker logs");
+  });
+
+  it("6-6-AC2 a failed WAHA card with lastFailedAlertId links to the failing alert's notification history", () => {
+    const alertId = "00000000-0000-0000-0000-000000000042";
+    const wahaDown: ActuatorHealthComponent = {
+      status: "DOWN",
+      details: {
+        statusLabel: "Down",
+        statusSeverity: "CRITICAL",
+        statusReason: "WAHA unavailable",
+        timestamp: "2026-08-21T10:00:00.000Z",
+        state: "OPEN",
+        failureRate: 0.5,
+      },
+    };
+    actuatorQuery = {
+      ...actuatorQuery,
+      data: healthyActuator({ components: { ...healthyComponents(), wahaCircuitBreaker: wahaDown } }),
+    };
+    notifQuery = {
+      ...notifQuery,
+      data: { ...healthyNotif, lastFailedAlertId: alertId, recentFailedCount: 1 },
+    };
+
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    const link = screen.getByRole("link", { name: "View notification history" });
+    expect(link).toHaveAttribute("href", `/dashboard/alerts/${alertId}`);
+
+    // The link renders next to the card, never inside it (HealthCard stays read-only).
+    const wahaCard = screen.getByText("WAHA").closest('[data-slot="card"]');
+    if (!wahaCard) throw new Error("WAHA card not found");
+    expect(wahaCard.contains(link)).toBe(false);
+    expect(wahaCard).toHaveTextContent("Next step");
+  });
+
+  it("6-6-AC2 no history link when no failed alert evidence exists", () => {
+    const wahaDown: ActuatorHealthComponent = {
+      status: "DOWN",
+      details: {
+        statusLabel: "Down",
+        statusSeverity: "CRITICAL",
+        statusReason: "WAHA unavailable",
+        timestamp: "2026-08-21T10:00:00.000Z",
+        state: "OPEN",
+        failureRate: 0.5,
+      },
+    };
+    actuatorQuery = {
+      ...actuatorQuery,
+      data: healthyActuator({ components: { ...healthyComponents(), wahaCircuitBreaker: wahaDown } }),
+    };
+
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    expect(screen.queryByRole("link", { name: "View notification history" })).not.toBeInTheDocument();
+  });
+
+  it("6-6-AC2 a failed Notification Worker card links to the failing alert's notification history", () => {
+    const alertId = "00000000-0000-0000-0000-000000000043";
+    notifQuery = {
+      ...notifQuery,
+      data: {
+        ...healthyNotif,
+        status: "DEGRADED",
+        statusLabel: "Degraded",
+        statusSeverity: "WARNING",
+        statusReason: "WAHA circuit breaker is OPEN",
+        recentFailedCount: 2,
+        lastFailureReason: "HTTP 500: internal error",
+        lastFailedAlertId: alertId,
+        circuitBreakerState: "OPEN",
+      },
+    };
+
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    const link = screen.getByRole("link", { name: "View notification history" });
+    expect(link).toHaveAttribute("href", `/dashboard/alerts/${alertId}`);
+
+    const notifCard = screen.getByText("Notification Worker").closest('[data-slot="card"]');
+    if (!notifCard) throw new Error("Notification card not found");
+    expect(notifCard.contains(link)).toBe(false);
+    expect(notifCard).toHaveTextContent("Next step");
+  });
+
+  it("6-6-AC3 shows the stale machine count row and no list when nothing is stale", () => {
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    const card = freshnessCard();
+    expect(card).toHaveTextContent("Machines with stale telemetry");
+    expect(card).toHaveTextContent("0");
+    expect(screen.queryByRole("button", { name: /Show stale machines/ })).not.toBeInTheDocument();
+  });
+
+  it("6-6-AC3 stale machine evidence is collapsed by default, expands, and links to machine hubs", () => {
+    staleMachinesQuery = {
+      ...staleMachinesQuery,
+      data: healthyStaleMachines({
+        staleMachineCount: 2,
+        items: [
+          {
+            machineId: "00000000-0000-0000-0000-000000000001",
+            machineCode: "AA-01",
+            plantCode: "GM1",
+            freshnessState: "OFFLINE",
+            statusLabel: "offline",
+            lastReceivedAt: null,
+          },
+          {
+            machineId: "00000000-0000-0000-0000-000000000002",
+            machineCode: "ZZ-01",
+            plantCode: "GM1",
+            freshnessState: "STALE",
+            statusLabel: "stale",
+            lastReceivedAt: "2026-08-21T09:40:00.000Z",
+          },
+        ],
+      }),
+    };
+
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    const card = freshnessCard();
+    expect(card).toHaveTextContent("Machines with stale telemetry");
+    expect(card).toHaveTextContent("2");
+
+    const toggle = screen.getByRole("button", { name: "Show stale machines (2)" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("link", { name: "AA-01" })).not.toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const machineLink = screen.getByRole("link", { name: "AA-01" });
+    expect(machineLink).toHaveAttribute("href", "/dashboard/master-data/machines/AA-01");
+    expect(screen.getByRole("link", { name: "ZZ-01" })).toHaveAttribute(
+      "href",
+      "/dashboard/master-data/machines/ZZ-01",
+    );
+    expect(screen.getByText("No telemetry received")).toBeInTheDocument();
+  });
+
+  it("6-6-refresh: clicking Refresh also refetches stale machines", () => {
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(staleMachinesQuery.refetch).toHaveBeenCalled();
+  });
+
+  it("6-6-AC4/AC5 evidence surfaces mention no pgAdmin and expose no credentials", () => {
+    const alertId = "00000000-0000-0000-0000-000000000042";
+    notifQuery = {
+      ...notifQuery,
+      data: {
+        ...healthyNotif,
+        status: "DEGRADED",
+        statusLabel: "Degraded",
+        statusSeverity: "WARNING",
+        statusReason: "WAHA circuit breaker is OPEN",
+        recentFailedCount: 2,
+        lastFailureReason: "HTTP 500: internal error",
+        lastFailedAlertId: alertId,
+        circuitBreakerState: "OPEN",
+      },
+    };
+    staleMachinesQuery = {
+      ...staleMachinesQuery,
+      data: healthyStaleMachines({
+        staleMachineCount: 1,
+        items: [
+          {
+            machineId: "00000000-0000-0000-0000-000000000001",
+            machineCode: "AA-01",
+            plantCode: "GM1",
+            freshnessState: "OFFLINE",
+            statusLabel: "offline",
+            lastReceivedAt: null,
+          },
+        ],
+      }),
+    };
+
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    expect(screen.getByRole("link", { name: "View notification history" })).toBeInTheDocument();
+    expect(screen.queryByText(/pgadmin/i)).not.toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/password|token|secret|connection string/i);
   });
 
   it("6-4-forbidden: non-SUPER_ADMIN sees Permission denied and no dashboard content", () => {

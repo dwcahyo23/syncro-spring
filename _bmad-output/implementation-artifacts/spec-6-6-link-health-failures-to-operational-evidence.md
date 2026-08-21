@@ -2,7 +2,7 @@
 title: 'Link Health Failures to Operational Evidence'
 type: 'feature'
 created: '2026-08-21'
-status: 'ready-for-dev'
+status: 'review'
 review_loop_iteration: 0
 followup_review_recommended: false
 baseline_commit: 604a9a5
@@ -81,23 +81,23 @@ warnings: []
 
 **Execution:**
 
-- [ ] `syncro/apps/backend/.../notification/application/NotificationWorkerStatus.java` -- MODIFY -- append `UUID lastFailedAlertId` (nullable) to the record; extend the javadoc (alert whose notification failed most recently; null when no FAILED attempt in window or job no longer exists). [AC 6.6-2]
-- [ ] `syncro/apps/backend/.../notification/application/NotificationWorkerStatusService.java` -- MODIFY -- resolve `lastFailedAlertId` from the existing top-FAILED attempt query: `attemptRepository.findTop...` → `jobRepository.findById(attempt.getJobId())` → `map(NotificationJobEntity::getAlertId)` → `orElse(null)`; reuse the already-fetched attempt (no second query); pass into the record constructor. [AC 6.6-2]
-- [ ] `syncro/apps/backend/.../telemetry/application/StaleMachineItem.java` -- NEW -- record `(UUID machineId, String machineCode, String plantCode, String freshnessState, String statusLabel, Instant lastReceivedAt)`; `freshnessState` is the enum name (OFFLINE/STALE), `statusLabel` from `FreshnessState.label()`, `lastReceivedAt` nullable (never received). [AC 6.6-3]
-- [ ] `syncro/apps/backend/.../telemetry/application/StaleMachineStatus.java` -- NEW -- record `(String timestamp, int staleMachineCount, List<StaleMachineItem> items)` following the operational status contract style. [AC 6.6-3]
-- [ ] `syncro/apps/backend/.../telemetry/application/TelemetryStaleMachineService.java` -- NEW -- injects `MachineService`, `LatestTelemetryQueryService`, `Clock`; `staleMachines(AuthenticatedUser user)`: list ACTIVE machines (`list(user, null, null, ACTIVE, null, 0, 500, "code,asc")` — single bounded page, Phase-1 scale documented in javadoc), for each machine call `latestTelemetry(id, status)`, include when telemetry is null (→ OFFLINE, lastReceivedAt null) or `freshnessState != ONLINE`; sort nulls-first then oldest `lastReceivedAt`, tie-break `machineCode` asc; return count + items + `clock.instant()` timestamp. [AC 6.6-3]
-- [ ] `syncro/apps/backend/.../telemetry/api/TelemetryStaleMachineController.java` -- NEW -- `GET /api/v1/telemetry/stale-machines`, SUPER_ADMIN guard with null-principal check (mirror `TelemetryFreshnessController` exactly), OpenAPI annotations, `@Tag(name = "telemetry-stale-machines")`. [AC 6.6-3]
-- [ ] `syncro/apps/backend/src/test/java/com/syncro/notification/application/NotificationWorkerStatusServiceTest.java` -- MODIFY -- add tests: failed attempt resolves `lastFailedAlertId` from its job; no failed attempt → null; job missing → null. [AC 6.6-2]
-- [ ] `syncro/apps/backend/src/test/java/com/syncro/notification/api/NotificationWorkerStatusControllerTest.java` -- MODIFY -- assert `lastFailedAlertId` in the 200 JSON (present and null variants). [AC 6.6-2]
-- [ ] `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/TelemetryStaleMachineServiceTest.java` -- NEW -- Mockito + fixed clock: OFFLINE included (5–15m), STALE included (>15m), ONLINE excluded (≤5m), never-received active machine included with null `lastReceivedAt` sorted first, INACTIVE machine excluded (query filters ACTIVE), Redis-null telemetry → OFFLINE no-data item, empty result shape (count 0, empty items), deterministic sort. [AC 6.6-3]
-- [ ] `syncro/apps/backend/src/test/java/com/syncro/telemetry/api/TelemetryStaleMachineControllerTest.java` -- NEW -- `@WebMvcTest`: SUPER_ADMIN 200 with full JSON shape; MANAGE/VIEWER 403; unauthenticated 401; null-principal-tolerant guard verified. [AC 6.6-3]
-- [ ] `syncro/apps/web/src/features/system-health/types/index.ts` -- MODIFY -- add `lastFailedAlertId: string | null` to `NotificationWorkerStatus`; add `StaleMachineItem` and `StaleMachineStatus` types mirroring backend records. [AC 6.6-2, AC 6.6-3]
-- [ ] `syncro/apps/web/src/features/system-health/hooks/use-stale-machines.ts` -- NEW -- `fetchStaleMachines` (GET `/api/v1/telemetry/stale-machines`, auth header, 401 → `expireAuthSession`, response shape guard incl. items-array + per-item field validation) + `useStaleMachines` (queryKey `["stale-machines"]`, 30s refetch, retry 2). [AC 6.6-3]
-- [ ] `syncro/apps/web/src/features/system-health/hooks/use-stale-machines.test.ts` -- NEW -- fetcher tests: 200 resolves payload; 500 rejects; 401 expires session; malformed item shape rejects. [AC 6.6-3]
-- [ ] `syncro/apps/web/src/components/syncro/health-evidence-link.tsx` -- NEW -- small link component (Next `Link`, external-link icon, accessible name) for deep links rendered next to (not inside) `HealthCard`; no domain logic. [AC 6.6-1, AC 6.6-2]
-- [ ] `syncro/apps/web/src/features/system-health/components/system-health-page.tsx` -- MODIFY -- (a) static `NEXT_STEP_HINTS` map for db/influxdb/redis/mqtt/wahaCircuitBreaker/ingest/notification workers; render `HealthMetricRow label="Next step"` inside each card only when the card's resolved severity is warning or critical; (b) WAHA card + Notification Worker card: render `HealthEvidenceLink` "View notification history" → `/dashboard/alerts/{lastFailedAlertId}` when `notificationWorker.data?.lastFailedAlertId` is non-null and that card's severity is warning/critical, else the static hint only; (c) freshness card: add `useStaleMachines`; render "Machines with stale telemetry: N" row always when data loaded, and when N > 0 an accessible expandable list (button + `aria-expanded`, or `details`/`summary`) of stale machines — each row: machineCode, state label, lastReceivedAt absolute UTC + display-only relative ("No telemetry received" when null), linking to `/dashboard/master-data/machines/{machineCode}`; include stale-machines in `dataUpdatedAts`, `isLoading`, `isFetching`, `handleRefresh`; (d) hint/link text contains no pgAdmin mention and no secrets. [AC 6.6-1, AC 6.6-2, AC 6.6-3, AC 6.6-4, AC 6.6-5]
-- [ ] `syncro/apps/web/src/features/system-health/components/system-health-page.test.tsx` -- MODIFY -- add `staleMachinesQuery` mock + fixtures; extend existing counts where the new rows affect them; add tests: dependency DOWN card shows its "Next step" hint (healthy card does not); WAHA/notification failure with `lastFailedAlertId` renders history link with correct `/dashboard/alerts/{id}` href and no link when null; stale-machines count row renders (0 case); N>0 renders expandable list with machine rows linking to `/dashboard/master-data/machines/{code}`, "No telemetry received" for null lastReceivedAt, and the list is collapsed by default + expands on toggle; refresh includes stale-machines refetch; no test fixture contains pgAdmin/credential strings on the evidence surfaces. [AC 6.6-1, AC 6.6-2, AC 6.6-3, AC 6.6-4, AC 6.6-5]
-- [ ] Verify: run `mvn -q -f syncro/apps/backend/pom.xml test -Dtest="NotificationWorkerStatusServiceTest,NotificationWorkerStatusControllerTest,TelemetryStaleMachineServiceTest,TelemetryStaleMachineControllerTest"` → BUILD SUCCESS; from `syncro/apps/web` run `npm run test:unit`, `npm run build`, and `npx biome lint` on changed files (clean; CRLF formatter diffs are the known environmental baseline). [all ACs]
+- [x] `syncro/apps/backend/.../notification/application/NotificationWorkerStatus.java` -- MODIFY -- append `UUID lastFailedAlertId` (nullable) to the record; extend the javadoc (alert whose notification failed most recently; null when no FAILED attempt in window or job no longer exists). [AC 6.6-2]
+- [x] `syncro/apps/backend/.../notification/application/NotificationWorkerStatusService.java` -- MODIFY -- resolve `lastFailedAlertId` from the existing top-FAILED attempt query: `attemptRepository.findTop...` → `jobRepository.findById(attempt.getJobId())` → `map(NotificationJobEntity::getAlertId)` → `orElse(null)`; reuse the already-fetched attempt (no second query); pass into the record constructor. [AC 6.6-2]
+- [x] `syncro/apps/backend/.../telemetry/application/StaleMachineItem.java` -- NEW -- record `(UUID machineId, String machineCode, String plantCode, String freshnessState, String statusLabel, Instant lastReceivedAt)`; `freshnessState` is the enum name (OFFLINE/STALE), `statusLabel` from `FreshnessState.label()`, `lastReceivedAt` nullable (never received). [AC 6.6-3]
+- [x] `syncro/apps/backend/.../telemetry/application/StaleMachineStatus.java` -- NEW -- record `(String timestamp, int staleMachineCount, List<StaleMachineItem> items)` following the operational status contract style. [AC 6.6-3]
+- [x] `syncro/apps/backend/.../telemetry/application/TelemetryStaleMachineService.java` -- NEW -- injects `MachineService`, `LatestTelemetryQueryService`, `Clock`; `staleMachines(AuthenticatedUser user)`: list ACTIVE machines (`list(user, null, null, ACTIVE, null, 0, 500, "code,asc")` — single bounded page, Phase-1 scale documented in javadoc), for each machine call `latestTelemetry(id, status)`, include when telemetry is null (→ OFFLINE, lastReceivedAt null) or `freshnessState != ONLINE`; sort nulls-first then oldest `lastReceivedAt`, tie-break `machineCode` asc; return count + items + `clock.instant()` timestamp. [AC 6.6-3]
+- [x] `syncro/apps/backend/.../telemetry/api/TelemetryStaleMachineController.java` -- NEW -- `GET /api/v1/telemetry/stale-machines`, SUPER_ADMIN guard with null-principal check (mirror `TelemetryFreshnessController` exactly), OpenAPI annotations, `@Tag(name = "telemetry-stale-machines")`. [AC 6.6-3]
+- [x] `syncro/apps/backend/src/test/java/com/syncro/notification/application/NotificationWorkerStatusServiceTest.java` -- MODIFY -- add tests: failed attempt resolves `lastFailedAlertId` from its job; no failed attempt → null; job missing → null. [AC 6.6-2]
+- [x] `syncro/apps/backend/src/test/java/com/syncro/notification/api/NotificationWorkerStatusControllerTest.java` -- MODIFY -- assert `lastFailedAlertId` in the 200 JSON (present and null variants). [AC 6.6-2]
+- [x] `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/TelemetryStaleMachineServiceTest.java` -- NEW -- Mockito + fixed clock: OFFLINE included (5–15m), STALE included (>15m), ONLINE excluded (≤5m), never-received active machine included with null `lastReceivedAt` sorted first, INACTIVE machine excluded (query filters ACTIVE), Redis-null telemetry → OFFLINE no-data item, empty result shape (count 0, empty items), deterministic sort. [AC 6.6-3]
+- [x] `syncro/apps/backend/src/test/java/com/syncro/telemetry/api/TelemetryStaleMachineControllerTest.java` -- NEW -- `@WebMvcTest`: SUPER_ADMIN 200 with full JSON shape; MANAGE/VIEWER 403; unauthenticated 401; null-principal-tolerant guard verified. [AC 6.6-3]
+- [x] `syncro/apps/web/src/features/system-health/types/index.ts` -- MODIFY -- add `lastFailedAlertId: string | null` to `NotificationWorkerStatus`; add `StaleMachineItem` and `StaleMachineStatus` types mirroring backend records. [AC 6.6-2, AC 6.6-3]
+- [x] `syncro/apps/web/src/features/system-health/hooks/use-stale-machines.ts` -- NEW -- `fetchStaleMachines` (GET `/api/v1/telemetry/stale-machines`, auth header, 401 → `expireAuthSession`, response shape guard incl. items-array + per-item field validation) + `useStaleMachines` (queryKey `["stale-machines"]`, 30s refetch, retry 2). [AC 6.6-3]
+- [x] `syncro/apps/web/src/features/system-health/hooks/use-stale-machines.test.ts` -- NEW -- fetcher tests: 200 resolves payload; 500 rejects; 401 expires session; malformed item shape rejects. [AC 6.6-3]
+- [x] `syncro/apps/web/src/components/syncro/health-evidence-link.tsx` -- NEW -- small link component (Next `Link`, external-link icon, accessible name) for deep links rendered next to (not inside) `HealthCard`; no domain logic. [AC 6.6-1, AC 6.6-2]
+- [x] `syncro/apps/web/src/features/system-health/components/system-health-page.tsx` -- MODIFY -- (a) static `NEXT_STEP_HINTS` map for db/influxdb/redis/mqtt/wahaCircuitBreaker/ingest/notification workers; render `HealthMetricRow label="Next step"` inside each card only when the card's resolved severity is warning or critical; (b) WAHA card + Notification Worker card: render `HealthEvidenceLink` "View notification history" → `/dashboard/alerts/{lastFailedAlertId}` when `notificationWorker.data?.lastFailedAlertId` is non-null and that card's severity is warning/critical, else the static hint only; (c) freshness card: add `useStaleMachines`; render "Machines with stale telemetry: N" row always when data loaded, and when N > 0 an accessible expandable list (button + `aria-expanded`, or `details`/`summary`) of stale machines — each row: machineCode, state label, lastReceivedAt absolute UTC + display-only relative ("No telemetry received" when null), linking to `/dashboard/master-data/machines/{machineCode}`; include stale-machines in `dataUpdatedAts`, `isLoading`, `isFetching`, `handleRefresh`; (d) hint/link text contains no pgAdmin mention and no secrets. [AC 6.6-1, AC 6.6-2, AC 6.6-3, AC 6.6-4, AC 6.6-5]
+- [x] `syncro/apps/web/src/features/system-health/components/system-health-page.test.tsx` -- MODIFY -- add `staleMachinesQuery` mock + fixtures; extend existing counts where the new rows affect them; add tests: dependency DOWN card shows its "Next step" hint (healthy card does not); WAHA/notification failure with `lastFailedAlertId` renders history link with correct `/dashboard/alerts/{id}` href and no link when null; stale-machines count row renders (0 case); N>0 renders expandable list with machine rows linking to `/dashboard/master-data/machines/{code}`, "No telemetry received" for null lastReceivedAt, and the list is collapsed by default + expands on toggle; refresh includes stale-machines refetch; no test fixture contains pgAdmin/credential strings on the evidence surfaces. [AC 6.6-1, AC 6.6-2, AC 6.6-3, AC 6.6-4, AC 6.6-5]
+- [x] Verify: run `mvn -q -f syncro/apps/backend/pom.xml test -Dtest="NotificationWorkerStatusServiceTest,NotificationWorkerStatusControllerTest,TelemetryStaleMachineServiceTest,TelemetryStaleMachineControllerTest"` → BUILD SUCCESS; from `syncro/apps/web` run `npm run test:unit`, `npm run build`, and `npx biome lint` on changed files (clean; CRLF formatter diffs are the known environmental baseline). [all ACs]
 
 **Acceptance Criteria:**
 
@@ -110,6 +110,7 @@ warnings: []
 ## Spec Change Log
 
 - 2026-08-21: Spec created (draft → ready-for-dev).
+- 2026-08-21: Implemented (see Dev Agent Record). All 17 tasks complete; status → review.
 
 ## Design Notes
 
@@ -137,8 +138,52 @@ warnings: []
 
 ### Agent Model Used
 
+GLM-5.3 (ZCode, builtin:zai-start-plan/GLM-5.3)
+
 ### Debug Log References
+
+- Backend scoped runs: `mvn -f syncro/apps/backend/pom.xml test -Dtest="..."` (see Verification below for the exact class list).
+- Frontend: `npx vitest run` scoped files, `npm run test:unit`, `npm run build`, `npx biome lint` on changed files.
 
 ### Completion Notes List
 
+- `lastFailedAlertId` resolves from the already-fetched top FAILED attempt (single repository fetch reused for `lastFailureReason` and the id); missing job → null, no failure → null. Additive DTO field; no existing consumer changed.
+- Stale-machine evidence lives in the telemetry module with cross-module access via `MachineService.list` (application service, ACTIVE-only, one bounded page of 500 — documented Phase-1 scope). Never-received machines (null telemetry from empty Redis or read failure) are reported as OFFLINE with null `lastReceivedAt`, sorted first; ONLINE machines excluded; deterministic worst-first ordering.
+- `HealthCard` untouched — its read-only "no navigation controls" contract holds; deep links render in a sibling `HealthEvidenceLink` outside the card, and static "Next step" hints are plain `HealthMetricRow` text rows. Verified by the existing 6-4 readonly test (no button/a inside any card) still passing plus explicit `card.contains(link) === false` assertions.
+- Stale-machine count row renders for every loaded state (including LIVE freshness), because per-machine staleness can exist while the global ingest path is fresh; the count is backend-owned (`staleMachineCount`), the list is collapsed by default behind an `aria-expanded` toggle, and each row links to the machine hub by `machineCode`.
+- pgAdmin is not referenced anywhere in the new UI/payloads; the "no pgAdmin / no credentials" guarantee is asserted by a dedicated page test (`queryByText(/pgadmin/i)` + textContent scan).
+- `computeOverallBanner` and all 6.4/6.5 banner semantics untouched; stale machines intentionally do not feed the banner (per-machine evidence only).
+
+**Verification performed:**
+- `mvn -f syncro/apps/backend/pom.xml test -Dtest="NotificationWorkerStatusServiceTest,NotificationWorkerStatusControllerTest,TelemetryStaleMachineServiceTest,TelemetryStaleMachineControllerTest"` — BUILD SUCCESS, 28 tests, 0 failures (16 + 12).
+- `mvn -f syncro/apps/backend/pom.xml test -Dtest="...13 hermetic classes across notification+telemetry..."` — BUILD SUCCESS, 77 tests, 0 failures (all hermetic tests in both touched modules, incl. all 6.4/6.5 sibling contract tests).
+- `npm run test:unit` (syncro/apps/web) — 134 passed, 7 skipped (16 new: 7 fetcher + 9 page tests).
+- `npm run build` (syncro/apps/web) — production build succeeded, `/dashboard/system-health` compiled.
+- `npx biome lint` on the 6 changed frontend files — clean (one info-level class-order fix applied during dev).
+
+**Residual risks / pre-existing failures (NOT caused by this story):**
+- Full backend suite (`mvn test`) currently reports failures that reproduce identically without this story's changes (files untouched by 6-6; deterministic on isolated rerun; the `SparepartAlertCommandServiceTest.acknowledge_cancelsActiveNotificationJobs` failure also exists in a surefire report written at 19:54, before 6-6 development began):
+  - `SparepartAlertCommandServiceTest.acknowledge_cancelsActiveNotificationJobs` — test expects `cancelActiveForAlert(..., [PENDING, SENT], ...)` while production (Story 5-8 rate-limit work) passes `[PENDING, SENT, RATE_LIMITED]`; stale test expectation on main.
+  - `WahaRateLimiterTest` — 8 × `UnnecessaryStubbingException` (strict-stubs setUp stubbing), pre-existing test hygiene issue on main.
+  - `TelemetryPersistenceIntegrationTest` and ~134 cascading context-load errors — Testcontainers failed to start `influxdb:3-core` in this environment (image present locally; startup timed out after 121 s). Environmental, blocks all `@SpringBootTest` integration classes in this run, unrelated to 6-6.
+- Full-stack browser verification was not possible unattended; evidence is unit/build-level per the Verification section.
+
 ### File List
+
+- `syncro/apps/backend/src/main/java/com/syncro/notification/application/NotificationWorkerStatus.java` — modified
+- `syncro/apps/backend/src/main/java/com/syncro/notification/application/NotificationWorkerStatusService.java` — modified
+- `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/StaleMachineItem.java` — new
+- `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/StaleMachineStatus.java` — new
+- `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/TelemetryStaleMachineService.java` — new
+- `syncro/apps/backend/src/main/java/com/syncro/telemetry/api/TelemetryStaleMachineController.java` — new
+- `syncro/apps/backend/src/test/java/com/syncro/notification/application/NotificationWorkerStatusServiceTest.java` — modified
+- `syncro/apps/backend/src/test/java/com/syncro/notification/api/NotificationWorkerStatusControllerTest.java` — modified
+- `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/TelemetryStaleMachineServiceTest.java` — new
+- `syncro/apps/backend/src/test/java/com/syncro/telemetry/api/TelemetryStaleMachineControllerTest.java` — new
+- `syncro/apps/web/src/features/system-health/types/index.ts` — modified
+- `syncro/apps/web/src/features/system-health/hooks/use-stale-machines.ts` — new
+- `syncro/apps/web/src/features/system-health/hooks/use-stale-machines.test.ts` — new
+- `syncro/apps/web/src/components/syncro/health-evidence-link.tsx` — new
+- `syncro/apps/web/src/features/system-health/components/system-health-page.tsx` — modified
+- `syncro/apps/web/src/features/system-health/components/system-health-page.test.tsx` — modified
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — modified (status transitions)
