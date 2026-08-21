@@ -2,7 +2,7 @@
 title: 'Create Pilot Scripts for Seed, Publish, and Verify'
 type: 'feature'
 created: '2026-08-22'
-status: 'ready-for-dev'
+status: 'review'
 review_loop_iteration: 0
 followup_review_recommended: false
 baseline_commit: 6205594
@@ -91,13 +91,13 @@ warnings: []
 
 **Execution:**
 
-- [ ] `syncro/scripts/seed-pilot.ps1` -- NEW -- per Code Map: exact wrap of the 7-1 hardened apply command, UTF-8 pipe guard, migration preflight, post-apply summary. [AC 7.3-1, AC 7.3-5, AC 7.3-6]
-- [ ] `syncro/scripts/publish-jbf19-before-threshold.ps1` -- NEW -- per Code Map: .env-driven EMQX login + `/api/v5/publish`, verbatim body with only-`timestamp` refresh (default on, `-NoTimestampRefresh` switch), messageId/counting printout, dedupe-window hint. [AC 7.3-2, AC 7.3-5, AC 7.3-6]
-- [ ] `syncro/scripts/publish-jbf19-threshold.ps1` -- NEW -- same structure for the threshold fixture. [AC 7.3-3, AC 7.3-5, AC 7.3-6]
-- [ ] `syncro/scripts/verify-pilot.ps1` -- NEW -- per Code Map: six evidence sections with state-keyed verdicts, in-container psql/redis reads, quarantine diagnostics, evidence pointers. [AC 7.3-4, AC 7.3-5, AC 7.3-6]
-- [ ] EMQX infra correction: `auth-bootstrap.csv` device row, `docker-entrypoint.sh` ACL block + comments, `README.md` current-rules table + first-start note — canonical `device_GM1_BF-08410` → `factory/GM1/BF-08410/telemetry`. [supports AC 7.3-2/7.3-3: the documented device path matches the canonical topic; scripts themselves use the Management API and are unaffected]
-- [ ] Verify (live, local stack): run `seed-pilot.ps1` TWICE → second run shows identical summary counts (idempotent, current DB already seeded); run `publish-jbf19-before-threshold.ps1` with the backend running → `verify-pilot.ps1` shows TELEMETRY PASS (counting 890, no alert) and exit 0; run `publish-jbf19-threshold.ps1` with the backend STOPPED → 200 echo proves mechanics without creating alert/job state that belongs to 7-5 (backend `cleanSession(true)` means no delayed delivery); confirm `syncro/tests/fixtures/.gitattributes`-pinned fixture bytes round-trip (publish echo contains the exact `messageId`). State exact checks run in the completion record. [all ACs]
-- [ ] Verify scope: `git status --short` shows exactly the four new scripts + three edited infra files + story/sprint artifacts; zero changes under `syncro/apps/`, `db/seed/`, `db/migration/`, or frontend. [all ACs]
+- [x] `syncro/scripts/seed-pilot.ps1` -- NEW -- per Code Map: exact wrap of the 7-1 hardened apply command, UTF-8 pipe guard, migration preflight, post-apply summary. [AC 7.3-1, AC 7.3-5, AC 7.3-6]
+- [x] `syncro/scripts/publish-jbf19-before-threshold.ps1` -- NEW -- per Code Map: .env-driven EMQX login + `/api/v5/publish`, verbatim body with only-`timestamp` refresh (default on, `-NoTimestampRefresh` switch), messageId/counting printout, dedupe-window hint. [AC 7.3-2, AC 7.3-5, AC 7.3-6]
+- [x] `syncro/scripts/publish-jbf19-threshold.ps1` -- NEW -- same structure for the threshold fixture. [AC 7.3-3, AC 7.3-5, AC 7.3-6]
+- [x] `syncro/scripts/verify-pilot.ps1` -- NEW -- per Code Map: six evidence sections with state-keyed verdicts, in-container psql/redis reads, quarantine diagnostics, evidence pointers. [AC 7.3-4, AC 7.3-5, AC 7.3-6]
+- [x] EMQX infra correction: `auth-bootstrap.csv` device row, `docker-entrypoint.sh` ACL block + comments, `README.md` current-rules table + first-start note — canonical `device_GM1_BF-08410` → `factory/GM1/BF-08410/telemetry`. [supports AC 7.3-2/7.3-3: the documented device path matches the canonical topic; scripts themselves use the Management API and are unaffected]
+- [x] Verify (live, local stack): run `seed-pilot.ps1` TWICE → second run shows identical summary counts (idempotent, current DB already seeded); run `publish-jbf19-before-threshold.ps1` with the backend running → `verify-pilot.ps1` shows TELEMETRY PASS (counting 890, no alert) and exit 0; run `publish-jbf19-threshold.ps1` with the backend STOPPED → 200 echo proves mechanics without creating alert/job state that belongs to 7-5 (backend `cleanSession(true)` means no delayed delivery); confirm `syncro/tests/fixtures/.gitattributes`-pinned fixture bytes round-trip (publish echo contains the exact `messageId`). State exact checks run in the completion record. [all ACs]
+- [x] Verify scope: `git status --short` shows exactly the four new scripts + three edited infra files + story/sprint artifacts; zero changes under `syncro/apps/`, `db/seed/`, `db/migration/`, or frontend. [all ACs]
 
 **Acceptance Criteria:**
 
@@ -115,6 +115,7 @@ warnings: []
 ## Spec Change Log
 
 - 2026-08-22: Spec created (draft → ready-for-dev). Ultimate context engine analysis completed — comprehensive developer guide created.
+- 2026-08-22: Implemented by dev-story workflow. All tasks complete; live verification on the running local stack recorded in Dev Agent Record; two grounded deviations documented (EMQX publish response does not echo topic/payload on 6.2.2; PS 5.1 strips unescaped embedded double quotes from native arguments → queries moved to stdin, apply payload conditionally escaped to stay byte-identical). Status → review.
 
 ## Design Notes
 
@@ -143,8 +144,56 @@ warnings: []
 
 ### Agent Model Used
 
+GLM-5.3 (builtin:zai-start-plan/GLM-5.3) via ZCode agent, 2026-08-22.
+
 ### Debug Log References
+
+- EMQX publish response-shape probe (live, running `emqx/emqx:6.2.2`): `POST /api/v5/publish` returns `{"message": "...", "reason_code": N}` and does NOT echo topic/payload — probe to non-backend topic `syncro/probe/api-shape/ping` answered `no_matching_subscribers` / 16; the real before-threshold publish (backend subscribed) answered with an EMPTY message (delivered). This grounded the assertion adaptation below.
+- PowerShell 5.1 native argument-passing diagnosis (live, via `-File` temp script + `ps -o args= -p $$` inside the container): Windows PowerShell 5.1 strips unescaped embedded double quotes from native arguments, so `sh -c 'psql ... -c "SELECT ..."'` arrived at sh with all double quotes removed (query returned nothing, exit 0). Pre-escaped `\"` survives on 5.1/Legacy; raw quotes survive on PS 7.3+ native passing. Fixed by sending SQL over stdin (queries) and conditionally escaping the apply payload's quotes (see Completion Notes) so the in-container payload stays byte-identical on every version.
+- UTF-8 BOM fix: the first live run showed the seed-pilot summary tripwire firing — the DB value printed `Electric · PLC · Wecon · LX5` correctly but the script's Expected literal printed `Electric Â· PLC Â· Wecon Â· LX5` because PS 5.1 reads BOM-less .ps1 as ANSI. `seed-pilot.ps1` was re-encoded as UTF-8 with BOM; re-run matched exactly with no warning. (The pipe guard itself worked throughout: the applied label was never corrupted.)
+- Backend run for the before-threshold verification: started via a TEMP launcher (loaded `syncro/.env` with the start-backend.ps1 parsing idiom + `mvnw spring-boot:run`), health 200 after ~20s, stopped (port 8080 closed) before the threshold publish; temp files deleted.
 
 ### Completion Notes List
 
+- Implemented exactly the Code Map: four PowerShell scripts (`seed-pilot.ps1`, `publish-jbf19-before-threshold.ps1`, `publish-jbf19-threshold.ps1`, `verify-pilot.ps1`) plus the three-file EMQX infra correction. No production code, seed, migration, fixture, or frontend file was touched.
+- `seed-pilot.ps1`: comment-based help; `$ErrorActionPreference='Stop'`; UTF-8 pipe guard (`$OutputEncoding` UTF8 no-BOM + console UTF-8); Flyway preflight (`count(*) FROM flyway_schema_history WHERE success` — refuses on 0/error with the boot-once / `mvn flyway:migrate` guidance); apply = the 7-1 hardened stdin pipe with absolute resolved `--env-file`/`-f` paths (in-container `$POSTGRES_USER`/`$POSTGRES_DB` expansion, `ON_ERROR_STOP=1`, `PGCLIENTENCODING=UTF8`, atomic BEGIN/COMMIT); post-apply canonical-row summary table incl. the `·` label tripwire; exit 0. File saved as UTF-8 with BOM so PS 5.1 reads the `·` literal correctly.
+- Publish scripts: `.env` loaded via the start-backend.ps1 regex idiom; `SYNCRO_MQTT_HOST`/`SYNCRO_MQTT_DASHBOARD_PORT` defaults `localhost`/`18083`; missing `SYNCRO_MQTT_USERNAME`/`SYNCRO_MQTT_PASSWORD` terminates with check-.env guidance; fixture read `-Raw -Encoding UTF8`; default-on timestamp-only refresh (`yyyy-MM-dd'T'HH:mm:ss'Z'` invariant, targeted regex on raw text, no JSON round-trip) with `-NoTimestampRefresh` for verbatim runs; login → JWT → `/api/v5/publish` (qos 1, retain false, `-UseBasicParsing`); prints messageId/counting/timestamp/topic plus verify-pilot and PT30S dedupe-window follow-up hints.
+- `verify-pilot.ps1`: six sections (PREFLIGHT / SEED / TELEMETRY / ALERT / NOTIFICATION / ACKNOWLEDGEMENT RESULT) with PASS/FAIL/INFO verdicts; postgres+redis hard-fail, EMQX `/api/v5/status` + backend health warn-only; state-keyed alert expectation (no counter → baseline; 890 → no alert; 900 → exactly one non-RESOLVED with 90.00 snapshot; other → INFO); quarantine FAIL prints latest `rejection_reason|rejection_field|topic`; Redis `HGETALL` parsed hash with PT5M TTL caveat; placeholder-phone (`628123456780*`) explanation; machine UUID resolved by natural key; evidence-pointer block (UI routes, backend health, pgAdmin local/dev-only note, optional Influx `influxdb3 query` with in-container token expansion); exit 0 unless FAIL.
+- **Grounded deviation 1 — publish assertion:** EMQX 6.2.2 `/api/v5/publish` does not echo the topic/payload (live-probed: `{message, reason_code}` only), so the spec's "assert the response echoes topic + messageId" cannot be literal. Implemented as: (a) pre-publish assertion that the prepared raw body still contains the exact fixture `messageId` (catches regex/encoding mangling before it leaves the host), (b) HTTP-200 acceptance with the broker `message`/`reason_code` printed and interpreted (`no_matching_subscribers` = accepted, no subscriber online; empty message = delivered to the subscribed backend — both observed live), and (c) byte-fidelity downstream is guarded by verify-pilot's quarantine check (a mangled payload is rejected by the backend's contract validation → quarantine FAIL).
+- **Grounded deviation 2 — PS 5.1 native quoting (new live evidence beyond spec grounding):** unescaped embedded double quotes are stripped by PS 5.1's native argument passing, which silently broke the spec's literal `-c "<sql>"` sh payload. Queries now send SQL over stdin (`sh -c 'psql -U $POSTGRES_USER -d $POSTGRES_DB -t -A'` — no quotes to strip, no host expansion, space-free compose values); the seed apply payload stays byte-identical to the 7-1 header via conditional escaping (raw `"` on PS 7.3+ native passing, `\"` on 5.1/Legacy), so `sh` receives `... -U "$POSTGRES_USER" -d "$POSTGRES_DB"` verbatim on every PowerShell version.
+- **Extension (documented):** the README "Smoke Testing ACL" examples also used the swapped 3-13 username/topic; corrected alongside the current-rules table so the README is internally consistent with the corrected `device_GM1_BF-08410` convention (leaving them swapped would re-introduce the `unknown_plant` trap this story fixes).
+- **Repo nuance:** `syncro/infra/emqx/etc/auth-bootstrap.csv` is intentionally gitignored (`syncro/.gitignore:65`, local credential material), so the CSV row correction exists on disk (verified) but `git status --short` can never list it — the spec's expected-status list overstates this one file. Final status shows the four new scripts + `README.md` + `docker-entrypoint.sh` modified + story/sprint artifacts, zero changes under `syncro/apps/`, `db/seed/`, `db/migration/`, or the frontend.
+- **Pre-existing, out of scope:** `validate-syncro-baseline.ps1` currently fails on untouched contracts (stale required-env list still demanding `INFLUXDB_USERNAME/PASSWORD/ORG/BUCKET` removed by the InfluxDB 3 Core migration, and compose's `WHATSAPP_SWAGGER_PASSWORD` missing from `.env.example`). Provably independent of this story (none of those files modified here); flagged for a future maintenance story.
+- AC → evidence mapping: AC 7.3-1 → seed-pilot run 1/run 2 outputs (preflight 30, BEGIN + 15×INSERT 0 0 + COMMIT, identical summaries, exit 0). AC 7.3-2 → before-threshold publish (backend up): messageId verbatim + refreshed timestamp printed, backend ingested (counter 890 persisted, Redis hash fields present, quarantine empty) — full chain in verify run 1. AC 7.3-3 → threshold publish (backend stopped): login ok, publish accepted `no_matching_subscribers`/16, messageId `pilot-jbf19-threshold-900` verbatim, counter still 890 / no alert / no jobs afterwards (no contamination). AC 7.3-4 → verify-pilot run 1 + run 2 outputs (all sections, state-keyed verdicts, evidence pointers, RESULT: PASS exit 0). AC 7.3-5 → no hardcoded secrets anywhere; env/params/documented defaults only; psql path credential-free in-container. AC 7.3-6 → every script runs under `powershell.exe` 5.1 (all live runs used exactly that) with comment-based help; the `·` label round-tripped correctly through apply + summary (tripwire verified twice).
+- Testing approach note: per the spec's Never list, no new backend/frontend test was added — the live script runs above are this story's evidence (script-only verification plus live smoke run).
+
 ### File List
+
+- syncro/scripts/seed-pilot.ps1 (NEW, UTF-8 with BOM)
+- syncro/scripts/publish-jbf19-before-threshold.ps1 (NEW)
+- syncro/scripts/publish-jbf19-threshold.ps1 (NEW)
+- syncro/scripts/verify-pilot.ps1 (NEW)
+- syncro/infra/emqx/etc/auth-bootstrap.csv (EDIT — gitignored local file, corrected on disk)
+- syncro/infra/emqx/etc/docker-entrypoint.sh (EDIT)
+- syncro/infra/emqx/README.md (EDIT)
+- _bmad-output/implementation-artifacts/sprint-status.yaml (EDIT — story artifacts: 7-3 in-progress → review)
+
+### Verification performed (exact checks run, all live on the running local stack, Windows PowerShell 5.1 `powershell.exe`)
+
+1. `powershell -NoProfile -File syncro/scripts/seed-pilot.ps1` (run 1, from repo root): preflight `PASS: Flyway migrations applied: 30`; apply `BEGIN` + 15× `INSERT 0 0` + `COMMIT`; summary all rows Expected=Actual incl. `BF-08410GM1ELEPLCWEC000 | Electric · PLC · Wecon · LX5`; exit 0.
+2. Same command (run 2, from `C:\Users\Dell` — any-CWD proof): identical `INSERT 0 0` output and identical summary; exit 0 (idempotent).
+3. Backend started (env from `syncro/.env`, `mvnw spring-boot:run`); `GET http://localhost:8080/api/v1/health` → 200 after ~20s.
+4. `powershell -NoProfile -File syncro/scripts/publish-jbf19-before-threshold.ps1` (backend running): login PASS; publish accepted with EMPTY broker message (subscriber matched = delivered); printed `messageId: pilot-jbf19-before-threshold-890 (verbatim from fixture)`, `counting: 890`, refreshed UTC timestamp `2026-08-21T20:57:05Z`; exit 0.
+5. `powershell -NoProfile -File syncro/scripts/verify-pilot.ps1` (after 4): PREFLIGHT 4×PASS; SEED 9×PASS; TELEMETRY PASS — `machine_counter_states: counting=890 updated_at=2026-08-21 20:57:07`, Redis latest hash `counting=890 countingDelta=0 receivedAt=2026-08-21T20:57:05.549469100Z traceId=bf2b7e84-...`, `telemetry_quarantine empty`; ALERT PASS `no alert - correct before-threshold state (counting=890 -> 89.00% < 90%)`; NOTIFICATION PASS baseline; ACK INFO baseline; `RESULT: PASS`, exit 0.
+6. Backend stopped (health curl `000`, port closed), then `powershell -NoProfile -File syncro/scripts/publish-jbf19-threshold.ps1`: login PASS; publish accepted `broker message: 'no_matching_subscribers', reason_code: 16`; printed `messageId: pilot-jbf19-threshold-900 (verbatim from fixture)`, `counting: 900`; exit 0.
+7. verify-pilot re-run (after 6): counter STILL `counting=890` (updated_at unchanged `20:57:07`), no alert, no jobs, quarantine empty — backend-stopped threshold publish created no state (cleanSession semantics); backend health correctly INFO warn-only; `RESULT: PASS`, exit 0.
+8. Fixture byte round-trip: messageId verbatim pre-publish assertion + successful backend ingest with `telemetry_quarantine empty` (the backend's payload/topic identity and schema validation accept the exact bytes; any mangling would land in quarantine).
+9. `git status --short`: exactly the four new scripts, `syncro/infra/emqx/README.md`, `syncro/infra/emqx/etc/docker-entrypoint.sh`, `_bmad-output/implementation-artifacts/sprint-status.yaml` (+ this story file); the CSV edit is on disk but gitignored by design; zero changes under `syncro/apps/`, `db/seed/`, `db/migration/`, frontend.
+10. Syntax validation of all four scripts via `[System.Management.Automation.Language.Parser]::ParseFile` — zero errors.
+
+### Residual risks
+
+- The spec-text publish assertion was adapted to the real EMQX 6.2.2 response shape (documented deviation above); byte-level delivery proof relies on the backend's own contract validation + verify-pilot quarantine check rather than a broker echo.
+- `validate-syncro-baseline.ps1` has pre-existing failures unrelated to this story (stale env-key list vs InfluxDB 3 Core `.env.example`, missing `WHATSAPP_SWAGGER_PASSWORD` in `.env.example`); left untouched per scope fences — worth a small maintenance fix in a future story.
+- On a running stack, the OLD swapped ACL rule for `device_BF-08410_GM1` persists in the EMQX built-in DB until removed (bootstrap CSV is first-start-only); fresh stacks get only the corrected rule. The Management-API scripts are unaffected either way (README documents this).
+- Alert/notification/acknowledgement sections of verify-pilot are exercised only in their baseline state here (counter 890, no alert); the 900-path verdicts (one OPEN alert, 90.00 snapshot, TECHNICIAN job, post-ack timeline) will get their live proof in stories 7-5/7-6 as designed.

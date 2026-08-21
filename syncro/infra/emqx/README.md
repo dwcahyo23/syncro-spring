@@ -26,10 +26,12 @@ ACL rules are seeded at container startup via `docker-entrypoint.sh` using `emqx
 
 | User | Action | Topic | Purpose |
 |------|--------|-------|---------|
-| `syncro_backend` | subscribe | `factory/#` | Spring Boot MQTT consumer — reads all plant/machine telemetry |
-| `device_BF-08410_GM1` | publish | `factory/BF-08410/GM1/telemetry` | Example device — machine GM1 in plant BF-08410 |
+| `syncro_backend` | subscribe | `factory/+/+/telemetry` | Spring Boot MQTT consumer — reads all plant/machine telemetry (two dynamic segments, publish denied) |
+| `device_GM1_BF-08410` | publish | `factory/GM1/BF-08410/telemetry` | Canonical pilot device — machine BF-08410 in plant GM1 |
 
 All other actions are denied.
+
+Note: the `auth-bootstrap.csv` credential for a device only loads on first EMQX data-volume creation (bootstrap is first-start-only), while the ACL rules in `docker-entrypoint.sh` are upserted on every container start — after editing the CSV on an existing stack, add the credential via the EMQX dashboard/API and restart the container to pick up the ACL rule (see "Adding a New Device").
 
 ### Device Credential Convention
 
@@ -126,20 +128,20 @@ mosquitto_sub -h localhost -p 1883 \
 
 # Should FAIL: unauthenticated client is rejected
 mosquitto_pub -h localhost -p 1883 \
-  -t "factory/BF-08410/GM1/telemetry" -m '{"running":true}'
+  -t "factory/GM1/BF-08410/telemetry" -m '{"running":true}'
 
 # Should SUCCEED: device publishes to its own topic
 mosquitto_pub -h localhost -p 1883 \
-  -u device_BF-08410_GM1 -P "Device@Mqtt#2026!Dev" \
-  -t "factory/BF-08410/GM1/telemetry" -m '{"running":true}'
+  -u device_GM1_BF-08410 -P "Device@Mqtt#2026!Dev" \
+  -t "factory/GM1/BF-08410/telemetry" -m '{"running":true}'
 
 # Should FAIL: device publishes to a different machine topic
 mosquitto_pub -h localhost -p 1883 \
-  -u device_BF-08410_GM1 -P "Device@Mqtt#2026!Dev" \
-  -t "factory/BF-08410/GM2/telemetry" -m '{"running":true}'
+  -u device_GM1_BF-08410 -P "Device@Mqtt#2026!Dev" \
+  -t "factory/GM1/CNC-01/telemetry" -m '{"running":true}'
 
 # Should FAIL: device tries to subscribe (not permitted)
 mosquitto_sub -h localhost -p 1883 \
-  -u device_BF-08410_GM1 -P "Device@Mqtt#2026!Dev" \
+  -u device_GM1_BF-08410 -P "Device@Mqtt#2026!Dev" \
   -t "factory/#" -C 1 -W 3
 ```

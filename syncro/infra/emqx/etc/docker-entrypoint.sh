@@ -32,7 +32,7 @@ fi
 # Uses EMQX Management API (port 18083). Rules are upserted — idempotent.
 #
 # Convention for device usernames: device_{plantCode}_{machineCode}
-#   e.g. device_BF-08410_GM1 for machine GM1 in plant BF-08410
+#   e.g. device_GM1_BF-08410 for machine BF-08410 in plant GM1
 #
 # To add a new device:
 #   1. Add the device credentials to auth-bootstrap.csv (or via EMQX dashboard)
@@ -100,13 +100,14 @@ if [ -n "${SEED_API_KEY}" ]; then
     -d '[{"username":"syncro_backend","rules":[{"topic":"factory/+/+/telemetry","action":"subscribe","permission":"allow"}]}]' \
     > /dev/null && echo "ACL rule seeded: syncro_backend" || echo "WARNING: Failed to seed ACL rule for syncro_backend"
 
-  # device_BF-08410_GM1: may publish ONLY to its own topic (example device)
+  # device_GM1_BF-08410: may publish ONLY to its own topic
+  # (canonical pilot device: machine BF-08410 in plant GM1)
   # Add one block like this for each registered device.
   curl -sf -X POST "http://localhost:18083/api/v5/authorization/sources/built_in_database/rules/users" \
     -H "Content-Type: application/json" \
     -u "${SEED_API_KEY}:${SEED_SECRET}" \
-    -d '[{"username":"device_BF-08410_GM1","rules":[{"topic":"factory/BF-08410/GM1/telemetry","action":"publish","permission":"allow"}]}]' \
-    > /dev/null && echo "ACL rule seeded: device_BF-08410_GM1" || echo "WARNING: Failed to seed ACL rule for device_BF-08410_GM1"
+    -d '[{"username":"device_GM1_BF-08410","rules":[{"topic":"factory/GM1/BF-08410/telemetry","action":"publish","permission":"allow"}]}]' \
+    > /dev/null && echo "ACL rule seeded: device_GM1_BF-08410" || echo "WARNING: Failed to seed ACL rule for device_GM1_BF-08410"
 
   echo "ACL seeding complete."
 fi

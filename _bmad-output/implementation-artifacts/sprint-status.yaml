@@ -123,7 +123,7 @@ development_status:
   epic-7: in-progress
   7-1-create-canonical-pilot-seed-data: done
   7-2-provide-pilot-mqtt-payload-fixtures: done
-  7-3-create-pilot-scripts-for-seed-publish-and-verify: ready-for-dev
+  7-3-create-pilot-scripts-for-seed-publish-and-verify: review
   7-4-validate-telemetry-before-threshold-does-not-create-alert: backlog
   7-5-validate-threshold-alert-and-waha-notification-job: backlog
   7-6-validate-acknowledgement-stops-escalation: backlog
