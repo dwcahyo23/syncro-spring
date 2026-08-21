@@ -4,7 +4,7 @@ baseline_commit: f13ba18558c05de390e02bb9d5731a474f0b83b3
 
 # Story 6.1: Expose Dependency Health Checks
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
