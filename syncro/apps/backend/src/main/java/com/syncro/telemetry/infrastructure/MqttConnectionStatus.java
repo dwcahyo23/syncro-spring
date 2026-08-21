@@ -2,6 +2,8 @@ package com.syncro.telemetry.infrastructure;
 
 import java.time.Clock;
 import java.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationListener;
 import org.springframework.integration.mqtt.event.MqttConnectionFailedEvent;
 import org.springframework.integration.mqtt.event.MqttIntegrationEvent;
@@ -10,6 +12,8 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class MqttConnectionStatus implements ApplicationListener<MqttIntegrationEvent> {
+
+  private static final Logger log = LoggerFactory.getLogger(MqttConnectionStatus.class);
 
   public enum State {
     UNKNOWN,
@@ -33,6 +37,7 @@ public class MqttConnectionStatus implements ApplicationListener<MqttIntegration
       setState(State.SUBSCRIBED);
     } else if (event instanceof MqttConnectionFailedEvent failedEvent) {
       lastError = failedEvent.getCause() == null ? "unknown" : failedEvent.getCause().getMessage();
+      log.warn("MQTT connection failed: {}", lastError, failedEvent.getCause());
       setState(State.FAILED);
       // TODO (DW-14): Spring Integration MQTT 7.x does not publish a mid-session disconnect event
       // observable here. With setAutomaticReconnect(true), Paho handles drops in its background

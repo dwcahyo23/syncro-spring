@@ -55,7 +55,7 @@ class DbHealthIndicatorTest {
     assertThat(health.getDetails())
         .containsEntry("statusLabel", "Down")
         .containsEntry("statusSeverity", "CRITICAL")
-        .containsEntry("statusReason", "Connection validation returned false");
+        .containsEntry("statusReason", "VALIDATION_FAILED");
   }
 
   @Test

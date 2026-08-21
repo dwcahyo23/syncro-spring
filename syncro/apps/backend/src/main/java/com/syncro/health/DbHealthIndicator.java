@@ -39,7 +39,7 @@ public class DbHealthIndicator implements HealthIndicator {
         return DependencyHealthSupport.enrich(Health.up().build(), clock);
       }
       return DependencyHealthSupport.enrich(
-          Health.down().build(), clock, "Connection validation returned false", null);
+          Health.down().build(), clock, "VALIDATION_FAILED", null);
     } catch (Exception exception) {
       log.warn("Database health check failed", exception);
       return DependencyHealthSupport.enrich(

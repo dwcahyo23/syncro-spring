@@ -81,10 +81,13 @@ public final class DependencyHealthSupport {
    * message and the exception class name; only the returned code is ever rendered.
    */
   public static String reasonCode(Exception exception) {
+    if (exception == null) {
+      return "CONNECTION_FAILED";
+    }
     String message = exception.getMessage();
     String text = ((message == null ? "" : message) + " " + exception.getClass().getSimpleName())
         .toUpperCase(Locale.ROOT);
-    if (text.contains("TIMEOUT") || text.contains("TIMED OUT")) {
+    if (text.contains("TIMEOUT") || text.contains("TIMED OUT") || text.contains("TIMEDOUT")) {
       return "TIMEOUT";
     }
     if (text.contains("NO ROUTE TO HOST") || text.contains("NETWORK UNREACHABLE")
@@ -96,15 +99,18 @@ public final class DependencyHealthSupport {
         || text.contains("CONNECTEXCEPTION") || text.contains("CONNECTIONFAILURE")) {
       return "CONNECTION_REFUSED";
     }
-    if (text.contains("UNKNOWN HOST") || text.contains("UNKNOWNHOSTEXCEPTION") || text.contains("DNS")) {
+    if (text.contains("UNKNOWN HOST") || text.contains("UNKNOWNHOSTEXCEPTION")) {
       return "DNS_FAILURE";
     }
     if (text.contains("UNAUTHORIZED") || text.contains("AUTHENTICATION")
-        || text.contains("NOAUTH")) {
+        || text.contains("NOAUTH") || text.contains("FORBIDDEN")) {
       return "UNAUTHORIZED";
     }
-    if (text.contains("429") || text.contains("TOO MANY REQUESTS")) {
+    if (text.contains("TOO MANY REQUESTS") || text.contains("RATE LIMIT")) {
       return "RATE_LIMITED";
+    }
+    if (text.contains("NOT FOUND") || text.contains("BAD REQUEST")) {
+      return "INVALID_REQUEST";
     }
     if (text.contains("INTERNAL SERVER ERROR") || text.contains("SERVICE UNAVAILABLE")
         || text.contains("BAD GATEWAY")) {

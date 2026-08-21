@@ -33,13 +33,17 @@ class MqttHealthIndicatorTest {
   }
 
   @Test
-  void failedStateIsDownWithLastErrorDetail() {
+  void failedStateIsDownWithoutLeakingRawLastError() {
     status.onApplicationEvent(new MqttConnectionFailedEvent(status, new RuntimeException("boom")));
 
     Health health = indicator.health();
 
     assertThat(health.getStatus()).isEqualTo(Status.DOWN);
-    assertThat(health.getDetails()).containsEntry("lastError", "boom");
+    // Sanitisation: raw cause text must not reach the unauthenticated payload.
+    assertThat(health.getDetails())
+        .doesNotContainKey("lastError")
+        .doesNotContainValue("boom")
+        .containsEntry("statusReason", "MQTT_CONNECTION_FAILED");
   }
 
   @Test

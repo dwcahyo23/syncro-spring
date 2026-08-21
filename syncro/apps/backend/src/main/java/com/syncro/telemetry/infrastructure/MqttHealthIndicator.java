@@ -24,12 +24,9 @@ public class MqttHealthIndicator implements HealthIndicator {
     Health.Builder builder = up ? Health.up() : Health.down();
     String reason = null;
     if (!up) {
-      // Read volatile lastError exactly once: a concurrent reconnect may clear it between
-      // reads, and Health.Builder.withDetail asserts a non-null value (AC 7: never crash).
-      String lastError = status.lastError();
-      if (lastError != null) {
-        builder.withDetail("lastError", lastError);
-      }
+      // Never emit the raw lastError text here — /actuator/health is unauthenticated with
+      // show-details=always, so the cause is logged server-side by MqttConnectionStatus and
+      // only a stable code is exposed (AC 6 / sanitisation decision).
       reason = state == MqttConnectionStatus.State.FAILED
           ? "MQTT_CONNECTION_FAILED"
           : "MQTT_NOT_SUBSCRIBED";

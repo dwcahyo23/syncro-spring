@@ -54,7 +54,7 @@ class RedisHealthIndicatorTest {
     assertThat(health.getDetails())
         .containsEntry("statusLabel", "Down")
         .containsEntry("statusSeverity", "CRITICAL")
-        .containsEntry("statusReason", "PING returned unexpected reply: NOAUTH");
+        .containsEntry("statusReason", "UNEXPECTED_REPLY");
   }
 
   @Test

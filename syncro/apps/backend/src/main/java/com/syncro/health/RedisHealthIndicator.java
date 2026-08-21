@@ -39,7 +39,7 @@ public class RedisHealthIndicator implements HealthIndicator {
         return DependencyHealthSupport.enrich(Health.up().build(), clock);
       }
       return DependencyHealthSupport.enrich(
-          Health.down().build(), clock, "PING returned unexpected reply: " + pong, null);
+          Health.down().build(), clock, "UNEXPECTED_REPLY", null);
     } catch (Exception exception) {
       log.warn("Redis health check failed", exception);
       return DependencyHealthSupport.enrich(

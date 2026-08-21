@@ -77,6 +77,8 @@ class DependencyHealthSupportTest {
   void reasonCodeMapsKnownFailureClassesToStableCodes() {
     assertThat(DependencyHealthSupport.reasonCode(new SocketTimeoutException("Read timed out")))
         .isEqualTo("TIMEOUT");
+    assertThat(DependencyHealthSupport.reasonCode(new RuntimeException("Connection timedout")))
+        .isEqualTo("TIMEOUT");
     assertThat(DependencyHealthSupport.reasonCode(
         new SQLException("Connection refused: connect"))).isEqualTo("CONNECTION_REFUSED");
     assertThat(DependencyHealthSupport.reasonCode(
@@ -85,6 +87,21 @@ class DependencyHealthSupportTest {
         new RuntimeException("Unauthorized: invalid credentials"))).isEqualTo("UNAUTHORIZED");
     assertThat(DependencyHealthSupport.reasonCode(new ConnectException("No route to host")))
         .isEqualTo("NETWORK_UNREACHABLE");
+    assertThat(DependencyHealthSupport.reasonCode(new RuntimeException("429 Too Many Requests")))
+        .isEqualTo("RATE_LIMITED");
+    assertThat(DependencyHealthSupport.reasonCode(new RuntimeException("403 Forbidden")))
+        .isEqualTo("UNAUTHORIZED");
+    assertThat(DependencyHealthSupport.reasonCode(new RuntimeException("404 Not Found")))
+        .isEqualTo("INVALID_REQUEST");
+  }
+
+  @Test
+  void reasonCodeDoesNotMislabelIncidentalKeywords() {
+    assertThat(DependencyHealthSupport.reasonCode(
+        new RuntimeException("TLS handshake failed for dns.internal:443")))
+        .isEqualTo("CONNECTION_FAILED");
+    assertThat(DependencyHealthSupport.reasonCode(
+        new RuntimeException("SQLSTATE 08006 on port 4290"))).isEqualTo("CONNECTION_FAILED");
   }
 
   @Test
@@ -93,5 +110,6 @@ class DependencyHealthSupportTest {
         .isEqualTo("CONNECTION_FAILED");
     assertThat(DependencyHealthSupport.reasonCode(new RuntimeException()))
         .isEqualTo("CONNECTION_FAILED");
+    assertThat(DependencyHealthSupport.reasonCode(null)).isEqualTo("CONNECTION_FAILED");
   }
 }
