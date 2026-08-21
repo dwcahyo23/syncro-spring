@@ -42,6 +42,18 @@ export type IngestWorkerStatus = {
   acceptedCount: number;
 };
 
+export type TelemetryFreshnessState = "NO_DATA" | "LIVE" | "STALE";
+
+export type TelemetryFreshnessStatus = {
+  status: TelemetryFreshnessState;
+  statusLabel: string;
+  statusSeverity: string;
+  statusReason: string | null;
+  timestamp: string;
+  lastAcceptedAt: string | null;
+  staleSince: string | null;
+};
+
 export type NotificationWorkerStatus = {
   status: WorkerState;
   statusLabel: string;

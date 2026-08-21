@@ -32,6 +32,9 @@ public record TelemetryProperties(
   }
 
   public TelemetryProperties {
+    if (ingest == null) {
+      throw new IllegalArgumentException("syncro.telemetry.ingest must be configured");
+    }
     if (latestTtl == null || latestTtl.isZero() || latestTtl.isNegative()) {
       throw new IllegalArgumentException("syncro.telemetry.latest-ttl must be a positive duration");
     }
