@@ -68,7 +68,8 @@ public class WahaClient {
         .waitDurationInOpenState(resilienceProperties.waitDurationInOpenState())
         .permittedNumberOfCallsInHalfOpenState(resilienceProperties.permittedCallsInHalfOpen())
         .automaticTransitionFromOpenToHalfOpenEnabled(true)
-        // Non-2xx responses are treated as failures via WahaHttpStatusException (thrown in doSend)
+        // 5xx server errors and connection/timeout failures trip the circuit; 4xx client errors
+        // are returned as failed Results in doSend() and intentionally never reach this point.
         .recordExceptions(WahaHttpStatusException.class, ResourceAccessException.class,
             Exception.class)
         .ignoreExceptions(CallNotPermittedException.class)
@@ -120,8 +121,9 @@ public class WahaClient {
   // -------------------------------------------------------------------------
 
   /**
-   * Performs the actual HTTP call. Throws on non-2xx so the circuit breaker records it as a
-   * failure.
+   * Performs the actual HTTP call. Throws on 5xx so the circuit breaker records it as a
+   * failure. 4xx client errors are returned as a failed {@link Result} without throwing
+   * (deterministic — retry won't help, and must not open the circuit for other jobs).
    */
   private Result doSend(String recipientPhone, String messageText, String traceId) {
     var payload = new SendTextRequest(recipientPhone + "@c.us", messageText, "default");
@@ -140,9 +142,15 @@ public class WahaClient {
     int statusCode = response.getStatusCode().value();
     log.info("[WAHA][traceId={}] send attempt phone=*** status={}", traceId, statusCode);
 
-    if (!response.getStatusCode().is2xxSuccessful()) {
-      // Throw so the circuit breaker records this call as a failure
+    if (response.getStatusCode().is5xxServerError()) {
+      // 5xx is a transient server error — throw so the circuit breaker records it as a failure
       throw new WahaHttpStatusException(statusCode, detail);
+    }
+    if (!response.getStatusCode().is2xxSuccessful()) {
+      // 4xx is a deterministic client error (bad phone, invalid payload) — report the failure
+      // but do NOT trip the circuit: retrying later will never succeed and it must not block
+      // delivery of other, well-formed jobs.
+      return new Result(false, statusCode, detail);
     }
     return new Result(true, statusCode, detail);
   }

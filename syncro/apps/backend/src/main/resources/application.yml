@@ -30,6 +30,10 @@ management:
       probes:
         enabled: true
       show-details: always
+      group:
+        readiness:
+          include: "*"
+          exclude: "wahaCircuitBreaker"
 
 syncro:
   auth:

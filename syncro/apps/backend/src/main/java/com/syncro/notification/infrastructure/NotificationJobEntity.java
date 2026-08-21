@@ -121,6 +121,20 @@ public class NotificationJobEntity {
     }
   }
 
+  /**
+   * Records a failed dispatch caused by the WAHA circuit breaker being OPEN.
+   *
+   * <p>Circuit-open is dependency state, not a job-lifecycle failure: the attempt count is
+   * intentionally NOT incremented (so the job never exhausts due to a WAHA outage) and the job
+   * stays {@code PENDING} with a retry at {@code nextAttemptAt}. A single WAHA outage must not
+   * permanently drop alert notifications after {@code maxAttempts} probe cycles.
+   */
+  public void markCircuitOpen(Instant now, Instant nextAttemptAt) {
+    this.status = NotificationJobStatus.PENDING;
+    this.nextAttemptAt = nextAttemptAt;
+    this.updatedAt = now;
+  }
+
   @PrePersist
   void prePersist() {
     Instant now = Instant.now();

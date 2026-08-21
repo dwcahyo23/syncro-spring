@@ -103,7 +103,11 @@ public class NotificationDispatchService {
           job.getId(), nextAttemptNumber, STATUS_FAILED,
           truncate(attemptDetail), job.getTraceId());
       attemptRepository.save(attempt);
-      job.markAttemptFailed(now, nextAttemptAt);
+      if (isCircuitOpen(result)) {
+        job.markCircuitOpen(now, nextAttemptAt);
+      } else {
+        job.markAttemptFailed(now, nextAttemptAt);
+      }
       jobRepository.save(job);
 
       if (isCircuitOpen(result)) {

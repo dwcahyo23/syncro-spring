@@ -407,3 +407,7 @@ status: open
 - **DW-52: Manual hand-edit of generated file will be overwritten** — `syncro/apps/web/src/lib/api/generated/model/auditLogEntryViewEntityType.ts:20` — `ALERT` added by hand; next `generate:api` will delete unless `openapi.yaml` updated; re-generate after backend boots — deferred, pre-existing generation flow.
 - **DW-53: Duplicated DTOs mirrored in syncro.ts and alert-notification-history.tsx** — `syncro/apps/web/src/features/alerts/alert-notification-history.tsx:14` — intentional per Task 8 TODO to stay diff-free until next Orval regen; defer until generation.
 - **DW-54: Attempt truncation slice(0,3) and CASE ELSE 99 ordering ambiguity** — `syncro/apps/web/src/features/alerts/alert-notification-history.tsx:373` / `syncro/apps/backend/src/main/java/com/syncro/notification/infrastructure/NotificationJobRepository.java:17` — `maxAttempts=3` today, unknown levels go to 99 without secondary sort; deferred, not actionable without schema change.
+
+## Deferred from: code review of spec-5-9-implement-circuit-breaker-for-waha-calls (2026-08-21)
+
+- **DW-55: `@Transactional` held across the WAHA network call (up to 5s per job, 10 jobs/batch)** — `NotificationDispatchService.java:50` — pre-existing transaction boundary, severity worsened by the added timeout; deferred, pre-existing.

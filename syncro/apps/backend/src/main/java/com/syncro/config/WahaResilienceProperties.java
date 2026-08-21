@@ -62,6 +62,15 @@ public record WahaResilienceProperties(
       throw new IllegalArgumentException(
           "syncro.waha.resilience.failure-rate-threshold must be between 1 and 100");
     }
+    if (timeout == null || timeout.isZero() || timeout.isNegative()) {
+      throw new IllegalArgumentException(
+          "syncro.waha.resilience.timeout must be a positive duration");
+    }
+    if (waitDurationInOpenState == null || waitDurationInOpenState.isZero()
+        || waitDurationInOpenState.isNegative()) {
+      throw new IllegalArgumentException(
+          "syncro.waha.resilience.wait-duration-in-open-state must be a positive duration");
+    }
   }
 
   /** Convenience factory with production-safe defaults. */
