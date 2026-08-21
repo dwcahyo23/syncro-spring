@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-25
-last_updated: 2026-08-21
+last_updated: 2026-08-22
 project: Syncro
 project_key: NOKEY
 tracking_system: file-system
@@ -116,7 +116,7 @@ development_status:
   6-4-build-super-admin-health-dashboard: done
   6-5-surface-latest-telemetry-freshness-in-health: done
   6-6-link-health-failures-to-operational-evidence: done
-  6-7-implement-data-quality-panel-and-latency-indicator: backlog
+  6-7-implement-data-quality-panel-and-latency-indicator: ready-for-dev
   epic-6-retrospective: optional
 
   # Epic 7: Pilot Validation & Operational Proof
