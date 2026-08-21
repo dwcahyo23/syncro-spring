@@ -88,3 +88,33 @@ export type StaleMachineStatus = {
   staleMachineCount: number;
   items: StaleMachineItem[];
 };
+
+// Data-quality panel payload. Field names mirror the backend record:
+// TelemetryDataQualityStatus.java. `status`/`latencyState` serialize to enum names;
+// counts reset on backend restart (in-memory observability window, same as the ingest
+// tracker), `lastLatencyMs` is null before the first latency sample (NO_DATA).
+
+export type TelemetryDataQualityState = "GOOD" | "DEGRADED" | "CRITICAL";
+
+export type LatencyState = "NO_DATA" | "NORMAL" | "ELEVATED" | "CRITICAL";
+
+export type TelemetryDataQualityStatus = {
+  status: TelemetryDataQualityState;
+  statusLabel: string;
+  statusSeverity: string;
+  statusReason: string | null;
+  timestamp: string;
+  windowSeconds: number;
+  quarantinedCount: number;
+  rejectionRatePct: number;
+  anomalyCount: number;
+  deadLetterCount: number;
+  receivedCount: number;
+  quarantinedSeverity: string;
+  rejectionRateSeverity: string;
+  anomalySeverity: string;
+  deadLetterSeverity: string;
+  lastLatencyMs: number | null;
+  latencyState: LatencyState;
+  latencySeverity: string;
+};

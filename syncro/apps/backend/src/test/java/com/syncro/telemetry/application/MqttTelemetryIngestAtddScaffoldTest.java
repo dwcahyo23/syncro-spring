@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.mock;
 
+import com.syncro.config.TelemetryProperties;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import org.junit.jupiter.api.Disabled;
@@ -33,7 +35,11 @@ class MqttTelemetryIngestAtddScaffoldTest {
   private final MqttTelemetryIngestHandler handler =
       new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC), new AcceptingTelemetryValidationService(),
           mock(TelemetryPersistenceService.class), mock(TelemetryQuarantineService.class),
-          new TelemetryIngestTracker(Clock.fixed(FIXED_NOW, ZoneOffset.UTC)));
+          new TelemetryIngestTracker(Clock.fixed(FIXED_NOW, ZoneOffset.UTC)),
+          new TelemetryDataQualityTracker(Clock.fixed(FIXED_NOW, ZoneOffset.UTC),
+              new TelemetryProperties(Duration.parse("PT5M"), Duration.parse("PT30S"),
+                  new TelemetryProperties.Ingest(1000, 2, Duration.ofMinutes(5)),
+                  new TelemetryProperties.DataQuality(Duration.ofHours(1)))));
 
   @Test
   void enrichToleratesNonByteStringPayload() {

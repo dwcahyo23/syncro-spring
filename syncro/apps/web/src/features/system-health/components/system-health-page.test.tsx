@@ -10,6 +10,7 @@ import type {
   IngestWorkerStatus,
   NotificationWorkerStatus,
   StaleMachineStatus,
+  TelemetryDataQualityStatus,
   TelemetryFreshnessStatus,
 } from "@/features/system-health/types";
 
@@ -27,10 +28,15 @@ let notifQuery: WorkerQueryState;
 let quarantineQuery: QuarantineQueryState;
 let freshnessQuery: FreshnessQueryState;
 let staleMachinesQuery: StaleMachinesQueryState;
+let dataQualityQuery: DataQualityQueryState;
 
 vi.mock("@/features/system-health/hooks/use-actuator-health-query", () => ({
   SYSTEM_HEALTH_REFRESH_INTERVAL_MS: 30_000,
   useActuatorHealthQuery: () => actuatorQuery,
+}));
+
+vi.mock("@/features/system-health/hooks/use-data-quality", () => ({
+  useDataQuality: () => dataQualityQuery,
 }));
 
 vi.mock("@/features/system-health/hooks/use-ingest-worker-status", () => ({
@@ -95,6 +101,15 @@ type FreshnessQueryState = {
 
 type StaleMachinesQueryState = {
   data: StaleMachineStatus | undefined;
+  dataUpdatedAt?: number;
+  isLoading: boolean;
+  isError: boolean;
+  isFetching: boolean;
+  refetch: ReturnType<typeof vi.fn>;
+};
+
+type DataQualityQueryState = {
+  data: TelemetryDataQualityStatus | undefined;
   dataUpdatedAt?: number;
   isLoading: boolean;
   isError: boolean;
@@ -198,6 +213,30 @@ function healthyStaleMachines(overrides: Partial<StaleMachineStatus> = {}): Stal
   };
 }
 
+function healthyDataQuality(overrides: Partial<TelemetryDataQualityStatus> = {}): TelemetryDataQualityStatus {
+  return {
+    status: "GOOD",
+    statusLabel: "Good",
+    statusSeverity: "SUCCESS",
+    statusReason: null,
+    timestamp: "2026-08-22T10:00:00.000Z",
+    windowSeconds: 3600,
+    quarantinedCount: 2,
+    rejectionRatePct: 0.2,
+    anomalyCount: 0,
+    deadLetterCount: 0,
+    receivedCount: 1002,
+    quarantinedSeverity: "SUCCESS",
+    rejectionRateSeverity: "SUCCESS",
+    anomalySeverity: "SUCCESS",
+    deadLetterSeverity: "SUCCESS",
+    lastLatencyMs: 800,
+    latencyState: "NORMAL",
+    latencySeverity: "SUCCESS",
+    ...overrides,
+  };
+}
+
 /** Finds the Telemetry Freshness card within its section, since the h2 heading also matches the title text. */
 function freshnessCard(): HTMLElement {
   const section = screen.getByRole("region", { name: "Telemetry Freshness" });
@@ -260,6 +299,14 @@ describe("System Health Page", () => {
     };
     staleMachinesQuery = {
       data: healthyStaleMachines(),
+      dataUpdatedAt: now,
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    };
+    dataQualityQuery = {
+      data: healthyDataQuality(),
       dataUpdatedAt: now,
       isLoading: false,
       isError: false,
@@ -864,6 +911,144 @@ describe("System Health Page", () => {
     expect(screen.getByRole("link", { name: "View notification history" })).toBeInTheDocument();
     expect(screen.queryByText(/pgadmin/i)).not.toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/password|token|secret|connection string/i);
+  });
+
+  it("6-7-AC1 DataQualityPanel shows all metric rows, severity text badges, and the window", () => {
+    dataQualityQuery = {
+      ...dataQualityQuery,
+      data: healthyDataQuality({
+        quarantinedCount: 25,
+        rejectionRatePct: 2.5,
+        anomalyCount: 3,
+        quarantinedSeverity: "WARNING",
+        rejectionRateSeverity: "WARNING",
+        anomalySeverity: "WARNING",
+        status: "DEGRADED",
+        statusLabel: "Degraded",
+        statusSeverity: "WARNING",
+        statusReason: "rejection rate 2.5% above 1.0%",
+      }),
+    };
+
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    const section = screen.getByRole("region", { name: "Data Quality" });
+    expect(section).toHaveTextContent("Quarantined");
+    expect(section).toHaveTextContent("25");
+    expect(section).toHaveTextContent("Rejection rate");
+    expect(section).toHaveTextContent("2.50%");
+    expect(section).toHaveTextContent("Anomalies");
+    expect(section).toHaveTextContent("3");
+    expect(section).toHaveTextContent("Dead-letter");
+    expect(section).toHaveTextContent("Window");
+    expect(section).toHaveTextContent("last 1 hour");
+    // Severity is text-labeled (never color-only): warning badges render the word.
+    expect(section.textContent).toMatch(/Warning/);
+    expect(section).toHaveTextContent("Degraded");
+  });
+
+  it("6-7-AC1 dead-letter above zero renders a Critical badge and overall critical state", () => {
+    dataQualityQuery = {
+      ...dataQualityQuery,
+      data: healthyDataQuality({
+        deadLetterCount: 1,
+        deadLetterSeverity: "CRITICAL",
+        status: "CRITICAL",
+        statusLabel: "Critical",
+        statusSeverity: "CRITICAL",
+        statusReason: "1 dead-lettered message(s)",
+      }),
+    };
+
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    const section = screen.getByRole("region", { name: "Data Quality" });
+    expect(section.textContent).toMatch(/Critical/);
+    expect(section).toHaveTextContent("1 dead-lettered message(s)");
+  });
+
+  it("6-7-AC4 the panel links to the quarantine log section and the anchor target exists", () => {
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    const link = screen.getByRole("link", { name: "View Quarantine Log" });
+    expect(link).toHaveAttribute("href", "#telemetry-quarantine-log");
+    expect(document.getElementById("telemetry-quarantine-log")).not.toBeNull();
+  });
+
+  it("6-7-AC2 LatencyIndicator shows the latency value and Normal state in the header", () => {
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    const header = screen.getByRole("heading", { name: "System Health" }).parentElement;
+    if (!header) throw new Error("header not found");
+    expect(header).toHaveTextContent("Latency 800 ms");
+    expect(header).toHaveTextContent("Normal");
+  });
+
+  it("6-7-AC2/AC3 elevated and critical latency states are distinct and text-labeled", () => {
+    dataQualityQuery = {
+      ...dataQualityQuery,
+      data: healthyDataQuality({
+        lastLatencyMs: 6200,
+        latencyState: "ELEVATED",
+        latencySeverity: "WARNING",
+      }),
+    };
+    const { unmount } = render(<SystemHealthPage />, { wrapper: Wrapper });
+    let indicator = screen.getByLabelText(/Telemetry latency:/i);
+    expect(indicator).toHaveTextContent("6.2s");
+    expect(indicator).toHaveTextContent("Elevated");
+    expect(indicator).not.toHaveTextContent("Critical");
+    unmount();
+
+    dataQualityQuery = {
+      ...dataQualityQuery,
+      data: healthyDataQuality({
+        lastLatencyMs: 18400,
+        latencyState: "CRITICAL",
+        latencySeverity: "CRITICAL",
+      }),
+    };
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+    indicator = screen.getByLabelText(/Telemetry latency:/i);
+    expect(indicator).toHaveTextContent("18.4s");
+    expect(indicator).toHaveTextContent("Critical");
+  });
+
+  it("6-7-AC2 NO_DATA latency renders No data before the first sample", () => {
+    dataQualityQuery = {
+      ...dataQualityQuery,
+      data: healthyDataQuality({
+        lastLatencyMs: null,
+        latencyState: "NO_DATA",
+        latencySeverity: "NEUTRAL",
+      }),
+    };
+
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    const indicator = screen.getByLabelText(/Telemetry latency:/i);
+    expect(indicator).toHaveTextContent("No data");
+  });
+
+  it("6-7-error: a failing data-quality query surfaces a visible error without breaking the page", () => {
+    dataQualityQuery = {
+      ...dataQualityQuery,
+      data: undefined,
+      isError: true,
+    };
+
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    expect(screen.getByText("Unable to load data quality.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "System Health" })).toBeInTheDocument();
+    expect(screen.getByText("PostgreSQL")).toBeInTheDocument();
+  });
+
+  it("6-7-refresh: clicking Refresh also refetches data quality", () => {
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(dataQualityQuery.refetch).toHaveBeenCalled();
   });
 
   it("6-4-forbidden: non-SUPER_ADMIN sees Permission denied and no dashboard content", () => {

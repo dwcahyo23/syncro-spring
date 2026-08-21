@@ -14,9 +14,12 @@ import {
   type HealthSeverity,
 } from "@/components/syncro/health-card";
 import { HealthEvidenceLink } from "@/components/syncro/health-evidence-link";
+import { DataQualityPanel } from "@/components/syncro/data-quality-panel";
+import { LatencyIndicator } from "@/components/syncro/latency-indicator";
 import { QuarantineLogTable } from "@/components/syncro/quarantine-log-table";
 import { Button } from "@/components/ui/button";
 import { useActuatorHealthQuery } from "@/features/system-health/hooks/use-actuator-health-query";
+import { useDataQuality } from "@/features/system-health/hooks/use-data-quality";
 import { useIngestWorkerStatus } from "@/features/system-health/hooks/use-ingest-worker-status";
 import { useNotificationWorkerStatus } from "@/features/system-health/hooks/use-notification-worker-status";
 import { useQuarantineLog } from "@/features/system-health/hooks/use-quarantine-log";
@@ -71,6 +74,7 @@ export function SystemHealthPage() {
   const notificationWorker = useNotificationWorkerStatus();
   const freshness = useTelemetryFreshness();
   const staleMachines = useStaleMachines();
+  const dataQuality = useDataQuality();
   const [quarantinePage, setQuarantinePage] = useState(0);
   const quarantineLog = useQuarantineLog(quarantinePage, 20);
 
@@ -81,6 +85,7 @@ export function SystemHealthPage() {
     notificationWorker.dataUpdatedAt,
     freshness.dataUpdatedAt,
     staleMachines.dataUpdatedAt,
+    dataQuality.dataUpdatedAt,
     quarantineLog.dataUpdatedAt,
   ].filter((t): t is number => typeof t === "number" && t > 0);
   const lastUpdated = dataUpdatedAts.length > 0 ? Math.min(...dataUpdatedAts) : 0;
@@ -91,13 +96,15 @@ export function SystemHealthPage() {
     ingestWorker.isLoading ||
     notificationWorker.isLoading ||
     freshness.isLoading ||
-    staleMachines.isLoading;
+    staleMachines.isLoading ||
+    dataQuality.isLoading;
   const isFetching =
     actuatorHealth.isFetching ||
     ingestWorker.isFetching ||
     notificationWorker.isFetching ||
     freshness.isFetching ||
-    staleMachines.isFetching;
+    staleMachines.isFetching ||
+    dataQuality.isFetching;
 
   function handleRefresh() {
     void actuatorHealth.refetch();
@@ -105,6 +112,7 @@ export function SystemHealthPage() {
     void notificationWorker.refetch();
     void freshness.refetch();
     void staleMachines.refetch();
+    void dataQuality.refetch();
     void quarantineLog.refetch();
   }
 
@@ -140,7 +148,15 @@ export function SystemHealthPage() {
       {/* Page header */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1">
-          <h1 className="font-semibold text-2xl tracking-tight">System Health</h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="font-semibold text-2xl tracking-tight">System Health</h1>
+            <LatencyIndicator
+              latencyState={dataQuality.data?.latencyState}
+              lastLatencyMs={dataQuality.data?.lastLatencyMs}
+              isLoading={dataQuality.isLoading}
+              isError={dataQuality.isError}
+            />
+          </div>
           <p className="text-muted-foreground text-sm">
             Dependency and worker diagnostics. Refreshes automatically every 30 seconds.
           </p>
@@ -277,6 +293,18 @@ export function SystemHealthPage() {
         </div>
       </section>
 
+      {/* Data quality */}
+      <section aria-label="Data Quality">
+        <h2 className="mb-3 font-medium text-muted-foreground text-sm">Data Quality</h2>
+        <div className="max-w-2xl">
+          <DataQualityPanel
+            status={dataQuality.data}
+            isLoading={dataQuality.isLoading}
+            isError={dataQuality.isError}
+          />
+        </div>
+      </section>
+
       {/* Telemetry freshness */}
       <section aria-label="Telemetry Freshness">
         <h2 className="mb-3 font-medium text-muted-foreground text-sm">Telemetry Freshness</h2>
@@ -321,7 +349,7 @@ export function SystemHealthPage() {
       </section>
 
       {/* Telemetry quarantine log */}
-      <section aria-label="Telemetry quarantine log">
+      <section aria-label="Telemetry quarantine log" id="telemetry-quarantine-log" className="scroll-mt-24">
         <h2 className="mb-3 font-medium text-muted-foreground text-sm">Telemetry Quarantine Log</h2>
         <QuarantineLogTable
           entries={quarantineLog.data?.content ?? []}

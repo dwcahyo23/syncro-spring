@@ -30,9 +30,11 @@ import com.syncro.telemetry.infrastructure.MachineCounterStateRepository;
 import com.syncro.telemetry.infrastructure.RedisLatestTelemetryWriter;
 import com.syncro.alert.application.SparepartAlertService;
 import com.syncro.sparepart.application.SparepartLifetimeEvaluator;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -79,6 +81,7 @@ class TelemetryPersistenceServiceTest {
   private TelemetryValidationService.Result.Accepted accepted;
   private TelemetryEnvelope envelope;
   private String dedupeKey;
+  private TelemetryDataQualityTracker dataQualityTracker;
 
   @BeforeEach
   void setUp() {
@@ -90,9 +93,15 @@ class TelemetryPersistenceServiceTest {
     accepted = new TelemetryValidationService.Result.Accepted(machine, payload);
     envelope = new TelemetryEnvelope(TRACE_ID, "factory/GM1/BF-08410/telemetry", "{}", NOW);
     dedupeKey = "syncro:machine:" + machine.getId() + ":telemetry:dedupe:msg-persist-1";
+    dataQualityTracker = new TelemetryDataQualityTracker(Clock.fixed(NOW, ZoneOffset.UTC),
+        new TelemetryProperties(Duration.parse("PT5M"), Duration.parse("PT30S"),
+            new TelemetryProperties.Ingest(1000, 2, Duration.ofMinutes(5)),
+            new TelemetryProperties.DataQuality(Duration.ofHours(1))));
     service = new TelemetryPersistenceService(machines, influxWriter, redisLatestWriter, redis,
         new TelemetryProperties(Duration.parse("PT5M"), Duration.parse("PT30S"),
-            new TelemetryProperties.Ingest(1000, 2, Duration.ofMinutes(5))), evaluator, alertService, counterStateRepo);
+            new TelemetryProperties.Ingest(1000, 2, Duration.ofMinutes(5)),
+            new TelemetryProperties.DataQuality(Duration.ofHours(1))), evaluator, alertService, counterStateRepo,
+        Clock.fixed(NOW, ZoneOffset.UTC), dataQualityTracker);
     when(machines.findByIdWithPlantAndGroup(machine.getId())).thenReturn(Optional.of(machine));
     lenient().when(redis.opsForValue()).thenReturn(valueOps);
     // Avoid NPE in hdel diff logic when existing hash not explicitly stubbed
@@ -281,6 +290,56 @@ class TelemetryPersistenceServiceTest {
         .containsEntry("optional.rpm", "1200")
         .containsEntry("optional.heaterOn", "true")
         .containsEntry("optional.qualityGrade", "A");
+  }
+
+  // --- 6-7: publish-to-visible latency sampling ---
+
+  @Test
+  void persistRecordsLatencyFromPayloadTimestampToLatestWrite() {
+    // Payload published 1200ms before the fixed clock now → latency sample 1200ms.
+    accepted = new TelemetryValidationService.Result.Accepted(machine,
+        new TelemetryPayload(true, 12.5, 100, "1.0", "msg-latency", NOW.minusMillis(1200)));
+    String latencyDedupeKey = "syncro:machine:" + machine.getId() + ":telemetry:dedupe:msg-latency";
+    when(valueOps.setIfAbsent(latencyDedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+
+    service.persist(accepted, envelope);
+
+    assertThat(dataQualityTracker.snapshot().lastLatencyMs()).isEqualTo(1200);
+  }
+
+  @Test
+  void futurePayloadTimestampClampsLatencyToZero() {
+    // Default fixture payload timestamp (2026-08-14) is after NOW (2026-08-08): device clock
+    // ahead of the server → negative sample clamps to 0, never surfaces as negative latency.
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+
+    service.persist(accepted, envelope);
+
+    assertThat(dataQualityTracker.snapshot().lastLatencyMs()).isZero();
+  }
+
+  @Test
+  void duplicateMessageRecordsNoLatencySample() {
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(false);
+    when(valueOps.get(dedupeKey)).thenReturn("trace-winner");
+
+    service.persist(accepted, envelope);
+
+    assertThat(dataQualityTracker.snapshot().lastLatencyMs())
+        .isEqualTo(TelemetryDataQualityTracker.NO_LATENCY_SAMPLE);
+  }
+
+  @Test
+  void latestWriteFailureRecordsNoLatencySample() {
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+    doThrow(new RuntimeException("redis down")).when(redisLatestWriter).putLatest(any(UUID.class), any(), any(Duration.class));
+
+    assertThatThrownBy(() -> service.persist(accepted, envelope))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("redis down");
+
+    assertThat(dataQualityTracker.snapshot().lastLatencyMs())
+        .isEqualTo(TelemetryDataQualityTracker.NO_LATENCY_SAMPLE);
   }
 
   private TelemetryPayload payloadWithOptionalFields() {

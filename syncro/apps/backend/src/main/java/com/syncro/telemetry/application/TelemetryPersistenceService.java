@@ -10,6 +10,9 @@ import com.syncro.telemetry.infrastructure.MachineCounterStateRepository;
 import com.syncro.telemetry.infrastructure.RedisLatestTelemetryWriter;
 import com.syncro.alert.application.SparepartAlertService;
 import com.syncro.sparepart.application.SparepartLifetimeEvaluator;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,11 +37,14 @@ public class TelemetryPersistenceService {
   private final SparepartLifetimeEvaluator evaluator;
   private final SparepartAlertService alertService;
   private final MachineCounterStateRepository counterStateRepo;
+  private final Clock clock;
+  private final TelemetryDataQualityTracker dataQualityTracker;
 
   public TelemetryPersistenceService(MachineRepository machines, InfluxTelemetryWriter influxWriter,
       RedisLatestTelemetryWriter redisLatestWriter, StringRedisTemplate redis, TelemetryProperties properties,
       SparepartLifetimeEvaluator evaluator, SparepartAlertService alertService,
-      MachineCounterStateRepository counterStateRepo) {
+      MachineCounterStateRepository counterStateRepo, Clock clock,
+      TelemetryDataQualityTracker dataQualityTracker) {
     this.machines = machines;
     this.influxWriter = influxWriter;
     this.redisLatestWriter = redisLatestWriter;
@@ -47,6 +53,8 @@ public class TelemetryPersistenceService {
     this.evaluator = evaluator;
     this.alertService = alertService;
     this.counterStateRepo = counterStateRepo;
+    this.clock = clock;
+    this.dataQualityTracker = dataQualityTracker;
   }
 
   public void persist(TelemetryValidationService.Result.Accepted accepted, TelemetryEnvelope envelope) {
@@ -114,6 +122,10 @@ public class TelemetryPersistenceService {
     }
     try {
       redisLatestWriter.putLatest(machineId, latest, properties.latestTtl());
+      // Publish-to-visible latency: payload publish timestamp → latest telemetry now queryable.
+      // Recorded only after the write succeeds, so duplicates (early return) and failures never sample.
+      dataQualityTracker.recordLatencyMs(
+          Duration.between(accepted.payload().timestamp(), Instant.now(clock)).toMillis());
     } catch (RuntimeException redisEx) {
       log.warn("redis_latest_write_failed_baseline_may_be_stale machineId={} traceId={} counting={}",
           machineId, envelope.traceId(), currentCounting, redisEx);

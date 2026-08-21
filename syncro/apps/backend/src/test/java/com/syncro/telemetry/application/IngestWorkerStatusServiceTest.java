@@ -41,7 +41,8 @@ class IngestWorkerStatusServiceTest {
     return new TelemetryProperties(
         Duration.ofMinutes(5),
         Duration.ofSeconds(30),
-        new TelemetryProperties.Ingest(1000, 2, STALE_THRESHOLD));
+        new TelemetryProperties.Ingest(1000, 2, STALE_THRESHOLD),
+        new TelemetryProperties.DataQuality(Duration.ofHours(1)));
   }
 
   @Test

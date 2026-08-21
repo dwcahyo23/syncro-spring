@@ -2,7 +2,7 @@
 title: 'Implement Data Quality Panel and Latency Indicator'
 type: 'feature'
 created: '2026-08-22'
-status: 'ready-for-dev'
+status: 'review'
 review_loop_iteration: 0
 followup_review_recommended: false
 baseline_commit: 0bbfc50
@@ -101,26 +101,26 @@ warnings: []
 
 **Execution:**
 
-- [ ] `syncro/apps/backend/.../telemetry/application/TelemetryDataQualityTracker.java` -- NEW -- thread-safe minute-bucket ring counters (accepted/quarantined/anomaly/deadLetter) sized from the configured window (bounded memory, no per-event lists), `lastLatencyMs` volatile clamped ≥0; javadoc states the in-memory/restart-reset/observability-only philosophy and the anomaly reason constant (`out_of_range`). [AC 6.7-1, AC 6.7-2]
-- [ ] `syncro/apps/backend/.../telemetry/application/TelemetryDataQualityState.java` + `LatencyState.java` -- NEW -- enums with label/severity in the `TelemetryFreshnessState` style (local constants, no cross-module imports). [AC 6.7-1, AC 6.7-2]
-- [ ] `syncro/apps/backend/.../telemetry/application/TelemetryDataQualityStatus.java` -- NEW -- operational-contract record per Code Map; javadoc documents restart-reset semantics of every count and the latency definition (payload publish timestamp → Redis latest visible). [AC 6.7-1, AC 6.7-2]
-- [ ] `syncro/apps/backend/.../telemetry/application/TelemetryDataQualityService.java` -- NEW -- severity derivation with named threshold constants citing page-spec 4.4 / SM-008 / epic-6 context; rate math with received=0 → 0.0; worst-severity overall; latency state ≥5s ELEVATED, >15s CRITICAL; reason text listing the triggered conditions (or null when GOOD). [AC 6.7-1, AC 6.7-2]
-- [ ] `syncro/apps/backend/.../telemetry/api/TelemetryDataQualityController.java` -- NEW -- SUPER_ADMIN-only `GET /api/v1/telemetry/data-quality` mirroring `TelemetryFreshnessController` (null-principal guard, OpenAPI, tag). [AC 6.7-1]
-- [ ] `syncro/apps/backend/.../config/TelemetryProperties.java` -- MODIFY -- add validated nested `dataQuality.window` (default PT1H) following the existing record-nesting validation style. [AC 6.7-1]
-- [ ] `syncro/apps/backend/.../telemetry/application/MqttTelemetryIngestHandler.java` -- MODIFY -- record accept/quarantine/dead-letter outcomes to the tracker at the three existing branches; tracker failures must not alter ingest behavior. [AC 6.7-1]
-- [ ] `syncro/apps/backend/.../telemetry/application/TelemetryPersistenceService.java` -- MODIFY -- inject `Clock` + tracker; record publish→visible latency immediately after successful `putLatest` only (not on dedupe duplicate, not on Redis failure). [AC 6.7-2]
-- [ ] `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/TelemetryDataQualityTrackerTest.java` -- NEW -- per Code Map (fixed clock, eviction, anomaly split, clamp, window edge). [AC 6.7-1, AC 6.7-2]
-- [ ] `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/TelemetryDataQualityServiceTest.java` -- NEW -- threshold boundaries, rate math incl. ÷0 guard, latency boundaries, NO_DATA, worst-severity rollup. [AC 6.7-1, AC 6.7-2]
-- [ ] `syncro/apps/backend/src/test/java/com/syncro/telemetry/api/TelemetryDataQualityControllerTest.java` -- NEW -- `@WebMvcTest` role matrix + full JSON shape assertions. [AC 6.7-1]
-- [ ] `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/MqttTelemetryIngestHandlerTest.java` -- MODIFY -- verify tracker outcome recording on accept/reject/failure paths. [AC 6.7-1]
-- [ ] `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/TelemetryPersistenceServiceTest.java` -- MODIFY -- verify latency recorded only after successful latest-write (payload.timestamp → injected clock), not on duplicate/failure. [AC 6.7-2]
-- [ ] `syncro/apps/web/src/features/system-health/types/index.ts` -- MODIFY -- add the three new types mirroring the backend record. [AC 6.7-1, AC 6.7-2]
-- [ ] `syncro/apps/web/src/features/system-health/hooks/use-data-quality.ts` + `.test.ts` -- NEW -- fetcher/hook per Code Map with full shape guard; tests for 200/500/401/malformed. [AC 6.7-1, AC 6.7-2]
-- [ ] `syncro/apps/web/src/components/syncro/data-quality-panel.tsx` -- NEW -- shared panel per Code Map (five metric rows + per-metric severity text badges + window + drill-down link + loading/error/zero states). [AC 6.7-1, AC 6.7-3]
-- [ ] `syncro/apps/web/src/components/syncro/latency-indicator.tsx` -- NEW -- shared indicator per Code Map (value + state label, elevated/critical visually distinct AND text-labeled, no-data/error states). [AC 6.7-2, AC 6.7-3]
-- [ ] `syncro/apps/web/src/features/system-health/components/system-health-page.tsx` -- MODIFY -- header LatencyIndicator; Data Quality section; quarantine section anchor `id="telemetry-quarantine-log"`; wire the query into stale-banner/refresh/loading/fetching aggregations; banner untouched. [AC 6.7-1, AC 6.7-2, AC 6.7-3, AC 6.7-4]
-- [ ] `syncro/apps/web/src/features/system-health/components/system-health-page.test.tsx` -- MODIFY -- per Code Map (panel rows, badges, anchor link + target, latency states, error/refresh/loading coverage). [AC 6.7-1, AC 6.7-2, AC 6.7-3, AC 6.7-4]
-- [ ] Verify: run `mvn -q -f syncro/apps/backend/pom.xml test -Dtest="TelemetryDataQualityTrackerTest,TelemetryDataQualityServiceTest,TelemetryDataQualityControllerTest,MqttTelemetryIngestHandlerTest,TelemetryPersistenceServiceTest"` → BUILD SUCCESS; from `syncro/apps/web` run `npm run test:unit`, `npm run build`, and `npx biome lint` on changed files (clean; CRLF formatter diffs are the known environmental baseline). [all ACs]
+- [x] `syncro/apps/backend/.../telemetry/application/TelemetryDataQualityTracker.java` -- NEW -- thread-safe minute-bucket ring counters (accepted/quarantined/anomaly/deadLetter) sized from the configured window (bounded memory, no per-event lists), `lastLatencyMs` volatile clamped ≥0; javadoc states the in-memory/restart-reset/observability-only philosophy and the anomaly reason constant (`out_of_range`). [AC 6.7-1, AC 6.7-2]
+- [x] `syncro/apps/backend/.../telemetry/application/TelemetryDataQualityState.java` + `LatencyState.java` -- NEW -- enums with label/severity in the `TelemetryFreshnessState` style (local constants, no cross-module imports). [AC 6.7-1, AC 6.7-2]
+- [x] `syncro/apps/backend/.../telemetry/application/TelemetryDataQualityStatus.java` -- NEW -- operational-contract record per Code Map; javadoc documents restart-reset semantics of every count and the latency definition (payload publish timestamp → Redis latest visible). [AC 6.7-1, AC 6.7-2]
+- [x] `syncro/apps/backend/.../telemetry/application/TelemetryDataQualityService.java` -- NEW -- severity derivation with named threshold constants citing page-spec 4.4 / SM-008 / epic-6 context; rate math with received=0 → 0.0; worst-severity overall; latency state ≥5s ELEVATED, >15s CRITICAL; reason text listing the triggered conditions (or null when GOOD). [AC 6.7-1, AC 6.7-2]
+- [x] `syncro/apps/backend/.../telemetry/api/TelemetryDataQualityController.java` -- NEW -- SUPER_ADMIN-only `GET /api/v1/telemetry/data-quality` mirroring `TelemetryFreshnessController` (null-principal guard, OpenAPI, tag). [AC 6.7-1]
+- [x] `syncro/apps/backend/.../config/TelemetryProperties.java` -- MODIFY -- add validated nested `dataQuality.window` (default PT1H) following the existing record-nesting validation style. [AC 6.7-1]
+- [x] `syncro/apps/backend/.../telemetry/application/MqttTelemetryIngestHandler.java` -- MODIFY -- record accept/quarantine/dead-letter outcomes to the tracker at the three existing branches; tracker failures must not alter ingest behavior. [AC 6.7-1]
+- [x] `syncro/apps/backend/.../telemetry/application/TelemetryPersistenceService.java` -- MODIFY -- inject `Clock` + tracker; record publish→visible latency immediately after successful `putLatest` only (not on dedupe duplicate, not on Redis failure). [AC 6.7-2]
+- [x] `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/TelemetryDataQualityTrackerTest.java` -- NEW -- per Code Map (fixed clock, eviction, anomaly split, clamp, window edge). [AC 6.7-1, AC 6.7-2]
+- [x] `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/TelemetryDataQualityServiceTest.java` -- NEW -- threshold boundaries, rate math incl. ÷0 guard, latency boundaries, NO_DATA, worst-severity rollup. [AC 6.7-1, AC 6.7-2]
+- [x] `syncro/apps/backend/src/test/java/com/syncro/telemetry/api/TelemetryDataQualityControllerTest.java` -- NEW -- `@WebMvcTest` role matrix + full JSON shape assertions. [AC 6.7-1]
+- [x] `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/MqttTelemetryIngestHandlerTest.java` -- MODIFY -- verify tracker outcome recording on accept/reject/failure paths. [AC 6.7-1]
+- [x] `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/TelemetryPersistenceServiceTest.java` -- MODIFY -- verify latency recorded only after successful latest-write (payload.timestamp → injected clock), not on duplicate/failure. [AC 6.7-2]
+- [x] `syncro/apps/web/src/features/system-health/types/index.ts` -- MODIFY -- add the three new types mirroring the backend record. [AC 6.7-1, AC 6.7-2]
+- [x] `syncro/apps/web/src/features/system-health/hooks/use-data-quality.ts` + `.test.ts` -- NEW -- fetcher/hook per Code Map with full shape guard; tests for 200/500/401/malformed. [AC 6.7-1, AC 6.7-2]
+- [x] `syncro/apps/web/src/components/syncro/data-quality-panel.tsx` -- NEW -- shared panel per Code Map (five metric rows + per-metric severity text badges + window + drill-down link + loading/error/zero states). [AC 6.7-1, AC 6.7-3]
+- [x] `syncro/apps/web/src/components/syncro/latency-indicator.tsx` -- NEW -- shared indicator per Code Map (value + state label, elevated/critical visually distinct AND text-labeled, no-data/error states). [AC 6.7-2, AC 6.7-3]
+- [x] `syncro/apps/web/src/features/system-health/components/system-health-page.tsx` -- MODIFY -- header LatencyIndicator; Data Quality section; quarantine section anchor `id="telemetry-quarantine-log"`; wire the query into stale-banner/refresh/loading/fetching aggregations; banner untouched. [AC 6.7-1, AC 6.7-2, AC 6.7-3, AC 6.7-4]
+- [x] `syncro/apps/web/src/features/system-health/components/system-health-page.test.tsx` -- MODIFY -- per Code Map (panel rows, badges, anchor link + target, latency states, error/refresh/loading coverage). [AC 6.7-1, AC 6.7-2, AC 6.7-3, AC 6.7-4]
+- [x] Verify: run `mvn -q -f syncro/apps/backend/pom.xml test -Dtest="TelemetryDataQualityTrackerTest,TelemetryDataQualityServiceTest,TelemetryDataQualityControllerTest,MqttTelemetryIngestHandlerTest,TelemetryPersistenceServiceTest"` → BUILD SUCCESS; from `syncro/apps/web` run `npm run test:unit`, `npm run build`, and `npx biome lint` on changed files (clean; CRLF formatter diffs are the known environmental baseline). [all ACs]
 
 **Acceptance Criteria:**
 
@@ -132,6 +132,7 @@ warnings: []
 ## Spec Change Log
 
 - 2026-08-22: Spec created (draft → ready-for-dev). Ultimate context engine analysis completed — comprehensive developer guide created.
+- 2026-08-22: Implemented (see Dev Agent Record). All 20 tasks complete; status → review.
 
 ## Design Notes
 
@@ -163,6 +164,54 @@ GLM-5.3 (ZCode, builtin:zai-start-plan/GLM-5.3)
 
 ### Debug Log References
 
+- Backend scoped runs: `mvn -f syncro/apps/backend/pom.xml test -Dtest="TelemetryDataQualityTrackerTest,TelemetryDataQualityServiceTest,TelemetryDataQualityControllerTest,MqttTelemetryIngestHandlerTest,TelemetryPersistenceServiceTest,IngestWorkerStatusServiceTest,TelemetryFreshnessServiceTest,TelemetryIngestQueueConfigTest"`.
+- Frontend: `npx vitest run` scoped files, `npm run test:unit`, `npm run build`, `npx biome lint` on changed files.
+
 ### Completion Notes List
 
+- All four panel metrics + latency come from one in-memory `TelemetryDataQualityTracker` (minute-bucket ring counters sized from `syncro.telemetry.data-quality.window`, default PT1H), recorded at the three existing ingest outcomes: `recordAccepted()` on the Accepted branch, `recordQuarantined(reason)` on the Rejected branch (anomaly iff reason `out_of_range`), `recordDeadLettered()` in the handler catch. Tracker increment claims a bucket under `synchronized` so a ring-wrap reset can never race an increment and lose it; reads are lock-free.
+- Latency is sampled in `TelemetryPersistenceService` immediately after the Redis latest write succeeds: `Duration.between(payload.timestamp, Instant.now(clock))`, clamped ≥0 in the tracker (device clock ahead of server → 0ms). Dedupe duplicates (early return) and Redis write failures never sample; verified by dedicated tests including the negative-clamp case.
+- `GET /api/v1/telemetry/data-quality` mirrors the `TelemetryFreshnessController` guard exactly (null-principal → 403); role matrix tested (@WebMvcTest): SUPER_ADMIN 200 (full JSON shape incl. null `lastLatencyMs` for NO_DATA), MANAGE/VIEWER 403, anonymous 401.
+- Frontend: shared `DataQualityPanel` (components/syncro) renders the five metric rows with per-metric text-labeled severity badges, overall label+badge, window ("last 1 hour"), reason line, and the "View Quarantine Log" in-page anchor link; the quarantine section gained `id="telemetry-quarantine-log"`. Shared `LatencyIndicator` renders in the page header with `role="status"` (Biome a11y), value formatting (<1s → "N ms", else "X.Ys") and text-labeled states; NO_DATA renders "No data". The data-quality query joins `dataUpdatedAts`/`isLoading`/`isFetching`/`handleRefresh`; `computeOverallBanner` inputs untouched by design.
+- **Pre-existing failure fixed in scope:** `MqttTelemetryIngestHandlerTest.handleMessageLogsReceivedForAcceptedMessage` failed on clean main (verified via `git stash -u` + isolated rerun at HEAD b116ad1) because its DEBUG-log assertion depended on the JVM's default logback level, which filtered debug events in this surefire environment. Since the file was already modified for tracker wiring, the test now pins `Level.DEBUG` in `attachAppender`/`detachAppender` (restoring inherit on detach), making it deterministic. Behavior of production code unchanged.
+- Banner semantics, existing endpoint contracts, ingest validation/quarantine/backpressure behavior, and `HealthCard`'s read-only contract are all untouched; the panel and indicator are additive surfaces.
+
+**Verification performed:**
+- `mvn ... -Dtest="TelemetryDataQualityTrackerTest,TelemetryDataQualityServiceTest,TelemetryDataQualityControllerTest,MqttTelemetryIngestHandlerTest,TelemetryPersistenceServiceTest,IngestWorkerStatusServiceTest,TelemetryFreshnessServiceTest,TelemetryIngestQueueConfigTest"` — BUILD SUCCESS, 79 tests, 0 failures (all 8 touched classes, hermetic).
+- `npm run test:unit` (syncro/apps/web) — 157 passed, 7 skipped (includes 11 new fetcher tests and 8 new page tests).
+- `npm run build` (syncro/apps/web) — compiled successfully; `/dashboard/system-health` route built.
+- `npx biome lint` on the 7 changed frontend files — clean (0 errors, 0 warnings; two nested-ternary warnings and two a11y aria-label errors found during dev were fixed).
+
+**Residual risks / pre-existing failures (NOT caused by this story):**
+- Full backend suite (`mvn test`) still carries the documented main-branch failures (cf. spec-6-5/6-6): `SparepartAlertCommandServiceTest.acknowledge_cancelsActiveNotificationJobs` (stale expectation), `WahaRateLimiterTest` strict-stubbing hygiene, and Testcontainers `influxdb:3-core` startup timeouts blocking `@SpringBootTest` classes in this environment. None are in files touched by 6-7.
+- Latency measures publish → backend-visible (SM-008's platform portion); the browser poll interval (≤30s) is additional and intentionally not folded into the backend-owned metric (documented in Design Notes).
+- Full-stack browser verification was not possible unattended; evidence is unit/build-level per the Verification section.
+
 ### File List
+
+- `syncro/apps/backend/src/main/java/com/syncro/config/TelemetryProperties.java` — modified (new validated `dataQuality.window` group)
+- `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/TelemetryDataQualityTracker.java` — new
+- `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/TelemetryDataQualityState.java` — new
+- `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/LatencyState.java` — new
+- `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/TelemetryDataQualityStatus.java` — new
+- `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/TelemetryDataQualityService.java` — new
+- `syncro/apps/backend/src/main/java/com/syncro/telemetry/api/TelemetryDataQualityController.java` — new
+- `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/MqttTelemetryIngestHandler.java` — modified (tracker wiring)
+- `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/TelemetryPersistenceService.java` — modified (Clock + tracker + latency sampling)
+- `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/TelemetryDataQualityTrackerTest.java` — new
+- `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/TelemetryDataQualityServiceTest.java` — new
+- `syncro/apps/backend/src/test/java/com/syncro/telemetry/api/TelemetryDataQualityControllerTest.java` — new
+- `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/MqttTelemetryIngestHandlerTest.java` — modified (tracker tests + deterministic DEBUG level)
+- `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/MqttTelemetryIngestAtddScaffoldTest.java` — modified (constructor arg only)
+- `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/TelemetryPersistenceServiceTest.java` — modified (4 latency-sampling tests)
+- `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/IngestWorkerStatusServiceTest.java` — modified (properties constructor arg)
+- `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/TelemetryFreshnessServiceTest.java` — modified (properties constructor arg)
+- `syncro/apps/backend/src/test/java/com/syncro/telemetry/infrastructure/TelemetryIngestQueueConfigTest.java` — modified (properties constructor arg)
+- `syncro/apps/web/src/features/system-health/types/index.ts` — modified (3 new types)
+- `syncro/apps/web/src/features/system-health/hooks/use-data-quality.ts` — new
+- `syncro/apps/web/src/features/system-health/hooks/use-data-quality.test.ts` — new
+- `syncro/apps/web/src/components/syncro/data-quality-panel.tsx` — new
+- `syncro/apps/web/src/components/syncro/latency-indicator.tsx` — new
+- `syncro/apps/web/src/features/system-health/components/system-health-page.tsx` — modified (header indicator, Data Quality section, anchor, query wiring)
+- `syncro/apps/web/src/features/system-health/components/system-health-page.test.tsx` — modified (8 new tests + fixture/mock)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — modified (status transitions)

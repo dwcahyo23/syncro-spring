@@ -18,7 +18,8 @@ class TelemetryIngestQueueConfigTest {
     return new TelemetryProperties(
         Duration.ofMinutes(5),
         Duration.ofSeconds(30),
-        new TelemetryProperties.Ingest(queueCapacity, workerThreads, Duration.ofMinutes(5)));
+        new TelemetryProperties.Ingest(queueCapacity, workerThreads, Duration.ofMinutes(5)),
+        new TelemetryProperties.DataQuality(Duration.ofHours(1)));
   }
 
   @Test

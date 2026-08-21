@@ -8,7 +8,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 public record TelemetryProperties(
     @DefaultValue("PT5M") Duration latestTtl,
     @DefaultValue("PT30S") Duration dedupeWindow,
-    @DefaultValue Ingest ingest) {
+    @DefaultValue Ingest ingest,
+    @DefaultValue DataQuality dataQuality) {
 
   public record Ingest(
       @DefaultValue("1000") int queueCapacity,
@@ -31,9 +32,24 @@ public record TelemetryProperties(
     }
   }
 
+  /** Data-quality metrics window for the health dashboard panel (page-spec 4.4, default 1 hour). */
+  public record DataQuality(
+      @DefaultValue("PT1H") Duration window) {
+
+    public DataQuality {
+      if (window == null || window.isZero() || window.isNegative()) {
+        throw new IllegalArgumentException(
+            "syncro.telemetry.data-quality.window must be a positive duration");
+      }
+    }
+  }
+
   public TelemetryProperties {
     if (ingest == null) {
       throw new IllegalArgumentException("syncro.telemetry.ingest must be configured");
+    }
+    if (dataQuality == null) {
+      throw new IllegalArgumentException("syncro.telemetry.data-quality must be configured");
     }
     if (latestTtl == null || latestTtl.isZero() || latestTtl.isNegative()) {
       throw new IllegalArgumentException("syncro.telemetry.latest-ttl must be a positive duration");

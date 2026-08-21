@@ -22,15 +22,17 @@ public class MqttTelemetryIngestHandler implements MessageHandler {
   private final TelemetryPersistenceService persistenceService;
   private final TelemetryQuarantineService quarantineService;
   private final TelemetryIngestTracker ingestTracker;
+  private final TelemetryDataQualityTracker dataQualityTracker;
 
   public MqttTelemetryIngestHandler(Clock clock, TelemetryValidationService validationService,
       TelemetryPersistenceService persistenceService, TelemetryQuarantineService quarantineService,
-      TelemetryIngestTracker ingestTracker) {
+      TelemetryIngestTracker ingestTracker, TelemetryDataQualityTracker dataQualityTracker) {
     this.clock = clock;
     this.validationService = validationService;
     this.persistenceService = persistenceService;
     this.quarantineService = quarantineService;
     this.ingestTracker = ingestTracker;
+    this.dataQualityTracker = dataQualityTracker;
   }
 
   public TelemetryEnvelope enrich(Message<?> message) {
@@ -52,6 +54,7 @@ public class MqttTelemetryIngestHandler implements MessageHandler {
       switch (validationService.validate(envelope.topic(), envelope.payload())) {
         case TelemetryValidationService.Result.Accepted accepted -> {
           ingestTracker.recordAccepted();
+          dataQualityTracker.recordAccepted();
           log.info("mqtt_telemetry_accepted traceId={} topic={}",
               envelope.traceId(), envelope.topic());
           log.debug(
@@ -60,6 +63,7 @@ public class MqttTelemetryIngestHandler implements MessageHandler {
           persistenceService.persist(accepted, envelope);
         }
         case TelemetryValidationService.Result.Rejected rejected -> {
+          dataQualityTracker.recordQuarantined(rejected.reason());
           if (rejected.field() == null) {
             log.warn("mqtt_telemetry_rejected reason={} traceId={} topic={}",
                 rejected.reason(), envelope.traceId(), envelope.topic());
@@ -71,6 +75,7 @@ public class MqttTelemetryIngestHandler implements MessageHandler {
         }
       }
     } catch (RuntimeException exception) {
+      dataQualityTracker.recordDeadLettered();
       Object topicHeader = message.getHeaders().get(MqttHeaders.RECEIVED_TOPIC);
       log.error("mqtt_telemetry_ingest_failed traceId={} topic={}",
           traceId == null ? "" : traceId, topicHeader == null ? "" : topicHeader, exception);
