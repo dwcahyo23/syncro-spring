@@ -21,13 +21,16 @@ public class MqttTelemetryIngestHandler implements MessageHandler {
   private final TelemetryValidationService validationService;
   private final TelemetryPersistenceService persistenceService;
   private final TelemetryQuarantineService quarantineService;
+  private final TelemetryIngestTracker ingestTracker;
 
   public MqttTelemetryIngestHandler(Clock clock, TelemetryValidationService validationService,
-      TelemetryPersistenceService persistenceService, TelemetryQuarantineService quarantineService) {
+      TelemetryPersistenceService persistenceService, TelemetryQuarantineService quarantineService,
+      TelemetryIngestTracker ingestTracker) {
     this.clock = clock;
     this.validationService = validationService;
     this.persistenceService = persistenceService;
     this.quarantineService = quarantineService;
+    this.ingestTracker = ingestTracker;
   }
 
   public TelemetryEnvelope enrich(Message<?> message) {
@@ -48,6 +51,7 @@ public class MqttTelemetryIngestHandler implements MessageHandler {
       traceId = envelope.traceId();
       switch (validationService.validate(envelope.topic(), envelope.payload())) {
         case TelemetryValidationService.Result.Accepted accepted -> {
+          ingestTracker.recordAccepted();
           log.info("mqtt_telemetry_accepted traceId={} topic={}",
               envelope.traceId(), envelope.topic());
           log.debug(

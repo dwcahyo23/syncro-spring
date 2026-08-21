@@ -28,10 +28,12 @@ class MqttTelemetryIngestHandlerTest {
 
   private final TelemetryPersistenceService persistence = mock(TelemetryPersistenceService.class);
   private final TelemetryQuarantineService quarantine = mock(TelemetryQuarantineService.class);
+  private final TelemetryIngestTracker tracker =
+      new TelemetryIngestTracker(Clock.fixed(FIXED_NOW, ZoneOffset.UTC));
 
   private final MqttTelemetryIngestHandler handler =
       new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC), new AcceptingTelemetryValidationService(),
-          persistence, quarantine);
+          persistence, quarantine, tracker);
 
   @Test
   void enrichAssignsTraceIdAndCapturesTopicAndPayload() {
@@ -94,7 +96,7 @@ class MqttTelemetryIngestHandlerTest {
   @Test
   void handleMessageLogsRejectionWithReasonAndTraceId() {
     var rejectingHandler = new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC),
-        new RejectingTelemetryValidationService(), persistence, quarantine);
+        new RejectingTelemetryValidationService(), persistence, quarantine, tracker);
     var appender = attachAppender();
     var message = MessageBuilder.withPayload("{\"running\":true}".getBytes(StandardCharsets.UTF_8))
         .setHeader(MqttHeaders.RECEIVED_TOPIC, "factory/GM1/BF-08410/telemetry")
@@ -113,7 +115,7 @@ class MqttTelemetryIngestHandlerTest {
   @Test
   void handleMessageLogsInactiveMachineRejectionWithReasonTraceIdAndTopic() {
     var inactiveHandler = new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC),
-        new RejectingTelemetryValidationService("inactive_machine"), persistence, quarantine);
+        new RejectingTelemetryValidationService("inactive_machine"), persistence, quarantine, tracker);
     var appender = attachAppender();
     var message = MessageBuilder.withPayload("{\"running\":true}".getBytes(StandardCharsets.UTF_8))
         .setHeader(MqttHeaders.RECEIVED_TOPIC, "factory/GM1/BF-08410/telemetry")
@@ -134,7 +136,7 @@ class MqttTelemetryIngestHandlerTest {
   @Test
   void handleMessageSwallowsRejectionWithoutThrowing() {
     var rejectingHandler = new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC),
-        new RejectingTelemetryValidationService(), persistence, quarantine);
+        new RejectingTelemetryValidationService(), persistence, quarantine, tracker);
     var message = MessageBuilder.withPayload("{\"running\":true}".getBytes(StandardCharsets.UTF_8))
         .setHeader(MqttHeaders.RECEIVED_TOPIC, "factory/GM1/BF-08410/telemetry")
         .build();
@@ -154,9 +156,35 @@ class MqttTelemetryIngestHandlerTest {
   }
 
   @Test
+  void acceptedMessageIsRecordedInIngestTracker() {
+    var message = MessageBuilder.withPayload("{\"running\":true}".getBytes(StandardCharsets.UTF_8))
+        .setHeader(MqttHeaders.RECEIVED_TOPIC, "factory/GM1/BF-08410/telemetry")
+        .build();
+
+    handler.handleMessage(message);
+
+    assertThat(tracker.lastAcceptedAt()).isEqualTo(FIXED_NOW);
+    assertThat(tracker.acceptedCount()).isEqualTo(1);
+  }
+
+  @Test
+  void rejectedMessageIsNotRecordedInIngestTracker() {
+    var rejectingHandler = new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC),
+        new RejectingTelemetryValidationService(), persistence, quarantine, tracker);
+    var message = MessageBuilder.withPayload("{\"running\":true}".getBytes(StandardCharsets.UTF_8))
+        .setHeader(MqttHeaders.RECEIVED_TOPIC, "factory/GM1/BF-08410/telemetry")
+        .build();
+
+    rejectingHandler.handleMessage(message);
+
+    assertThat(tracker.lastAcceptedAt()).isNull();
+    assertThat(tracker.acceptedCount()).isZero();
+  }
+
+  @Test
   void persistIsNotInvokedOnRejectedMessage() {
     var rejectingHandler = new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC),
-        new RejectingTelemetryValidationService(), persistence, quarantine);
+        new RejectingTelemetryValidationService(), persistence, quarantine, tracker);
     var message = MessageBuilder.withPayload("{\"running\":true}".getBytes(StandardCharsets.UTF_8))
         .setHeader(MqttHeaders.RECEIVED_TOPIC, "factory/GM1/BF-08410/telemetry")
         .build();
@@ -212,3 +240,4 @@ class MqttTelemetryIngestHandlerTest {
     appender.stop();
   }
 }
+

@@ -92,7 +92,7 @@ class TelemetryPersistenceServiceTest {
     dedupeKey = "syncro:machine:" + machine.getId() + ":telemetry:dedupe:msg-persist-1";
     service = new TelemetryPersistenceService(machines, influxWriter, redisLatestWriter, redis,
         new TelemetryProperties(Duration.parse("PT5M"), Duration.parse("PT30S"),
-            new TelemetryProperties.Ingest(1000, 2)), evaluator, alertService, counterStateRepo);
+            new TelemetryProperties.Ingest(1000, 2, Duration.ofMinutes(5))), evaluator, alertService, counterStateRepo);
     when(machines.findByIdWithPlantAndGroup(machine.getId())).thenReturn(Optional.of(machine));
     lenient().when(redis.opsForValue()).thenReturn(valueOps);
     // Avoid NPE in hdel diff logic when existing hash not explicitly stubbed

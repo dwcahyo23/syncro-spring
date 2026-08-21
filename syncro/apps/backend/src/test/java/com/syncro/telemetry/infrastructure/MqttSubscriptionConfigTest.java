@@ -8,6 +8,7 @@ import com.syncro.config.MqttProperties;
 import com.syncro.config.TelemetryProperties;
 import com.syncro.config.TimeConfig;
 import com.syncro.telemetry.application.MqttTelemetryIngestHandler;
+import com.syncro.telemetry.application.TelemetryIngestTracker;
 import com.syncro.telemetry.application.TelemetryPersistenceService;
 import com.syncro.telemetry.application.TelemetryQuarantineService;
 import com.syncro.telemetry.application.TelemetryValidationService;
@@ -27,6 +28,7 @@ import org.springframework.messaging.MessageChannel;
     MqttSubscriptionConfig.class,
     TelemetryIngestQueueConfig.class,
     MqttTelemetryIngestHandler.class,
+    TelemetryIngestTracker.class,
     MqttConnectionStatus.class,
     MqttHealthIndicator.class,
     TimeConfig.class,

@@ -18,7 +18,7 @@ class TelemetryIngestQueueConfigTest {
     return new TelemetryProperties(
         Duration.ofMinutes(5),
         Duration.ofSeconds(30),
-        new TelemetryProperties.Ingest(queueCapacity, workerThreads));
+        new TelemetryProperties.Ingest(queueCapacity, workerThreads, Duration.ofMinutes(5)));
   }
 
   @Test
@@ -62,15 +62,22 @@ class TelemetryIngestQueueConfigTest {
 
   @Test
   void propertiesValidationRejectsZeroCapacity() {
-    assertThatThrownBy(() -> new TelemetryProperties.Ingest(0, 2))
+    assertThatThrownBy(() -> new TelemetryProperties.Ingest(0, 2, Duration.ofMinutes(5)))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("queue-capacity");
   }
 
   @Test
   void propertiesValidationRejectsZeroWorkers() {
-    assertThatThrownBy(() -> new TelemetryProperties.Ingest(100, 0))
+    assertThatThrownBy(() -> new TelemetryProperties.Ingest(100, 0, Duration.ofMinutes(5)))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("worker-threads");
+  }
+
+  @Test
+  void propertiesValidationRejectsZeroStaleThreshold() {
+    assertThatThrownBy(() -> new TelemetryProperties.Ingest(100, 2, Duration.ZERO))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("stale-threshold");
   }
 }

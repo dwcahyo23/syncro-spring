@@ -12,7 +12,8 @@ public record TelemetryProperties(
 
   public record Ingest(
       @DefaultValue("1000") int queueCapacity,
-      @DefaultValue("2") int workerThreads) {
+      @DefaultValue("2") int workerThreads,
+      @DefaultValue("PT5M") Duration staleThreshold) {
 
     public Ingest {
       if (queueCapacity < 1) {
@@ -22,6 +23,10 @@ public record TelemetryProperties(
       if (workerThreads < 1) {
         throw new IllegalArgumentException(
             "syncro.telemetry.ingest.worker-threads must be >= 1");
+      }
+      if (staleThreshold == null || staleThreshold.isZero() || staleThreshold.isNegative()) {
+        throw new IllegalArgumentException(
+            "syncro.telemetry.ingest.stale-threshold must be a positive duration");
       }
     }
   }

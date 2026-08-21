@@ -4,7 +4,7 @@ baseline_commit: 4a226b4aab155ecb0d896f88c697ff625b2c65ac
 
 # Story 6.2: Report Telemetry Ingest Worker Status
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -24,35 +24,35 @@ So that I can know whether machine telemetry can enter Syncro.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Track last accepted telemetry in the ingest path (AC: 3, 4)
-  - [ ] New file: `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/TelemetryIngestTracker.java` — `@Component` with injected `Clock`; holds `volatile Instant lastAcceptedAt` and `AtomicLong acceptedCount`. Methods: `recordAccepted()` (sets `lastAcceptedAt = Instant.now(clock)`, increments count), `recordRejected()` (increments a rejected counter — only if trivial; ACs do NOT require rejection metrics, so `recordRejected` is OPTIONAL and may be omitted to hold scope), accessors `lastAcceptedAt()` and `acceptedCount()`. Reset is not required — counters and timestamp are in-memory and naturally reset on restart.
-  - [ ] Modify `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/MqttTelemetryIngestHandler.java` — inject `TelemetryIngestTracker`; in the `Accepted` branch of `handleMessage` call `tracker.recordAccepted()` BEFORE `persistenceService.persist(...)`. Do NOT move the call into persistence — "accepted" is the validation-accept point (matches the existing `mqtt_telemetry_accepted` log semantics). Do NOT log the timestamp (existing logs already carry traceId/topic).
-  - [ ] Update any test that constructs `MqttTelemetryIngestHandler` with the old 4-arg constructor: `MqttTelemetryIngestHandlerTest.java` (and `MqttTelemetryIngestAtddScaffoldTest.java` if it constructs the handler) — pass a real `TelemetryIngestTracker` built with the same fixed `Clock` and add an assertion that `recordAccepted` fires on an accepted message.
+- [x] Task 1: Track last accepted telemetry in the ingest path (AC: 3, 4)
+  - [x] New file: `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/TelemetryIngestTracker.java` — `@Component` with injected `Clock`; holds `volatile Instant lastAcceptedAt` and `AtomicLong acceptedCount`. Methods: `recordAccepted()` (sets `lastAcceptedAt = Instant.now(clock)`, increments count), `recordRejected()` (increments a rejected counter — only if trivial; ACs do NOT require rejection metrics, so `recordRejected` is OPTIONAL and may be omitted to hold scope), accessors `lastAcceptedAt()` and `acceptedCount()`. Reset is not required — counters and timestamp are in-memory and naturally reset on restart.
+  - [x] Modify `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/MqttTelemetryIngestHandler.java` — inject `TelemetryIngestTracker`; in the `Accepted` branch of `handleMessage` call `tracker.recordAccepted()` BEFORE `persistenceService.persist(...)`. Do NOT move the call into persistence — "accepted" is the validation-accept point (matches the existing `mqtt_telemetry_accepted` log semantics). Do NOT log the timestamp (existing logs already carry traceId/topic).
+  - [x] Update any test that constructs `MqttTelemetryIngestHandler` with the old 4-arg constructor: `MqttTelemetryIngestHandlerTest.java` (and `MqttTelemetryIngestAtddScaffoldTest.java` if it constructs the handler) — pass a real `TelemetryIngestTracker` built with the same fixed `Clock` and add an assertion that `recordAccepted` fires on an accepted message.
 
-- [ ] Task 2: Define the ingest worker state model (AC: 1, 4)
-  - [ ] New file: `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/IngestWorkerState.java` — enum `RUNNING`, `STOPPED`, `DEGRADED`. Each value carries a `statusLabel` and `statusSeverity` per the architecture operational-status severity set (`architecture.md:656-663` → INFO/SUCCESS/WARNING/CRITICAL/NEUTRAL): `RUNNING → "Running"/"SUCCESS"`, `STOPPED → "Stopped"/"CRITICAL"`, `DEGRADED → "Degraded"/"WARNING"`. Do NOT depend on `com.syncro.health.DependencyHealthSupport` — this enum lives in the telemetry module to respect AR-014 module boundaries; the severity strings are plain constants matching the shared taxonomy.
-  - [ ] New file: `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/IngestWorkerStatus.java` — response record with fields: `IngestWorkerState status`, `String statusLabel`, `String statusSeverity`, `String statusReason`, `String timestamp` (ISO `Instant.now(clock).toString()`), `String mqttState` (UNKNOWN/SUBSCRIBED/FAILED, from `MqttConnectionStatus.State` name), `String lastAcceptedAt` (ISO or null), `String staleSince` (ISO or null), `int queueDepth`, `int queueCapacity`, `long acceptedCount`. (JSON shape: `status` serializes to the enum name, e.g. `"RUNNING"` — matches AC 1.)
+- [x] Task 2: Define the ingest worker state model (AC: 1, 4)
+  - [x] New file: `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/IngestWorkerState.java` — enum `RUNNING`, `STOPPED`, `DEGRADED`. Each value carries a `statusLabel` and `statusSeverity` per the architecture operational-status severity set (`architecture.md:656-663` → INFO/SUCCESS/WARNING/CRITICAL/NEUTRAL): `RUNNING → "Running"/"SUCCESS"`, `STOPPED → "Stopped"/"CRITICAL"`, `DEGRADED → "Degraded"/"WARNING"`. Do NOT depend on `com.syncro.health.DependencyHealthSupport` — this enum lives in the telemetry module to respect AR-014 module boundaries; the severity strings are plain constants matching the shared taxonomy.
+  - [x] New file: `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/IngestWorkerStatus.java` — response record with fields: `IngestWorkerState status`, `String statusLabel`, `String statusSeverity`, `String statusReason`, `String timestamp` (ISO `Instant.now(clock).toString()`), `String mqttState` (UNKNOWN/SUBSCRIBED/FAILED, from `MqttConnectionStatus.State` name), `String lastAcceptedAt` (ISO or null), `String staleSince` (ISO or null), `int queueDepth`, `int queueCapacity`, `long acceptedCount`. (JSON shape: `status` serializes to the enum name, e.g. `"RUNNING"` — matches AC 1.)
 
-- [ ] Task 3: Assemble ingest worker status (AC: 1, 2, 3, 4)
-  - [ ] New file: `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/IngestWorkerStatusService.java` — `@Service`. Inject: `MqttConnectionStatus` (`com.syncro.telemetry.infrastructure`), `TelemetryIngestTracker`, `QueueChannel telemetryIngestQueue` (bean from `TelemetryIngestQueueConfig.java:14`), `TelemetryProperties`, `Clock`. Method `IngestWorkerStatus status()`.
-  - [ ] State derivation (document in code): read `mqttState = mqttStatus.state()` and `lastAcceptedAt = tracker.lastAcceptedAt()`.
+- [x] Task 3: Assemble ingest worker status (AC: 1, 2, 3, 4)
+  - [x] New file: `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/IngestWorkerStatusService.java` — `@Service`. Inject: `MqttConnectionStatus` (`com.syncro.telemetry.infrastructure`), `TelemetryIngestTracker`, `QueueChannel telemetryIngestQueue` (bean from `TelemetryIngestQueueConfig.java:14`), `TelemetryProperties`, `Clock`. Method `IngestWorkerStatus status()`.
+  - [x] State derivation (document in code): read `mqttState = mqttStatus.state()` and `lastAcceptedAt = tracker.lastAcceptedAt()`.
     - `UNKNOWN` → `STOPPED`, reason `"MQTT not subscribed"` (adapter not connected/subscribed yet).
     - `FAILED` → `DEGRADED`, reason `"MQTT connection failed"` (+ `mqttStatus.lastError()` when non-null; this endpoint is SUPER_ADMIN-protected, so descriptive broker text is acceptable — note: NOT the public actuator endpoint).
     - `SUBSCRIBED` → if `lastAcceptedAt == null` → `RUNNING` (subscribed, awaiting first telemetry); else if `now - lastAcceptedAt <= staleThreshold` → `RUNNING`; else → `DEGRADED` with reason `"No telemetry accepted since <lastAcceptedAt>"` and `staleSince = lastAcceptedAt.plus(staleThreshold)`.
-  - [ ] Read `staleThreshold` from `TelemetryProperties.ingest().staleThreshold()` (added in Task 6); `queueDepth = telemetryIngestQueue.getQueueSize()`, `queueCapacity = properties.ingest().queueCapacity()` (or `getQueueSize() + getRemainingCapacity()` for live capacity). `timestamp = Instant.now(clock).toString()`.
+  - [x] Read `staleThreshold` from `TelemetryProperties.ingest().staleThreshold()` (added in Task 6); `queueDepth = telemetryIngestQueue.getQueueSize()`, `queueCapacity = properties.ingest().queueCapacity()` (or `getQueueSize() + getRemainingCapacity()` for live capacity). `timestamp = Instant.now(clock).toString()`.
 
-- [ ] Task 4: Expose ingest worker status to SUPER_ADMIN only (AC: 5)
-  - [ ] New file: `syncro/apps/backend/src/main/java/com/syncro/telemetry/api/IngestWorkerStatusController.java` — `@RestController @RequestMapping("/api/v1/telemetry/ingest")`, `@Tag(name = "telemetry-ingest")`. `@GetMapping("/status")` returns `IngestWorkerStatus`. Follow the `TelemetryQuarantineController.java:44-50` SUPER_ADMIN guard pattern EXACTLY: `@AuthenticationPrincipal AuthenticatedUser user` + `if (user.applicationRole() != ApplicationRole.SUPER_ADMIN) throw new ResponseStatusException(HttpStatus.FORBIDDEN);`. Add `@Operation(operationId = "getTelemetryIngestWorkerStatus", summary = "Telemetry ingest worker status")` + `@ApiResponses` (200 / 401 / 403). Do NOT add to `/actuator/health` — that endpoint is public (`permitAll`) and AC 5 requires SUPER_ADMIN-only visibility.
-  - [ ] No `SecurityConfig` change required — `/api/v1/**` is already authenticated (`SecurityConfig.java:36`); the role guard is inline in the controller (existing project pattern).
+- [x] Task 4: Expose ingest worker status to SUPER_ADMIN only (AC: 5)
+  - [x] New file: `syncro/apps/backend/src/main/java/com/syncro/telemetry/api/IngestWorkerStatusController.java` — `@RestController @RequestMapping("/api/v1/telemetry/ingest")`, `@Tag(name = "telemetry-ingest")`. `@GetMapping("/status")` returns `IngestWorkerStatus`. Follow the `TelemetryQuarantineController.java:44-50` SUPER_ADMIN guard pattern EXACTLY: `@AuthenticationPrincipal AuthenticatedUser user` + `if (user.applicationRole() != ApplicationRole.SUPER_ADMIN) throw new ResponseStatusException(HttpStatus.FORBIDDEN);`. Add `@Operation(operationId = "getTelemetryIngestWorkerStatus", summary = "Telemetry ingest worker status")` + `@ApiResponses` (200 / 401 / 403). Do NOT add to `/actuator/health` — that endpoint is public (`permitAll`) and AC 5 requires SUPER_ADMIN-only visibility.
+  - [x] No `SecurityConfig` change required — `/api/v1/**` is already authenticated (`SecurityConfig.java:36`); the role guard is inline in the controller (existing project pattern).
 
-- [ ] Task 5: Add configurable stale threshold (AC: 4)
-  - [ ] Modify `syncro/apps/backend/src/main/java/com/syncro/config/TelemetryProperties.java` — add `@DefaultValue("PT5M") Duration staleThreshold` to the `Ingest` record with a compact-constructor validation (`null/zero/negative` → `IllegalArgumentException`, mirroring the existing `queueCapacity`/`workerThreads` guards). Default 5 minutes aligns with the freshness `ONLINE_THRESHOLD` (`TelemetryFreshnessCalculator.java:12`). `application.yml` needs no change (`@DefaultValue` covers absence), but a `# stale threshold ...` comment under `syncro.telemetry.ingest` may be added for discoverability — optional.
+- [x] Task 5: Add configurable stale threshold (AC: 4)
+  - [x] Modify `syncro/apps/backend/src/main/java/com/syncro/config/TelemetryProperties.java` — add `@DefaultValue("PT5M") Duration staleThreshold` to the `Ingest` record with a compact-constructor validation (`null/zero/negative` → `IllegalArgumentException`, mirroring the existing `queueCapacity`/`workerThreads` guards). Default 5 minutes aligns with the freshness `ONLINE_THRESHOLD` (`TelemetryFreshnessCalculator.java:12`). `application.yml` needs no change (`@DefaultValue` covers absence), but a `# stale threshold ...` comment under `syncro.telemetry.ingest` may be added for discoverability — optional.
 
-- [ ] Task 6: Write tests (AC: 1-5)
-  - [ ] New: `TelemetryIngestTrackerTest.java` (`com.syncro.telemetry.application`) — fixed `Clock`; `recordAccepted()` sets `lastAcceptedAt` to the fixed instant and increments `acceptedCount`; initial state is `null`/`0`; multiple records keep the LATEST timestamp.
-  - [ ] New: `IngestWorkerStatusServiceTest.java` — Mockito-mock `MqttConnectionStatus`, `QueueChannel`, real `TelemetryIngestTracker` (fixed clock) + real `TelemetryProperties` (staleThreshold PT5M). State matrix: UNKNOWN→STOPPED; FAILED→DEGRADED with reason containing `lastError`; SUBSCRIBED+recent→RUNNING; SUBSCRIBED+null lastAccepted→RUNNING; SUBSCRIBED+stale(>5min)→DEGRADED with `staleSince` and reason containing the last accepted timestamp; queue depth/capacity surfaced; `timestamp` present.
-  - [ ] New: `IngestWorkerStatusControllerTest.java` (`com.syncro.telemetry.api`) — `@WebMvcTest(IngestWorkerStatusController.class)` + `@Import({SecurityConfig.class, JwtAuthenticationFilter.class, TimeConfig.class, TestJsonConfig.class})`, `@MockitoBean JwtTokenService` + `@MockitoBean IngestWorkerStatusService`. Reuse the `user(ApplicationRole)` / `auth(...)` helper pattern from `TelemetryQuarantineControllerTest.java:112-121`. Cases: SUPER_ADMIN→200 with `$.status`, `$.statusLabel`, `$.statusSeverity`, `$.timestamp`, `$.mqttState`, `$.lastAcceptedAt`; MANAGE→403; VIEWER→403; unauthenticated→401.
-  - [ ] Optional integration-style: extend the existing minimal-context `ActuatorHealthIntegrationTest` pattern with a small `@SpringBootTest` (or `@WebMvcTest`) proving `GET /api/v1/telemetry/ingest/status` returns the enriched contract for a mocked service — only if the minimal-context approach stays green in CI; otherwise rely on the controller + service unit tests (they cover AC 1-5).
+- [x] Task 6: Write tests (AC: 1-5)
+  - [x] New: `TelemetryIngestTrackerTest.java` (`com.syncro.telemetry.application`) — fixed `Clock`; `recordAccepted()` sets `lastAcceptedAt` to the fixed instant and increments `acceptedCount`; initial state is `null`/`0`; multiple records keep the LATEST timestamp.
+  - [x] New: `IngestWorkerStatusServiceTest.java` — Mockito-mock `MqttConnectionStatus`, `QueueChannel`, real `TelemetryIngestTracker` (fixed clock) + real `TelemetryProperties` (staleThreshold PT5M). State matrix: UNKNOWN→STOPPED; FAILED→DEGRADED with reason containing `lastError`; SUBSCRIBED+recent→RUNNING; SUBSCRIBED+null lastAccepted→RUNNING; SUBSCRIBED+stale(>5min)→DEGRADED with `staleSince` and reason containing the last accepted timestamp; queue depth/capacity surfaced; `timestamp` present.
+  - [x] New: `IngestWorkerStatusControllerTest.java` (`com.syncro.telemetry.api`) — `@WebMvcTest(IngestWorkerStatusController.class)` + `@Import({SecurityConfig.class, JwtAuthenticationFilter.class, TimeConfig.class, TestJsonConfig.class})`, `@MockitoBean JwtTokenService` + `@MockitoBean IngestWorkerStatusService`. Reuse the `user(ApplicationRole)` / `auth(...)` helper pattern from `TelemetryQuarantineControllerTest.java:112-121`. Cases: SUPER_ADMIN→200 with `$.status`, `$.statusLabel`, `$.statusSeverity`, `$.timestamp`, `$.mqttState`, `$.lastAcceptedAt`; MANAGE→403; VIEWER→403; unauthenticated→401.
+  - [x] Optional integration-style: extend the existing minimal-context `ActuatorHealthIntegrationTest` pattern with a small `@SpringBootTest` (or `@WebMvcTest`) proving `GET /api/v1/telemetry/ingest/status` returns the enriched contract for a mocked service — only if the minimal-context approach stays green in CI; otherwise rely on the controller + service unit tests (they cover AC 1-5).
 
 ## Dev Notes
 
@@ -95,10 +95,45 @@ So that I can know whether machine telemetry can enter Syncro.
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+deepseek-v4-flash-free (openagentic), 2026-08-21
 
 ### Debug Log References
 
+- Verified `MqttConnectionStatus.State` (UNKNOWN/SUBSCRIBED/FAILED) + `lastError()`/`lastChange()` as the MQTT subscription source; `QueueChannel.getQueueSize()/getRemainingCapacity()` for queue metrics; `TelemetryProperties.Ingest` for capacity/worker config.
+- Confirmed pre-existing `MqttTelemetryIngestHandlerTest.handleMessageLogsReceivedForAcceptedMessage` failure (DEBUG `mqtt_telemetry_received` assertion; no `logback-test.xml` → effective level INFO) — present at baseline, NOT introduced by this story.
+- Fixed a regression I introduced: `MqttSubscriptionConfigTest` context listed handler classes but not the new `TelemetryIngestTracker` → added the class to the `@SpringBootTest(classes=...)` list.
+
 ### Completion Notes List
 
+- **AC 1 (running/stopped/degraded):** `IngestWorkerStatusService` derives state from MQTT state + freshness: UNKNOWN→STOPPED, FAILED→DEGRADED, SUBSCRIBED+recent→RUNNING, SUBSCRIBED+stale→DEGRADED. `IngestWorkerState` enum carries label/severity (RUNNING→SUCCESS, STOPPED→CRITICAL, DEGRADED→WARNING).
+- **AC 2 (MQTT subscription state):** `mqttState` field (UNKNOWN/SUBSCRIBED/FAILED) from `MqttConnectionStatus.State` — always available.
+- **AC 3 (last accepted telemetry timestamp):** `TelemetryIngestTracker.recordAccepted()` called in `MqttTelemetryIngestHandler` Accepted branch (before persist); `lastAcceptedAt` exposed in the payload.
+- **AC 4 (stale with reason + timestamp):** when `now - lastAcceptedAt > staleThreshold` (default PT5M, `syncro.telemetry.ingest.stale-threshold`) → DEGRADED with reason `"No telemetry accepted since <ts>"`, `lastAcceptedAt`, and `staleSince` (= lastAcceptedAt + threshold).
+- **AC 5 (SUPER_ADMIN only):** `IngestWorkerStatusController` (`GET /api/v1/telemetry/ingest/status`) uses the inline `ApplicationRole.SUPER_ADMIN` guard (TelemetryQuarantineController pattern). Tests: SUPER_ADMIN→200, MANAGE/VIEWER→403, unauthenticated→401.
+- **Module boundary (AR-014):** all new code lives in the telemetry module; `IngestWorkerState` carries its own severity constants (no `com.syncro.health` dependency).
+- **Known limitation (documented, not fixed):** per DW-14, `MqttConnectionStatus` stays SUBSCRIBED during a mid-session broker outage — the worker status relies on the stale-telemetry DEGRADED signal (AC 4) to surface such outages.
+- **Variance noted:** `statusReason` is descriptive (raw broker `lastError` text OK) because the endpoint is SUPER_ADMIN-protected — NOT the public `/actuator/health` (6-1 sanitization decision remains for the public endpoint).
+- Full suite: 645 tests, Failures: 2, Errors: 134 — identical to pre-6-2 baseline (both pre-existing); no new regressions. 21 new/updated tests added and passing.
+
 ### File List
+
+- [new] `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/TelemetryIngestTracker.java`
+- [new] `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/IngestWorkerState.java`
+- [new] `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/IngestWorkerStatus.java`
+- [new] `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/IngestWorkerStatusService.java`
+- [new] `syncro/apps/backend/src/main/java/com/syncro/telemetry/api/IngestWorkerStatusController.java`
+- [modified] `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/MqttTelemetryIngestHandler.java` — inject tracker; `recordAccepted()` in Accepted branch
+- [modified] `syncro/apps/backend/src/main/java/com/syncro/config/TelemetryProperties.java` — added `Ingest.staleThreshold` (default PT5M) + validation
+- [new] `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/TelemetryIngestTrackerTest.java`
+- [new] `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/IngestWorkerStatusServiceTest.java`
+- [new] `syncro/apps/backend/src/test/java/com/syncro/telemetry/api/IngestWorkerStatusControllerTest.java`
+- [modified] `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/MqttTelemetryIngestHandlerTest.java` — 5-arg constructor + tracker assertions
+- [modified] `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/MqttTelemetryIngestAtddScaffoldTest.java` — 5-arg constructor
+- [modified] `syncro/apps/backend/src/test/java/com/syncro/telemetry/infrastructure/MqttSubscriptionConfigTest.java` — added `TelemetryIngestTracker` to context classes
+- [modified] `syncro/apps/backend/src/test/java/com/syncro/telemetry/infrastructure/TelemetryIngestQueueConfigTest.java` — 3-arg `Ingest` + stale-threshold validation test
+- [modified] `syncro/apps/backend/src/test/java/com/syncro/telemetry/application/TelemetryPersistenceServiceTest.java` — 3-arg `Ingest`
+
+## Change Log
+
+- 2026-08-21: Implemented story 6.2 — telemetry ingest worker status endpoint; 21 new/updated tests; no regressions vs. baseline (Failures: 2, Errors: 134 pre-existing).
+

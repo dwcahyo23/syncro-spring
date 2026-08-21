@@ -32,7 +32,8 @@ class MqttTelemetryIngestAtddScaffoldTest {
 
   private final MqttTelemetryIngestHandler handler =
       new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC), new AcceptingTelemetryValidationService(),
-          mock(TelemetryPersistenceService.class), mock(TelemetryQuarantineService.class));
+          mock(TelemetryPersistenceService.class), mock(TelemetryQuarantineService.class),
+          new TelemetryIngestTracker(Clock.fixed(FIXED_NOW, ZoneOffset.UTC)));
 
   @Test
   void enrichToleratesNonByteStringPayload() {
