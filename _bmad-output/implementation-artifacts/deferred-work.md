@@ -488,3 +488,10 @@ origin: Deferred from: code review of spec-6-4-build-super-admin-health-dashboar
 location: syncro/apps/backend/src/main/java/com/syncro/notification/infrastructure/WahaCircuitBreakerHealthIndicator.java + syncro/apps/web/src/features/system-health/hooks/use-actuator-health-query.ts
 reason: Resilience4j Metrics.getFailureRate() returns NaN until minimumNumberOfCalls is reached. If Spring's Jackson writes NaN unquoted, the entire /actuator/health JSON becomes invalid and the frontend hook throws, collapsing all five dependency cards. Frontend defensively treats per-parse failure as an error, but the whole-section collapse is undesirable. Needs verification against the running backend (Jackson QUOTE_NON_NUMERIC_NUMBERS default) and, if confirmed, a backend-side clamp/config plus a per-component-parse isolation on the frontend. Cross-stack, backend-owned; not fixable purely in story 6.4.
 status: open
+
+### DW-69: TelemetryIngestTracker monotonic guard can pin freshness LIVE through a backward clock step
+
+- source_spec: _bmad-output/implementation-artifacts/spec-6-5-surface-latest-telemetry-freshness-in-health.md
+  summary: TelemetryIngestTracker.recordAccepted() keeps lastAcceptedAt monotonic, so a backward NTP clock step leaves lastAcceptedAt in the "future" and freshness reports LIVE (clock-skew branch) until wall time catches up — masking a genuinely stalled ingest path.
+  evidence: TelemetryIngestTracker.java:30 (
+ow.isAfter(lastAcceptedAt)) combined with TelemetryFreshnessService.java negative-elapsed LIVE branch; observed during review of the new freshness contract (2026-08-21). Fixing means either accepting an unconditional lastAcceptedAt = now (changes the shared tracker also consumed by the 6.4 ingest worker status) or surfacing skew as its own state — a shared-tracker decision, not this story's code.

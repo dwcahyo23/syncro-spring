@@ -2,15 +2,21 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { formatDateTimeUtc } from "@/components/syncro/health-card";
 import { RoleGuard } from "@/components/syncro/role-guard";
 import type {
   ActuatorHealthComponent,
   ActuatorHealthResponse,
   IngestWorkerStatus,
   NotificationWorkerStatus,
+  TelemetryFreshnessStatus,
 } from "@/features/system-health/types";
 
-import { computeOverallBanner, SystemHealthPage } from "./system-health-page";
+import {
+  computeOverallBanner,
+  formatRelativeFreshness,
+  SystemHealthPage,
+} from "./system-health-page";
 
 // ─── Mock modules ───────────────────────────────────────────────────────────────
 
@@ -18,6 +24,7 @@ let actuatorQuery: HealthQueryState;
 let ingestQuery: WorkerQueryState;
 let notifQuery: WorkerQueryState;
 let quarantineQuery: QuarantineQueryState;
+let freshnessQuery: FreshnessQueryState;
 
 vi.mock("@/features/system-health/hooks/use-actuator-health-query", () => ({
   SYSTEM_HEALTH_REFRESH_INTERVAL_MS: 30_000,
@@ -34,6 +41,10 @@ vi.mock("@/features/system-health/hooks/use-notification-worker-status", () => (
 
 vi.mock("@/features/system-health/hooks/use-quarantine-log", () => ({
   useQuarantineLog: () => quarantineQuery,
+}));
+
+vi.mock("@/features/system-health/hooks/use-telemetry-freshness", () => ({
+  useTelemetryFreshness: () => freshnessQuery,
 }));
 
 let mockUser: { id: string; loginIdentifier: string; applicationRole: string } | null = null;
@@ -60,6 +71,15 @@ type HealthQueryState = {
 
 type WorkerQueryState = {
   data: IngestWorkerStatus | NotificationWorkerStatus | undefined;
+  dataUpdatedAt?: number;
+  isLoading: boolean;
+  isError: boolean;
+  isFetching: boolean;
+  refetch: ReturnType<typeof vi.fn>;
+};
+
+type FreshnessQueryState = {
+  data: TelemetryFreshnessStatus | undefined;
   dataUpdatedAt?: number;
   isLoading: boolean;
   isError: boolean;
@@ -140,6 +160,27 @@ const healthyNotif: NotificationWorkerStatus = {
   circuitBreakerState: "CLOSED",
 };
 
+function healthyFreshness(overrides: Partial<TelemetryFreshnessStatus> = {}): TelemetryFreshnessStatus {
+  return {
+    status: "LIVE",
+    statusLabel: "Live",
+    statusSeverity: "SUCCESS",
+    statusReason: null,
+    timestamp: "2026-08-21T10:00:00.000Z",
+    lastAcceptedAt: "2026-08-21T09:59:00.000Z",
+    staleSince: null,
+    ...overrides,
+  };
+}
+
+/** Finds the Telemetry Freshness card within its section, since the h2 heading also matches the title text. */
+function freshnessCard(): HTMLElement {
+  const section = screen.getByRole("region", { name: "Telemetry Freshness" });
+  const card = section.querySelector('[data-slot="card"]');
+  if (!card) throw new Error("Telemetry Freshness card not found");
+  return card as HTMLElement;
+}
+
 // ─── Test wrapper ───────────────────────────────────────────────────────────────
 
 const queryClient = new QueryClient();
@@ -184,9 +225,17 @@ describe("System Health Page", () => {
       isError: false,
       refetch: vi.fn(),
     };
+    freshnessQuery = {
+      data: healthyFreshness(),
+      dataUpdatedAt: now,
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    };
   });
 
-  it("6-4-AC1 renders all seven cards: PostgreSQL, InfluxDB, Redis, MQTT, WAHA, Telemetry Ingest Worker, Notification Worker", () => {
+  it("6-4-AC1 renders all eight cards: PostgreSQL, InfluxDB, Redis, MQTT, WAHA, Telemetry Ingest Worker, Notification Worker, Telemetry Freshness", () => {
     render(<SystemHealthPage />, { wrapper: Wrapper });
 
     expect(screen.getByText("PostgreSQL")).toBeInTheDocument();
@@ -196,6 +245,7 @@ describe("System Health Page", () => {
     expect(screen.getByText("WAHA")).toBeInTheDocument();
     expect(screen.getByText("Telemetry Ingest Worker")).toBeInTheDocument();
     expect(screen.getByText("Notification Worker")).toBeInTheDocument();
+    expect(freshnessCard()).toBeInTheDocument();
   });
 
   it("6-4-AC2 a healthy card shows status label, severity, reason, and timestamp", () => {
@@ -229,6 +279,7 @@ describe("System Health Page", () => {
     actuatorQuery = { ...actuatorQuery, isLoading: true, data: undefined as unknown as ActuatorHealthResponse };
     ingestQuery = { ...ingestQuery, isLoading: true, data: undefined };
     notifQuery = { ...notifQuery, isLoading: true, data: undefined };
+    freshnessQuery = { ...freshnessQuery, isLoading: true, data: undefined };
 
     render(<SystemHealthPage />, { wrapper: Wrapper });
 
@@ -241,6 +292,7 @@ describe("System Health Page", () => {
     actuatorQuery = { ...actuatorQuery, isError: true, data: undefined as unknown as ActuatorHealthResponse };
     ingestQuery = { ...ingestQuery, isError: true, data: undefined };
     notifQuery = { ...notifQuery, isError: true, data: undefined };
+    freshnessQuery = { ...freshnessQuery, isError: true, data: undefined };
 
     render(<SystemHealthPage />, { wrapper: Wrapper });
 
@@ -251,6 +303,7 @@ describe("System Health Page", () => {
     expect(screen.getByText("Unable to check WAHA.")).toBeInTheDocument();
     expect(screen.getByText("Unable to check Telemetry Ingest Worker.")).toBeInTheDocument();
     expect(screen.getByText("Unable to check Notification Worker.")).toBeInTheDocument();
+    expect(screen.getByText("Unable to check Telemetry Freshness.")).toBeInTheDocument();
     expect(screen.getByText(/degraded or could not be verified/)).toBeInTheDocument();
   });
 
@@ -261,24 +314,28 @@ describe("System Health Page", () => {
     };
     ingestQuery = { ...ingestQuery, data: undefined };
     notifQuery = { ...notifQuery, data: undefined };
+    freshnessQuery = { ...freshnessQuery, data: undefined };
 
     render(<SystemHealthPage />, { wrapper: Wrapper });
 
     const emptyMessages = screen.getAllByText("No health data reported.");
-    expect(emptyMessages.length).toBe(7);
+    expect(emptyMessages.length).toBe(8);
   });
 
   it("shows last known status (not just the error text) when a refetch fails with cached data", () => {
     ingestQuery = { ...ingestQuery, isError: true };
     notifQuery = { ...notifQuery, isError: true };
+    freshnessQuery = { ...freshnessQuery, isError: true };
 
     render(<SystemHealthPage />, { wrapper: Wrapper });
 
     expect(screen.getByText(/Unable to refresh Telemetry Ingest Worker/)).toBeInTheDocument();
     expect(screen.getByText(/Unable to refresh Notification Worker/)).toBeInTheDocument();
+    expect(screen.getByText(/Unable to refresh Telemetry Freshness/)).toBeInTheDocument();
     expect(screen.getAllByText("Running").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("42")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getByText("Live")).toBeInTheDocument();
   });
 
   it("renders a dash for a non-finite WAHA failure rate", () => {
@@ -344,6 +401,7 @@ describe("System Health Page", () => {
     actuatorQuery = { ...actuatorQuery, dataUpdatedAt: staleTime };
     ingestQuery = { ...ingestQuery, dataUpdatedAt: staleTime };
     notifQuery = { ...notifQuery, dataUpdatedAt: staleTime };
+    freshnessQuery = { ...freshnessQuery, dataUpdatedAt: staleTime };
 
     render(<SystemHealthPage />, { wrapper: Wrapper });
 
@@ -353,15 +411,18 @@ describe("System Health Page", () => {
     expect(actuatorQuery.refetch).toHaveBeenCalled();
     expect(ingestQuery.refetch).toHaveBeenCalled();
     expect(notifQuery.refetch).toHaveBeenCalled();
+    expect(freshnessQuery.refetch).toHaveBeenCalled();
     expect(quarantineQuery.refetch).toHaveBeenCalled();
   });
 
   it("6-4-AC4-readonly: health cards contain no mutation controls", () => {
     render(<SystemHealthPage />, { wrapper: Wrapper });
 
-    const healthSections = ["Dependency health", "Worker health"].map((name) => screen.getByRole("region", { name }));
+    const healthSections = ["Dependency health", "Worker health", "Telemetry Freshness"].map((name) =>
+      screen.getByRole("region", { name }),
+    );
     const cards = healthSections.flatMap((section) => Array.from(section.querySelectorAll('[data-slot="card"]')));
-    expect(cards.length).toBeGreaterThanOrEqual(7);
+    expect(cards.length).toBeGreaterThanOrEqual(8);
     cards.forEach((card) => {
       expect(card.querySelectorAll("button, a").length).toBe(0);
     });
@@ -371,7 +432,7 @@ describe("System Health Page", () => {
     render(<SystemHealthPage />, { wrapper: Wrapper });
 
     const badges = screen.getAllByLabelText(/^Status: /);
-    expect(badges.length).toBeGreaterThanOrEqual(7);
+    expect(badges.length).toBeGreaterThanOrEqual(8);
     badges.forEach((badge) => {
       expect(badge.textContent?.trim().length).toBeGreaterThan(0);
     });
@@ -379,13 +440,133 @@ describe("System Health Page", () => {
     expect(screen.getAllByText("Running").length).toBe(2);
   });
 
-  it("6-4-refresh: clicking the page Refresh button calls all three health refetches", () => {
+  it("6-4-refresh: clicking the page Refresh button calls all four health refetches", () => {
     render(<SystemHealthPage />, { wrapper: Wrapper });
 
     fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
     expect(actuatorQuery.refetch).toHaveBeenCalled();
     expect(ingestQuery.refetch).toHaveBeenCalled();
     expect(notifQuery.refetch).toHaveBeenCalled();
+    expect(freshnessQuery.refetch).toHaveBeenCalled();
+  });
+
+  it("6-5-AC1/AC5 LIVE shows absolute UTC and relative freshness for the latest received telemetry", () => {
+    const lastAcceptedAt = new Date(Date.now() - 150_000).toISOString();
+    freshnessQuery = { ...freshnessQuery, data: healthyFreshness({ lastAcceptedAt }) };
+
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    const card = freshnessCard();
+    expect(card).toHaveTextContent("Live");
+    expect(card).toHaveTextContent("Latest received");
+    expect(card).toHaveTextContent(formatDateTimeUtc(lastAcceptedAt));
+    expect(card).toHaveTextContent(/UTC/);
+    expect(card).toHaveTextContent(/\d+m ago/);
+  });
+
+  it("6-5-AC2 STALE shows the stale reason and a Stale since row", () => {
+    freshnessQuery = {
+      ...freshnessQuery,
+      data: healthyFreshness({
+        status: "STALE",
+        statusLabel: "Stale",
+        statusSeverity: "WARNING",
+        statusReason: "No telemetry accepted since 2026-08-21T08:00:00Z",
+        staleSince: "2026-08-21T08:05:00Z",
+      }),
+    };
+
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    const card = freshnessCard();
+    expect(card).toHaveTextContent("Stale");
+    expect(card).toHaveTextContent("No telemetry accepted since 2026-08-21T08:00:00Z");
+    expect(card).toHaveTextContent("Stale since");
+    expect(card).toHaveTextContent(/2026/);
+  });
+
+  it("6-5-AC3 NO_DATA shows a clear empty state without claiming Live and keeps the banner non-unhealthy", () => {
+    freshnessQuery = {
+      ...freshnessQuery,
+      data: healthyFreshness({
+        status: "NO_DATA",
+        statusLabel: "No data",
+        statusSeverity: "NEUTRAL",
+        statusReason: "No telemetry received. Verify MQTT configuration and machine setup.",
+        lastAcceptedAt: null,
+        staleSince: null,
+      }),
+    };
+
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    const card = freshnessCard();
+    expect(card).toHaveTextContent("No telemetry received. Verify MQTT configuration and machine setup.");
+    expect(card).toHaveTextContent("—");
+    expect(screen.getByLabelText("Status: No data")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Status: Live")).not.toBeInTheDocument();
+    expect(screen.queryByText(/unhealthy/)).not.toBeInTheDocument();
+  });
+
+  it("6-5-banner: STALE freshness downgrades the overall banner to degraded", () => {
+    freshnessQuery = {
+      ...freshnessQuery,
+      data: healthyFreshness({
+        status: "STALE",
+        statusLabel: "Stale",
+        statusSeverity: "WARNING",
+        statusReason: "No telemetry accepted since 2026-08-21T08:00:00Z",
+        staleSince: "2026-08-21T08:05:00Z",
+      }),
+    };
+
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    expect(screen.getByText(/degraded or could not be verified/)).toBeInTheDocument();
+    expect(screen.queryByText(/All systems operational/)).not.toBeInTheDocument();
+  });
+
+  it("6-5-banner: NO_DATA freshness does not downgrade an otherwise healthy banner", () => {
+    freshnessQuery = {
+      ...freshnessQuery,
+      data: healthyFreshness({
+        status: "NO_DATA",
+        statusLabel: "No data",
+        statusSeverity: "NEUTRAL",
+        statusReason: "No telemetry received. Verify MQTT configuration and machine setup.",
+        lastAcceptedAt: null,
+        staleSince: null,
+      }),
+    };
+
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    expect(screen.getByText(/All systems operational/)).toBeInTheDocument();
+  });
+
+  it("6-5-AC4 latest received is derived from the backend lastAcceptedAt, never frontend time inference", () => {
+    const { rerender } = render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    const card = freshnessCard();
+    const backendTimestamp = healthyFreshness().lastAcceptedAt as string;
+    expect(card).toHaveTextContent(formatDateTimeUtc(backendTimestamp));
+
+    freshnessQuery = {
+      ...freshnessQuery,
+      data: healthyFreshness({
+        status: "NO_DATA",
+        statusLabel: "No data",
+        statusSeverity: "NEUTRAL",
+        statusReason: "No telemetry received. Verify MQTT configuration and machine setup.",
+        lastAcceptedAt: null,
+        staleSince: null,
+      }),
+    };
+    rerender(<SystemHealthPage />);
+
+    const noDataCard = freshnessCard();
+    expect(noDataCard).toHaveTextContent("—");
+    expect(noDataCard).not.toHaveTextContent(formatDateTimeUtc(backendTimestamp));
   });
 
   it("6-4-forbidden: non-SUPER_ADMIN sees Permission denied and no dashboard content", () => {
@@ -483,5 +664,73 @@ describe("computeOverallBanner", () => {
       redis: { status: "DOWN" as const, details: { statusLabel: "Running fine", statusSeverity: "SUCCESS" } },
     };
     expect(computeOverallBanner({ ...base, components })).toBe("healthy");
+  });
+
+  it("is degraded when freshness is STALE (warning)", () => {
+    expect(computeOverallBanner({ ...base, freshnessSeverity: "warning" })).toBe("degraded");
+  });
+
+  it("is degraded when freshness errored while everything else is healthy", () => {
+    expect(computeOverallBanner({ ...base, freshnessError: true })).toBe("degraded");
+  });
+
+  it("is null while freshness is still loading", () => {
+    expect(computeOverallBanner({ ...base, freshnessLoading: true })).toBeNull();
+  });
+
+  it("is healthy when freshness is LIVE (success)", () => {
+    expect(computeOverallBanner({ ...base, freshnessSeverity: "success" })).toBe("healthy");
+  });
+
+  it("is healthy when freshness is NO_DATA (excluded from the banner)", () => {
+    expect(computeOverallBanner({ ...base, freshnessSeverity: undefined })).toBe("healthy");
+  });
+});
+
+describe("formatRelativeFreshness", () => {
+  const NOW = new Date("2026-08-21T12:00:00.000Z").getTime();
+
+  it("renders seconds ago under a minute", () => {
+    expect(formatRelativeFreshness("2026-08-21T11:59:58.000Z", NOW)).toBe("2s ago");
+  });
+
+  it("renders just now for a sub-second diff (0s boundary)", () => {
+    expect(formatRelativeFreshness("2026-08-21T12:00:00.000Z", NOW)).toBe("just now");
+  });
+
+  it("renders 59s ago at the seconds boundary", () => {
+    expect(formatRelativeFreshness("2026-08-21T11:59:01.000Z", NOW)).toBe("59s ago");
+  });
+
+  it("renders minutes ago from 60s", () => {
+    expect(formatRelativeFreshness("2026-08-21T11:59:00.000Z", NOW)).toBe("1m ago");
+  });
+
+  it("renders 59m ago at the minutes boundary", () => {
+    expect(formatRelativeFreshness("2026-08-21T11:01:00.000Z", NOW)).toBe("59m ago");
+  });
+
+  it("renders hours ago from 60m", () => {
+    expect(formatRelativeFreshness("2026-08-21T11:00:00.000Z", NOW)).toBe("1h ago");
+  });
+
+  it("renders 23h ago at the hours boundary", () => {
+    expect(formatRelativeFreshness("2026-08-21T12:01:00.000Z", new Date("2026-08-22T12:00:00.000Z").getTime())).toBe(
+      "23h ago",
+    );
+  });
+
+  it("renders days ago from 24h", () => {
+    expect(formatRelativeFreshness("2026-08-21T11:59:00.000Z", new Date("2026-08-22T12:00:00.000Z").getTime())).toBe(
+      "1d ago",
+    );
+  });
+
+  it("returns a dash for an invalid timestamp", () => {
+    expect(formatRelativeFreshness("not-a-date", NOW)).toBe("—");
+  });
+
+  it("returns just now for a future timestamp (clock skew)", () => {
+    expect(formatRelativeFreshness("2026-08-21T12:05:00.000Z", NOW)).toBe("just now");
   });
 });

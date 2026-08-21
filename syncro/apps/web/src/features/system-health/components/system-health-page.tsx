@@ -18,12 +18,14 @@ import { useActuatorHealthQuery } from "@/features/system-health/hooks/use-actua
 import { useIngestWorkerStatus } from "@/features/system-health/hooks/use-ingest-worker-status";
 import { useNotificationWorkerStatus } from "@/features/system-health/hooks/use-notification-worker-status";
 import { useQuarantineLog } from "@/features/system-health/hooks/use-quarantine-log";
+import { useTelemetryFreshness } from "@/features/system-health/hooks/use-telemetry-freshness";
 import type {
   ActuatorHealthComponent,
   ActuatorHealthResponse,
   ActuatorStatus,
   IngestWorkerStatus,
   NotificationWorkerStatus,
+  TelemetryFreshnessStatus,
 } from "@/features/system-health/types";
 
 const STALE_BANNER_THRESHOLD_MS = 60_000;
@@ -45,6 +47,7 @@ export function SystemHealthPage() {
   const actuatorHealth = useActuatorHealthQuery();
   const ingestWorker = useIngestWorkerStatus();
   const notificationWorker = useNotificationWorkerStatus();
+  const freshness = useTelemetryFreshness();
   const [quarantinePage, setQuarantinePage] = useState(0);
   const quarantineLog = useQuarantineLog(quarantinePage, 20);
 
@@ -53,18 +56,28 @@ export function SystemHealthPage() {
     actuatorHealth.dataUpdatedAt,
     ingestWorker.dataUpdatedAt,
     notificationWorker.dataUpdatedAt,
+    freshness.dataUpdatedAt,
     quarantineLog.dataUpdatedAt,
   ].filter((t): t is number => typeof t === "number" && t > 0);
   const lastUpdated = dataUpdatedAts.length > 0 ? Math.min(...dataUpdatedAts) : 0;
   const isDataStale = lastUpdated > 0 && now - lastUpdated >= STALE_BANNER_THRESHOLD_MS;
 
-  const isLoading = actuatorHealth.isLoading || ingestWorker.isLoading || notificationWorker.isLoading;
-  const isFetching = actuatorHealth.isFetching || ingestWorker.isFetching || notificationWorker.isFetching;
+  const isLoading =
+    actuatorHealth.isLoading ||
+    ingestWorker.isLoading ||
+    notificationWorker.isLoading ||
+    freshness.isLoading;
+  const isFetching =
+    actuatorHealth.isFetching ||
+    ingestWorker.isFetching ||
+    notificationWorker.isFetching ||
+    freshness.isFetching;
 
   function handleRefresh() {
     void actuatorHealth.refetch();
     void ingestWorker.refetch();
     void notificationWorker.refetch();
+    void freshness.refetch();
     void quarantineLog.refetch();
   }
 
@@ -78,6 +91,9 @@ export function SystemHealthPage() {
     notifLoading: notificationWorker.isLoading,
     notifError: notificationWorker.isError,
     notifSeverity: resolvedWorkerSeverity(notificationWorker.data),
+    freshnessLoading: freshness.isLoading,
+    freshnessError: freshness.isError,
+    freshnessSeverity: freshnessBannerSeverity(freshness.data),
   });
 
   return (
@@ -205,6 +221,37 @@ export function SystemHealthPage() {
         </div>
       </section>
 
+      {/* Telemetry freshness */}
+      <section aria-label="Telemetry Freshness">
+        <h2 className="mb-3 font-medium text-muted-foreground text-sm">Telemetry Freshness</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <HealthCard
+            title="Telemetry Freshness"
+            description="Latest accepted telemetry from the ingest path"
+            statusLabel={freshness.data?.statusLabel}
+            statusSeverity={resolvedToHealthSeverity(resolvedFreshnessSeverity(freshness.data))}
+            statusReason={freshness.data?.statusReason ?? null}
+            timestamp={freshness.data?.timestamp ?? null}
+            loading={freshness.isLoading}
+            error={freshness.isError}
+            empty={!freshness.data}
+          >
+            <HealthMetricRow
+              label="Latest received"
+              value={
+                freshness.data?.lastAcceptedAt
+                  ? `${formatDateTimeUtc(freshness.data.lastAcceptedAt)} (${formatRelativeFreshness(freshness.data.lastAcceptedAt, now)})`
+                  : "—"
+              }
+            />
+            <HealthMetricRow
+              label="Stale since"
+              value={freshness.data?.staleSince ? formatDateTimeUtc(freshness.data.staleSince) : "—"}
+            />
+          </HealthCard>
+        </div>
+      </section>
+
       {/* Telemetry quarantine log */}
       <section aria-label="Telemetry quarantine log">
         <h2 className="mb-3 font-medium text-muted-foreground text-sm">Telemetry Quarantine Log</h2>
@@ -258,9 +305,7 @@ function resolvedDependencySeverity(component: ActuatorHealthComponent | undefin
   if (!component) {
     return "unknown";
   }
-  const label = dependencyStatusLabel(component);
-  const severity = normalizeSeverity(detailString(component, "statusSeverity")) ?? deriveSeverity(label);
-  return healthSeverityToResolved(severity);
+  return resolveSeverity(detailString(component, "statusSeverity"), dependencyStatusLabel(component));
 }
 
 /** Resolves a worker card's effective severity from its payload, mirroring exactly what the card renders. */
@@ -268,8 +313,34 @@ function resolvedWorkerSeverity(data: IngestWorkerStatus | NotificationWorkerSta
   if (!data) {
     return "unknown";
   }
-  const severity = normalizeSeverity(data.statusSeverity) ?? deriveSeverity(data.statusLabel);
+  return resolveSeverity(data.statusSeverity, data.statusLabel);
+}
+
+/** Resolves the telemetry freshness card's effective severity from its payload, mirroring exactly what the card renders. */
+function resolvedFreshnessSeverity(data: TelemetryFreshnessStatus | undefined): ResolvedSeverity {
+  if (!data) {
+    return "unknown";
+  }
+  return resolveSeverity(data.statusSeverity, data.statusLabel);
+}
+
+/** Single severity-resolution pipeline shared by every health card: explicit severity first, label fallback. */
+function resolveSeverity(statusSeverity: string | undefined, statusLabel: string | undefined): ResolvedSeverity {
+  const severity = normalizeSeverity(statusSeverity) ?? deriveSeverity(statusLabel);
   return healthSeverityToResolved(severity);
+}
+
+/**
+ * Resolves the telemetry freshness contribution to the overall banner.
+ * Excluded by resolved severity, not by status name: NO_DATA (NEUTRAL → "unknown") is
+ * intentionally excluded so a fresh system awaiting its first message does not downgrade
+ * an otherwise healthy dependency/worker surface; LIVE resolves to "success" (a no-op);
+ * only STALE (WARNING) downgrades the banner. Severity-based exclusion is forward-compatible
+ * with any future state that carries a neutral severity.
+ */
+function freshnessBannerSeverity(data: TelemetryFreshnessStatus | undefined): ResolvedSeverity | undefined {
+  const severity = resolvedFreshnessSeverity(data);
+  return severity === "unknown" ? undefined : severity;
 }
 
 /**
@@ -277,6 +348,8 @@ function resolvedWorkerSeverity(data: IngestWorkerStatus | NotificationWorkerSta
  * Severity is derived per card (enriched details first, label fallback) so the
  * banner never contradicts the individual cards. CRITICAL → unhealthy,
  * WARNING or unverifiable (absent/error) → degraded, else healthy.
+ * The optional freshness inputs let the telemetry-path stall (STALE) downgrade the
+ * banner while NO_DATA and LIVE stay neutral.
  */
 export function computeOverallBanner(args: {
   readonly actuatorLoading: boolean;
@@ -288,6 +361,9 @@ export function computeOverallBanner(args: {
   readonly notifLoading: boolean;
   readonly notifError: boolean;
   readonly notifSeverity: ResolvedSeverity;
+  readonly freshnessLoading?: boolean;
+  readonly freshnessError?: boolean;
+  readonly freshnessSeverity?: ResolvedSeverity | undefined;
 }): BannerState | null {
   const {
     actuatorLoading,
@@ -299,9 +375,12 @@ export function computeOverallBanner(args: {
     notifLoading,
     notifError,
     notifSeverity,
+    freshnessLoading = false,
+    freshnessError = false,
+    freshnessSeverity,
   } = args;
 
-  if (actuatorLoading || ingestLoading || notifLoading) {
+  if (actuatorLoading || ingestLoading || notifLoading || freshnessLoading) {
     return null;
   }
 
@@ -317,6 +396,12 @@ export function computeOverallBanner(args: {
 
   severities.push(ingestError ? "unknown" : ingestSeverity);
   severities.push(notifError ? "unknown" : notifSeverity);
+  if (freshnessError) {
+    severities.push("unknown");
+  } else if (freshnessSeverity !== undefined) {
+    // NO_DATA exclusion is by omission: freshnessBannerSeverity returns undefined for NO_DATA.
+    severities.push(freshnessSeverity);
+  }
 
   if (severities.some((s) => s === "critical")) {
     return "unhealthy";
@@ -456,4 +541,35 @@ function formatMinutesAgo(ageMs: number) {
     return "less than a minute";
   }
   return `${minutes} min`;
+}
+
+/** Formats a backend-provided ISO timestamp as a relative "Xs ago" freshness string, display only. */
+export function formatRelativeFreshness(iso: string, now: number): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) {
+    return "—";
+  }
+  const diffMs = now - then;
+  if (diffMs < 0) {
+    // Clock skew: backend timestamp in the future relative to the client clock.
+    // Never report a negative age; the absolute UTC row still shows the value.
+    return "just now";
+  }
+  const seconds = Math.floor(diffMs / 1000);
+  if (seconds < 1) {
+    // Sub-second freshness reads as "just now", matching the clock-skew string above.
+    return "just now";
+  }
+  if (seconds < 60) {
+    return `${seconds}s ago`;
+  }
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) {
+    return `${minutes}m ago`;
+  }
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return `${hours}h ago`;
+  }
+  return `${Math.floor(hours / 24)}d ago`;
 }
