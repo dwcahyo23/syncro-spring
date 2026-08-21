@@ -34,6 +34,8 @@ import type {
 
 const STALE_BANNER_THRESHOLD_MS = 60_000;
 
+const ALERT_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const DEPENDENCY_KEYS = ["db", "influxdb", "redis", "mqtt", "wahaCircuitBreaker"] as const;
 
 type DependencyKey = (typeof DEPENDENCY_KEYS)[number];
@@ -310,6 +312,9 @@ export function SystemHealthPage() {
             </HealthCard>
             {staleMachines.data && staleMachines.data.items.length > 0 ? (
               <StaleMachineEvidenceList items={staleMachines.data.items} now={now} />
+            ) : null}
+            {staleMachines.isError ? (
+              <p className="text-destructive text-xs">Unable to load stale machine evidence.</p>
             ) : null}
           </div>
         </div>
@@ -663,10 +668,11 @@ function DependencyNextStepRow({
 
 /**
  * Deep link to the failing alert's notification history, rendered outside the card.
- * Present only when the card is at failure severity AND the backend resolved an alert id.
+ * Present only when the card is at failure severity AND the alert id is a well-formed UUID
+ * (defense-in-depth: the worker-status fetcher does not shape-guard this field).
  */
 function evidenceLink({ alertId, severity }: { readonly alertId: string | null; readonly severity: ResolvedSeverity }) {
-  if (!alertId || (severity !== "warning" && severity !== "critical")) {
+  if (!alertId || !ALERT_ID_PATTERN.test(alertId) || (severity !== "warning" && severity !== "critical")) {
     return null;
   }
   return (
@@ -697,31 +703,30 @@ function StaleMachineEvidenceList({
       >
         {expanded ? "Hide stale machines" : `Show stale machines (${items.length})`}
       </Button>
-      {expanded ? (
-        <ul id={listId} aria-label="Machines with stale telemetry" className="space-y-1">
-          {items.map((item) => (
-            <li
-              key={item.machineId}
-              className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 text-xs"
+      {/* Always mounted so aria-controls resolves; hidden removes it from the a11y tree. */}
+      <ul id={listId} aria-label="Machines with stale telemetry" hidden={!expanded} className="space-y-1">
+        {items.map((item) => (
+          <li
+            key={item.machineId}
+            className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 text-xs"
+          >
+            <Link
+              className="font-medium text-primary underline-offset-4 hover:underline"
+              href={`/dashboard/master-data/machines/${encodeURIComponent(item.machineCode)}`}
             >
-              <Link
-                className="font-medium text-primary underline-offset-4 hover:underline"
-                href={`/dashboard/master-data/machines/${item.machineCode}`}
-              >
-                {item.machineCode}
-              </Link>
-              <span className="text-muted-foreground">
-                {item.plantCode} · {item.statusLabel}
-              </span>
-              <span className="min-w-0 break-words text-right">
-                {item.lastReceivedAt
-                  ? `${formatDateTimeUtc(item.lastReceivedAt)} (${formatRelativeFreshness(item.lastReceivedAt, now)})`
-                  : "No telemetry received"}
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+              {item.machineCode}
+            </Link>
+            <span className="text-muted-foreground">
+              {item.plantCode} · {item.statusLabel}
+            </span>
+            <span className="min-w-0 break-words text-right">
+              {item.lastReceivedAt
+                ? `${formatDateTimeUtc(item.lastReceivedAt)} (${formatRelativeFreshness(item.lastReceivedAt, now)})`
+                : "No telemetry received"}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

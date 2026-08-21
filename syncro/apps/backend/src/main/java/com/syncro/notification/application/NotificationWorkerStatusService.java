@@ -96,7 +96,7 @@ public class NotificationWorkerStatusService {
     long recentFailedCount = attemptRepository.countByStatusAndAttemptedAtAfter("FAILED", failedWindowStart);
 
     Optional<NotificationAttemptEntity> lastFailedAttempt = attemptRepository
-        .findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("FAILED", failedWindowStart);
+        .findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDescIdDesc("FAILED", failedWindowStart);
 
     String lastFailureReason = lastFailedAttempt
         .map(NotificationAttemptEntity::getResponseDetail)
@@ -109,7 +109,7 @@ public class NotificationWorkerStatusService {
         .orElse(null);
 
     String lastSuccessfulSendAt = attemptRepository
-        .findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("SENT", failedWindowStart)
+        .findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDescIdDesc("SENT", failedWindowStart)
         .map(a -> a.getAttemptedAt().toString())
         .orElse(null);
 

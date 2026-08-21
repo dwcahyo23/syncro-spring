@@ -2,7 +2,7 @@
 title: 'Link Health Failures to Operational Evidence'
 type: 'feature'
 created: '2026-08-21'
-status: 'review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 baseline_commit: 604a9a5
@@ -107,10 +107,37 @@ warnings: []
 - Given local/dev evidence workflows, pgAdmin remains a docs-only reference and never a product feature of the health UI. [AC 6.6-4]
 - Given any health failure state rendered, no secrets or credentials are displayed in the health UI. [AC 6.6-5]
 
+## Review Triage Log
+
+### 2026-08-21 — Review pass (Blind Hunter + Edge Case Hunter + Acceptance Auditor)
+- intent_gap: 0 (auditor: 5/5 ACs map cleanly, 9/9 Never-constraints clean, 17/17 task↔file mappings verified)
+- bad_spec: 1 (spec task baked `size=500` into `MachineService.list`, violating that service's `MAX_PAGE_SIZE=200` contract — fixed in code; task text recorded as the original instruction)
+- patch: 9 (high 1, medium 3, low 5)
+- defer: 2 (medium 2 → DW-70, DW-71)
+- dismiss: 3 (low 3)
+- addressed_findings:
+  - `[high]` `[patch]` `GET /api/v1/telemetry/stale-machines` passed `size=500` to `MachineService.list`, which throws `MachineValidationException` above `MAX_PAGE_SIZE=200`; the exception escapes as HTTP 500 on every production call (MachineExceptionHandler is scoped to machine controllers). Fixed: `MACHINE_PAGE_SIZE=200` with pagination loop over pages until `totalElements` covered (cap 25 pages / 5,000 machines, documented); also makes `staleMachineCount` a fleet count instead of a page-0 count (merged low findings).
+  - `[medium]` `[patch]` Service test only round-tripped its own 500 constant past a mock. Fixed: tests now pin `MACHINE_PAGE_SIZE <= 200` against the real contract, prove multi-page iteration (2 pages, 3 machines), and prove the loop stops on an empty page (`verifyNoMoreInteractions`).
+  - `[medium]` `[patch]` Stale-machines query error was never surfaced in the UI (silent "—"). Fixed: "Unable to load stale machine evidence." error line below the freshness card + page test.
+  - `[medium]` `[patch]` machineCode unique per plant only → ambiguous code-only links could break the machine hub (pre-existing hub limitation, deferred as DW-71); the in-scope determinism part fixed: `WORST_FIRST` gained a `machineId` final tie-break so equal-code/equal-age rows cannot flap between polls.
+  - `[low]` `[patch]` `aria-controls` referenced a non-existent id while collapsed. Fixed: the `<ul>` stays mounted with `hidden={!expanded}` (a11y-tree-correct, id always resolvable).
+  - `[low]` `[patch]` Fetcher never cross-checked `staleMachineCount` vs `items.length`. Fixed: mismatching payloads rejected ("contradictory evidence" guard) + test.
+  - `[low]` `[patch]` Unvalidated backend strings into hrefs / unguarded `lastFailedAlertId`. Fixed: machineCode guarded by the backend charset pattern (non-empty, safe path segment) + `encodeURIComponent` on the href; `evidenceLink` only renders for well-formed UUIDs (worker-status fetcher has no shape guard) + traversal-string test.
+  - `[low]` `[patch]` Top-FAILED attempt query had no tie-break → the deep-link target could flap between alerts sharing one timestamp. Fixed: repository method renamed `...OrderByAttemptedAtDescIdDesc` (both FAILED and SENT lookups) for deterministic resolution.
+  - `[low]` `[patch]` Evidence-link icon deviated from the task letter (ArrowRight). Fixed: `ExternalLink` per spec.
+- deferred:
+  - `[medium]` `[defer]` Redis outage makes the whole ACTIVE fleet read as never-received OFFLINE (read failure indistinguishable from no data at the `LatestTelemetryQueryService` boundary; shared with MachineController hydration). → DW-70.
+  - `[medium]` `[defer]` Cross-plant duplicate machine codes break code-only machine-hub links (pre-existing `findByCodeIgnoreCase` resolution limitation). → DW-71.
+- dismissed:
+  - `[low]` `[dismiss]` "No 5m/15m boundary tests in new suite" — `TelemetryFreshnessCalculatorTest` already pins exact boundaries (5.0 ONLINE / 15.0 OFFLINE rows); the stale-machine service delegates to that calculator and does not re-derive thresholds.
+  - `[low]` `[dismiss]` `lastFailedAlertId` inserted mid-record rather than literally appended — JSON output is name-based, contract unchanged, additive intent preserved.
+  - `[low]` `[dismiss]` Null-principal guard branch only indirectly tested — exact parity with the sibling `TelemetryFreshnessControllerTest` mirror pattern the spec mandates.
+
 ## Spec Change Log
 
 - 2026-08-21: Spec created (draft → ready-for-dev).
 - 2026-08-21: Implemented (see Dev Agent Record). All 17 tasks complete; status → review.
+- 2026-08-21: Review pass (3 layers, parallel): 9 patches applied (1 high — stale-machines page-size contract violation fixed with pagination; 3 medium; 5 low), 2 defers (DW-70, DW-71), 3 dismissed. Backend 58/58 hermetic tests green, frontend 138 passed / build ok / biome clean after patches. Status → done.
 
 ## Design Notes
 

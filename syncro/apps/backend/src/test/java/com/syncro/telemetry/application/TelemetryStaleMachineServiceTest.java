@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
@@ -145,11 +146,54 @@ class TelemetryStaleMachineServiceTest {
   }
 
   @Test
-  void queriesOnlyActiveMachines() {
+  void iteratesPagesUntilTotalElementsCovered() {
+    UUID pageOneId = UUID.randomUUID();
+    UUID pageTwoId = UUID.randomUUID();
+    when(machineService.list(any(), isNull(), isNull(), eq(MachineStatus.ACTIVE), isNull(),
+        eq(0), eq(TelemetryStaleMachineService.MACHINE_PAGE_SIZE), eq("code,asc")))
+        .thenReturn(new MachineService.MachineListView(
+            List.of(machine(pageOneId, "OLD-1", "GM1")), 2, 0,
+            TelemetryStaleMachineService.MACHINE_PAGE_SIZE, "code,asc"));
+    when(machineService.list(any(), isNull(), isNull(), eq(MachineStatus.ACTIVE), isNull(),
+        eq(1), eq(TelemetryStaleMachineService.MACHINE_PAGE_SIZE), eq("code,asc")))
+        .thenReturn(new MachineService.MachineListView(
+            List.of(machine(pageTwoId, "NEW-1", "GM1")), 2, 1,
+            TelemetryStaleMachineService.MACHINE_PAGE_SIZE, "code,asc"));
+    stubTelemetry(pageOneId, telemetry(FIXED_NOW.minusSeconds(1800), FreshnessState.STALE));
+    stubTelemetry(pageTwoId, telemetry(FIXED_NOW.minusSeconds(360), FreshnessState.OFFLINE));
+
+    StaleMachineStatus status = service.staleMachines(superAdmin);
+
+    // Both pages' machines are freshness-checked; the count is the fleet count, not page 0's.
+    assertThat(status.staleMachineCount()).isEqualTo(2);
+    assertThat(status.items()).extracting(StaleMachineItem::machineCode)
+        .containsExactly("OLD-1", "NEW-1");
+    verify(machineService).list(any(), isNull(), isNull(), eq(MachineStatus.ACTIVE), isNull(),
+        eq(1), eq(TelemetryStaleMachineService.MACHINE_PAGE_SIZE), eq("code,asc"));
+  }
+
+  @Test
+  void stopsWhenAPageComesBackEmpty() {
+    when(machineService.list(any(), isNull(), isNull(), eq(MachineStatus.ACTIVE), isNull(),
+        eq(0), eq(TelemetryStaleMachineService.MACHINE_PAGE_SIZE), eq("code,asc")))
+        .thenReturn(new MachineService.MachineListView(List.of(), 0, 0,
+            TelemetryStaleMachineService.MACHINE_PAGE_SIZE, "code,asc"));
+
+    service.staleMachines(superAdmin);
+
+    verify(machineService).list(any(), isNull(), isNull(), eq(MachineStatus.ACTIVE), isNull(),
+        eq(0), eq(TelemetryStaleMachineService.MACHINE_PAGE_SIZE), eq("code,asc"));
+    verifyNoMoreInteractions(machineService);
+  }
+
+  @Test
+  void queriesOnlyActiveMachinesWithinTheMachineServicePageSizeContract() {
     stubMachines();
 
     service.staleMachines(superAdmin);
 
+    // 200 is MachineService's MAX_PAGE_SIZE; larger sizes throw MachineValidationException.
+    assertThat(TelemetryStaleMachineService.MACHINE_PAGE_SIZE).isLessThanOrEqualTo(200);
     verify(machineService).list(superAdmin, null, null, MachineStatus.ACTIVE, null, 0,
         TelemetryStaleMachineService.MACHINE_PAGE_SIZE, "code,asc");
   }

@@ -9,6 +9,10 @@ import type { StaleMachineItem, StaleMachineStatus } from "@/features/system-hea
 import { API_BASE_URL } from "@/lib/api/orval-mutator";
 import { expireAuthSession, getAuthToken } from "@/lib/auth/auth-client";
 
+// Machine codes follow the backend contract ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$; validating it
+// here also guarantees the machine-hub href is a safe, non-empty path segment.
+const MACHINE_CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+
 function isStaleMachineItem(value: unknown): value is StaleMachineItem {
   if (value == null || typeof value !== "object") {
     return false;
@@ -17,6 +21,7 @@ function isStaleMachineItem(value: unknown): value is StaleMachineItem {
   return (
     typeof item.machineId === "string" &&
     typeof item.machineCode === "string" &&
+    MACHINE_CODE_PATTERN.test(item.machineCode) &&
     typeof item.plantCode === "string" &&
     typeof item.freshnessState === "string" &&
     typeof item.statusLabel === "string" &&
@@ -53,7 +58,10 @@ export async function fetchStaleMachines(signal?: AbortSignal): Promise<StaleMac
     typeof raw.timestamp !== "string" ||
     typeof raw.staleMachineCount !== "number" ||
     !Array.isArray(raw.items) ||
-    !raw.items.every(isStaleMachineItem)
+    !raw.items.every(isStaleMachineItem) ||
+    // The backend contract guarantees count === items.length; a mismatch would render a count
+    // row contradicting the visible list, so reject instead of showing contradictory evidence.
+    raw.staleMachineCount !== raw.items.length
   ) {
     throw new Error("Stale machines response was not a stale-machine payload");
   }

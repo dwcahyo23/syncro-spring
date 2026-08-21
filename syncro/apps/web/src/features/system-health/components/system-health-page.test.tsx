@@ -789,6 +789,36 @@ describe("System Health Page", () => {
     expect(screen.getByText("No telemetry received")).toBeInTheDocument();
   });
 
+  it("6-6-review: a persistently failing stale-machines query surfaces a visible error, not a silent dash", () => {
+    staleMachinesQuery = { ...staleMachinesQuery, data: undefined, isError: true };
+
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    const card = freshnessCard();
+    expect(card).toHaveTextContent("Machines with stale telemetry");
+    expect(card).toHaveTextContent("—");
+    expect(screen.getByText("Unable to load stale machine evidence.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Show stale machines/ })).not.toBeInTheDocument();
+  });
+
+  it("6-6-review: a malformed lastFailedAlertId renders no history link", () => {
+    notifQuery = {
+      ...notifQuery,
+      data: {
+        ...healthyNotif,
+        status: "DEGRADED",
+        statusLabel: "Degraded",
+        statusSeverity: "WARNING",
+        statusReason: "WAHA circuit breaker is OPEN",
+        lastFailedAlertId: "../../admin/secrets",
+      },
+    };
+
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    expect(screen.queryByRole("link", { name: "View notification history" })).not.toBeInTheDocument();
+  });
+
   it("6-6-refresh: clicking Refresh also refetches stale machines", () => {
     render(<SystemHealthPage />, { wrapper: Wrapper });
 

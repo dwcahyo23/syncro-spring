@@ -17,6 +17,10 @@ public interface NotificationAttemptRepository
 
   long countByStatusAndAttemptedAtAfter(String status, Instant attemptedAt);
 
-  Optional<NotificationAttemptEntity> findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc(
+  /**
+   * Most recent attempt for the status, tie-broken by id so simultaneous timestamps (bulk retry
+   * rounds) resolve deterministically instead of flapping between rows across polls.
+   */
+  Optional<NotificationAttemptEntity> findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDescIdDesc(
       String status, Instant attemptedAt);
 }

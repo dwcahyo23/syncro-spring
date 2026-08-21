@@ -115,7 +115,7 @@ development_status:
   6-3-report-notification-worker-status: done
   6-4-build-super-admin-health-dashboard: done
   6-5-surface-latest-telemetry-freshness-in-health: done
-  6-6-link-health-failures-to-operational-evidence: review
+  6-6-link-health-failures-to-operational-evidence: done
   6-7-implement-data-quality-panel-and-latency-indicator: backlog
   epic-6-retrospective: optional
 

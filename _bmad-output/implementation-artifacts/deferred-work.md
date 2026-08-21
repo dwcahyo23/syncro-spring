@@ -495,3 +495,17 @@ status: open
   summary: TelemetryIngestTracker.recordAccepted() keeps lastAcceptedAt monotonic, so a backward NTP clock step leaves lastAcceptedAt in the "future" and freshness reports LIVE (clock-skew branch) until wall time catches up — masking a genuinely stalled ingest path.
   evidence: TelemetryIngestTracker.java:30 (
 ow.isAfter(lastAcceptedAt)) combined with TelemetryFreshnessService.java negative-elapsed LIVE branch; observed during review of the new freshness contract (2026-08-21). Fixing means either accepting an unconditional lastAcceptedAt = now (changes the shared tracker also consumed by the 6.4 ingest worker status) or surfacing skew as its own state — a shared-tracker decision, not this story's code.
+
+### DW-70: Stale-machine evidence cannot distinguish Redis read failure from never-received telemetry
+
+origin: Deferred from: code review of spec-6-6-link-health-failures-to-operational-evidence (2026-08-21)
+location: syncro/apps/backend/src/main/java/com/syncro/telemetry/application/TelemetryStaleMachineService.java + LatestTelemetryQueryService.java
+reason: LatestTelemetryQueryService returns null for read failure, empty Redis hash, and malformed receivedAt alike, so during a Redis outage every ACTIVE machine is reported as never-received OFFLINE evidence (whole fleet listed, "No telemetry received") — a definitive false state during exactly the incident the panel exists for. Fixing requires extending the shared read API (outcome-distinguishing wrapper) also consumed by MachineController hydration (6.4 surface) — a deliberate contract decision. Mitigation today: a Redis outage independently shows the Redis dependency card DOWN and degrades the overall banner.
+status: open
+
+### DW-71: Machine code is unique per plant only, so code-only deep links are ambiguous across plants
+
+origin: Deferred from: code review of spec-6-6-link-health-failures-to-operational-evidence (2026-08-21)
+location: syncro/apps/web/src/features/system-health/components/system-health-page.tsx (stale-machine list href) + syncro/apps/backend/src/main/java/com/syncro/machine/infrastructure/MachineRepository.java:69
+reason: Uniqueness is (plant_id, lower(code)) while the machine hub resolves codes globally via findByCodeIgnoreCase; with the same code in two plants, both stale-machine rows link to one URL and the hub throws IncorrectResultSizeDataAccessException. Pre-existing hub-resolution limitation (route /dashboard/master-data/machines/[machineCode] predates 6-6 and breaks for cross-plant duplicates from any entry point). Fix needs a by-id or plant-scoped resolution decision; Phase-1 pilot is single-plant (GM1). 6-6 patch mitigated determinism only (machineId sort tie-break, encodeURIComponent).
+status: open

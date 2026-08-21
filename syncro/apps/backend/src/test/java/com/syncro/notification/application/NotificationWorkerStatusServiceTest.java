@@ -69,8 +69,8 @@ class NotificationWorkerStatusServiceTest {
         NotificationJobStatus.PENDING, NotificationJobStatus.RATE_LIMITED))).thenReturn(0L);
     when(attemptRepository.countByStatusAndAttemptedAtAfter(eq("FAILED"),
         eq(FIXED_NOW.minus(FAILED_WINDOW)))).thenReturn(0L);
-    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
-    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("SENT", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
+    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDescIdDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
+    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDescIdDesc("SENT", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
 
     NotificationWorkerStatus status = service.status();
 
@@ -89,8 +89,8 @@ class NotificationWorkerStatusServiceTest {
         NotificationJobStatus.PENDING, NotificationJobStatus.RATE_LIMITED))).thenReturn(2L);
     when(attemptRepository.countByStatusAndAttemptedAtAfter(eq("FAILED"),
         eq(FIXED_NOW.minus(FAILED_WINDOW)))).thenReturn(0L);
-    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
-    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("SENT", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
+    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDescIdDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
+    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDescIdDesc("SENT", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
 
     NotificationWorkerStatus status = service.status();
 
@@ -114,8 +114,8 @@ class NotificationWorkerStatusServiceTest {
         NotificationJobStatus.PENDING, NotificationJobStatus.RATE_LIMITED))).thenReturn(0L);
     when(attemptRepository.countByStatusAndAttemptedAtAfter(eq("FAILED"),
         eq(FIXED_NOW.minus(FAILED_WINDOW)))).thenReturn(0L);
-    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
-    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("SENT", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
+    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDescIdDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
+    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDescIdDesc("SENT", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
 
     NotificationWorkerStatus status = service.status();
 
@@ -136,8 +136,8 @@ class NotificationWorkerStatusServiceTest {
         NotificationJobStatus.PENDING, NotificationJobStatus.RATE_LIMITED))).thenReturn(0L);
     when(attemptRepository.countByStatusAndAttemptedAtAfter(eq("FAILED"),
         eq(FIXED_NOW.minus(FAILED_WINDOW)))).thenReturn(0L);
-    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
-    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("SENT", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
+    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDescIdDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
+    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDescIdDesc("SENT", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
 
     NotificationWorkerStatus status = service.status();
 
@@ -154,8 +154,8 @@ class NotificationWorkerStatusServiceTest {
         NotificationJobStatus.PENDING, NotificationJobStatus.RATE_LIMITED))).thenReturn(0L);
     when(attemptRepository.countByStatusAndAttemptedAtAfter(eq("FAILED"),
         eq(FIXED_NOW.minus(FAILED_WINDOW)))).thenReturn(0L);
-    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
-    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("SENT", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
+    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDescIdDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
+    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDescIdDesc("SENT", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
 
     NotificationWorkerStatus status = service.status();
 
@@ -175,8 +175,8 @@ class NotificationWorkerStatusServiceTest {
         NotificationJobStatus.PENDING, NotificationJobStatus.RATE_LIMITED))).thenReturn(0L);
     when(attemptRepository.countByStatusAndAttemptedAtAfter(eq("FAILED"),
         eq(FIXED_NOW.minus(FAILED_WINDOW)))).thenReturn(0L);
-    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
-    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("SENT", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
+    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDescIdDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
+    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDescIdDesc("SENT", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
 
     NotificationWorkerStatus status = service.status();
 
@@ -196,8 +196,8 @@ class NotificationWorkerStatusServiceTest {
         NotificationJobStatus.PENDING, NotificationJobStatus.RATE_LIMITED))).thenReturn(0L);
     when(attemptRepository.countByStatusAndAttemptedAtAfter(eq("FAILED"),
         eq(FIXED_NOW.minus(FAILED_WINDOW)))).thenReturn(0L);
-    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
-    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("SENT", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
+    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDescIdDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
+    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDescIdDesc("SENT", FIXED_NOW.minus(FAILED_WINDOW))).thenReturn(Optional.empty());
 
     NotificationWorkerStatus status = service.status();
 
@@ -212,9 +212,9 @@ class NotificationWorkerStatusServiceTest {
         NotificationJobStatus.PENDING, NotificationJobStatus.RATE_LIMITED))).thenReturn(3L);
     when(attemptRepository.countByStatusAndAttemptedAtAfter(eq("FAILED"),
         eq(FIXED_NOW.minus(FAILED_WINDOW)))).thenReturn(1L);
-    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW)))
+    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDescIdDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW)))
         .thenReturn(Optional.of(attempt("FAILED", "HTTP 500: internal error")));
-    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("SENT", FIXED_NOW.minus(FAILED_WINDOW)))
+    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDescIdDesc("SENT", FIXED_NOW.minus(FAILED_WINDOW)))
         .thenReturn(Optional.of(attempt("SENT", "ok")));
 
     NotificationWorkerStatus status = service.status();
@@ -234,7 +234,7 @@ class NotificationWorkerStatusServiceTest {
     UUID jobId = UUID.fromString("00000000-0000-0000-0000-000000000001");
     UUID alertId = UUID.fromString("00000000-0000-0000-0000-000000000002");
     stubNoPendingAndNoCounts();
-    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW)))
+    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDescIdDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW)))
         .thenReturn(Optional.of(attempt(jobId, "FAILED", "HTTP 500: internal error")));
     when(jobRepository.findById(jobId))
         .thenReturn(Optional.of(new NotificationJobEntity(alertId, "TECHNICIAN",
@@ -250,7 +250,7 @@ class NotificationWorkerStatusServiceTest {
     tracker.recordPoll();
 
     stubNoPendingAndNoCounts();
-    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW)))
+    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDescIdDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW)))
         .thenReturn(Optional.empty());
 
     NotificationWorkerStatus status = service.status();
@@ -264,7 +264,7 @@ class NotificationWorkerStatusServiceTest {
 
     UUID jobId = UUID.fromString("00000000-0000-0000-0000-000000000003");
     stubNoPendingAndNoCounts();
-    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW)))
+    when(attemptRepository.findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDescIdDesc("FAILED", FIXED_NOW.minus(FAILED_WINDOW)))
         .thenReturn(Optional.of(attempt(jobId, "FAILED", "HTTP 500: internal error")));
     when(jobRepository.findById(jobId)).thenReturn(Optional.empty());
 

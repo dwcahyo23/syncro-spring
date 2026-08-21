@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 
 type HealthEvidenceLinkProps = {
   readonly href: string;
@@ -18,7 +18,7 @@ export function HealthEvidenceLink({ href, children }: HealthEvidenceLinkProps) 
       className="inline-flex items-center gap-1 font-medium text-primary text-xs underline-offset-4 hover:underline"
     >
       {children}
-      <ArrowRight aria-hidden="true" className="size-3 shrink-0" />
+      <ExternalLink aria-hidden="true" className="size-3 shrink-0" />
     </Link>
   );
 }

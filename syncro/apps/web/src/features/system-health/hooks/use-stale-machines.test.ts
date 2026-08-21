@@ -85,6 +85,43 @@ describe("stale machines fetcher", () => {
     await expect(fetchStaleMachines()).rejects.toThrow("not a stale-machine payload");
   });
 
+  it("rejects on 200 with an empty machineCode item", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(200, {
+          timestamp: "2026-08-21T08:00:00Z",
+          staleMachineCount: 1,
+          items: [
+            {
+              machineId: "00000000-0000-0000-0000-000000000001",
+              machineCode: "",
+              plantCode: "GM1",
+              freshnessState: "OFFLINE",
+              statusLabel: "offline",
+              lastReceivedAt: null,
+            },
+          ],
+        }),
+      ),
+    );
+    await expect(fetchStaleMachines()).rejects.toThrow("not a stale-machine payload");
+  });
+
+  it("rejects on 200 when the count contradicts the items length", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(200, {
+          timestamp: "2026-08-21T08:00:00Z",
+          staleMachineCount: 5,
+          items: [fullPayload.items[0]],
+        }),
+      ),
+    );
+    await expect(fetchStaleMachines()).rejects.toThrow("not a stale-machine payload");
+  });
+
   it("expires the session on 401", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(401, {})));
     await expect(fetchStaleMachines()).rejects.toThrow("401");

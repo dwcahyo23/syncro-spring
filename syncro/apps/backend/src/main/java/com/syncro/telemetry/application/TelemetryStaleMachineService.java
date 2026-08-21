@@ -4,6 +4,7 @@ import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.machine.application.MachineService;
 import com.syncro.machine.domain.MachineStatus;
 import java.time.Clock;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -26,17 +27,25 @@ import org.springframework.stereotype.Service;
 public class TelemetryStaleMachineService {
 
   /**
-   * Single bounded page of ACTIVE machines. Phase-1 active-machine count is far below this cap;
-   * the evidence panel is SUPER_ADMIN-only and polled every 30s, so revisit pagination only when
-   * active-machine volume makes the payload meaningful.
+   * Page size for the ACTIVE-machine listing. {@code MachineService} rejects sizes above its
+   * {@code MAX_PAGE_SIZE = 200} with {@code MachineValidationException}, so this must stay
+   * within that contract; the service iterates pages until every ACTIVE machine is covered.
    */
-  static final int MACHINE_PAGE_SIZE = 500;
+  static final int MACHINE_PAGE_SIZE = 200;
 
-  /** Worst-first: never-received, then stalest lastReceivedAt, then machineCode ascending. */
+  /**
+   * Hard safety cap on listing iterations (25 × 200 = 5,000 ACTIVE machines). Phase-1 scale is
+   * far below this; if a fleet ever exceeds it, the evidence covers the first 5,000 machines
+   * and pagination support should be added to the endpoint instead.
+   */
+  private static final int MAX_MACHINE_PAGES = 25;
+
+  /** Worst-first: never-received, then stalest lastReceivedAt, then machineCode, then id. */
   private static final Comparator<StaleMachineItem> WORST_FIRST =
       Comparator.comparing(StaleMachineItem::lastReceivedAt,
               Comparator.nullsFirst(Comparator.naturalOrder()))
-          .thenComparing(StaleMachineItem::machineCode);
+          .thenComparing(StaleMachineItem::machineCode)
+          .thenComparing(StaleMachineItem::machineId);
 
   private final MachineService machineService;
   private final LatestTelemetryQueryService telemetryQuery;
@@ -50,16 +59,31 @@ public class TelemetryStaleMachineService {
   }
 
   public StaleMachineStatus staleMachines(AuthenticatedUser user) {
-    var machines = machineService.list(user, null, null, MachineStatus.ACTIVE, null,
-        0, MACHINE_PAGE_SIZE, "code,asc");
+    List<MachineService.MachineView> machines = listAllActiveMachines(user);
 
-    List<StaleMachineItem> items = machines.items().stream()
+    List<StaleMachineItem> items = machines.stream()
         .map(this::toStaleItem)
         .flatMap(Optional::stream)
         .sorted(WORST_FIRST)
         .toList();
 
     return new StaleMachineStatus(clock.instant().toString(), items.size(), items);
+  }
+
+  /** Iterates ACTIVE-machine pages until {@code totalElements} is covered (bounded by the page cap). */
+  private List<MachineService.MachineView> listAllActiveMachines(AuthenticatedUser user) {
+    List<MachineService.MachineView> machines = new ArrayList<>();
+    long totalElements = 0;
+    for (int page = 0; page < MAX_MACHINE_PAGES; page++) {
+      var view = machineService.list(user, null, null, MachineStatus.ACTIVE, null,
+          page, MACHINE_PAGE_SIZE, "code,asc");
+      machines.addAll(view.items());
+      totalElements = view.totalElements();
+      if (view.items().isEmpty() || machines.size() >= totalElements) {
+        break;
+      }
+    }
+    return machines;
   }
 
   /**
