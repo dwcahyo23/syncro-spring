@@ -17,6 +17,7 @@ public class NotificationWorker {
 
   private final NotificationJobRepository jobRepository;
   private final NotificationDispatchService dispatchService;
+  private final NotificationWorkerTracker tracker;
   private final Clock clock;
 
   private static final List<NotificationJobStatus> DISPATCHABLE_STATUSES =
@@ -24,14 +25,17 @@ public class NotificationWorker {
 
   public NotificationWorker(NotificationJobRepository jobRepository,
       NotificationDispatchService dispatchService,
+      NotificationWorkerTracker tracker,
       Clock clock) {
     this.jobRepository = jobRepository;
     this.dispatchService = dispatchService;
+    this.tracker = tracker;
     this.clock = clock;
   }
 
   @Scheduled(fixedDelayString = "${syncro.notification.worker.poll-interval-ms:30000}")
   public void poll() {
+    tracker.recordPoll();
     Instant now = Instant.now(clock);
     var jobs = jobRepository.findPendingJobsDue(DISPATCHABLE_STATUSES, now);
     if (jobs.isEmpty()) {

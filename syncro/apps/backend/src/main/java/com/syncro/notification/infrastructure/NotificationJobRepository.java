@@ -14,6 +14,8 @@ public interface NotificationJobRepository extends JpaRepository<NotificationJob
 
   List<NotificationJobEntity> findByAlertIdOrderByCreatedAtAsc(UUID alertId);
 
+  long countByStatusIn(Collection<NotificationJobStatus> statuses);
+
   @Query("""
       select j from NotificationJobEntity j
       where j.alertId = :alertId
