@@ -85,7 +85,7 @@ syncro:
       # Worker considered DEGRADED when the last poll is older than this (default: 5 minutes)
       stale-threshold: ${SYNCRO_NOTIFICATION_WORKER_STALE_THRESHOLD:PT5M}
       # Window for the recent-failed notification count in worker status (default: 1 hour)
-      failed-window: ${SYNCRO_NOTIFICATION_FAILED_WINDOW:PT1H}
+      failed-window: ${SYNCRO_NOTIFICATION_WORKER_FAILED_WINDOW:PT1H}
     escalation:
       # Escalation interval in milliseconds — how long a SENT job must age before escalating (default: 15 minutes)
       interval-ms: ${SYNCRO_NOTIFICATION_ESCALATION_INTERVAL_MS:900000}

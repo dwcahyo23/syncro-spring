@@ -26,6 +26,10 @@ import org.springframework.stereotype.Service;
  *       reason + timestamp)</li>
  *   <li>otherwise → {@code RUNNING}</li>
  * </ul>
+ *
+ * <p>Never-polled is checked first so a worker that never ran reports the strongest signal
+ * ({@code STOPPED}/CRITICAL) even if the circuit is also open. When the worker has polled,
+ * an open circuit degrades the status regardless of poll freshness.
  */
 @Service
 public class NotificationWorkerStatusService {
@@ -64,14 +68,14 @@ public class NotificationWorkerStatusService {
     Instant staleSince = null;
 
     CircuitBreaker.State circuitState = wahaClient.getCircuitBreaker().getState();
-    if (circuitState == CircuitBreaker.State.OPEN
+    if (lastPollAt == null) {
+      state = NotificationWorkerState.STOPPED;
+      reason = "Worker never polled";
+    } else if (circuitState == CircuitBreaker.State.OPEN
         || circuitState == CircuitBreaker.State.FORCED_OPEN
         || circuitState == CircuitBreaker.State.DISABLED) {
       state = NotificationWorkerState.DEGRADED;
       reason = "WAHA circuit breaker is " + circuitState;
-    } else if (lastPollAt == null) {
-      state = NotificationWorkerState.STOPPED;
-      reason = "Worker never polled";
     } else {
       Duration elapsed = Duration.between(lastPollAt, now);
       if (!elapsed.isNegative() && elapsed.compareTo(staleThreshold) > 0) {
@@ -89,13 +93,13 @@ public class NotificationWorkerStatusService {
     long recentFailedCount = attemptRepository.countByStatusAndAttemptedAtAfter("FAILED", failedWindowStart);
 
     String lastFailureReason = attemptRepository
-        .findTopByStatusOrderByAttemptedAtDesc("FAILED")
+        .findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("FAILED", failedWindowStart)
         .map(NotificationAttemptEntity::getResponseDetail)
         .map(this::truncate)
         .orElse(null);
 
     String lastSuccessfulSendAt = attemptRepository
-        .findTopByStatusOrderByAttemptedAtDesc("SENT")
+        .findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc("SENT", failedWindowStart)
         .map(a -> a.getAttemptedAt().toString())
         .orElse(null);
 

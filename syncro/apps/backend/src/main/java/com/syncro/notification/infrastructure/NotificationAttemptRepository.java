@@ -17,5 +17,6 @@ public interface NotificationAttemptRepository
 
   long countByStatusAndAttemptedAtAfter(String status, Instant attemptedAt);
 
-  Optional<NotificationAttemptEntity> findTopByStatusOrderByAttemptedAtDesc(String status);
+  Optional<NotificationAttemptEntity> findTopByStatusAndAttemptedAtAfterOrderByAttemptedAtDesc(
+      String status, Instant attemptedAt);
 }

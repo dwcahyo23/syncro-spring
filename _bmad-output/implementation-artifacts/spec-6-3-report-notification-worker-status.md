@@ -4,7 +4,7 @@ baseline_commit: 65d513b307700b38f0dfc4e29e390c920c5d8fd3
 
 # Story 6.3: Report Notification Worker Status
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -142,6 +142,7 @@ opencode — openagentic/deepseek-v4-flash-free
 - [modified] `syncro/apps/backend/src/main/java/com/syncro/notification/application/NotificationWorker.java` — inject `NotificationWorkerTracker`; `recordPoll()` at start of `poll()`
 - [modified] `syncro/apps/backend/src/main/java/com/syncro/notification/infrastructure/NotificationJobRepository.java` — added `countByStatusIn`
 - [modified] `syncro/apps/backend/src/main/java/com/syncro/notification/infrastructure/NotificationAttemptRepository.java` — added `countByStatusAndAttemptedAtAfter`, `findTopByStatusOrderByAttemptedAtDesc`
+- [new] `syncro/apps/backend/src/main/resources/db/migration/V30__add_notification_attempts_status_attempted_at_index.sql`
 - [modified] `syncro/apps/backend/src/main/resources/application.yml` — added `syncro.notification.worker.stale-threshold`, `failed-window`
 - [new] `syncro/apps/backend/src/test/java/com/syncro/notification/application/NotificationWorkerTrackerTest.java`
 - [new] `syncro/apps/backend/src/test/java/com/syncro/notification/application/NotificationWorkerStatusServiceTest.java`
@@ -150,6 +151,28 @@ opencode — openagentic/deepseek-v4-flash-free
 
 ## Change Log
 
-- 2026-08-21: Implemented story 6.3 — notification worker status endpoint `GET /api/v1/notification/worker/status` (SUPER_ADMIN only). 17 new tests added and passing (4 tracker, 7 service, 4 controller, 2 worker). Full suite: no new regressions vs. baseline — remaining failures/errors are pre-existing (`WahaRateLimiterTest`/`SparepartLifetimeEvaluatorTest` UnnecessaryStubbing + Docker/Testcontainers integration tests requiring a Docker environment).
+- 2026-08-21: Implemented story 6.3 — notification worker status endpoint `GET /api/v1/notification/worker/status` (SUPER_ADMIN only). 19 new tests added and passing (4 tracker, 8 service, 4 controller, 3 worker). Full suite: no new regressions vs. baseline — remaining failures/errors are pre-existing (`WahaRateLimiterTest`/`SparepartLifetimeEvaluatorTest` UnnecessaryStubbing + Docker/Testcontainers integration tests requiring a Docker environment).
 - 2026-08-21: Scope decision confirmed — `EscalationWorker` liveness is out of scope for 6.3 (page-spec §4.3 describes ONE Notification Worker card oriented around WAHA dispatch).
 - 2026-08-21: Config defaults confirmed with user — `stale-threshold` PT5M, `failed-window` PT1H.
+- 2026-08-21: Code review applied — 2 decisions (keep DISABLED→DEGRADED; window the lookup queries), 6 patches (env var `SYNCRO_NOTIFICATION_WORKER_FAILED_WINDOW`, `recordPoll` after DB fetch, never-polled precedence, javadoc nullable claim, V30 index migration, `NotificationProperties` simplification), 1 defer (per-JVM tracker). 2 new tests added for precedence and query-throw resilience.
+
+## Review Findings
+
+### decision-needed (unresolved)
+
+- [x] [Review][Decision] DISABLED circuit state reported as DEGRADED — `NotificationWorkerStatusService.java:63`. Resilience4j DISABLED means calls pass through (protection off), yet the code reports DEGRADED/WARNING. The existing `WahaCircuitBreakerHealthIndicator` maps DISABLED → OUT_OF_SERVICE (WARNING), so keeping DEGRADED is consistent. **Resolved 2026-08-21: keep DEGRADED (user decision, consistent with codebase).**
+- [x] [Review][Decision] unbounded `lastFailureReason`/`lastSuccessfulSendAt` vs windowed `recentFailedCount` — `NotificationWorkerStatusService.java:66-69`. `recentFailedCount` is windowed to `failedWindow` (PT1H) but the two `findTopByStatusOrderByAttemptedAtDesc` lookups are unbounded (all-time). Mixing horizons is confusing: status could show a stale failure reason with zero recent failures. Spec Task 4 explicitly wrote unbounded `findTop` (spec-faithful). **Resolved 2026-08-21: window the lookups to `failedWindowStart` so the three signals agree (user decision).**
+
+### patch (unresolved)
+
+- [x] [Review][Patch] Env var `SYNCRO_NOTIFICATION_FAILED_WINDOW` silently ignored — `application.yml:88`. The placeholder lacks the `WORKER` segment: `syncro.notification.failed-window` is not a bound property. **Fixed 2026-08-21: renamed to `${SYNCRO_NOTIFICATION_WORKER_FAILED_WINDOW:PT1H}`.**
+- [x] [Review][Patch] `recordPoll()` before DB query can mask DB failure as RUNNING — `NotificationWorker.java:38-40`. Spec Task 2 ordered at START; moving it after `findPendingJobsDue` (still before the empty-return) satisfies the stated intent while fixing the masking. **Fixed 2026-08-21: `recordPoll()` moved after the query; `NotificationWorkerTracker` javadoc updated (liveness = successful DB fetch); new test `pollWhenQueryThrowsDoesNotAdvanceLastPollAt`.**
+- [x] [Review][Patch] Circuit check before never-polled check — `NotificationWorkerStatusService.java:63-66`. Spec Task 4 bullet list and javadoc list never-polled first; code checks circuit first. **Fixed 2026-08-21: `lastPollAt == null` now checked before circuit; javadoc updated; new test `neverPolledWinsOverOpenCircuit`.**
+- [x] [Review][Patch] `circuitBreakerState` javadoc claims "or {@code null}" but never null — `NotificationWorkerStatus.java:40`. **Fixed 2026-08-21: nullable claim dropped.**
+- [x] [Review][Patch] Missing covering index for `notification_attempts(status, attempted_at)` — used by `countByStatusAndAttemptedAtAfter` and `findTopByStatusOrderByAttemptedAtDesc`. **Fixed 2026-08-21: new migration `V30__add_notification_attempts_status_attempted_at_index.sql`.**
+- [x] [Review][Patch] `NotificationProperties` outer compact constructor checks `worker.staleThreshold == null` — unreachable (`@DefaultValue Worker worker` ensures worker is never null). **Fixed 2026-08-21: simplified to `worker == null` check only.**
+
+### defer
+
+- [x] [Review][Defer] Per-JVM in-memory tracker is pod-local — `NotificationWorkerTracker.java:16`. In a multi-replica deployment the endpoint reports only the calling instance's poll liveness. Acceptable for single-instance; documented by design (resets on restart). Deferred, out of current scope.
+

@@ -61,4 +61,18 @@ class NotificationWorkerTest {
     assertThat(tracker.lastPollAt()).isEqualTo(FIXED_NOW);
     verify(dispatchService).dispatch(job);
   }
+
+  @Test
+  void pollWhenQueryThrowsDoesNotAdvanceLastPollAt() {
+    when(jobRepository.findPendingJobsDue(any(), any()))
+        .thenThrow(new RuntimeException("db down"));
+
+    try {
+      worker.poll();
+    } catch (RuntimeException e) {
+      // expected — exception propagates; poll must NOT be recorded as alive
+    }
+
+    assertThat(tracker.lastPollAt()).isNull();
+  }
 }

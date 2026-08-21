@@ -474,3 +474,10 @@ Verified directly against the running instance (`syncro-spring-emqx-1`, image `e
 | `SparepartLifetimeEvaluator` + alerts | n/a | Business logic — keep in backend |
 
 **Caveats:** every bridge/queue needs a PoC with real traffic; EMQX config changes live in `infra/emqx/etc/emqx.conf` + `docker-entrypoint.sh` and require container restart; InfluxDB bridge must reach InfluxDB via container network name (`influxdb:8181`), not `localhost`; dedupe (`SETNX`) and quarantine semantics must be preserved regardless of where validation/writing happens.
+
+### DW-NEW: Notification worker status is pod-local (per-JVM tracker)
+
+origin: Deferred from: code review of spec-6-3-report-notification-worker-status (2026-08-21)
+location: syncro/apps/backend/src/main/java/com/syncro/notification/application/NotificationWorkerTracker.java:16
+reason: In a multi-replica deployment the endpoint reports only the calling instance's poll liveness. Acceptable for single-instance; documented by design (in-memory, resets on restart). Distributed observability is out of current scope.
+status: open

@@ -54,7 +54,7 @@ development_status:
   epic-1-retrospective: done
 
   # Epic 2: Machine Master Data & Setup Foundation
-  epic-2: in-progress
+  epic-2: done
   2-1-manage-plants: done
   2-2-manage-plant-scoped-machine-groups: done
   2-3-manage-machines-with-manual-active-state: done
@@ -68,7 +68,7 @@ development_status:
   epic-2-retrospective: optional
 
   # Epic 3: Telemetry Ingestion & Latest Machine Visibility
-  epic-3: in-progress
+  epic-3: done
   3-1-configure-mqtt-subscription-and-telemetry-contract: done
   3-2-validate-mqtt-topic-and-base-payload: done
   3-3-reject-inactive-machine-telemetry: done
@@ -85,7 +85,7 @@ development_status:
   epic-3-retrospective: optional
 
   # Epic 4: Sparepart Lifetime Alerting
-  epic-4: in-progress
+  epic-4: done
   4-1-evaluate-sparepart-lifetime-threshold-from-accepted-telemetry: done
   4-2-create-threshold-alert-with-duplicate-prevention: done
   4-3-show-alert-list-and-alert-detail: done
@@ -96,7 +96,7 @@ development_status:
   epic-4-retrospective: optional
 
   # Epic 5: WAHA Escalation & Notification Evidence
-  epic-5: in-progress
+  epic-5: done
   5-1-create-waha-template-editor: done
   5-2-queue-initial-waha-notification-for-open-alert: done
   5-3-send-notification-job-through-waha-with-attempt-history: done
@@ -112,7 +112,7 @@ development_status:
   epic-6: in-progress
   6-1-expose-dependency-health-checks: done
   6-2-report-telemetry-ingest-worker-status: done
-  6-3-report-notification-worker-status: review
+  6-3-report-notification-worker-status: done
   6-4-build-super-admin-health-dashboard: backlog
   6-5-surface-latest-telemetry-freshness-in-health: backlog
   6-6-link-health-failures-to-operational-evidence: backlog

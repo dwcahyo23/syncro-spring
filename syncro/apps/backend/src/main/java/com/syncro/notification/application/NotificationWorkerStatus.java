@@ -20,7 +20,7 @@ package com.syncro.notification.application;
  * @param recentFailedCount   FAILED WAHA attempts within the configured failed window
  * @param lastFailureReason   response detail of the most recent FAILED attempt, or {@code null}
  * @param lastSuccessfulSendAt ISO instant of the latest successful WAHA send, or {@code null}
- * @param circuitBreakerState WAHA circuit breaker state name, or {@code null}
+ * @param circuitBreakerState WAHA circuit breaker state name, e.g. {@code CLOSED} / {@code OPEN}
  */
 public record NotificationWorkerStatus(
     NotificationWorkerState status,

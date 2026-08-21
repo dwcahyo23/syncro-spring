@@ -35,9 +35,9 @@ public class NotificationWorker {
 
   @Scheduled(fixedDelayString = "${syncro.notification.worker.poll-interval-ms:30000}")
   public void poll() {
-    tracker.recordPoll();
     Instant now = Instant.now(clock);
     var jobs = jobRepository.findPendingJobsDue(DISPATCHABLE_STATUSES, now);
+    tracker.recordPoll();
     if (jobs.isEmpty()) {
       return;
     }

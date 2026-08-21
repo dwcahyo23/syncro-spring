@@ -5,8 +5,12 @@ import java.time.Instant;
 import org.springframework.stereotype.Component;
 
 /**
- * In-memory notification worker observability: tracks the last poll execution time so the
- * notification worker health status can report whether the dispatch loop is alive.
+ * In-memory notification worker observability: tracks the last successful poll cycle so the
+ * notification worker health status can report whether the dispatch loop is alive and healthy.
+ *
+ * <p>{@code recordPoll()} is called only after the pending-jobs DB fetch succeeds — a poll that
+ * fails to reach the database does NOT advance {@code lastPollAt}, so a DB outage surfaces as
+ * {@code DEGRADED} (stale poll) instead of a false {@code RUNNING}.
  *
  * <p>Values are intentionally in-memory and reset on restart — a restart restarts the poll
  * clock (documented in the story dev notes). Never a source of truth; observability only.

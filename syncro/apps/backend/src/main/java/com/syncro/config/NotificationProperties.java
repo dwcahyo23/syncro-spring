@@ -24,7 +24,7 @@ public record NotificationProperties(@DefaultValue Worker worker) {
   }
 
   public NotificationProperties {
-    if (worker == null || worker.staleThreshold == null || worker.failedWindow == null) {
+    if (worker == null) {
       throw new IllegalArgumentException("syncro.notification.worker must be configured");
     }
   }
