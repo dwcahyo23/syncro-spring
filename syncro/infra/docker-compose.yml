@@ -89,11 +89,11 @@ services:
       start_period: 30s
 
   waha:
-    image: devlikeapro/waha:latest
+    image: devlikeapro/waha:gows-2026.8.1
     restart: unless-stopped
     environment:
       WAHA_API_KEY: ${WAHA_API_KEY:?WAHA_API_KEY is required}
-      WHATSAPP_DEFAULT_ENGINE: NOWEB
+      WHATSAPP_DEFAULT_ENGINE: GOWS
       WAHA_DASHBOARD_USERNAME: ${WAHA_DASHBOARD_USERNAME:-admin}
       WAHA_DASHBOARD_PASSWORD: ${WAHA_DASHBOARD_PASSWORD:?WAHA_DASHBOARD_PASSWORD is required}
       WHATSAPP_SWAGGER_USERNAME: ${WHATSAPP_SWAGGER_USERNAME:-admin}

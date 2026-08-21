@@ -28,7 +28,7 @@ syncro/
 | Technology | Selected Version | Notes |
 |-----------|------------------|-------|
 | Java | 25 (Eclipse Temurin) | Backend runtime target |
-| Spring Boot | 3.5.x stable | Backend framework baseline; Spring Boot 4.x can be revisited when compatible with project dependencies |
+| Spring Boot | 4.0.6 | Backend framework baseline |
 | Maven | 3.9+ | Backend build tool |
 | Next.js | 16 | Frontend baseline from selected dashboard boilerplate |
 | Node.js | 22 LTS | Required by Next.js 16 baseline |
