@@ -112,7 +112,7 @@ development_status:
   epic-6: in-progress
   6-1-expose-dependency-health-checks: done
   6-2-report-telemetry-ingest-worker-status: done
-  6-3-report-notification-worker-status: backlog
+  6-3-report-notification-worker-status: ready-for-dev
   6-4-build-super-admin-health-dashboard: backlog
   6-5-surface-latest-telemetry-freshness-in-health: backlog
   6-6-link-health-failures-to-operational-evidence: backlog
