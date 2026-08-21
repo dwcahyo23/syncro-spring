@@ -16,8 +16,43 @@ export type ActuatorHealthResponse = {
     redis?: ActuatorHealthComponent;
     mqtt?: ActuatorHealthComponent;
     influxdb?: ActuatorHealthComponent;
+    wahaCircuitBreaker?: ActuatorHealthComponent;
     diskSpace?: ActuatorHealthComponent;
     ping?: ActuatorHealthComponent;
     [key: string]: ActuatorHealthComponent | undefined;
   };
+};
+
+// Operational worker status payloads. Field names mirror the backend records:
+// IngestWorkerStatus.java / NotificationWorkerStatus.java. `status` serializes to the enum name.
+
+export type WorkerState = "RUNNING" | "STOPPED" | "DEGRADED";
+
+export type IngestWorkerStatus = {
+  status: WorkerState;
+  statusLabel: string;
+  statusSeverity: string;
+  statusReason: string | null;
+  timestamp: string;
+  mqttState: string;
+  lastAcceptedAt: string | null;
+  staleSince: string | null;
+  queueDepth: number;
+  queueCapacity: number;
+  acceptedCount: number;
+};
+
+export type NotificationWorkerStatus = {
+  status: WorkerState;
+  statusLabel: string;
+  statusSeverity: string;
+  statusReason: string | null;
+  timestamp: string;
+  lastPollAt: string | null;
+  staleSince: string | null;
+  pendingJobCount: number;
+  recentFailedCount: number;
+  lastFailureReason: string | null;
+  lastSuccessfulSendAt: string | null;
+  circuitBreakerState: string | null;
 };

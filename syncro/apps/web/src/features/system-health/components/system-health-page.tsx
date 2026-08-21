@@ -2,19 +2,35 @@
 
 import { useEffect, useState } from "react";
 
-import { CircleCheck, CircleSlash, CircleX, Loader2, RefreshCw } from "lucide-react";
+import type { UseQueryResult } from "@tanstack/react-query";
+import { CircleCheck, CircleX, RefreshCw, TriangleAlert } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+  deriveSeverity,
+  formatDateTimeUtc,
+  HealthCard,
+  HealthMetricRow,
+  type HealthSeverity,
+} from "@/components/syncro/health-card";
 import { QuarantineLogTable } from "@/components/syncro/quarantine-log-table";
-import { useActuatorHealthQuery, SYSTEM_HEALTH_REFRESH_INTERVAL_MS } from "@/features/system-health/hooks/use-actuator-health-query";
+import { Button } from "@/components/ui/button";
+import { useActuatorHealthQuery } from "@/features/system-health/hooks/use-actuator-health-query";
+import { useIngestWorkerStatus } from "@/features/system-health/hooks/use-ingest-worker-status";
+import { useNotificationWorkerStatus } from "@/features/system-health/hooks/use-notification-worker-status";
 import { useQuarantineLog } from "@/features/system-health/hooks/use-quarantine-log";
-import type { ActuatorHealthComponent, ActuatorHealthResponse, ActuatorStatus } from "@/features/system-health/types";
-import { useHealth } from "@/lib/api/generated/syncro";
+import type {
+  ActuatorHealthComponent,
+  ActuatorHealthResponse,
+  ActuatorStatus,
+  IngestWorkerStatus,
+  NotificationWorkerStatus,
+} from "@/features/system-health/types";
 
 const STALE_BANNER_THRESHOLD_MS = 60_000;
+
+const DEPENDENCY_KEYS = ["db", "influxdb", "redis", "mqtt", "wahaCircuitBreaker"] as const;
+
+type DependencyKey = (typeof DEPENDENCY_KEYS)[number];
 
 function useNow(intervalMs: number) {
   const [now, setNow] = useState(() => Date.now());
@@ -26,30 +42,43 @@ function useNow(intervalMs: number) {
 }
 
 export function SystemHealthPage() {
-  const apiHealth = useHealth({
-    query: { refetchInterval: SYSTEM_HEALTH_REFRESH_INTERVAL_MS, retry: 2 },
-  });
   const actuatorHealth = useActuatorHealthQuery();
+  const ingestWorker = useIngestWorkerStatus();
+  const notificationWorker = useNotificationWorkerStatus();
   const [quarantinePage, setQuarantinePage] = useState(0);
   const quarantineLog = useQuarantineLog(quarantinePage, 20);
 
   const now = useNow(30_000);
-  const lastUpdated = Math.max(apiHealth.dataUpdatedAt ?? 0, actuatorHealth.dataUpdatedAt ?? 0);
+  const dataUpdatedAts = [
+    actuatorHealth.dataUpdatedAt,
+    ingestWorker.dataUpdatedAt,
+    notificationWorker.dataUpdatedAt,
+    quarantineLog.dataUpdatedAt,
+  ].filter((t): t is number => typeof t === "number" && t > 0);
+  const lastUpdated = dataUpdatedAts.length > 0 ? Math.min(...dataUpdatedAts) : 0;
   const isDataStale = lastUpdated > 0 && now - lastUpdated >= STALE_BANNER_THRESHOLD_MS;
 
-  const isLoading = apiHealth.isLoading || actuatorHealth.isLoading;
-  const isFetching = apiHealth.isFetching || actuatorHealth.isFetching;
+  const isLoading = actuatorHealth.isLoading || ingestWorker.isLoading || notificationWorker.isLoading;
+  const isFetching = actuatorHealth.isFetching || ingestWorker.isFetching || notificationWorker.isFetching;
 
   function handleRefresh() {
-    void apiHealth.refetch();
     void actuatorHealth.refetch();
+    void ingestWorker.refetch();
+    void notificationWorker.refetch();
     void quarantineLog.refetch();
   }
 
-  const components = actuatorHealth.data?.components;
-  const overallStatus = actuatorHealth.data?.status ?? (actuatorHealth.isError ? "DOWN" : undefined);
-
-  const apiData = apiHealth.data?.data as Record<string, unknown> | undefined;
+  const banner = computeOverallBanner({
+    actuatorLoading: actuatorHealth.isLoading,
+    actuatorError: actuatorHealth.isError,
+    components: actuatorHealth.data?.components,
+    ingestLoading: ingestWorker.isLoading,
+    ingestError: ingestWorker.isError,
+    ingestSeverity: resolvedWorkerSeverity(ingestWorker.data),
+    notifLoading: notificationWorker.isLoading,
+    notifError: notificationWorker.isError,
+    notifSeverity: resolvedWorkerSeverity(notificationWorker.data),
+  });
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
@@ -83,52 +112,102 @@ export function SystemHealthPage() {
       ) : null}
 
       {/* Overall status banner */}
-      {!isLoading && overallStatus ? (
-        <OverallStatusBanner status={overallStatus} />
-      ) : null}
+      {banner ? <OverallStatusBanner state={banner} /> : null}
 
       {/* Dependency cards */}
       <section aria-label="Dependency health">
-        <h2 className="mb-3 font-medium text-sm text-muted-foreground">Dependencies</h2>
-        {isLoading ? (
-          <DependencySkeleton />
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <ApiHealthCard data={apiData} isError={apiHealth.isError} />
-            <DependencyCard
-              title="MQTT Worker"
-              description="Telemetry ingest subscriber"
-              component={components?.mqtt}
-              isError={actuatorHealth.isError}
-              detailKeys={["lastError"]}
-            />
-            <DependencyCard
-              title="PostgreSQL"
-              description="Primary relational store"
-              component={components?.db}
-              isError={actuatorHealth.isError}
-              detailKeys={["database", "validationQuery"]}
-            />
-            <DependencyCard
-              title="Redis"
-              description="Latest telemetry state cache"
-              component={components?.redis}
-              isError={actuatorHealth.isError}
-              detailKeys={["version"]}
-            />
-            <DependencyCard
-              title="InfluxDB"
-              description="Telemetry history store"
-              component={components?.influxdb}
-              isError={actuatorHealth.isError}
-            />
-          </div>
-        )}
+        <h2 className="mb-3 font-medium text-muted-foreground text-sm">Dependencies</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <HealthCard
+            title="PostgreSQL"
+            description="Primary relational store"
+            {...dependencyCardProps(actuatorHealth, "db")}
+          />
+          <HealthCard
+            title="InfluxDB"
+            description="Telemetry history store"
+            {...dependencyCardProps(actuatorHealth, "influxdb")}
+          />
+          <HealthCard
+            title="Redis"
+            description="Latest telemetry state cache"
+            {...dependencyCardProps(actuatorHealth, "redis")}
+          />
+          <HealthCard
+            title="MQTT / EMQX"
+            description="Telemetry ingest transport"
+            {...dependencyCardProps(actuatorHealth, "mqtt")}
+          />
+          <HealthCard
+            title="WAHA"
+            description="WhatsApp notification provider"
+            {...dependencyCardProps(actuatorHealth, "wahaCircuitBreaker")}
+          >
+            <WahaMetricRows component={actuatorHealth.data?.components?.wahaCircuitBreaker} />
+          </HealthCard>
+        </div>
       </section>
 
-      {/* Quarantine log */}
+      {/* Worker cards */}
+      <section aria-label="Worker health">
+        <h2 className="mb-3 font-medium text-muted-foreground text-sm">Workers</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <HealthCard
+            title="Telemetry Ingest Worker"
+            description="MQTT telemetry ingest subscriber"
+            statusLabel={ingestWorker.data?.statusLabel}
+            statusSeverity={resolvedToHealthSeverity(resolvedWorkerSeverity(ingestWorker.data))}
+            statusReason={ingestWorker.data?.statusReason ?? null}
+            timestamp={ingestWorker.data?.timestamp ?? null}
+            loading={ingestWorker.isLoading}
+            error={ingestWorker.isError}
+            empty={!ingestWorker.data}
+          >
+            <HealthMetricRow label="MQTT state" value={metricString(ingestWorker.data?.mqttState)} />
+            <HealthMetricRow label="Queue depth" value={ingestQueueDepth(ingestWorker.data)} />
+            <HealthMetricRow label="Accepted count" value={metricString(ingestWorker.data?.acceptedCount)} />
+            <HealthMetricRow
+              label="Last accepted"
+              value={ingestWorker.data?.lastAcceptedAt ? formatDateTimeUtc(ingestWorker.data.lastAcceptedAt) : "—"}
+            />
+            <HealthMetricRow
+              label="Stale since"
+              value={ingestWorker.data?.staleSince ? formatDateTimeUtc(ingestWorker.data.staleSince) : "—"}
+            />
+          </HealthCard>
+          <HealthCard
+            title="Notification Worker"
+            description="WAHA notification dispatch worker"
+            statusLabel={notificationWorker.data?.statusLabel}
+            statusSeverity={resolvedToHealthSeverity(resolvedWorkerSeverity(notificationWorker.data))}
+            statusReason={notificationWorker.data?.statusReason ?? null}
+            timestamp={notificationWorker.data?.timestamp ?? null}
+            loading={notificationWorker.isLoading}
+            error={notificationWorker.isError}
+            empty={!notificationWorker.data}
+          >
+            <HealthMetricRow label="Pending jobs" value={metricString(notificationWorker.data?.pendingJobCount)} />
+            <HealthMetricRow label="Recent failed" value={metricString(notificationWorker.data?.recentFailedCount)} />
+            <HealthMetricRow
+              label="Last failure reason"
+              value={metricString(notificationWorker.data?.lastFailureReason)}
+            />
+            <HealthMetricRow
+              label="Last successful send"
+              value={
+                notificationWorker.data?.lastSuccessfulSendAt
+                  ? formatDateTimeUtc(notificationWorker.data.lastSuccessfulSendAt)
+                  : "—"
+              }
+            />
+            <HealthMetricRow label="Circuit state" value={metricString(notificationWorker.data?.circuitBreakerState)} />
+          </HealthCard>
+        </div>
+      </section>
+
+      {/* Telemetry quarantine log */}
       <section aria-label="Telemetry quarantine log">
-        <h2 className="mb-3 font-medium text-sm text-muted-foreground">Telemetry Quarantine Log</h2>
+        <h2 className="mb-3 font-medium text-muted-foreground text-sm">Telemetry Quarantine Log</h2>
         <QuarantineLogTable
           entries={quarantineLog.data?.content ?? []}
           isLoading={quarantineLog.isLoading}
@@ -144,8 +223,112 @@ export function SystemHealthPage() {
 
 // ─── Overall status banner ────────────────────────────────────────────────────
 
-function OverallStatusBanner({ status }: { status: ActuatorStatus }) {
-  if (status === "UP") {
+export type BannerState = "healthy" | "degraded" | "unhealthy";
+
+export type ResolvedSeverity = "success" | "warning" | "critical" | "unknown";
+
+function healthSeverityToResolved(severity: HealthSeverity): ResolvedSeverity {
+  if (severity === "CRITICAL") {
+    return "critical";
+  }
+  if (severity === "WARNING") {
+    return "warning";
+  }
+  if (severity === "SUCCESS") {
+    return "success";
+  }
+  return "unknown";
+}
+
+function resolvedToHealthSeverity(severity: ResolvedSeverity): HealthSeverity {
+  if (severity === "critical") {
+    return "CRITICAL";
+  }
+  if (severity === "warning") {
+    return "WARNING";
+  }
+  if (severity === "success") {
+    return "SUCCESS";
+  }
+  return "NEUTRAL";
+}
+
+/** Resolves a dependency card's effective severity from the enriched details, mirroring exactly what the card renders. */
+function resolvedDependencySeverity(component: ActuatorHealthComponent | undefined): ResolvedSeverity {
+  if (!component) {
+    return "unknown";
+  }
+  const label = dependencyStatusLabel(component);
+  const severity = normalizeSeverity(detailString(component, "statusSeverity")) ?? deriveSeverity(label);
+  return healthSeverityToResolved(severity);
+}
+
+/** Resolves a worker card's effective severity from its payload, mirroring exactly what the card renders. */
+function resolvedWorkerSeverity(data: IngestWorkerStatus | NotificationWorkerStatus | undefined): ResolvedSeverity {
+  if (!data) {
+    return "unknown";
+  }
+  const severity = normalizeSeverity(data.statusSeverity) ?? deriveSeverity(data.statusLabel);
+  return healthSeverityToResolved(severity);
+}
+
+/**
+ * Computes the overall banner only when every source has resolved.
+ * Severity is derived per card (enriched details first, label fallback) so the
+ * banner never contradicts the individual cards. CRITICAL → unhealthy,
+ * WARNING or unverifiable (absent/error) → degraded, else healthy.
+ */
+export function computeOverallBanner(args: {
+  readonly actuatorLoading: boolean;
+  readonly actuatorError: boolean;
+  readonly components: ActuatorHealthResponse["components"] | undefined;
+  readonly ingestLoading: boolean;
+  readonly ingestError: boolean;
+  readonly ingestSeverity: ResolvedSeverity;
+  readonly notifLoading: boolean;
+  readonly notifError: boolean;
+  readonly notifSeverity: ResolvedSeverity;
+}): BannerState | null {
+  const {
+    actuatorLoading,
+    actuatorError,
+    components,
+    ingestLoading,
+    ingestError,
+    ingestSeverity,
+    notifLoading,
+    notifError,
+    notifSeverity,
+  } = args;
+
+  if (actuatorLoading || ingestLoading || notifLoading) {
+    return null;
+  }
+
+  const severities: ResolvedSeverity[] = [];
+
+  if (actuatorError || components == null) {
+    severities.push("unknown");
+  } else {
+    for (const key of DEPENDENCY_KEYS) {
+      severities.push(resolvedDependencySeverity(components[key]));
+    }
+  }
+
+  severities.push(ingestError ? "unknown" : ingestSeverity);
+  severities.push(notifError ? "unknown" : notifSeverity);
+
+  if (severities.some((s) => s === "critical")) {
+    return "unhealthy";
+  }
+  if (severities.some((s) => s === "warning" || s === "unknown")) {
+    return "degraded";
+  }
+  return "healthy";
+}
+
+function OverallStatusBanner({ state }: { readonly state: BannerState }) {
+  if (state === "healthy") {
     return (
       <div
         aria-live="polite"
@@ -156,169 +339,121 @@ function OverallStatusBanner({ status }: { status: ActuatorStatus }) {
       </div>
     );
   }
+  if (state === "degraded") {
+    return (
+      <div
+        aria-live="polite"
+        className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm"
+      >
+        <TriangleAlert aria-hidden="true" className="shrink-0 text-amber-600 dark:text-amber-400" />
+        One or more dependencies or workers are degraded or could not be verified. See cards below for details.
+      </div>
+    );
+  }
   return (
     <div
       aria-live="polite"
       className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm"
     >
       <CircleX aria-hidden="true" className="shrink-0 text-destructive" />
-      One or more dependencies are unhealthy. See cards below for details.
+      One or more dependencies or workers are unhealthy. See cards below for details.
     </div>
   );
 }
 
-// ─── API health card (custom /api/v1/health endpoint) ─────────────────────────
+// ─── Dependency card normalization ─────────────────────────────────────────────
 
-function ApiHealthCard({
-  data,
-  isError,
-}: {
-  data: Record<string, unknown> | undefined;
-  isError: boolean;
-}) {
-  const up = !isError && data != null;
-  const status = up ? "UP" : isError ? "DOWN" : "UNKNOWN";
-
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-sm font-medium">Backend API</CardTitle>
-          <StatusBadge status={status as ActuatorStatus} />
-        </div>
-        <CardDescription className="text-xs">Application health endpoint</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-1">
-        {up ? (
-          <>
-            <DetailRow label="Service" value={String(data.service ?? "—")} />
-            <DetailRow label="Reported at" value={data.timestamp ? formatDateTime(String(data.timestamp)) : "—"} />
-          </>
-        ) : isError ? (
-          <p className="text-destructive text-xs">Could not reach backend API.</p>
-        ) : null}
-      </CardContent>
-    </Card>
-  );
-}
-
-// ─── Generic dependency card ──────────────────────────────────────────────────
-
-function DependencyCard({
-  title,
-  description,
-  component,
-  isError,
-  detailKeys,
-}: {
-  title: string;
-  description: string;
-  component: ActuatorHealthComponent | undefined;
-  isError: boolean;
-  detailKeys?: string[];
-}) {
-  // component absent = actuator fetch errored, or that component not registered
-  const status: ActuatorStatus = isError ? "UNKNOWN" : (component?.status ?? "UNKNOWN");
-
-  const shownDetails =
-    detailKeys && component?.details
-      ? detailKeys
-          .filter((k) => component.details![k] != null)
-          .map((k) => ({ label: k, value: String(component.details![k]) }))
-      : [];
-
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-sm font-medium">{title}</CardTitle>
-          <StatusBadge status={status} />
-        </div>
-        <CardDescription className="text-xs">{description}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-1">
-        {isError ? (
-          <p className="text-muted-foreground text-xs">Actuator health unavailable.</p>
-        ) : component == null ? (
-          <p className="text-muted-foreground text-xs">No health data reported.</p>
-        ) : shownDetails.length > 0 ? (
-          shownDetails.map(({ label, value }) => <DetailRow key={label} label={label} value={value} />)
-        ) : null}
-      </CardContent>
-    </Card>
-  );
-}
-
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
-
-function DependencySkeleton() {
-  return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {["s1", "s2", "s3", "s4", "s5"].map((key) => (
-        <Skeleton key={key} className="h-32 w-full" />
-      ))}
-    </div>
-  );
-}
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-const STATUS_CONFIG: Record<ActuatorStatus, { label: string; className: string; Icon: typeof CircleCheck }> = {
-  UP: {
-    label: "Up",
-    className: "border-transparent bg-emerald-600/15 text-emerald-700 dark:text-emerald-400",
-    Icon: CircleCheck,
-  },
-  DOWN: {
-    label: "Down",
-    className: "border-transparent bg-destructive/15 text-destructive",
-    Icon: CircleX,
-  },
-  OUT_OF_SERVICE: {
-    label: "Out of service",
-    className: "border-transparent bg-destructive/15 text-destructive",
-    Icon: CircleX,
-  },
-  UNKNOWN: {
-    label: "Unknown",
-    className: "border-transparent bg-muted/60 text-muted-foreground",
-    Icon: Loader2,
-  },
+type DependencyCardProps = {
+  readonly loading: boolean;
+  readonly error: boolean;
+  readonly empty: boolean;
+  readonly statusLabel?: string;
+  readonly statusSeverity?: HealthSeverity;
+  readonly statusReason?: string | null;
+  readonly timestamp?: string | null;
 };
 
-function StatusBadge({ status }: { status: ActuatorStatus }) {
-  const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.UNKNOWN;
+const STATUS_LABELS: Record<ActuatorStatus, string> = {
+  UP: "Up",
+  DOWN: "Down",
+  OUT_OF_SERVICE: "Out of service",
+  UNKNOWN: "Unknown",
+};
+
+function dependencyStatusLabel(component: ActuatorHealthComponent): string {
+  // biome-ignore lint/nursery/useNullishCoalescing: intentionally use || to catch empty string from details
+  return detailString(component, "statusLabel") || (STATUS_LABELS[component.status] ?? component.status ?? "Unknown");
+}
+
+function dependencyCardProps(health: UseQueryResult<ActuatorHealthResponse>, key: DependencyKey): DependencyCardProps {
+  if (health.isLoading) {
+    return { loading: true, error: false, empty: false };
+  }
+  if (health.isError) {
+    return { loading: false, error: true, empty: false };
+  }
+  const component = health.data?.components?.[key];
+  if (!component) {
+    return { loading: false, error: false, empty: true };
+  }
+  return {
+    loading: false,
+    error: false,
+    empty: false,
+    statusLabel: dependencyStatusLabel(component),
+    statusSeverity: resolvedToHealthSeverity(resolvedDependencySeverity(component)),
+    statusReason: detailString(component, "statusReason") ?? null,
+    timestamp: detailString(component, "timestamp") ?? null,
+  };
+}
+
+function WahaMetricRows({ component }: { readonly component: ActuatorHealthComponent | undefined }) {
+  if (!component) {
+    return null;
+  }
   return (
-    <Badge
-      aria-label={`Status: ${config.label}`}
-      className={config.className}
-      variant="outline"
-    >
-      <config.Icon aria-hidden="true" className="shrink-0" />
-      {config.label}
-    </Badge>
+    <>
+      <HealthMetricRow label="Circuit state" value={metricString(detailString(component, "state"))} />
+      <HealthMetricRow label="Failure rate" value={metricString(detailNumber(component, "failureRate"))} />
+    </>
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-2 text-xs">
-      <span className="shrink-0 text-muted-foreground capitalize">{label}</span>
-      <span className="truncate font-medium text-right" title={value}>
-        {value}
-      </span>
-    </div>
-  );
+function detailString(component: ActuatorHealthComponent, key: string): string | undefined {
+  const value = component.details?.[key];
+  return typeof value === "string" ? value : undefined;
+}
+
+function detailNumber(component: ActuatorHealthComponent, key: string): string | undefined {
+  const value = component.details?.[key];
+  return typeof value === "number" && Number.isFinite(value) ? String(value) : undefined;
+}
+
+function normalizeSeverity(value: string | undefined): HealthSeverity | undefined {
+  if (value === "SUCCESS" || value === "WARNING" || value === "CRITICAL" || value === "NEUTRAL") {
+    return value;
+  }
+  return undefined;
+}
+
+/** Renders a dash for null, undefined, or empty-string metric values so counts never show "null"/"undefined" or blank rows. */
+function metricString(value: string | number | null | undefined): string {
+  return value == null || value === "" ? "—" : String(value);
+}
+
+function ingestQueueDepth(data: IngestWorkerStatus | undefined): string {
+  if (!data) {
+    return "—";
+  }
+  return `${metricString(data.queueDepth)} / ${metricString(data.queueCapacity)}`;
 }
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 
 function formatMinutesAgo(ageMs: number) {
   const minutes = Math.floor(ageMs / 60_000);
-  if (minutes < 1) return "less than a minute";
+  if (minutes < 1) {
+    return "less than a minute";
+  }
   return `${minutes} min`;
-}
-
-function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }

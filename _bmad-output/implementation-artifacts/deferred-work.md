@@ -481,3 +481,10 @@ origin: Deferred from: code review of spec-6-3-report-notification-worker-status
 location: syncro/apps/backend/src/main/java/com/syncro/notification/application/NotificationWorkerTracker.java:16
 reason: In a multi-replica deployment the endpoint reports only the calling instance's poll liveness. Acceptable for single-instance; documented by design (in-memory, resets on restart). Distributed observability is out of current scope.
 status: open
+
+### DW-NEW: WAHA circuit failureRate may serialize as non-finite JSON (NaN) and break actuator parse
+
+origin: Deferred from: code review of spec-6-4-build-super-admin-health-dashboard (2026-08-21)
+location: syncro/apps/backend/src/main/java/com/syncro/notification/infrastructure/WahaCircuitBreakerHealthIndicator.java + syncro/apps/web/src/features/system-health/hooks/use-actuator-health-query.ts
+reason: Resilience4j Metrics.getFailureRate() returns NaN until minimumNumberOfCalls is reached. If Spring's Jackson writes NaN unquoted, the entire /actuator/health JSON becomes invalid and the frontend hook throws, collapsing all five dependency cards. Frontend defensively treats per-parse failure as an error, but the whole-section collapse is undesirable. Needs verification against the running backend (Jackson QUOTE_NON_NUMERIC_NUMBERS default) and, if confirmed, a backend-side clamp/config plus a per-component-parse isolation on the frontend. Cross-stack, backend-owned; not fixable purely in story 6.4.
+status: open
