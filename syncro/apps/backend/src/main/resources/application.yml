@@ -34,6 +34,12 @@ management:
         readiness:
           include: "*"
           exclude: "wahaCircuitBreaker"
+  health:
+    # Custom enriched indicators in com.syncro.health replace the auto-configured ones.
+    db:
+      enabled: false
+    redis:
+      enabled: false
 
 syncro:
   auth:

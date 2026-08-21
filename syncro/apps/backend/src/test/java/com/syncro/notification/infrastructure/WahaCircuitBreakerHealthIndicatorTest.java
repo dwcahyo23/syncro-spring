@@ -7,6 +7,9 @@ import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker.State;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,6 +21,10 @@ import org.springframework.boot.health.contributor.Status;
 @ExtendWith(MockitoExtension.class)
 class WahaCircuitBreakerHealthIndicatorTest {
 
+  private static final Clock FIXED_CLOCK =
+      Clock.fixed(Instant.parse("2026-08-21T08:00:00Z"), ZoneOffset.UTC);
+  private static final String FIXED_TIMESTAMP = "2026-08-21T08:00:00Z";
+
   @Mock
   private WahaClient wahaClient;
 
@@ -26,7 +33,6 @@ class WahaCircuitBreakerHealthIndicatorTest {
 
   @BeforeEach
   void setUp() {
-    // Use a real circuit breaker with a very low threshold for test control
     CircuitBreakerConfig config = CircuitBreakerConfig.custom()
         .failureRateThreshold(50)
         .minimumNumberOfCalls(2)
@@ -34,12 +40,11 @@ class WahaCircuitBreakerHealthIndicatorTest {
         .build();
     circuitBreaker = CircuitBreakerRegistry.of(config).circuitBreaker("waha-test");
     when(wahaClient.getCircuitBreaker()).thenReturn(circuitBreaker);
-    indicator = new WahaCircuitBreakerHealthIndicator(wahaClient);
+    indicator = new WahaCircuitBreakerHealthIndicator(wahaClient, FIXED_CLOCK);
   }
 
   @Test
   void health_whenCircuitClosed_returnsUp() {
-    // Default state is CLOSED
     Health health = indicator.health();
 
     assertThat(health.getStatus()).isEqualTo(Status.UP);
@@ -48,12 +53,10 @@ class WahaCircuitBreakerHealthIndicatorTest {
 
   @Test
   void health_whenCircuitOpen_returnsDown() {
-    // Force circuit to OPEN by recording failures above threshold
     circuitBreaker.onError(0, java.util.concurrent.TimeUnit.MILLISECONDS,
         new RuntimeException("fail1"));
     circuitBreaker.onError(0, java.util.concurrent.TimeUnit.MILLISECONDS,
         new RuntimeException("fail2"));
-    // After 2 failures with 50% threshold on window=2, circuit should be OPEN
     assertThat(circuitBreaker.getState()).isEqualTo(State.OPEN);
 
     Health health = indicator.health();
@@ -83,5 +86,48 @@ class WahaCircuitBreakerHealthIndicatorTest {
 
     assertThat(health.getStatus()).isEqualTo(Status.OUT_OF_SERVICE);
     assertThat(health.getDetails()).containsEntry("state", "FORCED_OPEN");
+  }
+
+  @Test
+  void upHealthCarriesOperationalStatusContractFields() {
+    Health health = indicator.health();
+
+    assertThat(health.getStatus()).isEqualTo(Status.UP);
+    assertThat(health.getDetails())
+        .containsEntry("statusLabel", "Up")
+        .containsEntry("statusSeverity", "SUCCESS")
+        .containsEntry("timestamp", FIXED_TIMESTAMP);
+  }
+
+  @Test
+  void openHealthCarriesOperationalStatusContractFieldsWithReason() {
+    circuitBreaker.onError(0, java.util.concurrent.TimeUnit.MILLISECONDS,
+        new RuntimeException("fail1"));
+    circuitBreaker.onError(0, java.util.concurrent.TimeUnit.MILLISECONDS,
+        new RuntimeException("fail2"));
+    assertThat(circuitBreaker.getState()).isEqualTo(State.OPEN);
+
+    Health health = indicator.health();
+
+    assertThat(health.getStatus()).isEqualTo(Status.DOWN);
+    assertThat(health.getDetails())
+        .containsEntry("statusLabel", "Down")
+        .containsEntry("statusSeverity", "CRITICAL")
+        .containsEntry("timestamp", FIXED_TIMESTAMP)
+        .containsKey("statusReason");
+    assertThat((String) health.getDetails().get("statusReason")).startsWith("Circuit breaker is OPEN");
+  }
+
+  @Test
+  void outOfServiceHealthCarriesOperationalStatusContractFields() {
+    circuitBreaker.transitionToForcedOpenState();
+
+    Health health = indicator.health();
+
+    assertThat(health.getStatus()).isEqualTo(Status.OUT_OF_SERVICE);
+    assertThat(health.getDetails())
+        .containsEntry("statusLabel", "Out of Service")
+        .containsEntry("statusSeverity", "WARNING")
+        .containsEntry("timestamp", FIXED_TIMESTAMP);
   }
 }

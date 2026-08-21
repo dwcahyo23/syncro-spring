@@ -1,7 +1,9 @@
 package com.syncro.notification.infrastructure;
 
+import com.syncro.health.DependencyHealthSupport;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker.State;
+import java.time.Clock;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.stereotype.Component;
@@ -14,15 +16,18 @@ import org.springframework.stereotype.Component;
  * {@code OUT_OF_SERVICE} when FORCED_OPEN or DISABLED, and {@code UP} otherwise.
  *
  * <p>Shown in the existing {@code /actuator/health?show-details=always} endpoint which is
- * already configured in {@code application.yml}.
+ * already configured in {@code application.yml}. The component is excluded from the
+ * {@code readiness} health group — WAHA unavailability must not flip {@code /ready} to DOWN.
  */
 @Component("wahaCircuitBreaker")
 public class WahaCircuitBreakerHealthIndicator implements HealthIndicator {
 
   private final WahaClient wahaClient;
+  private final Clock clock;
 
-  public WahaCircuitBreakerHealthIndicator(WahaClient wahaClient) {
+  public WahaCircuitBreakerHealthIndicator(WahaClient wahaClient, Clock clock) {
     this.wahaClient = wahaClient;
+    this.clock = clock;
   }
 
   @Override
@@ -37,13 +42,21 @@ public class WahaCircuitBreakerHealthIndicator implements HealthIndicator {
       default -> Health.up();
     };
 
-    return builder
+    builder
         .withDetail("state", state.name())
         .withDetail("failureRate", metrics.getFailureRate())
         .withDetail("bufferedCalls", metrics.getNumberOfBufferedCalls())
         .withDetail("failedCalls", metrics.getNumberOfFailedCalls())
         .withDetail("successfulCalls", metrics.getNumberOfSuccessfulCalls())
-        .withDetail("notPermittedCalls", metrics.getNumberOfNotPermittedCalls())
-        .build();
+        .withDetail("notPermittedCalls", metrics.getNumberOfNotPermittedCalls());
+
+    String reason = switch (state) {
+      case OPEN -> "Circuit breaker is OPEN (failure rate " + metrics.getFailureRate() + "%)";
+      case FORCED_OPEN -> "Circuit breaker is FORCED_OPEN";
+      case DISABLED -> "Circuit breaker is DISABLED";
+      default -> null;
+    };
+
+    return DependencyHealthSupport.enrich(builder.build(), clock, reason, null);
   }
 }
