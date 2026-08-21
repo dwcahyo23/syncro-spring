@@ -121,7 +121,7 @@ development_status:
 
   # Epic 7: Pilot Validation & Operational Proof
   epic-7: in-progress
-  7-1-create-canonical-pilot-seed-data: review
+  7-1-create-canonical-pilot-seed-data: done
   7-2-provide-pilot-mqtt-payload-fixtures: backlog
   7-3-create-pilot-scripts-for-seed-publish-and-verify: backlog
   7-4-validate-telemetry-before-threshold-does-not-create-alert: backlog

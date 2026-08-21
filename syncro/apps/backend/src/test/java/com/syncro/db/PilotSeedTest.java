@@ -2,6 +2,7 @@ package com.syncro.db;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -42,9 +43,13 @@ class PilotSeedTest {
       "leader.gm1@syncro.dev");
 
   @Container
+  @SuppressWarnings("rawtypes")
   static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
 
   static JdbcTemplate jdbc;
+
+  /** Table counts right after migrations, before the seed - the delta baseline. */
+  static Map<String, Long> postMigrationCounts;
 
   @BeforeAll
   static void migrateThenApplySeedOnce() throws Exception {
@@ -54,6 +59,7 @@ class PilotSeedTest {
         .migrate();
     jdbc = new JdbcTemplate(new DriverManagerDataSource(
         postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword()));
+    postMigrationCounts = snapshotCounts();
     applySeed();
   }
 
@@ -203,17 +209,97 @@ class PilotSeedTest {
 
     Map<String, Long> after = snapshotCounts();
     assertThat(after).as("counts must be identical after the second seed apply").isEqualTo(before);
-    // Exact canonical counts on a freshly migrated database
-    assertThat(after.get("plants")).isEqualTo(1L);
-    assertThat(after.get("machine_groups")).isEqualTo(1L);
-    assertThat(after.get("machines")).isEqualTo(1L);
-    assertThat(after.get("spareparts")).isEqualTo(1L);
-    assertThat(after.get("machine_sparepart_installations")).isEqualTo(1L);
-    assertThat(after.get("auth_users")).isEqualTo(3L);
-    assertThat(after.get("auth_user_plant_assignments")).isEqualTo(3L);
-    assertThat(after.get("machine_responsibilities")).isEqualTo(3L);
-    // V13/V15 seed 5 categories, the seed adds BRAND/KIND/TYPE
-    assertThat(after.get("sparepart_taxonomy")).isEqualTo(8L);
+    // Deltas against the post-migration baseline keep this test decoupled from
+    // migration content (a future migration seeding more rows must not fail here).
+    Map<String, Long> expected = new LinkedHashMap<>(postMigrationCounts);
+    expected.merge("plants", 1L, Long::sum);
+    expected.merge("machine_groups", 1L, Long::sum);
+    expected.merge("machines", 1L, Long::sum);
+    expected.merge("sparepart_taxonomy", 3L, Long::sum);
+    expected.merge("spareparts", 1L, Long::sum);
+    expected.merge("machine_sparepart_installations", 1L, Long::sum);
+    expected.merge("auth_users", 3L, Long::sum);
+    expected.merge("auth_user_plant_assignments", 3L, Long::sum);
+    expected.merge("machine_responsibilities", 3L, Long::sum);
+    assertThat(after).as("seeded counts must equal the post-migration baseline + seed deltas")
+        .isEqualTo(expected);
+  }
+
+  @Test
+  @DisplayName("[7.1] Pre-existing case-variant rows are adopted, not orphaned; "
+      + "pre-existing logins and conflicting responsibility levels are handled per contract")
+  void seedResolvesPreExistingRowsWithoutPartialApplication() throws Exception {
+    // Scenario: a machine stored with case-variant code, a pilot login that
+    // pre-exists with a different UUID, and a pre-existing responsibility with
+    // a different level for the same (machine, user).
+    jdbc.update("DELETE FROM machine_responsibilities");
+    jdbc.update("DELETE FROM machine_sparepart_installations");
+    jdbc.update("DELETE FROM spareparts");
+    jdbc.update("DELETE FROM machines");
+    jdbc.update("DELETE FROM auth_user_plant_assignments a USING auth_users u "
+        + "WHERE a.auth_user_id = u.id AND u.login_identifier = 'staff.gm1@syncro.dev'");
+    jdbc.update("DELETE FROM auth_users WHERE login_identifier = 'staff.gm1@syncro.dev'");
+
+    jdbc.update("INSERT INTO machines (id, plant_id, machine_group_id, code, name, status, brand, "
+        + "installed_at, notes, optional_telemetry_fields, created_at, updated_at) "
+        + "SELECT '11111111-1111-4111-8111-111111111111'::uuid, p.id, g.id, 'Bf-08410', 'JBF19', "
+        + "'ACTIVE', 'Juki', DATE '2026-05-27', NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP "
+        + "FROM plants p JOIN machine_groups g ON g.plant_id = p.id "
+        + "WHERE p.code = 'GM1' AND lower(g.name) = 'forming'");
+
+    // Pre-existing staff user with a different UUID (and no WhatsApp - adopted as-is)
+    jdbc.update("INSERT INTO auth_users (id, login_identifier, password_hash, application_role, "
+        + "enabled, whatsapp_number, created_at, updated_at) "
+        + "VALUES ('22222222-2222-4222-8222-222222222222'::uuid, 'staff.gm1@syncro.dev', "
+        + "'x', 'VIEWER', TRUE, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
+
+    // Pre-existing SPV responsibility for (machine, staff) - blocks the STAFF row
+    jdbc.update("INSERT INTO machine_responsibilities (id, machine_id, user_id, level, "
+        + "created_at, updated_at) "
+        + "SELECT '33333333-3333-4333-8333-333333333333'::uuid, m.id, u.id, 'SPV', "
+        + "CURRENT_TIMESTAMP, CURRENT_TIMESTAMP "
+        + "FROM machines m, auth_users u "
+        + "WHERE lower(m.code) = 'bf-08410' AND u.login_identifier = 'staff.gm1@syncro.dev'");
+
+    applySeed();
+
+    // The case-variant machine was ADOPTED: no second machine, dependents attached to it
+    assertThat(jdbc.queryForObject("SELECT count(*) FROM machines", Long.class)).isEqualTo(1L);
+    String adoptedMachineId = jdbc.queryForObject(
+        "SELECT id FROM machines WHERE lower(code) = 'bf-08410'", String.class);
+    assertThat(adoptedMachineId).isEqualTo("11111111-1111-4111-8111-111111111111");
+    String sparepartMachineId = jdbc.queryForObject(
+        "SELECT machine_id FROM spareparts WHERE code = '" + PILOT_SPAREPART_CODE + "'", String.class);
+    assertThat(sparepartMachineId).isEqualTo(adoptedMachineId);
+    assertThat(jdbc.queryForObject("SELECT count(*) FROM machine_sparepart_installations",
+        Long.class)).isEqualTo(1L);
+
+    // Assignments resolved to the PRE-EXISTING user id (not the seed's fixed UUID)
+    String staffAssignmentUserId = jdbc.queryForObject(
+        "SELECT a.auth_user_id FROM auth_user_plant_assignments a "
+            + "JOIN auth_users u ON u.id = a.auth_user_id "
+            + "WHERE u.login_identifier = 'staff.gm1@syncro.dev'", String.class);
+    assertThat(staffAssignmentUserId).isEqualTo("22222222-2222-4222-8222-222222222222");
+
+    // The SPV row is kept (not overwritten); TECHNICIAN/LEADER still attach
+    List<String> levels = jdbc.queryForList(
+        "SELECT r.level FROM machine_responsibilities r "
+            + "JOIN machines m ON m.id = r.machine_id "
+            + "WHERE lower(m.code) = 'bf-08410' ORDER BY r.level", String.class);
+    assertThat(levels).containsExactly("LEADER", "SPV", "TECHNICIAN");
+
+    // Self-heal: tear the scenario down and re-seed so later/earlier test
+    // methods always observe the canonical state, regardless of run order.
+    jdbc.update("DELETE FROM machine_responsibilities");
+    jdbc.update("DELETE FROM machine_sparepart_installations");
+    jdbc.update("DELETE FROM spareparts");
+    jdbc.update("DELETE FROM machines");
+    jdbc.update("DELETE FROM auth_user_plant_assignments a USING auth_users u "
+        + "WHERE a.auth_user_id = u.id AND u.login_identifier = 'staff.gm1@syncro.dev'");
+    jdbc.update("DELETE FROM auth_users WHERE login_identifier = 'staff.gm1@syncro.dev'");
+    applySeed();
+    assertThat(jdbc.queryForObject(
+        "SELECT count(*) FROM machines WHERE code = 'BF-08410'", Long.class)).isEqualTo(1L);
   }
 
   @Test
@@ -236,11 +322,11 @@ class PilotSeedTest {
         .as("pilot seed must be on the test classpath at %s", PILOT_SEED_PATH).isTrue();
     try (Connection connection = DriverManager.getConnection(
         postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())) {
-      ScriptUtils.executeSqlScript(connection, new EncodedResource(seedResource, java.nio.charset.StandardCharsets.UTF_8));
+      ScriptUtils.executeSqlScript(connection, new EncodedResource(seedResource, StandardCharsets.UTF_8));
     }
   }
 
-  private Map<String, Long> snapshotCounts() {
+  private static Map<String, Long> snapshotCounts() {
     Map<String, Long> counts = new LinkedHashMap<>();
     for (String table : List.of(
         "plants",

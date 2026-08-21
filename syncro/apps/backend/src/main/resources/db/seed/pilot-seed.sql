@@ -36,11 +36,15 @@
 --   spring.flyway.locations (which stays classpath:db/migration) - it is a
 --   deliberate, manually applied local-dev/pilot artifact.
 --
--- Apply (local dev stack, credentials come from syncro/.env - the
--- application-local.yml defaults are user syncro, password syncro_dev,
--- database syncro):
+-- Apply (local dev stack; runs INSIDE the container so POSTGRES_USER /
+--   POSTGRES_DB expand with the container's own environment from
+--   syncro/infra/docker-compose.yml - no host-shell sourcing needed.
+--   ON_ERROR_STOP aborts on the first failed statement and the file's
+--   BEGIN/COMMIT wrapper rolls the whole apply back, so a half-applied
+--   seed cannot persist; PGCLIENTENCODING protects the UTF-8 label):
 --   docker compose -f syncro/infra/docker-compose.yml exec -T postgres \
---     psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+--     sh -c 'PGCLIENTENCODING=UTF8 psql -v ON_ERROR_STOP=1 \
+--       -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
 --     < syncro/apps/backend/src/main/resources/db/seed/pilot-seed.sql
 --
 -- Re-run safety:
@@ -49,6 +53,28 @@
 --   zero rows. Rows this seed does not own (pre-existing users, taxonomy)
 --   are resolved by natural-key lookup at apply time, so a re-run can never
 --   violate a foreign key.
+--
+-- Known pre-existing-data edges (single-operator manual flow; verified by
+-- PilotSeedTest.seedResolvesPreExistingRowsWithoutPartialApplication):
+--   * Machine / sparepart / machine-group resolution matches the guards'
+--     case-insensitive semantics (lower(code) / lower(name)), so a
+--     case-variant pre-existing row is ADOPTED, never silently orphaning
+--     the dependent rows. plants.code uniqueness is exact-case by schema,
+--     so a pre-existing case-variant plant simply coexists - the canonical
+--     GM1 row is still created.
+--   * A pre-existing pilot login is adopted AS-IS: application_role,
+--     enabled, and whatsapp_number are never overwritten or validated.
+--     A disabled/non-VIEWER/whatsapp-less pre-existing user yields dead
+--     WhatsApp routing - verify before a live pilot.
+--   * A pre-existing machine responsibility for the same (machine, user)
+--     with a DIFFERENT level is not overwritten (V14 uniqueness is
+--     machine+user), so that escalation level stays without its pilot
+--     recipient - resolve manually if this matters.
+--   * A pre-existing taxonomy row with the same (dimension, lower(name))
+--     but a different code fails LOUDLY on the unique name index and the
+--     whole apply rolls back. A row with the right code but linked to a
+--     different category is adopted silently - verify the linkage if your
+--     database predates this seed.
 --
 -- Pilot counter math (pins the Story 7-2 fixture boundaries):
 --   consumed     = CountingDeltaCalculator.delta(baseline, counting)
@@ -82,23 +108,29 @@
 -- (admin@syncro.dev) stays owned by LocalAdminBootstrap.
 -- ============================================================================
 
+-- The whole file runs as one transaction: with psql -v ON_ERROR_STOP=1 (or
+-- ScriptUtils, which fails on the first error) any failed statement rolls
+-- everything back instead of leaving a half-applied seed.
+BEGIN;
+
 -- 1. Plant GM1
 INSERT INTO plants (id, code, name, created_at, updated_at)
 SELECT 'b212500e-b17b-4f14-b073-5bb4bab4aadd'::uuid, 'GM1', 'Plant GM1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 WHERE NOT EXISTS (SELECT 1 FROM plants WHERE code = 'GM1');
 
--- 2. Machine group Forming under GM1
+-- 2. Machine group Forming under GM1 (V4 uniqueness is (plant_id, lower(name)))
 INSERT INTO machine_groups (id, plant_id, name, created_at, updated_at)
 SELECT '604310bd-2930-4220-bb80-cd6d506e5e62'::uuid, p.id, 'Forming', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 FROM plants p
 WHERE p.code = 'GM1'
-  AND NOT EXISTS (SELECT 1 FROM machine_groups g WHERE g.plant_id = p.id AND g.name = 'Forming');
+  AND NOT EXISTS (SELECT 1 FROM machine_groups g WHERE g.plant_id = p.id AND lower(g.name) = 'forming');
 
--- 3. Machine BF-08410 / JBF19 (one machine: code and name)
+-- 3. Machine BF-08410 / JBF19 (one machine: code and name; V5 uniqueness is
+--    (plant_id, lower(code)) - guard and downstream resolution share it)
 INSERT INTO machines (id, plant_id, machine_group_id, code, name, status, brand, installed_at, notes, optional_telemetry_fields, created_at, updated_at)
 SELECT '6c1d78ce-615b-4965-ae27-12e400524ed2'::uuid, p.id, g.id, 'BF-08410', 'JBF19', 'ACTIVE', 'Juki', DATE '2026-05-27', NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 FROM plants p
-JOIN machine_groups g ON g.plant_id = p.id AND g.name = 'Forming'
+JOIN machine_groups g ON g.plant_id = p.id AND lower(g.name) = 'forming'
 WHERE p.code = 'GM1'
   AND NOT EXISTS (SELECT 1 FROM machines m WHERE m.plant_id = p.id AND lower(m.code) = 'bf-08410');
 
@@ -142,7 +174,7 @@ JOIN sparepart_taxonomy brand ON brand.dimension = 'BRAND' AND brand.code = 'WEC
 JOIN sparepart_taxonomy kind ON kind.dimension = 'KIND' AND kind.code = 'PLC'
 JOIN sparepart_taxonomy type ON type.dimension = 'TYPE' AND type.code = 'LX5'
 WHERE p.code = 'GM1'
-  AND m.code = 'BF-08410'
+  AND lower(m.code) = 'bf-08410'
   AND NOT EXISTS (
     SELECT 1 FROM spareparts sp
     WHERE sp.machine_id = m.id
@@ -159,13 +191,13 @@ FROM machines m
 JOIN plants p ON p.id = m.plant_id
 JOIN spareparts sp ON sp.machine_id = m.id
 WHERE p.code = 'GM1'
-  AND m.code = 'BF-08410'
-  AND sp.code = 'BF-08410GM1ELEPLCWEC000'
+  AND lower(m.code) = 'bf-08410'
+  AND lower(sp.code) = 'bf-08410gm1eleplcwec000'
   AND NOT EXISTS (
     SELECT 1 FROM machine_sparepart_installations i
     WHERE i.machine_id = m.id
       AND i.sparepart_id = sp.id
-      AND lower(i.function_name) = lower('Primary')
+      AND lower(i.function_name) = 'primary'
   );
 
 -- 7. Pilot recipient users (shared bcrypt hash of "syncro-pilot-dev")
@@ -198,7 +230,7 @@ FROM machines m
 JOIN plants p ON p.id = m.plant_id
 JOIN auth_users u ON u.login_identifier = 'technician.gm1@syncro.dev'
 WHERE p.code = 'GM1'
-  AND m.code = 'BF-08410'
+  AND lower(m.code) = 'bf-08410'
   AND NOT EXISTS (SELECT 1 FROM machine_responsibilities r WHERE r.machine_id = m.id AND r.user_id = u.id);
 
 INSERT INTO machine_responsibilities (id, machine_id, user_id, level, created_at, updated_at)
@@ -207,7 +239,7 @@ FROM machines m
 JOIN plants p ON p.id = m.plant_id
 JOIN auth_users u ON u.login_identifier = 'staff.gm1@syncro.dev'
 WHERE p.code = 'GM1'
-  AND m.code = 'BF-08410'
+  AND lower(m.code) = 'bf-08410'
   AND NOT EXISTS (SELECT 1 FROM machine_responsibilities r WHERE r.machine_id = m.id AND r.user_id = u.id);
 
 INSERT INTO machine_responsibilities (id, machine_id, user_id, level, created_at, updated_at)
@@ -216,5 +248,7 @@ FROM machines m
 JOIN plants p ON p.id = m.plant_id
 JOIN auth_users u ON u.login_identifier = 'leader.gm1@syncro.dev'
 WHERE p.code = 'GM1'
-  AND m.code = 'BF-08410'
+  AND lower(m.code) = 'bf-08410'
   AND NOT EXISTS (SELECT 1 FROM machine_responsibilities r WHERE r.machine_id = m.id AND r.user_id = u.id);
+
+COMMIT;
