@@ -108,4 +108,20 @@ describe("telemetry data-quality fetcher", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(200, payload)));
     await expect(fetchDataQuality()).rejects.toThrow("not a data-quality payload");
   });
+
+  it("rejects on 200 with a negative or fractional latency value", async () => {
+    const negative = { ...healthyPayload(), lastLatencyMs: -300 };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(200, negative)));
+    await expect(fetchDataQuality()).rejects.toThrow("not a data-quality payload");
+
+    const fractional = { ...healthyPayload(), lastLatencyMs: 800.5 };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(200, fractional)));
+    await expect(fetchDataQuality()).rejects.toThrow("not a data-quality payload");
+  });
+
+  it("rejects on 200 with a severity outside the backend severity contract", async () => {
+    const payload = { ...healthyPayload(), quarantinedSeverity: "constructor" };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(200, payload)));
+    await expect(fetchDataQuality()).rejects.toThrow("not a data-quality payload");
+  });
 });

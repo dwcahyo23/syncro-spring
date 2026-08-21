@@ -8,6 +8,10 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Test;
 
@@ -131,6 +135,67 @@ class TelemetryDataQualityTrackerTest {
     var snapshot = quality.snapshot();
     assertThat(snapshot.acceptedCount()).isEqualTo(1);
     assertThat(snapshot.anomalyCount()).isEqualTo(1);
+  }
+
+  @Test
+  void latencySampleExpiresWithTheWindow() {
+    var quality = tracker(Duration.ofMinutes(5));
+
+    quality.recordLatencyMs(900);
+    clock.advance(Duration.ofMinutes(3));
+    assertThat(quality.snapshot().lastLatencyMs()).isEqualTo(900);
+
+    // Six minutes after the sample the window has moved past it: a stalled pipeline must
+    // report "no data" instead of freezing at the last observed latency.
+    clock.advance(Duration.ofMinutes(3));
+    assertThat(quality.snapshot().lastLatencyMs())
+        .isEqualTo(TelemetryDataQualityTracker.NO_LATENCY_SAMPLE);
+
+    quality.recordLatencyMs(1200);
+    assertThat(quality.snapshot().lastLatencyMs()).isEqualTo(1200);
+  }
+
+  @Test
+  void concurrentIncrementsAcrossMinuteBoundariesAreNeverLost() throws Exception {
+    // Exercises the synchronized claim/reset protocol: two hammer rounds on either side of a
+    // minute boundary must keep exact totals (a lost claim race would drop increments; a
+    // wrap reset racing an increment would erase the earlier round).
+    var quality = tracker(Duration.ofHours(1));
+    int threads = 4;
+    int perThread = 2_500;
+
+    runConcurrentRecords(quality, threads, perThread);
+    clock.advance(Duration.ofMinutes(1));
+    runConcurrentRecords(quality, threads, perThread);
+
+    var snapshot = quality.snapshot();
+    long total = 2L * threads * perThread;
+    assertThat(snapshot.acceptedCount()).isEqualTo(total);
+    assertThat(snapshot.quarantinedCount()).isEqualTo(total);
+    assertThat(snapshot.anomalyCount()).isEqualTo(total);
+    assertThat(snapshot.deadLetterCount()).isEqualTo(total);
+  }
+
+  private static void runConcurrentRecords(TelemetryDataQualityTracker quality, int threads,
+      int perThread) throws Exception {
+    var executor = Executors.newFixedThreadPool(threads);
+    try {
+      var futures = new ArrayList<Future<?>>();
+      for (int t = 0; t < threads; t++) {
+        futures.add(executor.submit(() -> {
+          for (int i = 0; i < perThread; i++) {
+            quality.recordAccepted();
+            quality.recordQuarantined("out_of_range");
+            quality.recordDeadLettered();
+          }
+        }));
+      }
+      for (Future<?> future : futures) {
+        future.get(30, TimeUnit.SECONDS);
+      }
+    } finally {
+      executor.shutdownNow();
+    }
   }
 
   /** Test-local mutable clock so bucket eviction can be exercised deterministically. */

@@ -13,6 +13,14 @@ public record TelemetryPayload(boolean running, double runtimeHours, long counti
     String messageId, Instant timestamp, Map<String, JsonNode> optionalFields) {
 
   public static final String SUPPORTED_SCHEMA_VERSION = "1.0";
+
+  /**
+   * Rejection reason for implausible field values (negative runtimeHours/counting). Shared
+   * constant: the data-quality tracker classifies quarantined messages with this reason as
+   * anomalies, so the two must not drift apart as independent literals.
+   */
+  public static final String REASON_OUT_OF_RANGE = "out_of_range";
+
   private static final int MAX_MESSAGE_ID_LENGTH = 255;
   private static final int MAX_OPTIONAL_STRING_VALUE_LENGTH = 4096;
   private static final Set<String> BASE_FIELD_NAMES = Set.of(
@@ -99,7 +107,7 @@ public record TelemetryPayload(boolean running, double runtimeHours, long counti
       return new ParseResult.Rejected("invalid_field_type", "runtimeHours");
     }
     if (runtimeNode.doubleValue() < 0) {
-      return new ParseResult.Rejected("out_of_range", "runtimeHours");
+      return new ParseResult.Rejected(REASON_OUT_OF_RANGE, "runtimeHours");
     }
     JsonNode countingNode = root.get("counting");
     if (countingNode == null || countingNode.isNull()) {
@@ -111,7 +119,7 @@ public record TelemetryPayload(boolean running, double runtimeHours, long counti
       return new ParseResult.Rejected("invalid_field_type", "counting");
     }
     if (countingNode.longValue() < 0) {
-      return new ParseResult.Rejected("out_of_range", "counting");
+      return new ParseResult.Rejected(REASON_OUT_OF_RANGE, "counting");
     }
     Map<String, JsonNode> optionalFields = Map.of();
     if (configuredOptionalFields == null) {

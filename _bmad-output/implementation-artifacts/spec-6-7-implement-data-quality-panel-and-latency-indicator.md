@@ -2,8 +2,8 @@
 title: 'Implement Data Quality Panel and Latency Indicator'
 type: 'feature'
 created: '2026-08-22'
-status: 'review'
-review_loop_iteration: 0
+status: 'done'
+review_loop_iteration: 1
 followup_review_recommended: false
 baseline_commit: 0bbfc50
 context: []
@@ -129,10 +129,34 @@ warnings: []
 - Given elevated or critical latency (or warning/critical quality metrics), when the components render, then the states are visually distinct AND communicated with text labels, not color alone. [AC 6.7-3]
 - Given the Data Quality panel renders, then it links to the quarantine log (`QuarantineLogTable` section) for detail drill-down via an in-page anchor. [AC 6.7-4]
 
+### Review Findings
+
+3-layer adversarial review (Blind Hunter, Edge Case Hunter, Acceptance Auditor) on 2026-08-22, resuming an interrupted first run whose patches were half-applied. All `patch` findings below are applied and verified; 1 deferred (DW-72), 9 dismissed as noise / documented-by-design (global synchronized monitor tradeoff, non-atomic snapshot, O(window) scan per 30s poll, NEUTRAL badge — a real backend contract value, null-principal test parity with the mirrored controller, constructor-arity blast radius — resolved by whole-module compilation, far-future-timestamp clamp — pinned by test and spec-constrained, `role="status"` re-announce — established pattern, stale dev verification record — regenerated truthfully below).
+
+- [x] [Review][Patch] Backend did not compile: the half-applied `reason()` change compared a `String` to `double` thresholds (`rate > REJECTION_RATE_CRITICAL_PCT`) [TelemetryDataQualityService.java:148]
+- [x] [Review][Patch] Latency sample never expired — a stalled pipeline reported the last latency/state forever; the sample now carries its minute and ages out with the window to NO_DATA (blind+edge, MAJOR both) [TelemetryDataQualityTracker.java]
+- [x] [Review][Patch] `in`-based severity badge lookup resolved prototype keys ("toString"/"constructor") to Object.prototype members → render crash; now `Object.hasOwn` [data-quality-panel.tsx:38]
+- [x] [Review][Patch] Fetcher guard accepted any string for the six severity fields; now validates SUCCESS/WARNING/CRITICAL/NEUTRAL membership [use-data-quality.ts]
+- [x] [Review][Patch] Fetcher guard admitted negative/fractional `lastLatencyMs`; now requires null or a non-negative integer [use-data-quality.ts]
+- [x] [Review][Patch] Effective-window derivation duplicated between service and tracker; the tracker now owns `effectiveWindowSeconds()` [TelemetryDataQualityTracker.java + TelemetryDataQualityService.java]
+- [x] [Review][Patch] Exactly-5% rejection-rate boundary unpinned and reason text never asserted; both added (5% exact stays WARNING) [TelemetryDataQualityServiceTest.java]
+- [x] [Review][Patch] Reason text could contradict the severity at display rounding (raw 1.004% → "rejection rate 1.00% above 1.0%"); reason now formats the raw rate `%.4f` [TelemetryDataQualityService.java]
+- [x] [Review][Patch] 30-day window cap compared minutes so PT30D-plus-seconds slipped through; now compared in seconds, with a new `TelemetryPropertiesTest` covering zero/negative/null/30d-exact/30d+1s [TelemetryProperties.java + TelemetryPropertiesTest.java]
+- [x] [Review][Patch] LatencyIndicator rendered contradictory "unavailable · No data" on first-load failure and duplicated "No data · No data"; the trailing label is suppressed when it duplicates the value or the state is unknown [latency-indicator.tsx]
+- [x] [Review][Patch] Logback DEBUG level set in handler tests without try/finally (leaked to later tests on assertion failure); all three attach/detach sites wrapped [MqttTelemetryIngestHandlerTest.java]
+- [x] [Review][Patch] Zero concurrency coverage for the tracker's synchronized claim/reset protocol; added a 4-thread × 2-round hammer test across a minute boundary asserting exact totals [TelemetryDataQualityTrackerTest.java]
+- [x] [Review][Patch] Loading-skeleton page test required by the Code Map was missing; added [system-health-page.test.tsx]
+- [x] [Review][Patch] Window label rendered every whole-hour multiple as hours (7200 → "last 2 hours"), deviating from the spec letter "3600 → 'last 1 hour', else minutes"; now spec-literal [data-quality-panel.tsx]
+- [x] [Review][Patch] Panel zero-state, error-with-stale-data, proto-key-severity fallback, and latency value-formatting boundaries were untested; new `data-quality-panel.test.tsx` + `latency-indicator.test.tsx`
+- [x] [Review][Patch] Tracker javadoc now documents the two known blind spots (pre-validation throws counted nowhere; quarantine counted before the durable write can transiently diverge from the log) [TelemetryDataQualityTracker.java]
+- [x] [Review][Patch] `TelemetryPayload.java` (shared `REASON_OUT_OF_RANGE` constant) was missing from the File List; manifest corrected below
+- [x] [Review][Defer] System-clock jumps (NTP step) silently reset or mis-attribute windowed counts [TelemetryDataQualityTracker.java] — deferred, pre-existing wall-clock windowing property → DW-72
+
 ## Spec Change Log
 
 - 2026-08-22: Spec created (draft → ready-for-dev). Ultimate context engine analysis completed — comprehensive developer guide created.
 - 2026-08-22: Implemented (see Dev Agent Record). All 20 tasks complete; status → review.
+- 2026-08-22: Code review (3-layer adversarial) — 17 patches applied incl. a compile fix from an interrupted first review run, 1 deferral (DW-72), 9 dismissed; all gates re-run green; status → done.
 
 ## Design Notes
 
@@ -187,6 +211,13 @@ GLM-5.3 (ZCode, builtin:zai-start-plan/GLM-5.3)
 - Latency measures publish → backend-visible (SM-008's platform portion); the browser poll interval (≤30s) is additional and intentionally not folded into the backend-owned metric (documented in Design Notes).
 - Full-stack browser verification was not possible unattended; evidence is unit/build-level per the Verification section.
 
+**Review verification (2026-08-22, after applying review patches):**
+- `mvn -f syncro/apps/backend/pom.xml test -Dtest="TelemetryDataQualityTrackerTest,TelemetryDataQualityServiceTest,TelemetryDataQualityControllerTest,MqttTelemetryIngestHandlerTest,TelemetryPersistenceServiceTest,IngestWorkerStatusServiceTest,TelemetryFreshnessServiceTest,TelemetryIngestQueueConfigTest,TelemetryPropertiesTest"` — Tests run: 87, Failures: 0, Errors: 0 (whole module compiles; +8 tests over the dev run: latency-window expiry, cross-minute concurrency hammer, 3 TelemetryPropertiesTest cases, service fixture fixes).
+- `npm run test:unit` (syncro/apps/web) — 175 passed, 7 skipped (15 files; new `data-quality-panel.test.tsx` and `latency-indicator.test.tsx` included).
+- `npm run build` (syncro/apps/web) — compiled successfully.
+- `npx biome lint` on the 7 changed frontend files — clean (0 errors, 0 warnings).
+- The dev-run verification numbers quoted above (79 backend / 157 frontend) predate the interrupted review patch application, which left the module non-compiling; they are superseded by this block.
+
 ### File List
 
 - `syncro/apps/backend/src/main/java/com/syncro/config/TelemetryProperties.java` — modified (new validated `dataQuality.window` group)
@@ -213,5 +244,9 @@ GLM-5.3 (ZCode, builtin:zai-start-plan/GLM-5.3)
 - `syncro/apps/web/src/components/syncro/data-quality-panel.tsx` — new
 - `syncro/apps/web/src/components/syncro/latency-indicator.tsx` — new
 - `syncro/apps/web/src/features/system-health/components/system-health-page.tsx` — modified (header indicator, Data Quality section, anchor, query wiring)
+- `syncro/apps/backend/src/main/java/com/syncro/telemetry/application/TelemetryPayload.java` — modified during review (shared `REASON_OUT_OF_RANGE` constant aliased by the tracker; validation semantics byte-identical)
+- `syncro/apps/backend/src/test/java/com/syncro/config/TelemetryPropertiesTest.java` — new during review (data-quality window validation boundaries)
+- `syncro/apps/web/src/components/syncro/data-quality-panel.test.tsx` — new during review (window label contract, zero/error states, proto-key severity fallback)
+- `syncro/apps/web/src/components/syncro/latency-indicator.test.tsx` — new during review (value formatting boundaries, label dedup, last-known-on-error)
 - `syncro/apps/web/src/features/system-health/components/system-health-page.test.tsx` — modified (8 new tests + fixture/mock)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` — modified (status transitions)

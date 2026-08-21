@@ -116,7 +116,7 @@ development_status:
   6-4-build-super-admin-health-dashboard: done
   6-5-surface-latest-telemetry-freshness-in-health: done
   6-6-link-health-failures-to-operational-evidence: done
-  6-7-implement-data-quality-panel-and-latency-indicator: review
+  6-7-implement-data-quality-panel-and-latency-indicator: done
   epic-6-retrospective: optional
 
   # Epic 7: Pilot Validation & Operational Proof

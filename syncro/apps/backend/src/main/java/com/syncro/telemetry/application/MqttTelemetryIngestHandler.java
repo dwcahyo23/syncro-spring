@@ -48,11 +48,15 @@ public class MqttTelemetryIngestHandler implements MessageHandler {
   @Override
   public void handleMessage(Message<?> message) throws MessagingException {
     String traceId = null;
+    // Dead-letter is defined as "passed validation but processing threw"; only the Accepted
+    // branch sets this, so a quarantine-store or validation failure never counts as one.
+    boolean validationPassed = false;
     try {
       TelemetryEnvelope envelope = enrich(message);
       traceId = envelope.traceId();
       switch (validationService.validate(envelope.topic(), envelope.payload())) {
         case TelemetryValidationService.Result.Accepted accepted -> {
+          validationPassed = true;
           ingestTracker.recordAccepted();
           dataQualityTracker.recordAccepted();
           log.info("mqtt_telemetry_accepted traceId={} topic={}",
@@ -75,7 +79,9 @@ public class MqttTelemetryIngestHandler implements MessageHandler {
         }
       }
     } catch (RuntimeException exception) {
-      dataQualityTracker.recordDeadLettered();
+      if (validationPassed) {
+        dataQualityTracker.recordDeadLettered();
+      }
       Object topicHeader = message.getHeaders().get(MqttHeaders.RECEIVED_TOPIC);
       log.error("mqtt_telemetry_ingest_failed traceId={} topic={}",
           traceId == null ? "" : traceId, topicHeader == null ? "" : topicHeader, exception);

@@ -4,9 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.Mockito.when;
 
-import com.syncro.config.TelemetryProperties;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,14 +25,7 @@ class TelemetryDataQualityServiceTest {
 
   @BeforeEach
   void setUp() {
-    service = new TelemetryDataQualityService(tracker, properties(Duration.ofHours(1)),
-        Clock.fixed(NOW, ZoneOffset.UTC));
-  }
-
-  private static TelemetryProperties properties(Duration window) {
-    return new TelemetryProperties(Duration.parse("PT5M"), Duration.parse("PT30S"),
-        new TelemetryProperties.Ingest(1000, 2, Duration.ofMinutes(5)),
-        new TelemetryProperties.DataQuality(window));
+    service = new TelemetryDataQualityService(tracker, Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
   private void snapshot(long accepted, long quarantined, long anomaly, long deadLetter,
@@ -46,6 +37,7 @@ class TelemetryDataQualityServiceTest {
 
   @Test
   void healthyTrafficProducesGoodStatusWithAllSuccessSeverities() {
+    when(tracker.effectiveWindowSeconds()).thenReturn(3600L);
     snapshot(1000, 2, 0, 0, 800);
 
     var status = service.status();
@@ -108,10 +100,38 @@ class TelemetryDataQualityServiceTest {
     snapshot(9_900, 101, 0, 0, 100);
     assertThat(service.status().rejectionRateSeverity()).isEqualTo("WARNING");
 
+    // exactly 5%: 100 / (1900 + 100) stays WARNING — 5% is not "> 5%"
+    snapshot(1_900, 100, 0, 0, 100);
+    assertThat(service.status().rejectionRateSeverity()).isEqualTo("WARNING");
+
     // > 5%: 6 / (100 + 6)
     snapshot(100, 6, 0, 0, 100);
     assertThat(service.status().rejectionRateSeverity()).isEqualTo("CRITICAL");
     assertThat(service.status().status()).isEqualTo(TelemetryDataQualityState.CRITICAL);
+    assertThat(service.status().statusReason()).contains("rejection rate").contains("above 5.0");
+  }
+
+  @Test
+  void rejectionRateSeverityUsesRawRateNotRoundedDisplay() {
+    // raw 1.0008% (13 / 1299) rounds to 1.0 for display but is a genuine >1% breach; the
+    // quarantine count (13) is itself only WARNING, so the rate is the deciding metric.
+    snapshot(1_286, 13, 0, 0, 100);
+
+    var status = service.status();
+
+    assertThat(status.rejectionRatePct()).isEqualTo(1.0);
+    assertThat(status.rejectionRateSeverity()).isEqualTo("WARNING");
+    assertThat(status.status()).isEqualTo(TelemetryDataQualityState.DEGRADED);
+  }
+
+  @Test
+  void windowSecondsReportsEffectiveMinuteGranularityWindow() {
+    // A PT90S configured window truncates to a 1-minute tracker window; the payload must
+    // report the tracker's effective 60s, not the configured 90s.
+    when(tracker.effectiveWindowSeconds()).thenReturn(60L);
+    snapshot(10, 0, 0, 0, 100);
+
+    assertThat(service.status().windowSeconds()).isEqualTo(60);
   }
 
   @Test

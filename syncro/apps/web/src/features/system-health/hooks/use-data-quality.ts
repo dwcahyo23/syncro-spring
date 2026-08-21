@@ -9,6 +9,14 @@ import type { TelemetryDataQualityStatus } from "@/features/system-health/types"
 import { API_BASE_URL } from "@/lib/api/orval-mutator";
 import { expireAuthSession, getAuthToken } from "@/lib/auth/auth-client";
 
+// Backend severity contract: SUCCESS/WARNING/CRITICAL for metrics and the overall state,
+// plus NEUTRAL for the NO_DATA latency severity.
+const SEVERITIES = new Set(["SUCCESS", "WARNING", "CRITICAL", "NEUTRAL"]);
+
+function isSeverity(value: unknown): value is string {
+  return typeof value === "string" && SEVERITIES.has(value);
+}
+
 export async function fetchDataQuality(signal?: AbortSignal): Promise<TelemetryDataQualityStatus> {
   const token = getAuthToken();
   const headers = new Headers();
@@ -37,7 +45,7 @@ export async function fetchDataQuality(signal?: AbortSignal): Promise<TelemetryD
     !raw ||
     (raw.status !== "GOOD" && raw.status !== "DEGRADED" && raw.status !== "CRITICAL") ||
     typeof raw.statusLabel !== "string" ||
-    typeof raw.statusSeverity !== "string" ||
+    !isSeverity(raw.statusSeverity) ||
     typeof raw.timestamp !== "string" ||
     !Number.isFinite(raw.windowSeconds) ||
     !Number.isFinite(raw.quarantinedCount) ||
@@ -45,16 +53,19 @@ export async function fetchDataQuality(signal?: AbortSignal): Promise<TelemetryD
     !Number.isFinite(raw.anomalyCount) ||
     !Number.isFinite(raw.deadLetterCount) ||
     !Number.isFinite(raw.receivedCount) ||
-    typeof raw.quarantinedSeverity !== "string" ||
-    typeof raw.rejectionRateSeverity !== "string" ||
-    typeof raw.anomalySeverity !== "string" ||
-    typeof raw.deadLetterSeverity !== "string" ||
+    !isSeverity(raw.quarantinedSeverity) ||
+    !isSeverity(raw.rejectionRateSeverity) ||
+    !isSeverity(raw.anomalySeverity) ||
+    !isSeverity(raw.deadLetterSeverity) ||
+    (raw.statusReason !== null && typeof raw.statusReason !== "string") ||
     (raw.latencyState !== "NO_DATA" &&
       raw.latencyState !== "NORMAL" &&
       raw.latencyState !== "ELEVATED" &&
       raw.latencyState !== "CRITICAL") ||
-    typeof raw.latencySeverity !== "string" ||
-    (raw.lastLatencyMs !== null && !Number.isFinite(raw.lastLatencyMs))
+    !isSeverity(raw.latencySeverity) ||
+    // Latency is a backend long: null (NO_DATA) or a non-negative integer of milliseconds.
+    (raw.lastLatencyMs !== null &&
+      !(Number.isInteger(raw.lastLatencyMs) && raw.lastLatencyMs >= 0))
   ) {
     throw new Error("Telemetry data-quality response was not a data-quality payload");
   }

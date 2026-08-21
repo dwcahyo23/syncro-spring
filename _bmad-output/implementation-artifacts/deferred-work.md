@@ -509,3 +509,10 @@ origin: Deferred from: code review of spec-6-6-link-health-failures-to-operation
 location: syncro/apps/web/src/features/system-health/components/system-health-page.tsx (stale-machine list href) + syncro/apps/backend/src/main/java/com/syncro/machine/infrastructure/MachineRepository.java:69
 reason: Uniqueness is (plant_id, lower(code)) while the machine hub resolves codes globally via findByCodeIgnoreCase; with the same code in two plants, both stale-machine rows link to one URL and the hub throws IncorrectResultSizeDataAccessException. Pre-existing hub-resolution limitation (route /dashboard/master-data/machines/[machineCode] predates 6-6 and breaks for cross-plant duplicates from any entry point). Fix needs a by-id or plant-scoped resolution decision; Phase-1 pilot is single-plant (GM1). 6-6 patch mitigated determinism only (machineId sort tie-break, encodeURIComponent).
 status: open
+
+### DW-72: Wall-clock jumps silently reset or mis-attribute windowed data-quality counts
+
+origin: Deferred from: code review of spec-6-7-implement-data-quality-panel-and-latency-indicator (2026-08-22)
+location: syncro/apps/backend/src/main/java/com/syncro/telemetry/application/TelemetryDataQualityTracker.java (currentMinute()/increment())
+reason: The minute-bucket ring is keyed on wall-clock epoch minutes. A backward NTP step re-tags buckets as time re-passes minutes (counts re-accumulate into fresh windows), and a forward jump larger than the ring leaves every bucket stale-tagged so all windowed counts read zero mid-run; the lock-free count() can also pair a reclaimed bucket's new count with the old minute across the four counters. Operator impact is a transient wrong panel during exactly the kind of host clock incident an NTP fix is. Fixing means a monotonic-minute guard (treat regression as full reset) plus a documented reset-on-jump policy — a cross-tracker decision (TelemetryIngestTracker has the mirror-image monotonic guard issue, DW-69). Mitigation: counts are observability-only, reset on restart by design, and the latency sample ages out with the window.
+status: open

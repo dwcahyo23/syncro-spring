@@ -35,7 +35,11 @@ const SEVERITY_BADGES: Record<Severity, { className: string; label: string; Icon
 };
 
 function severityBadge(severity: string) {
-  const config = severity in SEVERITY_BADGES ? SEVERITY_BADGES[severity as Severity] : SEVERITY_BADGES.NEUTRAL;
+  // Object.hasOwn, not `in`: the `in` operator walks the prototype chain, so keys like
+  // "toString" would resolve to Object.prototype members and crash on the missing Icon.
+  const config = Object.hasOwn(SEVERITY_BADGES, severity)
+    ? SEVERITY_BADGES[severity as Severity]
+    : SEVERITY_BADGES.NEUTRAL;
   return (
     <Badge aria-label={config.label} className={config.className} variant="outline">
       <config.Icon aria-hidden="true" className="shrink-0" />
@@ -44,13 +48,16 @@ function severityBadge(severity: string) {
   );
 }
 
-/** Formats the metrics window deterministically: whole hours as "last N hour(s)", else minutes. */
+/**
+ * Formats the metrics window per the page-spec contract: the default 1-hour window renders
+ * as "last 1 hour"; every other window renders in minutes.
+ */
 export function formatWindowLabel(windowSeconds: number): string {
-  if (windowSeconds >= 3600 && windowSeconds % 3600 === 0) {
-    const hours = windowSeconds / 3600;
-    return `last ${hours} ${hours === 1 ? "hour" : "hours"}`;
+  if (windowSeconds === 3600) {
+    return "last 1 hour";
   }
-  return `last ${Math.max(1, Math.round(windowSeconds / 60))} minutes`;
+  const minutes = Math.max(1, Math.round(windowSeconds / 60));
+  return `last ${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
 }
 
 function headerBadge(status: TelemetryDataQualityStatus | undefined, isLoading: boolean) {

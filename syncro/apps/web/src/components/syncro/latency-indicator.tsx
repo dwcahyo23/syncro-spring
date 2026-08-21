@@ -58,7 +58,8 @@ export function LatencyIndicator({
 }) {
   let value: string;
   if (isError && latencyState === undefined) {
-    value = "Latency unavailable";
+    // The static "Latency" label prefixes this, so the word is not repeated here.
+    value = "unavailable";
   } else if (latencyState === undefined) {
     value = formatLatencyLabel(null);
   } else {
@@ -78,18 +79,31 @@ export function LatencyIndicator({
   const config = latencyState !== undefined && latencyState in STATE_CONFIG
     ? STATE_CONFIG[latencyState]
     : STATE_CONFIG.NO_DATA;
+  // The trailing state label is hidden when it would duplicate the value ("No data · No
+  // data") or assert a state we do not know (fetch failed before any data: "unavailable"
+  // must not be paired with a "No data" verdict).
+  const showLabel = config.label !== value && !(isError && latencyState === undefined);
+  const accessibleName = showLabel
+    ? `Telemetry latency: ${value}, ${config.label}`
+    : `Telemetry latency: ${value}`;
 
   return (
     <div
       role="status"
-      aria-label={`Telemetry latency: ${value}, ${config.label}`}
+      aria-label={accessibleName}
       className={cn("flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs", config.className)}
     >
       <config.Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
       <span className="font-medium">Latency {value}</span>
-      <span className="sr-only">({config.label})</span>
-      <span aria-hidden="true">·</span>
-      <span>{config.label}</span>
+      {showLabel ? (
+        <>
+          <span aria-hidden="true">·</span>
+          <span>{config.label}</span>
+        </>
+      ) : null}
+      {isError && latencyState !== undefined ? (
+        <span className="font-medium">(last known — refresh failed)</span>
+      ) : null}
     </div>
   );
 }

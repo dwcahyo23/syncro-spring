@@ -1044,6 +1044,19 @@ describe("System Health Page", () => {
     expect(screen.getByText("PostgreSQL")).toBeInTheDocument();
   });
 
+  it("6-7-loading: a loading data-quality query renders skeletons instead of metric rows", () => {
+    dataQualityQuery = {
+      ...dataQualityQuery,
+      data: undefined,
+      isLoading: true,
+    };
+
+    render(<SystemHealthPage />, { wrapper: Wrapper });
+
+    expect(screen.queryByText("Quarantined")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "System Health" })).toBeInTheDocument();
+  });
+
   it("6-7-refresh: clicking Refresh also refetches data quality", () => {
     render(<SystemHealthPage />, { wrapper: Wrapper });
 

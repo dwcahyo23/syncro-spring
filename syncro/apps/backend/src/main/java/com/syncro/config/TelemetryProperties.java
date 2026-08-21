@@ -41,6 +41,13 @@ public record TelemetryProperties(
         throw new IllegalArgumentException(
             "syncro.telemetry.data-quality.window must be a positive duration");
       }
+      // Upper bound protects the tracker's minute-bucket ring: beyond ~30 days the ring would
+      // allocate hundreds of millions of buckets or overflow the int bucket count. Compared
+      // in seconds so a 30-days-plus-sub-minute duration cannot slip through toMinutes().
+      if (window.toSeconds() > 43_200L * 60) {
+        throw new IllegalArgumentException(
+            "syncro.telemetry.data-quality.window must be at most 30 days");
+      }
     }
   }
 

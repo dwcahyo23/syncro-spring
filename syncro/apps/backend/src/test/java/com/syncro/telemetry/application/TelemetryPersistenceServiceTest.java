@@ -342,6 +342,22 @@ class TelemetryPersistenceServiceTest {
         .isEqualTo(TelemetryDataQualityTracker.NO_LATENCY_SAMPLE);
   }
 
+  @Test
+  void implausibleFarFutureTimestampSkipsLatencySampleWithoutFailingPersist() {
+    // Instant.MAX parses and passes validation; Duration.toMillis() overflows — the sample
+    // must be skipped, not misclassified as a Redis failure (compensating write + dead-letter).
+    accepted = new TelemetryValidationService.Result.Accepted(machine,
+        new TelemetryPayload(true, 12.5, 100, "1.0", "msg-overflow", Instant.MAX));
+    String overflowDedupeKey = "syncro:machine:" + machine.getId() + ":telemetry:dedupe:msg-overflow";
+    when(valueOps.setIfAbsent(overflowDedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+
+    service.persist(accepted, envelope);
+
+    assertThat(dataQualityTracker.snapshot().lastLatencyMs())
+        .isEqualTo(TelemetryDataQualityTracker.NO_LATENCY_SAMPLE);
+    verify(counterStateRepo).save(any(MachineCounterStateEntity.class));
+  }
+
   private TelemetryPayload payloadWithOptionalFields() {
     var nodeFactory = new ObjectMapper().getNodeFactory();
     var optional = new LinkedHashMap<String, JsonNode>();

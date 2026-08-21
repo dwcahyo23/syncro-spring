@@ -1,9 +1,9 @@
 package com.syncro.telemetry.application;
 
-import com.syncro.config.TelemetryProperties;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import org.springframework.stereotype.Service;
 
 /**
@@ -34,13 +34,10 @@ public class TelemetryDataQualityService {
   private static final String CRITICAL = "CRITICAL";
 
   private final TelemetryDataQualityTracker tracker;
-  private final TelemetryProperties properties;
   private final Clock clock;
 
-  public TelemetryDataQualityService(TelemetryDataQualityTracker tracker, TelemetryProperties properties,
-      Clock clock) {
+  public TelemetryDataQualityService(TelemetryDataQualityTracker tracker, Clock clock) {
     this.tracker = tracker;
-    this.properties = properties;
     this.clock = clock;
   }
 
@@ -50,8 +47,10 @@ public class TelemetryDataQualityService {
     double rawRate = received == 0 ? 0.0 : snapshot.quarantinedCount() * 100.0 / received;
     double rate = Math.round(rawRate * 100.0) / 100.0;
 
+    // Severity decisions use the unrounded rate so the >1%/>5% boundaries hold exactly;
+    // the rounded value is display/output only.
     String quarantinedSeverity = countSeverity(snapshot.quarantinedCount());
-    String rejectionRateSeverity = rateSeverity(rate);
+    String rejectionRateSeverity = rateSeverity(rawRate);
     String anomalySeverity = snapshot.anomalyCount() > 0 ? WARNING : SUCCESS;
     String deadLetterSeverity = snapshot.deadLetterCount() > 0 ? CRITICAL : SUCCESS;
 
@@ -61,7 +60,7 @@ public class TelemetryDataQualityService {
         anomalySeverity, deadLetterSeverity, latencyState.statusSeverity());
     String reason = state == TelemetryDataQualityState.GOOD
         ? null
-        : reason(snapshot, rate, latencyState);
+        : reason(snapshot, rawRate, latencyState);
 
     return new TelemetryDataQualityStatus(
         state,
@@ -69,7 +68,9 @@ public class TelemetryDataQualityService {
         state.statusSeverity(),
         reason,
         clock.instant().toString(),
-        properties.dataQuality().window().toSeconds(),
+        // The tracker windows at minute granularity; report its effective window, not the
+        // configured duration, so the panel label never overstates the evidence horizon.
+        tracker.effectiveWindowSeconds(),
         snapshot.quarantinedCount(),
         rate,
         snapshot.anomalyCount(),
@@ -132,18 +133,21 @@ public class TelemetryDataQualityService {
     return state;
   }
 
-  private static String reason(TelemetryDataQualityTracker.Snapshot snapshot, double rate,
+  private static String reason(TelemetryDataQualityTracker.Snapshot snapshot, double rawRate,
       LatencyState latencyState) {
+    // Severity compares the raw rate; the reason text formats it with enough precision that
+    // "X above threshold" never reads as a contradiction at the 2-decimal display rounding.
+    String rateText = String.format(Locale.ROOT, "%.4f", rawRate);
     List<String> triggered = new ArrayList<>();
     if (snapshot.quarantinedCount() > QUARANTINED_CRITICAL) {
       triggered.add("quarantine count " + snapshot.quarantinedCount() + " above " + QUARANTINED_CRITICAL);
     } else if (snapshot.quarantinedCount() > QUARANTINED_WARNING) {
       triggered.add("quarantine count " + snapshot.quarantinedCount() + " above " + QUARANTINED_WARNING);
     }
-    if (rate > REJECTION_RATE_CRITICAL_PCT) {
-      triggered.add("rejection rate " + rate + "% above " + REJECTION_RATE_CRITICAL_PCT + "%");
-    } else if (rate > REJECTION_RATE_WARNING_PCT) {
-      triggered.add("rejection rate " + rate + "% above " + REJECTION_RATE_WARNING_PCT + "%");
+    if (rawRate > REJECTION_RATE_CRITICAL_PCT) {
+      triggered.add("rejection rate " + rateText + "% above " + REJECTION_RATE_CRITICAL_PCT + "%");
+    } else if (rawRate > REJECTION_RATE_WARNING_PCT) {
+      triggered.add("rejection rate " + rateText + "% above " + REJECTION_RATE_WARNING_PCT + "%");
     }
     if (snapshot.anomalyCount() > 0) {
       triggered.add(snapshot.anomalyCount() + " anomalous field value(s)");

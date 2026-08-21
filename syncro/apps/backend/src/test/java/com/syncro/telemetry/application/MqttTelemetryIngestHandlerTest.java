@@ -81,23 +81,26 @@ class MqttTelemetryIngestHandlerTest {
   @Test
   void handleMessageLogsReceivedForAcceptedMessage() {
     var appender = attachAppender();
-    var message = MessageBuilder.withPayload("{\"running\":true}".getBytes(StandardCharsets.UTF_8))
-        .setHeader(MqttHeaders.RECEIVED_TOPIC, "factory/GM1/BF-08410/telemetry")
-        .build();
+    try {
+      var message = MessageBuilder.withPayload("{\"running\":true}".getBytes(StandardCharsets.UTF_8))
+          .setHeader(MqttHeaders.RECEIVED_TOPIC, "factory/GM1/BF-08410/telemetry")
+          .build();
 
-    handler.handleMessage(message);
+      handler.handleMessage(message);
 
-    assertThat(appender.list)
-        .anyMatch(event -> event.getLevel() == Level.INFO
-            && event.getFormattedMessage().startsWith("mqtt_telemetry_accepted")
-            && event.getFormattedMessage().contains("topic=factory/GM1/BF-08410/telemetry")
-            && event.getFormattedMessage().contains("traceId="));
-    assertThat(appender.list)
-        .anyMatch(event -> event.getLevel() == Level.DEBUG
-            && event.getFormattedMessage().startsWith("mqtt_telemetry_received")
-            && event.getFormattedMessage().contains("topic=factory/GM1/BF-08410/telemetry")
-            && event.getFormattedMessage().contains("traceId="));
-    detachAppender(appender);
+      assertThat(appender.list)
+          .anyMatch(event -> event.getLevel() == Level.INFO
+              && event.getFormattedMessage().startsWith("mqtt_telemetry_accepted")
+              && event.getFormattedMessage().contains("topic=factory/GM1/BF-08410/telemetry")
+              && event.getFormattedMessage().contains("traceId="));
+      assertThat(appender.list)
+          .anyMatch(event -> event.getLevel() == Level.DEBUG
+              && event.getFormattedMessage().startsWith("mqtt_telemetry_received")
+              && event.getFormattedMessage().contains("topic=factory/GM1/BF-08410/telemetry")
+              && event.getFormattedMessage().contains("traceId="));
+    } finally {
+      detachAppender(appender);
+    }
   }
 
   @Test
@@ -105,18 +108,21 @@ class MqttTelemetryIngestHandlerTest {
     var rejectingHandler = new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC),
         new RejectingTelemetryValidationService(), persistence, quarantine, tracker, dataQualityTracker);
     var appender = attachAppender();
-    var message = MessageBuilder.withPayload("{\"running\":true}".getBytes(StandardCharsets.UTF_8))
-        .setHeader(MqttHeaders.RECEIVED_TOPIC, "factory/GM1/BF-08410/telemetry")
-        .build();
+    try {
+      var message = MessageBuilder.withPayload("{\"running\":true}".getBytes(StandardCharsets.UTF_8))
+          .setHeader(MqttHeaders.RECEIVED_TOPIC, "factory/GM1/BF-08410/telemetry")
+          .build();
 
-    rejectingHandler.handleMessage(message);
+      rejectingHandler.handleMessage(message);
 
-    assertThat(appender.list)
-        .anyMatch(event -> event.getLevel() == Level.WARN
-            && event.getFormattedMessage().startsWith("mqtt_telemetry_rejected")
-            && event.getFormattedMessage().contains("reason=unknown_machine")
-            && event.getFormattedMessage().contains("traceId="));
-    detachAppender(appender);
+      assertThat(appender.list)
+          .anyMatch(event -> event.getLevel() == Level.WARN
+              && event.getFormattedMessage().startsWith("mqtt_telemetry_rejected")
+              && event.getFormattedMessage().contains("reason=unknown_machine")
+              && event.getFormattedMessage().contains("traceId="));
+    } finally {
+      detachAppender(appender);
+    }
   }
 
   @Test
@@ -124,20 +130,23 @@ class MqttTelemetryIngestHandlerTest {
     var inactiveHandler = new MqttTelemetryIngestHandler(Clock.fixed(FIXED_NOW, ZoneOffset.UTC),
         new RejectingTelemetryValidationService("inactive_machine"), persistence, quarantine, tracker, dataQualityTracker);
     var appender = attachAppender();
-    var message = MessageBuilder.withPayload("{\"running\":true}".getBytes(StandardCharsets.UTF_8))
-        .setHeader(MqttHeaders.RECEIVED_TOPIC, "factory/GM1/BF-08410/telemetry")
-        .build();
+    try {
+      var message = MessageBuilder.withPayload("{\"running\":true}".getBytes(StandardCharsets.UTF_8))
+          .setHeader(MqttHeaders.RECEIVED_TOPIC, "factory/GM1/BF-08410/telemetry")
+          .build();
 
-    inactiveHandler.handleMessage(message);
+      inactiveHandler.handleMessage(message);
 
-    assertThat(appender.list)
-        .anyMatch(event -> event.getLevel() == Level.WARN
-            && event.getFormattedMessage().startsWith("mqtt_telemetry_rejected")
-            && event.getFormattedMessage().contains("reason=inactive_machine")
-            && !event.getFormattedMessage().contains("field=")
-            && event.getFormattedMessage().contains("traceId=")
-            && event.getFormattedMessage().contains("topic=factory/GM1/BF-08410/telemetry"));
-    detachAppender(appender);
+      assertThat(appender.list)
+          .anyMatch(event -> event.getLevel() == Level.WARN
+              && event.getFormattedMessage().startsWith("mqtt_telemetry_rejected")
+              && event.getFormattedMessage().contains("reason=inactive_machine")
+              && !event.getFormattedMessage().contains("field=")
+              && event.getFormattedMessage().contains("traceId=")
+              && event.getFormattedMessage().contains("topic=factory/GM1/BF-08410/telemetry"));
+    } finally {
+      detachAppender(appender);
+    }
   }
 
   @Test

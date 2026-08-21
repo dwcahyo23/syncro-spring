@@ -122,10 +122,7 @@ public class TelemetryPersistenceService {
     }
     try {
       redisLatestWriter.putLatest(machineId, latest, properties.latestTtl());
-      // Publish-to-visible latency: payload publish timestamp → latest telemetry now queryable.
-      // Recorded only after the write succeeds, so duplicates (early return) and failures never sample.
-      dataQualityTracker.recordLatencyMs(
-          Duration.between(accepted.payload().timestamp(), Instant.now(clock)).toMillis());
+      recordLatencySafely(accepted.payload().timestamp());
     } catch (RuntimeException redisEx) {
       log.warn("redis_latest_write_failed_baseline_may_be_stale machineId={} traceId={} counting={}",
           machineId, envelope.traceId(), currentCounting, redisEx);
@@ -148,6 +145,22 @@ public class TelemetryPersistenceService {
 
     log.info("mqtt_telemetry_persisted traceId={} machineCode={} countingDelta={}",
         envelope.traceId(), machineCode, countingDelta);
+  }
+
+  /**
+   * Publish-to-visible latency: payload publish timestamp → latest telemetry now queryable.
+   * Recorded only after the latest write succeeds, so duplicates (early return) and failures
+   * never sample. An implausible device timestamp beyond the Duration millis range skips the
+   * sample instead of masquerading as a Redis failure (ArithmeticException must not reach the
+   * caller's redis-catch here).
+   */
+  private void recordLatencySafely(Instant publishedAt) {
+    try {
+      dataQualityTracker.recordLatencyMs(
+          Duration.between(publishedAt, Instant.now(clock)).toMillis());
+    } catch (ArithmeticException durationOverflow) {
+      log.warn("telemetry_latency_sample_skipped_implausible_timestamp publishedAt={}", publishedAt);
+    }
   }
 
   private void deleteDedupeKey(String dedupeKey, String machineCode, String traceId) {

@@ -26,12 +26,22 @@ import org.springframework.stereotype.Component;
  * catch is terminal). The <em>latency</em> sample is measured from the payload publish
  * timestamp to the moment the Redis latest write succeeds (publish → dashboard-visible);
  * negative samples (device clock ahead of the server) clamp to 0.
+ *
+ * <p>Known blind spots, deliberate: a message whose enrichment or validation itself throws
+ * (before any handler branch) is not counted in any counter — it is only error-logged. A
+ * quarantined message is counted at rejection time, before the durable quarantine write, so
+ * a failing quarantine store can transiently diverge the panel from the quarantine log;
+ * the counters observe pipeline stages, not durable outcomes, matching how accepted messages
+ * are counted before persistence.
  */
 @Component
 public class TelemetryDataQualityTracker {
 
-  /** Quarantine rejection reason for implausible field values (TelemetryPayload range checks). */
-  static final String ANOMALY_REJECTION_REASON = "out_of_range";
+  /**
+   * Quarantine rejection reason for implausible field values. Aliases the payload contract
+   * constant so the anomaly classification cannot drift from what validation actually emits.
+   */
+  static final String ANOMALY_REJECTION_REASON = TelemetryPayload.REASON_OUT_OF_RANGE;
 
   /** Sentinel for "no latency sample yet"; never exposed as a positive measurement. */
   static final long NO_LATENCY_SAMPLE = -1;
@@ -47,7 +57,7 @@ public class TelemetryDataQualityTracker {
   private final AtomicLongArray anomalyMinutes;
   private final AtomicLongArray deadLetterBuckets;
   private final AtomicLongArray deadLetterMinutes;
-  private volatile long lastLatencyMs = NO_LATENCY_SAMPLE;
+  private volatile LatencySample lastLatencySample;
 
   public TelemetryDataQualityTracker(Clock clock, TelemetryProperties properties) {
     this.clock = clock;
@@ -85,21 +95,39 @@ public class TelemetryDataQualityTracker {
     increment(deadLetterBuckets, deadLetterMinutes);
   }
 
-  /** Records the last publish-to-visible latency; negative values clamp to 0 (clock skew). */
+  /**
+   * Records the last publish-to-visible latency; negative values clamp to 0 (clock skew).
+   * The sample carries its minute so it can age out with the window (see {@link #snapshot()}).
+   */
   public void recordLatencyMs(long latencyMs) {
-    this.lastLatencyMs = Math.max(0, latencyMs);
+    this.lastLatencySample = new LatencySample(currentMinute(), Math.max(0, latencyMs));
   }
 
-  /** Windowed counts as of now; {@code lastLatencyMs} is {@link #NO_LATENCY_SAMPLE} before the first sample. */
+  /**
+   * Windowed counts as of now. {@code lastLatencyMs} is {@link #NO_LATENCY_SAMPLE} before the
+   * first sample AND once the newest sample has left the window — a stalled pipeline must
+   * surface "no data", not a stale latency frozen at its last value. The minute and the
+   * value travel in one immutable sample so a concurrent reader never pairs them across
+   * updates.
+   */
   public Snapshot snapshot() {
     long currentMinute = currentMinute();
     long fromMinute = currentMinute - windowMinutes + 1;
+    LatencySample sample = lastLatencySample;
+    long lastLatencyMs = sample == null || sample.minute() < fromMinute
+        ? NO_LATENCY_SAMPLE
+        : sample.latencyMs();
     return new Snapshot(
         count(acceptedBuckets, acceptedMinutes, fromMinute, currentMinute),
         count(quarantinedBuckets, quarantinedMinutes, fromMinute, currentMinute),
         count(anomalyBuckets, anomalyMinutes, fromMinute, currentMinute),
         count(deadLetterBuckets, deadLetterMinutes, fromMinute, currentMinute),
         lastLatencyMs);
+  }
+
+  /** Effective window in seconds at the tracker's minute granularity; never below one minute. */
+  public long effectiveWindowSeconds() {
+    return windowMinutes * 60;
   }
 
   private long currentMinute() {
@@ -109,14 +137,16 @@ public class TelemetryDataQualityTracker {
   /**
    * Claims the bucket for the current minute (resetting stale counts from an earlier ring
    * cycle) and increments. Synchronized so a claim/reset can never race an increment and lose
-   * it; the handler threads calling this are few and the work is two array cells.
+   * it; the handler threads calling this are few and the work is two array cells. The bucket
+   * is zeroed BEFORE the minute tag is published so a lock-free reader can never pair a fresh
+   * tag with the previous cycle's count (worst case it briefly skips a just-reclaimed bucket).
    */
   private synchronized void increment(AtomicLongArray buckets, AtomicLongArray minutes) {
     long minute = currentMinute();
     int index = (int) Math.floorMod(minute, bucketCount);
     if (minutes.get(index) != minute) {
-      minutes.set(index, minute);
       buckets.set(index, 0);
+      minutes.set(index, minute);
     }
     buckets.incrementAndGet(index);
   }
@@ -141,5 +171,9 @@ public class TelemetryDataQualityTracker {
       long anomalyCount,
       long deadLetterCount,
       long lastLatencyMs) {
+  }
+
+  /** Minute-tagged latency sample so the value ages out with the window, atomically. */
+  private record LatencySample(long minute, long latencyMs) {
   }
 }
