@@ -55,6 +55,19 @@ syncro:
   waha:
     url: http://${WAHA_HOST}:${WAHA_PORT}
     api-key: ${WAHA_API_KEY}
+    resilience:
+      # HTTP connect + read timeout per WAHA call (default: 5 seconds)
+      timeout: ${SYNCRO_WAHA_TIMEOUT_MS:5000}ms
+      # Failure-rate threshold (%) at which the circuit opens (default: 50%)
+      failure-rate-threshold: ${SYNCRO_WAHA_CB_FAILURE_RATE:50}
+      # Minimum number of calls before failure rate is evaluated (default: 5)
+      minimum-number-of-calls: ${SYNCRO_WAHA_CB_MIN_CALLS:5}
+      # Sliding window size for failure rate computation (default: 10)
+      sliding-window-size: ${SYNCRO_WAHA_CB_WINDOW_SIZE:10}
+      # Time circuit stays OPEN before transitioning to HALF_OPEN (default: 60 seconds)
+      wait-duration-in-open-state: ${SYNCRO_WAHA_CB_WAIT_MS:60000}ms
+      # Number of probe calls allowed in HALF_OPEN state (default: 3)
+      permitted-calls-in-half-open: ${SYNCRO_WAHA_CB_HALF_OPEN_CALLS:3}
   notification:
     worker:
       # Poll interval in milliseconds for the notification dispatch worker (default: 30 seconds)

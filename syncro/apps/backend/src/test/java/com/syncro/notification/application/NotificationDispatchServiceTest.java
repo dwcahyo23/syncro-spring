@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.syncro.config.WahaResilienceProperties;
 import com.syncro.notification.application.WahaTemplateRenderer.WahaTemplateRenderException;
 import com.syncro.notification.domain.NotificationJobStatus;
 import com.syncro.notification.infrastructure.NotificationAttemptEntity;
@@ -15,6 +16,7 @@ import com.syncro.notification.infrastructure.NotificationJobEntity;
 import com.syncro.notification.infrastructure.NotificationJobRepository;
 import com.syncro.notification.infrastructure.WahaClient;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.UUID;
@@ -48,11 +50,15 @@ class NotificationDispatchServiceTest {
   private static final String RENDERED_MSG = "PERINGATAN SPAREPART - PLT01";
   private static final String RECIPIENT_PHONE = "6281234567890";
 
+  private static final Duration CB_WAIT = Duration.ofSeconds(60);
+
   @BeforeEach
   void setUp() {
     clock = Clock.fixed(FIXED_NOW, ZoneId.of("UTC"));
+    var resilienceProperties = new WahaResilienceProperties(
+        Duration.ofSeconds(5), 50, 5, 10, CB_WAIT, 3);
     service = new NotificationDispatchService(jobRepository, attemptRepository, wahaClient,
-        templateRenderer, rateLimiter, clock);
+        templateRenderer, rateLimiter, resilienceProperties, clock);
   }
 
   // --- Happy path ---
@@ -210,5 +216,60 @@ class NotificationDispatchServiceTest {
     service.dispatch(job);
 
     verify(templateRenderer, never()).render(any());
+  }
+
+  // --- Circuit breaker ---
+
+  @Test
+  void dispatch_whenCircuitOpen_savesFailedAttemptAndSetsNextAttemptAtUsingWaitDuration() {
+    var job = new NotificationJobEntity(
+        ALERT_ID, "TECHNICIAN", NotificationJobStatus.PENDING,
+        UUID.randomUUID(), RECIPIENT_PHONE,
+        ALERT_ID + "::TECHNICIAN", TRACE_ID, null);
+
+    when(rateLimiter.isRateLimited(any(), any())).thenReturn(false);
+    when(templateRenderer.render(ALERT_ID)).thenReturn(RENDERED_MSG);
+    when(wahaClient.send(eq(RECIPIENT_PHONE), eq(RENDERED_MSG), eq(TRACE_ID)))
+        .thenReturn(new WahaClient.Result(false, 0, WahaClient.CIRCUIT_OPEN_DETAIL));
+    when(attemptRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(jobRepository.save(any())).thenReturn(job);
+
+    service.dispatch(job);
+
+    // nextAttemptAt must be now + waitDurationInOpenState (60s), NOT exponential backoff
+    Instant expectedRetry = FIXED_NOW.plus(CB_WAIT);
+    assertThat(job.getNextAttemptAt()).isEqualTo(expectedRetry);
+    // markAttemptFailed sets status to PENDING (retryable) when not yet exhausted
+    assertThat(job.getStatus()).isEqualTo(NotificationJobStatus.PENDING);
+
+    // Verify attempt record has the circuit-open detail
+    var attemptCaptor = ArgumentCaptor.forClass(NotificationAttemptEntity.class);
+    verify(attemptRepository).save(attemptCaptor.capture());
+    assertThat(attemptCaptor.getValue().getResponseDetail())
+        .isEqualTo(WahaClient.CIRCUIT_OPEN_DETAIL);
+
+    // Rate-limit key must NOT be acquired when circuit is open
+    verify(rateLimiter, never()).acquire(any(), any());
+  }
+
+  @Test
+  void dispatch_whenCircuitOpen_doesNotExhaustJobAttempts() {
+    // Circuit open should NOT count as "attempt exhausted" — job stays retryable
+    var job = new NotificationJobEntity(
+        ALERT_ID, "TECHNICIAN", NotificationJobStatus.PENDING,
+        UUID.randomUUID(), RECIPIENT_PHONE,
+        ALERT_ID + "::TECHNICIAN", TRACE_ID, null);
+
+    when(rateLimiter.isRateLimited(any(), any())).thenReturn(false);
+    when(templateRenderer.render(ALERT_ID)).thenReturn(RENDERED_MSG);
+    when(wahaClient.send(any(), any(), any()))
+        .thenReturn(new WahaClient.Result(false, 0, WahaClient.CIRCUIT_OPEN_DETAIL));
+    when(attemptRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(jobRepository.save(any())).thenReturn(job);
+
+    service.dispatch(job);
+
+    // Job should be FAILED (retryable), not EXHAUSTED
+    assertThat(job.getStatus()).isNotEqualTo(NotificationJobStatus.EXHAUSTED);
   }
 }

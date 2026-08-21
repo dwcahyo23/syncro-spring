@@ -173,7 +173,7 @@ class NotificationJobCancelIntegrationTest {
         NotificationJobStatus.CANCELLED,
         NOW);
 
-    var pending = jobs.findPendingJobsDue(NotificationJobStatus.PENDING, NOW.plusSeconds(60));
+    var pending = jobs.findPendingJobsDue(List.of(NotificationJobStatus.PENDING), NOW.plusSeconds(60));
     var sent = jobs.findSentJobsDueForEscalation(NotificationJobStatus.SENT, NOW.plusSeconds(60));
 
     assertThat(pending).isEmpty();

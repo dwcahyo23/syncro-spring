@@ -18,6 +18,7 @@ import com.syncro.auth.infrastructure.AuthUserPlantAssignmentEntity;
 import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
 import com.syncro.auth.infrastructure.PlantEntity;
 import com.syncro.machine.infrastructure.MachineEntity;
+import com.syncro.notification.infrastructure.NotificationJobRepository;
 import com.syncro.masterdata.infrastructure.MachineGroupEntity;
 import com.syncro.sparepart.infrastructure.MachineSparepartInstallationEntity;
 import com.syncro.sparepart.infrastructure.SparepartEntity;
@@ -41,11 +42,13 @@ class SparepartAlertQueryServiceTest {
   @Mock private SparepartAlertRepository alertRepository;
   @Mock private AuthUserPlantAssignmentRepository assignments;
   @Mock private PlantScopeService plantScopes;
+  @Mock private NotificationJobRepository notificationJobRepository;
 
   private final Clock clock = Clock.fixed(Instant.parse("2026-08-19T00:00:00Z"), ZoneOffset.UTC);
 
   private SparepartAlertQueryService service() {
-    return new SparepartAlertQueryService(alertRepository, assignments, plantScopes);
+    return new SparepartAlertQueryService(alertRepository, assignments, plantScopes,
+        notificationJobRepository);
   }
 
   // --- helpers ---
