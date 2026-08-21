@@ -60,7 +60,7 @@ class RedisHealthIndicatorTest {
   @Test
   void health_whenConnectionFails_returnsDownWithoutThrowing() {
     when(connectionFactory.getConnection())
-        .thenThrow(new RedisConnectionFailureException("connection refused"));
+        .thenThrow(new RedisConnectionFailureException("Connection refused: localhost/127.0.0.1:6379"));
 
     Health health = new RedisHealthIndicator(connectionFactory, FIXED_CLOCK).health();
 
@@ -68,6 +68,6 @@ class RedisHealthIndicatorTest {
     assertThat(health.getDetails())
         .containsEntry("statusLabel", "Down")
         .containsEntry("statusSeverity", "CRITICAL")
-        .containsEntry("statusReason", "connection refused");
+        .containsEntry("statusReason", "CONNECTION_REFUSED");
   }
 }

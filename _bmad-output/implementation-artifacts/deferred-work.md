@@ -411,3 +411,24 @@ status: open
 ## Deferred from: code review of spec-5-9-implement-circuit-breaker-for-waha-calls (2026-08-21)
 
 - **DW-55: `@Transactional` held across the WAHA network call (up to 5s per job, 10 jobs/batch)** — `NotificationDispatchService.java:50` — pre-existing transaction boundary, severity worsened by the added timeout; deferred, pre-existing.
+
+### DW-46: DbHealthIndicator getConnection can block up to Hikari connection-timeout (30s)
+
+origin: code review of spec-6-1-expose-dependency-health-checks (2026-08-21)
+location: syncro/apps/backend/src/main/java/com/syncro/health/DbHealthIndicator.java:33
+reason: matches Spring Boot's own DataSourceHealthIndicator behavior; a bounded acquire (e.g., Future.get(2s)) would require a non-pooled control connection.
+status: open
+
+### DW-47: RedisHealthIndicator ping inherits Lettuce command timeout (60s)
+
+origin: code review of spec-6-1-expose-dependency-health-checks (2026-08-21)
+location: syncro/apps/backend/src/main/java/com/syncro/health/RedisHealthIndicator.java:31-32
+reason: same timeout profile as the replaced auto redisHealthContributor; setting a 2s command timeout requires client-level config.
+status: open
+
+### DW-48: MQTT mid-session broker outage not observable by health
+
+origin: code review of spec-6-1-expose-dependency-health-checks (2026-08-21)
+location: syncro/apps/backend/src/main/java/com/syncro/telemetry/infrastructure/MqttConnectionStatus.java:37-44
+reason: pre-existing DW-14 TODO — Spring Integration MQTT 7.x emits no mid-session disconnect event; revisit when a connection-lost callback is available.
+status: open

@@ -60,7 +60,7 @@ class DbHealthIndicatorTest {
 
   @Test
   void health_whenGetConnectionFails_returnsDownWithoutThrowing() throws Exception {
-    when(dataSource.getConnection()).thenThrow(new SQLException("could not connect"));
+    when(dataSource.getConnection()).thenThrow(new SQLException("Connection refused: connect"));
 
     Health health = new DbHealthIndicator(dataSource, FIXED_CLOCK).health();
 
@@ -68,6 +68,6 @@ class DbHealthIndicatorTest {
     assertThat(health.getDetails())
         .containsEntry("statusLabel", "Down")
         .containsEntry("statusSeverity", "CRITICAL")
-        .containsEntry("statusReason", "could not connect");
+        .containsEntry("statusReason", "CONNECTION_REFUSED");
   }
 }

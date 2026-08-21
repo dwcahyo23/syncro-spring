@@ -76,7 +76,16 @@ class MqttHealthIndicatorTest {
     assertThat(health.getDetails())
         .containsEntry("statusLabel", "Down")
         .containsEntry("statusSeverity", "CRITICAL")
-        .containsEntry("statusReason", "boom")
+        .containsEntry("statusReason", "MQTT_CONNECTION_FAILED")
         .containsEntry("timestamp", FIXED_TIMESTAMP);
+  }
+
+  @Test
+  void unknownStateDownUsesStableNotSubscribedReason() {
+    Health health = indicator.health();
+
+    assertThat(health.getStatus()).isEqualTo(Status.DOWN);
+    assertThat(health.getDetails())
+        .containsEntry("statusReason", "MQTT_NOT_SUBSCRIBED");
   }
 }

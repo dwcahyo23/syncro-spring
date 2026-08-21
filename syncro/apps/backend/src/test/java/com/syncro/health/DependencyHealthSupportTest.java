@@ -5,6 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.sql.SQLException;
+import java.net.ConnectException;
+import java.net.UnknownHostException;
+import java.net.SocketTimeoutException;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.Status;
@@ -67,5 +71,27 @@ class DependencyHealthSupportTest {
         .containsEntry("database", "PostgreSQL")
         .containsEntry("statusLabel", "Up")
         .containsEntry("statusSeverity", "SUCCESS");
+  }
+
+  @Test
+  void reasonCodeMapsKnownFailureClassesToStableCodes() {
+    assertThat(DependencyHealthSupport.reasonCode(new SocketTimeoutException("Read timed out")))
+        .isEqualTo("TIMEOUT");
+    assertThat(DependencyHealthSupport.reasonCode(
+        new SQLException("Connection refused: connect"))).isEqualTo("CONNECTION_REFUSED");
+    assertThat(DependencyHealthSupport.reasonCode(
+        new UnknownHostException("influxdb.internal"))).isEqualTo("DNS_FAILURE");
+    assertThat(DependencyHealthSupport.reasonCode(
+        new RuntimeException("Unauthorized: invalid credentials"))).isEqualTo("UNAUTHORIZED");
+    assertThat(DependencyHealthSupport.reasonCode(new ConnectException("No route to host")))
+        .isEqualTo("NETWORK_UNREACHABLE");
+  }
+
+  @Test
+  void reasonCodeFallsBackForUnknownFailures() {
+    assertThat(DependencyHealthSupport.reasonCode(new RuntimeException("boom")))
+        .isEqualTo("CONNECTION_FAILED");
+    assertThat(DependencyHealthSupport.reasonCode(new RuntimeException()))
+        .isEqualTo("CONNECTION_FAILED");
   }
 }

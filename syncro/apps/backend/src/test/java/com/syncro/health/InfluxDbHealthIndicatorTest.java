@@ -57,13 +57,13 @@ class InfluxDbHealthIndicatorTest {
         .containsEntry("statusLabel", "Down")
         .containsEntry("statusSeverity", "CRITICAL")
         .containsEntry("timestamp", FIXED_TIMESTAMP)
-        .containsKey("statusReason");
+        .containsEntry("statusReason", "SERVER_ERROR");
   }
 
   @Test
   void health_whenPingFailsToConnect_returnsDownWithoutThrowing() {
     server.expect(requestTo("http://localhost:9999/ping"))
-        .andRespond(withException(new IOException("connection refused")));
+        .andRespond(withException(new IOException("Connection refused: localhost:9999")));
 
     Health health = indicator.health();
 
@@ -71,7 +71,7 @@ class InfluxDbHealthIndicatorTest {
     assertThat(health.getDetails())
         .containsEntry("statusLabel", "Down")
         .containsEntry("statusSeverity", "CRITICAL")
-        .containsEntry("timestamp", FIXED_TIMESTAMP);
-    assertThat((String) health.getDetails().get("statusReason")).contains("connection refused");
+        .containsEntry("timestamp", FIXED_TIMESTAMP)
+        .containsEntry("statusReason", "CONNECTION_REFUSED");
   }
 }

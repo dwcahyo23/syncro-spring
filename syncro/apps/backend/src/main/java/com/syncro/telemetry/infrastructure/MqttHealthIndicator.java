@@ -23,9 +23,16 @@ public class MqttHealthIndicator implements HealthIndicator {
     boolean up = state == MqttConnectionStatus.State.SUBSCRIBED;
     Health.Builder builder = up ? Health.up() : Health.down();
     String reason = null;
-    if (!up && status.lastError() != null) {
-      builder.withDetail("lastError", status.lastError());
-      reason = status.lastError();
+    if (!up) {
+      // Read volatile lastError exactly once: a concurrent reconnect may clear it between
+      // reads, and Health.Builder.withDetail asserts a non-null value (AC 7: never crash).
+      String lastError = status.lastError();
+      if (lastError != null) {
+        builder.withDetail("lastError", lastError);
+      }
+      reason = state == MqttConnectionStatus.State.FAILED
+          ? "MQTT_CONNECTION_FAILED"
+          : "MQTT_NOT_SUBSCRIBED";
     }
     return DependencyHealthSupport.enrich(builder.build(), clock, reason, null);
   }

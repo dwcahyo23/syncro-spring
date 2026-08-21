@@ -207,3 +207,12 @@ deepseek-v4-flash-free (openagentic), 2026-08-21
 ## Change Log
 
 - 2026-08-21: Implemented story 6.1 — five enriched Actuator dependency health components; 29 health tests pass; no regressions vs. baseline.
+- 2026-08-21: Applied code-review fixes — sanitized `statusReason` to stable reason codes on the public endpoint (decision), fixed MQTT volatile double-read race (patch); 31 health tests pass.
+
+### Review Findings
+
+- [x] [Review][Decision] statusReason / error detail on unauthenticated `/actuator/health` exposes internal exception text (hostnames/URLs) — spec mandates `statusReason` from `e.getMessage()`, but the endpoint is `permitAll` + `show-details: always`; sanitize to stable reason codes or keep raw? — **RESOLVED 2026-08-21: user chose sanitize.** Added `DependencyHealthSupport.reasonCode(Exception)` mapping failures to stable codes (TIMEOUT, CONNECTION_REFUSED, NETWORK_UNREACHABLE, DNS_FAILURE, UNAUTHORIZED, RATE_LIMITED, SERVER_ERROR, CONNECTION_FAILED). Indicators now emit `Health.down()` (no raw `error` detail) + sanitized `statusReason`; full exception logged at WARN. MQTT `statusReason` uses stable codes `MQTT_CONNECTION_FAILED`/`MQTT_NOT_SUBSCRIBED`.
+- [x] [Review][Patch] MqttHealthIndicator double-reads volatile `status.lastError()` — a concurrent reconnect can clear it between the null-guard and `withDetail`, and Spring Boot 4 `Health.Builder.withDetail` asserts non-null → `IllegalArgumentException` → 500, violating AC 7 — **FIXED: single local read of `lastError`.**
+- [x] [Review][Defer] DbHealthIndicator `dataSource.getConnection()` can block up to Hikari connection-timeout (default 30s) — no overall probe bound; matches Spring Boot's own `DataSourceHealthIndicator` behavior [DbHealthIndicator.java:33] — deferred, pre-existing framework pattern (DW-46)
+- [x] [Review][Defer] RedisHealthIndicator `connection.ping()` inherits Lettuce command timeout (default 60s), unlike the 2s contract of db/influx — matches the replaced auto `redisHealthContributor` behavior [RedisHealthIndicator.java:31-32] — deferred, pre-existing framework pattern (DW-47)
+- [x] [Review][Defer] MqttHealthIndicator stays UP during a mid-session broker outage (Spring Integration 7.x no disconnect event) — documented `TODO (DW-14)` in `MqttConnectionStatus`; pre-existing, not introduced by this story [MqttConnectionStatus.java:37-44] — deferred, pre-existing (DW-48)

@@ -3,6 +3,8 @@ package com.syncro.health;
 import com.syncro.config.InfluxProperties;
 import java.time.Clock;
 import java.time.Duration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -13,7 +15,9 @@ import org.springframework.web.client.RestClient;
  * Actuator health indicator for InfluxDB v3 connectivity ({@code components.influxdb}).
  *
  * <p>Performs a bounded HTTP {@code GET <url>/ping} with a 2-second connect/read timeout.
- * Any failure (unreachable, timeout, non-2xx) is mapped to DOWN without throwing.
+ * Any failure (unreachable, timeout, non-2xx) is mapped to DOWN without throwing. Exception
+ * details are sanitised to a stable reason code for the public endpoint; the full exception
+ * is logged at WARN level.
  *
  * <p>InfluxDB v3 Java client (influxdb3-java:1.10.0) does not expose a {@code ping()} method
  * on the {@code InfluxDBClient} interface, so this indicator uses the HTTP fallback via
@@ -22,6 +26,7 @@ import org.springframework.web.client.RestClient;
 @Component("influxdb")
 public class InfluxDbHealthIndicator implements HealthIndicator {
 
+  private static final Logger log = LoggerFactory.getLogger(InfluxDbHealthIndicator.class);
   private static final Duration PING_TIMEOUT = Duration.ofSeconds(2);
 
   private final RestClient.Builder restClientBuilder;
@@ -43,8 +48,9 @@ public class InfluxDbHealthIndicator implements HealthIndicator {
       restClientBuilder.build().get().uri("/ping").retrieve().toBodilessEntity();
       return DependencyHealthSupport.enrich(Health.up().build(), clock);
     } catch (Exception exception) {
+      log.warn("InfluxDB health check failed", exception);
       return DependencyHealthSupport.enrich(
-          Health.down(exception).build(), clock, exception.getMessage(), null);
+          Health.down().build(), clock, DependencyHealthSupport.reasonCode(exception), null);
     }
   }
 
