@@ -178,6 +178,27 @@ class PilotSeedTest {
   }
 
   @Test
+  @DisplayName("[7.1] V32/V33 add optimistic-locking version columns defaulting to 0")
+  void optimisticLockingVersionColumnsExistWithZeroDefault() {
+    Map<String, Object> installationColumn = jdbc.queryForMap(
+        "SELECT is_nullable, column_default FROM information_schema.columns "
+            + "WHERE table_schema = 'public' AND table_name = 'machine_sparepart_installations' AND column_name = 'version'");
+    assertThat(installationColumn.get("is_nullable")).isEqualTo("NO");
+    assertThat(installationColumn.get("column_default")).isEqualTo("0");
+
+    Map<String, Object> alertColumn = jdbc.queryForMap(
+        "SELECT is_nullable, column_default FROM information_schema.columns "
+            + "WHERE table_schema = 'public' AND table_name = 'sparepart_alerts' AND column_name = 'version'");
+    assertThat(alertColumn.get("is_nullable")).isEqualTo("NO");
+    assertThat(alertColumn.get("column_default")).isEqualTo("0");
+
+    // Rows persisted through the migration/schema carry version=0 (DEFAULT backfill).
+    assertThat(jdbc.queryForList("SELECT version FROM machine_sparepart_installations", Long.class))
+        .as("seeded installation rows must default to version 0")
+        .allMatch(version -> version == 0L);
+  }
+
+  @Test
   @DisplayName("[7.1] Seed creates zero rows in runtime-owned tables and keeps the V22 template")
   void seedCreatesNoRuntimeOwnedRows() {
     for (String table : List.of(

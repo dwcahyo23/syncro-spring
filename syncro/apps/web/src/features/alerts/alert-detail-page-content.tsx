@@ -27,6 +27,17 @@ interface AlertDetailPageContentProps {
   alertId: string;
 }
 
+function isConcurrentModification(err: unknown): boolean {
+  return (
+    err instanceof SyncroApiError &&
+    err.status === 409 &&
+    typeof err.payload === "object" &&
+    err.payload !== null &&
+    "code" in err.payload &&
+    (err.payload as { code?: unknown }).code === "ALERT_CONCURRENT_MODIFICATION"
+  );
+}
+
 export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps) {
   const authUser = useAuthUser();
   const { data, isLoading, isError, error, refetch } = useGetAlert(alertId, {
@@ -44,7 +55,10 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
         toast.success("Alert acknowledged.");
       },
       onError: (err: unknown) => {
-        if (err instanceof SyncroApiError && err.status === 409) {
+        if (isConcurrentModification(err)) {
+          toast.error("Alert was modified concurrently. Reload and retry.");
+          void refetch();
+        } else if (err instanceof SyncroApiError && err.status === 409) {
           toast.error("Cannot acknowledge: invalid state transition.");
         } else {
           toast.error("Failed to acknowledge alert.");
@@ -60,7 +74,10 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
         toast.success("Alert resolved.");
       },
       onError: (err: unknown) => {
-        if (err instanceof SyncroApiError && err.status === 409) {
+        if (isConcurrentModification(err)) {
+          toast.error("Alert was modified concurrently. Reload and retry.");
+          void refetch();
+        } else if (err instanceof SyncroApiError && err.status === 409) {
           toast.error("Cannot resolve: invalid state transition.");
         } else {
           toast.error("Failed to resolve alert.");
@@ -78,6 +95,9 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
       onError: (err: unknown) => {
         if (err instanceof SyncroApiError && err.status === 403) {
           toast.error("Only SUPER_ADMIN can use resolve override.");
+        } else if (isConcurrentModification(err)) {
+          toast.error("Alert was modified concurrently. Reload and retry.");
+          void refetch();
         } else if (err instanceof SyncroApiError && err.status === 409) {
           toast.error("Cannot override: alert is not in OPEN state.");
         } else {

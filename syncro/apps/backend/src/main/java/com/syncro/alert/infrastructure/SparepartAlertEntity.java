@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -60,6 +61,10 @@ public class SparepartAlertEntity {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
+  @Version
+  @Column(name = "version", nullable = false)
+  private long version;
+
   protected SparepartAlertEntity() {
   }
 
@@ -94,6 +99,7 @@ public class SparepartAlertEntity {
   public String getStatusReason() { return statusReason; }
   public Instant getCreatedAt() { return createdAt; }
   public Instant getUpdatedAt() { return updatedAt; }
+  public long getVersion() { return version; }
 
   /**
    * Transition OPEN → ACKNOWLEDGED.

@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -115,6 +116,8 @@ public class MachineSparepartInstallationService {
           entityLabel, installation.getMachine().getPlant().getId(), previous, null));
     } catch (DataIntegrityViolationException exception) {
       throw new InstallationDataIntegrityException();
+    } catch (ObjectOptimisticLockingFailureException exception) {
+      throw new InstallationConcurrentModificationException();
     }
   }
 
@@ -166,6 +169,8 @@ public class MachineSparepartInstallationService {
       return installations.saveAndFlush(installation);
     } catch (DataIntegrityViolationException exception) {
       throw new InstallationDataIntegrityException();
+    } catch (ObjectOptimisticLockingFailureException exception) {
+      throw new InstallationConcurrentModificationException();
     }
   }
 
@@ -289,6 +294,7 @@ public class MachineSparepartInstallationService {
   }
 
   public static class InstallationDataIntegrityException extends RuntimeException { }
+  public static class InstallationConcurrentModificationException extends RuntimeException { }
   public static class InstallationMutationForbiddenException extends RuntimeException { }
   public static class InstallationNotFoundException extends RuntimeException { }
   public static class InstallationPlantNotFoundException extends RuntimeException { }

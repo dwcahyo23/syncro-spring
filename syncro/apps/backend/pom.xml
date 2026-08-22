@@ -172,6 +172,8 @@
           <argLine>
             -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar
             -Xshare:off
+            --add-opens=java.base/java.nio=ALL-UNNAMED
+            --sun-misc-unsafe-memory-access=allow
           </argLine>
         </configuration>
       </plugin>

@@ -12,6 +12,7 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -41,6 +42,11 @@ public class SparepartAlertExceptionHandler {
   @ExceptionHandler(AlertForbiddenException.class)
   ResponseEntity<ErrorResponse> alertForbidden() {
     return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "You do not have permission to perform this action.");
+  }
+
+  @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+  ResponseEntity<ErrorResponse> concurrentModification() {
+    return error(HttpStatus.CONFLICT, "ALERT_CONCURRENT_MODIFICATION", "Alert was modified concurrently. Reload and retry.");
   }
 
   @ExceptionHandler(PlantAccessDeniedException.class)

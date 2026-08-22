@@ -28,7 +28,7 @@ syncro:
     host: ${SYNCRO_MQTT_HOST:localhost}
     port: ${SYNCRO_MQTT_PORT:1883}
     username: ${SYNCRO_MQTT_USERNAME:syncro_backend}
-    password: ${SYNCRO_MQTT_PASSWORD:syncro_mqtt_dev}
+    password: ${SYNCRO_MQTT_PASSWORD:Syncro@Mqtt#2026!Dev}
     client-id: ${SYNCRO_MQTT_CLIENT_ID:syncro-backend-1}
     topic-filter: ${SYNCRO_MQTT_TOPIC_FILTER:factory/+/+/telemetry}
   influxdb:

@@ -37,6 +37,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 @ExtendWith(MockitoExtension.class)
 class SparepartAlertCommandServiceTest {
@@ -254,6 +255,24 @@ class SparepartAlertCommandServiceTest {
   }
 
   @Test
+  void acknowledge_optimisticLockConflict_propagatesUnwrapped() {
+    var alertId = UUID.randomUUID();
+    var p = plant(UUID.randomUUID());
+    var g = machineGroup(UUID.randomUUID(), p);
+    var m = machine(UUID.randomUUID(), p, g);
+    var sp = sparepart(UUID.randomUUID());
+    var inst = installation(UUID.randomUUID(), m, sp);
+    var a = alert(alertId, inst, SparepartAlertStatus.OPEN);
+
+    when(alertRepository.findByIdWithDetails(alertId)).thenReturn(Optional.of(a));
+    when(alertRepository.save(any())).thenThrow(new ObjectOptimisticLockingFailureException(
+        SparepartAlertEntity.class, alertId));
+
+    assertThatThrownBy(() -> service().acknowledge(superAdmin(), alertId, "reason"))
+        .isInstanceOf(ObjectOptimisticLockingFailureException.class);
+  }
+
+  @Test
   void acknowledge_nullReason_allowed() {
     var alertId = UUID.randomUUID();
     var p = plant(UUID.randomUUID());
@@ -291,7 +310,7 @@ class SparepartAlertCommandServiceTest {
 
     verify(notificationJobRepository).cancelActiveForAlert(
         alertId,
-        List.of(NotificationJobStatus.PENDING, NotificationJobStatus.SENT),
+        List.of(NotificationJobStatus.PENDING, NotificationJobStatus.SENT, NotificationJobStatus.RATE_LIMITED),
         NotificationJobStatus.CANCELLED,
         Instant.now(clock));
   }

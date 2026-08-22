@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -46,6 +47,10 @@ public class MachineSparepartInstallationEntity {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
+  @Version
+  @Column(name = "version", nullable = false)
+  private long version;
+
   protected MachineSparepartInstallationEntity() {
   }
 
@@ -74,6 +79,7 @@ public class MachineSparepartInstallationEntity {
   public Instant getInstalledAt() { return installedAt; }
   public Instant getCreatedAt() { return createdAt; }
   public Instant getUpdatedAt() { return updatedAt; }
+  public long getVersion() { return version; }
 
   public void update(String functionName, long expectedProductionCount, long baselineCounter, int thresholdPercentage, Instant updatedAt) {
     this.functionName = functionName;

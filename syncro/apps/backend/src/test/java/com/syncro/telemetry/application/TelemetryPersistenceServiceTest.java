@@ -278,7 +278,8 @@ class TelemetryPersistenceServiceTest {
     verify(influxWriter).write(pointCaptor.capture(), anyString(), anyString());
     assertThat(pointCaptor.getValue().toLineProtocol())
         .contains("vibration=2.4")
-        .contains("rpm=1200i")
+        .contains("rpm=1200.0")
+        .doesNotContain("rpm=1200i")
         .contains("heaterOn=true")
         .contains("qualityGrade=\"A\"");
 

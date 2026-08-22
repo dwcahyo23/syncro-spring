@@ -95,8 +95,35 @@ class InfluxTelemetryWriterTest {
 
     assertThat(lp)
         .contains("vibration=2.4")
-        .contains("rpm=1200i")
+        .doesNotContain("rpm=1200i")
+        .contains("rpm=1200.0")
         .contains("heaterOn=true")
         .contains("qualityGrade=\"A\"");
+  }
+
+  @Test
+  void integralAndFloatingSamplesForSameOptionalFieldBothSerializeAsDouble() throws Exception {
+    var parsedInt = TelemetryPayload.parse(
+        "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-opt-int\",\"timestamp\":\"2026-08-08T10:00:05Z\","
+            + "\"running\":true,\"runtimeHours\":12.5,\"counting\":100,\"vibration\":2}",
+        new ObjectMapper(), Set.of("vibration"));
+    var parsedFloat = TelemetryPayload.parse(
+        "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-opt-float\",\"timestamp\":\"2026-08-08T10:00:05Z\","
+            + "\"running\":true,\"runtimeHours\":12.5,\"counting\":100,\"vibration\":2.4}",
+        new ObjectMapper(), Set.of("vibration"));
+    var envelope = new TelemetryEnvelope("trace-opt-type", "factory/GM1/BF-08410/telemetry", "{}",
+        Instant.parse("2026-08-08T10:00:00Z"));
+
+    String intLp = InfluxTelemetryWriter.toPoint(((TelemetryPayload.ParseResult.Accepted) parsedInt).payload(), envelope, "GM1", "BF-08410", 0)
+        .toLineProtocol();
+    String floatLp = InfluxTelemetryWriter.toPoint(((TelemetryPayload.ParseResult.Accepted) parsedFloat).payload(), envelope, "GM1", "BF-08410", 0)
+        .toLineProtocol();
+
+    assertThat(intLp)
+        .contains("vibration=2.0")
+        .doesNotContain("vibration=2.0i");
+    assertThat(floatLp)
+        .contains("vibration=2.4")
+        .doesNotContain("vibration=2.4i");
   }
 }

@@ -21,10 +21,12 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cache.CacheManager;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -34,6 +36,7 @@ import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+import org.testcontainers.utility.MountableFile;
 
 @SpringBootTest(properties = {
     "server.port=0",
@@ -74,6 +77,19 @@ class TelemetryPersistenceIntegrationTest {
       "apiv3_testtoken00000000000000000000000000000000000000000000000000000000000000";
   private static final String TEST_DATABASE = "syncro_test";
 
+  private static final java.nio.file.Path ADMIN_TOKEN_FILE = writeAdminTokenFile();
+
+  private static java.nio.file.Path writeAdminTokenFile() {
+    try {
+      var file = java.nio.file.Files.createTempFile("influxdb3-admin-token", ".json");
+      java.nio.file.Files.writeString(file,
+          "{\"token\":\"" + TEST_TOKEN + "\",\"name\":\"_admin\"}");
+      return file;
+    } catch (java.io.IOException e) {
+      throw new IllegalStateException("could not write influxdb admin token file", e);
+    }
+  }
+
   private static String payload(Instant timestamp) {
     return payload(timestamp, 100);
   }
@@ -94,10 +110,12 @@ class TelemetryPersistenceIntegrationTest {
 
   @Container
   static final GenericContainer<?> influx = new GenericContainer<>("influxdb:3-core")
+      .withCopyToContainer(MountableFile.forHostPath(ADMIN_TOKEN_FILE), "/etc/influxdb3/admin-token.json")
       .withCommand("serve",
           "--node-id=test-node-1",
           "--object-store=memory",
-          "--admin-token=" + TEST_TOKEN)
+          "--admin-token-file=/etc/influxdb3/admin-token.json",
+          "--disable-authz=health,ping")
       .withExposedPorts(8181)
       .waitingFor(Wait.forHttp("/health").forPort(8181).withStartupTimeout(Duration.ofSeconds(120)));
 
@@ -134,6 +152,17 @@ class TelemetryPersistenceIntegrationTest {
 
   @Autowired
   private InfluxDBClient influxClient;
+
+  @Autowired
+  private CacheManager cacheManager;
+
+  @BeforeEach
+  void clearCaches() {
+    cacheManager.getCacheNames().forEach(name -> {
+      var cache = cacheManager.getCache(name);
+      if (cache != null) cache.clear();
+    });
+  }
 
   @Test
   @DisplayName("3.4-PERS-001 accepted telemetry is written to InfluxDB with machineCode/plantCode tags and fields")
@@ -200,8 +229,8 @@ class TelemetryPersistenceIntegrationTest {
     persistenceService.persist(accepted, envelope("trace-pers-003-duplicate", receivedAt.plusSeconds(5), msgPayload));
 
     String sql = """
-        SELECT traceId FROM telemetry
-        WHERE machineCode = 'BF-08410' AND plantCode = 'GM1'
+        SELECT "traceId" FROM telemetry
+        WHERE "machineCode" = 'BF-08410' AND "plantCode" = 'GM1'
           AND time >= '%s' AND time <= '%s'
         """.formatted(receivedAt.minusSeconds(60), receivedAt.plusSeconds(120));
     var points = queryPoints(sql);
@@ -308,6 +337,28 @@ class TelemetryPersistenceIntegrationTest {
     });
   }
 
+  @Test
+  @DisplayName("3.6-OPT-001 int then float sample for the same configured field both persist as numeric")
+  void intThenFloatSampleForSameOptionalFieldBothPersist() {
+    var machine = seedPlantAndMachine(List.of("vibration"));
+    Instant intReceivedAt = uniqueReceivedAt();
+    Instant floatReceivedAt = uniqueReceivedAt();
+    persistVibration(machine, "trace-opt-001-int", intReceivedAt, "2");
+    persistVibration(machine, "trace-opt-001-float", floatReceivedAt, "2.4");
+
+    var intPoints = telemetryPoints(intReceivedAt);
+    var floatPoints = telemetryPoints(floatReceivedAt);
+
+    assertThat(intPoints).anyMatch(p -> {
+      Object v = p.getField("vibration");
+      return v instanceof Number n && Double.compare(n.doubleValue(), 2.0) == 0;
+    });
+    assertThat(floatPoints).anyMatch(p -> {
+      Object v = p.getField("vibration");
+      return v instanceof Number n && Double.compare(n.doubleValue(), 2.4) == 0;
+    });
+  }
+
   // --- helpers ---
 
   private void persist(MachineEntity machine, String traceId, Instant receivedAt) {
@@ -316,6 +367,14 @@ class TelemetryPersistenceIntegrationTest {
 
   private void persistCounting(MachineEntity machine, String traceId, Instant receivedAt, long counting) {
     String msgPayload = payload(receivedAt, counting);
+    var accepted = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, msgPayload);
+    persistenceService.persist(accepted, envelope(traceId, receivedAt, msgPayload));
+  }
+
+  private void persistVibration(MachineEntity machine, String traceId, Instant receivedAt, String vibration) {
+    String msgPayload = "{\"schemaVersion\":\"1.0\",\"messageId\":\"m-opt-"
+        + MESSAGE_ID_OFFSET.incrementAndGet() + "\",\"timestamp\":\"" + receivedAt
+        + "\",\"running\":true,\"runtimeHours\":12.5,\"counting\":100,\"vibration\":" + vibration + "}";
     var accepted = (TelemetryValidationService.Result.Accepted) validationService.validate(TOPIC, msgPayload);
     persistenceService.persist(accepted, envelope(traceId, receivedAt, msgPayload));
   }
@@ -331,7 +390,7 @@ class TelemetryPersistenceIntegrationTest {
   private List<PointValues> telemetryPoints(Instant receivedAt) {
     String sql = """
         SELECT * FROM telemetry
-        WHERE machineCode = 'BF-08410' AND plantCode = 'GM1'
+        WHERE "machineCode" = 'BF-08410' AND "plantCode" = 'GM1'
           AND time >= '%s' AND time <= '%s'
         """.formatted(receivedAt.minusSeconds(60), receivedAt.plusSeconds(60));
     return queryPoints(sql);

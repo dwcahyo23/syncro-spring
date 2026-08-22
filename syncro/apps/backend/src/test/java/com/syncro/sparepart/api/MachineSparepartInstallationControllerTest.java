@@ -19,6 +19,7 @@ import com.syncro.auth.infrastructure.JwtAuthenticationFilter;
 import com.syncro.config.SecurityConfig;
 import com.syncro.config.TimeConfig;
 import com.syncro.sparepart.application.MachineSparepartInstallationService;
+import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationConcurrentModificationException;
 import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationDataIntegrityException;
 import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationMutationForbiddenException;
 import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationNotFoundException;
@@ -310,6 +311,21 @@ class MachineSparepartInstallationControllerTest {
     mockMvc.perform(delete("/api/v1/machine-sparepart-installations/{installationId}", installationId).with(auth(user)))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value("INSTALLATION_DATA_INTEGRITY_VIOLATION"));
+  }
+
+  @Test
+  @DisplayName("DW-9-API-001 concurrent update returns 409 with concurrent-modification code")
+  void concurrentUpdateReturnsConflictError() throws Exception {
+    var user = user(ApplicationRole.MANAGE);
+    var installationId = UUID.randomUUID();
+    doThrow(new InstallationConcurrentModificationException()).when(installations).update(eq(user), eq(installationId), any());
+
+    mockMvc.perform(put("/api/v1/machine-sparepart-installations/{installationId}", installationId)
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(updatePayload()))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("INSTALLATION_CONCURRENT_MODIFICATION"));
   }
 
   @Test

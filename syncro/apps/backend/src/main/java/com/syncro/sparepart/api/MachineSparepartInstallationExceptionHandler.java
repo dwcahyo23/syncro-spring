@@ -1,6 +1,7 @@
 package com.syncro.sparepart.api;
 
 import com.syncro.auth.application.PlantScopeService.PlantAccessDeniedException;
+import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationConcurrentModificationException;
 import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationDataIntegrityException;
 import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationMutationForbiddenException;
 import com.syncro.sparepart.application.MachineSparepartInstallationService.InstallationNotFoundException;
@@ -89,6 +90,11 @@ public class MachineSparepartInstallationExceptionHandler {
   @ExceptionHandler(InstallationDataIntegrityException.class)
   ResponseEntity<ErrorResponse> dataIntegrity() {
     return error(HttpStatus.CONFLICT, "INSTALLATION_DATA_INTEGRITY_VIOLATION", "Machine sparepart installation data conflicts with existing records.", Map.of());
+  }
+
+  @ExceptionHandler(InstallationConcurrentModificationException.class)
+  ResponseEntity<ErrorResponse> concurrentModification() {
+    return error(HttpStatus.CONFLICT, "INSTALLATION_CONCURRENT_MODIFICATION", "Machine sparepart installation was modified concurrently. Reload and retry.", Map.of());
   }
 
   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message, Map<String, String> fieldErrors) {

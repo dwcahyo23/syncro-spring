@@ -47,9 +47,7 @@ public class InfluxTelemetryWriter {
   }
 
   private static void addOptionalField(Point point, String name, JsonNode node) {
-    if (node.isIntegralNumber()) {
-      point.setField(name, node.longValue());
-    } else if (node.isFloatingPointNumber()) {
+    if (node.isNumber()) {
       point.setField(name, node.doubleValue());
     } else if (node.isBoolean()) {
       point.setField(name, node.booleanValue());

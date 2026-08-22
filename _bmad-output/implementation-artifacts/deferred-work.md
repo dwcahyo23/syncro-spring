@@ -760,6 +760,38 @@ severity: medium
 reason: WAHA disclaimer (pilot-validation.md §6/§9) contradicts the transcribed 7-6 evidence ("message WAS delivered to WhatsApp before cancellation" for a placeholder number). The disclaimer is spec-mandated (DW-88 / don't-claim-delivery constraint), so the doc correctly implements the spec; the tension needs spec-level resolution, not a doc fix.
 status: open
 
+### DW-114: Existing integer-typed InfluxDB optional fields will conflict on first Double write after DW-28 deploy
+
+origin: review of spec-deferred-work-bundle, 2026-08-22
+location: InfluxTelemetryWriter.java, existing InfluxDB bucket
+severity: medium
+reason: Telemetry optional fields previously persisted as integer (Long) will now receive Double writes. InfluxDB rejects field-type changes within a measurement, so a bucket with `rpm=1200i` rejects the first `rpm=1200.0` point. The DW-28 decision explicitly changed the storage contract, but did not address existing data. Dev/CI buckets can be reset; production/preview needs a bucket rewrite or migration plan.
+status: open
+
+### DW-115: DW-28 Double coercion loses precision for integral optional fields above 2^53
+
+origin: review of spec-deferred-work-bundle, 2026-08-22
+location: InfluxTelemetryWriter.java:50-51
+severity: low
+reason: `node.doubleValue()` rounds integral values above 2^53. Telemetry `counting` is 16-bit (max 65535) and optional fields are typically small sensor measurements, so this is a data-fidelity protection for future large-counter optional fields. The DW-28 decision mandated Double coercion; this is a residual tradeoff note.
+status: open
+
+### DW-116: EMQX auth test uses heredoc entrypoint, bypassing compose ACL seeding and leaking file contents
+
+origin: review of spec-deferred-work-bundle, 2026-08-22
+location: MqttAuthEnforcementIntegrationTest.java
+severity: low
+reason: The Testcontainer overrides the EMQX entrypoint with a shell heredoc that writes emqx.conf + auth-bootstrap.csv into the container, skipping the repo's docker-entrypoint.sh (ACL seeding via management API). The conf and CSV contents appear in the container command line. Future hardening: mount via volume when Docker Desktop path handling permits. Also repo-relative paths (`../../infra/...`) are fragile across IDE/CI launchers.
+status: open
+
+### DW-117: Alert 409 handler catches ObjectOptimisticLockingFailureException from any persistence op in the alert controller
+
+origin: review of spec-deferred-work-bundle, 2026-08-22
+location: SparepartAlertExceptionHandler.java:44-48
+severity: low
+reason: The alert handler maps any OOLFE under the alert controller to "Alert was modified concurrently." In practice, only the alert entity has @Version and is saved via entity manager in the acknowledge/resolve/override path; notification job bulk updates bypass @Version, and audit writes are append-only. The message is accurate for the dominant case. Theoretically scoped to the alert entity type only.
+status: open
+
 ### DW-113: .gitignore negation re-includes the whole syncro/docs/screenshots/ subtree, not just pilot/
 
 origin: migrated from legacy ledger ("code review of spec-7-7-document-pilot-validation-proof (2026-08-22)"), 2026-08-22
