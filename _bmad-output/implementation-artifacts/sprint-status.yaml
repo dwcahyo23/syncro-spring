@@ -124,7 +124,7 @@ development_status:
   7-1-create-canonical-pilot-seed-data: done
   7-2-provide-pilot-mqtt-payload-fixtures: done
   7-3-create-pilot-scripts-for-seed-publish-and-verify: done
-  7-4-validate-telemetry-before-threshold-does-not-create-alert: review
+  7-4-validate-telemetry-before-threshold-does-not-create-alert: done
   7-5-validate-threshold-alert-and-waha-notification-job: backlog
   7-6-validate-acknowledgement-stops-escalation: backlog
   7-7-document-pilot-validation-proof: backlog

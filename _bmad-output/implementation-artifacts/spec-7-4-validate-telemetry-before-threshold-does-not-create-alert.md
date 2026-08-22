@@ -2,7 +2,7 @@
 title: 'Validate Telemetry Before Threshold Does Not Create Alert'
 type: 'validation'
 created: '2026-08-22'
-status: 'review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 baseline_commit: 2906765
@@ -120,6 +120,7 @@ Dismissed as noise (noted, no action): accepted-log line fires before the persis
 - 2026-08-22: Spec created (draft → ready-for-dev). Ultimate context engine analysis completed — comprehensive developer guide created.
 - 2026-08-22: Implemented by dev-story workflow. Full live validation chain executed on the running local stack and recorded in Dev Agent Record (AC → evidence mapping): before-threshold publish accepted (traceId ab107ae7 + 2a88ce53), verify-pilot `-ExpectCounting 890` RESULT: PASS exit 0 (both runs), zero sparepart_alerts before and after, Redis traceId equality, UI proof within 5-min window (telemetry dashboard + Machine Hub, ONLINE badge, counting 890). Status → review.
 - 2026-08-22: 3-layer adversarial code review (`/bmad-code-review`). Auditor verdict: all 6 ACs PASS, evidence internally consistent. 4 patches applied (redacted committed real admin password, corrected preflight narrative ordering, corrected File List transition annotation, corrected "deleted after extraction" wording), 2 deferrals added (DW-75 evidence reproducibility, DW-76 spec credential staleness), remaining findings dismissed as noise. Review Findings section recorded above.
+- 2026-08-22: Status review → done (story complete; deferred work DW-75/DW-76 left for later). sprint-status.yaml updated.
 
 ## Design Notes
 
