@@ -102,10 +102,24 @@ warnings: []
 - Technical proof is inspectable through logs, pgAdmin, or documented query: the two SQL queries are recorded verbatim with their results (counter 890; zero alerts), executable in pgAdmin (labeled local/dev evidence tool, not a product feature), and the captured log line is quoted in the Dev Agent Record. [AC 7.4-5]
 - UI proof is captured from Machine Hub or the telemetry dashboard: route, login user, observed machine identity (BF-08410 / JBF19), observed telemetry/freshness state, and observation time relative to publish are recorded as text evidence. [AC 7.4-6]
 
+### Review Findings
+
+3-layer adversarial review (Blind Hunter, Edge Case Hunter, Acceptance Auditor) on 2026-08-22. Auditor verdict: all 6 ACs PASS; evidence internally consistent; "Never" constraints respected (only story file + sprint-status.yaml changed; no source code touched). Findings triaged:
+
+- [x] [Review][Patch] Real admin password (from gitignored `syncro/.env`) was committed verbatim in the Dev Agent Record (Completion Notes "Login" line and "Default vs actual admin password" note) — violates the project rule "never commit secrets or keys to the repository". **Fixed in this review pass:** all literal occurrences redacted to `<redacted: live password from gitignored syncro/.env>` (verified zero remaining matches). [spec-7-4...md:167,174]
+- [x] [Review][Patch] Preflight narrative inaccurately claims the web app was started and login verified during preflight (before publish). The launcher timestamps show the web dev server was only started at 10:28 (after publish 1 at 10:23:54) specifically for the publish-2 UI window. **Fixed in this review pass:** Completion Notes preflight section now states the web app was NOT part of preflight and was started after Publish 1 for the fresh Publish-2 ONLINE window. [spec-7-4...md Completion Notes]
+- [x] [Review][Patch] File List note says `sprint-status.yaml` transition was `waiting-operator→in-progress→review`, but the committed diff shows `ready-for-dev → review` directly (intermediate states never committed). **Fixed in this review pass:** File List annotation corrected to `ready-for-dev → review` with a note that the intermediate in-progress state was never committed. [spec-7-4...md File List]
+- [x] [Review][Patch] Debug Log References say `backend-pilot.log` was "deleted after extraction" but the temp files still exist in `C:\Users\Dell\AppData\Local\Temp\opencode\syncro-7-4\` (backend-pilot.log 25,702 B, LastWriteTime 10:42:17 — after the evidence window). The Cleanup task's "delete ... (or move outside repo)" alternative was satisfied (files are outside the repo), but the "deleted" wording is inaccurate. **Fixed in this review pass:** reworded to "retained outside repo per Cleanup task's alternative". [spec-7-4...md Debug Log References]
+- [x] [Review][Defer] Validation evidence was produced from a backend binary that is not reproducible from the committed repo: `JwtTokenService.java` is untracked and gitignored (`syncro/.gitignore:14 *token*`), so a fresh checkout or bmad-loop worktree cannot compile the exact backend whose behavior this story validates. The residual-risk note documents the defect honestly but does not surface the evidence-integrity caveat explicitly. Deferred to a repo-maintainer fix (gitignore scoping), out of scope for 7-4. [spec-7-4...md Residual risks]
+- [x] [Review][Defer] Spec-documented admin credential (`admin@syncro.dev / syncro-admin-dev`) is stale relative to the live `syncro/.env` (real password redacted — see gitignored `.env`). The dev recorded the deviation transparently and the login used is within the spec's allowed set, but the spec text should be reconciled with reality (deferred to 7-7 documentation story). [spec-7-4...md Boundaries/UI access]
+
+Dismissed as noise (noted, no action): accepted-log line fires before the persistence dedupe gate so the log line alone does not prove persistence (mitigated — the record cites Redis hash + `updated_at` + verify-pilot DB reads, and no `mqtt_telemetry_duplicate` line appeared); screenshot mtime (10:39:28) vs recorded observation (03:39:38Z/10:39:38) ~10s discrepancy (both inside the 5-min window); UI timezone offset not stated next to "10:36 AM" (log line carries +07:00 and the UTC↔local math is consistent); pre-publish counter baseline not recorded (leftover 7-3 counting=890 is the spec-documented valid baseline, and fresh `updated_at` proves a fresh write); post-publish zero-alert SQL execution time unrecorded (threshold evaluator is synchronous on persist; 89.00% < 90% mathematically cannot alert); stderr logs (Win32 console-title pipe error + Next.js middleware deprecation notice) not reconciled in the record (both benign, verified); `countingDelta=0` asserted without raw HGETALL output (verify-pilot prints it verbatim at runtime); commit `Co-Authored-By` trailer names Claude Opus while the record names the actual model (template convention).
+
 ## Spec Change Log
 
 - 2026-08-22: Spec created (draft → ready-for-dev). Ultimate context engine analysis completed — comprehensive developer guide created.
 - 2026-08-22: Implemented by dev-story workflow. Full live validation chain executed on the running local stack and recorded in Dev Agent Record (AC → evidence mapping): before-threshold publish accepted (traceId ab107ae7 + 2a88ce53), verify-pilot `-ExpectCounting 890` RESULT: PASS exit 0 (both runs), zero sparepart_alerts before and after, Redis traceId equality, UI proof within 5-min window (telemetry dashboard + Machine Hub, ONLINE badge, counting 890). Status → review.
+- 2026-08-22: 3-layer adversarial code review (`/bmad-code-review`). Auditor verdict: all 6 ACs PASS, evidence internally consistent. 4 patches applied (redacted committed real admin password, corrected preflight narrative ordering, corrected File List transition annotation, corrected "deleted after extraction" wording), 2 deferrals added (DW-75 evidence reproducibility, DW-76 spec credential staleness), remaining findings dismissed as noise. Review Findings section recorded above.
 
 ## Design Notes
 
@@ -134,7 +148,7 @@ b-ai/deepseek-v4-flash via opencode, 2026-08-22.
 
 ### Debug Log References
 
-- Backend console captured to: `C:\Users\Dell\AppData\Local\Temp\opencode\syncro-7-4\backend-pilot.log` (temp outside repo, deleted after extraction)
+- Backend console captured to: `C:\Users\Dell\AppData\Local\Temp\opencode\syncro-7-4\backend-pilot.log` (temp outside repo, retained outside repo per Cleanup task's "delete (or move outside repo)" alternative)
 - Web dev server log: `C:\Users\Dell\AppData\Local\Temp\opencode\syncro-7-4\web-pilot.log`
 - UI screenshot: `C:\Users\Dell\AppData\Local\Temp\opencode\syncro-7-4\telemetry-dashboard-proof.png`
 - Published traceId chain (publish 1 → log line 1 → Redis hash 1): `ab107ae7-8187-4a1f-b3df-374edd5800fb`
@@ -147,6 +161,7 @@ b-ai/deepseek-v4-flash via opencode, 2026-08-22.
 - Backend: temp launcher loaded `syncro/.env` (real values, not `.env.example`), `mvnw spring-boot:run`, console captured to temp log file. Health 200 UP. MQTT subscription verified: `mqtt_subscription_request topic=factory/+/+/telemetry qos=1`
 - `seed-pilot.ps1`: Flyway 30/30, 15× INSERT 0 0, canonical summary all matching (tripwire `Electric · PLC · Wecon · LX5` correct), exit 0
 - Zero-alert precondition: SQL `SELECT count(*) FROM sparepart_alerts ... WHERE p.code='GM1' AND lower(m.code)='bf-08410'` → `0` (before and after publish)
+- Note on ordering: the web app was NOT part of preflight — it was started after Publish 1 (web dev server started ~10:28, after publish 1 at 10:23:54) specifically to serve the fresh Publish-2 ONLINE badge window for UI proof. Backend preflight completed before any publish.
 
 **Publish 1 (03:23:54Z):**
 - `publish-jbf19-before-threshold.ps1`: PASS login, PASS publish accepted, messageId `pilot-jbf19-before-threshold-890` verbatim, counting 890, timestamp refreshed
@@ -164,14 +179,14 @@ b-ai/deepseek-v4-flash via opencode, 2026-08-22.
 
 **UI proof (within 5-minute window, 03:36:28Z → 03:39:38Z):**
 - Web app: `npm run dev -- -p 3001` (port 3000 occupied by WAHA container)
-- Login: `admin@syncro.dev` / `Syncro@Admin#2026!` (real password from `syncro/.env`, not default `syncro-admin-dev` — important real-credential finding)
+- Login: `admin@syncro.dev` / `<redacted: live password from gitignored syncro/.env, not the default syncro-admin-dev — important real-credential finding>`
 - Telemetry dashboard (`/telemetry`): BF-08410 / JBF19 card — Production count 890, Running state Running, Runtime 12.5 h, badge **Online**, Last received "Aug 22, 2026, 10:36 AM"
 - Machine Hub (`/dashboard/master-data/machines/BF-08410` → Telemetry tab): badge **Online**, Production Count 890, Running Yes, Runtime Hours 12.5, Last received 22/08/2026 10:36:28
 - Operations Overview: "Open Alerts 0", "No open alerts — All spareparts within threshold"
 
 **Residual risks / out-of-scope findings:**
 - **Repo defect: `JwtTokenService.java` untracked.** File at `syncro/apps/backend/src/main/java/com/syncro/auth/application/JwtTokenService.java` is ignored by pattern `*token*` at `syncro/.gitignore:14`. It exists locally in the main working tree (untracked, present) but is absent from any fresh checkout or worktree. This blocks backend compilation in clean worktrees (bmad-loop, fresh clones). The bmad-loop dev-1 session flagged this as operator action #1. Fix requires narrowing the gitignore pattern or adding an explicit `!` negation. **Out of scope for story 7-4** (per story's Never list: "Never modify ANY source file under syncro/"). Flagged as deferred-work item for the repo maintainer.
-- Default vs actual admin password: spec documents `syncro-admin-dev` but `syncro/.env` overrides to `Syncro@Admin#2026!`. This is expected behavior (`.env` overrides `.env.example` defaults), noted for future UI proof stories.
+- Default vs actual admin password: spec documents `syncro-admin-dev` but `syncro/.env` overrides to a different value (real password — redacted here per review finding; see gitignored `syncro/.env`). This is expected behavior (`.env` overrides `.env.example` defaults), noted for future UI proof stories.
 - bmad-loop orchestrator paused at 7-5 escalation; story 7-4 worktree and backend were managed by the paused orchestrator; this dev-story run operated in the main tree independently.
 
 **AC → Evidence mapping:**
@@ -188,4 +203,4 @@ b-ai/deepseek-v4-flash via opencode, 2026-08-22.
 ### File List
 
 - `_bmad-output/implementation-artifacts/spec-7-4-validate-telemetry-before-threshold-does-not-create-alert.md` (EDIT — Dev Agent Record, AC→evidence, status→review)
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` (EDIT — 7-4: waiting-operator→in-progress→review)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (EDIT — 7-4: ready-for-dev → review; intermediate in-progress state was never committed)
