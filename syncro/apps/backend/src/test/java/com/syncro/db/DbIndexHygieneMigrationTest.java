@@ -8,8 +8,12 @@ import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.sparepart.domain.SparepartTaxonomyDimension;
 import com.syncro.sparepart.infrastructure.SparepartTaxonomyEntity;
 import com.syncro.sparepart.infrastructure.SparepartTaxonomyRepository;
+import java.math.BigDecimal;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,6 +77,9 @@ class DbIndexHygieneMigrationTest {
 
   @Autowired
   private SparepartTaxonomyRepository taxonomyRepository;
+
+  private static final Timestamp TS = Timestamp.from(Instant.parse("2026-08-21T09:00:00Z"));
+  private static final AtomicInteger seedSeq = new AtomicInteger();
 
   @Test
   @DisplayName("V17 drops the six redundant indexes after the full V1-V17 migration chain")
@@ -194,6 +201,61 @@ class DbIndexHygieneMigrationTest {
         .isInstanceOf(DataIntegrityViolationException.class);
   }
 
+  @Test
+  @Transactional
+  @DisplayName("V34 adds the conditional CHECK chk_notification_jobs_sent_requires_sent_at")
+  void v34SentRequiresSentAtConstraintExists() {
+    assertThat(jdbc.queryForObject("""
+        SELECT count(*) FROM pg_constraint
+        WHERE conname = 'chk_notification_jobs_sent_requires_sent_at'
+          AND conrelid = 'notification_jobs'::regclass
+        """, Long.class)).isEqualTo(1L);
+  }
+
+  @Test
+  @Transactional
+  @DisplayName("V34 rejects a SENT job without sent_at but accepts one with sent_at")
+  void v34SentJobsRequireSentAt() {
+    UUID alertId = seedAlertForNotificationJob();
+
+    jdbc.update("""
+        INSERT INTO notification_jobs
+          (id, alert_id, escalation_level, status, sent_at, idempotency_key, trace_id,
+           attempt_count, max_attempts, version, created_at, updated_at)
+        VALUES (?,?,?,?,?,?,?, 0, 3, 0, ?, ?)
+        """, UUID.randomUUID(), alertId, "STAFF", "SENT", TS, "v34-key-sent-with",
+        "trace-v34", TS, TS);
+    assertThat(countJobsForAlert(alertId)).isEqualTo(1L);
+
+    // The rejected insert must be last: it aborts the PostgreSQL transaction, which would
+    // block any subsequent statement in the same transaction.
+    assertThatThrownBy(() -> jdbc.update("""
+        INSERT INTO notification_jobs
+          (id, alert_id, escalation_level, status, idempotency_key, trace_id,
+           attempt_count, max_attempts, version, created_at, updated_at)
+        VALUES (?,?,?,?,?,?, 0, 3, 0, ?, ?)
+        """, UUID.randomUUID(), alertId, "TECHNICIAN", "SENT", "v34-key-sent-null",
+        "trace-v34", TS, TS))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  @Test
+  @Transactional
+  @DisplayName("V34 keeps PENDING jobs without sent_at insertable (normal application path)")
+  void v34PendingJobsMayKeepNullSentAt() {
+    UUID alertId = seedAlertForNotificationJob();
+
+    jdbc.update("""
+        INSERT INTO notification_jobs
+          (id, alert_id, escalation_level, status, idempotency_key, trace_id,
+           attempt_count, max_attempts, version, created_at, updated_at)
+        VALUES (?,?,?,?,?,?, 0, 3, 0, ?, ?)
+        """, UUID.randomUUID(), alertId, "TECHNICIAN", "PENDING", "v34-key-pending",
+        "trace-v34", TS, TS);
+
+    assertThat(countJobsForAlert(alertId)).isEqualTo(1L);
+  }
+
   private Object toRegclass(String relation) {
     return jdbc.queryForObject("SELECT to_regclass(?)", Object.class, relation);
   }
@@ -206,5 +268,55 @@ class DbIndexHygieneMigrationTest {
         .stream()
         .findFirst()
         .orElse(null);
+  }
+
+  /**
+   * Seeds the full FK chain a {@code notification_jobs} row needs
+   * (plant → machine group → machine → sparepart taxonomy → sparepart →
+   * installation → alert), mirroring NotificationJobCancelIntegrationTest.
+   */
+  private UUID seedAlertForNotificationJob() {
+    int seq = seedSeq.incrementAndGet();
+    UUID alertId = UUID.randomUUID();
+    UUID plantId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID machineId = UUID.randomUUID();
+    UUID spId = UUID.randomUUID();
+    UUID catId = UUID.randomUUID();
+    UUID brandId = UUID.randomUUID();
+    UUID kindId = UUID.randomUUID();
+    UUID typeId = UUID.randomUUID();
+    UUID instId = UUID.randomUUID();
+    String tag = "V34-" + seq;
+
+    jdbc.update("INSERT INTO plants (id, code, name, created_at, updated_at) VALUES (?,?,?,?,?)",
+        plantId, tag, "Plant " + tag, TS, TS);
+    jdbc.update("INSERT INTO machine_groups (id, plant_id, name, created_at, updated_at) VALUES (?,?,?,?,?)",
+        groupId, plantId, "Assembly " + seq, TS, TS);
+    jdbc.update("INSERT INTO machines (id, plant_id, machine_group_id, code, name, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)",
+        machineId, plantId, groupId, "M-" + tag, "Machine " + tag, "ACTIVE", TS, TS);
+
+    jdbc.update("INSERT INTO sparepart_taxonomy (id, dimension, code, name, created_at, updated_at) VALUES (?,?,?,?,?,?)",
+        catId, "CATEGORY", "CAT-" + tag, "Cat " + seq, TS, TS);
+    jdbc.update("INSERT INTO sparepart_taxonomy (id, dimension, code, name, category_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?)",
+        brandId, "BRAND", "BRAND-" + tag, "Brand " + seq, catId, TS, TS);
+    jdbc.update("INSERT INTO sparepart_taxonomy (id, dimension, code, name, category_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?)",
+        kindId, "KIND", "KIND-" + tag, "Kind " + seq, catId, TS, TS);
+    jdbc.update("INSERT INTO sparepart_taxonomy (id, dimension, code, name, category_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?)",
+        typeId, "TYPE", "TYPE-" + tag, "Type " + seq, catId, TS, TS);
+
+    jdbc.update("INSERT INTO spareparts (id, code, name, machine_id, category_id, brand_id, kind_id, type_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        spId, "SP-" + tag, "Sparepart " + tag, machineId, catId, brandId, kindId, typeId, TS, TS);
+    jdbc.update("INSERT INTO machine_sparepart_installations (id, machine_id, sparepart_id, function_name, expected_production_count, baseline_counter, threshold_percentage, installed_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        instId, machineId, spId, "func-" + seq, 1000, 0, 80, TS, TS, TS);
+
+    jdbc.update("INSERT INTO sparepart_alerts (id, machine_id, machine_sparepart_installation_id, threshold_percentage, current_counter_snapshot, consumed_production_count_snapshot, consumed_percentage_snapshot, trace_id, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        alertId, machineId, instId, 80, 1000, 800, new BigDecimal("80.00"), "trace-v34", "OPEN", TS, TS);
+    return alertId;
+  }
+
+  private Long countJobsForAlert(UUID alertId) {
+    return jdbc.queryForObject(
+        "SELECT count(*) FROM notification_jobs WHERE alert_id = ?", Long.class, alertId);
   }
 }

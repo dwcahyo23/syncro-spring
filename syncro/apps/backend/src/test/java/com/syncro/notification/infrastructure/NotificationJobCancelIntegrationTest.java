@@ -183,13 +183,15 @@ class NotificationJobCancelIntegrationTest {
   // ---- helpers ----
 
   private void insertJob(UUID forAlertId, String level, String status) {
+    // V34 CHECK (status <> 'SENT' OR sent_at IS NOT NULL): SENT rows must carry sent_at.
+    Object sentAt = "SENT".equals(status) ? TS : null;
     jdbc.update("""
         INSERT INTO notification_jobs
-          (id, alert_id, escalation_level, status, idempotency_key, trace_id,
+          (id, alert_id, escalation_level, status, sent_at, idempotency_key, trace_id,
            attempt_count, max_attempts, version, created_at, updated_at)
-        VALUES (?,?,?,?,?,?, 0, 3, 0, ?, ?)
+        VALUES (?,?,?,?,?,?,?, 0, 3, 0, ?, ?)
         """,
-        UUID.randomUUID(), forAlertId, level, status,
+        UUID.randomUUID(), forAlertId, level, status, sentAt,
         forAlertId + "::" + level, "trace-5-5", TS, TS);
   }
 

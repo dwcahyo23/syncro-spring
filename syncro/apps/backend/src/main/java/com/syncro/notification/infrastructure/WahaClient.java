@@ -143,6 +143,14 @@ public class WahaClient {
     log.info("[WAHA][traceId={}] send attempt phone=*** status={}", traceId, statusCode);
 
     if (response.getStatusCode().is5xxServerError()) {
+      // GOWS reports an unregistered phone number as HTTP 500 with body "no LID found".
+      // That is a deterministic invalid-recipient error — retrying can never succeed, so
+      // mirror the 4xx path and return a failed Result instead of tripping the circuit,
+      // which would block delivery of all other notification jobs. Other 5xx bodies remain
+      // transient server errors and still record a failure.
+      if (detail != null && detail.contains("no LID found")) {
+        return new Result(false, statusCode, detail);
+      }
       // 5xx is a transient server error — throw so the circuit breaker records it as a failure
       throw new WahaHttpStatusException(statusCode, detail);
     }

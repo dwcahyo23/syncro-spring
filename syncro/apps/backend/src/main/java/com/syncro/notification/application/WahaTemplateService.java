@@ -42,16 +42,9 @@ public class WahaTemplateService {
     validateVariables(body);
 
     Instant now = Instant.now(clock);
-    WahaTemplateEntity entity = repository.findByTemplateKey(WahaTemplate.DEFAULT_KEY)
-        .orElseGet(() -> new WahaTemplateEntity(
-            UUID.randomUUID(),
-            WahaTemplate.DEFAULT_KEY,
-            body,
-            now,
-            now));
-
-    entity.updateBody(body, now);
-    WahaTemplateEntity saved = repository.save(entity);
+    repository.upsert(UUID.randomUUID(), WahaTemplate.DEFAULT_KEY, body, now);
+    WahaTemplateEntity saved = repository.findByTemplateKey(WahaTemplate.DEFAULT_KEY)
+        .orElseThrow(WahaTemplateNotFoundException::new);
     return toDomain(saved);
   }
 

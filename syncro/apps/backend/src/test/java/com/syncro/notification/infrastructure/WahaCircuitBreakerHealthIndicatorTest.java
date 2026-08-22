@@ -130,4 +130,15 @@ class WahaCircuitBreakerHealthIndicatorTest {
         .containsEntry("statusSeverity", "WARNING")
         .containsEntry("timestamp", FIXED_TIMESTAMP);
   }
+
+  @Test
+  void health_beforeMinimumNumberOfCalls_clampsFailureRateToZero() {
+    Health health = indicator.health();
+
+    assertThat(health.getStatus()).isEqualTo(Status.UP);
+    assertThat(health.getDetails())
+        .containsEntry("state", "CLOSED")
+        .containsEntry("failureRate", 0.0f);
+    assertThat(health.getDetails()).doesNotContainKey("statusReason");
+  }
 }

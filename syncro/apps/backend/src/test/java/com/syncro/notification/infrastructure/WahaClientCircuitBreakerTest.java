@@ -135,6 +135,26 @@ class WahaClientCircuitBreakerTest {
   }
 
   @Test
+  void send_whenWahaReturns500WithNoLidFound_returnsFailedResultWithoutOpeningCircuit()
+      throws IOException {
+    client = createClientWithHandler(exchange -> {
+      var body = "{\"error\":\"no LID found for phone number 6280000000000\"}".getBytes();
+      exchange.sendResponseHeaders(500, body.length);
+      try (OutputStream os = exchange.getResponseBody()) {
+        os.write(body);
+      }
+    }, RESILIENCE_PROPS);
+
+    var result = client.send("6280000000000", "msg", TRACE);
+
+    assertThat(result.success()).isFalse();
+    assertThat(result.httpStatus()).isEqualTo(500);
+    assertThat(result.detail()).contains("no LID found");
+    assertThat(client.getCircuitBreaker().getState()).isEqualTo(State.CLOSED);
+    assertThat(client.getCircuitBreaker().getMetrics().getNumberOfFailedCalls()).isZero();
+  }
+
+  @Test
   void send_whenConnectionRefused_returnsFailedResultWithoutOpeningCircuit() {
     var closedPort = 1;
     var wahaProps = new WahaProperties("http://127.0.0.1:" + closedPort, "test-api-key");
