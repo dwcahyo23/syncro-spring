@@ -3,7 +3,7 @@ title: 'Deferred-work bundle 5: MQTT ingest pipeline hardening — worker thread
 type: 'feature'
 created: '2026-08-22'
 baseline_revision: '8310bba'
-final_revision: 'PENDING'
+final_revision: '7c5721f'
 status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
