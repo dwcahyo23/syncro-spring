@@ -3,7 +3,7 @@ title: 'Document Pilot Validation Proof'
 type: 'documentation'
 baseline_commit: 4254406
 created: '2026-08-22'
-status: 'review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -156,7 +156,7 @@ None — documentation story; the pilot was NOT re-run (7-1..7-6 Dev Agent Recor
 
 - `syncro/docs/pilot-validation.md` — the consolidated pilot validation document with all 11 required sections.
 - `syncro/docs/screenshots/pilot/.gitkeep` — committed placeholder so the document's screenshot reference points at a real path.
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` — `7-7-document-pilot-validation-proof: in-progress` → `review`.
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — `7-7-document-pilot-validation-proof: backlog` → `review` (7-7 was never moved to in-progress; the committed diff is `backlog → review`).
 
 **Approved scope deviation (user-approved via question tool):** the repo-root `.gitignore` blanket rule `screenshots/` (line 238) was ignoring the required `syncro/docs/screenshots/pilot/.gitkeep` deliverable (`git check-ignore` confirmed the path was ignored). User approved adding the scoped negation `!syncro/docs/screenshots/` + `!syncro/docs/screenshots/pilot/` to the root `.gitignore` so the pilot screenshot directory is committable. The negation is scoped to the docs path only — the blanket rule still applies everywhere else. This adds `.gitignore` as a 5th file in `git status` (the story's AC 7.7-4 requires the directory to exist as a committed path, which is impossible under the blanket rule).
 
@@ -187,5 +187,23 @@ None — documentation story; the pilot was NOT re-run (7-1..7-6 Dev Agent Recor
 - `syncro/docs/pilot-validation.md` (NEW — the consolidated pilot validation document; sections §1-§11)
 - `syncro/docs/screenshots/pilot/.gitkeep` (NEW — committed placeholder for optional operator screenshots)
 - `_bmad-output/implementation-artifacts/spec-7-7-document-pilot-validation-proof.md` (EDIT — tasks checked, Dev Agent Record filled, status → review)
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` (EDIT — 7-7: in-progress → review)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (EDIT — 7-7: backlog → review)
 - `.gitignore` (EDIT — user-approved scoped negation `!syncro/docs/screenshots/` + `!syncro/docs/screenshots/pilot/` so AC 7.7-4's committed directory is not ignored by the blanket `screenshots/` rule)
+
+### Review Findings
+
+- [x] [Review][Patch] §4 seed expected output misstates fresh-run result — the doc's own scenario is a from-scratch apply, which prints `INSERT 0 1` (guarded `WHERE NOT EXISTS` inserts fire); `INSERT 0 0` only on re-runs. Clarify "first run = INSERT 0 1, idempotent re-run = INSERT 0 0". [syncro/docs/pilot-validation.md:68]
+- [x] [Review][Patch] §8 verify-pilot.ps1 commands omit `-WebUrl http://localhost:3001` — the script defaults to port 3000 (WAHA), so EVIDENCE POINTERS print the wrong app's URLs. [syncro/docs/pilot-validation.md:224]
+- [x] [Review][Patch] §6/§8 claim the TECHNICIAN job → `CANCELLED` unconditionally, but `cancelActiveForAlert` matches only PENDING/SENT/RATE_LIMITED; ROUTING_FAILED/EXHAUSTED are terminal and not cancelled (contradicts the doc's own `ROUTING_FAILED` expected outcome). Qualify the claim. [syncro/docs/pilot-validation.md:114]
+- [x] [Review][Patch] §8 SQL query 3 asserts `next_attempt_at` NULL after acknowledge but never selects that column — add `next_attempt_at` to the SELECT. [syncro/docs/pilot-validation.md:183]
+- [x] [Review][Patch] §8 PREFLIGHT overstates redis as a hard-fail — an unreachable redis is warn-only (script continues); only an unexpected PONG value fails. Correct the description. [syncro/docs/pilot-validation.md:229]
+- [x] [Review][Patch] §6/§9 expected live-WAHA outcome omits `EXHAUSTED` and misstates `ROUTING_FAILED` (routing always succeeds for the seeded whatsapp number; the realistic placeholder path is PENDING → HTTP 500 `no LID found` → retries → EXHAUSTED after maxAttempts=3). [syncro/docs/pilot-validation.md:118]
+- [x] [Review][Patch] Spec Dev Agent Record misstates the sprint-status transition as "in-progress → review"; the committed diff is `backlog → review` (7-7 was never set to in-progress). [spec-7-7:159,190]
+- [x] [Review][Patch] No hygiene/cleanup step for a leftover-state operator — the "Open Alerts 0" / "exactly one OPEN" claims break on a DB with 7-5/7-6 leftovers (seed never touches runtime-owned alert tables). Add a clean-slate prerequisite. [syncro/docs/pilot-validation.md:106]
+- [x] [Review][Patch] Post-window acknowledge branch undocumented — a late acknowledge (>15 min) produces STAFF/LEADER `SENT` rows and the verify `observation: STAFF job SENT` regression marker, contradicting the "exactly one CANCELLED row" proof. Add a note on the 15-min boundary. [syncro/docs/pilot-validation.md:116]
+- [x] [Review][Patch] §3.4 launcher example uses `mvnw` (sh) on a Windows-operator document — should be `mvnw.cmd`; also `flyway:migrate` needs the env vars loaded. [syncro/docs/pilot-validation.md:49]
+- [x] [Review][Patch] §8 quarantine FAIL has no documented remediation — add a line pointing at `rejection_reason`/`rejection_field`. [syncro/docs/pilot-validation.md:202]
+- [x] [Review][Patch] §8 grep command presupposes a backend log file the doc never tells the operator to create — add a capture/redirect note. [syncro/docs/pilot-validation.md:155]
+- [x] [Review][Patch] §6 acknowledge API call omits JWT auth — a curl-following operator gets 401; note the Bearer token requirement (UI path in §7 is the preferred route). [syncro/docs/pilot-validation.md:113]
+- [x] [Review][Defer] WAHA disclaimer contradicts the transcribed 7-6 evidence (`message WAS delivered to WhatsApp before cancellation` for a placeholder number) — spec-mandated disclaimer vs evidence tension; flagged for spec-level resolution, no doc action. [spec-7-7:130]
+- [x] [Review][Defer] `.gitignore` negation re-includes the whole `syncro/docs/screenshots/` subtree (the `pilot/` negation is redundant) — user-approved change; tightening optional. [.gitignore:238-240]

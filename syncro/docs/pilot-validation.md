@@ -46,8 +46,8 @@ counting 900 -> 90.00% >= 90% -> exactly one OPEN alert + TECHNICIAN notificatio
    ```
    Expected services: `postgres`, `redis`, `influxdb`, `emqx`, `pgadmin`, `waha`.
 4. **Backend running with `syncro/.env`** and healthy at `http://localhost:8080/api/v1/health` (expect `{"service":"syncro-backend","status":"UP",...}`). The backend subscribes to `factory/+/+/telemetry` at QoS 1 at startup (`mqtt_subscription_request topic=factory/+/+/telemetry qos=1`). This MUST happen **before** any publish: the backend uses `cleanSession(true)`, so a publish while it is down is accepted by the broker (`no_matching_subscribers`) but never delivered — no alert/job is created.
-   - `syncro/scripts/start-backend.ps1` loads `.env.example` (placeholder values); for a live pilot, start the backend with the real `syncro/.env` environment (e.g. a launcher that loads `syncro/.env` then runs `mvnw -f syncro/apps/backend/pom.xml spring-boot:run`).
-   - Or apply migrations explicitly first: `mvn -f syncro/apps/backend/pom.xml flyway:migrate`.
+   - `syncro/scripts/start-backend.ps1` loads `.env.example` (placeholder values); for a live pilot, start the backend with the real `syncro/.env` environment (e.g. a launcher that loads `syncro/.env` then runs `mvnw.cmd -f syncro/apps/backend/pom.xml spring-boot:run` — `mvnw.cmd` is the Windows wrapper).
+   - Or apply migrations explicitly first: `mvn -f syncro/apps/backend/pom.xml flyway:migrate` (run with the same `syncro/.env` environment loaded, since `application.yml` reads `${POSTGRES_HOST}` etc.).
 5. **Frontend dev server** (port 3001, since 3000 is WAHA's port):
    ```powershell
    npm --prefix syncro/apps/web run dev -- -p 3001
@@ -65,7 +65,7 @@ powershell -NoProfile -File syncro/scripts/seed-pilot.ps1
 The script preflights Flyway (refuses to seed an unmigrated database), pipes `syncro/apps/backend/src/main/resources/db/seed/pilot-seed.sql` into the in-container `psql` with `PGCLIENTENCODING=UTF8` + `ON_ERROR_STOP=1` (atomic `BEGIN/COMMIT`), then prints a canonical-row summary. Expected:
 
 - `PASS: Flyway migrations applied: <n>`
-- All `INSERT 0 0` (idempotent)
+- `INSERT 0 1` on the first apply (each guarded `INSERT ... WHERE NOT EXISTS` fires once); `INSERT 0 0` on idempotent re-runs
 - Summary rows matching, **including the tripwire**:
   `Sparepart (UTF-8 label tripwire)` → `BF-08410GM1ELEPLCWEC000 | Electric · PLC · Wecon · LX5`
 - `Seed apply complete. Re-run safe: ...` and exit 0.
@@ -110,12 +110,13 @@ Both scripts print `PASS: login ok` then `PASS: publish accepted by broker`, fol
 
 **Acknowledge before the escalation window.** Escalation interval default is 15 minutes from the TECHNICIAN job's `sentAt`.
 
-- Acknowledge via `POST /api/v1/alerts/{alertId}/acknowledge` → `204` → alert `ACKNOWLEDGED`, `status_reason` set
-- TECHNICIAN job → `CANCELLED`, `next_attempt_at` NULL
+- Acknowledge via `POST /api/v1/alerts/{alertId}/acknowledge` → `204` → alert `ACKNOWLEDGED`, `status_reason` set. **The endpoint requires a `Bearer` token** (JWT from `POST /api/v1/auth/login`); only `/api/v1/health`, `/actuator/health`, and `/api/v1/auth/login` are unauthenticated. The simplest path is the UI acknowledge in section 7.
+- TECHNICIAN job in an active status (`PENDING`/`SENT`/`RATE_LIMITED`) → `CANCELLED`, `next_attempt_at` NULL. Jobs already in a terminal status (`ROUTING_FAILED`/`EXHAUSTED`/`ESCALATED`) are **not** cancelled (`cancelActiveForAlert` matches only the active statuses), so acknowledge while the job is still `PENDING`/`SENT` to observe the `CANCELLED` transition.
 - Audit `UPDATE` row with `escalationCancelledCount` (≥ 1)
 - After **>15 minutes** past the TECHNICIAN `sentAt`: `notification_jobs` for the alert still has exactly one row (TECHNICIAN CANCELLED) and zero `STAFF`/`LEADER`/`SPV`/`MANAGER` rows (double barrier: job `status=SENT` filter + alert non-OPEN guard in `EscalationService`)
+- **Timing warning.** The escalation worker polls every ~60s and fires for any `SENT` job with `sentAt <= now-15min` while the alert is OPEN. If you acknowledge *after* the 15-minute boundary passes, a `STAFF` job may already be `SENT` — you will then see STAFF/LEADER rows and `verify-pilot.ps1` prints the `observation: STAFF job SENT while alert is ACKNOWLEDGED` regression marker, which contradicts the clean "exactly one CANCELLED row" proof above. Acknowledge promptly (well within 15 minutes of the threshold publish) to observe the clean barrier.
 
-**WAHA reality check (placeholder numbers).** The seed's recipient numbers (`6281234567801/02/03`) are placeholders. The expected live-WAHA outcome for a threshold alert is `PENDING` / `ROUTING_FAILED` / `SENT` **with attempt evidence** in `notification_jobs`/attempt history. A send to an unregistered placeholder number returns HTTP 500 `no LID found` from the GOWS engine (deferred-work DW-56). This is expected seed-caveat behavior — it is **not** evidence that a real WhatsApp message was delivered. Replace the placeholder numbers with real numbers in `pilot-seed.sql` (and re-seed) before a live WAHA delivery pilot.
+**WAHA reality check (placeholder numbers).** The seed's recipient numbers (`6281234567801/02/03`) are placeholders. Because the seed assigns each responsibility a WhatsApp number, routing always succeeds — `ROUTING_FAILED` only occurs when routing itself fails (no assignment/user/whatsapp). The realistic live-WAHA outcome for a threshold alert with placeholder numbers is `PENDING` → `SENT` with attempt evidence, then repeated `HTTP 500 no LID found` responses from the GOWS engine (deferred-work DW-56) until the job reaches `EXHAUSTED` after `maxAttempts=3`. This is expected seed-caveat behavior — it is **not** evidence that a real WhatsApp message was delivered. Replace the placeholder numbers with real numbers in `pilot-seed.sql` (and re-seed) before a live WAHA delivery pilot.
 
 ## 7. Operator Proof via UI
 
@@ -130,6 +131,8 @@ Log in to the web app (port 3001): `technician.gm1@syncro.dev` / `syncro-pilot-d
 | `/dashboard/system-health` | System health dashboard: backend/actuator status, telemetry freshness, ingest/notification worker status, stale machines, quarantine log, data-quality/latency indicators. |
 
 Before the threshold publish, the Operations Overview should show "Open Alerts 0"; after it, exactly the one OPEN alert. After acknowledge, the alert detail badge flips to **Acknowledged** ("Escalation is paused") and the action panel shows only **Resolve** (no Acknowledge button).
+
+**Clean-slate prerequisite.** The pilot is written for a fresh run. The seed intentionally never touches runtime-owned tables (`sparepart_alerts`, `notification_jobs`, `machine_counter_states`, `telemetry_quarantine`, `audit_log`), so a stack with leftover state from an earlier run (e.g. an unresolved alert from a previous pilot) breaks the "Open Alerts 0" / "exactly one OPEN" expectations and makes `verify-pilot.ps1` FAIL. Before re-running, start clean: `docker compose down -v` for the pilot services (drops the named postgres volume) or resolve any non-RESOLVED alert from the previous run (Acknowledge + Resolve via the UI) and confirm `verify-pilot.ps1 -ExpectCounting 890` reports zero alerts. `machine_counter_states` self-heals (a before-threshold publish rewrites counting to 890), but alerts/notification jobs do not.
 
 Mobile (390×844): the acknowledge action is reachable from the alert detail header button on mobile too (no confirm dialog — one click + success toast; page-spec sticky bottom bar is a documented deviation).
 
@@ -150,9 +153,9 @@ Grep-able substrings the operator should look for:
 | `mqtt_telemetry_duplicate traceId={id} machineCode=BF-08410 messageId=pilot-jbf19-threshold-900 winnerTraceId={id}` | WARN | Republish inside the 30s dedupe window |
 | `[WAHA][traceId={id}] send attempt phone=*** status=201` | INFO | WAHA accepted the send (not delivery to a real device) |
 
-Grep command (PowerShell):
+Grep command (PowerShell) — point `<backend-log>` at a capture of the backend console. The backend is launched with `spring-boot:run` in a console, which prints to stdout only, so **capture it to a file first**, e.g. run the launcher as `mvnw.cmd -f syncro/apps/backend/pom.xml spring-boot:run 2>&1 | Tee-Object -FilePath backend-pilot.log`, then grep that file:
 ```powershell
-Select-String -Path <backend-log> -Pattern 'mqtt_telemetry_accepted','Alert created for installation','mqtt_telemetry_duplicate'
+Select-String -Path backend-pilot.log -Pattern 'mqtt_telemetry_accepted','Alert created for installation','mqtt_telemetry_duplicate'
 ```
 
 ### SQL queries (executable in pgAdmin / psql)
@@ -180,11 +183,11 @@ All queries are for the canonical machine (`plant GM1`, `machine BF-08410`).
 
 3. **Notification jobs** (TECHNICIAN job for the alert; CANCELLED after acknowledge):
    ```sql
-   SELECT id, escalation_level, status, idempotency_key, trace_id, recipient_phone, error_detail
+   SELECT id, escalation_level, status, idempotency_key, trace_id, recipient_phone, next_attempt_at, error_detail
    FROM notification_jobs
    WHERE alert_id = '<alertId>';
    ```
-   → `{jobId} | TECHNICIAN | SENT|PENDING|ROUTING_FAILED | {alertId}::TECHNICIAN | {traceId} | 6281234567801 | {error_detail}`; after acknowledge `status = CANCELLED`, `next_attempt_at` NULL.
+   → `{jobId} | TECHNICIAN | PENDING|SENT|EXHAUSTED | {alertId}::TECHNICIAN | {traceId} | 6281234567801 | NULL | {error_detail}`; after acknowledge `status = CANCELLED`, `next_attempt_at` NULL.
 
 4. **Audit log** (alert CREATE carries the traceId; acknowledge carries the actor):
    ```sql
@@ -200,6 +203,7 @@ All queries are for the canonical machine (`plant GM1`, `machine BF-08410`).
    SELECT count(*) FROM telemetry_quarantine;
    SELECT rejection_reason, rejection_field, topic FROM telemetry_quarantine ORDER BY received_at DESC LIMIT 1;
    ```
+   → If the count is non-zero, `verify-pilot.ps1` FAILs. Inspect `rejection_reason` / `rejection_field` in pgAdmin: a quarantined publish is typically an out-of-range value or a non-canonical payload for `BF-08410`. Delete the offending row (or correct the payload and republish) before continuing.
 
 6. **Post-window escalation proof** (>15 min after TECHNICIAN `sentAt`): re-run query 3 — still exactly one row (TECHNICIAN CANCELLED); zero `STAFF`/`LEADER` rows.
 
@@ -221,19 +225,19 @@ Example from the 7-5 live run: traceId `ebfeec74-d989-4190-a772-2a1517f6fef3` ap
 ### verify-pilot.ps1 verdicts
 
 ```powershell
-powershell -NoProfile -File syncro/scripts/verify-pilot.ps1 -ExpectCounting 900
+powershell -NoProfile -File syncro/scripts/verify-pilot.ps1 -ExpectCounting 900 -WebUrl http://localhost:3001
 ```
 
 Six sections, each printing `[PASS]`/`[FAIL]`/`[INFO]`; the script exits non-zero only on FAIL:
 
-1. **PREFLIGHT** — postgres `SELECT 1` and redis `PING` hard-fail; EMQX and backend health warn-only.
+1. **PREFLIGHT** — postgres `SELECT 1` hard-fails on unreachable/unexpected; redis `PING` fails only on an unexpected value — an *unreachable* redis is warn-only (latest-hash evidence skipped; postgres evidence remains authoritative). EMQX and backend health warn-only.
 2. **SEED** — canonical 7-1 row counts (plant/group/machine/sparepart/installation/users/responsibilities).
 3. **TELEMETRY** — `machine_counter_states` (with `-ExpectCounting`, FAILs unless exactly that value), Redis latest hash (`counting`, `countingDelta`, `receivedAt`, `traceId`; 5-min TTL, absent hash = INFO), `telemetry_quarantine` empty.
 4. **ALERT** — state-keyed: `890` expects zero non-RESOLVED alerts (`no alert - correct before-threshold state`); `900` expects exactly one non-RESOLVED alert with `consumed_percentage_snapshot=90.00` + `trace_id`.
 5. **NOTIFICATION** — `notification_jobs` rows for the alert (level/status/phone/trace/error); placeholder numbers print the seed-caveat INFO.
 6. **ACKNOWLEDGEMENT RESULT** — alert status + per-level job timeline; prints `observation: STAFF job SENT while alert is ACKNOWLEDGED` if a regression is detected.
 
-Then **EVIDENCE POINTERS** print the Machine Hub / telemetry / alerts / system-health / backend-health URLs and an optional InfluxDB query:
+Then **EVIDENCE POINTERS** print the Machine Hub / telemetry / alerts / system-health / backend-health URLs and an optional InfluxDB query. Pass `-WebUrl http://localhost:3001` so the printed URLs point at the web app (the script's default is `http://localhost:3000`, which is WAHA's port, not the web app):
 ```powershell
 docker compose --env-file syncro/.env -f syncro/infra/docker-compose.yml exec -T influxdb sh -c 'influxdb3 query --token "$INFLUXDB3_ADMIN_TOKEN" --database syncro "SELECT * FROM telemetry ORDER BY time DESC LIMIT 5"'
 ```
@@ -248,7 +252,7 @@ Quoted from the PRD, with how the pilot does or does not demonstrate each:
 | **SM-002** | A plant-scale load test with 500 simulated active machines publishing one payload per second for 15 minutes completes without backend process crash. | **NOT run by the pilot.** This is a separate scale validation the pilot does not exercise (the pilot publishes a handful of messages for one machine). |
 | **SM-003** | During the plant-scale load test, latest telemetry remains visible for active machines while historical telemetry writes may lag within defined operational tolerance. | **NOT run by the pilot.** Scale-validation scope; requires the SM-002 load test to observe the latest-vs-history behavior under load. |
 | **SM-004** | A sparepart lifetime alert is created when production count reaches the configured threshold. | **Demonstrated.** counting=900 → 90.00% ≥ 90% → exactly one OPEN alert with `consumed_percentage_snapshot = 90.00`, visible in the alert list/detail UI and `sparepart_alerts`. |
-| **SM-005** | A WhatsApp notification is sent through WAHA for the threshold alert. | **Demonstrated up to the queue + attempt evidence.** A TECHNICIAN `notification_jobs` row is created and the worker attempts the WAHA send (attempt history + `send attempt ... status=201`). With the seed's placeholder numbers, the expected live-WAHA outcome is `PENDING`/`ROUTING_FAILED`/`SENT` with attempt evidence, not a verified real-device delivery (see section 6). |
+| **SM-005** | A WhatsApp notification is sent through WAHA for the threshold alert. | **Demonstrated up to the queue + attempt evidence.** A TECHNICIAN `notification_jobs` row is created and the worker attempts the WAHA send (attempt history + `send attempt ... status=201`). With the seed's placeholder numbers, the expected live-WAHA outcome is `PENDING`/`SENT` with attempt evidence, then `EXHAUSTED` after retries — not a verified real-device delivery (see section 6). |
 
 ## 10. pgAdmin Scope Disclaimer
 

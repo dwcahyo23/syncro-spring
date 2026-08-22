@@ -556,3 +556,8 @@ status: open
 - V31 DROP CONSTRAINT without IF EXISTS — fails if constraint manually renamed/removed; editing applied migration would change Flyway checksum. Standard Flyway convention, low risk for sanctioned schemas.
 - Counter drift baseline not asserting counting=890 — before-threshold publish on drifted counter records wrap-around delta. 7-4 established 890 baseline; low risk.
 - Quarantine matrix path not executable — verify-pilot hard-FAILs on any telemetry_quarantine row, contradicting the spec's "document as pre-existing" path. Pre-existing script constraint.
+
+## Deferred from: code review of spec-7-7-document-pilot-validation-proof (2026-08-22)
+
+- WAHA disclaimer (pilot-validation.md §6/§9) contradicts the transcribed 7-6 evidence ("message WAS delivered to WhatsApp before cancellation" for a placeholder number). The disclaimer is spec-mandated (DW-56 / don't-claim-delivery constraint), so the doc correctly implements the spec; the tension needs spec-level resolution, not a doc fix.
+- .gitignore negation re-includes the whole syncro/docs/screenshots/ subtree, not just pilot/ (the !pilot/ line is redundant given the parent re-include). User-approved change; tightening to pilot/-only scope is optional future work.
