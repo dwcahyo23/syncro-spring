@@ -376,11 +376,11 @@ location: syncro/apps/backend/src/main/resources/db/migration/V22__create_notifi
 reason: UNIQUE (alert_id, escalation_level) means once a ROUTING_FAILED row exists for a pair, a subsequent PENDING row for the same pair cannot be inserted. If a technician is assigned a WhatsApp number after initial routing failure, a new job cannot be queued without manual deletion of the failed row. Acceptable for Story 5.2 scope — re-routing belongs to a future admin/correction workflow.
 status: open
 
-## Deferred from: code review of spec-5-1-waha-template-editor (2026-08-20)
+### DW-77: Race condition — concurrent upsert tanpa ON CONFLICT guard
 
-### DW-44: Race condition — concurrent upsert tanpa ON CONFLICT guard
-origin: code review Story 5.1 (2026-08-20)
+origin: migrated from legacy ledger ("code review of spec-5-1-waha-template-editor (2026-08-20)"), 2026-08-22
 location: syncro/apps/backend/src/main/java/com/syncro/notification/application/WahaTemplateService.java:44
+severity: low
 reason: Single-template config entity; concurrent admin edit extremely unlikely in pilot phase. findByTemplateKey + save is not atomic but risk window is negligible at current user load.
 status: open
 
@@ -390,27 +390,85 @@ location: syncro/apps/backend/src/main/java/com/syncro/notification/api/WahaTemp
 reason: By design — frontend tidak butuh createdAt saat ini. Jika dibutuhkan di masa depan perlu tambah field ke DTO dan frontend.
 status: open
 
-## Deferred from: code review of 3-13-configure-mqtt-security-tls-device-auth-acls (2026-08-20)
+### DW-78: Plaintext credentials in auth-bootstrap.csv committed to git
 
-- **DW-46: Plaintext credentials in auth-bootstrap.csv committed to git** — `auth-bootstrap.csv:2-3` contains literal MQTT passwords for `syncro_backend` and `device_BF-08410_GM1`. Dev-environment pattern consistent with all other infra files; production credential management out of scope for story 3-13.
-- **DW-47: Hardcoded SEED_SECRET in docker-entrypoint.sh committed to git** — `docker-entrypoint.sh:37` hardcodes the administrator API key secret. Same dev-infra pattern; secret rotation and production secrets management out of scope.
-- **DW-48: Erlang cluster cookie is a weak committed value** — `emqx.conf:4` sets `cookie = "emqxsyncrodev"`. Single-node dev setup; Erlang cluster security out of scope.
+origin: migrated from legacy ledger ("code review of 3-13-configure-mqtt-security-tls-device-auth-acls (2026-08-20)"), 2026-08-22
+location: auth-bootstrap.csv:2-3
+severity: high
+reason: auth-bootstrap.csv:2-3 contains literal MQTT passwords for syncro_backend and device_BF-08410_GM1. Dev-environment pattern consistent with all other infra files; production credential management out of scope for story 3-13.
+status: open
 
-## Deferred from: code review of spec-5-4-escalate-alert-notifications-by-responsibility-level (2026-08-20)
+### DW-79: Hardcoded SEED_SECRET in docker-entrypoint.sh committed to git
 
-- **DW-49: ROUTING_FAILED jobs never re-queried for escalation retry** — `EscalationService.java` — ROUTING_FAILED is a terminal state by design; re-routing workflow belongs to a future admin/correction story. Pre-existing design decision consistent with DW-44 pattern.
-- **DW-50: `sentAt` column has no DB NOT NULL constraint despite being required for SENT-status jobs** — `NotificationJobEntity.java:52` — `sentAt` is set by `markSent()` before any job reaches SENT status; NULL-safety is enforced at application layer, not DB layer. Low risk; adding NOT NULL requires a Flyway migration coordinated with existing data.
-- **DW-51: Infinite retry — closed/resolved alert leaves job in SENT forever** — `EscalationService.java:66` — AC10 by design requires job to stay SENT when alert is non-OPEN (protects re-open scenario). Permanent loop is theoretical; alert lifecycle cleanup (RESOLVED/DELETED) belongs to a future alert lifecycle story.
+origin: migrated from legacy ledger ("code review of 3-13-configure-mqtt-security-tls-device-auth-acls (2026-08-20)"), 2026-08-22
+location: docker-entrypoint.sh:37
+severity: high
+reason: docker-entrypoint.sh:37 hardcodes the administrator API key secret. Same dev-infra pattern; secret rotation and production secrets management out of scope.
+status: open
 
-## Deferred from: code review of spec-5-6-show-escalation-timeline-and-notification-history (2026-08-20)
+### DW-80: Erlang cluster cookie is a weak committed value
 
-- **DW-52: Manual hand-edit of generated file will be overwritten** — `syncro/apps/web/src/lib/api/generated/model/auditLogEntryViewEntityType.ts:20` — `ALERT` added by hand; next `generate:api` will delete unless `openapi.yaml` updated; re-generate after backend boots — deferred, pre-existing generation flow.
-- **DW-53: Duplicated DTOs mirrored in syncro.ts and alert-notification-history.tsx** — `syncro/apps/web/src/features/alerts/alert-notification-history.tsx:14` — intentional per Task 8 TODO to stay diff-free until next Orval regen; defer until generation.
-- **DW-54: Attempt truncation slice(0,3) and CASE ELSE 99 ordering ambiguity** — `syncro/apps/web/src/features/alerts/alert-notification-history.tsx:373` / `syncro/apps/backend/src/main/java/com/syncro/notification/infrastructure/NotificationJobRepository.java:17` — `maxAttempts=3` today, unknown levels go to 99 without secondary sort; deferred, not actionable without schema change.
+origin: migrated from legacy ledger ("code review of 3-13-configure-mqtt-security-tls-device-auth-acls (2026-08-20)"), 2026-08-22
+location: emqx.conf:4
+severity: medium
+reason: emqx.conf:4 sets cookie = "emqxsyncrodev". Single-node dev setup; Erlang cluster security out of scope.
+status: open
 
-## Deferred from: code review of spec-5-9-implement-circuit-breaker-for-waha-calls (2026-08-21)
+### DW-81: ROUTING_FAILED jobs never re-queried for escalation retry
 
-- **DW-55: `@Transactional` held across the WAHA network call (up to 5s per job, 10 jobs/batch)** — `NotificationDispatchService.java:50` — pre-existing transaction boundary, severity worsened by the added timeout; deferred, pre-existing.
+origin: migrated from legacy ledger ("code review of spec-5-4-escalate-alert-notifications-by-responsibility-level (2026-08-20)"), 2026-08-22
+location: EscalationService.java
+severity: medium
+reason: ROUTING_FAILED is a terminal state by design; re-routing workflow belongs to a future admin/correction story. Pre-existing design decision consistent with DW-44 pattern.
+status: open
+
+### DW-82: `sentAt` column has no DB NOT NULL constraint despite being required for SENT-status jobs
+
+origin: migrated from legacy ledger ("code review of spec-5-4-escalate-alert-notifications-by-responsibility-level (2026-08-20)"), 2026-08-22
+location: NotificationJobEntity.java:52
+severity: low
+reason: `sentAt` is set by `markSent()` before any job reaches SENT status; NULL-safety is enforced at application layer, not DB layer. Low risk; adding NOT NULL requires a Flyway migration coordinated with existing data.
+status: open
+
+### DW-83: Infinite retry — closed/resolved alert leaves job in SENT forever
+
+origin: migrated from legacy ledger ("code review of spec-5-4-escalate-alert-notifications-by-responsibility-level (2026-08-20)"), 2026-08-22
+location: EscalationService.java:66
+severity: low
+reason: AC10 by design requires job to stay SENT when alert is non-OPEN (protects re-open scenario). Permanent loop is theoretical; alert lifecycle cleanup (RESOLVED/DELETED) belongs to a future alert lifecycle story.
+status: open
+
+### DW-84: Manual hand-edit of generated file will be overwritten
+
+origin: migrated from legacy ledger ("code review of spec-5-6-show-escalation-timeline-and-notification-history (2026-08-20)"), 2026-08-22
+location: syncro/apps/web/src/lib/api/generated/model/auditLogEntryViewEntityType.ts:20
+severity: medium
+reason: `ALERT` added by hand; next `generate:api` will delete unless `openapi.yaml` updated; re-generate after backend boots — deferred, pre-existing generation flow.
+status: open
+
+### DW-85: Duplicated DTOs mirrored in syncro.ts and alert-notification-history.tsx
+
+origin: migrated from legacy ledger ("code review of spec-5-6-show-escalation-timeline-and-notification-history (2026-08-20)"), 2026-08-22
+location: syncro/apps/web/src/features/alerts/alert-notification-history.tsx:14
+severity: low
+reason: intentional per Task 8 TODO to stay diff-free until next Orval regen; defer until generation.
+status: open
+
+### DW-86: Attempt truncation slice(0,3) and CASE ELSE 99 ordering ambiguity
+
+origin: migrated from legacy ledger ("code review of spec-5-6-show-escalation-timeline-and-notification-history (2026-08-20)"), 2026-08-22
+location: syncro/apps/web/src/features/alerts/alert-notification-history.tsx:373 / syncro/apps/backend/src/main/java/com/syncro/notification/infrastructure/NotificationJobRepository.java:17
+severity: low
+reason: `maxAttempts=3` today, unknown levels go to 99 without secondary sort; deferred, not actionable without schema change.
+status: open
+
+### DW-87: `@Transactional` held across the WAHA network call (up to 5s per job, 10 jobs/batch)
+
+origin: migrated from legacy ledger ("code review of spec-5-9-implement-circuit-breaker-for-waha-calls (2026-08-21)"), 2026-08-22
+location: NotificationDispatchService.java:50
+severity: high
+reason: `NotificationDispatchService.java:50` — pre-existing transaction boundary, severity worsened by the added timeout; deferred, pre-existing.
+status: open
 
 ### DW-46: DbHealthIndicator getConnection can block up to Hikari connection-timeout (30s)
 
@@ -433,56 +491,131 @@ location: syncro/apps/backend/src/main/java/com/syncro/telemetry/infrastructure/
 reason: pre-existing DW-14 TODO — Spring Integration MQTT 7.x emits no mid-session disconnect event; revisit when a connection-lost callback is available.
 status: open
 
-## Deferred from: WAHA GOWS 2026.8.1 upgrade verification (2026-08-21)
+### DW-88: GOWS returns HTTP 500 "no LID found" for invalid recipients — trips WAHA circuit breaker
 
-- **DW-56: GOWS returns HTTP 500 "no LID found" for invalid recipients — trips WAHA circuit breaker** — `syncro/apps/backend/src/main/java/com/syncro/notification/infrastructure/WahaClient.java:145-147` — After engine migration NOWEB → GOWS (image `devlikeapro/waha:gows-2026.8.1`), sending to a phone number not registered on WhatsApp returns HTTP 500 `"no LID found"` instead of a 4xx-class error. `doSend()` throws `WahaHttpStatusException` on any 5xx, which Resilience4j records as a failure — so a single mis-typed/invalid recipient in DB could push the WAHA circuit breaker to OPEN and block delivery of all other notification jobs. Unlike NOWEB, retrying such a job can never succeed. Suggested hardening (future story): treat 500 responses whose body indicates `no LID found` as a deterministic client error — return a failed `Result` without tripping the circuit, mirroring the existing 4xx path. Verified on 2026-08-21: real send to `6282124610363` succeeded (ack DEVICE); invalid `6280000000000` returned 500.
-- **DW-57: GOWS represents incoming messages with `@lid` instead of `@c.us`** — n/a (receive-side) — Inbound messages are addressed as `from: 83524312952904@lid` with the real phone number only in `_data.Info.SenderAlt`. Not relevant while Syncro is send-only (`POST /api/sendText`); if a future story adds receive handling (auto-reply, delivery receipts), the `@lid` → phone conversion via LIDs API must be handled — behavior differs from NOWEB.
-- **DW-58: WAHA session config still points webhooks to `https://httpbin.org/post`** — WAHA dashboard session `default` — The session's webhook list still posts `session.status` and `message` events to `httpbin.org/post` (leftover test config). No Syncro consumer exists; harmless but should be cleaned from the session config to avoid leaking message events to a third party.
+origin: migrated from legacy ledger ("WAHA GOWS 2026.8.1 upgrade verification (2026-08-21)"), 2026-08-22
+location: syncro/apps/backend/src/main/java/com/syncro/notification/infrastructure/WahaClient.java:145-147
+severity: high
+reason: After engine migration NOWEB → GOWS (image `devlikeapro/waha:gows-2026.8.1`), sending to a phone number not registered on WhatsApp returns HTTP 500 `"no LID found"` instead of a 4xx-class error. `doSend()` throws `WahaHttpStatusException` on any 5xx, which Resilience4j records as a failure — so a single mis-typed/invalid recipient in DB could push the WAHA circuit breaker to OPEN and block delivery of all other notification jobs. Unlike NOWEB, retrying such a job can never succeed. Suggested hardening (future story): treat 500 responses whose body indicates `no LID found` as a deterministic client error — return a failed `Result` without tripping the circuit, mirroring the existing 4xx path. Verified on 2026-08-21: real send to `6282124610363` succeeded (ack DEVICE); invalid `6280000000000` returned 500.
+status: open
 
-## Deferred from: telemetry pipeline scale analysis for hundreds of machines per plant (2026-08-21)
+### DW-89: GOWS represents incoming messages with `@lid` instead of `@c.us`
 
-- **DW-59: Telemetry ingest `workerThreads` is declared but never wired — queue consumed single-threaded** — `syncro/apps/backend/src/main/java/com/syncro/config/TelemetryProperties.java:15` declares `ingest.worker-threads` (default 2) but nothing uses it: `TelemetryIngestQueueConfig.java:14` only reads `queueCapacity`, and the `IntegrationFlow` in `MqttSubscriptionConfig.java:53-60` has no explicit `.poller(...)`. The `QueueChannel` is therefore consumed by the default poller (single thread). With hundreds of machines per plant, every message serially performs Redis SETNX dedupe → InfluxDB HTTP write (3 retries + backoff) → Redis HSET → PostgreSQL counter-state save → sparepart lifetime evaluation → alert creation (~30-50ms/message ⇒ max ~20-33 msg/s). Estimate: 300 machines × 1 msg/5s = 60 msg/s ⇒ 1000-capacity queue fills in ~17s → send blocks → backpressure drops messages at EMQX. Fix belongs to a hardening story: wire `workerThreads` into the poller via a TaskExecutor and consider moving alert evaluation off the hot path.
-- **DW-60: EMQX 6.2.2 (community) can offload InfluxDB/Redis writes via Data Integration — candidate for correct-course redesign** — `syncro/infra/docker-compose.yml:68` runs `emqx/emqx:6.2.2`. Verified via Management API (API key `syncro-acl-seed`): Rules Engine active (`$events/message_publish`, `$events/message_delivered`, etc.), and connector creation for `influxdb_api_v3` (plus redis/pgsql/mqtt/http/kafka bridge modules, 45 `emqx_bridge_*` libs) succeeds on community edition. This means the backend's per-message InfluxDB write (`InfluxTelemetryWriter`) and Redis latest-state write (`RedisLatestTelemetryWriter`) could move into EMQX rule bridges, dramatically reducing the backend hot path and improving scale for hundreds of machines/plant. Backend would then subscribe to a republished sink topic (e.g. `factory/+/+/processed`) and only do dedupe → counter state → sparepart evaluator → alerts. Note: business logic (sparepart evaluation, alert creation) stays in Java; this is an architecture-level change requiring a correct-course proposal and a PoC (rule + InfluxDB v3 bridge to local InfluxDB on 8181) before committing.
-- **DW-61: `cleanSession=true` drops in-flight QoS-1 messages on reconnect — relevant at scale** — `syncro/apps/backend/src/main/java/com/syncro/telemetry/infrastructure/MqttSubscriptionConfig.java:33` — TODO DW-23 already flags this; with hundreds of machines the reconnect window widens and message loss probability grows. Switch to `cleanSession(false)` with a stable clientId once at-least-once delivery is a hard requirement; the Redis SETNX dedupe gate already handles duplicates.
+origin: migrated from legacy ledger ("WAHA GOWS 2026.8.1 upgrade verification (2026-08-21)"), 2026-08-22
+location: n/a (receive-side)
+severity: low
+reason: Inbound messages are addressed as `from: 83524312952904@lid` with the real phone number only in `_data.Info.SenderAlt`. Not relevant while Syncro is send-only (`POST /api/sendText`); if a future story adds receive handling (auto-reply, delivery receipts), the `@lid` → phone conversion via LIDs API must be handled — behavior differs from NOWEB.
+status: open
 
-## Deferred from: EMQX 6.2.2 feature deep-dive for backend offloading (2026-08-21)
+### DW-90: WAHA session config still points webhooks to `https://httpbin.org/post`
 
-Verified directly against the running instance (`syncro-spring-emqx-1`, image `emqx/emqx:6.2.2`, license `community`) via Management API (`/api/v5`) with the `syncro-acl-seed` API key.
+origin: migrated from legacy ledger ("WAHA GOWS 2026.8.1 upgrade verification (2026-08-21)"), 2026-08-22
+location: WAHA dashboard session `default`
+severity: medium
+reason: The session's webhook list still posts `session.status` and `message` events to `httpbin.org/post` (leftover test config). No Syncro consumer exists; harmless but should be cleaned from the session config to avoid leaking message events to a third party.
+status: open
 
-**Probe artifacts created during this exploration:**
+### DW-91: Telemetry ingest `workerThreads` is declared but never wired — queue consumed single-threaded
 
-- **DW-68: Probe artifacts left in EMQX from feature exploration need cleanup** — Running EMQX instance — Schema registry `telemetry-schema` (`POST /api/v5/schema_registry`), queues `que_test` and `syncro-latest-probe` (`POST /api/v5/queues`) were created as probes on 2026-08-21 and could not be removed (DELETE returned 404; queue deletion likely requires the `streams` module enabled, which is `enable=false`). Clean up via dashboard or by enabling streams module; harmless but clutter the EMQX UI.
+origin: migrated from legacy ledger ("telemetry pipeline scale analysis for hundreds of machines per plant (2026-08-21)"), 2026-08-22
+location: syncro/apps/backend/src/main/java/com/syncro/config/TelemetryProperties.java:15
+severity: high
+reason: `TelemetryProperties.java:15` declares `ingest.worker-threads` (default 2) but nothing uses it: `TelemetryIngestQueueConfig.java:14` only reads `queueCapacity`, and the `IntegrationFlow` in `MqttSubscriptionConfig.java:53-60` has no explicit `.poller(...)`. The `QueueChannel` is therefore consumed by the default poller (single thread). With hundreds of machines per plant, every message serially performs Redis SETNX dedupe → InfluxDB HTTP write (3 retries + backoff) → Redis HSET → PostgreSQL counter-state save → sparepart lifetime evaluation → alert creation (~30-50ms/message ⇒ max ~20-33 msg/s). Estimate: 300 machines × 1 msg/5s = 60 msg/s ⇒ 1000-capacity queue fills in ~17s → send blocks → backpressure drops messages at EMQX. Fix belongs to a hardening story: wire `workerThreads` into the poller via a TaskExecutor and consider moving alert evaluation off the hot path.
+status: open
 
-**Confirmed available & working in community edition:**
+### DW-92: EMQX 6.2.2 (community) can offload InfluxDB/Redis writes via Data Integration — candidate for correct-course redesign
 
-- **DW-62: Rules Engine fully active** — `/api/v5/rules` + `/api/v5/rule_events` respond; SQL `SELECT * FROM "factory/+/+/telemetry"` with actions in `{type}:{name}` format. Verified action targets: `console`, `mqtt:forward`, `http:webhook` all accepted. Rule events available include `$events/message_publish`, `$events/message_delivered`, `$events/sys/alarm_activated`, `$events/sys/alarm_deactivated`. → Can offload: republish to sink topics, filtering, simple routing.
-- **DW-63: Data Integration (Connectors) works — InfluxDB v3 bridge confirmed** — 45 `emqx_bridge_*` libs installed. Successfully created connector `type=influxdb` with `parameters.influxdb_type=influxdb_api_v3` (+ `token`, `database`, `ping_with_auth`); validation passed, connector instantiated (was `disconnected` only because probe host was unreachable). Same endpoint family covers redis, pgsql, mqtt, http, kafka bridges. → Can offload backend InfluxDB write (`InfluxTelemetryWriter`) and Redis latest-state write (`RedisLatestTelemetryWriter`) to EMQX bridges.
-- **DW-64: Schema Registry works — JSON schema created** — `POST /api/v5/schema_registry` accepted a JSON schema (fields: `type=json`, `name`, `description`, `source`). Schema validation (`schema_validation`) and message transformation (`message_transformation`) config keys exist but have no `/api/v5` CRUD endpoint (config-file/ctl only). → Can offload `TelemetryValidationService` JSON field validation to EMQX edge; quarantine-on-invalid would still be backend logic.
-- **DW-65: EMQX Queue (MQTT Streams) — last-value mode works** — `POST /api/v5/queues` created a queue with `is_lastvalue=true`, `key_expression=message.from`, `topic_filter=factory/+/+/telemetry`, `data_retention_period=604800000ms` (7d). This gives per-source "latest value" storage inside EMQX. → Candidate to REPLACE Redis `syncro:machine:{id}:latest` hash (per-machine latest telemetry) for the counting-delta read path. Streams module (`streams`) exists but `enable=false` (needs config flip + restart).
-- **DW-66: Retained messages, delayed publish, shared subscriptions, auto-subscribe available** — `mqtt.retainer {enable=true, backend=built_in_database}`, `mqtt/delayed {enable=true}`, `shared_subscription=true` (round_robin), `auto_subscribe` config present. Shared subscriptions (`$share/{group}/factory/+/+/telemetry`) enable horizontal scaling of backend consumers — direct mitigation for the DW-59 single-consumer bottleneck.
-- **DW-67: NOT available on community edition** — Flow Designer (`/api/v5/flows` 404), Codec (`/api/v5/codecs` 404), Message Transformation REST API (`/api/v5/transformations` 404), standalone Webhooks API (`/api/v5/webhooks` 404 — webhook is only a rule action). These appear to be enterprise-tier or config-only.
+origin: migrated from legacy ledger ("telemetry pipeline scale analysis for hundreds of machines per plant (2026-08-21)"), 2026-08-22
+location: syncro/infra/docker-compose.yml:68
+severity: medium
+reason: `syncro/infra/docker-compose.yml:68` runs `emqx/emqx:6.2.2`. Verified via Management API (API key `syncro-acl-seed`): Rules Engine active (`$events/message_publish`, `$events/message_delivered`, etc.), and connector creation for `influxdb_api_v3` (plus redis/pgsql/mqtt/http/kafka bridge modules, 45 `emqx_bridge_*` libs) succeeds on community edition. This means the backend's per-message InfluxDB write (`InfluxTelemetryWriter`) and Redis latest-state write (`RedisLatestTelemetryWriter`) could move into EMQX rule bridges, dramatically reducing the backend hot path and improving scale for hundreds of machines/plant. Backend would then subscribe to a republished sink topic (e.g. `factory/+/+/processed`) and only do dedupe → counter state → sparepart evaluator → alerts. Note: business logic (sparepart evaluation, alert creation) stays in Java; this is an architecture-level change requiring a correct-course proposal and a PoC (rule + InfluxDB v3 bridge to local InfluxDB on 8181) before committing.
+status: open
 
-**Mapping to Syncro backend offloading (feed the correct-course discussion):**
+Mapping to Syncro backend offloading (feed the correct-course discussion):
 
 | Backend component today | EMQX alternative | Verdict |
 |---|---|---|
 | `MqttTelemetryIngestHandler` + `TelemetryValidationService` | Schema Registry + schema validation at edge | Partially offloadable; quarantine logic stays |
 | `InfluxTelemetryWriter` (per-msg HTTP + retry) | InfluxDB v3 bridge via rule | **Offload — removes biggest per-msg IO** |
 | `RedisLatestTelemetryWriter` (latest hash) | EMQX Queue last-value / Redis bridge | **Offload — replaces Redis hot path** |
-| `QueueChannel` + `workerThreads` (never wired) | Shared subscriptions `$share/...` | Offload concurrency to MQTT layer, OR wire workerThreads (DW-59) |
+| `QueueChannel` + `workerThreads` (never wired) | Shared subscriptions `$share/...` | Offload concurrency to MQTT layer, OR wire workerThreads (DW-91) |
 | `CountingDeltaCalculator` | EMQX rule SQL (previous/current) | Business logic — keep in backend |
 | `SparepartLifetimeEvaluator` + alerts | n/a | Business logic — keep in backend |
 
-**Caveats:** every bridge/queue needs a PoC with real traffic; EMQX config changes live in `infra/emqx/etc/emqx.conf` + `docker-entrypoint.sh` and require container restart; InfluxDB bridge must reach InfluxDB via container network name (`influxdb:8181`), not `localhost`; dedupe (`SETNX`) and quarantine semantics must be preserved regardless of where validation/writing happens.
+Caveats: every bridge/queue needs a PoC with real traffic; EMQX config changes live in `infra/emqx/etc/emqx.conf` + `docker-entrypoint.sh` and require container restart; InfluxDB bridge must reach InfluxDB via container network name (`influxdb:8181`), not `localhost`; dedupe (`SETNX`) and quarantine semantics must be preserved regardless of where validation/writing happens.
 
-### DW-NEW: Notification worker status is pod-local (per-JVM tracker)
+### DW-93: `cleanSession=true` drops in-flight QoS-1 messages on reconnect — relevant at scale
+
+origin: migrated from legacy ledger ("telemetry pipeline scale analysis for hundreds of machines per plant (2026-08-21)"), 2026-08-22
+location: syncro/apps/backend/src/main/java/com/syncro/telemetry/infrastructure/MqttSubscriptionConfig.java:33
+severity: medium
+reason: TODO DW-23 already flags this; with hundreds of machines the reconnect window widens and message loss probability grows. Switch to `cleanSession(false)` with a stable clientId once at-least-once delivery is a hard requirement; the Redis SETNX dedupe gate already handles duplicates.
+status: open
+
+### DW-94: Probe artifacts left in EMQX from feature exploration need cleanup
+
+origin: migrated from legacy ledger ("EMQX 6.2.2 feature deep-dive for backend offloading (2026-08-21)"), 2026-08-22
+location: Running EMQX instance (schema registry `telemetry-schema`; queues `que_test`, `syncro-latest-probe`)
+severity: low
+reason: Schema registry `telemetry-schema` (`POST /api/v5/schema_registry`), queues `que_test` and `syncro-latest-probe` (`POST /api/v5/queues`) were created as probes on 2026-08-21 and could not be removed (DELETE returned 404; queue deletion likely requires the `streams` module enabled, which is `enable=false`). Clean up via dashboard or by enabling streams module; harmless but clutter the EMQX UI.
+status: open
+
+### DW-95: Rules Engine fully active
+
+origin: migrated from legacy ledger ("EMQX 6.2.2 feature deep-dive for backend offloading (2026-08-21)"), 2026-08-22
+location: EMQX `/api/v5/rules` + `/api/v5/rule_events`
+severity: low
+reason: `/api/v5/rules` + `/api/v5/rule_events` respond; SQL `SELECT * FROM "factory/+/+/telemetry"` with actions in `{type}:{name}` format. Verified action targets: `console`, `mqtt:forward`, `http:webhook` all accepted. Rule events available include `$events/message_publish`, `$events/message_delivered`, `$events/sys/alarm_activated`, `$events/sys/alarm_deactivated`. → Can offload: republish to sink topics, filtering, simple routing.
+status: open
+
+### DW-96: Data Integration (Connectors) works — InfluxDB v3 bridge confirmed
+
+origin: migrated from legacy ledger ("EMQX 6.2.2 feature deep-dive for backend offloading (2026-08-21)"), 2026-08-22
+location: EMQX `/api/v5/connectors` (type=influxdb, influxdb_api_v3)
+severity: low
+reason: 45 `emqx_bridge_*` libs installed. Successfully created connector `type=influxdb` with `parameters.influxdb_type=influxdb_api_v3` (+ `token`, `database`, `ping_with_auth`); validation passed, connector instantiated (was `disconnected` only because probe host was unreachable). Same endpoint family covers redis, pgsql, mqtt, http, kafka bridges. → Can offload backend InfluxDB write (`InfluxTelemetryWriter`) and Redis latest-state write (`RedisLatestTelemetryWriter`) to EMQX bridges.
+status: open
+
+### DW-97: Schema Registry works — JSON schema created
+
+origin: migrated from legacy ledger ("EMQX 6.2.2 feature deep-dive for backend offloading (2026-08-21)"), 2026-08-22
+location: EMQX `/api/v5/schema_registry`
+severity: low
+reason: `POST /api/v5/schema_registry` accepted a JSON schema (fields: `type=json`, `name`, `description`, `source`). Schema validation (`schema_validation`) and message transformation (`message_transformation`) config keys exist but have no `/api/v5` CRUD endpoint (config-file/ctl only). → Can offload `TelemetryValidationService` JSON field validation to EMQX edge; quarantine-on-invalid would still be backend logic.
+status: open
+
+### DW-98: EMQX Queue (MQTT Streams) — last-value mode works
+
+origin: migrated from legacy ledger ("EMQX 6.2.2 feature deep-dive for backend offloading (2026-08-21)"), 2026-08-22
+location: EMQX `/api/v5/queues`
+severity: low
+reason: `POST /api/v5/queues` created a queue with `is_lastvalue=true`, `key_expression=message.from`, `topic_filter=factory/+/+/telemetry`, `data_retention_period=604800000ms` (7d). This gives per-source "latest value" storage inside EMQX. → Candidate to REPLACE Redis `syncro:machine:{id}:latest` hash (per-machine latest telemetry) for the counting-delta read path. Streams module (`streams`) exists but `enable=false` (needs config flip + restart).
+status: open
+
+### DW-99: Retained messages, delayed publish, shared subscriptions, auto-subscribe available
+
+origin: migrated from legacy ledger ("EMQX 6.2.2 feature deep-dive for backend offloading (2026-08-21)"), 2026-08-22
+location: EMQX config (`mqtt.retainer`, `mqtt/delayed`, `shared_subscription`, `auto_subscribe`)
+severity: low
+reason: `mqtt.retainer {enable=true, backend=built_in_database}`, `mqtt/delayed {enable=true}`, `shared_subscription=true` (round_robin), `auto_subscribe` config present. Shared subscriptions (`$share/{group}/factory/+/+/telemetry`) enable horizontal scaling of backend consumers — direct mitigation for the DW-91 single-consumer bottleneck.
+status: open
+
+### DW-100: NOT available on community edition — Flow Designer, Codec, Message Transformation REST API, standalone Webhooks API
+
+origin: migrated from legacy ledger ("EMQX 6.2.2 feature deep-dive for backend offloading (2026-08-21)"), 2026-08-22
+location: EMQX community edition
+severity: low
+reason: Flow Designer (`/api/v5/flows` 404), Codec (`/api/v5/codecs` 404), Message Transformation REST API (`/api/v5/transformations` 404), standalone Webhooks API (`/api/v5/webhooks` 404 — webhook is only a rule action). These appear to be enterprise-tier or config-only.
+status: open
+
+### DW-101: Notification worker status is pod-local (per-JVM tracker)
 
 origin: Deferred from: code review of spec-6-3-report-notification-worker-status (2026-08-21)
 location: syncro/apps/backend/src/main/java/com/syncro/notification/application/NotificationWorkerTracker.java:16
 reason: In a multi-replica deployment the endpoint reports only the calling instance's poll liveness. Acceptable for single-instance; documented by design (in-memory, resets on restart). Distributed observability is out of current scope.
 status: open
 
-### DW-NEW: WAHA circuit failureRate may serialize as non-finite JSON (NaN) and break actuator parse
+### DW-102: WAHA circuit failureRate may serialize as non-finite JSON (NaN) and break actuator parse
 
 origin: Deferred from: code review of spec-6-4-build-super-admin-health-dashboard (2026-08-21)
 location: syncro/apps/backend/src/main/java/com/syncro/notification/infrastructure/WahaCircuitBreakerHealthIndicator.java + syncro/apps/web/src/features/system-health/hooks/use-actuator-health-query.ts
@@ -491,10 +624,12 @@ status: open
 
 ### DW-69: TelemetryIngestTracker monotonic guard can pin freshness LIVE through a backward clock step
 
-- source_spec: _bmad-output/implementation-artifacts/spec-6-5-surface-latest-telemetry-freshness-in-health.md
-  summary: TelemetryIngestTracker.recordAccepted() keeps lastAcceptedAt monotonic, so a backward NTP clock step leaves lastAcceptedAt in the "future" and freshness reports LIVE (clock-skew branch) until wall time catches up — masking a genuinely stalled ingest path.
-  evidence: TelemetryIngestTracker.java:30 (
-ow.isAfter(lastAcceptedAt)) combined with TelemetryFreshnessService.java negative-elapsed LIVE branch; observed during review of the new freshness contract (2026-08-21). Fixing means either accepting an unconditional lastAcceptedAt = now (changes the shared tracker also consumed by the 6.4 ingest worker status) or surfacing skew as its own state — a shared-tracker decision, not this story's code.
+origin: code review of spec-6-5-surface-latest-telemetry-freshness-in-health.md (2026-08-21)
+location: TelemetryIngestTracker.java:30 (now.isAfter(lastAcceptedAt)) combined with TelemetryFreshnessService.java negative-elapsed LIVE branch
+severity: medium
+reason: TelemetryIngestTracker.recordAccepted() keeps lastAcceptedAt monotonic, so a backward NTP clock step leaves lastAcceptedAt in the "future" and freshness reports LIVE (clock-skew branch) until wall time catches up — masking a genuinely stalled ingest path. Fixing means either accepting an unconditional lastAcceptedAt = now (changes the shared tracker also consumed by the 6.4 ingest worker status) or surfacing skew as its own state — a shared-tracker decision, not this story's code.
+source_spec: _bmad-output/implementation-artifacts/spec-6-5-surface-latest-telemetry-freshness-in-health.md
+status: open
 
 ### DW-70: Stale-machine evidence cannot distinguish Redis read failure from never-received telemetry
 
@@ -545,19 +680,90 @@ location: syncro/apps/backend/src/main/resources/application*.yml / syncro/.env 
 reason: The story spec documents `admin@syncro.dev / syncro-admin-dev` as the UI access credential, but the live local stack runs a different password from `syncro/.env`, which is gitignored and version-controlled out of band. The dev recorded the deviation transparently (literal redacted per review finding) and the used credential is within the spec's allowed set, but spec text and live reality can silently drift for any future manual/UI verification, and (per DW-75 family) the spec text cannot be verified against source. Fix needs a decision: reconcile spec text with live defaults (documentation update) or make the seed/bootstrap own the credential deterministically. Deferred to the 7-7 documentation story; 7-4 itself will additionally redact the literal password per review patch.
 status: open
 
-## Deferred from: code review of spec-7-5-validate-threshold-alert-and-waha-notification-job (2026-08-22)
+### DW-103: No regression test protects V31 fix
 
-- No regression test protects V31 fix — no test asserts the audit-write path for ALERT create/acknowledge/resolve or that ck_audit_log_entity_type includes 'ALERT'; the defect would silently regress. Needs follow-up story.
-- Constraint list duplicated in V16+V31 — a future migration recreating ck_audit_log_entity_type from V16's list (omitting 'ALERT') silently re-introduces the exact failure mode this story fixed.
-- verify-pilot NOTIFICATION section has no FAIL path — job count/status/level/trace_id are print-only; "NOTIFICATION PASS" is cosmetic. "Exactly one job" rests on agent-run SQL. Pre-existing 7-3 tooling limitation.
-- Alert status=OPEN not asserted by verify-pilot — ALERT section only FAILs when consumed_percentage_snapshot != 90.00. Pre-existing 7-3 tooling limitation.
-- traceId cross-correlation human-read, not tool-enforced — verify-pilot never compares alert trace_id against job trace_id. Pre-existing 7-3 tooling limitation.
-- Job idempotency key not independently exercised; no unique index on idempotency_key — duplicate-job prevention depends entirely on the alert dedup guard (uq_notification_jobs_alert_level on alert_id+escalation_level, not idempotency_key). Pre-existing system design.
-- V31 DROP CONSTRAINT without IF EXISTS — fails if constraint manually renamed/removed; editing applied migration would change Flyway checksum. Standard Flyway convention, low risk for sanctioned schemas.
-- Counter drift baseline not asserting counting=890 — before-threshold publish on drifted counter records wrap-around delta. 7-4 established 890 baseline; low risk.
-- Quarantine matrix path not executable — verify-pilot hard-FAILs on any telemetry_quarantine row, contradicting the spec's "document as pre-existing" path. Pre-existing script constraint.
+origin: migrated from legacy ledger ("code review of spec-7-5-validate-threshold-alert-and-waha-notification-job (2026-08-22)"), 2026-08-22
+location: audit-write path tests / ck_audit_log_entity_type migration
+severity: high
+reason: no test asserts the audit-write path for ALERT create/acknowledge/resolve or that ck_audit_log_entity_type includes 'ALERT'; the defect would silently regress. Needs follow-up story.
+status: open
 
-## Deferred from: code review of spec-7-7-document-pilot-validation-proof (2026-08-22)
+### DW-104: Constraint list duplicated in V16+V31
 
-- WAHA disclaimer (pilot-validation.md §6/§9) contradicts the transcribed 7-6 evidence ("message WAS delivered to WhatsApp before cancellation" for a placeholder number). The disclaimer is spec-mandated (DW-56 / don't-claim-delivery constraint), so the doc correctly implements the spec; the tension needs spec-level resolution, not a doc fix.
-- .gitignore negation re-includes the whole syncro/docs/screenshots/ subtree, not just pilot/ (the !pilot/ line is redundant given the parent re-include). User-approved change; tightening to pilot/-only scope is optional future work.
+origin: migrated from legacy ledger ("code review of spec-7-5-validate-threshold-alert-and-waha-notification-job (2026-08-22)"), 2026-08-22
+location: V16__*.sql, V31__*.sql
+severity: medium
+reason: a future migration recreating ck_audit_log_entity_type from V16's list (omitting 'ALERT') silently re-introduces the exact failure mode this story fixed.
+status: open
+
+### DW-105: verify-pilot NOTIFICATION section has no FAIL path
+
+origin: migrated from legacy ledger ("code review of spec-7-5-validate-threshold-alert-and-waha-notification-job (2026-08-22)"), 2026-08-22
+location: verify-pilot script (NOTIFICATION section)
+severity: medium
+reason: job count/status/level/trace_id are print-only; "NOTIFICATION PASS" is cosmetic. "Exactly one job" rests on agent-run SQL. Pre-existing 7-3 tooling limitation.
+status: open
+
+### DW-106: Alert status=OPEN not asserted by verify-pilot
+
+origin: migrated from legacy ledger ("code review of spec-7-5-validate-threshold-alert-and-waha-notification-job (2026-08-22)"), 2026-08-22
+location: verify-pilot script (ALERT section)
+severity: medium
+reason: ALERT section only FAILs when consumed_percentage_snapshot != 90.00. Pre-existing 7-3 tooling limitation.
+status: open
+
+### DW-107: traceId cross-correlation human-read, not tool-enforced
+
+origin: migrated from legacy ledger ("code review of spec-7-5-validate-threshold-alert-and-waha-notification-job (2026-08-22)"), 2026-08-22
+location: verify-pilot script
+severity: low
+reason: verify-pilot never compares alert trace_id against job trace_id. Pre-existing 7-3 tooling limitation.
+status: open
+
+### DW-108: Job idempotency key not independently exercised; no unique index on idempotency_key
+
+origin: migrated from legacy ledger ("code review of spec-7-5-validate-threshold-alert-and-waha-notification-job (2026-08-22)"), 2026-08-22
+location: uq_notification_jobs_alert_level / idempotency_key
+severity: medium
+reason: duplicate-job prevention depends entirely on the alert dedup guard (uq_notification_jobs_alert_level on alert_id+escalation_level, not idempotency_key). Pre-existing system design.
+status: open
+
+### DW-109: V31 DROP CONSTRAINT without IF EXISTS
+
+origin: migrated from legacy ledger ("code review of spec-7-5-validate-threshold-alert-and-waha-notification-job (2026-08-22)"), 2026-08-22
+location: V31__*.sql
+severity: low
+reason: fails if constraint manually renamed/removed; editing applied migration would change Flyway checksum. Standard Flyway convention, low risk for sanctioned schemas.
+status: open
+
+### DW-110: Counter drift baseline not asserting counting=890
+
+origin: migrated from legacy ledger ("code review of spec-7-5-validate-threshold-alert-and-waha-notification-job (2026-08-22)"), 2026-08-22
+location: verify-pilot script (counter baseline)
+severity: low
+reason: before-threshold publish on drifted counter records wrap-around delta. 7-4 established 890 baseline; low risk.
+status: open
+
+### DW-111: Quarantine matrix path not executable
+
+origin: migrated from legacy ledger ("code review of spec-7-5-validate-threshold-alert-and-waha-notification-job (2026-08-22)"), 2026-08-22
+location: verify-pilot script
+severity: medium
+reason: verify-pilot hard-FAILs on any telemetry_quarantine row, contradicting the spec's "document as pre-existing" path. Pre-existing script constraint.
+status: open
+
+### DW-112: WAHA disclaimer contradicts the transcribed 7-6 evidence — spec-level resolution needed
+
+origin: migrated from legacy ledger ("code review of spec-7-7-document-pilot-validation-proof (2026-08-22)"), 2026-08-22
+location: syncro/docs/pilot-validation.md §6/§9
+severity: medium
+reason: WAHA disclaimer (pilot-validation.md §6/§9) contradicts the transcribed 7-6 evidence ("message WAS delivered to WhatsApp before cancellation" for a placeholder number). The disclaimer is spec-mandated (DW-88 / don't-claim-delivery constraint), so the doc correctly implements the spec; the tension needs spec-level resolution, not a doc fix.
+status: open
+
+### DW-113: .gitignore negation re-includes the whole syncro/docs/screenshots/ subtree, not just pilot/
+
+origin: migrated from legacy ledger ("code review of spec-7-7-document-pilot-validation-proof (2026-08-22)"), 2026-08-22
+location: syncro/.gitignore (screenshots negation)
+severity: low
+reason: the `!pilot/` line is redundant given the parent re-include, so the whole `syncro/docs/screenshots/` subtree is re-included rather than just `pilot/`. User-approved change; tightening to pilot/-only scope is optional future work.
+status: open
