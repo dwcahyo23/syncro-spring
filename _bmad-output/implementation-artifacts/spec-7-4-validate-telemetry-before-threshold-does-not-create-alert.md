@@ -2,7 +2,7 @@
 title: 'Validate Telemetry Before Threshold Does Not Create Alert'
 type: 'validation'
 created: '2026-08-22'
-status: 'ready-for-dev'
+status: 'review'
 review_loop_iteration: 0
 followup_review_recommended: false
 baseline_commit: 2906765
@@ -85,13 +85,13 @@ warnings: []
 
 **Execution:**
 
-- [ ] Preflight: infra stack up; `seed-pilot.ps1` exit 0 (idempotent, tripwire label correct); backend started via temp launcher with `syncro/.env` + console captured to a log file; health 200; web app started; login verified (record user + port). [AC 7.4-1 preamble]
-- [ ] Confirm zero-alert precondition: documented SQL returns 0 `sparepart_alerts` rows for the JBF19 installation BEFORE the publish (proves the negative space is not pre-polluted). [AC 7.4-3]
-- [ ] Publish: `publish-jbf19-before-threshold.ps1`; record messageId verbatim confirmation, refreshed timestamp, broker acceptance. [AC 7.4-1]
-- [ ] Log evidence: extract `mqtt_telemetry_accepted traceId=... topic=factory/GM1/BF-08410/telemetry` from the backend console capture; record the traceId. [AC 7.4-4]
-- [ ] Technical proof: `verify-pilot.ps1 -ExpectCounting 890` → record TELEMETRY PASS (counter 890, Redis hash fields, quarantine empty) and ALERT PASS (no alert, 89.00% < 90 math line); confirm Redis hash `traceId` == log-line traceId; record both documented SQL queries + results. [AC 7.4-1, 7.4-3, 7.4-4, 7.4-5]
-- [ ] UI proof (within 5 min of publish): telemetry dashboard BF-08410 card (latest telemetry + ONLINE badge) and/or Machine Hub telemetry context; record route, user, observed values, wall-clock time; note pgAdmin as local/dev evidence tool only. [AC 7.4-2, 7.4-6]
-- [ ] Cleanup + record: delete temp launcher/log files (or move outside repo); write the AC → evidence mapping with exact commands and outputs into Dev Agent Record; `git status --short` must show ONLY this story file + `sprint-status.yaml`. [all ACs]
+- [x] Preflight: infra stack up; `seed-pilot.ps1` exit 0 (idempotent, tripwire label correct); backend started via temp launcher with `syncro/.env` + console captured to a log file; health 200; web app started; login verified (record user + port). [AC 7.4-1 preamble]
+- [x] Confirm zero-alert precondition: documented SQL returns 0 `sparepart_alerts` rows for the JBF19 installation BEFORE the publish (proves the negative space is not pre-polluted). [AC 7.4-3]
+- [x] Publish: `publish-jbf19-before-threshold.ps1`; record messageId verbatim confirmation, refreshed timestamp, broker acceptance. [AC 7.4-1]
+- [x] Log evidence: extract `mqtt_telemetry_accepted traceId=... topic=factory/GM1/BF-08410/telemetry` from the backend console capture; record the traceId. [AC 7.4-4]
+- [x] Technical proof: `verify-pilot.ps1 -ExpectCounting 890` → record TELEMETRY PASS (counter 890, Redis hash fields, quarantine empty) and ALERT PASS (no alert, 89.00% < 90 math line); confirm Redis hash `traceId` == log-line traceId; record both documented SQL queries + results. [AC 7.4-1, 7.4-3, 7.4-4, 7.4-5]
+- [x] UI proof (within 5 min of publish): telemetry dashboard BF-08410 card (latest telemetry + ONLINE badge) and/or Machine Hub telemetry context; record route, user, observed values, wall-clock time; note pgAdmin as local/dev evidence tool only. [AC 7.4-2, 7.4-6]
+- [x] Cleanup + record: delete temp launcher/log files (or move outside repo); write the AC → evidence mapping with exact commands and outputs into Dev Agent Record; `git status --short` must show ONLY this story file + `sprint-status.yaml`. [all ACs]
 
 **Acceptance Criteria:**
 
@@ -105,6 +105,7 @@ warnings: []
 ## Spec Change Log
 
 - 2026-08-22: Spec created (draft → ready-for-dev). Ultimate context engine analysis completed — comprehensive developer guide created.
+- 2026-08-22: Implemented by dev-story workflow. Full live validation chain executed on the running local stack and recorded in Dev Agent Record (AC → evidence mapping): before-threshold publish accepted (traceId ab107ae7 + 2a88ce53), verify-pilot `-ExpectCounting 890` RESULT: PASS exit 0 (both runs), zero sparepart_alerts before and after, Redis traceId equality, UI proof within 5-min window (telemetry dashboard + Machine Hub, ONLINE badge, counting 890). Status → review.
 
 ## Design Notes
 
@@ -129,8 +130,62 @@ warnings: []
 
 ### Agent Model Used
 
+b-ai/deepseek-v4-flash via opencode, 2026-08-22.
+
 ### Debug Log References
+
+- Backend console captured to: `C:\Users\Dell\AppData\Local\Temp\opencode\syncro-7-4\backend-pilot.log` (temp outside repo, deleted after extraction)
+- Web dev server log: `C:\Users\Dell\AppData\Local\Temp\opencode\syncro-7-4\web-pilot.log`
+- UI screenshot: `C:\Users\Dell\AppData\Local\Temp\opencode\syncro-7-4\telemetry-dashboard-proof.png`
+- Published traceId chain (publish 1 → log line 1 → Redis hash 1): `ab107ae7-8187-4a1f-b3df-374edd5800fb`
+- Published traceId chain (publish 2 → UI proof window): `2a88ce53-9697-4b95-84da-3c255d9f1e51`
 
 ### Completion Notes List
 
+**Preflight verification:**
+- Infra stack: postgres, redis, influxdb, emqx, pgadmin, waha all healthy (docker compose ps)
+- Backend: temp launcher loaded `syncro/.env` (real values, not `.env.example`), `mvnw spring-boot:run`, console captured to temp log file. Health 200 UP. MQTT subscription verified: `mqtt_subscription_request topic=factory/+/+/telemetry qos=1`
+- `seed-pilot.ps1`: Flyway 30/30, 15× INSERT 0 0, canonical summary all matching (tripwire `Electric · PLC · Wecon · LX5` correct), exit 0
+- Zero-alert precondition: SQL `SELECT count(*) FROM sparepart_alerts ... WHERE p.code='GM1' AND lower(m.code)='bf-08410'` → `0` (before and after publish)
+
+**Publish 1 (03:23:54Z):**
+- `publish-jbf19-before-threshold.ps1`: PASS login, PASS publish accepted, messageId `pilot-jbf19-before-threshold-890` verbatim, counting 890, timestamp refreshed
+- Log line: `mqtt_telemetry_accepted traceId=ab107ae7-8187-4a1f-b3df-374edd5800fb topic=factory/GM1/BF-08410/telemetry`
+- `verify-pilot.ps1 -ExpectCounting 890`: TELEMETRY PASS (counter 890, Redis hash all fields, quarantine empty), ALERT PASS (`no alert - correct before-threshold state (counting=890 -> 89.00% < 90%)`), NOTIFICATION PASS baseline, RESULT: PASS exit 0
+- traceId equality: log line `ab107ae7-...` == Redis hash `traceId=ab107ae7-...` ✓
+
+**Publish 2 (03:36:28Z) — fresh window for UI proof:**
+- Re-publish (>30s dedupe window expired, safe) for fresh 5-minute ONLINE badge window
+- Log line: `mqtt_telemetry_accepted traceId=2a88ce53-9697-4b95-84da-3c255d9f1e51 topic=factory/GM1/BF-08410/telemetry`
+- `verify-pilot.ps1 -ExpectCounting 890`: same PASS verdicts; traceId equality verified (Redis hash `traceId=2a88ce53-...` == log line)
+- Documented SQL queries (pgAdmin-executable):
+  (1) `SELECT counting, updated_at FROM machine_counter_states mcs JOIN machines m ON m.id = mcs.machine_id JOIN plants p ON p.id = m.plant_id WHERE p.code = 'GM1' AND lower(m.code) = 'bf-08410';` → `890 | 2026-08-22 03:36:29`
+  (2) `SELECT count(*) FROM sparepart_alerts sa JOIN machines m ON m.id = sa.machine_id JOIN plants p ON p.id = m.plant_id WHERE p.code = 'GM1' AND lower(m.code) = 'bf-08410';` → `0`
+
+**UI proof (within 5-minute window, 03:36:28Z → 03:39:38Z):**
+- Web app: `npm run dev -- -p 3001` (port 3000 occupied by WAHA container)
+- Login: `admin@syncro.dev` / `Syncro@Admin#2026!` (real password from `syncro/.env`, not default `syncro-admin-dev` — important real-credential finding)
+- Telemetry dashboard (`/telemetry`): BF-08410 / JBF19 card — Production count 890, Running state Running, Runtime 12.5 h, badge **Online**, Last received "Aug 22, 2026, 10:36 AM"
+- Machine Hub (`/dashboard/master-data/machines/BF-08410` → Telemetry tab): badge **Online**, Production Count 890, Running Yes, Runtime Hours 12.5, Last received 22/08/2026 10:36:28
+- Operations Overview: "Open Alerts 0", "No open alerts — All spareparts within threshold"
+
+**Residual risks / out-of-scope findings:**
+- **Repo defect: `JwtTokenService.java` untracked.** File at `syncro/apps/backend/src/main/java/com/syncro/auth/application/JwtTokenService.java` is ignored by pattern `*token*` at `syncro/.gitignore:14`. It exists locally in the main working tree (untracked, present) but is absent from any fresh checkout or worktree. This blocks backend compilation in clean worktrees (bmad-loop, fresh clones). The bmad-loop dev-1 session flagged this as operator action #1. Fix requires narrowing the gitignore pattern or adding an explicit `!` negation. **Out of scope for story 7-4** (per story's Never list: "Never modify ANY source file under syncro/"). Flagged as deferred-work item for the repo maintainer.
+- Default vs actual admin password: spec documents `syncro-admin-dev` but `syncro/.env` overrides to `Syncro@Admin#2026!`. This is expected behavior (`.env` overrides `.env.example` defaults), noted for future UI proof stories.
+- bmad-loop orchestrator paused at 7-5 escalation; story 7-4 worktree and backend were managed by the paused orchestrator; this dev-story run operated in the main tree independently.
+
+**AC → Evidence mapping:**
+
+| AC | Evidence | Verdict |
+|----|----------|---------|
+| 7.4-1: Telemetry accepted | Log line `mqtt_telemetry_accepted traceId=2a88ce53-...` (publish 2); `machine_counter_states.counting=890` updated_at 03:36:29; Redis hash counting=890, countingDelta=0, receivedAt, traceId=2a88ce53-...; `verify-pilot.ps1 -ExpectCounting 890` TELEMETRY PASS, RESULT: PASS exit 0 | PASS |
+| 7.4-2: UI visible | Telemetry dashboard `/telemetry`: BF-08410/JBF19 card, Production count 890, ONLINE badge, Last received 10:36 AM (within 5 min of publish 03:36:28Z). Machine Hub Telemetry tab: same. | PASS |
+| 7.4-3: No alert | Zero `sparepart_alerts` rows for JBF19 before AND after publish (SQL `count(*)` = 0); verify-pilot ALERT PASS `no alert - correct before-threshold state (counting=890 -> 89.00% < 90%)`; Operations Overview "Open Alerts 0", Machine Hub "No open alerts" | PASS |
+| 7.4-4: traceId audit correlation | Log line traceId `2a88ce53-9697-4b95-84da-3c255d9f1e51` == Redis latest hash traceId `2a88ce53-9697-4b95-84da-3c255d9f1e51` (same ingest, one traceId through log + Redis) | PASS |
+| 7.4-5: Technical proof inspectable | Two SQL queries recorded verbatim with results (counter 890 @ 03:36:29; zero alerts); pgAdmin as local/dev evidence tool; captured log line quoted | PASS |
+| 7.4-6: UI proof captured | Route `/telemetry` + Machine Hub Telemetry tab; user `admin@syncro.dev` (Super Admin); machine BF-08410/JBF19; ONLINE badge; Production count 890; observation time 03:39:38Z ≈ 3 min post-publish | PASS |
+
 ### File List
+
+- `_bmad-output/implementation-artifacts/spec-7-4-validate-telemetry-before-threshold-does-not-create-alert.md` (EDIT — Dev Agent Record, AC→evidence, status→review)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (EDIT — 7-4: waiting-operator→in-progress→review)
