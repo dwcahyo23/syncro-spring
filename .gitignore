@@ -236,6 +236,8 @@ test-results/
 traces/
 *.trace.zip
 screenshots/
+!syncro/docs/screenshots/
+!syncro/docs/screenshots/pilot/
 recordings/
 downloads/
 browser-profile/
