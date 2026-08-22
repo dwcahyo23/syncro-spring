@@ -5,7 +5,8 @@
 origin: migrated from legacy ledger ("Deferred from: code review of 1-3-initialize-spring-boot-backend-skeleton (2026-05-25)"), 2026-08-07
 location: syncro backend MQTT/EMQX broker configuration
 reason: Local broker MQTT authentication belongs to later EMQX security/auth configuration scope, not Story 1.3 backend skeleton.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 1 (EMQX MQTT auth, optimistic locking, Influx coercion) — local MQTT password default aligned with auth-bootstrap.csv; enforcement proven by MqttAuthEnforcementIntegrationTest (real EMQX Testcontainer)
 decision: 2026-08-19 Bundle it now — Create a dev session that enables EMQX password authentication in docker-compose (EMQX_AUTH__MNESIA__PASSWORD_HASH or built-in DB), updates application.yml MQTT client credentials, and verifies the Spring MQTT client connects successfully with auth enforced.
 decision: 2026-08-19 Bundle it now — Create a dev session that enables EMQX password authentication in docker-compose (EMQX_AUTH__MNESIA__PASSWORD_HASH or built-in DB), updates application.yml MQTT client credentials, and verifies the Spring MQTT client connects successfully with auth enforced.
 
@@ -72,7 +73,8 @@ status: open
 origin: migrated from legacy ledger ("Deferred from: code review of 2-6-install-spareparts-on-machines-with-lifetime-baseline.md (2026-06-05)"), 2026-08-07
 location: Installation entity (backend)
 reason: Missing optimistic locking on Installation entity — deferred, pre-existing.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 1 — @Version added to MachineSparepartInstallationEntity (V32) with ObjectOptimalLockingFailureException → 409 CONCURRENT_MODIFICATION mapping
 decision: 2026-08-19 Bundle it now — Add a @Version Long version field to InstallationEntity, update the corresponding migration, and propagate OptimisticLockException handling to the service and exception-handler layers.
 decision: 2026-08-19 Bundle it now — Add a @Version Long version field to InstallationEntity, update the corresponding migration, and propagate OptimisticLockException handling to the service and exception-handler layers.
 
@@ -171,7 +173,8 @@ origin: code review of spec-3-2-validate-mqtt-topic-and-base-payload.md
 location: MqttSubscriptionConfigTest.java
 severity: low
 reason: The handler's new `TelemetryValidationService` dependency drags DB-touching repositories into `MqttSubscriptionConfigTest`, which must supply a mocked-repo bean purely to construct the handler. With Mockito defaults that bean's `validate()` rejects every message, so the wiring test's handler is non-functional in principle. A `@FunctionalInterface` validator abstraction or splitting handler logging from validation would decouple wiring tests.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 5 — @FunctionalInterface TelemetryValidator decouples the handler/wiring test from the DB-backed service; MqttSubscriptionConfigTest supplies a lightweight stub
 
 ### DW-20: Whitespace/edge tokens in topic segments surface as `unknown_plant`/`unknown_machine` instead of `malformed_topic`
 
@@ -257,7 +260,8 @@ origin: code review of spec-3-6-support-optional-machine-telemetry-fields.md
 location: InfluxTelemetryWriter.java
 severity: high
 reason: `InfluxTelemetryWriter.addOptionalField` infers Influx field types from the JSON node, so a configured field that alternates representation across samples (e.g. `vibration:2` vs `vibration:2.4`) triggers an InfluxDB field-type conflict that rejects subsequent points and silently drops telemetry. Fixing requires a type-stability strategy that changes the documented storage contract — architecture/Epic 6 scope per the spec's Block If boundary.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 1 — addOptionalField always coerces numeric JSON nodes via doubleValue() (InfluxTelemetryWriter.java:51); int/float same-field unit + real-Influx tests added
 decision: 2026-08-20 Always coerce numeric to Double — Change addOptionalField in InfluxTelemetryWriter.java to always call point.addField(name, node.doubleValue()) for any numeric JSON node (both isIntegralNumber and isFloatingPointNumber), eliminating the Long vs Double type conflict. Update any downstream Flux queries that may rely on integer field semantics. Add a test asserting that integer and float samples for the same field name both write successfully.
 decision: 2026-08-19 Always coerce numeric to Double — Change addOptionalField in InfluxTelemetryWriter.java to always call point.addField(name, node.doubleValue()) for any numeric JSON node (both isIntegralNumber and isFloatingPointNumber), eliminating the Long vs Double type conflict. Update any downstream Flux queries that may rely on integer field semantics. Add a test asserting that integer and float samples for the same field name both write successfully.
 
@@ -326,7 +330,8 @@ origin: code review of spec-4-2-create-threshold-alert-with-duplicate-prevention
 location: V19__create_sparepart_alerts.sql
 severity: low
 reason: V19__create_sparepart_alerts.sql has no CHECK constraint on threshold_percentage column. Domain validation exists at Story 2.6 installation creation layer but DB has no guard against out-of-range values (negative or > 100). Upstream validation exists; deferred.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 4 — V35__sparepart_alerts_threshold_check.sql adds CHECK (threshold_percentage BETWEEN 0 AND 100) with in/out-of-range migration tests
 
 ### DW-37: evaluateAll and alert creation share one catch block in TelemetryPersistenceService
 
@@ -352,7 +357,8 @@ status: open
 origin: code review Story 4.4 (2026-08-19)
 location: SparepartAlertCommandService.java, alert-detail-page-content.tsx
 reason: Entity in-memory guard prevents corrupt state; optimistic locking is a pre-existing gap across all entities.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 1 — @Version on SparepartAlertEntity (V33), OOLFE → 409 CONCURRENT_MODIFICATION in alert exception handler; acknowledge isPending guard verified
 decision: 2026-08-19 Full fix: @Version + disabled button — Add @Version Long version field to SparepartAlertEntity with a migration, propagate OptimisticLockException to a 409 response, and disable the acknowledge button in alert-detail-page-content.tsx while the mutation is in-flight (isPending guard).
 decision: 2026-08-19 Full fix: @Version + disabled button — Add @Version Long version field to SparepartAlertEntity with a migration, propagate OptimisticLockException to a 409 response, and disable the acknowledge button in alert-detail-page-content.tsx while the mutation is in-flight (isPending guard).
 
@@ -382,7 +388,8 @@ origin: migrated from legacy ledger ("code review of spec-5-1-waha-template-edit
 location: syncro/apps/backend/src/main/java/com/syncro/notification/application/WahaTemplateService.java:44
 severity: low
 reason: Single-template config entity; concurrent admin edit extremely unlikely in pilot phase. findByTemplateKey + save is not atomic but risk window is negligible at current user load.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 3 — WahaTemplateService.upsertTemplate uses atomic repository.upsert (native INSERT ... ON CONFLICT) instead of findByTemplateKey + save
 
 ### DW-45: WahaTemplateView tidak expose createdAt
 origin: code review Story 5.1 (2026-08-20)
@@ -428,7 +435,8 @@ origin: migrated from legacy ledger ("code review of spec-5-4-escalate-alert-not
 location: NotificationJobEntity.java:52
 severity: low
 reason: `sentAt` is set by `markSent()` before any job reaches SENT status; NULL-safety is enforced at application layer, not DB layer. Low risk; adding NOT NULL requires a Flyway migration coordinated with existing data.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 3 (corrected approach) — V34 adds chk_notification_jobs_sent_requires_sent_at CHECK (status <> 'SENT' OR sent_at IS NOT NULL) instead of plain NOT NULL
 
 ### DW-83: Infinite retry — closed/resolved alert leaves job in SENT forever
 
@@ -436,7 +444,8 @@ origin: migrated from legacy ledger ("code review of spec-5-4-escalate-alert-not
 location: EscalationService.java:66
 severity: low
 reason: AC10 by design requires job to stay SENT when alert is non-OPEN (protects re-open scenario). Permanent loop is theoretical; alert lifecycle cleanup (RESOLVED/DELETED) belongs to a future alert lifecycle story.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 6 — findSentJobsDueForEscalation joins SparepartAlertEntity filtering status=OPEN; closed-alert SENT jobs no longer re-polled (job stays SENT for reopen tracking; EscalationService untouched)
 
 ### DW-84: Manual hand-edit of generated file will be overwritten
 
@@ -468,7 +477,8 @@ origin: migrated from legacy ledger ("code review of spec-5-9-implement-circuit-
 location: NotificationDispatchService.java:50
 severity: high
 reason: `NotificationDispatchService.java:50` — pre-existing transaction boundary, severity worsened by the added timeout; deferred, pre-existing.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 6 — @Transactional removed from dispatch(); TransactionTemplate wraps each DB write phase so the WAHA call runs outside any transaction (no pooled-connection hold)
 
 ### DW-46: DbHealthIndicator getConnection can block up to Hikari connection-timeout (30s)
 
@@ -497,7 +507,8 @@ origin: migrated from legacy ledger ("WAHA GOWS 2026.8.1 upgrade verification (2
 location: syncro/apps/backend/src/main/java/com/syncro/notification/infrastructure/WahaClient.java:145-147
 severity: high
 reason: After engine migration NOWEB → GOWS (image `devlikeapro/waha:gows-2026.8.1`), sending to a phone number not registered on WhatsApp returns HTTP 500 `"no LID found"` instead of a 4xx-class error. `doSend()` throws `WahaHttpStatusException` on any 5xx, which Resilience4j records as a failure — so a single mis-typed/invalid recipient in DB could push the WAHA circuit breaker to OPEN and block delivery of all other notification jobs. Unlike NOWEB, retrying such a job can never succeed. Suggested hardening (future story): treat 500 responses whose body indicates `no LID found` as a deterministic client error — return a failed `Result` without tripping the circuit, mirroring the existing 4xx path. Verified on 2026-08-21: real send to `6282124610363` succeeded (ack DEVICE); invalid `6280000000000` returned 500.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 3 — WahaClient treats GOWS HTTP 500 "no LID found" as a deterministic client failure (Result, no circuit trip) mirroring the 4xx path (WahaClient.java:146-151)
 
 ### DW-89: GOWS represents incoming messages with `@lid` instead of `@c.us`
 
@@ -521,7 +532,8 @@ origin: migrated from legacy ledger ("telemetry pipeline scale analysis for hund
 location: syncro/apps/backend/src/main/java/com/syncro/config/TelemetryProperties.java:15
 severity: high
 reason: `TelemetryProperties.java:15` declares `ingest.worker-threads` (default 2) but nothing uses it: `TelemetryIngestQueueConfig.java:14` only reads `queueCapacity`, and the `IntegrationFlow` in `MqttSubscriptionConfig.java:53-60` has no explicit `.poller(...)`. The `QueueChannel` is therefore consumed by the default poller (single thread). With hundreds of machines per plant, every message serially performs Redis SETNX dedupe → InfluxDB HTTP write (3 retries + backoff) → Redis HSET → PostgreSQL counter-state save → sparepart lifetime evaluation → alert creation (~30-50ms/message ⇒ max ~20-33 msg/s). Estimate: 300 machines × 1 msg/5s = 60 msg/s ⇒ 1000-capacity queue fills in ~17s → send blocks → backpressure drops messages at EMQX. Fix belongs to a hardening story: wire `workerThreads` into the poller via a TaskExecutor and consider moving alert evaluation off the hot path.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 5 — ThreadPoolTaskExecutor wired into the IntegrationFlow poller (MqttSubscriptionConfig.java:62) sized by ingest.workerThreads; striped PerMachineExecution serializes the per-machine counting-delta chain while cross-machine messages parallelize
 
 ### DW-92: EMQX 6.2.2 (community) can offload InfluxDB/Redis writes via Data Integration — candidate for correct-course redesign
 
@@ -550,7 +562,8 @@ origin: migrated from legacy ledger ("telemetry pipeline scale analysis for hund
 location: syncro/apps/backend/src/main/java/com/syncro/telemetry/infrastructure/MqttSubscriptionConfig.java:33
 severity: medium
 reason: TODO DW-23 already flags this; with hundreds of machines the reconnect window widens and message loss probability grows. Switch to `cleanSession(false)` with a stable clientId once at-least-once delivery is a hard requirement; the Redis SETNX dedupe gate already handles duplicates.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 5 — setCleanSession(false) (MqttSubscriptionConfig.java:33) with stable clientId; broker redelivers in-flight QoS-1 messages, SETNX dedupe absorbs duplicates
 
 ### DW-94: Probe artifacts left in EMQX from feature exploration need cleanup
 
@@ -620,7 +633,8 @@ status: open
 origin: Deferred from: code review of spec-6-4-build-super-admin-health-dashboard (2026-08-21)
 location: syncro/apps/backend/src/main/java/com/syncro/notification/infrastructure/WahaCircuitBreakerHealthIndicator.java + syncro/apps/web/src/features/system-health/hooks/use-actuator-health-query.ts
 reason: Resilience4j Metrics.getFailureRate() returns NaN until minimumNumberOfCalls is reached. If Spring's Jackson writes NaN unquoted, the entire /actuator/health JSON becomes invalid and the frontend hook throws, collapsing all five dependency cards. Frontend defensively treats per-parse failure as an error, but the whole-section collapse is undesirable. Needs verification against the running backend (Jackson QUOTE_NON_NUMERIC_NUMBERS default) and, if confirmed, a backend-side clamp/config plus a per-component-parse isolation on the frontend. Cross-stack, backend-owned; not fixable purely in story 6.4.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 3 — failureRate NaN/negative clamped to 0 before serialization (WahaCircuitBreakerHealthIndicator.java:41)
 
 ### DW-69: TelemetryIngestTracker monotonic guard can pin freshness LIVE through a backward clock step
 
@@ -686,7 +700,8 @@ origin: migrated from legacy ledger ("code review of spec-7-5-validate-threshold
 location: audit-write path tests / ck_audit_log_entity_type migration
 severity: high
 reason: no test asserts the audit-write path for ALERT create/acknowledge/resolve or that ck_audit_log_entity_type includes 'ALERT'; the defect would silently regress. Needs follow-up story.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 4 — AuditLogWiringIntegrationTest proves recordSystem(ALERT) persists against the migrated DB and ck_audit_log_entity_type includes 'ALERT'
 
 ### DW-104: Constraint list duplicated in V16+V31
 
@@ -694,7 +709,8 @@ origin: migrated from legacy ledger ("code review of spec-7-5-validate-threshold
 location: V16__*.sql, V31__*.sql
 severity: medium
 reason: a future migration recreating ck_audit_log_entity_type from V16's list (omitting 'ALERT') silently re-introduces the exact failure mode this story fixed.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 4 — DbIndexHygieneMigrationTest pins the exact 8-item allowed entity_type list from pg_constraint, so any drift fails CI
 
 ### DW-105: verify-pilot NOTIFICATION section has no FAIL path
 
@@ -726,7 +742,8 @@ origin: migrated from legacy ledger ("code review of spec-7-5-validate-threshold
 location: uq_notification_jobs_alert_level / idempotency_key
 severity: medium
 reason: duplicate-job prevention depends entirely on the alert dedup guard (uq_notification_jobs_alert_level on alert_id+escalation_level, not idempotency_key). Pre-existing system design.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 4 — V36 adds unique index uq_notification_jobs_idempotency_key with duplicate/distinct-key migration tests
 
 ### DW-109: V31 DROP CONSTRAINT without IF EXISTS
 
