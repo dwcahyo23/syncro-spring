@@ -138,3 +138,40 @@ _Empty until first review loopback._
 **Manual checks (if no CLI):**
 - Inspect `alert-detail-page-content.tsx:243` for `disabled={isAcknowledging}` — confirm the DW-40 frontend guard already exists.
 - Inspect `V32`/`V33` migration files for correct table/column names and `DEFAULT 0`.
+
+## Auto Run Result
+
+**Status:** done
+
+**Summary:** Bundled four open deferred-work items (DW-1, DW-9, DW-28, DW-40): EMQX MQTT auth is proven enforced via a real EMQX 6.2.2 Testcontainer test and the local MQTT password default now matches `auth-bootstrap.csv`; optimistic locking (`@Version`) added to `MachineSparepartInstallationEntity` (V32) and `SparepartAlertEntity` (V33) with 409 `*_CONCURRENT_MODIFICATION` error codes; `InfluxTelemetryWriter` coerces all numeric optional fields to Double with unit + real-Influx int/float same-field tests.
+
+**Files changed:**
+- `syncro/apps/backend/src/main/resources/db/migration/V32__add_installation_version.sql` — version column for machine_sparepart_installations
+- `syncro/apps/backend/src/main/resources/db/migration/V33__add_alert_version.sql` — version column for sparepart_alerts
+- `MachineSparepartInstallationEntity.java` / `SparepartAlertEntity.java` — `@Version` fields
+- `MachineSparepartInstallationService.java` — OOLFE → `InstallationConcurrentModificationException`
+- `MachineSparepartInstallationExceptionHandler.java` — 409 `INSTALLATION_CONCURRENT_MODIFICATION`
+- `SparepartAlertExceptionHandler.java` — 409 `ALERT_CONCURRENT_MODIFICATION`
+- `InfluxTelemetryWriter.java` — numeric optional fields always Double
+- `application-local.yml` — MQTT password default aligned with auth-bootstrap.csv
+- `MqttAuthEnforcementIntegrationTest.java` (new) — EMQX auth-enforcement proof
+- `InfluxTelemetryWriterTest.java`, `TelemetryPersistenceIntegrationTest.java`, `PilotSeedTest.java`, `MachineSparepartInstallationControllerTest.java`, `SparepartAlertCommandServiceTest.java`, `TelemetryPersistenceServiceTest.java` — tests
+- `syncro/apps/web/src/features/alerts/alert-detail-page-content.tsx` — concurrent-modification 409 toast branch
+- `pom.xml` — surefire JVM flags for JDK 25 (Arrow/Netty in influxdb3-java)
+- `_bmad-output/implementation-artifacts/deferred-work.md` — added DW-114..117 deferrals
+
+**Review findings breakdown:** 0 intent_gap, 0 bad_spec, 6 patches applied (frontend 409 code branch, writer test assertion tightened, EMQX test MqttSecurityException + credential derived from CSV, static-init order fix, PilotSeedTest formatting), 4 deferrals added (DW-114..117), 11 rejected as noise.
+
+**Follow-up review recommendation:** false — patches were localized, low-consequence, and verified green.
+
+**Verification performed:**
+- `mvn test` targeted suites all PASS: `MqttAuthEnforcementIntegrationTest` (2/2, real EMQX), `InfluxTelemetryWriterTest` (6/6), `PilotSeedTest` (6/6, V32/V33 from empty DB), `MachineSparepartInstallationControllerTest` (26/26), `SparepartAlertCommandServiceTest` (24/24), `TelemetryPersistenceIntegrationTest` (9/9, real Influx), plus `TelemetryPersistenceServiceTest`, `DbIndexHygieneMigrationTest`, `MachineSparepartInstallationServiceIntegrationTest`, `SparepartAlertServiceTest`, `SparepartAlertQueryServiceTest`, `AuditLogWiringIntegrationTest`, `TelemetryValidationIntegrationTest`, `TelemetryValidationServiceTest`, and clean `mvn test-compile`.
+- Biome on the changed frontend file reports 2 pre-existing errors + 1 warning (import order, class sorting) present at baseline — verified via `git stash`; the new code introduces no new diagnostics.
+
+**Residual risks:**
+- DW-114 (existing integer-typed Influx optional fields conflict on first Double write) requires a bucket rewrite/migration decision for non-dev environments.
+- DW-115 (Double coercion loses precision above 2^53) — acceptable for 16-bit counting and typical sensor values; tracked.
+- DW-116 (EMQX test heredoc entrypoint bypasses compose ACL seeding; config contents on command line) — tracked.
+- Pre-existing test failures `SparepartLifetimeEvaluatorTest` (2) and `WahaRateLimiterTest` (8) are unrelated to this bundle (confirmed identical at baseline via `git stash`).
+
+**Commits:** `5689ece` (feature) + `6c14a83` (final_revision). Working tree clean, branch `main`.
