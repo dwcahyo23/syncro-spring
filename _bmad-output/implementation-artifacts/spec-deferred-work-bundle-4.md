@@ -3,7 +3,7 @@ title: 'Deferred-work bundle 4: DB constraint integrity + audit ALERT regression
 type: 'feature'
 created: '2026-08-22'
 baseline_revision: '3084e98'
-final_revision: 'PENDING'
+final_revision: '08572bf'
 status: 'done'
 review_loop_iteration: 0
 review_loop_iteration: 0
