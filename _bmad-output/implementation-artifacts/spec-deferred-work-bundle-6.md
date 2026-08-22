@@ -3,7 +3,8 @@ title: 'Deferred-work bundle 6: Notification dispatch reliability — @Transacti
 type: 'feature'
 created: '2026-08-22'
 baseline_revision: 'f10affb'
-status: 'in-review'
+final_revision: '0a2a8fd'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
