@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -256,6 +257,103 @@ class DbIndexHygieneMigrationTest {
     assertThat(countJobsForAlert(alertId)).isEqualTo(1L);
   }
 
+  @Test
+  @Transactional
+  @DisplayName("V31 extends ck_audit_log_entity_type to allow exactly the 8 entity types incl. ALERT")
+  void v31AuditEntityTypeConstraintAllowsAllEight() {
+    String def = jdbc.queryForObject("""
+        SELECT pg_get_constraintdef(oid) FROM pg_constraint
+        WHERE conname = 'ck_audit_log_entity_type'
+          AND conrelid = 'audit_log'::regclass
+        """, String.class);
+
+    assertThat(def).isNotNull();
+    assertThat(constraintListValues(def)).containsExactly(
+        "PLANT", "MACHINE_GROUP", "MACHINE", "SPAREPART_TAXONOMY",
+        "SPAREPART", "INSTALLATION", "RESPONSIBILITY", "ALERT");
+  }
+
+  @Test
+  @Transactional
+  @DisplayName("V35 accepts a sparepart_alert threshold_percentage of 90 and rejects 150")
+  void v35ThresholdCheckAcceptsInRangeAndRejectsAboveRange() {
+    AlertChainSeed chain = seedAlertChain();
+    insertSparepartAlert(chain, 90);
+    assertThat(alertCountForMachine(chain.machineId())).isEqualTo(1L);
+
+    // The rejected insert must be last: it aborts the PostgreSQL transaction, which would
+    // block any subsequent statement in the same transaction.
+    assertThatThrownBy(() -> insertSparepartAlert(chain, 150))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  @Test
+  @Transactional
+  @DisplayName("V35 accepts a sparepart_alert threshold_percentage of 90 and rejects -1")
+  void v35ThresholdCheckAcceptsInRangeAndRejectsBelowRange() {
+    AlertChainSeed chain = seedAlertChain();
+    insertSparepartAlert(chain, 90);
+    assertThat(alertCountForMachine(chain.machineId())).isEqualTo(1L);
+
+    // The rejected insert must be last: it aborts the PostgreSQL transaction, which would
+    // block any subsequent statement in the same transaction.
+    assertThatThrownBy(() -> insertSparepartAlert(chain, -1))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  @Test
+  @Transactional
+  @DisplayName("V36 rejects a second notification_jobs row with a duplicate idempotency_key")
+  void v36DuplicateIdempotencyKeyRejected() {
+    UUID alertId = seedAlertForNotificationJob();
+
+    jdbc.update("""
+        INSERT INTO notification_jobs
+          (id, alert_id, escalation_level, status, idempotency_key, trace_id,
+           attempt_count, max_attempts, version, created_at, updated_at)
+        VALUES (?,?,?,?,?,?, 0, 3, 0, ?, ?)
+        """, UUID.randomUUID(), alertId, "STAFF", "PENDING", "v36-key-dup",
+        "trace-v36", TS, TS);
+    assertThat(countJobsForAlert(alertId)).isEqualTo(1L);
+
+    // Distinct escalation_level so the only violated constraint is the V36 idempotency
+    // key unique index (uq_notification_jobs_alert_level stays satisfied).
+    // The rejected insert must be last: it aborts the PostgreSQL transaction, which would
+    // block any subsequent statement in the same transaction.
+    assertThatThrownBy(() -> jdbc.update("""
+        INSERT INTO notification_jobs
+          (id, alert_id, escalation_level, status, idempotency_key, trace_id,
+           attempt_count, max_attempts, version, created_at, updated_at)
+        VALUES (?,?,?,?,?,?, 0, 3, 0, ?, ?)
+        """, UUID.randomUUID(), alertId, "TECHNICIAN", "PENDING", "v36-key-dup",
+        "trace-v36", TS, TS))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  @Test
+  @Transactional
+  @DisplayName("V36 allows notification_jobs rows with distinct idempotency keys")
+  void v36DistinctIdempotencyKeysAllowed() {
+    UUID alertId = seedAlertForNotificationJob();
+
+    jdbc.update("""
+        INSERT INTO notification_jobs
+          (id, alert_id, escalation_level, status, idempotency_key, trace_id,
+           attempt_count, max_attempts, version, created_at, updated_at)
+        VALUES (?,?,?,?,?,?, 0, 3, 0, ?, ?)
+        """, UUID.randomUUID(), alertId, "STAFF", "PENDING", "v36-key-a",
+        "trace-v36", TS, TS);
+    jdbc.update("""
+        INSERT INTO notification_jobs
+          (id, alert_id, escalation_level, status, idempotency_key, trace_id,
+           attempt_count, max_attempts, version, created_at, updated_at)
+        VALUES (?,?,?,?,?,?, 0, 3, 0, ?, ?)
+        """, UUID.randomUUID(), alertId, "TECHNICIAN", "PENDING", "v36-key-b",
+        "trace-v36", TS, TS);
+
+    assertThat(countJobsForAlert(alertId)).isEqualTo(2L);
+  }
+
   private Object toRegclass(String relation) {
     return jdbc.queryForObject("SELECT to_regclass(?)", Object.class, relation);
   }
@@ -276,8 +374,15 @@ class DbIndexHygieneMigrationTest {
    * installation → alert), mirroring NotificationJobCancelIntegrationTest.
    */
   private UUID seedAlertForNotificationJob() {
-    int seq = seedSeq.incrementAndGet();
+    AlertChainSeed chain = seedAlertChain();
     UUID alertId = UUID.randomUUID();
+    jdbc.update("INSERT INTO sparepart_alerts (id, machine_id, machine_sparepart_installation_id, threshold_percentage, current_counter_snapshot, consumed_production_count_snapshot, consumed_percentage_snapshot, trace_id, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        alertId, chain.machineId(), chain.installationId(), 80, 1000, 800, new BigDecimal("80.00"), "trace-v34", "OPEN", TS, TS);
+    return alertId;
+  }
+
+  private AlertChainSeed seedAlertChain() {
+    int seq = seedSeq.incrementAndGet();
     UUID plantId = UUID.randomUUID();
     UUID groupId = UUID.randomUUID();
     UUID machineId = UUID.randomUUID();
@@ -310,9 +415,29 @@ class DbIndexHygieneMigrationTest {
     jdbc.update("INSERT INTO machine_sparepart_installations (id, machine_id, sparepart_id, function_name, expected_production_count, baseline_counter, threshold_percentage, installed_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
         instId, machineId, spId, "func-" + seq, 1000, 0, 80, TS, TS, TS);
 
+    return new AlertChainSeed(machineId, instId);
+  }
+
+  private record AlertChainSeed(UUID machineId, UUID installationId) {
+  }
+
+  private void insertSparepartAlert(AlertChainSeed chain, int threshold) {
     jdbc.update("INSERT INTO sparepart_alerts (id, machine_id, machine_sparepart_installation_id, threshold_percentage, current_counter_snapshot, consumed_production_count_snapshot, consumed_percentage_snapshot, trace_id, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-        alertId, machineId, instId, 80, 1000, 800, new BigDecimal("80.00"), "trace-v34", "OPEN", TS, TS);
-    return alertId;
+        UUID.randomUUID(), chain.machineId(), chain.installationId(), threshold, 1000, 800,
+        new BigDecimal("80.00"), "trace-v35", "OPEN", TS, TS);
+  }
+
+  private Long alertCountForMachine(UUID machineId) {
+    return jdbc.queryForObject(
+        "SELECT count(*) FROM sparepart_alerts WHERE machine_id = ?", Long.class, machineId);
+  }
+
+  private List<String> constraintListValues(String constraintDef) {
+    return Pattern.compile("'([A-Z_]+)'")
+        .matcher(constraintDef)
+        .results()
+        .map(match -> match.group(1))
+        .toList();
   }
 
   private Long countJobsForAlert(UUID alertId) {

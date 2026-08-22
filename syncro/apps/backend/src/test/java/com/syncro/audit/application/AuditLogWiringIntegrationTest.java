@@ -40,6 +40,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -117,6 +118,50 @@ class AuditLogWiringIntegrationTest {
 
   @Autowired
   private PasswordEncoder passwordEncoder;
+
+  @Autowired
+  private AuditLogWriter auditWriter;
+
+  @Autowired
+  private JdbcTemplate jdbc;
+
+  @Test
+  @DisplayName("DW-103 regression: recordSystem with AuditEntityType.ALERT persists without DataIntegrityViolationException (V31 fix)")
+  void alertAuditWritePersists() {
+    var admin = persistedUser(ApplicationRole.SUPER_ADMIN, "alert-writer@syncro.dev");
+    UUID alertId = UUID.randomUUID();
+
+    auditWriter.recordSystem(new AuditRecord(
+        AuditAction.CREATE,
+        AuditEntityType.ALERT,
+        alertId,
+        "alert-writer-label",
+        null,
+        null,
+        Map.of("thresholdPercentage", 90)));
+
+    var response = auditLog.list(admin,
+        new AuditLogQuery(AuditEntityType.ALERT, null, null, null, null, null, 0, 100, "createdAt,asc"));
+    assertThat(response.items())
+        .anySatisfy(entry -> {
+          assertThat(entry.entityType()).isEqualTo(AuditEntityType.ALERT);
+          assertThat(entry.entityId()).isEqualTo(alertId);
+          assertThat(entry.actorName()).isEqualTo("SYSTEM");
+          assertThat(entry.newValue()).containsEntry("thresholdPercentage", 90);
+        });
+  }
+
+  @Test
+  @DisplayName("DW-103 regression: ck_audit_log_entity_type constraint includes 'ALERT' after V31")
+  void auditLogEntityTypeConstraintAllowsAlert() {
+    String def = jdbc.queryForObject("""
+        SELECT pg_get_constraintdef(oid) FROM pg_constraint
+        WHERE conname = 'ck_audit_log_entity_type'
+          AND conrelid = 'audit_log'::regclass
+        """, String.class);
+
+    assertThat(def).isNotNull().contains("'ALERT'");
+  }
 
   @Test
   @DisplayName("2.9-SVC-009 P2 plant create/update/delete each record an entry")
