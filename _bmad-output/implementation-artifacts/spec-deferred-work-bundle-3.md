@@ -3,7 +3,8 @@ title: 'Deferred-work bundle 3: WAHA dispatch hardening — GOWS no-LID, NaN fai
 type: 'feature'
 created: '2026-08-22'
 baseline_revision: '370753644ae4b11d3aaa01e01304d965f21007aa'
-status: 'in-review'
+final_revision: '0c616a3'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
