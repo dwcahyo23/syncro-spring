@@ -101,7 +101,7 @@ class TelemetryPersistenceServiceTest {
         new TelemetryProperties(Duration.parse("PT5M"), Duration.parse("PT30S"),
             new TelemetryProperties.Ingest(1000, 2, Duration.ofMinutes(5)),
             new TelemetryProperties.DataQuality(Duration.ofHours(1))), evaluator, alertService, counterStateRepo,
-        Clock.fixed(NOW, ZoneOffset.UTC), dataQualityTracker);
+        Clock.fixed(NOW, ZoneOffset.UTC), dataQualityTracker, new PerMachineExecution());
     when(machines.findByIdWithPlantAndGroup(machine.getId())).thenReturn(Optional.of(machine));
     lenient().when(redis.opsForValue()).thenReturn(valueOps);
     // Avoid NPE in hdel diff logic when existing hash not explicitly stubbed

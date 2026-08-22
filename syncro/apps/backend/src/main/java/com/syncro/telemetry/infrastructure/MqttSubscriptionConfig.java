@@ -1,6 +1,7 @@
 package com.syncro.telemetry.infrastructure;
 
 import com.syncro.config.MqttProperties;
+import com.syncro.config.TelemetryProperties;
 import com.syncro.telemetry.application.MqttTelemetryIngestHandler;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.slf4j.Logger;
@@ -9,9 +10,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.channel.QueueChannel;
 import org.springframework.integration.dsl.IntegrationFlow;
+import org.springframework.integration.dsl.Pollers;
 import org.springframework.integration.mqtt.core.DefaultMqttPahoClientFactory;
 import org.springframework.integration.mqtt.core.MqttPahoClientFactory;
 import org.springframework.integration.mqtt.inbound.MqttPahoMessageDrivenChannelAdapter;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 @Configuration
 public class MqttSubscriptionConfig {
@@ -25,12 +28,9 @@ public class MqttSubscriptionConfig {
     options.setUserName(properties.username());
     options.setPassword(properties.password() == null ? null : properties.password().toCharArray());
     options.setAutomaticReconnect(true);
-    // TODO: cleanSession(true) discards in-flight messages on reconnect, which defeats QoS-1
-    // at-least-once redelivery semantics. The dedupe SETNX gate in TelemetryPersistenceService
-    // only guards against duplicates that actually arrive; messages lost during reconnect are
-    // silently dropped. Switch to cleanSession(false) with a stable clientId if at-least-once
-    // delivery becomes a hard requirement (DW-23).
-    options.setCleanSession(true);
+    // cleanSession(false) with the stable clientId persists the broker session across reconnects,
+    // so in-flight QoS-1 messages are redelivered; the SETNX dedupe gate absorbs the duplicates.
+    options.setCleanSession(false);
     return options;
   }
 
@@ -53,10 +53,14 @@ public class MqttSubscriptionConfig {
   @Bean
   IntegrationFlow mqttInboundFlow(MqttPahoMessageDrivenChannelAdapter adapter,
       QueueChannel telemetryIngestQueue,
-      MqttTelemetryIngestHandler handler) {
+      MqttTelemetryIngestHandler handler,
+      ThreadPoolTaskExecutor telemetryIngestExecutor,
+      TelemetryProperties telemetryProperties) {
     return IntegrationFlow.from(adapter)
         .channel(telemetryIngestQueue)
-        .handle(handler)
+        .handle(handler, e -> e.poller(Pollers.fixedDelay(100)
+            .taskExecutor(telemetryIngestExecutor)
+            .maxMessagesPerPoll(telemetryProperties.ingest().workerThreads())))
         .get();
   }
 }

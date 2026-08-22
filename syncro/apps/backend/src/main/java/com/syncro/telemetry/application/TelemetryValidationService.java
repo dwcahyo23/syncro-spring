@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class TelemetryValidationService {
+public class TelemetryValidationService implements TelemetryValidator {
 
   public sealed interface Result permits Result.Accepted, Result.Rejected {
     record Accepted(MachineEntity machine, TelemetryPayload payload) implements Result {

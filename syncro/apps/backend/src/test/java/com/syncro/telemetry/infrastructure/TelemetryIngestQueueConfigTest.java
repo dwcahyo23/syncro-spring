@@ -31,6 +31,14 @@ class TelemetryIngestQueueConfigTest {
   }
 
   @Test
+  void telemetryIngestExecutorSizedByWorkerThreads() {
+    var props = propsWithIngest(1000, 2);
+    var executor = config.telemetryIngestExecutor(props);
+    assertThat(executor.getCorePoolSize()).isEqualTo(2);
+    assertThat(executor.getMaxPoolSize()).isEqualTo(2);
+  }
+
+  @Test
   void gaugesRegisteredInRegistry() {
     var props = propsWithIngest(100, 2);
     QueueChannel channel = config.telemetryIngestQueue(props);

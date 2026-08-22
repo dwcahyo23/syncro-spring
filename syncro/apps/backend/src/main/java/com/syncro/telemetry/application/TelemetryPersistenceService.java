@@ -39,12 +39,13 @@ public class TelemetryPersistenceService {
   private final MachineCounterStateRepository counterStateRepo;
   private final Clock clock;
   private final TelemetryDataQualityTracker dataQualityTracker;
+  private final PerMachineExecution perMachineExecution;
 
   public TelemetryPersistenceService(MachineRepository machines, InfluxTelemetryWriter influxWriter,
       RedisLatestTelemetryWriter redisLatestWriter, StringRedisTemplate redis, TelemetryProperties properties,
       SparepartLifetimeEvaluator evaluator, SparepartAlertService alertService,
       MachineCounterStateRepository counterStateRepo, Clock clock,
-      TelemetryDataQualityTracker dataQualityTracker) {
+      TelemetryDataQualityTracker dataQualityTracker, PerMachineExecution perMachineExecution) {
     this.machines = machines;
     this.influxWriter = influxWriter;
     this.redisLatestWriter = redisLatestWriter;
@@ -55,6 +56,7 @@ public class TelemetryPersistenceService {
     this.counterStateRepo = counterStateRepo;
     this.clock = clock;
     this.dataQualityTracker = dataQualityTracker;
+    this.perMachineExecution = perMachineExecution;
   }
 
   public void persist(TelemetryValidationService.Result.Accepted accepted, TelemetryEnvelope envelope) {
@@ -80,61 +82,71 @@ public class TelemetryPersistenceService {
       return;
     }
 
-    long countingDelta;
-    try {
-      long previousCounting = redisLatestWriter.readCounting(machineId)
-          .or(() -> counterStateRepo.findById(machineId).map(MachineCounterStateEntity::getCounting))
-          .orElse(-1L);
-      countingDelta = (previousCounting < 0) ? 0L
-          : CountingDeltaCalculator.delta(previousCounting, accepted.payload().counting());
-      Point point = InfluxTelemetryWriter.toPoint(accepted.payload(), envelope, plantCode, machineCode, countingDelta);
-      influxWriter.write(point, machineCode, envelope.traceId());
-    } catch (RuntimeException exception) {
-      deleteDedupeKey(dedupeKey, machineCode, envelope.traceId());
-      throw exception;
-    }
-
-    long currentCounting = accepted.payload().counting();
-    var latest = new LinkedHashMap<String, String>();
-    latest.put("machineId", machineId.toString());
-    latest.put("machineCode", machineCode);
-    latest.put("plantCode", plantCode);
-    latest.put("running", Boolean.toString(accepted.payload().running()));
-    latest.put("runtimeHours", Double.toString(accepted.payload().runtimeHours()));
-    latest.put("counting", Long.toString(accepted.payload().counting()));
-    latest.put("countingDelta", Long.toString(countingDelta));
-    latest.put("receivedAt", envelope.receivedAt().toString());
-    latest.put("traceId", envelope.traceId());
-    for (var entry : accepted.payload().optionalFields().entrySet()) {
-      latest.put("optional." + entry.getKey(), entry.getValue().asText());
-    }
-    try {
-      Map<String, String> existingHash = redisLatestWriter.readLatestAsMap(machineId);
-      Set<String> currentOptionalKeys = accepted.payload().optionalFields().keySet().stream()
-          .map(k -> "optional." + k)
-          .collect(Collectors.toSet());
-      List<String> staleOptionalKeys = existingHash.keySet().stream()
-          .filter(k -> k.startsWith("optional.") && !currentOptionalKeys.contains(k))
-          .toList();
-      redisLatestWriter.hdel(machineId, staleOptionalKeys);
-    } catch (RuntimeException hdelEx) {
-      log.warn("redis_hdel_optional_failed machineId={} traceId={}", machineId, envelope.traceId(), hdelEx);
-    }
-    try {
-      redisLatestWriter.putLatest(machineId, latest, properties.latestTtl());
-      recordLatencySafely(accepted.payload().timestamp());
-    } catch (RuntimeException redisEx) {
-      log.warn("redis_latest_write_failed_baseline_may_be_stale machineId={} traceId={} counting={}",
-          machineId, envelope.traceId(), currentCounting, redisEx);
+    // Per-machine counting delta (readCounting -> delta -> Influx write -> putLatest -> counter-state
+    // save) is read-modify-write state: serializing it per machine prevents two concurrent messages for
+    // the same machine from reading the same baseline and double-counting. Different machines take
+    // different stripes and still run in parallel. The dedupe SETNX gate above stays outside the lock
+    // (per-messageId, idempotent); alert evaluation stays outside too.
+    final long[] countingDeltaHolder = new long[1];
+    perMachineExecution.run(machineId, () -> {
+      long previousCounting;
       try {
-        counterStateRepo.save(new MachineCounterStateEntity(machineId, currentCounting));
-      } catch (RuntimeException dbEx) {
-        log.warn("counter_state_compensating_write_failed machineId={} traceId={}",
-            machineId, envelope.traceId(), dbEx);
+        previousCounting = redisLatestWriter.readCounting(machineId)
+            .or(() -> counterStateRepo.findById(machineId).map(MachineCounterStateEntity::getCounting))
+            .orElse(-1L);
+        countingDeltaHolder[0] = (previousCounting < 0) ? 0L
+            : CountingDeltaCalculator.delta(previousCounting, accepted.payload().counting());
+        Point point = InfluxTelemetryWriter.toPoint(accepted.payload(), envelope, plantCode, machineCode,
+            countingDeltaHolder[0]);
+        influxWriter.write(point, machineCode, envelope.traceId());
+      } catch (RuntimeException exception) {
+        deleteDedupeKey(dedupeKey, machineCode, envelope.traceId());
+        throw exception;
       }
-      throw redisEx;
-    }
-    counterStateRepo.save(new MachineCounterStateEntity(machineId, currentCounting));
+
+      long currentCounting = accepted.payload().counting();
+      var latest = new LinkedHashMap<String, String>();
+      latest.put("machineId", machineId.toString());
+      latest.put("machineCode", machineCode);
+      latest.put("plantCode", plantCode);
+      latest.put("running", Boolean.toString(accepted.payload().running()));
+      latest.put("runtimeHours", Double.toString(accepted.payload().runtimeHours()));
+      latest.put("counting", Long.toString(accepted.payload().counting()));
+      latest.put("countingDelta", Long.toString(countingDeltaHolder[0]));
+      latest.put("receivedAt", envelope.receivedAt().toString());
+      latest.put("traceId", envelope.traceId());
+      for (var entry : accepted.payload().optionalFields().entrySet()) {
+        latest.put("optional." + entry.getKey(), entry.getValue().asText());
+      }
+      try {
+        Map<String, String> existingHash = redisLatestWriter.readLatestAsMap(machineId);
+        Set<String> currentOptionalKeys = accepted.payload().optionalFields().keySet().stream()
+            .map(k -> "optional." + k)
+            .collect(Collectors.toSet());
+        List<String> staleOptionalKeys = existingHash.keySet().stream()
+            .filter(k -> k.startsWith("optional.") && !currentOptionalKeys.contains(k))
+            .toList();
+        redisLatestWriter.hdel(machineId, staleOptionalKeys);
+      } catch (RuntimeException hdelEx) {
+        log.warn("redis_hdel_optional_failed machineId={} traceId={}", machineId, envelope.traceId(), hdelEx);
+      }
+      try {
+        redisLatestWriter.putLatest(machineId, latest, properties.latestTtl());
+        recordLatencySafely(accepted.payload().timestamp());
+      } catch (RuntimeException redisEx) {
+        log.warn("redis_latest_write_failed_baseline_may_be_stale machineId={} traceId={} counting={}",
+            machineId, envelope.traceId(), currentCounting, redisEx);
+        try {
+          counterStateRepo.save(new MachineCounterStateEntity(machineId, currentCounting));
+        } catch (RuntimeException dbEx) {
+          log.warn("counter_state_compensating_write_failed machineId={} traceId={}",
+              machineId, envelope.traceId(), dbEx);
+        }
+        throw redisEx;
+      }
+      counterStateRepo.save(new MachineCounterStateEntity(machineId, currentCounting));
+    });
+    long countingDelta = countingDeltaHolder[0];
 
     try {
       var results = evaluator.evaluateAll(machineId);
