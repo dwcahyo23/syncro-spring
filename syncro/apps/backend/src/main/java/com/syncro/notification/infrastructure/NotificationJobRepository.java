@@ -50,8 +50,10 @@ public interface NotificationJobRepository extends JpaRepository<NotificationJob
 
   @Query("""
       select j from NotificationJobEntity j
+      join SparepartAlertEntity a on a.id = j.alertId
       where j.status = :status
         and j.sentAt <= :cutoff
+        and a.status = com.syncro.alert.domain.SparepartAlertStatus.OPEN
       order by j.sentAt asc
       limit 10
       """)

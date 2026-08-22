@@ -13,7 +13,8 @@ import java.time.temporal.ChronoUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 public class NotificationDispatchService {
@@ -30,6 +31,7 @@ public class NotificationDispatchService {
   private final WahaRateLimiter rateLimiter;
   private final WahaResilienceProperties resilienceProperties;
   private final Clock clock;
+  private final TransactionTemplate transactionTemplate;
 
   public NotificationDispatchService(NotificationJobRepository jobRepository,
       NotificationAttemptRepository attemptRepository,
@@ -37,7 +39,8 @@ public class NotificationDispatchService {
       WahaTemplateRenderer templateRenderer,
       WahaRateLimiter rateLimiter,
       WahaResilienceProperties resilienceProperties,
-      Clock clock) {
+      Clock clock,
+      PlatformTransactionManager transactionManager) {
     this.jobRepository = jobRepository;
     this.attemptRepository = attemptRepository;
     this.wahaClient = wahaClient;
@@ -45,9 +48,9 @@ public class NotificationDispatchService {
     this.rateLimiter = rateLimiter;
     this.resilienceProperties = resilienceProperties;
     this.clock = clock;
+    this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
-  @Transactional
   public void dispatch(NotificationJobEntity job) {
     Instant now = Instant.now(clock);
     int nextAttemptNumber = job.getAttemptCount() + 1;
@@ -55,8 +58,10 @@ public class NotificationDispatchService {
     // Check rate limit before doing any work
     if (rateLimiter.isRateLimited(job.getAlertId(), job.getRecipientPhone())) {
       Instant retryAfter = rateLimiter.getRateLimitExpiry(job.getAlertId(), job.getRecipientPhone());
-      job.markRateLimited(now, retryAfter);
-      jobRepository.save(job);
+      transactionTemplate.executeWithoutResult(status -> {
+        job.markRateLimited(now, retryAfter);
+        jobRepository.save(job);
+      });
       log.info("[WAHA][traceId={}] Job {} rate-limited, retryAfter={}", job.getTraceId(),
           job.getId(), retryAfter);
       return;
@@ -69,12 +74,14 @@ public class NotificationDispatchService {
     } catch (WahaTemplateRenderException e) {
       log.error("[traceId={}] Template render failed for job {}: {}", job.getTraceId(), job.getId(),
           e.getMessage());
-      var attempt = new NotificationAttemptEntity(
-          job.getId(), nextAttemptNumber, STATUS_FAILED,
-          truncate(e.getMessage()), job.getTraceId());
-      attemptRepository.save(attempt);
-      job.markExhausted(now);
-      jobRepository.save(job);
+      transactionTemplate.executeWithoutResult(status -> {
+        var attempt = new NotificationAttemptEntity(
+            job.getId(), nextAttemptNumber, STATUS_FAILED,
+            truncate(e.getMessage()), job.getTraceId());
+        attemptRepository.save(attempt);
+        job.markExhausted(now);
+        jobRepository.save(job);
+      });
       return;
     }
 
@@ -85,12 +92,14 @@ public class NotificationDispatchService {
       // Record rate-limit key so duplicates are suppressed within the dedup window
       rateLimiter.acquire(job.getAlertId(), job.getRecipientPhone());
 
-      var attempt = new NotificationAttemptEntity(
-          job.getId(), nextAttemptNumber, STATUS_SENT,
-          truncate(result.detail()), job.getTraceId());
-      attemptRepository.save(attempt);
-      job.markSent(now);
-      jobRepository.save(job);
+      transactionTemplate.executeWithoutResult(status -> {
+        var attempt = new NotificationAttemptEntity(
+            job.getId(), nextAttemptNumber, STATUS_SENT,
+            truncate(result.detail()), job.getTraceId());
+        attemptRepository.save(attempt);
+        job.markSent(now);
+        jobRepository.save(job);
+      });
       log.info("[traceId={}] Notification job {} sent successfully", job.getTraceId(), job.getId());
     } else {
       // Determine nextAttemptAt — circuit-open uses waitDurationInOpenState, others use backoff
@@ -99,16 +108,18 @@ public class NotificationDispatchService {
           : computeNextAttemptAt(now, job.getAttemptCount());
 
       String attemptDetail = buildFailureDetail(result);
-      var attempt = new NotificationAttemptEntity(
-          job.getId(), nextAttemptNumber, STATUS_FAILED,
-          truncate(attemptDetail), job.getTraceId());
-      attemptRepository.save(attempt);
-      if (isCircuitOpen(result)) {
-        job.markCircuitOpen(now, nextAttemptAt);
-      } else {
-        job.markAttemptFailed(now, nextAttemptAt);
-      }
-      jobRepository.save(job);
+      transactionTemplate.executeWithoutResult(status -> {
+        var attempt = new NotificationAttemptEntity(
+            job.getId(), nextAttemptNumber, STATUS_FAILED,
+            truncate(attemptDetail), job.getTraceId());
+        attemptRepository.save(attempt);
+        if (isCircuitOpen(result)) {
+          job.markCircuitOpen(now, nextAttemptAt);
+        } else {
+          job.markAttemptFailed(now, nextAttemptAt);
+        }
+        jobRepository.save(job);
+      });
 
       if (isCircuitOpen(result)) {
         log.warn("[traceId={}] Notification job {} circuit OPEN — retryAfter={}",

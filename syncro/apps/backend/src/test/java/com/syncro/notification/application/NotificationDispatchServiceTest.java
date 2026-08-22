@@ -26,6 +26,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.PlatformTransactionManager;
 
 @ExtendWith(MockitoExtension.class)
 class NotificationDispatchServiceTest {
@@ -40,6 +41,8 @@ class NotificationDispatchServiceTest {
   private WahaTemplateRenderer templateRenderer;
   @Mock
   private WahaRateLimiter rateLimiter;
+  @Mock
+  private PlatformTransactionManager transactionManager;
 
   private Clock clock;
   private NotificationDispatchService service;
@@ -58,7 +61,7 @@ class NotificationDispatchServiceTest {
     var resilienceProperties = new WahaResilienceProperties(
         Duration.ofSeconds(5), 50, 5, 10, CB_WAIT, 3);
     service = new NotificationDispatchService(jobRepository, attemptRepository, wahaClient,
-        templateRenderer, rateLimiter, resilienceProperties, clock);
+        templateRenderer, rateLimiter, resilienceProperties, clock, transactionManager);
   }
 
   // --- Happy path ---

@@ -180,6 +180,38 @@ class NotificationJobCancelIntegrationTest {
     assertThat(sent).isEmpty();
   }
 
+  @Test
+  @DisplayName("DW-83: findSentJobsDueForEscalation excludes SENT jobs whose alert is no longer OPEN")
+  void sentJobsForClosedAlertsAreExcludedFromEscalation() {
+    // alertId's alert stays OPEN (set in setUp) — its SENT job is eligible for escalation.
+    insertJob(alertId, "TECHNICIAN", "SENT");
+    // otherAlertId's alert is set to ACKNOWLEDGED — its SENT job must never be re-polled.
+    jdbc.update("UPDATE sparepart_alerts SET status = 'ACKNOWLEDGED' WHERE id = ?", otherAlertId);
+    insertJob(otherAlertId, "STAFF", "SENT");
+
+    var eligible = jobs.findSentJobsDueForEscalation(NotificationJobStatus.SENT, NOW.plusSeconds(60));
+
+    assertThat(eligible)
+        .extracting(NotificationJobEntity::getAlertId)
+        .containsExactly(alertId);
+  }
+
+  @Test
+  @DisplayName("DW-83: findSentJobsDueForEscalation excludes SENT jobs whose alert is RESOLVED (AC wording: ACKNOWLEDGED or RESOLVED)")
+  void sentJobsForResolvedAlertsAreExcludedFromEscalation() {
+    // alertId's alert stays OPEN (set in setUp) — its SENT job is eligible for escalation.
+    insertJob(alertId, "TECHNICIAN", "SENT");
+    // otherAlertId's alert is set to RESOLVED — its SENT job must never be re-polled.
+    jdbc.update("UPDATE sparepart_alerts SET status = 'RESOLVED' WHERE id = ?", otherAlertId);
+    insertJob(otherAlertId, "STAFF", "SENT");
+
+    var eligible = jobs.findSentJobsDueForEscalation(NotificationJobStatus.SENT, NOW.plusSeconds(60));
+
+    assertThat(eligible)
+        .extracting(NotificationJobEntity::getAlertId)
+        .containsExactly(alertId);
+  }
+
   // ---- helpers ----
 
   private void insertJob(UUID forAlertId, String level, String status) {
