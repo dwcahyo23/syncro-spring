@@ -544,3 +544,15 @@ origin: Deferred from: code review of spec-7-4-validate-telemetry-before-thresho
 location: syncro/apps/backend/src/main/resources/application*.yml / syncro/.env (SYNCRO_AUTH_LOCAL_ADMIN_PASSWORD) + spec story boundaries (UI access section)
 reason: The story spec documents `admin@syncro.dev / syncro-admin-dev` as the UI access credential, but the live local stack runs a different password from `syncro/.env`, which is gitignored and version-controlled out of band. The dev recorded the deviation transparently (literal redacted per review finding) and the used credential is within the spec's allowed set, but spec text and live reality can silently drift for any future manual/UI verification, and (per DW-75 family) the spec text cannot be verified against source. Fix needs a decision: reconcile spec text with live defaults (documentation update) or make the seed/bootstrap own the credential deterministically. Deferred to the 7-7 documentation story; 7-4 itself will additionally redact the literal password per review patch.
 status: open
+
+## Deferred from: code review of spec-7-5-validate-threshold-alert-and-waha-notification-job (2026-08-22)
+
+- No regression test protects V31 fix — no test asserts the audit-write path for ALERT create/acknowledge/resolve or that ck_audit_log_entity_type includes 'ALERT'; the defect would silently regress. Needs follow-up story.
+- Constraint list duplicated in V16+V31 — a future migration recreating ck_audit_log_entity_type from V16's list (omitting 'ALERT') silently re-introduces the exact failure mode this story fixed.
+- verify-pilot NOTIFICATION section has no FAIL path — job count/status/level/trace_id are print-only; "NOTIFICATION PASS" is cosmetic. "Exactly one job" rests on agent-run SQL. Pre-existing 7-3 tooling limitation.
+- Alert status=OPEN not asserted by verify-pilot — ALERT section only FAILs when consumed_percentage_snapshot != 90.00. Pre-existing 7-3 tooling limitation.
+- traceId cross-correlation human-read, not tool-enforced — verify-pilot never compares alert trace_id against job trace_id. Pre-existing 7-3 tooling limitation.
+- Job idempotency key not independently exercised; no unique index on idempotency_key — duplicate-job prevention depends entirely on the alert dedup guard (uq_notification_jobs_alert_level on alert_id+escalation_level, not idempotency_key). Pre-existing system design.
+- V31 DROP CONSTRAINT without IF EXISTS — fails if constraint manually renamed/removed; editing applied migration would change Flyway checksum. Standard Flyway convention, low risk for sanctioned schemas.
+- Counter drift baseline not asserting counting=890 — before-threshold publish on drifted counter records wrap-around delta. 7-4 established 890 baseline; low risk.
+- Quarantine matrix path not executable — verify-pilot hard-FAILs on any telemetry_quarantine row, contradicting the spec's "document as pre-existing" path. Pre-existing script constraint.

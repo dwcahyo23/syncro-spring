@@ -1,7 +1,7 @@
 -- Add ALERT to the audit_log entity_type CHECK constraint.
 --
--- SparepartAlertService.recordSystem (V16-era audit writer) persists alert-creation
--- audit rows with entity_type='ALERT', but the V16 CHECK constraint never listed it,
+-- AuditLogWriter.recordSystem persists alert-creation audit rows with
+-- entity_type='ALERT', but the V16 CHECK constraint never listed it,
 -- so the alert-creation transaction always rolled back (audit insert failed ->
 -- DataIntegrityViolationException outside the alert-save try/catch -> whole
 -- @Transactional rollback). Discovered live by story 7-5 validation preflight.
