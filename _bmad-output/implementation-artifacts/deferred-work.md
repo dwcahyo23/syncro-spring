@@ -844,7 +844,8 @@ status: open
 source_spec: `_bmad-output/implementation-artifacts/spec-deferred-work-bundle-11.md`
 summary: Backend now emits fieldErrors.optionalTelemetryFields with precise reasons, but machine-management.tsx renders field slots only for plantId/machineGroupId/code/status, so config rejections surface only via generic toast/formError.
 evidence: machine-management.tsx:215 stores response.fieldErrors into state; dialog body renders error paragraphs solely beside the four named inputs; no reference to optionalTelemetryFields anywhere in the component.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 13 — role=alert form-level slot renders fieldErrors.optionalTelemetryFields beside formError; note: machines feature has no dedicated component-test harness yet (sibling machine-groups has one), and no current UI path submits the field (governed by DW-32)
 
 ### DW-113: .gitignore negation re-includes the whole syncro/docs/screenshots/ subtree, not just pilot/
 
@@ -859,5 +860,7 @@ resolution: resolved by deferred-work bundle 12 — replaced blanket parent nega
 
 source_spec: `_bmad-output/implementation-artifacts/spec-deferred-work-bundle-12.md`
 summary: AuditLogRepository actor filtering returned zero rows for logins containing _ or % because normalizeActor escapes LIKE wildcards but the JPQL lacked an escape declaration; MachineRepository.java:21,38 and MachineGroupRepository.java:17 use the same bare like :search with identically escaping services (MachineService.normalizeSearch, MachineGroupService) - machine/machine-group search by terms containing underscore likely matches zero rows today.
+reason: MachineRepository.java:21,38 and MachineGroupRepository.java:17 use the same bare like :search with identically escaping services (MachineService.normalizeSearch, MachineGroupService) - machine/machine-group search by terms containing underscore likely matches zero rows today.
 evidence: bundle-12 revival proved the audit variant empirically (yusuf_dev exact search returned 0 before adding escape '\'); SparepartRepository already declares escape '\\' making the three repositories inconsistent.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 13 — escape '\' added to all three predicates; tests pin underscore-literal match, %-no-widening, backslash term, and name-clause coverage in both integration suites
