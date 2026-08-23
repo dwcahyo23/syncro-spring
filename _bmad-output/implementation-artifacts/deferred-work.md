@@ -832,7 +832,9 @@ status: open
 source_spec: `_bmad-output/implementation-artifacts/spec-deferred-work-bundle-10.md`
 summary: generate:api pulls from http://localhost:8080/v3/api-docs at regen time with no committed OpenAPI snapshot, so generated types are unreproducible from a fresh checkout and reflect whatever backend build happens to be running.
 evidence: orval.config.ts:5 input URL + clean:true; bundle-10 regen produced +2503/-564 lines reflecting drift accumulated since the previous regen; only ALERT enum was pre-verified explicitly.
-status: open
+decision: 2026-08-23 Interactive resolve (bmad-loop-resolve method) — Option A chosen: committed openapi.json snapshot consumed by orval, with npm run generate:snapshot to refresh from the live backend when the contract changes intentionally.
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 16 — scripts/fetch-openapi.mjs writes the snapshot (with ALERT regression guard), orval input switched to ./openapi.json; regen-from-snapshot verified zero diff on the generated tree
 
 ### DW-118: Reserved-name/dedupe matching is case-sensitive across the optional-field chain
 
