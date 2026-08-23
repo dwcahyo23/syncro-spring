@@ -839,7 +839,9 @@ status: open
 source_spec: `_bmad-output/implementation-artifacts/spec-deferred-work-bundle-11.md`
 summary: RESERVED_OPTIONAL_FIELDS exact-matches while the pattern allows uppercase and TelemetryPayload.parse is case-sensitive too, so config "COUNTING" passes validation and persists optional.COUNTING shadowing base counting; case-differing duplicates likewise evade dedupe and over-count.
 evidence: MachineService.java optionalFieldRejectionReason uses Set.contains on lowercase set; OPTIONAL_FIELD_PATTERN permits [A-Za-z0-9_]+; TelemetryPayload.java:133 parse is case-sensitive; persist writes "optional." + entry key verbatim.
-status: open
+decision: 2026-08-23 Interactive resolve (bmad-loop-resolve method) — Option A chosen: case-insensitive guards for reserved-name matching and duplicate detection (Locale.ROOT lowercase comparison); user casing preserved in storage; storage/parse layers untouched.
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 15 — reserved check and dedupe now compare case-insensitively, closing the COUNTING-shadow and case-duplicate evasion holes; underscore rule already blocks InfluxDB system keys; tests pin case-insensitive rejection and first-casing collapse
 
 ### DW-119: Machine form has no dedicated slot for optionalTelemetryFields validation errors
 
