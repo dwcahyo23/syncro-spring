@@ -459,7 +459,8 @@ origin: migrated from legacy ledger ("code review of spec-5-6-show-escalation-ti
 location: syncro/apps/web/src/lib/api/generated/model/auditLogEntryViewEntityType.ts:20
 severity: medium
 reason: `ALERT` added by hand; next `generate:api` will delete unless `openapi.yaml` updated; re-generate after backend boots — deferred, pre-existing generation flow.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 10 — client regenerated against live backend (ALERT pre-verified in /v3/api-docs); auditLogEntryViewEntityType now generator-produced, empty re-regen diff
 
 ### DW-85: Duplicated DTOs mirrored in syncro.ts and alert-notification-history.tsx
 
@@ -467,7 +468,8 @@ origin: migrated from legacy ledger ("code review of spec-5-6-show-escalation-ti
 location: syncro/apps/web/src/features/alerts/alert-notification-history.tsx:14
 severity: low
 reason: intentional per Task 8 TODO to stay diff-free until next Orval regen; defer until generation.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 10 — local DTO mirrors deleted; component adopts generated types via normalizeJob boundary; new tests pin rendering
 
 ### DW-86: Attempt truncation slice(0,3) and CASE ELSE 99 ordering ambiguity
 
@@ -475,7 +477,8 @@ origin: migrated from legacy ledger ("code review of spec-5-6-show-escalation-ti
 location: syncro/apps/web/src/features/alerts/alert-notification-history.tsx:373 / syncro/apps/backend/src/main/java/com/syncro/notification/infrastructure/NotificationJobRepository.java:17
 severity: low
 reason: `maxAttempts=3` today, unknown levels go to 99 without secondary sort; deferred, not actionable without schema change.
-status: open
+status: done 2026-08-23
+resolution: split resolution — backend ordering half already resolved (findByAlertIdOrderByEscalationOrder has `else 99 end asc, j.createdAt asc` secondary sort); frontend slice(0,3) removed by deferred-work bundle 10 with render tests
 
 ### DW-87: `@Transactional` held across the WAHA network call (up to 5s per job, 10 jobs/batch)
 
