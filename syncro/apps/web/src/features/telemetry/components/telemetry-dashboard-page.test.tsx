@@ -222,4 +222,43 @@ describe("Telemetry Dashboard Page", () => {
     fireEvent.click(refreshNow);
     expect(telemetryQuery.refetch).toHaveBeenCalled();
   });
+
+  it("[P1] DW-34 truncation notice renders when totalElements exceeds returned items", () => {
+    const visible = [machine({ id: "m-1" }), machine({ id: "m-2", code: "BF-00002" }), machine({ id: "m-3", code: "BF-00003" })];
+    telemetryQuery = {
+      ...telemetryQuery,
+      data: { data: { items: visible, totalElements: 250 } },
+    };
+    render(<TelemetryDashboardPage />, { wrapper: Wrapper });
+
+    expect(screen.getByText(/3 active machines/)).toBeInTheDocument();
+    expect(screen.getByText(/showing first 3 of 250 matching/)).toBeInTheDocument();
+  });
+
+  it("[P1] DW-34 no truncation notice for a fleet that fits the page entirely", () => {
+    telemetryQuery = {
+      ...telemetryQuery,
+      data: {
+        data: {
+          items: [machine({ id: "m-1" }), machine({ id: "m-2", code: "BF-00002" })],
+          totalElements: 2,
+        },
+      },
+    };
+    render(<TelemetryDashboardPage />, { wrapper: Wrapper });
+
+    expect(screen.getByText(/2 active machines/)).toBeInTheDocument();
+    expect(screen.queryByText(/showing first/)).not.toBeInTheDocument();
+  });
+
+  it("[P2] DW-34 single machine renders singular label without notice", () => {
+    telemetryQuery = {
+      ...telemetryQuery,
+      data: { data: { items: [machine()], totalElements: 1 } },
+    };
+    render(<TelemetryDashboardPage />, { wrapper: Wrapper });
+
+    expect(screen.getByText("1 active machine")).toBeInTheDocument();
+    expect(screen.queryByText(/showing first/)).not.toBeInTheDocument();
+  });
 });

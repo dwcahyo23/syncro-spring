@@ -238,4 +238,59 @@ describe("MachineGroupManagement UI states", () => {
       expect(screen.getAllByText("Name is required").length).toBeGreaterThanOrEqual(1);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // 7. Error-state Retry actually refetches both lists (DW-2 hardening)
+  // -------------------------------------------------------------------------
+  it("retry button refetches machine groups and plants", async () => {
+    mockListMachineGroups = {
+      ...mockListMachineGroups,
+      isError: true,
+      isLoading: false,
+      data: { data: { items: [], totalElements: 0 } },
+    };
+
+    render(<MachineGroupManagement />, { wrapper: Wrapper });
+
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    await waitFor(() => {
+      expect(mockListMachineGroups.refetch).toHaveBeenCalled();
+      expect(mockListPlants.refetch).toHaveBeenCalled();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 8. Read-only rows expose per-row "View only" badge (DW-2 hardening)
+  // -------------------------------------------------------------------------
+  it("read-only role renders View only badges on populated rows", () => {
+    mockUser = {
+      id: "user-1",
+      loginIdentifier: "viewer@syncro.dev",
+      applicationRole: "VIEWER",
+    };
+    mockListMachineGroups = {
+      ...mockListMachineGroups,
+      data: {
+        data: {
+          items: [
+            {
+              id: "g-1",
+              name: "Forming",
+              plantId: "plant-1",
+              plantCode: "P1",
+              plantName: "Plant 1",
+              createdAt: "2026-08-01T00:00:00Z",
+            },
+          ],
+          totalElements: 1,
+        },
+      },
+    };
+
+    render(<MachineGroupManagement />, { wrapper: Wrapper });
+
+    expect(screen.getByText("View only")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /edit/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /delete/i })).toBeNull();
+  });
 });

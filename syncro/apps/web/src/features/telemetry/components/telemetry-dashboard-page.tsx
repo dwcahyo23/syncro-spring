@@ -39,6 +39,7 @@ export function TelemetryDashboardPage() {
   const effectivePlantId = plantId === "ALL" ? undefined : plantId;
 
   const telemetry = useTelemetryDashboardQuery(isAssignedEmpty ? undefined : effectivePlantId, !isAssignedEmpty);
+  const totalCount = telemetry.data?.data?.totalElements ?? telemetry.machines.length;
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
@@ -82,7 +83,15 @@ export function TelemetryDashboardPage() {
               </Select>
             </div>
             <p aria-live="polite" className="pb-2 text-muted-foreground text-xs">
-              {telemetry.isLoading ? "Loading telemetry…" : `${telemetry.machines.length} active machines`}
+              {telemetry.isLoading
+                ? "Loading telemetry…"
+                : `${telemetry.machines.length} active ${
+                    telemetry.machines.length === 1 ? "machine" : "machines"
+                  }${
+                    totalCount > telemetry.machines.length
+                      ? ` (showing first ${telemetry.machines.length} of ${totalCount} matching)`
+                      : ""
+                  }`}
             </p>
           </div>
 

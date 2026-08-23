@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
@@ -16,6 +17,7 @@ import {
   useResolveAlert,
   useResolveAlertOverride,
 } from "@/lib/api/generated/syncro";
+import { getListAlertsQueryKey } from "@/lib/api/generated/syncro";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
 
@@ -40,6 +42,7 @@ function isConcurrentModification(err: unknown): boolean {
 
 export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps) {
   const authUser = useAuthUser();
+  const queryClient = useQueryClient();
   const { data, isLoading, isError, error, refetch } = useGetAlert(alertId, {
     query: {
       staleTime: 15_000,
@@ -51,6 +54,7 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
   const { mutate: acknowledge, isPending: isAcknowledging } = useAcknowledgeAlert({
     mutation: {
       onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: getListAlertsQueryKey() });
         void refetch();
         toast.success("Alert acknowledged.");
       },
@@ -70,6 +74,7 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
   const { mutate: resolve, isPending: isResolving } = useResolveAlert({
     mutation: {
       onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: getListAlertsQueryKey() });
         void refetch();
         toast.success("Alert resolved.");
       },
@@ -89,6 +94,7 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
   const { mutate: resolveOverride, isPending: isResolvingOverride } = useResolveAlertOverride({
     mutation: {
       onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: getListAlertsQueryKey() });
         void refetch();
         toast.success("Alert resolved (override).");
       },
