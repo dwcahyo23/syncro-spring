@@ -272,7 +272,8 @@ origin: code review of spec-3-6-support-optional-machine-telemetry-fields.md
 location: TelemetryPayload.java
 severity: low
 reason: `RESERVED_OPTIONAL_FIELDS` is a static set; a future promotion of a field to the base contract, or a configured name colliding with InfluxDB system keys (`_field`/`_measurement`/`_value`/`_time`), would silently collide with base tags/fields on already-deployed machines. The config-time allowlist is not protected against future base-contract growth; verify InfluxDB 1.8 reserved-key semantics before extending the denylist.
-status: open
+status: done 2026-08-23
+resolution: already resolved: MachineService.java:265 rejects optional-field names starting with "_" — covering every InfluxDB system key (_field/_measurement/_value/_time) — and lines 39-40 pin all current base fields; remaining "future promotion" concern is governance, not code
 
 ### DW-30: MachineValidationException handler attributes all validation failures to the `code` field
 
@@ -306,7 +307,8 @@ origin: code review of spec-3-7-show-latest-telemetry-dashboard.md
 location: MachineController.java
 severity: medium
 reason: `MachineController` hydrates each machine's latest telemetry with an individual `readLatestAsMap` call; a page of 200 ACTIVE machines issues up to 200 sequential Redis round trips with no batch/pipeline. Acceptable at current plant/fleet scale and the Design Notes explicitly defer batching (target p95 <500ms); candidate for a Redis pipeline/batch read when Epic 3 adds a performance hardening story.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 9 — readLatestBatch (executePipelined) + latestTelemetryBatch power the LIST endpoint with one round trip; pairing directly tested; GET paths unchanged
 
 ### DW-34: Dashboard fetch capped at 200 machines with no truncation indicator
 
@@ -340,8 +342,9 @@ resolution: resolved by deferred-work bundle 4 — V35__sparepart_alerts_thresho
 origin: code review of spec-4-2-create-threshold-alert-with-duplicate-prevention.md
 location: TelemetryPersistenceService.java
 severity: low
-reason: TelemetryPersistenceService.persist() wraps both evaluator.evaluateAll() and alertService.evaluateAndCreateAlerts() in one try/catch(Exception) block. A failure in evaluateAll silently skips alert creation with no separate signal. Cosmetic observability improvement, not functionally blocking.
-status: open
+reason: `TelemetryPersistenceService.persist` wraps both evaluator.evaluateAll() and alertService.evaluateAndCreateAlerts() in one try/catch(Exception) block. A failure in evaluateAll silently skips alert creation with no separate signal. Cosmetic observability improvement, not functionally blocking.
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 9 — catches split with distinct markers sparepart_lifetime_evaluation_failed vs sparepart_alert_evaluation_failed; persisted INFO test-enforced
 
 ### DW-38: auditLogWriter.recordSystem() has no try/catch in alert command service
 origin: code review Story 4.4 (2026-08-19)
