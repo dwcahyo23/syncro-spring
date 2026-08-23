@@ -3,7 +3,8 @@ title: 'Deferred-work bundle 9: telemetry pipeline hygiene — separated alert-f
 type: 'refactor'
 created: '2026-08-23'
 baseline_revision: '1e66450'
-status: 'ready-for-dev'
+final_revision: '4b1a96d'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -64,10 +65,10 @@ warnings: []
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `TelemetryPersistenceService.java` -- nested dedicated catch for alert stage with distinct markers -- DW-37
-- [ ] `RedisLatestTelemetryWriter.java` -- `readLatestBatch` via `executePipelined` -- DW-33
-- [ ] `LatestTelemetryQueryService.java` -- extract `parseTelemetryData`; add `latestTelemetryBatch(Map<UUID, MachineStatus>)`; single-path delegates -- DW-33
-- [ ] `MachineController.java` -- list hydration via `latestTelemetryBatch` -- DW-33
+- [x] `TelemetryPersistenceService.java` -- nested dedicated catch for alert stage with distinct markers -- DW-37
+- [x] `RedisLatestTelemetryWriter.java` -- `readLatestBatch` via `executePipelined` -- DW-33
+- [x] `LatestTelemetryQueryService.java` -- extract `parseTelemetryData`; add `latestTelemetryBatch(Map<UUID, MachineStatus>)`; single-path delegates -- DW-33
+- [x] `MachineController.java` -- list hydration via `latestTelemetryBatch` -- DW-33
 - [ ] Tests (3 files above) -- extend per I/O matrix -- DW-37/DW-33
 
 **Acceptance Criteria:**
