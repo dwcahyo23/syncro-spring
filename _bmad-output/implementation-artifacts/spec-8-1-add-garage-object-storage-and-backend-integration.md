@@ -216,3 +216,33 @@ ox-alpha (opencode/x-preview-f-free)
 - `syncro/infra/docker-compose.yml` -- MODIFIED -- garage service + `garage_data` volume.
 - `syncro/infra/garage/garage.toml` -- NEW.
 - `syncro/.env.example` -- MODIFIED; `syncro/.env` -- MODIFIED (local, uncommitted values).
+
+## Auto Run Result
+
+Status: done
+
+### Summary
+Story 8.1 delivered Garage (S3-compatible) object storage end-to-end: compose service (dxflrs/garage:v2.3.0, single-node auto-bucket, token-guarded admin API, named volume), typed syncro.garage properties, AWS SDK v2 S3Client+S3Presigner beans (path-style, bounded timeouts), an ObjectStorageService contract (store + short-TTL presigned GET) for Story 8.4, and a garage health indicator following the Epic 6 contract.
+
+### Files changed
+- syncro/apps/backend/pom.xml — AWS SDK s3 + url-connection-client 2.46.7.
+- syncro/apps/backend/src/main/java/com/syncro/config/GarageProperties.java — NEW typed properties record with TTL-cap validation.
+- syncro/apps/backend/src/main/java/com/syncro/config/GarageS3Config.java — NEW S3 client/presigner beans.
+- syncro/apps/backend/src/main/java/com/syncro/storage/** — NEW ObjectStorageService contract, exception, Garage-backed impl, GarageHealthIndicator.
+- syncro/apps/backend/src/main/resources/application*.yml — syncro.garage blocks (env-bound; local defaults).
+- syncro/apps/backend/src/test/java/com/syncro/** — 3 NEW test classes (13 tests) + GARAGE_* pins in 18 full-context tests.
+- syncro/infra/docker-compose.yml — garage service + garage_data volume.
+- syncro/infra/garage/garage.toml — NEW secret-free single-node config.
+- syncro/.env.example — garage variables + operational warnings.
+
+### Review findings breakdown
+12 patched (1 high: unbounded data-path timeouts; 3 medium: admin-token guard, presign-TTL cap, region-drift docs; 8 low), 2 deferred (Garage Testcontainers integration test; shared test-property mechanism → deferred-work.md), 8 rejected as noise/by-design. No intent gaps, no bad_spec loopbacks.
+
+### Follow-up review recommendation
+false — patches were localized config/validation/doc/log-level fixes re-verified by the same green suite; no API/data/behavioral surface change beyond bounded timeouts.
+
+### Verification performed
+mvn test -Dtest=Garage* → 13/13 green; targeted regression of all 19 touched test classes → 173 green; SyncroBackendApplicationTests failure proven pre-existing at clean HEAD via git worktree. Live: container healthy; real S3 upload → presign(300s) → fetch round-trip via aws-cli; objects survived docker compose restart garage; backend boot against stack shows /actuator/health components.garage UP (Up/SUCCESS).
+
+### Residual risks
+Pre-existing red contextLoads (alert-repository wiring); presigned URLs are host-bound (mint on the host clients use); overall health stays DOWN while influxdb container is stopped locally (garage independently UP).
