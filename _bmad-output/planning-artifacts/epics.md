@@ -103,6 +103,21 @@ FR-073b: The health dashboard shall show telemetry data quality metrics includin
 FR-076: The system shall record immutable audit log entries for master data mutations including plant, machine, sparepart, responsibility, and threshold changes.
 FR-077: Telemetry dashboard and alert views shall be filtered by the user's plant assignment.
 
+### New FRs from Procurement Readiness Change (2026-08-23)
+
+FR-078: A sparepart may carry an optional manually-entered material code that is globally unique and not plant-scoped; installation and lifetime flows do not require it.
+FR-079: A sparepart may carry an optional procurement lead time duration allowing fractional values.
+FR-080: A sparepart may hold estimated price entries with decimal amount, ISO-4217 currency defaulting to IDR, mandatory kurs-to-IDR snapshot when foreign, normalized IDR value, timestamp, and actor.
+FR-081: Price entry history shall be retained and viewable with a copy/reuse action when unchanged.
+FR-082: A sparepart may have one global image stored in Garage S3-compatible object storage with PostgreSQL holding only the object reference.
+FR-083: Machine groups may define shift configuration of up to three shifts per day with start/end local times permitting cross-midnight windows.
+FR-084: Machines may override shift configuration; machine wins over group; UI states the inherited source when falling back.
+FR-085: Counter rate estimation uses a rolling 30-day moving average per operating hour from accepted telemetry with full-history fallback and explicit insufficient-data state.
+FR-086: The system displays shift-aware depletion projections and lead-time counter consumption estimates.
+FR-087: Projected depletion within the lead-time window raises a duplicate-prevented PROCUREMENT_RISK alert in addition to percentage-threshold alerts.
+FR-088: Procurement readiness mutations require server-side job scope LEADER or above.
+FR-089: All procurement readiness mutations are recorded in the immutable audit log.
+
 ### NonFunctional Requirements
 
 NFR-001: The system shall separate datastore ownership: PostgreSQL for master/auth/config/alerts, InfluxDB for telemetry history, Redis for latest state/cache, and queue/job storage for notification dispatch.
@@ -349,6 +364,14 @@ The team can prove Phase 1 end-to-end with canonical GM1/Forming/BF-08410/JBF19/
 **Success Metrics covered:** SM-001, SM-002, SM-003, SM-004, SM-005
 
 **Additional coverage:** AR-020, AR-021, AR-023, UX-DR-025
+
+### Epic 8: Sparepart Procurement Readiness & Operating Calendar
+
+Maintenance teams gain procurement readiness data (material code, lead time, priced sparepart history with kurs evidence) and shift-aware counter projections, so replacement can be planned in calendar time and procurement-risk alerts fire before stock-out. Bridge scope toward Phase 3 IMMS.
+
+**FRs covered:** FR-078, FR-079, FR-080, FR-081, FR-082, FR-083, FR-084, FR-085, FR-086, FR-087, FR-088, FR-089
+
+**Additional coverage:** AR-010, AR-014, AR-015, AR-016, AR-024, UX-DR-007, UX-DR-019, UX-DR-026
 
 
 ## Epic 1: Platform Foundation, Local Infrastructure & Auth Access
@@ -1189,6 +1212,131 @@ So that Phase 1 readiness can be demonstrated and repeated.
 **And** docs explain success metrics SM-001 through SM-005
 
 
+## Epic 8: Sparepart Procurement Readiness & Operating Calendar
+
+Maintenance teams gain procurement readiness data (material code, lead time, priced sparepart history with kurs evidence) and shift-aware counter projections, so replacement can be planned in calendar time and procurement-risk alerts fire before stock-out. Bridge scope toward Phase 3 IMMS.
+
+### Story 8.1: Add Garage Object Storage and Backend Integration
+
+As an implementer,
+I want Garage (S3-compatible object storage) running in local infrastructure with typed backend integration,
+So that sparepart images have a durable, maintained home and PostgreSQL only stores object references.
+
+**Acceptance Criteria:**
+
+**Given** local infrastructure is managed through `infra/docker-compose.yml`
+**When** the stack is started
+**Then** a `garage` service runs alongside existing stable-name services
+**And** backend binds Garage endpoint, credentials, and bucket through typed properties/environment without hardcoded URLs
+**And** an S3-compatible client bean can upload an object and generate a short-TTL presigned GET URL
+**And** uploaded objects survive service restart
+**And** no image bytes are persisted in PostgreSQL
+
+### Story 8.2: Manage Sparepart Material Code and Lead Time
+
+As a SUPER_ADMIN or MANAGE user with job scope LEADER or above,
+I want to record an optional globally unique material code and optional procurement lead time on a sparepart,
+So that identical spareparts across machines aggregate for inventory recap and procurement planning has timing input.
+
+**Acceptance Criteria:**
+
+**Given** a sparepart exists
+**When** an authorized user sets material code or lead time
+**Then** values persist and appear on sparepart list/detail
+**And** material code uniqueness is enforced globally at database level and returns standard validation error on duplicates
+**And** installation and lifetime flows succeed without material code present
+**And** lead time accepts fractional durations (for example 36 hours or 7.5 days)
+**And** users below LEADER job scope receive server-side denial with required-role explanation
+**And** both mutations write immutable audit entries
+
+### Story 8.3: Manage Estimated Price Entries with Currency and Kurs
+
+As a SUPER_ADMIN or MANAGE user with job scope LEADER or above,
+I want to append estimated price entries per sparepart with currency and kurs evidence,
+So that cost history remains auditable as prices and exchange rates change.
+
+**Acceptance Criteria:**
+
+**Given** a sparepart exists
+**When** a price entry is created
+**Then** entry stores decimal amount, ISO-4217 currency defaulting to IDR, entered-by, entered-at timestamp
+**And** non-IDR currency requires a kurs-to-IDR snapshot value before save succeeds
+**And** normalized IDR amount is derived by the backend as `amount × kursToIdr` (kurs 1 for IDR)
+**And** entries are append-only; history renders in PriceHistoryTable with original currency, kurs, IDR value, and timestamp
+**And** an unchanged-price flow copies the previous entry values into a new entry
+**And** mutations require LEADER job scope server-side and are audit logged
+
+### Story 8.4: Manage Sparepart Image via Garage
+
+As a SUPER_ADMIN or MANAGE user with job scope LEADER or above,
+I want to upload, replace, and remove one global image per sparepart,
+So that identical spareparts share a single visual reference across machines.
+
+**Acceptance Criteria:**
+
+**Given** Garage integration exists from Story 8.1
+**When** an authorized user uploads an image within size limits
+**Then** the file is stored in Garage and only the object key/reference persists in PostgreSQL
+**And** the UI previews the image via backend-generated presigned URL that expires
+**And** replacing removes the previous object so orphans do not accumulate
+**And** removing the image clears the reference and deletes the object
+**And** users below LEADER job scope are denied server-side and mutations are audit logged
+
+### Story 8.5: Configure Shift Schedule with Machine Override
+
+As a SUPER_ADMIN or MANAGE user with job scope LEADER or above,
+I want to define up to three daily shifts per machine group and optionally override them per machine,
+So that effective operating calendars reflect how each machine actually runs.
+
+**Acceptance Criteria:**
+
+**Given** machine group and machines exist
+**When** shift config is set on a machine group
+**Then** it stores up to three shift windows with start/end local wall-clock times
+**And** windows crossing midnight are accepted and validated (end after start modulo midnight)
+**And** a machine may store its own override which takes precedence over its group config
+**And** clearing the machine override falls back to the group config
+**And** read responses expose the resolved source (`MACHINE` or `MACHINE_GROUP`)
+**And** Machine Hub shows InheritedConfigBadge stating group inheritance when applicable
+**And** ShiftConfigEditor enforces max three shifts and cross-midnight validation client-side while backend validation remains authoritative
+**And** mutations require LEADER job scope server-side and are audit logged
+
+### Story 8.6: Estimate Counter Rate and Shift-Aware Projections
+
+As an operator,
+I want to see counter rate estimates and calendar-time depletion projections for installed spareparts,
+So that I know roughly when each sparepart must be replaced in days, not just in counters.
+
+**Acceptance Criteria:**
+
+**Given** accepted telemetry history and a resolved shift configuration exist
+**When** projections are requested for an installed sparepart
+**Then** backend computes counter rate as rolling 30-day moving average of counting delta per operating hour using OperatingCalendarCalculator
+**And** fewer than 30 days of data falls back to full-history average transparently with window evidence shown
+**And** insufficient data yields an explicit unavailable state rather than a guessed value
+**And** projection shows estimated time to depletion and expected counter consumption during the configured lead-time window when lead time exists
+**And** computed rates are cached in Redis with explicit TTL and invalidated on relevant writes
+**And** CounterRateProjectionCard displays rate, freshness/window timestamps, projections, and insufficient-data state
+**And** calculation is backend-owned with controlled-clock unit test coverage
+
+### Story 8.7: Raise Procurement-Risk Alert Within Lead-Time Window
+
+As a maintenance planner,
+I want a distinct alert when projected depletion occurs inside the procurement lead-time window,
+So that ordering starts before stock-out rather than only at the percentage threshold.
+
+**Acceptance Criteria:**
+
+**Given** an installed sparepart has lead time and sufficient counter-rate data
+**When** evaluation finds projected depletion within the lead-time window
+**Then** backend creates a PROCUREMENT_RISK alert with distinct type/reason evidence including rate, projection basis, and lead time used
+**And** duplicate prevention applies per installation and alert type without interfering with existing percentage-threshold alerts
+**And** alert list/detail render the procurement-risk type label and reason distinctly
+**And** missing lead time or insufficient data produces no alert and no error
+**And** creation is audit logged with traceId and role-denial paths return standard errors
+**And** pilot seed optionally extends with material code, lead time, and IDR price example for validation
+
+
 ## Final Validation Results
 
 ### FR Coverage Validation
@@ -1202,6 +1350,16 @@ All functional requirements FR-001 through FR-065 are covered by stories:
 - FR-047 through FR-052 and FR-054 through FR-056: Epic 5.
 - FR-057 through FR-065: Epic 6.
 - Success metrics and pilot scenario: Epic 7.
+
+### New FR Coverage (Procurement Readiness 2026-08-23)
+
+- FR-078, FR-079: Epic 8 — Story 8.2
+- FR-080, FR-081: Epic 8 — Story 8.3
+- FR-082: Epic 8 — Stories 8.1 and 8.4
+- FR-083, FR-084: Epic 8 — Story 8.5
+- FR-085, FR-086: Epic 8 — Story 8.6
+- FR-087: Epic 8 — Story 8.7
+- FR-088, FR-089: Epic 8 — cross-cutting across all mutation stories
 
 ### Architecture Implementation Validation
 

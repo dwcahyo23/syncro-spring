@@ -2,7 +2,7 @@
 title: Syncro Phase 1 Industrial Foundation PRD
 status: final
 created: 2026-05-22
-updated: 2026-05-25
+updated: 2026-08-23
 ---
 <!-- Research reconciliation applied 2026-05-25: domain + technical research gaps integrated -->
 
@@ -33,7 +33,7 @@ Maintenance teams need earlier visibility when installed spareparts approach end
 
 - Corrective maintenance work orders.
 - Preventive maintenance scheduling.
-- Inventory maintenance management.
+- Inventory maintenance management (full IMMS remains Phase 3). Exception: basic sparepart procurement attributes — material code, lead time, estimated price with currency/kurs record, and sparepart image — are in scope as procurement readiness groundwork delivered by the Sparepart Procurement Readiness epic (2026-08-23 change).
 - Full plant/machine/user ABAC enforcement.
 - WYSIWYG PDF report generation.
 - Maintenance project management.
@@ -52,6 +52,8 @@ Maintenance teams need earlier visibility when installed spareparts approach end
 ### 5.2 Job Permission Scopes
 
 `TECHNICIAN`, `STAFF`, `LEADER`, `SPV`, and `MANAGER` are job permission scopes for responsibility and future ABAC. They are separate from application roles. A user may have the `MANAGE` application role while their operational scope is still constrained by job permission scope, such as technician, staff, leader, SPV, or manager. Phase 1 stores these scope values for machine responsibility and escalation; full ABAC enforcement is deferred.
+
+Procurement readiness mutations (material code, lead time, price entries, sparepart image, shift configs) are the first server-side job-scope enforcement: they require job scope `LEADER` or above in addition to the application role baseline. This is a deliberate step in the FR-025 ABAC direction.
 
 ## 6. User Journeys
 
@@ -195,6 +197,21 @@ A SUPER_ADMIN opens the health dashboard to verify PostgreSQL, InfluxDB, Redis, 
 - FR-076: The system shall record immutable audit log entries for master data mutations including plant, machine, sparepart, responsibility, and threshold changes. Each entry shall capture user, action, entity, previous value, new value, and timestamp.
 - FR-077: Telemetry dashboard and alert views shall be filtered by the user's plant assignment. A user with access to Plant A shall not see telemetry or alerts from Plant B unless granted SUPER_ADMIN role.
 
+### 7.11 Sparepart Procurement Readiness and Operating Calendar
+
+- FR-078: A sparepart may carry an optional material code that is entered manually, never auto-generated. The material code is globally unique across the system and is not plant-scoped. Installation and lifetime flows shall not require a material code.
+- FR-079: A sparepart may carry an optional procurement lead time duration. Fractional values are allowed (for example 30 days, 7 days, or 36 hours).
+- FR-080: A sparepart may hold estimated price entries. Each entry stores amount using decimal precision, an ISO-4217 currency code defaulting to `IDR`, a mandatory kurs-to-IDR snapshot when the currency is not `IDR`, the normalized IDR value, entry timestamp, and entering user.
+- FR-081: Price entry history shall be retained and viewable per sparepart. When the price is unchanged, the user may copy and reuse the previous entry.
+- FR-082: A sparepart may have one global image, shared across machines for identical spareparts down to type. Image files shall be stored in S3-compatible object storage (Garage); PostgreSQL stores only the object reference/URL.
+- FR-083: Machine groups may define an operating shift configuration of up to three shifts per day, each with start and end local wall-clock times. Shift windows may cross midnight.
+- FR-084: Machines may override the shift configuration. The machine-level configuration takes precedence; when absent, the machine group configuration applies. The UI shall state which source is in effect when the machine inherits from its group.
+- FR-085: The system shall estimate counter rate as a rolling 30-day moving average of counting delta per operating hour derived from accepted telemetry, falling back to the full-history average when fewer than 30 days of data exist, and exposing an explicit insufficient-data state otherwise.
+- FR-086: The system shall display shift-aware projections: estimated calendar time to sparepart depletion and expected counter consumption during the procurement lead-time window.
+- FR-087: When projected depletion falls within the lead-time window, the system shall raise a procurement-risk alert with a distinct alert type/reason, duplicate prevention per installation, and audit logging, in addition to existing percentage-threshold alerts.
+- FR-088: Mutations of material code, lead time, price entries, sparepart image, and shift configurations shall require job scope `LEADER` or above, enforced server-side.
+- FR-089: All mutations above shall be recorded in the immutable audit log.
+
 ## 8. Minimum Screen Set
 
 - Login.
@@ -204,6 +221,7 @@ A SUPER_ADMIN opens the health dashboard to verify PostgreSQL, InfluxDB, Redis, 
 - Sparepart taxonomy management.
 - Sparepart management.
 - Machine sparepart installation.
+- Sparepart price history view.
 - Machine responsibility assignment.
 - Telemetry dashboard.
 - Alert history and alert detail.
@@ -238,6 +256,18 @@ Each telemetry payload shall include a `timestamp` field in UTC ISO-8601 format.
 ### 9.5 WAHA Notification Identifiers
 
 WhatsApp recipient identifiers (chatId) shall use WAHA format: international phone number without leading `+`, suffixed with `@c.us` for individual users or `@g.us` for groups. Example: `6281234567890@c.us`. The WAHA session name shall default to `default`.
+
+### 9.6 Counter Rate Estimation
+
+Counter rate per machine is estimated as a rolling 30-day moving average of counting delta divided by effective operating hours, using accepted telemetry history and the resolved shift configuration. When fewer than 30 days of telemetry exist, the full-history average applies. When insufficient data exists for any estimate, the projection is explicitly reported as unavailable rather than guessed. Window length and staleness thresholds are configurable typed properties; rounding rules are backend-owned and versioned with the formula.
+
+### 9.7 Operating Calendar
+
+Effective operating time per day derives from the shift configuration resolved at machine level: the machine override wins; otherwise the machine group configuration applies. Shift windows are defined in plant-local wall clock (typed config, default `Asia/Jakarta`) and may cross midnight. Backend computation uses UTC instants; local wall-clock appears only at the shift definition and display boundaries.
+
+### 9.8 Price Normalization
+
+The normalized IDR value of a price entry is `amount × kursToIdr`; entries in `IDR` use kurs `1`. Display defaults to IDR regardless of entry currency, with original currency and kurs evidence retained on the entry.
 
 ## 10. Non-Functional Requirements
 

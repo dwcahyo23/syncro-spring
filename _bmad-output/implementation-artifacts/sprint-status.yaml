@@ -1,5 +1,5 @@
 # generated: 2026-05-25
-# last_updated: 2026-05-30
+# last_updated: 2026-08-23
 # project: Syncro
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-25
-last_updated: 2026-08-22
+last_updated: 2026-08-23
 project: Syncro
 project_key: NOKEY
 tracking_system: file-system
@@ -109,7 +109,7 @@ development_status:
   epic-5-retrospective: optional
 
   # Epic 6: System Health & Operational Diagnostics
-  epic-6: in-progress
+  epic-6: done
   6-1-expose-dependency-health-checks: done
   6-2-report-telemetry-ingest-worker-status: done
   6-3-report-notification-worker-status: done
@@ -120,7 +120,7 @@ development_status:
   epic-6-retrospective: optional
 
   # Epic 7: Pilot Validation & Operational Proof
-  epic-7: in-progress
+  epic-7: done
   7-1-create-canonical-pilot-seed-data: done
   7-2-provide-pilot-mqtt-payload-fixtures: done
   7-3-create-pilot-scripts-for-seed-publish-and-verify: done
@@ -130,4 +130,13 @@ development_status:
   7-7-document-pilot-validation-proof: done
   epic-7-retrospective: optional
 
-
+  # Epic 8: Sparepart Procurement Readiness & Operating Calendar
+  epic-8: backlog
+  8-1-add-garage-object-storage-and-backend-integration: backlog
+  8-2-manage-sparepart-material-code-and-lead-time: backlog
+  8-3-manage-estimated-price-entries-with-currency-and-kurs: backlog
+  8-4-manage-sparepart-image-via-garage: backlog
+  8-5-configure-shift-schedule-with-machine-override: backlog
+  8-6-estimate-counter-rate-and-shift-aware-projections: backlog
+  8-7-raise-procurement-risk-alert-within-lead-time-window: backlog
+  epic-8-retrospective: optional
