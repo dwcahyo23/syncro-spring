@@ -824,6 +824,27 @@ severity: low
 reason: The alert handler maps any OOLFE under the alert controller to "Alert was modified concurrently." In practice, only the alert entity has @Version and is saved via entity manager in the acknowledge/resolve/override path; notification job bulk updates bypass @Version, and audit writes are append-only. The message is accurate for the dominant case. Theoretically scoped to the alert entity type only.
 status: open
 
+### DW-117: Orval client input pinned to mutable live endpoint
+
+source_spec: `_bmad-output/implementation-artifacts/spec-deferred-work-bundle-10.md`
+summary: generate:api pulls from http://localhost:8080/v3/api-docs at regen time with no committed OpenAPI snapshot, so generated types are unreproducible from a fresh checkout and reflect whatever backend build happens to be running.
+evidence: orval.config.ts:5 input URL + clean:true; bundle-10 regen produced +2503/-564 lines reflecting drift accumulated since the previous regen; only ALERT enum was pre-verified explicitly.
+status: open
+
+### DW-118: Reserved-name/dedupe matching is case-sensitive across the optional-field chain
+
+source_spec: `_bmad-output/implementation-artifacts/spec-deferred-work-bundle-11.md`
+summary: RESERVED_OPTIONAL_FIELDS exact-matches while the pattern allows uppercase and TelemetryPayload.parse is case-sensitive too, so config "COUNTING" passes validation and persists optional.COUNTING shadowing base counting; case-differing duplicates likewise evade dedupe and over-count.
+evidence: MachineService.java optionalFieldRejectionReason uses Set.contains on lowercase set; OPTIONAL_FIELD_PATTERN permits [A-Za-z0-9_]+; TelemetryPayload.java:133 parse is case-sensitive; persist writes "optional." + entry key verbatim.
+status: open
+
+### DW-119: Machine form has no dedicated slot for optionalTelemetryFields validation errors
+
+source_spec: `_bmad-output/implementation-artifacts/spec-deferred-work-bundle-11.md`
+summary: Backend now emits fieldErrors.optionalTelemetryFields with precise reasons, but machine-management.tsx renders field slots only for plantId/machineGroupId/code/status, so config rejections surface only via generic toast/formError.
+evidence: machine-management.tsx:215 stores response.fieldErrors into state; dialog body renders error paragraphs solely beside the four named inputs; no reference to optionalTelemetryFields anywhere in the component.
+status: open
+
 ### DW-113: .gitignore negation re-includes the whole syncro/docs/screenshots/ subtree, not just pilot/
 
 origin: migrated from legacy ledger ("code review of spec-7-7-document-pilot-validation-proof (2026-08-22)"), 2026-08-22
