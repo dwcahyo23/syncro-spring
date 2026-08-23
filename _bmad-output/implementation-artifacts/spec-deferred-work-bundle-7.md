@@ -3,7 +3,8 @@ title: 'Deferred-work bundle 7: pilot verification tooling hardening — enforce
 type: 'chore'
 created: '2026-08-23'
 baseline_revision: '1f8c3c1'
-status: 'in-review'
+final_revision: '0246f0f'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
