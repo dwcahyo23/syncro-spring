@@ -3,7 +3,8 @@ title: 'Deferred-work bundle 11: field-aware machine validation errors'
 type: 'refactor'
 created: '2026-08-23'
 baseline_revision: 'd1d4bb3'
-status: 'ready-for-dev'
+final_revision: '9035807'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
