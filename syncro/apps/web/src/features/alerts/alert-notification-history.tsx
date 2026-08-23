@@ -11,44 +11,53 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { AuditLogEntryView } from "@/lib/api/generated/model";
+import {
+  type AlertNotificationHistoryResponse,
+  type NotificationAttemptView,
+  type NotificationJobView,
+} from "@/lib/api/generated/model";
+import type { AlertViewStatus, AuditLogEntryView } from "@/lib/api/generated/model";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
 
+export type { AlertNotificationHistoryResponse, NotificationAttemptView, NotificationJobView };
+
 // ---------------------------------------------------------------------------
-// DTO types — mirrored from backend. Keep names identical so that Orval
-// generation is diff-free when backend is reachable.
+// Normalization — generated DTO fields are optional; normalize once at the
+// boundary so the render tree can keep non-null assumptions (DW-85).
 // ---------------------------------------------------------------------------
 
-export interface NotificationAttemptView {
-  attemptNumber: number;
-  status: string;
-  attemptedAt: string;
-  responseDetail: string | null;
-  traceId: string | null;
-}
-
-export interface NotificationJobView {
-  id: string;
-  alertId: string;
+type NormalizedAttempt = Required<NotificationAttemptView>;
+type NormalizedJob = Omit<Required<NotificationJobView>, "escalationLevel" | "status" | "attempts"> & {
   escalationLevel: string;
-  status: string; // NotificationJobStatus enum string
-  recipientUserId: string | null;
-  recipientDisplayName: string | null;
-  recipientPhoneMasked: string | null;
-  attemptCount: number;
-  maxAttempts: number;
-  sentAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-  nextAttemptAt?: string | null;
-  errorDetail: string | null;
-  traceId: string | null;
-  attempts: NotificationAttemptView[];
-}
+  status: string;
+  attempts: NormalizedAttempt[];
+};
 
-export interface AlertNotificationHistoryResponse {
-  items: NotificationJobView[];
-  total: number;
+function normalizeJob(job: NotificationJobView): NormalizedJob {
+  return {
+    id: job.id ?? "",
+    alertId: job.alertId ?? "",
+    escalationLevel: job.escalationLevel ?? "",
+    status: job.status ?? "",
+    recipientUserId: job.recipientUserId ?? "",
+    recipientDisplayName: job.recipientDisplayName ?? "",
+    recipientPhoneMasked: job.recipientPhoneMasked ?? "",
+    attemptCount: job.attemptCount ?? 0,
+    maxAttempts: job.maxAttempts ?? 0,
+    sentAt: job.sentAt ?? "",
+    createdAt: job.createdAt ?? "",
+    updatedAt: job.updatedAt ?? "",
+    nextAttemptAt: job.nextAttemptAt ?? "",
+    errorDetail: job.errorDetail ?? "",
+    traceId: job.traceId ?? "",
+    attempts: (job.attempts ?? []).map((a) => ({
+      attemptNumber: a.attemptNumber ?? 0,
+      status: a.status ?? "",
+      attemptedAt: a.attemptedAt ?? "",
+      responseDetail: a.responseDetail ?? "",
+      traceId: a.traceId ?? "",
+    })),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -64,7 +73,7 @@ export interface AlertNotificationHistoryProps {
   readonly errorAudit: unknown | null;
   readonly onRetryHistory?: () => void;
   readonly onRetryAudit?: () => void;
-  readonly alertStatus?: "OPEN" | "ACKNOWLEDGED" | "RESOLVED";
+  readonly alertStatus?: AlertViewStatus;
   readonly alertCreatedAt?: string | null;
 }
 
@@ -145,13 +154,16 @@ export function AlertNotificationHistory({
   alertCreatedAt = null,
 }: AlertNotificationHistoryProps) {
   // Enforce escalation order on frontend as well (AC1) — do not rely solely on backend
-  const sortedItems = [...(history?.items ?? [])].sort((a, b) => {
+  const sortedItems = (history?.items ?? []).map(normalizeJob).sort((a, b) => {
     const ia = ESCALATION_ORDER.indexOf(a.escalationLevel as typeof ESCALATION_ORDER[number]);
     const ib = ESCALATION_ORDER.indexOf(b.escalationLevel as typeof ESCALATION_ORDER[number]);
     const rankA = ia === -1 ? 99 : ia;
     const rankB = ib === -1 ? 99 : ib;
     if (rankA !== rankB) return rankA - rankB;
-    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    const ta = new Date(a.createdAt).getTime();
+    const tb = new Date(b.createdAt).getTime();
+    if (Number.isNaN(ta) || Number.isNaN(tb)) return 0;
+    return ta - tb;
   });
 
   const steps: EscalationStep[] = sortedItems.map((job) => ({
@@ -160,10 +172,10 @@ export function AlertNotificationHistory({
     recipientPhoneMasked: job.recipientPhoneMasked,
     status: mapStatus(job.status, job.nextAttemptAt),
     rawStatus: job.status,
-    timestamp: job.status === "ESCALATED" ? job.updatedAt : (job.sentAt ?? job.updatedAt ?? job.createdAt),
-    nextSendAt: job.nextAttemptAt ?? undefined,
-    deliveryResult: job.errorDetail?.slice(0, 512) ?? undefined,
-    traceId: job.traceId ?? undefined,
+    timestamp: job.status === "ESCALATED" ? job.updatedAt : (job.sentAt || job.updatedAt || job.createdAt),
+    nextSendAt: job.nextAttemptAt || undefined,
+    deliveryResult: job.errorDetail ? job.errorDetail.slice(0, 512) : undefined,
+    traceId: job.traceId || undefined,
   }));
 
   return (
@@ -318,7 +330,7 @@ function HistoryTableSection({
   error,
   onRetry,
 }: {
-  items: NotificationJobView[] | undefined;
+  items: NormalizedJob[] | undefined;
   isLoading: boolean;
   error: unknown | null;
   onRetry?: () => void;
@@ -397,7 +409,7 @@ function HistoryTableSection({
             {items.map((job) => {
               const isAttOpen = expandedAttempts.has(job.id);
               const isErrOpen = expandedErrors.has(job.id);
-              const ts = job.sentAt ?? job.createdAt;
+              const ts = job.sentAt || job.createdAt;
               return (
                 <TableRow key={job.id}>
                   <TableCell className="font-medium">{job.escalationLevel}</TableCell>
@@ -476,7 +488,7 @@ function HistoryTableSection({
       <div className="space-y-2 md:hidden">
         {items.map((job) => {
           const isAttOpen = expandedAttempts.has(job.id);
-          const ts = job.sentAt ?? job.createdAt;
+          const ts = job.sentAt || job.createdAt;
           return (
             <div key={job.id} className="space-y-1.5 rounded-lg border p-3">
               <div className="flex items-center justify-between gap-2">
@@ -527,13 +539,13 @@ function HistoryTableSection({
   );
 }
 
-function AttemptTable({ attempts }: { attempts: NotificationAttemptView[] }) {
-  const [expandedDetail, setExpandedDetail] = useState<Set<number>>(new Set());
-  function toggle(n: number) {
+function AttemptTable({ attempts }: { attempts: NormalizedAttempt[] }) {
+  const [expandedDetail, setExpandedDetail] = useState<Set<string>>(new Set());
+  function toggle(rowKey: string) {
     setExpandedDetail((cur) => {
       const next = new Set(cur);
-      if (next.has(n)) next.delete(n);
-      else next.add(n);
+      if (next.has(rowKey)) next.delete(rowKey);
+      else next.add(rowKey);
       return next;
     });
   }
@@ -550,10 +562,11 @@ function AttemptTable({ attempts }: { attempts: NotificationAttemptView[] }) {
           </tr>
         </thead>
         <tbody>
-          {attempts.slice(0, 3).map((a) => {
-            const isOpen = expandedDetail.has(a.attemptNumber);
+          {attempts.map((a, index) => {
+            const rowKey = `${a.attemptNumber}-${index}`;
+            const isOpen = expandedDetail.has(rowKey);
             return (
-              <tr key={a.attemptNumber} className="border-t">
+              <tr key={rowKey} className="border-t">
                 <td className="px-3 py-1.5 tabular-nums">{a.attemptNumber}</td>
                 <td className="px-3 py-1.5">
                   <Badge variant="outline" className="text-xs">
@@ -566,7 +579,7 @@ function AttemptTable({ attempts }: { attempts: NotificationAttemptView[] }) {
                     <span title={a.responseDetail}>
                       {isOpen ? a.responseDetail.slice(0, 512) : truncate120(a.responseDetail)}
                       {a.responseDetail.length > 120 ? (
-                        <button type="button" className="ml-1 text-primary underline" onClick={() => toggle(a.attemptNumber)}>
+                        <button type="button" className="ml-1 text-primary underline" onClick={() => toggle(rowKey)}>
                           {isOpen ? "less" : "more"}
                         </button>
                       ) : null}

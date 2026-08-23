@@ -16,7 +16,7 @@ type StatusConfig = {
   className: string;
 };
 
-function getConfig(status: string): StatusConfig {
+function getConfig(status: string | undefined): StatusConfig {
   switch (status) {
     case "PENDING":
       return {
@@ -51,7 +51,7 @@ function getConfig(status: string): StatusConfig {
       };
     default:
       return {
-        label: status,
+        label: status ?? "UNKNOWN",
         Icon: Clock,
         className: "border-transparent bg-slate-500/15 text-slate-700 dark:text-slate-400",
       };
@@ -68,7 +68,7 @@ function formatTooltip(summary: NotificationSummary): string {
   if (summary.escalationLevel) {
     return `Level: ${summary.escalationLevel}`;
   }
-  return `Notification: ${summary.status}`;
+  return `Notification: ${summary.status ?? "UNKNOWN"}`;
 }
 
 export function NotificationStatePill({ summary }: NotificationStatePillProps) {

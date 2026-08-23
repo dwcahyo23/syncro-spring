@@ -4,9 +4,9 @@ import { AlertCircle, CircleCheck, CircleDashed } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { SparepartAlertStatus } from "@/lib/api/generated/model";
+import { AlertViewStatus } from "@/lib/api/generated/model";
 
-export type AlertStatus = SparepartAlertStatus;
+export type AlertStatus = AlertViewStatus;
 
 type AlertStatusBadgeProps = {
   status: AlertStatus | undefined;

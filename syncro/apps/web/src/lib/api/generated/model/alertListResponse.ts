@@ -8,9 +8,9 @@
 import type { AlertView } from './alertView';
 
 export interface AlertListResponse {
-  items: AlertView[];
-  totalElements: number;
-  page: number;
-  size: number;
-  sort: string;
+  items?: AlertView[];
+  totalElements?: number;
+  page?: number;
+  size?: number;
+  sort?: string;
 }

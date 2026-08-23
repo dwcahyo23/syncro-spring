@@ -160,11 +160,12 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
   // stale banner: OPEN and last sent >15m ago with no PENDING queued and not cancelled
   // Fallback to alert creation time when no sentAt exists (e.g., only ROUTING_FAILED) so never-sent alerts still surface stale
   const isStale = (() => {
-    if (!alert || alert.status !== "OPEN" || !history || history.items.length === 0) return false;
-    const hasPending = history.items.some((j) => j.status === "PENDING");
-    const hasCancelled = history.items.some((j) => j.status === "CANCELLED");
+    if (!alert || alert.status !== "OPEN" || !history || (history.items ?? []).length === 0) return false;
+    const jobItems = history.items ?? [];
+    const hasPending = jobItems.some((j) => j.status === "PENDING");
+    const hasCancelled = jobItems.some((j) => j.status === "CANCELLED");
     if (hasPending || hasCancelled) return false;
-    const sentTimes = history.items
+    const sentTimes = jobItems
       .map((j) => j.sentAt)
       .filter((v): v is string => Boolean(v))
       .map((v) => new Date(v).getTime())

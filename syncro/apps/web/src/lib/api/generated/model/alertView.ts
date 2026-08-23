@@ -5,34 +5,34 @@
  * Syncro backend REST API.
  * OpenAPI spec version: v1
  */
-import type { SparepartAlertStatus } from './sparepartAlertStatus';
+import type { AlertViewStatus } from './alertViewStatus';
 import type { NotificationSummary } from './notificationSummary';
 
 export interface AlertView {
-  id: string;
-  machineId: string;
-  machineCode: string;
+  id?: string;
+  machineId?: string;
+  machineCode?: string;
   machineName?: string;
-  plantId: string;
-  plantCode: string;
-  plantName: string;
-  machineGroupId: string;
-  machineGroupName: string;
-  installationId: string;
-  sparepartId: string;
-  sparepartCode: string;
+  plantId?: string;
+  plantCode?: string;
+  plantName?: string;
+  machineGroupId?: string;
+  machineGroupName?: string;
+  installationId?: string;
+  sparepartId?: string;
+  sparepartCode?: string;
   sparepartName?: string;
-  functionName: string;
-  thresholdPercentage: number;
-  baselineCounter: number;
-  expectedProductionCount: number;
-  currentCounterSnapshot: number;
-  consumedProductionCountSnapshot: number;
-  consumedPercentageSnapshot: number;
-  status: SparepartAlertStatus;
+  functionName?: string;
+  thresholdPercentage?: number;
+  baselineCounter?: number;
+  expectedProductionCount?: number;
+  currentCounterSnapshot?: number;
+  consumedProductionCountSnapshot?: number;
+  consumedPercentageSnapshot?: number;
+  status?: AlertViewStatus;
   statusReason?: string;
-  traceId: string;
-  createdAt: string;
-  updatedAt: string;
+  traceId?: string;
+  createdAt?: string;
+  updatedAt?: string;
   notificationSummary?: NotificationSummary;
 }

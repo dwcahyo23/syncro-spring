@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RoleGuard } from "@/components/syncro/role-guard";
 import { WahaTemplateEditor } from "@/components/syncro/waha-template-editor";
-import { useGetActiveWahaTemplate, useUpsertWahaTemplate, type WahaTemplateViewResponse } from "@/lib/api/generated/syncro";
+import { useGetActiveWahaTemplate, useUpsertWahaTemplate, type upsertWahaTemplateResponse } from "@/lib/api/generated/syncro";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
 
@@ -52,7 +52,7 @@ function WahaTemplateContent({ readOnly }: { readOnly: boolean }) {
 
   const upsert = useUpsertWahaTemplate({
     mutation: {
-      onSuccess: (response: WahaTemplateViewResponse) => {
+      onSuccess: (response: upsertWahaTemplateResponse) => {
         setDraftBody(response.data?.body ?? null);
         toast.success("Template saved");
       },

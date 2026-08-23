@@ -6,14 +6,14 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useListAlerts } from "@/lib/api/generated/syncro";
-import type { SparepartAlertStatus } from "@/lib/api/generated/model";
+import type { AlertViewStatus } from "@/lib/api/generated/model";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
 
 import { AlertStatusBadge } from "./alert-status-badge";
 import { NotificationStatePill } from "./notification-state-pill";
 
 interface AlertListPageContentProps {
-  statusFilter?: SparepartAlertStatus;
+  statusFilter?: AlertViewStatus;
   machineId?: string;
 }
 
@@ -111,7 +111,7 @@ export function AlertListPageContent({ statusFilter, machineId }: AlertListPageC
             aria-label={`View alert for ${item.machineCode} — ${item.sparepartName ?? item.sparepartCode}`}
           >
             <TableCell>
-              <AlertStatusBadge status={item.status as SparepartAlertStatus} />
+              <AlertStatusBadge status={item.status as AlertViewStatus} />
             </TableCell>
             <TableCell className="hidden sm:table-cell">
               <NotificationStatePill summary={item.notificationSummary} />

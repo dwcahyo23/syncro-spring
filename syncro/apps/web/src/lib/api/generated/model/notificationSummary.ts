@@ -6,12 +6,8 @@
  * OpenAPI spec version: v1
  */
 
-/**
- * Summary of the most relevant notification job for an alert.
- * Null when the alert has no notification jobs at all.
- */
 export interface NotificationSummary {
-  status: string;
+  status?: string;
   escalationLevel?: string;
   sentAt?: string;
   errorDetail?: string;

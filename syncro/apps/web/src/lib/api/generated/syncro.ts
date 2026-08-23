@@ -25,14 +25,20 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AcknowledgeRequest,
+  AlertListResponse,
+  AlertNotificationHistoryResponse,
+  AlertView,
   AuditLogListResponse,
   AuthUserView,
   CreateMachineResponsibilityRequest,
   Health200,
+  IngestWorkerStatus,
   InstallationListResponse,
   InstallationRequest,
   InstallationUpdateRequest,
   InstallationView,
+  ListAlertsParams,
   ListAuditLogEntriesParams,
   ListMachineGroupsParams,
   ListMachineResponsibilitiesParams,
@@ -40,6 +46,7 @@ import type {
   ListMachinesParams,
   ListSparepartTaxonomiesParams,
   ListSparepartsParams,
+  ListTelemetryQuarantineParams,
   LoginRequest,
   LoginResponse,
   Logout200,
@@ -50,11 +57,15 @@ import type {
   MachineRequest,
   MachineResponsibilityResponse,
   MachineView,
+  NotificationWorkerStatus,
+  PageQuarantineEntryView,
   PageResponseMachineResponsibilityResponse,
   PlantListResponse,
   PlantRequest,
   PlantScopeResponse,
   PlantView,
+  ResolveOverrideRequest,
+  ResolveRequest,
   SetupCompletenessResponse,
   SparepartListResponse,
   SparepartRequest,
@@ -62,7 +73,12 @@ import type {
   SparepartTaxonomyRequest,
   SparepartTaxonomyView,
   SparepartView,
-  UpdateMachineResponsibilityRequest
+  StaleMachineStatus,
+  TelemetryDataQualityStatus,
+  TelemetryFreshnessStatus,
+  UpdateMachineResponsibilityRequest,
+  UpsertTemplateRequest,
+  WahaTemplateView
 } from './model';
 
 import { syncroFetch } from '../orval-mutator';
@@ -1133,6 +1149,236 @@ export const useDeletePlant = <TError = void,
         TContext
       > => {
       return useMutation(getDeletePlantMutationOptions(options), queryClient);
+    }
+
+export type getActiveWahaTemplateResponse200 = {
+  data: WahaTemplateView
+  status: 200
+}
+
+export type getActiveWahaTemplateResponse401 = {
+  data: WahaTemplateView
+  status: 401
+}
+
+export type getActiveWahaTemplateResponse403 = {
+  data: WahaTemplateView
+  status: 403
+}
+
+export type getActiveWahaTemplateResponse404 = {
+  data: WahaTemplateView
+  status: 404
+}
+
+export type getActiveWahaTemplateResponseSuccess = (getActiveWahaTemplateResponse200) & {
+  headers: Headers;
+};
+export type getActiveWahaTemplateResponseError = (getActiveWahaTemplateResponse401 | getActiveWahaTemplateResponse403 | getActiveWahaTemplateResponse404) & {
+  headers: Headers;
+};
+
+export type getActiveWahaTemplateResponse = (getActiveWahaTemplateResponseSuccess | getActiveWahaTemplateResponseError)
+
+export const getGetActiveWahaTemplateUrl = () => {
+
+
+
+
+  return `/api/v1/notification/templates`
+}
+
+/**
+ * @summary Get active WAHA alert message template
+ */
+export const getActiveWahaTemplate = async ( options?: Parameters<typeof syncroFetch>[1]): Promise<getActiveWahaTemplateResponse> => {
+
+  return syncroFetch<getActiveWahaTemplateResponse>(getGetActiveWahaTemplateUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetActiveWahaTemplateQueryKey = () => {
+    return [
+    `/api/v1/notification/templates`
+    ] as const;
+    }
+
+
+export const getGetActiveWahaTemplateQueryOptions = <TData = Awaited<ReturnType<typeof getActiveWahaTemplate>>, TError = WahaTemplateView>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActiveWahaTemplate>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetActiveWahaTemplateQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getActiveWahaTemplate>>> = ({ signal }) => getActiveWahaTemplate({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getActiveWahaTemplate>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetActiveWahaTemplateQueryResult = NonNullable<Awaited<ReturnType<typeof getActiveWahaTemplate>>>
+export type GetActiveWahaTemplateQueryError = WahaTemplateView
+
+
+export function useGetActiveWahaTemplate<TData = Awaited<ReturnType<typeof getActiveWahaTemplate>>, TError = WahaTemplateView>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActiveWahaTemplate>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getActiveWahaTemplate>>,
+          TError,
+          Awaited<ReturnType<typeof getActiveWahaTemplate>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetActiveWahaTemplate<TData = Awaited<ReturnType<typeof getActiveWahaTemplate>>, TError = WahaTemplateView>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActiveWahaTemplate>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getActiveWahaTemplate>>,
+          TError,
+          Awaited<ReturnType<typeof getActiveWahaTemplate>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetActiveWahaTemplate<TData = Awaited<ReturnType<typeof getActiveWahaTemplate>>, TError = WahaTemplateView>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActiveWahaTemplate>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get active WAHA alert message template
+ */
+
+export function useGetActiveWahaTemplate<TData = Awaited<ReturnType<typeof getActiveWahaTemplate>>, TError = WahaTemplateView>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getActiveWahaTemplate>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetActiveWahaTemplateQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type upsertWahaTemplateResponse200 = {
+  data: WahaTemplateView
+  status: 200
+}
+
+export type upsertWahaTemplateResponse400 = {
+  data: WahaTemplateView
+  status: 400
+}
+
+export type upsertWahaTemplateResponse401 = {
+  data: WahaTemplateView
+  status: 401
+}
+
+export type upsertWahaTemplateResponse403 = {
+  data: WahaTemplateView
+  status: 403
+}
+
+export type upsertWahaTemplateResponseSuccess = (upsertWahaTemplateResponse200) & {
+  headers: Headers;
+};
+export type upsertWahaTemplateResponseError = (upsertWahaTemplateResponse400 | upsertWahaTemplateResponse401 | upsertWahaTemplateResponse403) & {
+  headers: Headers;
+};
+
+export type upsertWahaTemplateResponse = (upsertWahaTemplateResponseSuccess | upsertWahaTemplateResponseError)
+
+export const getUpsertWahaTemplateUrl = () => {
+
+
+
+
+  return `/api/v1/notification/templates`
+}
+
+/**
+ * @summary Create or update WAHA alert message template
+ */
+export const upsertWahaTemplate = async (upsertTemplateRequest: UpsertTemplateRequest, options?: Parameters<typeof syncroFetch>[1]): Promise<upsertWahaTemplateResponse> => {
+
+  return syncroFetch<upsertWahaTemplateResponse>(getUpsertWahaTemplateUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(upsertTemplateRequest)
+  }
+);}
+
+
+
+
+
+export const getUpsertWahaTemplateMutationOptions = <TError = WahaTemplateView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertWahaTemplate>>, TError,{data: UpsertTemplateRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof upsertWahaTemplate>>, TError,{data: UpsertTemplateRequest}, TContext> => {
+
+const mutationKey = ['upsertWahaTemplate'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof upsertWahaTemplate>>, {data: UpsertTemplateRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  upsertWahaTemplate(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpsertWahaTemplateMutationResult = NonNullable<Awaited<ReturnType<typeof upsertWahaTemplate>>>
+    export type UpsertWahaTemplateMutationBody = UpsertTemplateRequest
+    export type UpsertWahaTemplateMutationError = WahaTemplateView
+
+    /**
+ * @summary Create or update WAHA alert message template
+ */
+export const useUpsertWahaTemplate = <TError = WahaTemplateView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertWahaTemplate>>, TError,{data: UpsertTemplateRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof upsertWahaTemplate>>,
+        TError,
+        {data: UpsertTemplateRequest},
+        TContext
+      > => {
+      return useMutation(getUpsertWahaTemplateMutationOptions(options), queryClient);
     }
 
 export type getMachineResponse200 = {
@@ -4172,6 +4418,956 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getLoginMutationOptions(options), queryClient);
     }
 
+export type resolveAlertResponse204 = {
+  data: void
+  status: 204
+}
+
+export type resolveAlertResponse401 = {
+  data: void
+  status: 401
+}
+
+export type resolveAlertResponse403 = {
+  data: void
+  status: 403
+}
+
+export type resolveAlertResponse404 = {
+  data: void
+  status: 404
+}
+
+export type resolveAlertResponse409 = {
+  data: void
+  status: 409
+}
+
+export type resolveAlertResponseSuccess = (resolveAlertResponse204) & {
+  headers: Headers;
+};
+export type resolveAlertResponseError = (resolveAlertResponse401 | resolveAlertResponse403 | resolveAlertResponse404 | resolveAlertResponse409) & {
+  headers: Headers;
+};
+
+export type resolveAlertResponse = (resolveAlertResponseSuccess | resolveAlertResponseError)
+
+export const getResolveAlertUrl = (alertId: string,) => {
+
+
+
+
+  return `/api/v1/alerts/${alertId}/resolve`
+}
+
+/**
+ * @summary Resolve an ACKNOWLEDGED alert
+ */
+export const resolveAlert = async (alertId: string,
+    resolveRequest?: ResolveRequest, options?: Parameters<typeof syncroFetch>[1]): Promise<resolveAlertResponse> => {
+
+  return syncroFetch<resolveAlertResponse>(getResolveAlertUrl(alertId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(resolveRequest)
+  }
+);}
+
+
+
+
+
+export const getResolveAlertMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveAlert>>, TError,{alertId: string;data?: ResolveRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resolveAlert>>, TError,{alertId: string;data?: ResolveRequest}, TContext> => {
+
+const mutationKey = ['resolveAlert'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resolveAlert>>, {alertId: string;data?: ResolveRequest}> = (props) => {
+          const {alertId,data} = props ?? {};
+
+          return  resolveAlert(alertId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResolveAlertMutationResult = NonNullable<Awaited<ReturnType<typeof resolveAlert>>>
+    export type ResolveAlertMutationBody = ResolveRequest | undefined
+    export type ResolveAlertMutationError = void
+
+    /**
+ * @summary Resolve an ACKNOWLEDGED alert
+ */
+export const useResolveAlert = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveAlert>>, TError,{alertId: string;data?: ResolveRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof resolveAlert>>,
+        TError,
+        {alertId: string;data?: ResolveRequest},
+        TContext
+      > => {
+      return useMutation(getResolveAlertMutationOptions(options), queryClient);
+    }
+
+export type resolveAlertOverrideResponse204 = {
+  data: void
+  status: 204
+}
+
+export type resolveAlertOverrideResponse401 = {
+  data: void
+  status: 401
+}
+
+export type resolveAlertOverrideResponse403 = {
+  data: void
+  status: 403
+}
+
+export type resolveAlertOverrideResponse404 = {
+  data: void
+  status: 404
+}
+
+export type resolveAlertOverrideResponse409 = {
+  data: void
+  status: 409
+}
+
+export type resolveAlertOverrideResponseSuccess = (resolveAlertOverrideResponse204) & {
+  headers: Headers;
+};
+export type resolveAlertOverrideResponseError = (resolveAlertOverrideResponse401 | resolveAlertOverrideResponse403 | resolveAlertOverrideResponse404 | resolveAlertOverrideResponse409) & {
+  headers: Headers;
+};
+
+export type resolveAlertOverrideResponse = (resolveAlertOverrideResponseSuccess | resolveAlertOverrideResponseError)
+
+export const getResolveAlertOverrideUrl = (alertId: string,) => {
+
+
+
+
+  return `/api/v1/alerts/${alertId}/resolve-override`
+}
+
+/**
+ * @summary SUPER_ADMIN: resolve an OPEN alert directly without acknowledging
+ */
+export const resolveAlertOverride = async (alertId: string,
+    resolveOverrideRequest?: ResolveOverrideRequest, options?: Parameters<typeof syncroFetch>[1]): Promise<resolveAlertOverrideResponse> => {
+
+  return syncroFetch<resolveAlertOverrideResponse>(getResolveAlertOverrideUrl(alertId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(resolveOverrideRequest)
+  }
+);}
+
+
+
+
+
+export const getResolveAlertOverrideMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveAlertOverride>>, TError,{alertId: string;data?: ResolveOverrideRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resolveAlertOverride>>, TError,{alertId: string;data?: ResolveOverrideRequest}, TContext> => {
+
+const mutationKey = ['resolveAlertOverride'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resolveAlertOverride>>, {alertId: string;data?: ResolveOverrideRequest}> = (props) => {
+          const {alertId,data} = props ?? {};
+
+          return  resolveAlertOverride(alertId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResolveAlertOverrideMutationResult = NonNullable<Awaited<ReturnType<typeof resolveAlertOverride>>>
+    export type ResolveAlertOverrideMutationBody = ResolveOverrideRequest | undefined
+    export type ResolveAlertOverrideMutationError = void
+
+    /**
+ * @summary SUPER_ADMIN: resolve an OPEN alert directly without acknowledging
+ */
+export const useResolveAlertOverride = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveAlertOverride>>, TError,{alertId: string;data?: ResolveOverrideRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof resolveAlertOverride>>,
+        TError,
+        {alertId: string;data?: ResolveOverrideRequest},
+        TContext
+      > => {
+      return useMutation(getResolveAlertOverrideMutationOptions(options), queryClient);
+    }
+
+export type acknowledgeAlertResponse204 = {
+  data: void
+  status: 204
+}
+
+export type acknowledgeAlertResponse401 = {
+  data: void
+  status: 401
+}
+
+export type acknowledgeAlertResponse403 = {
+  data: void
+  status: 403
+}
+
+export type acknowledgeAlertResponse404 = {
+  data: void
+  status: 404
+}
+
+export type acknowledgeAlertResponse409 = {
+  data: void
+  status: 409
+}
+
+export type acknowledgeAlertResponseSuccess = (acknowledgeAlertResponse204) & {
+  headers: Headers;
+};
+export type acknowledgeAlertResponseError = (acknowledgeAlertResponse401 | acknowledgeAlertResponse403 | acknowledgeAlertResponse404 | acknowledgeAlertResponse409) & {
+  headers: Headers;
+};
+
+export type acknowledgeAlertResponse = (acknowledgeAlertResponseSuccess | acknowledgeAlertResponseError)
+
+export const getAcknowledgeAlertUrl = (alertId: string,) => {
+
+
+
+
+  return `/api/v1/alerts/${alertId}/acknowledge`
+}
+
+/**
+ * @summary Acknowledge an OPEN alert
+ */
+export const acknowledgeAlert = async (alertId: string,
+    acknowledgeRequest?: AcknowledgeRequest, options?: Parameters<typeof syncroFetch>[1]): Promise<acknowledgeAlertResponse> => {
+
+  return syncroFetch<acknowledgeAlertResponse>(getAcknowledgeAlertUrl(alertId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(acknowledgeRequest)
+  }
+);}
+
+
+
+
+
+export const getAcknowledgeAlertMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acknowledgeAlert>>, TError,{alertId: string;data?: AcknowledgeRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof acknowledgeAlert>>, TError,{alertId: string;data?: AcknowledgeRequest}, TContext> => {
+
+const mutationKey = ['acknowledgeAlert'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof acknowledgeAlert>>, {alertId: string;data?: AcknowledgeRequest}> = (props) => {
+          const {alertId,data} = props ?? {};
+
+          return  acknowledgeAlert(alertId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AcknowledgeAlertMutationResult = NonNullable<Awaited<ReturnType<typeof acknowledgeAlert>>>
+    export type AcknowledgeAlertMutationBody = AcknowledgeRequest | undefined
+    export type AcknowledgeAlertMutationError = void
+
+    /**
+ * @summary Acknowledge an OPEN alert
+ */
+export const useAcknowledgeAlert = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acknowledgeAlert>>, TError,{alertId: string;data?: AcknowledgeRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof acknowledgeAlert>>,
+        TError,
+        {alertId: string;data?: AcknowledgeRequest},
+        TContext
+      > => {
+      return useMutation(getAcknowledgeAlertMutationOptions(options), queryClient);
+    }
+
+export type getStaleMachinesResponse200 = {
+  data: StaleMachineStatus
+  status: 200
+}
+
+export type getStaleMachinesResponse401 = {
+  data: StaleMachineStatus
+  status: 401
+}
+
+export type getStaleMachinesResponse403 = {
+  data: StaleMachineStatus
+  status: 403
+}
+
+export type getStaleMachinesResponseSuccess = (getStaleMachinesResponse200) & {
+  headers: Headers;
+};
+export type getStaleMachinesResponseError = (getStaleMachinesResponse401 | getStaleMachinesResponse403) & {
+  headers: Headers;
+};
+
+export type getStaleMachinesResponse = (getStaleMachinesResponseSuccess | getStaleMachinesResponseError)
+
+export const getGetStaleMachinesUrl = () => {
+
+
+
+
+  return `/api/v1/telemetry/stale-machines`
+}
+
+/**
+ * @summary Active machines with stale telemetry (evidence for the health dashboard)
+ */
+export const getStaleMachines = async ( options?: Parameters<typeof syncroFetch>[1]): Promise<getStaleMachinesResponse> => {
+
+  return syncroFetch<getStaleMachinesResponse>(getGetStaleMachinesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStaleMachinesQueryKey = () => {
+    return [
+    `/api/v1/telemetry/stale-machines`
+    ] as const;
+    }
+
+
+export const getGetStaleMachinesQueryOptions = <TData = Awaited<ReturnType<typeof getStaleMachines>>, TError = StaleMachineStatus>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStaleMachines>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStaleMachinesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStaleMachines>>> = ({ signal }) => getStaleMachines({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStaleMachines>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetStaleMachinesQueryResult = NonNullable<Awaited<ReturnType<typeof getStaleMachines>>>
+export type GetStaleMachinesQueryError = StaleMachineStatus
+
+
+export function useGetStaleMachines<TData = Awaited<ReturnType<typeof getStaleMachines>>, TError = StaleMachineStatus>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStaleMachines>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getStaleMachines>>,
+          TError,
+          Awaited<ReturnType<typeof getStaleMachines>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetStaleMachines<TData = Awaited<ReturnType<typeof getStaleMachines>>, TError = StaleMachineStatus>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStaleMachines>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getStaleMachines>>,
+          TError,
+          Awaited<ReturnType<typeof getStaleMachines>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetStaleMachines<TData = Awaited<ReturnType<typeof getStaleMachines>>, TError = StaleMachineStatus>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStaleMachines>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Active machines with stale telemetry (evidence for the health dashboard)
+ */
+
+export function useGetStaleMachines<TData = Awaited<ReturnType<typeof getStaleMachines>>, TError = StaleMachineStatus>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStaleMachines>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetStaleMachinesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type listTelemetryQuarantineResponse200 = {
+  data: PageQuarantineEntryView
+  status: 200
+}
+
+export type listTelemetryQuarantineResponse401 = {
+  data: PageQuarantineEntryView
+  status: 401
+}
+
+export type listTelemetryQuarantineResponse403 = {
+  data: PageQuarantineEntryView
+  status: 403
+}
+
+export type listTelemetryQuarantineResponseSuccess = (listTelemetryQuarantineResponse200) & {
+  headers: Headers;
+};
+export type listTelemetryQuarantineResponseError = (listTelemetryQuarantineResponse401 | listTelemetryQuarantineResponse403) & {
+  headers: Headers;
+};
+
+export type listTelemetryQuarantineResponse = (listTelemetryQuarantineResponseSuccess | listTelemetryQuarantineResponseError)
+
+export const getListTelemetryQuarantineUrl = (params?: ListTelemetryQuarantineParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/telemetry/quarantine?${stringifiedParams}` : `/api/v1/telemetry/quarantine`
+}
+
+/**
+ * @summary List telemetry quarantine entries
+ */
+export const listTelemetryQuarantine = async (params?: ListTelemetryQuarantineParams, options?: Parameters<typeof syncroFetch>[1]): Promise<listTelemetryQuarantineResponse> => {
+
+  return syncroFetch<listTelemetryQuarantineResponse>(getListTelemetryQuarantineUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTelemetryQuarantineQueryKey = (params?: ListTelemetryQuarantineParams,) => {
+    return [
+    `/api/v1/telemetry/quarantine`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListTelemetryQuarantineQueryOptions = <TData = Awaited<ReturnType<typeof listTelemetryQuarantine>>, TError = PageQuarantineEntryView>(params?: ListTelemetryQuarantineParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTelemetryQuarantine>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTelemetryQuarantineQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTelemetryQuarantine>>> = ({ signal }) => listTelemetryQuarantine(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTelemetryQuarantine>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListTelemetryQuarantineQueryResult = NonNullable<Awaited<ReturnType<typeof listTelemetryQuarantine>>>
+export type ListTelemetryQuarantineQueryError = PageQuarantineEntryView
+
+
+export function useListTelemetryQuarantine<TData = Awaited<ReturnType<typeof listTelemetryQuarantine>>, TError = PageQuarantineEntryView>(
+ params: undefined |  ListTelemetryQuarantineParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTelemetryQuarantine>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listTelemetryQuarantine>>,
+          TError,
+          Awaited<ReturnType<typeof listTelemetryQuarantine>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListTelemetryQuarantine<TData = Awaited<ReturnType<typeof listTelemetryQuarantine>>, TError = PageQuarantineEntryView>(
+ params?: ListTelemetryQuarantineParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTelemetryQuarantine>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listTelemetryQuarantine>>,
+          TError,
+          Awaited<ReturnType<typeof listTelemetryQuarantine>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListTelemetryQuarantine<TData = Awaited<ReturnType<typeof listTelemetryQuarantine>>, TError = PageQuarantineEntryView>(
+ params?: ListTelemetryQuarantineParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTelemetryQuarantine>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List telemetry quarantine entries
+ */
+
+export function useListTelemetryQuarantine<TData = Awaited<ReturnType<typeof listTelemetryQuarantine>>, TError = PageQuarantineEntryView>(
+ params?: ListTelemetryQuarantineParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTelemetryQuarantine>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListTelemetryQuarantineQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type getTelemetryIngestWorkerStatusResponse200 = {
+  data: IngestWorkerStatus
+  status: 200
+}
+
+export type getTelemetryIngestWorkerStatusResponse401 = {
+  data: IngestWorkerStatus
+  status: 401
+}
+
+export type getTelemetryIngestWorkerStatusResponse403 = {
+  data: IngestWorkerStatus
+  status: 403
+}
+
+export type getTelemetryIngestWorkerStatusResponseSuccess = (getTelemetryIngestWorkerStatusResponse200) & {
+  headers: Headers;
+};
+export type getTelemetryIngestWorkerStatusResponseError = (getTelemetryIngestWorkerStatusResponse401 | getTelemetryIngestWorkerStatusResponse403) & {
+  headers: Headers;
+};
+
+export type getTelemetryIngestWorkerStatusResponse = (getTelemetryIngestWorkerStatusResponseSuccess | getTelemetryIngestWorkerStatusResponseError)
+
+export const getGetTelemetryIngestWorkerStatusUrl = () => {
+
+
+
+
+  return `/api/v1/telemetry/ingest/status`
+}
+
+/**
+ * @summary Telemetry ingest worker status
+ */
+export const getTelemetryIngestWorkerStatus = async ( options?: Parameters<typeof syncroFetch>[1]): Promise<getTelemetryIngestWorkerStatusResponse> => {
+
+  return syncroFetch<getTelemetryIngestWorkerStatusResponse>(getGetTelemetryIngestWorkerStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTelemetryIngestWorkerStatusQueryKey = () => {
+    return [
+    `/api/v1/telemetry/ingest/status`
+    ] as const;
+    }
+
+
+export const getGetTelemetryIngestWorkerStatusQueryOptions = <TData = Awaited<ReturnType<typeof getTelemetryIngestWorkerStatus>>, TError = IngestWorkerStatus>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTelemetryIngestWorkerStatus>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTelemetryIngestWorkerStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTelemetryIngestWorkerStatus>>> = ({ signal }) => getTelemetryIngestWorkerStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTelemetryIngestWorkerStatus>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetTelemetryIngestWorkerStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getTelemetryIngestWorkerStatus>>>
+export type GetTelemetryIngestWorkerStatusQueryError = IngestWorkerStatus
+
+
+export function useGetTelemetryIngestWorkerStatus<TData = Awaited<ReturnType<typeof getTelemetryIngestWorkerStatus>>, TError = IngestWorkerStatus>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTelemetryIngestWorkerStatus>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTelemetryIngestWorkerStatus>>,
+          TError,
+          Awaited<ReturnType<typeof getTelemetryIngestWorkerStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTelemetryIngestWorkerStatus<TData = Awaited<ReturnType<typeof getTelemetryIngestWorkerStatus>>, TError = IngestWorkerStatus>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTelemetryIngestWorkerStatus>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTelemetryIngestWorkerStatus>>,
+          TError,
+          Awaited<ReturnType<typeof getTelemetryIngestWorkerStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTelemetryIngestWorkerStatus<TData = Awaited<ReturnType<typeof getTelemetryIngestWorkerStatus>>, TError = IngestWorkerStatus>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTelemetryIngestWorkerStatus>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Telemetry ingest worker status
+ */
+
+export function useGetTelemetryIngestWorkerStatus<TData = Awaited<ReturnType<typeof getTelemetryIngestWorkerStatus>>, TError = IngestWorkerStatus>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTelemetryIngestWorkerStatus>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetTelemetryIngestWorkerStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type getTelemetryFreshnessResponse200 = {
+  data: TelemetryFreshnessStatus
+  status: 200
+}
+
+export type getTelemetryFreshnessResponse401 = {
+  data: TelemetryFreshnessStatus
+  status: 401
+}
+
+export type getTelemetryFreshnessResponse403 = {
+  data: TelemetryFreshnessStatus
+  status: 403
+}
+
+export type getTelemetryFreshnessResponseSuccess = (getTelemetryFreshnessResponse200) & {
+  headers: Headers;
+};
+export type getTelemetryFreshnessResponseError = (getTelemetryFreshnessResponse401 | getTelemetryFreshnessResponse403) & {
+  headers: Headers;
+};
+
+export type getTelemetryFreshnessResponse = (getTelemetryFreshnessResponseSuccess | getTelemetryFreshnessResponseError)
+
+export const getGetTelemetryFreshnessUrl = () => {
+
+
+
+
+  return `/api/v1/telemetry/freshness`
+}
+
+/**
+ * @summary Telemetry freshness status
+ */
+export const getTelemetryFreshness = async ( options?: Parameters<typeof syncroFetch>[1]): Promise<getTelemetryFreshnessResponse> => {
+
+  return syncroFetch<getTelemetryFreshnessResponse>(getGetTelemetryFreshnessUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTelemetryFreshnessQueryKey = () => {
+    return [
+    `/api/v1/telemetry/freshness`
+    ] as const;
+    }
+
+
+export const getGetTelemetryFreshnessQueryOptions = <TData = Awaited<ReturnType<typeof getTelemetryFreshness>>, TError = TelemetryFreshnessStatus>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTelemetryFreshness>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTelemetryFreshnessQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTelemetryFreshness>>> = ({ signal }) => getTelemetryFreshness({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTelemetryFreshness>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetTelemetryFreshnessQueryResult = NonNullable<Awaited<ReturnType<typeof getTelemetryFreshness>>>
+export type GetTelemetryFreshnessQueryError = TelemetryFreshnessStatus
+
+
+export function useGetTelemetryFreshness<TData = Awaited<ReturnType<typeof getTelemetryFreshness>>, TError = TelemetryFreshnessStatus>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTelemetryFreshness>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTelemetryFreshness>>,
+          TError,
+          Awaited<ReturnType<typeof getTelemetryFreshness>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTelemetryFreshness<TData = Awaited<ReturnType<typeof getTelemetryFreshness>>, TError = TelemetryFreshnessStatus>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTelemetryFreshness>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTelemetryFreshness>>,
+          TError,
+          Awaited<ReturnType<typeof getTelemetryFreshness>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTelemetryFreshness<TData = Awaited<ReturnType<typeof getTelemetryFreshness>>, TError = TelemetryFreshnessStatus>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTelemetryFreshness>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Telemetry freshness status
+ */
+
+export function useGetTelemetryFreshness<TData = Awaited<ReturnType<typeof getTelemetryFreshness>>, TError = TelemetryFreshnessStatus>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTelemetryFreshness>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetTelemetryFreshnessQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type getTelemetryDataQualityResponse200 = {
+  data: TelemetryDataQualityStatus
+  status: 200
+}
+
+export type getTelemetryDataQualityResponse401 = {
+  data: TelemetryDataQualityStatus
+  status: 401
+}
+
+export type getTelemetryDataQualityResponse403 = {
+  data: TelemetryDataQualityStatus
+  status: 403
+}
+
+export type getTelemetryDataQualityResponseSuccess = (getTelemetryDataQualityResponse200) & {
+  headers: Headers;
+};
+export type getTelemetryDataQualityResponseError = (getTelemetryDataQualityResponse401 | getTelemetryDataQualityResponse403) & {
+  headers: Headers;
+};
+
+export type getTelemetryDataQualityResponse = (getTelemetryDataQualityResponseSuccess | getTelemetryDataQualityResponseError)
+
+export const getGetTelemetryDataQualityUrl = () => {
+
+
+
+
+  return `/api/v1/telemetry/data-quality`
+}
+
+/**
+ * @summary Telemetry data-quality status
+ */
+export const getTelemetryDataQuality = async ( options?: Parameters<typeof syncroFetch>[1]): Promise<getTelemetryDataQualityResponse> => {
+
+  return syncroFetch<getTelemetryDataQualityResponse>(getGetTelemetryDataQualityUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTelemetryDataQualityQueryKey = () => {
+    return [
+    `/api/v1/telemetry/data-quality`
+    ] as const;
+    }
+
+
+export const getGetTelemetryDataQualityQueryOptions = <TData = Awaited<ReturnType<typeof getTelemetryDataQuality>>, TError = TelemetryDataQualityStatus>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTelemetryDataQuality>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTelemetryDataQualityQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTelemetryDataQuality>>> = ({ signal }) => getTelemetryDataQuality({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTelemetryDataQuality>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetTelemetryDataQualityQueryResult = NonNullable<Awaited<ReturnType<typeof getTelemetryDataQuality>>>
+export type GetTelemetryDataQualityQueryError = TelemetryDataQualityStatus
+
+
+export function useGetTelemetryDataQuality<TData = Awaited<ReturnType<typeof getTelemetryDataQuality>>, TError = TelemetryDataQualityStatus>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTelemetryDataQuality>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTelemetryDataQuality>>,
+          TError,
+          Awaited<ReturnType<typeof getTelemetryDataQuality>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTelemetryDataQuality<TData = Awaited<ReturnType<typeof getTelemetryDataQuality>>, TError = TelemetryDataQualityStatus>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTelemetryDataQuality>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTelemetryDataQuality>>,
+          TError,
+          Awaited<ReturnType<typeof getTelemetryDataQuality>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTelemetryDataQuality<TData = Awaited<ReturnType<typeof getTelemetryDataQuality>>, TError = TelemetryDataQualityStatus>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTelemetryDataQuality>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Telemetry data-quality status
+ */
+
+export function useGetTelemetryDataQuality<TData = Awaited<ReturnType<typeof getTelemetryDataQuality>>, TError = TelemetryDataQualityStatus>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTelemetryDataQuality>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetTelemetryDataQualityQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export type getSetupCompletenessResponse200 = {
   data: SetupCompletenessResponse
   status: 200
@@ -4273,6 +5469,131 @@ export function useGetSetupCompleteness<TData = Awaited<ReturnType<typeof getSet
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetSetupCompletenessQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type getNotificationWorkerStatusResponse200 = {
+  data: NotificationWorkerStatus
+  status: 200
+}
+
+export type getNotificationWorkerStatusResponse401 = {
+  data: NotificationWorkerStatus
+  status: 401
+}
+
+export type getNotificationWorkerStatusResponse403 = {
+  data: NotificationWorkerStatus
+  status: 403
+}
+
+export type getNotificationWorkerStatusResponseSuccess = (getNotificationWorkerStatusResponse200) & {
+  headers: Headers;
+};
+export type getNotificationWorkerStatusResponseError = (getNotificationWorkerStatusResponse401 | getNotificationWorkerStatusResponse403) & {
+  headers: Headers;
+};
+
+export type getNotificationWorkerStatusResponse = (getNotificationWorkerStatusResponseSuccess | getNotificationWorkerStatusResponseError)
+
+export const getGetNotificationWorkerStatusUrl = () => {
+
+
+
+
+  return `/api/v1/notification/worker/status`
+}
+
+/**
+ * @summary Notification worker status
+ */
+export const getNotificationWorkerStatus = async ( options?: Parameters<typeof syncroFetch>[1]): Promise<getNotificationWorkerStatusResponse> => {
+
+  return syncroFetch<getNotificationWorkerStatusResponse>(getGetNotificationWorkerStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNotificationWorkerStatusQueryKey = () => {
+    return [
+    `/api/v1/notification/worker/status`
+    ] as const;
+    }
+
+
+export const getGetNotificationWorkerStatusQueryOptions = <TData = Awaited<ReturnType<typeof getNotificationWorkerStatus>>, TError = NotificationWorkerStatus>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getNotificationWorkerStatus>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNotificationWorkerStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNotificationWorkerStatus>>> = ({ signal }) => getNotificationWorkerStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNotificationWorkerStatus>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetNotificationWorkerStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getNotificationWorkerStatus>>>
+export type GetNotificationWorkerStatusQueryError = NotificationWorkerStatus
+
+
+export function useGetNotificationWorkerStatus<TData = Awaited<ReturnType<typeof getNotificationWorkerStatus>>, TError = NotificationWorkerStatus>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getNotificationWorkerStatus>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getNotificationWorkerStatus>>,
+          TError,
+          Awaited<ReturnType<typeof getNotificationWorkerStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetNotificationWorkerStatus<TData = Awaited<ReturnType<typeof getNotificationWorkerStatus>>, TError = NotificationWorkerStatus>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getNotificationWorkerStatus>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getNotificationWorkerStatus>>,
+          TError,
+          Awaited<ReturnType<typeof getNotificationWorkerStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetNotificationWorkerStatus<TData = Awaited<ReturnType<typeof getNotificationWorkerStatus>>, TError = NotificationWorkerStatus>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getNotificationWorkerStatus>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Notification worker status
+ */
+
+export function useGetNotificationWorkerStatus<TData = Awaited<ReturnType<typeof getNotificationWorkerStatus>>, TError = NotificationWorkerStatus>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getNotificationWorkerStatus>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetNotificationWorkerStatusQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -4985,245 +6306,401 @@ export function useListAuditLogEntries<TData = Awaited<ReturnType<typeof listAud
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-// ---------------------------------------------------------------------------
-// Alert stubs — generated after backend is running and `npm run generate:api`
-// ---------------------------------------------------------------------------
-import type { AlertListResponse, AlertView, SparepartAlertStatus } from './model';
 
-export type ListAlertsParams = {
-  machineId?: string;
-  plantId?: string;
-  status?: SparepartAlertStatus;
-  page?: number;
-  size?: number;
-  sort?: string;
+
+
+
+
+
+export type listAlertsResponse200 = {
+  data: AlertListResponse
+  status: 200
+}
+
+export type listAlertsResponse400 = {
+  data: AlertListResponse
+  status: 400
+}
+
+export type listAlertsResponse401 = {
+  data: AlertListResponse
+  status: 401
+}
+
+export type listAlertsResponse403 = {
+  data: AlertListResponse
+  status: 403
+}
+
+export type listAlertsResponseSuccess = (listAlertsResponse200) & {
+  headers: Headers;
+};
+export type listAlertsResponseError = (listAlertsResponse400 | listAlertsResponse401 | listAlertsResponse403) & {
+  headers: Headers;
 };
 
-export const listAlerts = (params?: ListAlertsParams, options?: RequestInit) =>
-  syncroFetch<{ data: AlertListResponse }>(`/api/v1/alerts${params ? `?${new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== null).map(([k, v]) => [k, String(v)])).toString()}` : ''}`, options);
+export type listAlertsResponse = (listAlertsResponseSuccess | listAlertsResponseError)
 
-export const getAlert = (alertId: string, options?: RequestInit) =>
-  syncroFetch<{ data: AlertView }>(`/api/v1/alerts/${alertId}`, options);
+export const getListAlertsUrl = (params?: ListAlertsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
-export const getListAlertsQueryKey = (params?: ListAlertsParams) =>
-  [`/api/v1/alerts`, ...(params ? [params] : [])] as const;
+  Object.entries(params || {}).forEach(([key, value]) => {
 
-export const getGetAlertQueryKey = (alertId: string) =>
-  [`/api/v1/alerts/${alertId}`] as const;
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/alerts?${stringifiedParams}` : `/api/v1/alerts`
+}
+
+/**
+ * @summary List sparepart lifetime alerts
+ */
+export const listAlerts = async (params?: ListAlertsParams, options?: Parameters<typeof syncroFetch>[1]): Promise<listAlertsResponse> => {
+
+  return syncroFetch<listAlertsResponse>(getListAlertsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAlertsQueryKey = (params?: ListAlertsParams,) => {
+    return [
+    `/api/v1/alerts`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAlertsQueryOptions = <TData = Awaited<ReturnType<typeof listAlerts>>, TError = AlertListResponse>(params?: ListAlertsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAlerts>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAlertsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAlerts>>> = ({ signal }) => listAlerts(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAlerts>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListAlertsQueryResult = NonNullable<Awaited<ReturnType<typeof listAlerts>>>
+export type ListAlertsQueryError = AlertListResponse
+
 
 export function useListAlerts<TData = Awaited<ReturnType<typeof listAlerts>>, TError = AlertListResponse>(
-  params?: ListAlertsParams,
-  options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listAlerts>>, TError, TData>>; request?: SecondParameter<typeof syncroFetch> },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-  const queryKey = queryOptions?.queryKey ?? getListAlertsQueryKey(params);
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof listAlerts>>> = ({ signal }) =>
-    listAlerts(params, { signal, ...requestOptions } as RequestInit);
-  const query = useQuery({ queryKey, queryFn, ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof listAlerts>>, TError, TData>, queryClient) as UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-  return withQueryKey(query, queryKey);
+ params: undefined |  ListAlertsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAlerts>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAlerts>>,
+          TError,
+          Awaited<ReturnType<typeof listAlerts>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAlerts<TData = Awaited<ReturnType<typeof listAlerts>>, TError = AlertListResponse>(
+ params?: ListAlertsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAlerts>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAlerts>>,
+          TError,
+          Awaited<ReturnType<typeof listAlerts>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAlerts<TData = Awaited<ReturnType<typeof listAlerts>>, TError = AlertListResponse>(
+ params?: ListAlertsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAlerts>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List sparepart lifetime alerts
+ */
+
+export function useListAlerts<TData = Awaited<ReturnType<typeof listAlerts>>, TError = AlertListResponse>(
+ params?: ListAlertsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAlerts>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListAlertsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+
+
+
+
+
+export type getAlertResponse200 = {
+  data: AlertView
+  status: 200
+}
+
+export type getAlertResponse401 = {
+  data: AlertView
+  status: 401
+}
+
+export type getAlertResponse403 = {
+  data: AlertView
+  status: 403
+}
+
+export type getAlertResponse404 = {
+  data: AlertView
+  status: 404
+}
+
+export type getAlertResponseSuccess = (getAlertResponse200) & {
+  headers: Headers;
+};
+export type getAlertResponseError = (getAlertResponse401 | getAlertResponse403 | getAlertResponse404) & {
+  headers: Headers;
+};
+
+export type getAlertResponse = (getAlertResponseSuccess | getAlertResponseError)
+
+export const getGetAlertUrl = (alertId: string,) => {
+
+
+
+
+  return `/api/v1/alerts/${alertId}`
+}
+
+/**
+ * @summary Get a sparepart lifetime alert by ID
+ */
+export const getAlert = async (alertId: string, options?: Parameters<typeof syncroFetch>[1]): Promise<getAlertResponse> => {
+
+  return syncroFetch<getAlertResponse>(getGetAlertUrl(alertId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAlertQueryKey = (alertId: string,) => {
+    return [
+    `/api/v1/alerts/${alertId}`
+    ] as const;
+    }
+
+
+export const getGetAlertQueryOptions = <TData = Awaited<ReturnType<typeof getAlert>>, TError = AlertView>(alertId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAlert>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAlertQueryKey(alertId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAlert>>> = ({ signal }) => getAlert(alertId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: alertId !== null && alertId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAlert>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAlertQueryResult = NonNullable<Awaited<ReturnType<typeof getAlert>>>
+export type GetAlertQueryError = AlertView
+
 
 export function useGetAlert<TData = Awaited<ReturnType<typeof getAlert>>, TError = AlertView>(
-  alertId: string,
-  options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getAlert>>, TError, TData>>; request?: SecondParameter<typeof syncroFetch> },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-  const queryKey = queryOptions?.queryKey ?? getGetAlertQueryKey(alertId);
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAlert>>> = ({ signal }) =>
-    getAlert(alertId, { signal, ...requestOptions } as RequestInit);
-  const query = useQuery({ queryKey, queryFn, enabled: Boolean(alertId), ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof getAlert>>, TError, TData>, queryClient) as UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-  return withQueryKey(query, queryKey);
+ alertId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAlert>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAlert>>,
+          TError,
+          Awaited<ReturnType<typeof getAlert>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAlert<TData = Awaited<ReturnType<typeof getAlert>>, TError = AlertView>(
+ alertId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAlert>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAlert>>,
+          TError,
+          Awaited<ReturnType<typeof getAlert>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAlert<TData = Awaited<ReturnType<typeof getAlert>>, TError = AlertView>(
+ alertId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAlert>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get a sparepart lifetime alert by ID
+ */
+
+export function useGetAlert<TData = Awaited<ReturnType<typeof getAlert>>, TError = AlertView>(
+ alertId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAlert>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAlertQueryOptions(alertId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
 }
 
-// ---------------------------------------------------------------------------
-// acknowledgeAlert stub — pending orval regeneration after backend is running
-// ---------------------------------------------------------------------------
 
-export type AcknowledgeAlertBody = { reason?: string };
 
-export const acknowledgeAlert = (alertId: string, body?: AcknowledgeAlertBody, options?: RequestInit) =>
-  syncroFetch<void>(`/api/v1/alerts/${alertId}/acknowledge`, {
-    method: 'POST',
-    body: body ? JSON.stringify(body) : undefined,
-    ...options,
-  });
 
-export function useAcknowledgeAlert<TError = unknown, TContext = unknown>(
-  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof acknowledgeAlert>>, TError, { alertId: string; body?: AcknowledgeAlertBody }, TContext> },
-): UseMutationResult<Awaited<ReturnType<typeof acknowledgeAlert>>, TError, { alertId: string; body?: AcknowledgeAlertBody }, TContext> {
-  const mutationOptions = options?.mutation ?? {};
-  return useMutation({
-    mutationFn: ({ alertId, body }) => acknowledgeAlert(alertId, body),
-    ...mutationOptions,
-  });
+
+
+
+export type getAlertNotificationsResponse200 = {
+  data: AlertNotificationHistoryResponse
+  status: 200
 }
 
-// ---------------------------------------------------------------------------
-// resolveAlert stub — pending orval regeneration after backend is running
-// ---------------------------------------------------------------------------
-
-export type ResolveAlertBody = { reason?: string };
-
-export const resolveAlert = (alertId: string, body?: ResolveAlertBody, options?: RequestInit) =>
-  syncroFetch<void>(`/api/v1/alerts/${alertId}/resolve`, {
-    method: 'POST',
-    body: body ? JSON.stringify(body) : undefined,
-    ...options,
-  });
-
-export function useResolveAlert<TError = unknown, TContext = unknown>(
-  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof resolveAlert>>, TError, { alertId: string; body?: ResolveAlertBody }, TContext> },
-): UseMutationResult<Awaited<ReturnType<typeof resolveAlert>>, TError, { alertId: string; body?: ResolveAlertBody }, TContext> {
-  const mutationOptions = options?.mutation ?? {};
-  return useMutation({
-    mutationFn: ({ alertId, body }) => resolveAlert(alertId, body),
-    ...mutationOptions,
-  });
+export type getAlertNotificationsResponse401 = {
+  data: AlertNotificationHistoryResponse
+  status: 401
 }
 
-// ---------------------------------------------------------------------------
-// resolveAlertOverride stub — pending orval regeneration after backend is running
-// ---------------------------------------------------------------------------
-
-export type ResolveAlertOverrideBody = { reason?: string };
-
-export const resolveAlertOverride = (alertId: string, body?: ResolveAlertOverrideBody, options?: RequestInit) =>
-  syncroFetch<void>(`/api/v1/alerts/${alertId}/resolve-override`, {
-    method: 'POST',
-    body: body ? JSON.stringify(body) : undefined,
-    ...options,
-  });
-
-export function useResolveAlertOverride<TError = unknown, TContext = unknown>(
-  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof resolveAlertOverride>>, TError, { alertId: string; body?: ResolveAlertOverrideBody }, TContext> },
-): UseMutationResult<Awaited<ReturnType<typeof resolveAlertOverride>>, TError, { alertId: string; body?: ResolveAlertOverrideBody }, TContext> {
-  const mutationOptions = options?.mutation ?? {};
-  return useMutation({
-    mutationFn: ({ alertId, body }) => resolveAlertOverride(alertId, body),
-    ...mutationOptions,
-  });
+export type getAlertNotificationsResponse404 = {
+  data: AlertNotificationHistoryResponse
+  status: 404
 }
 
-// ---------------------------------------------------------------------------
-// getActiveWahaTemplate stub — pending orval regeneration after backend is running
-// ---------------------------------------------------------------------------
-
-export type WahaTemplateView = {
-  templateKey: string;
-  body: string;
-  updatedAt: string;
+export type getAlertNotificationsResponseSuccess = (getAlertNotificationsResponse200) & {
+  headers: Headers;
+};
+export type getAlertNotificationsResponseError = (getAlertNotificationsResponse401 | getAlertNotificationsResponse404) & {
+  headers: Headers;
 };
 
-export type WahaTemplateViewResponse = { data: WahaTemplateView };
+export type getAlertNotificationsResponse = (getAlertNotificationsResponseSuccess | getAlertNotificationsResponseError)
 
-export const getActiveWahaTemplate = (options?: RequestInit) =>
-  syncroFetch<WahaTemplateViewResponse>(`/api/v1/notification/templates`, {
-    method: 'GET',
+export const getGetAlertNotificationsUrl = (alertId: string,) => {
+
+
+
+
+  return `/api/v1/alerts/${alertId}/notifications`
+}
+
+/**
+ * @summary Get notification history for an alert
+ */
+export const getAlertNotifications = async (alertId: string, options?: Parameters<typeof syncroFetch>[1]): Promise<getAlertNotificationsResponse> => {
+
+  return syncroFetch<getAlertNotificationsResponse>(getGetAlertNotificationsUrl(alertId),
+  {
     ...options,
-  });
+    method: 'GET'
 
-export const getGetActiveWahaTemplateQueryKey = () =>
-  [`/api/v1/notification/templates`] as const;
 
-export function useGetActiveWahaTemplate<TData = Awaited<ReturnType<typeof getActiveWahaTemplate>>, TError = unknown>(
-  options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getActiveWahaTemplate>>, TError, TData>>; request?: SecondParameter<typeof syncroFetch> },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-  const queryKey = queryOptions?.queryKey ?? getGetActiveWahaTemplateQueryKey();
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof getActiveWahaTemplate>>> = ({ signal }) =>
-    getActiveWahaTemplate({ signal, ...requestOptions } as RequestInit);
-  const query = useQuery({ queryKey, queryFn, ...queryOptions } as UseQueryOptions<Awaited<ReturnType<typeof getActiveWahaTemplate>>, TError, TData>, queryClient) as UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-  return withQueryKey(query, queryKey);
+  }
+);}
+
+
+
+
+
+export const getGetAlertNotificationsQueryKey = (alertId: string,) => {
+    return [
+    `/api/v1/alerts/${alertId}/notifications`
+    ] as const;
+    }
+
+
+export const getGetAlertNotificationsQueryOptions = <TData = Awaited<ReturnType<typeof getAlertNotifications>>, TError = AlertNotificationHistoryResponse>(alertId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAlertNotifications>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAlertNotificationsQueryKey(alertId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAlertNotifications>>> = ({ signal }) => getAlertNotifications(alertId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: alertId !== null && alertId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAlertNotifications>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-// ---------------------------------------------------------------------------
-// upsertWahaTemplate stub — pending orval regeneration after backend is running
-// ---------------------------------------------------------------------------
+export type GetAlertNotificationsQueryResult = NonNullable<Awaited<ReturnType<typeof getAlertNotifications>>>
+export type GetAlertNotificationsQueryError = AlertNotificationHistoryResponse
 
-export type UpsertWahaTemplateBody = { body: string };
 
-export const upsertWahaTemplate = (body: UpsertWahaTemplateBody, options?: RequestInit) =>
-  syncroFetch<WahaTemplateViewResponse>(`/api/v1/notification/templates`, {
-    method: 'PUT',
-    body: JSON.stringify(body),
-    ...options,
-  });
+export function useGetAlertNotifications<TData = Awaited<ReturnType<typeof getAlertNotifications>>, TError = AlertNotificationHistoryResponse>(
+ alertId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAlertNotifications>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAlertNotifications>>,
+          TError,
+          Awaited<ReturnType<typeof getAlertNotifications>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAlertNotifications<TData = Awaited<ReturnType<typeof getAlertNotifications>>, TError = AlertNotificationHistoryResponse>(
+ alertId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAlertNotifications>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAlertNotifications>>,
+          TError,
+          Awaited<ReturnType<typeof getAlertNotifications>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAlertNotifications<TData = Awaited<ReturnType<typeof getAlertNotifications>>, TError = AlertNotificationHistoryResponse>(
+ alertId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAlertNotifications>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get notification history for an alert
+ */
 
-export function useUpsertWahaTemplate<TError = unknown, TContext = unknown>(
-  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof upsertWahaTemplate>>, TError, { data: UpsertWahaTemplateBody }, TContext> },
-): UseMutationResult<Awaited<ReturnType<typeof upsertWahaTemplate>>, TError, { data: UpsertWahaTemplateBody }, TContext> {
-  const mutationOptions = options?.mutation ?? {};
-  return useMutation({
-    mutationFn: ({ data }) => upsertWahaTemplate(data),
-    ...mutationOptions,
-  });
+export function useGetAlertNotifications<TData = Awaited<ReturnType<typeof getAlertNotifications>>, TError = AlertNotificationHistoryResponse>(
+ alertId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAlertNotifications>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAlertNotificationsQueryOptions(alertId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
 }
 
-// ---------------------------------------------------------------------------
-// getAlertNotifications stub — TODO(5.6): remove stub after next generate:api
-// Backend: GET /api/v1/alerts/{alertId}/notifications -> AlertNotificationHistoryResponse
-// ---------------------------------------------------------------------------
 
-export type NotificationAttemptView = {
-  attemptNumber: number;
-  status: string;
-  attemptedAt: string;
-  responseDetail: string | null;
-  traceId: string | null;
-};
 
-export type NotificationJobView = {
-  id: string;
-  alertId: string;
-  escalationLevel: string;
-  status: string;
-  recipientUserId: string | null;
-  recipientDisplayName: string | null;
-  recipientPhoneMasked: string | null;
-  attemptCount: number;
-  maxAttempts: number;
-  sentAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-  nextAttemptAt: string | null;
-  errorDetail: string | null;
-  traceId: string | null;
-  attempts: NotificationAttemptView[];
-};
 
-export type AlertNotificationHistoryResponse = {
-  items: NotificationJobView[];
-  total: number;
-};
-
-export const getAlertNotifications = (alertId: string, options?: RequestInit) =>
-  syncroFetch<{ data: AlertNotificationHistoryResponse }>(`/api/v1/alerts/${alertId}/notifications`, options);
-
-export const getGetAlertNotificationsQueryKey = (alertId: string) =>
-  [`/api/v1/alerts/${alertId}/notifications`] as const;
-
-export function useGetAlertNotifications<TData = Awaited<ReturnType<typeof getAlertNotifications>>, TError = unknown>(
-  alertId: string,
-  options?: { query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getAlertNotifications>>, TError, TData>>; request?: SecondParameter<typeof syncroFetch> },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-  const queryKey = queryOptions?.queryKey ?? getGetAlertNotificationsQueryKey(alertId);
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAlertNotifications>>> = ({ signal }) =>
-    getAlertNotifications(alertId, { signal, ...requestOptions } as RequestInit);
-  const query = useQuery(
-    { queryKey, queryFn, enabled: Boolean(alertId), ...queryOptions } as UseQueryOptions<
-      Awaited<ReturnType<typeof getAlertNotifications>>,
-      TError,
-      TData
-    >,
-    queryClient,
-  ) as UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-  return withQueryKey(query, queryKey);
-}
 
 
 
