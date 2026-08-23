@@ -3,7 +3,8 @@ title: 'Deferred-work bundle 8: web reliability polish — machine-group state t
 type: 'chore'
 created: '2026-08-23'
 baseline_revision: '4bbebd5'
-status: 'in-review'
+final_revision: '89e05ce'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
