@@ -195,8 +195,7 @@ class MachineServiceIntegrationTest {
 
   @Test
   @DisplayName("2.3-SVC-007 P1 VIEWER lists assigned plant machines only")
-  void viewerListsAssignedPlantMachinesOnly() {
-    var assigned = plant("GM1", "Plant GM1");
+  void viewerListsAssignedPlantMachinesOnly() {    var assigned = plant("GM1", "Plant GM1");
     var other = plant("GM2", "Plant GM2");
     var assignedGroup = group(assigned, "Forming");
     var otherGroup = group(other, "Packing");
@@ -209,6 +208,34 @@ class MachineServiceIntegrationTest {
     var result = machineService.list(viewer, null, null, null);
 
     assertThat(result.items()).extracting(machine -> machine.id()).containsExactly(assignedMachine.id());
+  }
+
+  // --- DW-120: search LIKE escape ---
+
+  @Test
+  @DisplayName("DW-120 underscore in search term matches literally instead of acting as wildcard")
+  void searchUnderscoreMatchesLiterally() {
+    var plant = plant("GM1", "Plant GM1");
+    var group = group(plant, "Forming");
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    machineService.create(admin, command(plant.getId(), group.getId(), "BF_08410", MachineStatus.ACTIVE));
+
+    var literal = machineService.list(admin, null, null, null, "BF_084", null);
+    assertThat(literal.items()).extracting(m -> m.code()).containsExactly("BF_08410");
+
+    // A % must not widen the match either.
+    var percent = machineService.list(admin, null, null, null, "BF%", null);
+    assertThat(percent.items()).isEmpty();
+
+    // The escape character itself must stay literal (normalizeSearch doubles it first).
+    var backslash = machineService.list(admin, null, null, null, "\\", null);
+    assertThat(backslash.items()).isEmpty();
+
+    // Name-clause coverage: the same escape applies to the machine.name predicate.
+    machineService.create(admin, new MachineCommand(plant.getId(), group.getId(), "BF-9000", "pump_one",
+        MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Name-clause probe", List.of()));
+    var byName = machineService.list(admin, null, null, null, "pump_one", null);
+    assertThat(byName.items()).extracting(m -> m.name()).containsExactly("pump_one");
   }
 
   @Test

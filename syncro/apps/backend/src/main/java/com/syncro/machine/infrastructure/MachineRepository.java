@@ -18,7 +18,7 @@ public interface MachineRepository extends JpaRepository<MachineEntity, UUID> {
       where (:plantId is null or plant.id = :plantId)
         and (:machineGroupId is null or machineGroup.id = :machineGroupId)
         and (:status is null or machine.status = :status)
-        and (:search is null or lower(machine.code) like :search or lower(machine.name) like :search or lower(plant.code) like :search or lower(plant.name) like :search)
+        and (:search is null or lower(machine.code) like :search escape '\\' or lower(machine.name) like :search escape '\\' or lower(plant.code) like :search escape '\\' or lower(plant.name) like :search escape '\\')
       """)
   Page<MachineEntity> findAllUnscoped(
       @Param("plantId") UUID plantId,
@@ -35,7 +35,7 @@ public interface MachineRepository extends JpaRepository<MachineEntity, UUID> {
         and (:plantId is null or plant.id = :plantId)
         and (:machineGroupId is null or machineGroup.id = :machineGroupId)
         and (:status is null or machine.status = :status)
-        and (:search is null or lower(machine.code) like :search or lower(machine.name) like :search or lower(plant.code) like :search or lower(plant.name) like :search)
+        and (:search is null or lower(machine.code) like :search escape '\\' or lower(machine.name) like :search escape '\\' or lower(plant.code) like :search escape '\\' or lower(plant.name) like :search escape '\\')
       """)
   Page<MachineEntity> findAllScoped(
       @Param("plantIds") List<UUID> plantIds,

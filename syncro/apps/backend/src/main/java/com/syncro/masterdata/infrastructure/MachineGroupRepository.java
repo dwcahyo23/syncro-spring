@@ -14,7 +14,7 @@ public interface MachineGroupRepository extends JpaRepository<MachineGroupEntity
       select group from MachineGroupEntity group
       join fetch group.plant plant
       where plant.id = :plantId
-        and (:search is null or lower(group.name) like :search or lower(plant.code) like :search or lower(plant.name) like :search)
+        and (:search is null or lower(group.name) like :search escape '\\' or lower(plant.code) like :search escape '\\' or lower(plant.name) like :search escape '\\')
       """)
   Page<MachineGroupEntity> search(@Param("plantId") UUID plantId, @Param("search") String search, Pageable pageable);
 

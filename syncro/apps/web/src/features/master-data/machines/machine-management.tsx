@@ -411,7 +411,12 @@ export function MachineManagement() {
               </DialogDescription>
             </DialogHeader>
             {formError ? (
-              <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{formError}</p>
+              <p role="alert" className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{formError}</p>
+            ) : null}
+            {fieldErrors.optionalTelemetryFields ? (
+              <p role="alert" className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">
+                {fieldErrors.optionalTelemetryFields}
+              </p>
             ) : null}
             <div className="grid gap-4 md:grid-cols-2">
               <div className="grid min-w-0 gap-2">

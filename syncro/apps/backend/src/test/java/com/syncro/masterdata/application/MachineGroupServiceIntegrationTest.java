@@ -172,6 +172,23 @@ class MachineGroupServiceIntegrationTest {
     assertThat(result.items()).extracting(group -> group.id()).containsExactly(assignedGroup.id());
   }
 
+  // --- DW-120: search LIKE escape ---
+
+  @Test
+  @DisplayName("DW-120 underscore in group search matches literally instead of acting as wildcard")
+  void searchUnderscoreMatchesLiterally() {
+    var plant = plant("GM1", "Plant GM1");
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    machineGroupService.create(admin, new CreateMachineGroupCommand(plant.getId(), "Assembly_line"));
+
+    var literal = machineGroupService.list(admin, plant.getId(), "_line", 0, 50, "name,asc");
+    assertThat(literal.items()).extracting(g -> g.name()).containsExactly("Assembly_line");
+
+    // A % must not widen the match either.
+    var percent = machineGroupService.list(admin, plant.getId(), "%line", 0, 50, "name,asc");
+    assertThat(percent.items()).isEmpty();
+  }
+
   @Test
   @DisplayName("2.2-SVC-005 P0 MANAGE cannot list out-of-scope plant machine groups")
   void manageCannotListOutOfScopePlantMachineGroups() {
