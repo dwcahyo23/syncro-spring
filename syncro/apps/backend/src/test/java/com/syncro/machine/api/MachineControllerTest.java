@@ -302,14 +302,23 @@ class MachineControllerTest {
     var plantId = UUID.randomUUID();
     var groupId = UUID.randomUUID();
     var machineId = UUID.randomUUID();
+    var otherMachineId = UUID.randomUUID();
     var machineView = new MachineService.MachineView(machineId, plantId, "GM1", "Plant GM1", groupId, "Forming",
         "BF-08410", "JBF19", MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Active machine",
         Instant.parse("2026-05-27T00:00:00Z"), Instant.parse("2026-05-27T00:00:00Z"), List.of());
+    var otherMachineView = new MachineService.MachineView(otherMachineId, plantId, "GM1", "Plant GM1", groupId, "Forming",
+        "BF-08411", "JBF20", MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Active machine 2",
+        Instant.parse("2026-05-27T00:00:00Z"), Instant.parse("2026-05-27T00:00:00Z"), List.of());
     var telemetryData = new LatestTelemetryDto.TelemetryData(machineId, true, 123.4, 1000L,
         Instant.parse("2026-08-10T10:00:00Z"), LatestTelemetryDto.FreshnessState.ONLINE, Map.of(), false);
+    var otherTelemetryData = new LatestTelemetryDto.TelemetryData(otherMachineId, false, 5.5, 42L,
+        Instant.parse("2026-08-10T09:00:00Z"), LatestTelemetryDto.FreshnessState.STALE, Map.of(), false);
     when(machines.list(user, plantId, null, null, null, 0, 100, "code,asc"))
-        .thenReturn(new MachineListView(List.of(machineView), 1, 0, 100, "code,asc"));
-    when(telemetryQuery.latestTelemetry(machineId, MachineStatus.ACTIVE)).thenReturn(telemetryData);
+        .thenReturn(new MachineListView(List.of(machineView, otherMachineView), 2, 0, 100, "code,asc"));
+    when(telemetryQuery.latestTelemetryBatch(Map.of(
+        machineId, MachineStatus.ACTIVE,
+        otherMachineId, MachineStatus.ACTIVE)))
+        .thenReturn(Map.of(machineId, telemetryData, otherMachineId, otherTelemetryData));
 
     mockMvc.perform(get("/api/v1/machines")
         .param("plantId", plantId.toString())
@@ -317,8 +326,10 @@ class MachineControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items[0].id").value(machineId.toString()))
         .andExpect(jsonPath("$.items[0].latestTelemetry.running").value(true))
-        .andExpect(jsonPath("$.items[0].latestTelemetry.runtimeHours").value(123.4))
-        .andExpect(jsonPath("$.items[0].latestTelemetry.counting").value(1000));
+        .andExpect(jsonPath("$.items[0].latestTelemetry.counting").value(1000))
+        .andExpect(jsonPath("$.items[1].id").value(otherMachineId.toString()))
+        .andExpect(jsonPath("$.items[1].latestTelemetry.running").value(false))
+        .andExpect(jsonPath("$.items[1].latestTelemetry.counting").value(42));
   }
 
   @Test
@@ -352,7 +363,8 @@ class MachineControllerTest {
         Instant.parse("2026-05-27T00:00:00Z"), Instant.parse("2026-05-27T00:00:00Z"), List.of());
     when(machines.list(user, plantId, null, null, null, 0, 100, "code,asc"))
         .thenReturn(new MachineListView(List.of(machineView), 1, 0, 100, "code,asc"));
-    when(telemetryQuery.latestTelemetry(machineId, MachineStatus.ACTIVE)).thenReturn(null);
+    when(telemetryQuery.latestTelemetryBatch(Map.of(machineId, MachineStatus.ACTIVE)))
+        .thenReturn(Map.of());
 
     mockMvc.perform(get("/api/v1/machines")
         .param("plantId", plantId.toString())

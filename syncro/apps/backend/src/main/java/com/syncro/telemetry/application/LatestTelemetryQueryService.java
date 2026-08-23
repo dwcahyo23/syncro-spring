@@ -34,6 +34,47 @@ public class LatestTelemetryQueryService {
       log.warn("telemetry_latest_read_failed machineId={}", machineId, redisFailure);
       return null;
     }
+    return parseTelemetryData(machineId, manualStatus, redisData);
+  }
+
+  /**
+   * Batch variant of {@link #latestTelemetry} used by the machine LIST endpoint: reads all
+   * latest hashes in one pipelined Redis round trip and parses each with the identical
+   * per-machine semantics as the single path.
+   *
+   * <p>A batch-level Redis failure degrades the WHOLE page with one warning (every entry
+   * absent) instead of N sequential failures; per-machine absence/malformation still only
+   * affects that machine.
+   *
+   * @param machineStatuses machineId -> manual status for freshness calculation
+   * @return parsed telemetry keyed by machineId; machines without readable data are absent
+   */
+  public Map<UUID, LatestTelemetryDto.TelemetryData> latestTelemetryBatch(Map<UUID, MachineStatus> machineStatuses) {
+    if (machineStatuses == null || machineStatuses.isEmpty()) {
+      return Map.of();
+    }
+    Map<UUID, Map<String, String>> batchData;
+    try {
+      batchData = redisWriter.readLatestBatch(machineStatuses.keySet());
+    } catch (RuntimeException redisFailure) {
+      var sampleIds = machineStatuses.keySet().stream().limit(5).map(UUID::toString).toList();
+      log.warn("telemetry_latest_batch_read_failed machines={} sampleIds={}",
+          machineStatuses.size(), sampleIds, redisFailure);
+      return Map.of();
+    }
+    Map<UUID, LatestTelemetryDto.TelemetryData> result = new LinkedHashMap<>();
+    for (Map.Entry<UUID, MachineStatus> entry : machineStatuses.entrySet()) {
+      var parsed = parseTelemetryData(entry.getKey(), entry.getValue(),
+          batchData.getOrDefault(entry.getKey(), Map.of()));
+      if (parsed != null) {
+        result.put(entry.getKey(), parsed);
+      }
+    }
+    return result;
+  }
+
+  private LatestTelemetryDto.TelemetryData parseTelemetryData(UUID machineId, MachineStatus manualStatus,
+      Map<String, String> redisData) {
     if (redisData.isEmpty()) {
       return null;
     }

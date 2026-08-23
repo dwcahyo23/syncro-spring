@@ -4,11 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Level;
@@ -414,6 +417,29 @@ class TelemetryPersistenceServiceTest {
     service.persist(accepted, envelope);
 
     verify(evaluator).evaluateAll(machine.getId());
+    // DW-37: evaluator failure short-circuits alert evaluation entirely
+    verifyNoInteractions(alertService);
+  }
+
+  @Test
+  void persist_alertStageException_doesNotPropagate_andIsSignaledSeparately() {
+    when(valueOps.setIfAbsent(dedupeKey, TRACE_ID, Duration.parse("PT30S"))).thenReturn(true);
+    var evaluationResults = new java.util.LinkedHashMap<UUID, SparepartLifetimeEvaluator.EvaluationResult>();
+    when(evaluator.evaluateAll(machine.getId())).thenReturn(evaluationResults);
+    var appender = attachAppender();
+    doThrow(new RuntimeException("alert failure"))
+        .when(alertService).evaluateAndCreateAlerts(eq(machine.getId()), same(evaluationResults), eq(TRACE_ID));
+
+    // should complete without throwing
+    service.persist(accepted, envelope);
+    detachAppender(appender);
+
+    verify(evaluator).evaluateAll(machine.getId());
+    // DW-37: the evaluator's actual result collection must be forwarded to the alert stage
+    verify(alertService).evaluateAndCreateAlerts(eq(machine.getId()), same(evaluationResults), eq(TRACE_ID));
+    // DW-37: persisted INFO line must still be emitted after an alert-stage failure
+    assertThat(appender.list)
+        .anyMatch(event -> event.getFormattedMessage().startsWith("mqtt_telemetry_persisted"));
   }
 
   // --- DW-25: DB fallback for counting baseline ---

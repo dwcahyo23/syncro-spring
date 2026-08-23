@@ -150,9 +150,15 @@ public class TelemetryPersistenceService {
 
     try {
       var results = evaluator.evaluateAll(machineId);
-      alertService.evaluateAndCreateAlerts(machineId, results, envelope.traceId());
-    } catch (Exception e) {
-      log.warn("[traceId={}] SparepartLifetimeEvaluator.evaluateAll or alert creation failed, skipping", envelope.traceId(), e);
+      try {
+        alertService.evaluateAndCreateAlerts(machineId, results, envelope.traceId());
+      } catch (Exception alertEx) {
+        log.warn("sparepart_alert_evaluation_failed traceId={} machineId={}",
+            envelope.traceId(), machineId, alertEx);
+      }
+    } catch (Exception evalEx) {
+      log.warn("sparepart_lifetime_evaluation_failed traceId={} machineId={}",
+          envelope.traceId(), machineId, evalEx);
     }
 
     log.info("mqtt_telemetry_persisted traceId={} machineCode={} countingDelta={}",

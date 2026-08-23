@@ -126,4 +126,82 @@ class LatestTelemetryQueryServiceTest {
     assertThat(telemetry.hasOptionalFields()).isFalse();
     assertThat(telemetry.optionalFields()).isEmpty();
   }
+
+  // --- DW-33: batched hydration ---
+
+  @Test
+  @DisplayName("DW-33 batch parses each present hash with single-path semantics")
+  void batchParsesPresentHashes() {
+    Map<String, String> first = new LinkedHashMap<>();
+    first.put("receivedAt", NOW.minusSeconds(60).toString());
+    first.put("running", "true");
+    first.put("runtimeHours", "12.5");
+    first.put("counting", "4200");
+    UUID secondId = UUID.fromString("223e4567-e89b-12d3-a456-426614174000");
+    Map<String, String> second = new LinkedHashMap<>();
+    second.put("receivedAt", NOW.minusSeconds(60).toString());
+    second.put("running", "false");
+
+    when(redisWriter.readLatestBatch(java.util.Set.of(MACHINE_ID, secondId)))
+        .thenReturn(Map.of(MACHINE_ID, first, secondId, second));
+
+    var result = service.latestTelemetryBatch(
+        Map.of(MACHINE_ID, MachineStatus.ACTIVE, secondId, MachineStatus.ACTIVE));
+
+    assertThat(result).containsKeys(MACHINE_ID, secondId);
+    assertThat(result.get(MACHINE_ID).counting()).isEqualTo(4200L);
+    assertThat(result.get(MACHINE_ID).hasOptionalFields()).isFalse();
+    assertThat(result.get(secondId).running()).isFalse();
+  }
+
+  @Test
+  @DisplayName("DW-33 machines with absent hashes are missing from the batch result only")
+  void batchSkipsAbsentHashes() {
+    UUID presentId = UUID.fromString("223e4567-e89b-12d3-a456-426614174000");
+    Map<String, String> present = new LinkedHashMap<>();
+    present.put("receivedAt", NOW.minusSeconds(60).toString());
+
+    when(redisWriter.readLatestBatch(java.util.Set.of(MACHINE_ID, presentId)))
+        .thenReturn(Map.of(presentId, present));
+
+    var result = service.latestTelemetryBatch(
+        Map.of(MACHINE_ID, MachineStatus.ACTIVE, presentId, MachineStatus.ACTIVE));
+
+    assertThat(result).containsOnlyKeys(presentId);
+  }
+
+  @Test
+  @DisplayName("DW-33 batch redis failure degrades whole page to empty map")
+  void batchRedisFailureReturnsEmptyMap() {
+    when(redisWriter.readLatestBatch(java.util.Set.of(MACHINE_ID)))
+        .thenThrow(new RuntimeException("redis down"));
+
+    var result = service.latestTelemetryBatch(Map.of(MACHINE_ID, MachineStatus.ACTIVE));
+
+    assertThat(result).isEmpty();
+  }
+
+  @Test
+  @DisplayName("DW-33 null statuses map yields empty result")
+  void batchNullStatusesYieldsEmptyResult() {
+    assertThat(service.latestTelemetryBatch(null)).isEmpty();
+  }
+
+  @Test
+  @DisplayName("DW-33 malformed receivedAt omits only that machine from batch")
+  void batchOmitsMalformedMachineOnly() {
+    UUID goodId = UUID.fromString("223e4567-e89b-12d3-a456-426614174000");
+    Map<String, String> malformed = new LinkedHashMap<>();
+    malformed.put("receivedAt", "not-a-timestamp");
+    Map<String, String> good = new LinkedHashMap<>();
+    good.put("receivedAt", NOW.minusSeconds(60).toString());
+
+    when(redisWriter.readLatestBatch(java.util.Set.of(MACHINE_ID, goodId)))
+        .thenReturn(Map.of(MACHINE_ID, malformed, goodId, good));
+
+    var result = service.latestTelemetryBatch(
+        Map.of(MACHINE_ID, MachineStatus.ACTIVE, goodId, MachineStatus.ACTIVE));
+
+    assertThat(result).containsOnlyKeys(goodId);
+  }
 }

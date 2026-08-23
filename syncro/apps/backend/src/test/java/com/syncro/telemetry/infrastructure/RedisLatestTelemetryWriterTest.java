@@ -1,12 +1,15 @@
 package com.syncro.telemetry.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,7 +36,7 @@ class RedisLatestTelemetryWriterTest {
   @BeforeEach
   void setUp() {
     writer = new RedisLatestTelemetryWriter(redis);
-    when(redis.opsForHash()).thenReturn(hashOps);
+    lenient().when(redis.opsForHash()).thenReturn(hashOps);
   }
 
   @Test
@@ -63,6 +66,39 @@ class RedisLatestTelemetryWriterTest {
             && event.getFormattedMessage().contains("machineId=" + MACHINE_ID)
             && event.getFormattedMessage().contains("rawValue=not-a-number"));
     detachAppender(appender);
+  }
+
+  @Test
+  void readLatestBatchPairsResultsInCommandOrder() {
+    UUID firstId = MACHINE_ID;
+    UUID secondId = UUID.fromString("223e4567-e89b-12d3-a456-426614174000");
+    Map<Object, Object> firstHash = Map.of((Object) "counting", (Object) "100");
+    Map<Object, Object> secondHash = Map.of((Object) "counting", (Object) "200");
+    when(redis.executePipelined(org.mockito.ArgumentMatchers.any(
+        org.springframework.data.redis.core.SessionCallback.class)))
+        .thenReturn(List.of(firstHash, secondHash));
+
+    var result = writer.readLatestBatch(java.util.List.of(firstId, secondId));
+
+    assertThat(result).containsOnlyKeys(firstId, secondId);
+    assertThat(result.get(firstId)).containsEntry("counting", "100");
+    assertThat(result.get(secondId)).containsEntry("counting", "200");
+  }
+
+  @Test
+  void readLatestBatchSkipsNonMapAndEmptyEntries() {
+    UUID presentId = MACHINE_ID;
+    UUID absentId = UUID.fromString("223e4567-e89b-12d3-a456-426614174000");
+    when(redis.executePipelined(org.mockito.ArgumentMatchers.any(
+        org.springframework.data.redis.core.SessionCallback.class)))
+        .thenReturn(java.util.List.of(Map.of(), new Object()));
+
+    var idsWithNullElement = new java.util.ArrayList<UUID>(java.util.List.of(presentId, absentId));
+    idsWithNullElement.add(null);
+
+    var result = writer.readLatestBatch(idsWithNullElement);
+
+    assertThat(result).isEmpty();
   }
 
   private static ListAppender<ILoggingEvent> attachAppender() {

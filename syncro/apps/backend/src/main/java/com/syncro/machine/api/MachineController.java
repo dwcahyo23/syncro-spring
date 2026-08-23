@@ -7,6 +7,7 @@ import com.syncro.machine.api.MachineDtos.MachineView;
 import com.syncro.machine.application.MachineService;
 import com.syncro.machine.application.MachineService.MachineCommand;
 import com.syncro.machine.domain.MachineStatus;
+import com.syncro.telemetry.application.LatestTelemetryDto;
 import com.syncro.telemetry.application.LatestTelemetryQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -16,6 +17,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -62,8 +64,14 @@ public class MachineController {
       @RequestParam(defaultValue = "100") int size,
       @RequestParam(defaultValue = "code,asc") String sort) {
     var result = machines.list(user, plantId, machineGroupId, status, search, page, limit == null ? size : limit, sort);
+    Map<UUID, MachineStatus> statusesByMachine = new LinkedHashMap<>();
+    for (var machine : result.items()) {
+      statusesByMachine.put(machine.id(), machine.status());
+    }
+    Map<UUID, LatestTelemetryDto.TelemetryData> telemetryByMachine =
+        telemetryQuery.latestTelemetryBatch(statusesByMachine);
     var hydratedItems = result.items().stream()
-        .map(this::hydrateWithLatestTelemetry)
+        .map(machine -> hydrateWithLatestTelemetry(machine, telemetryByMachine.get(machine.id())))
         .toList();
     return new MachineListResponse(hydratedItems, result.totalElements(), result.page(), result.size(), result.sort());
   }
@@ -152,7 +160,11 @@ public class MachineController {
   }
 
   private MachineView hydrateWithLatestTelemetry(MachineService.MachineView machine) {
-    var telemetry = telemetryQuery.latestTelemetry(machine.id(), machine.status());
+    return hydrateWithLatestTelemetry(machine, telemetryQuery.latestTelemetry(machine.id(), machine.status()));
+  }
+
+  private MachineView hydrateWithLatestTelemetry(MachineService.MachineView machine,
+      LatestTelemetryDto.TelemetryData telemetry) {
     return new MachineView(machine.id(), machine.plantId(), machine.plantCode(), machine.plantName(), machine.machineGroupId(),
         machine.machineGroupName(), machine.code(), machine.name(), machine.status(), machine.brand(), machine.installedAt(),
         machine.notes(), machine.createdAt(), machine.updatedAt(), machine.optionalTelemetryFields(), telemetry);

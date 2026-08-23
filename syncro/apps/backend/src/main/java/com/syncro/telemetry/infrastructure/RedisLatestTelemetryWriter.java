@@ -3,7 +3,9 @@ package com.syncro.telemetry.infrastructure;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -63,6 +65,50 @@ public class RedisLatestTelemetryWriter {
     for (Map.Entry<Object, Object> entry : entries.entrySet()) {
       if (entry.getKey() != null && entry.getValue() != null) {
         result.put(entry.getKey().toString(), entry.getValue().toString());
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Reads the latest-telemetry hashes for many machines in ONE pipelined round trip.
+   *
+   * <p>Machines whose hash is absent or empty are simply missing from the returned map —
+   * absence is not an error. Null id elements are ignored and duplicates collapse to one
+   * command. Connection/pipeline failures propagate to the caller so the query service can
+   * degrade the whole page with a single warning instead of one per row.
+   */
+  public Map<UUID, Map<String, String>> readLatestBatch(Collection<UUID> machineIds) {
+    if (machineIds == null || machineIds.isEmpty()) {
+      return Map.of();
+    }
+    List<UUID> ids = machineIds.stream().filter(Objects::nonNull).distinct().toList();
+    if (ids.isEmpty()) {
+      return Map.of();
+    }
+    List<Object> pipelineResults = redis.executePipelined(new SessionCallback<Object>() {
+      @Override
+      public Object execute(RedisOperations operations) throws DataAccessException {
+        for (UUID machineId : ids) {
+          operations.opsForHash().entries(latestKey(machineId));
+        }
+        return null;
+      }
+    });
+    Map<UUID, Map<String, String>> result = new HashMap<>();
+    for (int i = 0; i < ids.size(); i++) {
+      Object raw = pipelineResults.get(i);
+      if (!(raw instanceof Map<?, ?> entries) || entries.isEmpty()) {
+        continue;
+      }
+      Map<String, String> fields = new HashMap<>();
+      for (Map.Entry<?, ?> entry : entries.entrySet()) {
+        if (entry.getKey() != null && entry.getValue() != null) {
+          fields.put(entry.getKey().toString(), entry.getValue().toString());
+        }
+      }
+      if (!fields.isEmpty()) {
+        result.put(ids.get(i), fields);
       }
     }
     return result;
