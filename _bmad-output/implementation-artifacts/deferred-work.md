@@ -1,5 +1,22 @@
 # Deferred Work
 
+## Decision Queue (sweep 2026-08-23)
+
+Semua entri open yang tersisa butuh keputusan manusia, KECUALI DW-121 (bundle siap). Urutan bebas; pilih satu lalu jalankan resolve/dev-auto.
+
+| Tema | DW | Pilihan ringkas |
+|---|---|---|
+| Clock/tracker policy | DW-26, DW-69, DW-70, DW-72 | monotonic-reset / surface-skew-state / accept-transient |
+| Deep-link machine resolution | DW-71 | by-id route / plant-scoped route |
+| Seed & fixture pinning | DW-73, DW-74 | extract pure derivation component / accept literal pinning |
+| Secrets management | DW-78, DW-79, DW-80 | vault atau env-injection / scoped-ignore + docs / biarkan dev-only |
+| Health timeout desain | DW-46, DW-47 | bounded-acquire executor / client-level timeout config / terima default Spring |
+| EMQX offload correct-course | DW-92 | PoC bridge InfluxDB/Redis / tunda ke epic berikutnya / tolak |
+| WAHA disclaimer vs evidence | DW-112 | tulis ulang disclaimer / sesuaikan teks evidence |
+| InfluxDB legacy buckets | DW-114 | reset bucket dev-CI / script migrasi double |
+| Bundle siap eksekusi | DW-121 | escape pada findCodesByPrefix + tes |
+
+
 ### DW-1: MQTT credentials configured but local EMQX MQTT auth not enforced
 
 origin: migrated from legacy ledger ("Deferred from: code review of 1-3-initialize-spring-boot-backend-skeleton (2026-05-25)"), 2026-08-07
@@ -354,7 +371,8 @@ resolution: resolved by deferred-work bundle 9 — catches split with distinct m
 origin: code review Story 4.4 (2026-08-19)
 location: SparepartAlertCommandService.java
 reason: Pre-existing pattern across codebase — audit failure rolls back via @Transactional; deliberate design.
-status: open
+status: skipped 2026-08-23
+resolution: skipped - deliberate design - failure intentionally rolls back via Transactional
 
 ### DW-39: Alert list query not invalidated after acknowledge mutation
 origin: code review Story 4.4 (2026-08-19)
@@ -376,7 +394,8 @@ decision: 2026-08-19 Full fix: @Version + disabled button — Add @Version Long 
 origin: code review Story 4.4 (2026-08-19)
 location: SparepartAlertDtos.java, SparepartAlertEntity.java
 reason: Pre-existing design across all alert mutations; reason field is intentionally permissive.
-status: open
+status: skipped 2026-08-23
+resolution: skipped - intentionally permissive empty reason across alert mutations
 
 ### DW-42: Frontend only handles 409 specifically — 403/404 indistinguishable to user
 origin: code review Story 4.4 (2026-08-19)
@@ -390,7 +409,8 @@ resolution: already resolved: alert-detail-page-content.tsx:103-130 — 404 and 
 origin: code review Story 5.2 (2026-08-20)
 location: syncro/apps/backend/src/main/resources/db/migration/V22__create_notification_jobs.sql
 reason: UNIQUE (alert_id, escalation_level) means once a ROUTING_FAILED row exists for a pair, a subsequent PENDING row for the same pair cannot be inserted. If a technician is assigned a WhatsApp number after initial routing failure, a new job cannot be queued without manual deletion of the failed row. Acceptable for Story 5.2 scope — re-routing belongs to a future admin/correction workflow.
-status: open
+status: skipped 2026-08-23
+resolution: skipped - re-routing belongs to unnamed future admin/correction workflow
 
 ### DW-77: Race condition — concurrent upsert tanpa ON CONFLICT guard
 
@@ -405,7 +425,8 @@ resolution: resolved by deferred-work bundle 3 — WahaTemplateService.upsertTem
 origin: code review Story 5.1 (2026-08-20)
 location: syncro/apps/backend/src/main/java/com/syncro/notification/api/WahaTemplateDtos.java
 reason: By design — frontend tidak butuh createdAt saat ini. Jika dibutuhkan di masa depan perlu tambah field ke DTO dan frontend.
-status: open
+status: skipped 2026-08-23
+resolution: skipped - by design - createdAt not needed by frontend today
 
 ### DW-78: Plaintext credentials in auth-bootstrap.csv committed to git
 
@@ -437,7 +458,8 @@ origin: migrated from legacy ledger ("code review of spec-5-4-escalate-alert-not
 location: EscalationService.java
 severity: medium
 reason: ROUTING_FAILED is a terminal state by design; re-routing workflow belongs to a future admin/correction story. Pre-existing design decision consistent with DW-44 pattern.
-status: open
+status: skipped 2026-08-23
+resolution: skipped - AC10 by design - SENT preserved for reopen tracking; lifecycle cleanup is a future story
 
 ### DW-82: `sentAt` column has no DB NOT NULL constraint despite being required for SENT-status jobs
 
@@ -529,7 +551,8 @@ origin: migrated from legacy ledger ("WAHA GOWS 2026.8.1 upgrade verification (2
 location: n/a (receive-side)
 severity: low
 reason: Inbound messages are addressed as `from: 83524312952904@lid` with the real phone number only in `_data.Info.SenderAlt`. Not relevant while Syncro is send-only (`POST /api/sendText`); if a future story adds receive handling (auto-reply, delivery receipts), the `@lid` → phone conversion via LIDs API must be handled — behavior differs from NOWEB.
-status: open
+status: skipped 2026-08-23
+resolution: skipped - receive-side irrelevant while Syncro is send-only
 
 ### DW-90: WAHA session config still points webhooks to `https://httpbin.org/post`
 
@@ -594,7 +617,8 @@ origin: migrated from legacy ledger ("EMQX 6.2.2 feature deep-dive for backend o
 location: EMQX `/api/v5/rules` + `/api/v5/rule_events`
 severity: low
 reason: `/api/v5/rules` + `/api/v5/rule_events` respond; SQL `SELECT * FROM "factory/+/+/telemetry"` with actions in `{type}:{name}` format. Verified action targets: `console`, `mqtt:forward`, `http:webhook` all accepted. Rule events available include `$events/message_publish`, `$events/message_delivered`, `$events/sys/alarm_activated`, `$events/sys/alarm_deactivated`. → Can offload: republish to sink topics, filtering, simple routing.
-status: open
+status: skipped 2026-08-23
+resolution: skipped - informational capability observation, not a defect
 
 ### DW-96: Data Integration (Connectors) works — InfluxDB v3 bridge confirmed
 
@@ -602,7 +626,8 @@ origin: migrated from legacy ledger ("EMQX 6.2.2 feature deep-dive for backend o
 location: EMQX `/api/v5/connectors` (type=influxdb, influxdb_api_v3)
 severity: low
 reason: 45 `emqx_bridge_*` libs installed. Successfully created connector `type=influxdb` with `parameters.influxdb_type=influxdb_api_v3` (+ `token`, `database`, `ping_with_auth`); validation passed, connector instantiated (was `disconnected` only because probe host was unreachable). Same endpoint family covers redis, pgsql, mqtt, http, kafka bridges. → Can offload backend InfluxDB write (`InfluxTelemetryWriter`) and Redis latest-state write (`RedisLatestTelemetryWriter`) to EMQX bridges.
-status: open
+status: skipped 2026-08-23
+resolution: skipped - informational capability observation, not a defect
 
 ### DW-97: Schema Registry works — JSON schema created
 
@@ -610,7 +635,8 @@ origin: migrated from legacy ledger ("EMQX 6.2.2 feature deep-dive for backend o
 location: EMQX `/api/v5/schema_registry`
 severity: low
 reason: `POST /api/v5/schema_registry` accepted a JSON schema (fields: `type=json`, `name`, `description`, `source`). Schema validation (`schema_validation`) and message transformation (`message_transformation`) config keys exist but have no `/api/v5` CRUD endpoint (config-file/ctl only). → Can offload `TelemetryValidationService` JSON field validation to EMQX edge; quarantine-on-invalid would still be backend logic.
-status: open
+status: skipped 2026-08-23
+resolution: skipped - informational capability observation, not a defect
 
 ### DW-98: EMQX Queue (MQTT Streams) — last-value mode works
 
@@ -618,7 +644,8 @@ origin: migrated from legacy ledger ("EMQX 6.2.2 feature deep-dive for backend o
 location: EMQX `/api/v5/queues`
 severity: low
 reason: `POST /api/v5/queues` created a queue with `is_lastvalue=true`, `key_expression=message.from`, `topic_filter=factory/+/+/telemetry`, `data_retention_period=604800000ms` (7d). This gives per-source "latest value" storage inside EMQX. → Candidate to REPLACE Redis `syncro:machine:{id}:latest` hash (per-machine latest telemetry) for the counting-delta read path. Streams module (`streams`) exists but `enable=false` (needs config flip + restart).
-status: open
+status: skipped 2026-08-23
+resolution: skipped - informational capability observation, not a defect
 
 ### DW-99: Retained messages, delayed publish, shared subscriptions, auto-subscribe available
 
@@ -626,7 +653,8 @@ origin: migrated from legacy ledger ("EMQX 6.2.2 feature deep-dive for backend o
 location: EMQX config (`mqtt.retainer`, `mqtt/delayed`, `shared_subscription`, `auto_subscribe`)
 severity: low
 reason: `mqtt.retainer {enable=true, backend=built_in_database}`, `mqtt/delayed {enable=true}`, `shared_subscription=true` (round_robin), `auto_subscribe` config present. Shared subscriptions (`$share/{group}/factory/+/+/telemetry`) enable horizontal scaling of backend consumers — direct mitigation for the DW-91 single-consumer bottleneck.
-status: open
+status: skipped 2026-08-23
+resolution: skipped - informational capability observation, not a defect
 
 ### DW-100: NOT available on community edition — Flow Designer, Codec, Message Transformation REST API, standalone Webhooks API
 
@@ -634,14 +662,16 @@ origin: migrated from legacy ledger ("EMQX 6.2.2 feature deep-dive for backend o
 location: EMQX community edition
 severity: low
 reason: Flow Designer (`/api/v5/flows` 404), Codec (`/api/v5/codecs` 404), Message Transformation REST API (`/api/v5/transformations` 404), standalone Webhooks API (`/api/v5/webhooks` 404 — webhook is only a rule action). These appear to be enterprise-tier or config-only.
-status: open
+status: skipped 2026-08-23
+resolution: skipped - informational capability observation, not a defect
 
 ### DW-101: Notification worker status is pod-local (per-JVM tracker)
 
 origin: Deferred from: code review of spec-6-3-report-notification-worker-status (2026-08-21)
 location: syncro/apps/backend/src/main/java/com/syncro/notification/application/NotificationWorkerTracker.java:16
 reason: In a multi-replica deployment the endpoint reports only the calling instance's poll liveness. Acceptable for single-instance; documented by design (in-memory, resets on restart). Distributed observability is out of current scope.
-status: open
+status: skipped 2026-08-23
+resolution: skipped - documented by design (single-instance pilot)
 
 ### DW-102: WAHA circuit failureRate may serialize as non-finite JSON (NaN) and break actuator parse
 
@@ -771,7 +801,8 @@ origin: migrated from legacy ledger ("code review of spec-7-5-validate-threshold
 location: V31__*.sql
 severity: low
 reason: fails if constraint manually renamed/removed; editing applied migration would change Flyway checksum. Standard Flyway convention, low risk for sanctioned schemas.
-status: open
+status: skipped 2026-08-23
+resolution: skipped - standard Flyway convention, low risk
 
 ### DW-110: Counter drift baseline not asserting counting=890
 
@@ -813,7 +844,8 @@ origin: review of spec-deferred-work-bundle, 2026-08-22
 location: InfluxTelemetryWriter.java:50-51
 severity: low
 reason: `node.doubleValue()` rounds integral values above 2^53. Telemetry `counting` is 16-bit (max 65535) and optional fields are typically small sensor measurements, so this is a data-fidelity protection for future large-counter optional fields. The DW-28 decision mandated Double coercion; this is a residual tradeoff note.
-status: open
+status: skipped 2026-08-23
+resolution: skipped - residual documented tradeoff of DW-28 Double coercion
 
 ### DW-116: EMQX auth test uses heredoc entrypoint, bypassing compose ACL seeding and leaking file contents
 
@@ -821,15 +853,17 @@ origin: review of spec-deferred-work-bundle, 2026-08-22
 location: MqttAuthEnforcementIntegrationTest.java
 severity: low
 reason: The Testcontainer overrides the EMQX entrypoint with a shell heredoc that writes emqx.conf + auth-bootstrap.csv into the container, skipping the repo's docker-entrypoint.sh (ACL seeding via management API). The conf and CSV contents appear in the container command line. Future hardening: mount via volume when Docker Desktop path handling permits. Also repo-relative paths (`../../infra/...`) are fragile across IDE/CI launchers.
-status: open
+status: skipped 2026-08-23
+resolution: skipped - environment-blocked on Docker Desktop volume path handling
 
-### DW-117: Alert 409 handler catches ObjectOptimisticLockingFailureException from any persistence op in the alert controller
+### DW-122: Alert 409 handler catches ObjectOptimisticLockingFailureException from any persistence op in the alert controller
 
 origin: review of spec-deferred-work-bundle, 2026-08-22
 location: SparepartAlertExceptionHandler.java:44-48
 severity: low
 reason: The alert handler maps any OOLFE under the alert controller to "Alert was modified concurrently." In practice, only the alert entity has @Version and is saved via entity manager in the acknowledge/resolve/override path; notification job bulk updates bypass @Version, and audit writes are append-only. The message is accurate for the dominant case. Theoretically scoped to the alert entity type only.
-status: open
+status: skipped 2026-08-23
+resolution: skipped - theoretical scope note; handler message accurate for the dominant case
 
 ### DW-117: Orval client input pinned to mutable live endpoint
 
