@@ -1,0 +1,5257 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Syncro API",
+    "description": "Syncro backend REST API.",
+    "version": "v1"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Generated server url"
+    }
+  ],
+  "paths": {
+    "/api/v1/spareparts/{sparepartId}": {
+      "get": {
+        "tags": [
+          "sparepart-controller"
+        ],
+        "summary": "Get sparepart",
+        "operationId": "getSparepart",
+        "parameters": [
+          {
+            "name": "sparepartId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sparepart returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid sparepart id",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sparepart not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "sparepart-controller"
+        ],
+        "summary": "Update sparepart",
+        "operationId": "updateSparepart",
+        "parameters": [
+          {
+            "name": "sparepartId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SparepartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Sparepart updated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation, malformed JSON, duplicate code/name, invalid sparepart id, or invalid taxonomy reference",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sparepart not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartView"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Sparepart data integrity conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "sparepart-controller"
+        ],
+        "summary": "Delete sparepart",
+        "operationId": "deleteSparepart",
+        "parameters": [
+          {
+            "name": "sparepartId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Sparepart deleted"
+          },
+          "400": {
+            "description": "Invalid sparepart id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Sparepart not found"
+          },
+          "409": {
+            "description": "Sparepart data integrity conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/sparepart-taxonomies/{taxonomyId}": {
+      "get": {
+        "tags": [
+          "sparepart-taxonomy-controller"
+        ],
+        "summary": "Get sparepart taxonomy entry",
+        "operationId": "getSparepartTaxonomy",
+        "parameters": [
+          {
+            "name": "taxonomyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sparepart taxonomy entry returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartTaxonomyView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid taxonomy id",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartTaxonomyView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartTaxonomyView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sparepart taxonomy entry not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartTaxonomyView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "sparepart-taxonomy-controller"
+        ],
+        "summary": "Update sparepart taxonomy entry",
+        "operationId": "updateSparepartTaxonomy",
+        "parameters": [
+          {
+            "name": "taxonomyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SparepartTaxonomyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Sparepart taxonomy entry updated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartTaxonomyView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation, malformed JSON, duplicate name, or invalid taxonomy id",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartTaxonomyView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartTaxonomyView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartTaxonomyView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sparepart taxonomy entry not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartTaxonomyView"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Sparepart taxonomy data integrity conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartTaxonomyView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "sparepart-taxonomy-controller"
+        ],
+        "summary": "Delete sparepart taxonomy entry",
+        "operationId": "deleteSparepartTaxonomy",
+        "parameters": [
+          {
+            "name": "taxonomyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Sparepart taxonomy entry deleted"
+          },
+          "400": {
+            "description": "Invalid taxonomy id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Sparepart taxonomy entry not found"
+          },
+          "409": {
+            "description": "Sparepart taxonomy data integrity conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/plants/{plantId}": {
+      "get": {
+        "tags": [
+          "plant-controller"
+        ],
+        "summary": "Get plant",
+        "operationId": "getPlant",
+        "parameters": [
+          {
+            "name": "plantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plant returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid plant id",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Plant not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "plant-controller"
+        ],
+        "summary": "Update plant",
+        "operationId": "updatePlant",
+        "parameters": [
+          {
+            "name": "plantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Plant updated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation, malformed JSON, duplicate plant code, or invalid plant id",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Plant not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "plant-controller"
+        ],
+        "summary": "Delete plant",
+        "operationId": "deletePlant",
+        "parameters": [
+          {
+            "name": "plantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Plant deleted"
+          },
+          "400": {
+            "description": "Invalid plant id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Plant not found"
+          }
+        }
+      }
+    },
+    "/api/v1/notification/templates": {
+      "get": {
+        "tags": [
+          "waha-template-controller"
+        ],
+        "summary": "Get active WAHA alert message template",
+        "operationId": "getActiveWahaTemplate",
+        "responses": {
+          "200": {
+            "description": "Template returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/WahaTemplateView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/WahaTemplateView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/WahaTemplateView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Template not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/WahaTemplateView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "waha-template-controller"
+        ],
+        "summary": "Create or update WAHA alert message template",
+        "operationId": "upsertWahaTemplate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Template saved",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/WahaTemplateView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid template body or unknown variables",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/WahaTemplateView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/WahaTemplateView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/WahaTemplateView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/machines/{machineId}": {
+      "get": {
+        "tags": [
+          "machine-controller"
+        ],
+        "summary": "Get machine",
+        "operationId": "getMachine",
+        "parameters": [
+          {
+            "name": "machineId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Machine returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid machine id",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Machine not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "machine-controller"
+        ],
+        "summary": "Update machine",
+        "operationId": "updateMachine",
+        "parameters": [
+          {
+            "name": "machineId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MachineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Machine updated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation, malformed JSON, duplicate code, invalid status, or invalid relation",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Machine, plant, or machine group not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineView"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Machine data integrity conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "machine-controller"
+        ],
+        "summary": "Delete machine",
+        "operationId": "deleteMachine",
+        "parameters": [
+          {
+            "name": "machineId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Machine deleted"
+          },
+          "400": {
+            "description": "Invalid machine id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Machine not found"
+          },
+          "409": {
+            "description": "Machine data integrity conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/machine-sparepart-installations/{installationId}": {
+      "get": {
+        "tags": [
+          "machine-sparepart-installation-controller"
+        ],
+        "summary": "Get machine sparepart installation",
+        "operationId": "getMachineSparepartInstallation",
+        "parameters": [
+          {
+            "name": "installationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Installation returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallationView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid installation id",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallationView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallationView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallationView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Installation not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallationView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "machine-sparepart-installation-controller"
+        ],
+        "summary": "Update machine sparepart installation",
+        "operationId": "updateMachineSparepartInstallation",
+        "parameters": [
+          {
+            "name": "installationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstallationUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Installation updated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallationView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation, malformed JSON, or invalid installation id",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallationView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallationView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallationView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Installation not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallationView"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Installation data integrity conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallationView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "machine-sparepart-installation-controller"
+        ],
+        "summary": "Delete machine sparepart installation",
+        "operationId": "deleteMachineSparepartInstallation",
+        "parameters": [
+          {
+            "name": "installationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Installation deleted"
+          },
+          "400": {
+            "description": "Invalid installation id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Installation not found"
+          },
+          "409": {
+            "description": "Installation data integrity conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/machine-responsibilities/{id}": {
+      "put": {
+        "tags": [
+          "machine-responsibility-controller"
+        ],
+        "summary": "Update machine responsibility",
+        "operationId": "updateMachineResponsibility",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMachineResponsibilityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineResponsibilityResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "machine-responsibility-controller"
+        ],
+        "summary": "Delete machine responsibility",
+        "operationId": "unassignMachineResponsibility",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/machine-groups/{machineGroupId}": {
+      "get": {
+        "tags": [
+          "machine-group-controller"
+        ],
+        "summary": "Get machine group",
+        "operationId": "getMachineGroup",
+        "parameters": [
+          {
+            "name": "machineGroupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Machine group returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid machine group id",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Machine group not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "machine-group-controller"
+        ],
+        "summary": "Update machine group",
+        "operationId": "updateMachineGroup",
+        "parameters": [
+          {
+            "name": "machineGroupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MachineGroupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Machine group updated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation, malformed JSON, duplicate machine group name, or invalid machine group id",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Machine group or plant not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupView"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Machine group data integrity conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "machine-group-controller"
+        ],
+        "summary": "Delete machine group",
+        "operationId": "deleteMachineGroup",
+        "parameters": [
+          {
+            "name": "machineGroupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Machine group deleted"
+          },
+          "400": {
+            "description": "Invalid machine group id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Machine group not found"
+          },
+          "409": {
+            "description": "Machine group data integrity conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/spareparts": {
+      "get": {
+        "tags": [
+          "sparepart-controller"
+        ],
+        "summary": "List spareparts",
+        "operationId": "listSpareparts",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "brandId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "kindId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "typeId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "machineCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "machineId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Pageable"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Spareparts returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid filter value",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "sparepart-controller"
+        ],
+        "summary": "Create sparepart",
+        "operationId": "createSparepart",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SparepartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Sparepart created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation, malformed JSON, duplicate code/name, or invalid taxonomy reference",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartView"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Sparepart data integrity conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sparepart-taxonomies": {
+      "get": {
+        "tags": [
+          "sparepart-taxonomy-controller"
+        ],
+        "summary": "List sparepart taxonomy entries",
+        "operationId": "listSparepartTaxonomies",
+        "parameters": [
+          {
+            "name": "dimension",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "CATEGORY",
+                "BRAND",
+                "KIND",
+                "TYPE"
+              ]
+            }
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sparepart taxonomy entries returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartTaxonomyListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid dimension",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartTaxonomyListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartTaxonomyListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "sparepart-taxonomy-controller"
+        ],
+        "summary": "Create sparepart taxonomy entry",
+        "operationId": "createSparepartTaxonomy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SparepartTaxonomyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Sparepart taxonomy entry created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartTaxonomyView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation, malformed JSON, duplicate name, or invalid dimension",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartTaxonomyView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartTaxonomyView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartTaxonomyView"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Sparepart taxonomy data integrity conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartTaxonomyView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/plants": {
+      "get": {
+        "tags": [
+          "plant-controller"
+        ],
+        "summary": "List plants",
+        "operationId": "listPlants",
+        "responses": {
+          "200": {
+            "description": "Plants returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "plant-controller"
+        ],
+        "summary": "Create plant",
+        "operationId": "createPlant",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Plant created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation, malformed JSON, or duplicate plant code",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantView"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Plant data integrity conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/machines": {
+      "get": {
+        "tags": [
+          "machine-controller"
+        ],
+        "summary": "List machines",
+        "operationId": "listMachines",
+        "parameters": [
+          {
+            "name": "plantId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "machineGroupId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTIVE",
+                "INACTIVE"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 100
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "code,asc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Machines returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid filter",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineListResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Plant or machine group not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "machine-controller"
+        ],
+        "summary": "Create machine",
+        "operationId": "createMachine",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MachineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Machine created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation, malformed JSON, duplicate code, invalid status, or invalid relation",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Plant or machine group not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineView"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Machine data integrity conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/machine-sparepart-installations": {
+      "get": {
+        "tags": [
+          "machine-sparepart-installation-controller"
+        ],
+        "summary": "List machine sparepart installations",
+        "operationId": "listMachineSparepartInstallations",
+        "parameters": [
+          {
+            "name": "machineId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "sparepartId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "plantId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "machineGroupId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Pageable"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Installations returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallationListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid filter value",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallationListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallationListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallationListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "machine-sparepart-installation-controller"
+        ],
+        "summary": "Create machine sparepart installation",
+        "operationId": "createMachineSparepartInstallation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstallationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Installation created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallationView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation, malformed JSON, invalid machine, or invalid sparepart",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallationView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallationView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallationView"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Installation data integrity conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstallationView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/machine-responsibilities": {
+      "get": {
+        "tags": [
+          "machine-responsibility-controller"
+        ],
+        "summary": "List machine responsibilities",
+        "operationId": "listMachineResponsibilities",
+        "parameters": [
+          {
+            "name": "machineId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Pageable"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageResponseMachineResponsibilityResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "machine-responsibility-controller"
+        ],
+        "summary": "Create machine responsibility",
+        "operationId": "assignMachineResponsibility",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMachineResponsibilityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineResponsibilityResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/machine-groups": {
+      "get": {
+        "tags": [
+          "machine-group-controller"
+        ],
+        "summary": "List machine groups",
+        "operationId": "listMachineGroups",
+        "parameters": [
+          {
+            "name": "plantId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 100
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "name,asc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Machine groups returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid plant id",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupListResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Plant not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "machine-group-controller"
+        ],
+        "summary": "Create machine group",
+        "operationId": "createMachineGroup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MachineGroupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Machine group created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation, malformed JSON, duplicate machine group name, or invalid plant id",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Plant not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupView"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Machine group data integrity conflict",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "auth-controller"
+        ],
+        "operationId": "logout",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "auth-controller"
+        ],
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/{alertId}/resolve": {
+      "post": {
+        "tags": [
+          "sparepart-alert-controller"
+        ],
+        "summary": "Resolve an ACKNOWLEDGED alert",
+        "operationId": "resolveAlert",
+        "parameters": [
+          {
+            "name": "alertId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Alert resolved"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Alert not found"
+          },
+          "409": {
+            "description": "Invalid state transition"
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/{alertId}/resolve-override": {
+      "post": {
+        "tags": [
+          "sparepart-alert-controller"
+        ],
+        "summary": "SUPER_ADMIN: resolve an OPEN alert directly without acknowledging",
+        "operationId": "resolveAlertOverride",
+        "parameters": [
+          {
+            "name": "alertId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveOverrideRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Alert resolved"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — SUPER_ADMIN only"
+          },
+          "404": {
+            "description": "Alert not found"
+          },
+          "409": {
+            "description": "Invalid state transition"
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/{alertId}/acknowledge": {
+      "post": {
+        "tags": [
+          "sparepart-alert-controller"
+        ],
+        "summary": "Acknowledge an OPEN alert",
+        "operationId": "acknowledgeAlert",
+        "parameters": [
+          {
+            "name": "alertId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcknowledgeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Alert acknowledged"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Alert not found"
+          },
+          "409": {
+            "description": "Invalid state transition"
+          }
+        }
+      }
+    },
+    "/api/v1/telemetry/stale-machines": {
+      "get": {
+        "tags": [
+          "telemetry-stale-machines"
+        ],
+        "summary": "Active machines with stale telemetry (evidence for the health dashboard)",
+        "operationId": "getStaleMachines",
+        "responses": {
+          "200": {
+            "description": "Stale machine evidence returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaleMachineStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaleMachineStatus"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — SUPER_ADMIN only",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaleMachineStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/telemetry/quarantine": {
+      "get": {
+        "tags": [
+          "telemetry-quarantine"
+        ],
+        "summary": "List telemetry quarantine entries",
+        "operationId": "listTelemetryQuarantine",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Quarantine entries returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageQuarantineEntryView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageQuarantineEntryView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — SUPER_ADMIN only",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageQuarantineEntryView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/telemetry/ingest/status": {
+      "get": {
+        "tags": [
+          "telemetry-ingest"
+        ],
+        "summary": "Telemetry ingest worker status",
+        "operationId": "getTelemetryIngestWorkerStatus",
+        "responses": {
+          "200": {
+            "description": "Ingest worker status returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestWorkerStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestWorkerStatus"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — SUPER_ADMIN only",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestWorkerStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/telemetry/freshness": {
+      "get": {
+        "tags": [
+          "telemetry-freshness"
+        ],
+        "summary": "Telemetry freshness status",
+        "operationId": "getTelemetryFreshness",
+        "responses": {
+          "200": {
+            "description": "Telemetry freshness status returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetryFreshnessStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetryFreshnessStatus"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — SUPER_ADMIN only",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetryFreshnessStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/telemetry/data-quality": {
+      "get": {
+        "tags": [
+          "telemetry-data-quality"
+        ],
+        "summary": "Telemetry data-quality status",
+        "operationId": "getTelemetryDataQuality",
+        "responses": {
+          "200": {
+            "description": "Telemetry data-quality status returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetryDataQualityStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetryDataQualityStatus"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — SUPER_ADMIN only",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetryDataQualityStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/setup-completeness": {
+      "get": {
+        "tags": [
+          "setup-completeness-controller"
+        ],
+        "summary": "Get setup completeness checklist",
+        "operationId": "getSetupCompleteness",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupCompletenessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notification/worker/status": {
+      "get": {
+        "tags": [
+          "notification-worker"
+        ],
+        "summary": "Notification worker status",
+        "operationId": "getNotificationWorkerStatus",
+        "responses": {
+          "200": {
+            "description": "Notification worker status returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationWorkerStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationWorkerStatus"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden — SUPER_ADMIN only",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationWorkerStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/machines/code/{machineCode}": {
+      "get": {
+        "tags": [
+          "machine-controller"
+        ],
+        "summary": "Get machine by code",
+        "operationId": "getMachineByCode",
+        "parameters": [
+          {
+            "name": "machineCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Machine returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid machine code",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Machine not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "health-controller"
+        ],
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/users": {
+      "get": {
+        "tags": [
+          "auth-controller"
+        ],
+        "summary": "List users",
+        "operationId": "listUsers",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuthUserView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/plant-scope": {
+      "get": {
+        "tags": [
+          "auth-controller"
+        ],
+        "operationId": "plantScope",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantScopeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "auth-controller"
+        ],
+        "operationId": "me",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthUserView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit-log": {
+      "get": {
+        "tags": [
+          "audit-log-controller"
+        ],
+        "summary": "List audit log entries",
+        "operationId": "listAuditLogEntries",
+        "parameters": [
+          {
+            "name": "entityType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PLANT",
+                "MACHINE_GROUP",
+                "MACHINE",
+                "SPAREPART_TAXONOMY",
+                "SPAREPART",
+                "INSTALLATION",
+                "RESPONSIBILITY",
+                "ALERT"
+              ]
+            }
+          },
+          {
+            "name": "actor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "plantId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 100
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "createdAt,desc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audit log entries returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid filter",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alerts": {
+      "get": {
+        "tags": [
+          "sparepart-alert-controller"
+        ],
+        "summary": "List sparepart lifetime alerts",
+        "operationId": "listAlerts",
+        "parameters": [
+          {
+            "name": "machineId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "plantId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "OPEN",
+                "ACKNOWLEDGED",
+                "RESOLVED"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "createdAt,desc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Alerts returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query parameter",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/{alertId}": {
+      "get": {
+        "tags": [
+          "sparepart-alert-controller"
+        ],
+        "summary": "Get a sparepart lifetime alert by ID",
+        "operationId": "getAlert",
+        "parameters": [
+          {
+            "name": "alertId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Alert returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Alert not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/{alertId}/notifications": {
+      "get": {
+        "tags": [
+          "sparepart-alert-controller"
+        ],
+        "summary": "Get notification history for an alert",
+        "operationId": "getAlertNotifications",
+        "parameters": [
+          {
+            "name": "alertId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification history returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertNotificationHistoryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertNotificationHistoryResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Alert not found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertNotificationHistoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "SparepartRequest": {
+        "type": "object",
+        "properties": {
+          "machineId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "brandId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kindId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "typeId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "brandId",
+          "categoryId",
+          "kindId",
+          "machineId",
+          "typeId"
+        ]
+      },
+      "SparepartMachineRefView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "plantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "plantCode": {
+            "type": "string"
+          },
+          "plantName": {
+            "type": "string"
+          }
+        }
+      },
+      "SparepartTaxonomyRefView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "SparepartView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "machine": {
+            "$ref": "#/components/schemas/SparepartMachineRefView"
+          },
+          "category": {
+            "$ref": "#/components/schemas/SparepartTaxonomyRefView"
+          },
+          "brand": {
+            "$ref": "#/components/schemas/SparepartTaxonomyRefView"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SparepartTaxonomyRefView"
+          },
+          "type": {
+            "$ref": "#/components/schemas/SparepartTaxonomyRefView"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SparepartTaxonomyRequest": {
+        "type": "object",
+        "properties": {
+          "dimension": {
+            "type": "string",
+            "enum": [
+              "CATEGORY",
+              "BRAND",
+              "KIND",
+              "TYPE"
+            ]
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 0
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "code",
+          "dimension",
+          "name"
+        ]
+      },
+      "SparepartTaxonomyView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dimension": {
+            "type": "string",
+            "enum": [
+              "CATEGORY",
+              "BRAND",
+              "KIND",
+              "TYPE"
+            ]
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PlantRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 0,
+            "pattern": "[A-Za-z0-9][A-Za-z0-9_-]{0,63}"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ]
+      },
+      "PlantView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "UpsertTemplateRequest": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "description": "Template body text with supported variables",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "WahaTemplateView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "templateKey": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "MachineRequest": {
+        "type": "object",
+        "properties": {
+          "plantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "machineGroupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 0,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "INACTIVE"
+            ]
+          },
+          "brand": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "installedAt": {
+            "type": "string",
+            "format": "date"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 0
+          },
+          "optionalTelemetryFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 0
+          }
+        },
+        "required": [
+          "code",
+          "machineGroupId",
+          "plantId",
+          "status"
+        ]
+      },
+      "MachineView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "plantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "plantCode": {
+            "type": "string"
+          },
+          "plantName": {
+            "type": "string"
+          },
+          "machineGroupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "machineGroupName": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "INACTIVE"
+            ]
+          },
+          "brand": {
+            "type": "string"
+          },
+          "installedAt": {
+            "type": "string",
+            "format": "date"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "optionalTelemetryFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "latestTelemetry": {
+            "$ref": "#/components/schemas/TelemetryData"
+          }
+        }
+      },
+      "TelemetryData": {
+        "type": "object",
+        "properties": {
+          "machineId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "running": {
+            "type": "boolean"
+          },
+          "runtimeHours": {
+            "type": "number",
+            "format": "double"
+          },
+          "counting": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lastReceivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "freshnessState": {
+            "type": "string",
+            "enum": [
+              "ONLINE",
+              "OFFLINE",
+              "STALE"
+            ]
+          },
+          "optionalFields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "hasOptionalFields": {
+            "type": "boolean"
+          }
+        }
+      },
+      "InstallationUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "functionName": {
+            "type": "string",
+            "description": "Function or usage of the sparepart",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "expectedProductionCount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Expected production count",
+            "minimum": 1
+          },
+          "baselineCounter": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Baseline counter",
+            "minimum": 0
+          },
+          "thresholdPercentage": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Threshold percentage; null keeps the current value",
+            "maximum": 100,
+            "minimum": 1
+          }
+        },
+        "required": [
+          "baselineCounter",
+          "expectedProductionCount",
+          "functionName"
+        ]
+      },
+      "InstallationView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "machineId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "machineCode": {
+            "type": "string"
+          },
+          "machineName": {
+            "type": "string"
+          },
+          "plantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "plantCode": {
+            "type": "string"
+          },
+          "plantName": {
+            "type": "string"
+          },
+          "machineGroupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "machineGroupName": {
+            "type": "string"
+          },
+          "sparepartId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sparepartCode": {
+            "type": "string"
+          },
+          "sparepartName": {
+            "type": "string"
+          },
+          "functionName": {
+            "type": "string"
+          },
+          "category": {
+            "$ref": "#/components/schemas/TaxonomyRefView"
+          },
+          "brand": {
+            "$ref": "#/components/schemas/TaxonomyRefView"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/TaxonomyRefView"
+          },
+          "type": {
+            "$ref": "#/components/schemas/TaxonomyRefView"
+          },
+          "expectedProductionCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "baselineCounter": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currentCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "consumedProductionCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "consumedPercentage": {
+            "type": "number"
+          },
+          "thresholdPercentage": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "calculationBasis": {
+            "type": "string"
+          },
+          "installedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TaxonomyRefView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateMachineResponsibilityRequest": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string",
+            "enum": [
+              "TECHNICIAN",
+              "STAFF",
+              "LEADER",
+              "SPV",
+              "MANAGER"
+            ]
+          }
+        },
+        "required": [
+          "level"
+        ]
+      },
+      "MachineResponsibilityResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "machineId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userName": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "TECHNICIAN",
+              "STAFF",
+              "LEADER",
+              "SPV",
+              "MANAGER"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "MachineGroupRequest": {
+        "type": "object",
+        "properties": {
+          "plantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "name",
+          "plantId"
+        ]
+      },
+      "MachineGroupView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "plantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "plantCode": {
+            "type": "string"
+          },
+          "plantName": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "InstallationRequest": {
+        "type": "object",
+        "properties": {
+          "machineId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Machine the sparepart is installed on"
+          },
+          "sparepartId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Sparepart being installed"
+          },
+          "functionName": {
+            "type": "string",
+            "description": "Function or usage of the sparepart",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "expectedProductionCount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Expected production count",
+            "minimum": 1
+          },
+          "baselineCounter": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Baseline counter at installation time",
+            "minimum": 0
+          },
+          "thresholdPercentage": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Consumed lifetime threshold percentage, defaults to 90",
+            "maximum": 100,
+            "minimum": 1
+          },
+          "installedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Actual installation date; defaults to now when omitted"
+          }
+        },
+        "required": [
+          "baselineCounter",
+          "expectedProductionCount",
+          "functionName",
+          "machineId",
+          "sparepartId"
+        ]
+      },
+      "CreateMachineResponsibilityRequest": {
+        "type": "object",
+        "properties": {
+          "machineId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "TECHNICIAN",
+              "STAFF",
+              "LEADER",
+              "SPV",
+              "MANAGER"
+            ]
+          }
+        },
+        "required": [
+          "level",
+          "machineId",
+          "userId"
+        ]
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "loginIdentifier": {
+            "type": "string",
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "loginIdentifier",
+          "password"
+        ]
+      },
+      "AuthUserView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "loginIdentifier": {
+            "type": "string"
+          },
+          "applicationRole": {
+            "type": "string",
+            "enum": [
+              "SUPER_ADMIN",
+              "MANAGE",
+              "VIEWER"
+            ]
+          }
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "tokenType": {
+            "type": "string"
+          },
+          "accessToken": {
+            "type": "string"
+          },
+          "expiresInSeconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "user": {
+            "$ref": "#/components/schemas/AuthUserView"
+          }
+        }
+      },
+      "ResolveRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "Optional reason for resolving the alert"
+          }
+        }
+      },
+      "ResolveOverrideRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "Optional reason for SUPER_ADMIN direct resolve override"
+          }
+        }
+      },
+      "AcknowledgeRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "Optional reason for acknowledging the alert"
+          }
+        }
+      },
+      "StaleMachineItem": {
+        "type": "object",
+        "properties": {
+          "machineId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "machineCode": {
+            "type": "string"
+          },
+          "plantCode": {
+            "type": "string"
+          },
+          "freshnessState": {
+            "type": "string"
+          },
+          "statusLabel": {
+            "type": "string"
+          },
+          "lastReceivedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "StaleMachineStatus": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string"
+          },
+          "staleMachineCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaleMachineItem"
+            }
+          }
+        }
+      },
+      "PageQuarantineEntryView": {
+        "type": "object",
+        "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuarantineEntryView"
+            }
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
+          "empty": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PageableObject": {
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "paged": {
+            "type": "boolean"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unpaged": {
+            "type": "boolean"
+          }
+        }
+      },
+      "QuarantineEntryView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "traceId": {
+            "type": "string"
+          },
+          "topic": {
+            "type": "string"
+          },
+          "rawPayload": {
+            "type": "string"
+          },
+          "rejectionReason": {
+            "type": "string"
+          },
+          "rejectionField": {
+            "type": "string"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SortObject": {
+        "type": "object",
+        "properties": {
+          "empty": {
+            "type": "boolean"
+          },
+          "sorted": {
+            "type": "boolean"
+          },
+          "unsorted": {
+            "type": "boolean"
+          }
+        }
+      },
+      "IngestWorkerStatus": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "RUNNING",
+              "STOPPED",
+              "DEGRADED"
+            ]
+          },
+          "statusLabel": {
+            "type": "string"
+          },
+          "statusSeverity": {
+            "type": "string"
+          },
+          "statusReason": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "mqttState": {
+            "type": "string"
+          },
+          "lastAcceptedAt": {
+            "type": "string"
+          },
+          "staleSince": {
+            "type": "string"
+          },
+          "queueDepth": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "queueCapacity": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "acceptedCount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "TelemetryFreshnessStatus": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "NO_DATA",
+              "LIVE",
+              "STALE"
+            ]
+          },
+          "statusLabel": {
+            "type": "string"
+          },
+          "statusSeverity": {
+            "type": "string"
+          },
+          "statusReason": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "lastAcceptedAt": {
+            "type": "string"
+          },
+          "staleSince": {
+            "type": "string"
+          }
+        }
+      },
+      "TelemetryDataQualityStatus": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "GOOD",
+              "DEGRADED",
+              "CRITICAL"
+            ]
+          },
+          "statusLabel": {
+            "type": "string"
+          },
+          "statusSeverity": {
+            "type": "string"
+          },
+          "statusReason": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "windowSeconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "quarantinedCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "rejectionRatePct": {
+            "type": "number",
+            "format": "double"
+          },
+          "anomalyCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "deadLetterCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "receivedCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "quarantinedSeverity": {
+            "type": "string"
+          },
+          "rejectionRateSeverity": {
+            "type": "string"
+          },
+          "anomalySeverity": {
+            "type": "string"
+          },
+          "deadLetterSeverity": {
+            "type": "string"
+          },
+          "lastLatencyMs": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "latencyState": {
+            "type": "string",
+            "enum": [
+              "NO_DATA",
+              "NORMAL",
+              "ELEVATED",
+              "CRITICAL"
+            ]
+          },
+          "latencySeverity": {
+            "type": "string"
+          }
+        }
+      },
+      "Pageable": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1
+          },
+          "sort": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SparepartListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SparepartView"
+            }
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "type": "string"
+          }
+        }
+      },
+      "SparepartTaxonomyListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SparepartTaxonomyView"
+            }
+          }
+        }
+      },
+      "ScopeInfo": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string"
+          },
+          "plantIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "emptyReason": {
+            "type": "string"
+          }
+        }
+      },
+      "SetupCompletenessResponse": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/ScopeInfo"
+          },
+          "overallStatus": {
+            "type": "string"
+          },
+          "machineCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "machinesEligibleCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Step"
+            }
+          }
+        }
+      },
+      "Step": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "nextAction": {
+            "type": "string"
+          },
+          "href": {
+            "type": "string"
+          }
+        }
+      },
+      "PlantListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlantView"
+            }
+          }
+        }
+      },
+      "NotificationWorkerStatus": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "RUNNING",
+              "STOPPED",
+              "DEGRADED"
+            ]
+          },
+          "statusLabel": {
+            "type": "string"
+          },
+          "statusSeverity": {
+            "type": "string"
+          },
+          "statusReason": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "lastPollAt": {
+            "type": "string"
+          },
+          "staleSince": {
+            "type": "string"
+          },
+          "pendingJobCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "recentFailedCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lastFailureReason": {
+            "type": "string"
+          },
+          "lastFailedAlertId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lastSuccessfulSendAt": {
+            "type": "string"
+          },
+          "circuitBreakerState": {
+            "type": "string"
+          }
+        }
+      },
+      "MachineListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MachineView"
+            }
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "type": "string"
+          }
+        }
+      },
+      "InstallationListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InstallationView"
+            }
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "type": "string"
+          }
+        }
+      },
+      "PageResponseMachineResponsibilityResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MachineResponsibilityResponse"
+            }
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "MachineGroupListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MachineGroupView"
+            }
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "type": "string"
+          }
+        }
+      },
+      "PlantScopeResponse": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string"
+          },
+          "availablePlants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlantScopeView"
+            }
+          },
+          "defaultPlantId": {
+            "type": "string"
+          },
+          "emptyReason": {
+            "type": "string"
+          }
+        }
+      },
+      "PlantScopeView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "AuditLogEntryView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "actorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "actorName": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "CREATE",
+              "UPDATE",
+              "DELETE"
+            ]
+          },
+          "entityType": {
+            "type": "string",
+            "enum": [
+              "PLANT",
+              "MACHINE_GROUP",
+              "MACHINE",
+              "SPAREPART_TAXONOMY",
+              "SPAREPART",
+              "INSTALLATION",
+              "RESPONSIBILITY",
+              "ALERT"
+            ]
+          },
+          "entityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "entityLabel": {
+            "type": "string"
+          },
+          "plantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "previousValue": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "newValue": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AuditLogListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditLogEntryView"
+            }
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "type": "string"
+          }
+        }
+      },
+      "AlertListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlertView"
+            }
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "type": "string"
+          }
+        }
+      },
+      "AlertView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "machineId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "machineCode": {
+            "type": "string"
+          },
+          "machineName": {
+            "type": "string"
+          },
+          "plantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "plantCode": {
+            "type": "string"
+          },
+          "plantName": {
+            "type": "string"
+          },
+          "machineGroupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "machineGroupName": {
+            "type": "string"
+          },
+          "installationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sparepartId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sparepartCode": {
+            "type": "string"
+          },
+          "sparepartName": {
+            "type": "string"
+          },
+          "functionName": {
+            "type": "string"
+          },
+          "thresholdPercentage": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "baselineCounter": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expectedProductionCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "currentCounterSnapshot": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "consumedProductionCountSnapshot": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "consumedPercentageSnapshot": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "ACKNOWLEDGED",
+              "RESOLVED"
+            ]
+          },
+          "statusReason": {
+            "type": "string"
+          },
+          "traceId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "notificationSummary": {
+            "$ref": "#/components/schemas/NotificationSummary"
+          }
+        }
+      },
+      "NotificationSummary": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "escalationLevel": {
+            "type": "string"
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "errorDetail": {
+            "type": "string"
+          }
+        }
+      },
+      "AlertNotificationHistoryResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationJobView"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "NotificationAttemptView": {
+        "type": "object",
+        "properties": {
+          "attemptNumber": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Attempt sequence number (1-based per job)",
+            "example": 1
+          },
+          "status": {
+            "type": "string",
+            "description": "Attempt status SENT or FAILED",
+            "example": "SENT"
+          },
+          "attemptedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of the attempt (UTC ISO-8601)"
+          },
+          "responseDetail": {
+            "type": "string",
+            "description": "Response detail truncated to 512 chars at write time"
+          },
+          "traceId": {
+            "type": "string",
+            "description": "Correlation trace id"
+          }
+        }
+      },
+      "NotificationJobView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "alertId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "escalationLevel": {
+            "type": "string",
+            "description": "Escalation level TECHNICIAN|STAFF|LEADER|SPV|MANAGER",
+            "enum": [
+              "TECHNICIAN",
+              "STAFF",
+              "LEADER",
+              "SPV",
+              "MANAGER"
+            ],
+            "example": "TECHNICIAN"
+          },
+          "status": {
+            "type": "string",
+            "description": "Job status enum",
+            "enum": [
+              "PENDING",
+              "ROUTING_FAILED",
+              "SENT",
+              "EXHAUSTED",
+              "ESCALATED",
+              "CANCELLED",
+              "RATE_LIMITED"
+            ]
+          },
+          "recipientUserId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Recipient user id (nullable for ROUTING_FAILED)"
+          },
+          "recipientDisplayName": {
+            "type": "string",
+            "description": "Display name resolved from auth_users.loginIdentifier"
+          },
+          "recipientPhoneMasked": {
+            "type": "string",
+            "description": "Masked phone for display (e.g. +62***890)"
+          },
+          "attemptCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxAttempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when WAHA send succeeded (SENT/ESCALATED)"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nextAttemptAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Next attempt timestamp for pending WAHA retry (nullable)"
+          },
+          "errorDetail": {
+            "type": "string",
+            "description": "Error detail truncated to 512 chars (for failed/routing_failed)"
+          },
+          "traceId": {
+            "type": "string"
+          },
+          "attempts": {
+            "type": "array",
+            "description": "Attempt history 0..3 items ordered by attemptNumber asc",
+            "items": {
+              "$ref": "#/components/schemas/NotificationAttemptView"
+            }
+          }
+        }
+      }
+    }
+  }
+}

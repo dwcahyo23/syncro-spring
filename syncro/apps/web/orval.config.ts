@@ -2,7 +2,10 @@ import { defineConfig } from "orval";
 
 export default defineConfig({
   syncro: {
-    input: "http://localhost:8080/v3/api-docs",
+    // DW-117: pinned to the committed snapshot for reproducible generation.
+    // Refresh it intentionally via `npm run generate:snapshot` when the backend
+    // contract changes, then review the generated diff.
+    input: "./openapi.json",
     output: {
       mode: "split",
       target: "src/lib/api/generated/syncro.ts",

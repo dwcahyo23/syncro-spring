@@ -18,6 +18,7 @@
     "test:api:check": "node tests/support/check-api-collection.mjs",
     "test:unit": "vitest run",
     "prepare": "husky",
+    "generate:snapshot": "node scripts/fetch-openapi.mjs",
     "generate:api": "orval --config orval.config.ts",
     "generate:presets": "ts-node -P tsconfig.scripts.json src/scripts/generate-theme-presets.ts"
   },
