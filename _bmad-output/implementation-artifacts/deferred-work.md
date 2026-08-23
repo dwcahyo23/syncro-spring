@@ -301,7 +301,9 @@ origin: code review of spec-3-6-support-optional-machine-telemetry-fields.md
 location: MachineService.java
 severity: high
 reason: `MachineService.update` is full-replace, so a client that omits or sends `null` for `optionalTelemetryFields` on a routine machine edit normalizes to `List.of()` and silently erases the machine's previously configured optional telemetry fields. Fixing requires either null-means-unchanged update semantics or frontend field passthrough coordinated with Stories 3.7/3.8 — a design decision, not a local code fix.
-status: open
+decision: 2026-08-23 Interactive resolve (bmad-loop-resolve method) — Option A chosen: null = leave stored config untouched; explicit [] clears; populated list replaces. Server-side fix protects ALL clients; FE passthrough unnecessary for safety.
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 14 — update() preserves stored config when the JSON key is absent; validateCommand split so required-field collection still runs; integration tests pin all three semantics (absent=preserve / []=clear / list=replace); no existing expectation broke
 
 ### DW-33: Sequential per-machine Redis reads on the machine list hydration path
 
