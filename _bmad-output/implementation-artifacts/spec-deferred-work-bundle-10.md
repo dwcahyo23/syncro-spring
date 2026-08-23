@@ -3,7 +3,8 @@ title: 'Deferred-work bundle 10: alerts history type integrity — Orval regen, 
 type: 'chore'
 created: '2026-08-23'
 baseline_revision: 'f5ed328'
-status: 'in-review'
+final_revision: 'a1e94e6'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
