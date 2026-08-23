@@ -537,7 +537,8 @@ origin: migrated from legacy ledger ("WAHA GOWS 2026.8.1 upgrade verification (2
 location: WAHA dashboard session `default`
 severity: medium
 reason: The session's webhook list still posts `session.status` and `message` events to `httpbin.org/post` (leftover test config). No Syncro consumer exists; harmless but should be cleaned from the session config to avoid leaking message events to a third party.
-status: open
+status: done 2026-08-23
+resolution: already resolved (verified live): GET /api/sessions/default shows webhooks=null — httpbin webhook no longer present (reset during the NOWEB->GOWS engine migration); no other session exists
 
 ### DW-91: Telemetry ingest `workerThreads` is declared but never wired — queue consumed single-threaded
 
@@ -584,7 +585,8 @@ origin: migrated from legacy ledger ("EMQX 6.2.2 feature deep-dive for backend o
 location: Running EMQX instance (schema registry `telemetry-schema`; queues `que_test`, `syncro-latest-probe`)
 severity: low
 reason: Schema registry `telemetry-schema` (`POST /api/v5/schema_registry`), queues `que_test` and `syncro-latest-probe` (`POST /api/v5/queues`) were created as probes on 2026-08-21 and could not be removed (DELETE returned 404; queue deletion likely requires the `streams` module enabled, which is `enable=false`). Clean up via dashboard or by enabling streams module; harmless but clutter the EMQX UI.
-status: open
+status: done 2026-08-23
+resolution: resolved live — dashboard login (Bearer) used; schema `telemetry-schema` DELETEd; the earlier queue-DELETE 404 was a wrong route (list=/queues but per-item ops=/queue/{name}, confirmed against /api-spec.json); streams.enable flipped true at runtime via `emqx ctl conf load`, both probe queues DELETEd, then enable restored to false. Final state: schema_registry empty, queues empty
 
 ### DW-95: Rules Engine fully active
 
