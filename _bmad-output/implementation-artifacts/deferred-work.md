@@ -67,7 +67,8 @@ resolution-undo: cc5d75d761fd6374ffb8e047e9ec1dfeb40b9c2acb6e41087d6dcce158aaad7
 origin: migrated from legacy ledger ("Deferred from: code review of 2-6-install-spareparts-on-machines-with-lifetime-baseline.md (2026-06-05)"), 2026-08-07
 location: n/a
 reason: Worthless skipped test suites — deferred, pre-existing.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 12 — 7 audit-log web it.skip revived (P0 pagination-reset gap fixed in product) and all 4 backend ATDD scaffold classes activated (15/15 green) after repairing stale fixtures/wiring; revival surfaced a real production bug (actor LIKE missing ESCAPE clause) fixed with a one-line change
 
 ### DW-9: Missing optimistic locking on Installation entity
 
@@ -851,4 +852,12 @@ origin: migrated from legacy ledger ("code review of spec-7-7-document-pilot-val
 location: syncro/.gitignore (screenshots negation)
 severity: low
 reason: the `!pilot/` line is redundant given the parent re-include, so the whole `syncro/docs/screenshots/` subtree is re-included rather than just `pilot/`. User-approved change; tightening to pilot/-only scope is optional future work.
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 12 — replaced blanket parent negation with scoped 4-rule set; check-ignore verified docs-non-pilot ignored / pilot tracked / foreign screenshots dirs ignored
+
+### DW-120: Machine/MachineGroup search LIKE lacks ESCAPE declaration (same defect class as fixed audit actor filter)
+
+source_spec: `_bmad-output/implementation-artifacts/spec-deferred-work-bundle-12.md`
+summary: AuditLogRepository actor filtering returned zero rows for logins containing _ or % because normalizeActor escapes LIKE wildcards but the JPQL lacked an escape declaration; MachineRepository.java:21,38 and MachineGroupRepository.java:17 use the same bare like :search with identically escaping services (MachineService.normalizeSearch, MachineGroupService) - machine/machine-group search by terms containing underscore likely matches zero rows today.
+evidence: bundle-12 revival proved the audit variant empirically (yusuf_dev exact search returned 0 before adding escape '\'); SparepartRepository already declares escape '\\' making the three repositories inconsistent.
 status: open
