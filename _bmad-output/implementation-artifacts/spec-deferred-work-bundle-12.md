@@ -3,7 +3,8 @@ title: 'Deferred-work bundle 12: repo hygiene - skipped-test revival, audit-log 
 type: 'chore'
 created: '2026-08-23'
 baseline_revision: '355e866'
-status: 'ready-for-dev'
+final_revision: '5ee491b'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
