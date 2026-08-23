@@ -3,7 +3,8 @@ title: 'Deferred-work bundle 14: BOM series LIKE escape - underscore prefixes no
 type: 'bugfix'
 created: '2026-08-23'
 baseline_revision: 'b8525e5'
-status: 'ready-for-dev'
+final_revision: '3bfa5a2'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
