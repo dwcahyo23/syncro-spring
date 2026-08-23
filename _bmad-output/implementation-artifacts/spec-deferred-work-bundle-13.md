@@ -3,7 +3,8 @@ title: 'Deferred-work bundle 13: follow-through - machine/group search LIKE esca
 type: 'bugfix'
 created: '2026-08-23'
 baseline_revision: 'eec899c'
-status: 'ready-for-dev'
+final_revision: '071e6f9'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
