@@ -127,8 +127,10 @@ temp/
 *.secrets
 *credentials*
 *credential*
-*token*
+# Token FILES only - source files whose NAME contains "token" must stay tracked
+# (DW-75: e.g. syncro JwtTokenService.java; build reproducibility).
 *.token
+syncro/infra/influxdb/admin-token
 *.auth
 *.kubeconfig
 service-account*.json

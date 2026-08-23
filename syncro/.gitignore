@@ -11,7 +11,10 @@
 *secret*
 *secrets*
 *credentials*
-*token*
+# Token FILES only - source files whose NAME contains "token" (e.g.
+# JwtTokenService.java) must stay tracked (DW-75: build reproducibility).
+*.token
+/infra/influxdb/admin-token
 
 # OS / editor
 .DS_Store
