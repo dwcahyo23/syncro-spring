@@ -908,3 +908,19 @@ reason: MachineRepository.java:21,38 and MachineGroupRepository.java:17 use the 
 evidence: bundle-12 revival proved the audit variant empirically (yusuf_dev exact search returned 0 before adding escape '\'); SparepartRepository already declares escape '\\' making the three repositories inconsistent.
 status: done 2026-08-23
 resolution: resolved by deferred-work bundle 13 — escape '\' added to all three predicates; tests pin underscore-literal match, %-no-widening, backslash term, and name-clause coverage in both integration suites
+
+### DW-121: SparepartRepository.findCodesByPrefix - BOM prefix LIKE has no ESCAPE declaration
+
+source_spec: `_bmad-output/implementation-artifacts/spec-deferred-work-bundle-14.md`
+summary: bomPrefix derives from machine.getCode() which legally contains _; the bare like concat(prefix,'%') let _ act as a single-char wildcard during BOM-series collision detection, inflating maxSeries and skipping sequence numbers for sibling machines differing only at an underscore position.
+evidence: SparepartRepository findCodesByPrefix had no escape clause and no prefix escaping; MACHINE_CODE_PATTERN admits [._-]; bundle-12 proved the identical mechanism empirically on the audit actor filter.
+decision: implemented directly by deferred-work bundle 14.
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 14 — prefix escaped (\ % _) before the query, escape '\' declared in JPQL, repository renamed to findCodesByEscapedPrefix with contract javadoc; red/green collision test (MCHAA vs MCH_A) pins the behavior
+
+### DW-123: LIKE-escape chain duplicated across five call sites
+
+source_spec: `_bmad-output/implementation-artifacts/spec-deferred-work-bundle-14.md`
+summary: The identical three-replace escape chain (\ -> \\, % -> \%, _ -> \_) now exists in SparepartService.nextBomCode, MachineService.normalizeSearch, MachineGroupService.normalizeSearch, AuditLogService.normalizeActor, and SparepartService bomCodeForUpdate-adjacent paths - drift hazard if one copy is later fixed or reordered.
+evidence: grep shows the same replace triple in four services; order (backslash first) is load-bearing and only documented at some sites.
+status: open
