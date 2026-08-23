@@ -508,6 +508,65 @@ class MachineServiceIntegrationTest {
         });
   }
 
+  // --- DW-32: update semantics for optionalTelemetryFields ---
+
+  @Test
+  @DisplayName("DW-32 absent optionalTelemetryFields on update preserves the stored config")
+  void updateWithAbsentFieldPreservesStoredConfig() {
+    var plant = plant("GM1", "Plant GM1");
+    var group = group(plant, "Forming");
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    machineService.create(admin, command(plant.getId(), group.getId(), "BF_0001", MachineStatus.ACTIVE,
+        List.of("vibration", "rpm")));
+
+    // JSON key omitted -> null in the bound command
+    var updated = machineService.update(admin, machineByCode("BF_0001"),
+        new MachineCommand(plant.getId(), group.getId(), "BF_0001", "Renamed", MachineStatus.ACTIVE,
+            "Juki", LocalDate.parse("2026-05-27"), "notes", null));
+
+    assertThat(updated.optionalTelemetryFields()).containsExactly("vibration", "rpm");
+  }
+
+  @Test
+  @DisplayName("DW-32 explicit empty array clears the stored config")
+  void updateWithEmptyArrayClearsStoredConfig() {
+    var plant = plant("GM1", "Plant GM1");
+    var group = group(plant, "Forming");
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    var created = machineService.create(admin, command(plant.getId(), group.getId(), "BF_0002", MachineStatus.ACTIVE,
+        List.of("vibration")));
+
+    var updated = machineService.update(admin, created.id(),
+        new MachineCommand(plant.getId(), group.getId(), "BF_0002", "BF_0002", MachineStatus.ACTIVE,
+            "Juki", LocalDate.parse("2026-05-27"), "notes", List.of()));
+
+    assertThat(updated.optionalTelemetryFields()).isEmpty();
+  }
+
+  @Test
+  @DisplayName("DW-32 populated list replaces the stored config")
+  void updateWithPopulatedListReplacesStoredConfig() {
+    var plant = plant("GM1", "Plant GM1");
+    var group = group(plant, "Forming");
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    var created = machineService.create(admin, command(plant.getId(), group.getId(), "BF_0003", MachineStatus.ACTIVE,
+        List.of("vibration")));
+
+    var updated = machineService.update(admin, created.id(),
+        new MachineCommand(plant.getId(), group.getId(), "BF_0003", "BF_0003", MachineStatus.ACTIVE,
+            "Juki", LocalDate.parse("2026-05-27"), "notes", List.of("temperature", "pressure")));
+
+    assertThat(updated.optionalTelemetryFields()).containsExactly("temperature", "pressure");
+  }
+
+  private UUID machineByCode(String code) {
+    return machines.findAll().stream()
+        .filter(m -> code.equalsIgnoreCase(m.getCode()))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("machine not found: " + code))
+        .getId();
+  }
+
   private MachineCommand command(UUID plantId, UUID groupId, String code, MachineStatus status) {
     return new MachineCommand(plantId, groupId, code, "JBF19", status, "Juki", LocalDate.parse("2026-05-27"),
         "Pilot machine", List.of());

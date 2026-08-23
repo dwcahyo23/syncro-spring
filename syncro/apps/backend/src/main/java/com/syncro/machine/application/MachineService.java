@@ -135,7 +135,10 @@ public class MachineService {
   @Transactional
   public MachineView create(AuthenticatedUser user, MachineCommand command) {
     requireMutationRole(user);
-    var optionalTelemetryFields = validateCommand(command);
+    validateRequiredCommandFields(command);
+    List<String> optionalTelemetryFields = command.optionalTelemetryFields() == null
+        ? List.of()
+        : normalizeOptionalTelemetryFields(command.optionalTelemetryFields());
     if (user.applicationRole() != ApplicationRole.SUPER_ADMIN) {
       plantScopes.requirePlantAccess(user, command.plantId());
     } else if (!plants.existsById(command.plantId())) {
@@ -165,8 +168,13 @@ public class MachineService {
   @Transactional
   public MachineView update(AuthenticatedUser user, UUID machineId, MachineCommand command) {
     requireMutationRole(user);
-    var optionalTelemetryFields = validateCommand(command);
     var machine = findScoped(user, machineId);
+    validateRequiredCommandFields(command);
+    // DW-32: absent optionalTelemetryFields (JSON key omitted -> null) leaves the stored
+    // configuration untouched; an explicit empty array clears it; a populated list replaces it.
+    var optionalTelemetryFields = command.optionalTelemetryFields() == null
+        ? machine.getOptionalTelemetryFields()
+        : normalizeOptionalTelemetryFields(command.optionalTelemetryFields());
     var plantId = machine.getPlant().getId();
     if (!plantId.equals(command.plantId())) {
       throw new MachineDataIntegrityException();
@@ -246,7 +254,7 @@ public class MachineService {
     return false;
   }
 
-  private List<String> validateCommand(MachineCommand command) {
+  private void validateRequiredCommandFields(MachineCommand command) {
     Map<String, String> missing = new LinkedHashMap<>();
     if (command.plantId() == null) {
       missing.put("plantId", "Plant is required.");
@@ -260,7 +268,6 @@ public class MachineService {
     if (!missing.isEmpty()) {
       throw new MachineValidationException(missing);
     }
-    return normalizeOptionalTelemetryFields(command.optionalTelemetryFields());
   }
 
   private List<String> normalizeOptionalTelemetryFields(List<String> configured) {
