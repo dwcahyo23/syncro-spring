@@ -403,6 +403,33 @@ class MachineServiceIntegrationTest {
   }
 
   @Test
+  @DisplayName("DW-118 reserved-name check is case-insensitive (COUNTING rejected too)")
+  void reservedNameCheckIsCaseInsensitive() {
+    var plant = plant("GM1", "Plant GM1");
+    var group = group(plant, "Forming");
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+
+    assertThatThrownBy(() -> machineService.create(admin, command(plant.getId(), group.getId(), "BF-08410",
+        MachineStatus.ACTIVE, List.of("COUNTING"))))
+        .isInstanceOfSatisfying(MachineValidationException.class, ex ->
+            assertThat(ex.getFieldErrors())
+                .containsEntry("optionalTelemetryFields", "'COUNTING' is reserved by the base telemetry contract."));
+  }
+
+  @Test
+  @DisplayName("DW-118 case-differing duplicates collapse to the first casing")
+  void caseDifferingDuplicatesCollapse() {
+    var plant = plant("GM1", "Plant GM1");
+    var group = group(plant, "Forming");
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+
+    var created = machineService.create(admin, command(plant.getId(), group.getId(), "BF-08410",
+        MachineStatus.ACTIVE, List.of("Temp", "TEMP", "temp", "rpm")));
+
+    assertThat(created.optionalTelemetryFields()).containsExactly("Temp", "rpm");
+  }
+
+  @Test
   @DisplayName("3.6-SVC-007 P0 name outside allowed pattern in config is rejected")
   void badNamePatternInConfigIsRejected() {
     var plant = plant("GM1", "Plant GM1");

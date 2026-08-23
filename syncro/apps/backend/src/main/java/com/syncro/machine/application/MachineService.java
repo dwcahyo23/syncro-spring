@@ -275,6 +275,9 @@ public class MachineService {
       return List.of();
     }
     var normalized = new ArrayList<String>();
+    // DW-118: case-insensitive guards — reserved names and duplicates are compared
+    // case-insensitively (Locale.ROOT) while the user's casing is preserved in storage.
+    var seenLower = new java.util.HashSet<String>();
     for (String entry : configured) {
       var trimmed = entry == null ? "" : entry.trim();
       if (trimmed.isEmpty()) {
@@ -284,7 +287,7 @@ public class MachineService {
       if (reason != null) {
         throw new MachineValidationException(Map.of("optionalTelemetryFields", "'" + trimmed + "' " + reason));
       }
-      if (!normalized.contains(trimmed)) {
+      if (seenLower.add(trimmed.toLowerCase(Locale.ROOT))) {
         normalized.add(trimmed);
       }
     }
@@ -305,7 +308,8 @@ public class MachineService {
     if (!OPTIONAL_FIELD_PATTERN.matcher(trimmed).matches()) {
       return "may only contain letters, numbers and underscores.";
     }
-    if (RESERVED_OPTIONAL_FIELDS.contains(trimmed)) {
+    var lower = trimmed.toLowerCase(Locale.ROOT);
+    if (RESERVED_OPTIONAL_FIELDS.stream().anyMatch(reserved -> reserved.toLowerCase(Locale.ROOT).equals(lower))) {
       return "is reserved by the base telemetry contract.";
     }
     return null;
