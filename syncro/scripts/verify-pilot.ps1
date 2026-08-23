@@ -32,14 +32,17 @@
                        latest rejection reason: a quarantined publish is the fastest root-cause
                        path).
       4. ALERT       - interpreted from the counter state: counting=890 -> expect zero
-                       non-RESOLVED alerts; counting=900 -> expect exactly one non-RESOLVED
-                       alert (snapshot 90.00, traceId printed); no counter row -> pre-publish
-                       baseline (expect none).
+                        non-RESOLVED alerts; counting=900 -> expect exactly one non-RESOLVED
+                        alert whose status must be OPEN or ACKNOWLEDGED (corrupt statuses FAIL;
+                        snapshot 90.00 asserted; optional -ExpectAlertStatus pins the stage);
+                        no counter row -> pre-publish baseline (expect none).
       5. NOTIFICATION- notification_jobs for the active alert: escalation_level, status
-                       (PENDING/ROUTING_FAILED/SENT/EXHAUSTED/ESCALATED/CANCELLED/RATE_LIMITED),
-                       recipient_phone, trace_id, error_detail. Placeholder pilot numbers
-                       (6281234567801/02/03) make PENDING/ROUTING_FAILED with attempt evidence
-                       the expected live-WAHA outcome - reported as evidence, not failure.
+                        (PENDING/ROUTING_FAILED/SENT/EXHAUSTED/ESCALATED/CANCELLED/RATE_LIMITED),
+                        recipient_phone, trace_id, error_detail. Rows get REAL verdicts: an
+                        unknown status, a trace_id that differs from the alert's, or a job set
+                        without a TECHNICIAN-level row all FAIL. Placeholder pilot numbers
+                        (6281234567801/02/03) make PENDING/ROUTING_FAILED with attempt evidence
+                        the expected live-WAHA outcome - reported as evidence, not failure.
       6. ACKNOWLEDGEMENT RESULT - alert status plus per-level job timeline. After an
                        acknowledgement, STAFF/LEADER jobs must not be SENT (the acknowledge
                        action itself is owned by story 7-6; this section reports the state).
@@ -67,6 +70,23 @@
     publishing the threshold fixture with the backend running). Without -ExpectCounting
     the observed counting is only reported, never asserted.
 
+.EXAMPLE
+    powershell -NoProfile -File syncro/scripts/verify-pilot.ps1 -ExpectAlertStatus ACKNOWLEDGED
+
+    Hard-asserts the observed alert status equals exactly the given stage: OPEN for a fresh
+    threshold proof run, ACKNOWLEDGED for a post-acknowledgement proof run. The assertion is
+    evaluated when the ALERT section observes exactly one non-RESOLVED alert (the canonical
+    counting=900 state); in any other state it is skipped with a WARN so it can never
+    silently pass. Without the parameter the status is only validated against the allowed
+    set (OPEN/ACKNOWLEDGED).
+
+.EXAMPLE
+    powershell -NoProfile -File syncro/scripts/verify-pilot.ps1 -QuarantineWarnOnly
+
+    Reports pre-existing telemetry_quarantine rows as WARN instead of FAIL - for the
+    documented "quarantine present from earlier experiments" scenario where the run must
+    stay green while the rows are cleaned up out-of-band. Default remains FAIL.
+
 .NOTES
     Prerequisites: the docker compose stack up (postgres + redis at minimum). The EMQX and
     backend probes are optional (warn-only). All connection values come from parameters, the
@@ -80,7 +100,9 @@ param(
     [string]$ComposeFile,
     [string]$BackendHealthUrl = 'http://localhost:8080/api/v1/health',
     [string]$WebUrl = 'http://localhost:3000',
-    [Nullable[long]]$ExpectCounting
+    [Nullable[long]]$ExpectCounting,
+    [ValidateSet('OPEN', 'ACKNOWLEDGED')][string]$ExpectAlertStatus,
+    [switch]$QuarantineWarnOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -126,6 +148,7 @@ foreach ($pgVar in @('POSTGRES_USER', 'POSTGRES_DB')) {
 
 $script:FailCount = 0
 $script:RedisUnavailable = $false
+$script:ExpectAlertStatusEvaluated = $false
 
 function Write-Section { param([Parameter(Mandatory = $true)][string]$Name)
     Write-Host ''
@@ -346,9 +369,16 @@ if ($quarantineCount -eq 0) {
     } catch {
         $latestQuarantine = '(latest row could not be read)'
     }
-    Print-Fail "telemetry_quarantine has $quarantineCount row(s) - latest: $latestQuarantine"
-    Print-Info  'a quarantined publish is the fastest root-cause path: inspect raw_payload /'
-    Print-Info  'rejection_field in pgAdmin (local/dev evidence tool only).'
+    if ($QuarantineWarnOnly) {
+        Print-Warn "telemetry_quarantine has $quarantineCount row(s), reported as WARN (-QuarantineWarnOnly) - latest: $latestQuarantine"
+        Print-Info 'a quarantined publish is the fastest root-cause path: inspect raw_payload /'
+        Print-Info 'rejection_field in pgAdmin (local/dev evidence tool only). Clean up out-of-band.'
+    } else {
+        Print-Fail "telemetry_quarantine has $quarantineCount row(s) - latest: $latestQuarantine"
+        Print-Info  'a quarantined publish is the fastest root-cause path: inspect raw_payload /'
+        Print-Info  'rejection_field in pgAdmin (local/dev evidence tool only). Pre-existing rows from'
+        Print-Info  'earlier experiments can be tolerated with -QuarantineWarnOnly.'
+    }
 }
 
 # ---------------------------------------------------------------------------
@@ -397,16 +427,33 @@ if ($null -eq $countingValue) {
         if ($alertSnapshot -ne '90.00') {
             Print-Fail "consumed_percentage_snapshot expected 90.00 for counting=900, got $alertSnapshot"
         }
+        if ($alertStatus -ne 'OPEN' -and $alertStatus -ne 'ACKNOWLEDGED') {
+            Print-Fail "alert status '$alertStatus' is outside the valid non-RESOLVED set (OPEN/ACKNOWLEDGED) - persisted state corruption suspected"
+        } elseif ($ExpectAlertStatus -and $alertStatus -ne $ExpectAlertStatus) {
+            Print-Fail "expected alert status $ExpectAlertStatus (-ExpectAlertStatus), got $alertStatus"
+        }
+        $script:ExpectAlertStatusEvaluated = $true
     } else {
         Print-Fail "$($activeAlertRows.Count) non-RESOLVED alerts exist - expected exactly one. Note: the V19 partial unique index is per (machine_sparepart_installation_id, threshold_percentage), NOT per machine, so multiple installations can legitimately each hold one non-RESOLVED alert; the pilot's exactly-one expectation assumes the single seeded installation."
     }
 } else {
-    Print-Info "counter counting=$countingValue is not a canonical pilot boundary (890/900) - alert state reported as-is"
+    if ($null -eq $ExpectCounting) {
+        Print-Warn "counter counting=$countingValue is not a canonical pilot boundary (890/900) - if this is unexpected, inspect machine_counter_states history and pin the expected value with -ExpectCounting"
+    } else {
+        Print-Info "counter counting=$countingValue is not a canonical pilot boundary (890/900) - alert state reported as-is (-ExpectCounting assertion already handled in TELEMETRY)"
+    }
+    if ((($countingValue -as [long]) -gt 900) -and $activeAlertRows.Count -eq 0) {
+        Print-Warn "counting=$countingValue exceeds the 900 threshold but no non-RESOLVED alert exists - threshold-crossing evidence is missing (was the backend running at publish?)"
+    }
     if ($activeAlertRows.Count -eq 0) {
         Print-Info 'no non-RESOLVED alert'
     } else {
         Print-Info "non-RESOLVED alert(s): $($activeAlertRows.Count) (status=$alertStatus snapshot=$alertSnapshot trace_id=$alertTraceId)"
     }
+}
+
+if ($ExpectAlertStatus -and -not $script:ExpectAlertStatusEvaluated) {
+    Print-Warn "-ExpectAlertStatus $ExpectAlertStatus was not evaluated: the ALERT section did not observe exactly one non-RESOLVED alert in this state"
 }
 
 # ---------------------------------------------------------------------------
@@ -416,16 +463,25 @@ Write-Section '5. NOTIFICATION (notification_jobs evidence)'
 $jobRows = @()
 if ($alertId) {
     try {
-        $jobRows = @(Invoke-PilotSql "SELECT escalation_level || '|' || status || '|' || coalesce(recipient_phone, '') || '|' || coalesce(trace_id, '') || '|' || coalesce(error_detail, '') FROM notification_jobs WHERE alert_id = '$alertId'::uuid ORDER BY CASE escalation_level WHEN 'TECHNICIAN' THEN 1 WHEN 'STAFF' THEN 2 WHEN 'LEADER' THEN 3 ELSE 4 END, created_at" | Where-Object { $_ })
+        $jobRows = @(Invoke-PilotSql "SELECT escalation_level || '|' || status || '|' || coalesce(recipient_phone, '') || '|' || coalesce(trace_id, '') || '|' || coalesce(replace(replace(error_detail, chr(13), ''), chr(10), ' '), '') FROM notification_jobs WHERE alert_id = '$alertId'::uuid ORDER BY CASE escalation_level WHEN 'TECHNICIAN' THEN 1 WHEN 'STAFF' THEN 2 WHEN 'LEADER' THEN 3 ELSE 4 END, created_at" | Where-Object { $_ })
     } catch {
         Print-Fail "cannot read notification_jobs: $($_.Exception.Message)"
     }
     if ($jobRows.Count -eq 0) {
         Print-Info 'no notification jobs yet for this alert (async dispatch may not have run; story 7-5 owns the proof)'
     } else {
+        $allowedJobStatuses = @('PENDING', 'ROUTING_FAILED', 'SENT', 'EXHAUSTED', 'ESCALATED', 'CANCELLED', 'RATE_LIMITED')
         foreach ($jobRow in $jobRows) {
             $jobParts = $jobRow -split '\|', 5
             Print-Pass "job: escalation_level=$($jobParts[0]) status=$($jobParts[1]) recipient_phone=$($jobParts[2]) trace_id=$($jobParts[3]) error_detail=$($jobParts[4])"
+            if ($allowedJobStatuses -notcontains $jobParts[1]) {
+                Print-Fail "job $($jobParts[0]) has unknown status '$($jobParts[1])' - allowed: $($allowedJobStatuses -join '/')"
+            }
+            if ($alertTraceId -and $jobParts[3] -and $jobParts[3] -ne $alertTraceId) {
+                Print-Fail "trace_id mismatch for job $($jobParts[0]): alert trace_id=$alertTraceId but job trace_id=$($jobParts[3]) - jobs must inherit the alert's trace"
+            } elseif ($alertTraceId -and -not $jobParts[3]) {
+                Print-Fail "job $($jobParts[0]) has an empty trace_id but alert trace_id=$alertTraceId - jobs must inherit the alert's trace"
+            }
             if ($jobParts[2].StartsWith('628123456780')) {
                 Print-Info  '  recipient is a PLACEHOLDER pilot number (6281234567801/02/03): PENDING/ROUTING_FAILED with'
                 Print-Info  '  attempt evidence is the expected live-WAHA outcome until real numbers are set (seed caveat).'
@@ -433,7 +489,7 @@ if ($alertId) {
         }
         $technicianJob = $jobRows | Where-Object { $_ -like 'TECHNICIAN|*' }
         if (-not $technicianJob) {
-            Print-Info 'no TECHNICIAN job yet - initial notification is level 1 (TECHNICIAN); dispatch is async (7-5 proof)'
+            Print-Fail "notification jobs exist for this alert but none at TECHNICIAN level - the initial notification is always level 1 (TECHNICIAN); the escalation chain start row is missing"
         }
     }
 } else {
