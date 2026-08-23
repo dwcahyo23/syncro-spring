@@ -15,7 +15,8 @@ decision: 2026-08-19 Bundle it now — Create a dev session that enables EMQX pa
 origin: migrated from legacy ledger ("Deferred from: code review of 2-2-manage-plant-scoped-machine-groups (2026-05-27)"), 2026-08-07
 location: syncro/apps/web/src/features/master-data/machine-groups/machine-group-management.tsx:176
 reason: Current code/browser evidence is acceptable for this review, but component tests or captured trace for empty/loading/error/read-only/forbidden/validation states would make regression proof stronger.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 8 — component suite already covered all six states (pre-existing work surfaced during bundle); bundle added hardening tests: Retry refetches both lists, read-only rows expose View only badges
 
 ### DW-3: Hardcoded local ports in web test config
 
@@ -313,7 +314,8 @@ origin: code review of spec-3-7-show-latest-telemetry-dashboard.md
 location: syncro/apps/web/src/features/telemetry/hooks/useTelemetryDashboardQuery.ts
 severity: low
 reason: `useTelemetryDashboardQuery` requests `size: 200` and renders whatever returns; if a plant scope ever exceeds 200 ACTIVE machines the dashboard silently drops the remainder with no "showing first N" notice or pagination. The spec's I/O matrix assumes plant-scoped counts well below 200; pagination/virtualization is out of Story 3.7 scope. Revisit when any plant approaches the cap.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 8 — truncation notice (aria-live) derived from totalElements > items.length, truthful for exact-fit pages and server-capped responses alike; singular/plural copy fixed
 
 ### DW-35: `machineView.ts` generated types missing `latestTelemetry` field
 
@@ -351,7 +353,8 @@ status: open
 origin: code review Story 4.4 (2026-08-19)
 location: alert-detail-page-content.tsx
 reason: AC8 only requires toast feedback; cross-page cache invalidation is UX polish deferred to later.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 8 — acknowledge/resolve/resolve-override invalidate getListAlertsQueryKey(); mutation-wiring test pins list refresh + detail refetch
 
 ### DW-40: Double-submit race — no @Version on SparepartAlertEntity, no frontend debounce
 origin: code review Story 4.4 (2026-08-19)
