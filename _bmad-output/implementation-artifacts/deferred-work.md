@@ -718,7 +718,8 @@ origin: migrated from legacy ledger ("code review of spec-7-5-validate-threshold
 location: verify-pilot script (NOTIFICATION section)
 severity: medium
 reason: job count/status/level/trace_id are print-only; "NOTIFICATION PASS" is cosmetic. "Exactly one job" rests on agent-run SQL. Pre-existing 7-3 tooling limitation.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 7 — NOTIFICATION verdicts enforce status-enum membership, TECHNICIAN-presence, and alert↔job trace equality
 
 ### DW-106: Alert status=OPEN not asserted by verify-pilot
 
@@ -726,7 +727,8 @@ origin: migrated from legacy ledger ("code review of spec-7-5-validate-threshold
 location: verify-pilot script (ALERT section)
 severity: medium
 reason: ALERT section only FAILs when consumed_percentage_snapshot != 90.00. Pre-existing 7-3 tooling limitation.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 7 — status membership (OPEN/ACKNOWLEDGED) asserted with corruption FAIL; opt-in -ExpectAlertStatus pins the stage and warns when unevaluated
 
 ### DW-107: traceId cross-correlation human-read, not tool-enforced
 
@@ -734,7 +736,8 @@ origin: migrated from legacy ledger ("code review of spec-7-5-validate-threshold
 location: verify-pilot script
 severity: low
 reason: verify-pilot never compares alert trace_id against job trace_id. Pre-existing 7-3 tooling limitation.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 7 — tool-enforced trace inheritance FAIL (mismatch and empty-trace cases); error_detail newline-flattened in SQL to keep row parsing sound
 
 ### DW-108: Job idempotency key not independently exercised; no unique index on idempotency_key
 
@@ -759,7 +762,8 @@ origin: migrated from legacy ledger ("code review of spec-7-5-validate-threshold
 location: verify-pilot script (counter baseline)
 severity: low
 reason: before-threshold publish on drifted counter records wrap-around delta. 7-4 established 890 baseline; low risk.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 7 — non-canonical counter values WARN with drift guidance + -ExpectCounting pinning hint; counting>900 without an active alert now warns about missing threshold-crossing evidence
 
 ### DW-111: Quarantine matrix path not executable
 
@@ -767,7 +771,8 @@ origin: migrated from legacy ledger ("code review of spec-7-5-validate-threshold
 location: verify-pilot script
 severity: medium
 reason: verify-pilot hard-FAILs on any telemetry_quarantine row, contradicting the spec's "document as pre-existing" path. Pre-existing script constraint.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 7 — -QuarantineWarnOnly switch downgrades quarantine findings to WARN; default FAIL behavior unchanged
 
 ### DW-112: WAHA disclaimer contradicts the transcribed 7-6 evidence — spec-level resolution needed
 
