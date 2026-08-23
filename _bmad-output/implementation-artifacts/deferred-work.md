@@ -698,7 +698,9 @@ status: open
 origin: Deferred from: code review of spec-7-4-validate-telemetry-before-threshold-does-not-create-alert (2026-08-22)
 location: syncro/apps/backend/src/main/java/com/syncro/auth/application/JwtTokenService.java + syncro/.gitignore:14 (*token*)
 reason: The live backend whose before-threshold behavior story 7-4 validates was compiled from a working tree containing JwtTokenService.java, but that file is untracked and gitignored by the `*token*` pattern, so a fresh checkout or bmad-loop worktree cannot compile the exact binary that produced the accepted-publish evidence. This is an evidence-integrity caveat on every live-stack story until fixed: validation evidence derives from a non-reproducible build. The residual-risk note in story 7-4 documents the defect honestly but does not surface the integrity caveat explicitly. Fix needs a decision: narrow the gitignore pattern (e.g. `*.token`, `secrets/*`, `*.env`) so the auth source file is tracked, or restructure auth to read secrets from a gitignored config/`application-local.yml`. Out of scope for a no-source-change validation story.
-status: open
+decision: 2026-08-23 Interactive resolve (bmad-loop-resolve method) — Option (a) chosen: narrowed both root and syncro gitignore token patterns to token FILES (*.token plus explicit infra/influxdb/admin-token); JwtTokenService verified secret-free (HMAC key injected via SyncroProperties.secret()) and now tracked.
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 17 — JwtTokenService.java tracked; clean test-compile from tracked sources proven; admin-token file remains ignored via explicit path
 
 ### DW-76: Spec-documented admin credential stale vs live .env; secrets may drift from spec
 
