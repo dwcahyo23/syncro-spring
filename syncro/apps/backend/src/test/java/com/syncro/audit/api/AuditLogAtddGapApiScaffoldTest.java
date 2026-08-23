@@ -20,7 +20,6 @@ import com.syncro.config.SecurityConfig;
 import com.syncro.config.TimeConfig;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,8 +46,7 @@ class AuditLogAtddGapApiScaffoldTest {
   private JwtTokenService jwtTokenService;
 
   @Test
-  @Disabled("RED - 2.9-API-007 acceptance lock for R-2.9-8; activate once the gap run reaches it")
-  @DisplayName("2.9-API-007 P1 invalid sort property returns 400")
+    @DisplayName("2.9-API-007 P1 invalid sort property returns 400")
   void invalidSortReturnsBadRequest() throws Exception {
     var user = user(ApplicationRole.SUPER_ADMIN);
     doThrow(new InvalidAuditLogQueryException()).when(auditLog).list(eq(user), any());
@@ -61,8 +59,7 @@ class AuditLogAtddGapApiScaffoldTest {
   }
 
   @Test
-  @Disabled("RED - 2.9-API-008 acceptance lock for R-2.9-8; activate once the gap run reaches it")
-  @DisplayName("2.9-API-008 P1 malformed from date returns 400")
+    @DisplayName("2.9-API-008 P1 malformed from date returns 400")
   void malformedFromReturnsBadRequest() throws Exception {
     mockMvc.perform(get("/api/v1/audit-log")
         .param("from", "not-a-date")
@@ -72,8 +69,7 @@ class AuditLogAtddGapApiScaffoldTest {
   }
 
   @Test
-  @Disabled("RED - 2.9-API-009 acceptance lock for R-2.9-8; activate once the gap run reaches it")
-  @DisplayName("2.9-API-009 P1 malformed to date returns 400")
+    @DisplayName("2.9-API-009 P1 malformed to date returns 400")
   void malformedToReturnsBadRequest() throws Exception {
     mockMvc.perform(get("/api/v1/audit-log")
         .param("to", "not-a-date")
@@ -83,8 +79,7 @@ class AuditLogAtddGapApiScaffoldTest {
   }
 
   @Test
-  @Disabled("RED - 2.9-API-010 acceptance lock for R-2.9-1 API immutability; activate once the gap run reaches it")
-  @DisplayName("2.9-API-010 P1 no write endpoints exist for the audit log")
+    @DisplayName("2.9-API-010 P1 no write endpoints exist for the audit log")
   void noWriteEndpointsForAuditLog() throws Exception {
     var admin = user(ApplicationRole.SUPER_ADMIN);
     mockMvc.perform(put("/api/v1/audit-log").with(auth(admin)))

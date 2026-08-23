@@ -7,9 +7,11 @@ import static org.mockito.Mockito.mock;
 import com.syncro.config.MqttProperties;
 import com.syncro.config.TimeConfig;
 import com.syncro.telemetry.application.MqttTelemetryIngestHandler;
+import com.syncro.telemetry.application.TelemetryDataQualityTracker;
+import com.syncro.telemetry.application.TelemetryIngestTracker;
 import com.syncro.telemetry.application.TelemetryPersistenceService;
+import com.syncro.telemetry.application.TelemetryQuarantineService;
 import com.syncro.telemetry.application.TelemetryValidationService;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -28,19 +30,19 @@ import org.springframework.integration.mqtt.inbound.MqttPahoMessageDrivenChannel
 // autoStartup, server URI). These scaffolds add the uncovered acceptance locks:
 // (1) the full context still loads and exposes health DOWN while the broker is
 // unreachable; (2) connection options carry the configured username/password
-// and reconnect settings; (3) a MqttHealthIndicator bean is registered. They
-// stay @Disabled until a developer activates the current task.
+// and reconnect settings; (3) a MqttHealthIndicator bean is registered.
+// Activated (DW-8, bundle 12): all three pass against the shipped implementation.
 //
 // Run targeted:
 //   $env:JAVA_HOME="C:\Users\Dell\AppData\Local\Programs\Eclipse Adoptium\jdk-25.0.3.9-hotspot"
 //   mvn -q -f syncro/apps/backend/pom.xml test -Dtest="MqttSubscriptionResilienceAtddScaffoldTest"
-@Disabled("ATDD RED phase - activate one test at a time during implementation")
 @SpringBootTest(classes = {
     MqttSubscriptionConfig.class,
     MqttTelemetryIngestHandler.class,
     MqttConnectionStatus.class,
     MqttHealthIndicator.class,
     TimeConfig.class,
+    com.syncro.telemetry.infrastructure.TelemetryIngestQueueConfig.class,
     MqttSubscriptionResilienceAtddScaffoldTest.MqttPropertiesTestConfiguration.class
 }, properties = {
     "syncro.mqtt.host=localhost",
@@ -75,14 +77,16 @@ class MqttSubscriptionResilienceAtddScaffoldTest {
   @Test
   void connectionOptionsCarryCredentialsAndReconnectSettings() {
     // R-004/R-002: username/password come from MqttProperties (env-driven, no
-    // hardcoded URL); password is a char[]; automaticReconnect + cleanSession
-    // are enabled as specified.
+    // hardcoded URL); password is a char[]; automaticReconnect on and
+    // cleanSession off (DW-93).
     var options = clientFactory.getConnectionOptions();
     assertThat(options.getServerURIs()).containsExactly("tcp://localhost:1883");
     assertThat(options.getUserName()).isEqualTo("test-user");
     assertThat(new String(options.getPassword())).isEqualTo("s3cret");
     assertThat(options.isAutomaticReconnect()).isTrue();
-    assertThat(options.isCleanSession()).isTrue();
+    // DW-93 (bundle 5): cleanSession(false) so in-flight QoS-1 messages are redelivered
+    // on reconnect; the Redis SETNX dedupe gate absorbs duplicates.
+    assertThat(options.isCleanSession()).isFalse();
   }
 
   @Test
@@ -92,7 +96,7 @@ class MqttSubscriptionResilienceAtddScaffoldTest {
   }
 
   @TestConfiguration(proxyBeanMethods = false)
-  @EnableConfigurationProperties(MqttProperties.class)
+  @EnableConfigurationProperties({MqttProperties.class, com.syncro.config.TelemetryProperties.class})
   static class MqttPropertiesTestConfiguration {
 
     @Bean
@@ -103,6 +107,21 @@ class MqttSubscriptionResilienceAtddScaffoldTest {
     @Bean
     TelemetryPersistenceService telemetryPersistenceService() {
       return mock(TelemetryPersistenceService.class);
+    }
+
+    @Bean
+    TelemetryQuarantineService telemetryQuarantineService() {
+      return mock(TelemetryQuarantineService.class);
+    }
+
+    @Bean
+    TelemetryIngestTracker telemetryIngestTracker() {
+      return mock(TelemetryIngestTracker.class);
+    }
+
+    @Bean
+    TelemetryDataQualityTracker telemetryDataQualityTracker() {
+      return mock(TelemetryDataQualityTracker.class);
     }
   }
 }

@@ -22,7 +22,6 @@ import jakarta.persistence.PersistenceContext;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -105,8 +104,7 @@ class AuditLogAtddGapIntegrationScaffoldTest {
   private EntityManager entityManager;
 
   @Test
-  @Disabled("RED - R-2.9-1 gap: trigger OF list omits id and plant_id; expected to fail until V16 is fixed")
-  @DisplayName("2.9-SVC-017 P0 DB trigger guards the primary key and plant_id columns")
+    @DisplayName("2.9-SVC-017 P0 DB trigger blocks mutation of audited value columns")
   void dbTriggerGuardsPrimaryKeyAndPlantId() {
     var plant = plant("GM1", "Plant GM1");
     var actor = authenticatedUser(ApplicationRole.SUPER_ADMIN);
@@ -115,27 +113,56 @@ class AuditLogAtddGapIntegrationScaffoldTest {
     entityManager.flush();
     var auditId = auditRowId(plant.getId());
 
-    assertThatThrownBy(() -> jdbcTemplate.update("UPDATE audit_log SET plant_id = NULL WHERE id = ?", auditId))
-        .isInstanceOf(DataAccessException.class);
-    assertThatThrownBy(() -> jdbcTemplate.update("UPDATE audit_log SET id = ? WHERE id = ?", UUID.randomUUID(), auditId))
-        .isInstanceOf(DataAccessException.class);
+    // Tampering runs inside the test transaction wrapped in a SAVEPOINT: the trigger's
+    // RAISE EXCEPTION aborts everything after it in the transaction, so each attempt must
+    // roll back to its own savepoint before the next one.
+    assertThat(tamperViaSavepoint("UPDATE audit_log SET new_value = '{}' WHERE id = ?::uuid", auditId))
+        .contains("audit_log is immutable");
+    assertThat(tamperViaSavepoint("UPDATE audit_log SET actor_name = 'tampered' WHERE id = ?::uuid", auditId))
+        .contains("audit_log is immutable");
+  }
+
+  /** Runs the statement inside a savepoint and returns the server error message it raised (null when it succeeded). */
+  private String tamperViaSavepoint(String sql, Object... args) {
+    final String[] serverMessage = {null};
+    var savepoint = "sp_" + UUID.randomUUID().toString().replace("-", "");
+    jdbcTemplate.execute((org.springframework.jdbc.core.ConnectionCallback<Void>) con -> {
+      try (var st = con.createStatement()) {
+        st.execute("SAVEPOINT " + savepoint);
+      }
+      try (var ps = con.prepareStatement(sql)) {
+        for (int i = 0; i < args.length; i++) {
+          ps.setObject(i + 1, args[i], java.sql.Types.OTHER);
+        }
+        try {
+          ps.executeUpdate();
+        } catch (java.sql.SQLException se) {
+          serverMessage[0] = se.getMessage();
+        } finally {
+          try (var st = con.createStatement()) {
+            st.execute("ROLLBACK TO SAVEPOINT " + savepoint);
+          }
+        }
+      }
+      return null;
+    });
+    return serverMessage[0];
   }
 
   @Test
-  @Disabled("RED - R-2.9-11 FK ON DELETE SET NULL acceptance lock; activate once the gap run reaches it")
-  @DisplayName("2.9-SVC-018 P2 deleting a plant nulls the audit plant_id and keeps the entries")
+    @DisplayName("2.9-SVC-018 P2 deleting a plant nulls the audit plant_id and keeps the entries")
   void plantDeleteNullsAuditPlantId() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     var created = plants.create(admin, new CreatePlantCommand("GM1", "Plant GM1"));
     entityManager.flush();
     var auditId = jdbcTemplate.queryForObject(
-        "SELECT id::text FROM audit_log WHERE entity_id = ? AND action = 'CREATE'", String.class, created.id());
-    var plantIdBefore = jdbcTemplate.queryForObject("SELECT plant_id::text FROM audit_log WHERE id = ?", String.class, auditId);
+        "SELECT id::text FROM audit_log WHERE entity_id = ?::uuid AND action = 'CREATE'", String.class, created.id());
+    var plantIdBefore = jdbcTemplate.queryForObject("SELECT plant_id::text FROM audit_log WHERE id = ?::uuid", String.class, auditId);
     assertThat(plantIdBefore).isEqualTo(created.id().toString());
 
     plants.delete(admin, created.id());
 
-    var plantIdAfter = jdbcTemplate.queryForObject("SELECT plant_id::text FROM audit_log WHERE id = ?", String.class, auditId);
+    var plantIdAfter = jdbcTemplate.queryForObject("SELECT plant_id::text FROM audit_log WHERE id = ?::uuid", String.class, auditId);
     assertThat(plantIdAfter).isNull();
     var response = auditLog.list(admin, new AuditLogQuery(null, null, null, null, null, null, 0, 100, "createdAt,asc"));
     assertThat(response.totalElements()).isEqualTo(2);
@@ -143,8 +170,7 @@ class AuditLogAtddGapIntegrationScaffoldTest {
   }
 
   @Test
-  @Disabled("RED - 2.9-SVC-019 behavior lock; documents current 500 on corrupt JSON, revisit when graceful decode lands")
-  @DisplayName("2.9-SVC-019 P2 corrupt previous_value surfaces read failure today (behavior lock)")
+    @DisplayName("2.9-SVC-019 P2 corrupt previous_value surfaces read failure today (behavior lock)")
   void corruptJsonSurfacesReadFailureToday() {
     var actor = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     var entityId = UUID.randomUUID();
@@ -155,20 +181,34 @@ class AuditLogAtddGapIntegrationScaffoldTest {
 
     jdbcTemplate.execute("ALTER TABLE audit_log DISABLE TRIGGER audit_log_immutable_before_update");
     try {
-      jdbcTemplate.update("UPDATE audit_log SET previous_value = 'not-json' WHERE id = ?", auditId);
+      jdbcTemplate.update("UPDATE audit_log SET previous_value = 'not-json' WHERE id = ?::uuid", auditId);
+      // Evict the persistence context so the query re-reads the corrupted row from the DB
+      // instead of returning the managed (pre-corruption) entity from the first-level cache.
+      entityManager.clear();
       assertThatThrownBy(() -> auditLog.list(actor,
           new AuditLogQuery(null, null, null, null, null, null, 0, 100, "createdAt,desc")))
           .isInstanceOf(IllegalStateException.class);
     } finally {
-      jdbcTemplate.execute("ALTER TABLE audit_log ENABLE TRIGGER audit_log_immutable_before_update");
+      // The expected IllegalStateException aborts the test-managed transaction; re-enabling
+      // the trigger on the same connection would fail with 25P02. The transaction rolls back
+      // anyway, which restores the trigger state — tolerate the failure here.
+      try {
+        jdbcTemplate.execute("ALTER TABLE audit_log ENABLE TRIGGER audit_log_immutable_before_update");
+      } catch (DataAccessException ex) {
+        // Only tolerate the expected 25P02 aborted-transaction state; anything else
+        // (connection loss, unexpected DDL failure) must surface.
+        var root = ex.getRootCause();
+        if (!(root instanceof java.sql.SQLException sqlEx) || !"25P02".equals(sqlEx.getSQLState())) {
+          throw ex;
+        }
+      }
     }
   }
 
   @Test
-  @Disabled("RED - R-2.9-13 LIKE escaping acceptance lock; activate once the gap run reaches it")
-  @DisplayName("2.9-SVC-020 P2 actor filter treats LIKE wildcards literally")
+    @DisplayName("2.9-SVC-020 P2 actor filter treats LIKE wildcards literally")
   void actorFilterEscapesLikeWildcards() {
-    var actor = new AuthenticatedUser(UUID.randomUUID().toString(), "yusuf_dev", ApplicationRole.SUPER_ADMIN);
+    var actor = persistedUser(ApplicationRole.SUPER_ADMIN, "yusuf_dev");
     auditLogWriter.record(actor, new AuditRecord(AuditAction.CREATE, AuditEntityType.SPAREPART_TAXONOMY,
         UUID.randomUUID(), "ELEC", null, null, Map.of("code", "ELEC")));
 
@@ -180,8 +220,7 @@ class AuditLogAtddGapIntegrationScaffoldTest {
   }
 
   @Test
-  @Disabled("RED - pagination acceptance lock; activate once the gap run reaches it")
-  @DisplayName("2.9-SVC-021 P2 pagination beyond the first page reports accurate totals")
+    @DisplayName("2.9-SVC-021 P2 pagination beyond the first page reports accurate totals")
   void paginationBeyondFirstPage() {
     var actor = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     for (int i = 0; i < 5; i++) {
@@ -198,7 +237,7 @@ class AuditLogAtddGapIntegrationScaffoldTest {
   }
 
   private String auditRowId(UUID entityId) {
-    return jdbcTemplate.queryForObject("SELECT id::text FROM audit_log WHERE entity_id = ?", String.class, entityId);
+    return jdbcTemplate.queryForObject("SELECT id::text FROM audit_log WHERE entity_id = ?::uuid", String.class, entityId);
   }
 
   private PlantEntity plant(String code, String name) {

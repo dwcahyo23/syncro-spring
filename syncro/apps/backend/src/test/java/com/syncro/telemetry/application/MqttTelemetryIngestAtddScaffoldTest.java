@@ -9,7 +9,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.integration.mqtt.support.MqttHeaders;
 import org.springframework.messaging.support.MessageBuilder;
@@ -19,15 +18,14 @@ import org.springframework.messaging.support.MessageBuilder;
 // The Implementation already satisfies the happy path (see
 // MqttTelemetryIngestHandlerTest). These scaffolds are edge-case acceptance
 // locks for the R-009 contract "handler never throws to the adapter; malformed
-// payload still gets a traceId". They stay @Disabled until a developer activates
-// the current task. Removing @Disabled makes the test active: it must FAIL if the
+// payload still gets a traceId". Activated (DW-8, bundle 12): all three pass —
+// they fail if the
 // handler regresses (e.g. a non-byte payload is dropped, a missing topic header
 // throws, or an enrichment failure escapes to the adapter).
 //
 // Run targeted:
 //   $env:JAVA_HOME="C:\Users\Dell\AppData\Local\Programs\Eclipse Adoptium\jdk-25.0.3.9-hotspot"
 //   mvn -q -f syncro/apps/backend/pom.xml test -Dtest="MqttTelemetryIngestAtddScaffoldTest"
-@Disabled("ATDD RED phase - activate one test at a time during implementation")
 class MqttTelemetryIngestAtddScaffoldTest {
 
   private static final Instant FIXED_NOW = Instant.parse("2026-08-08T10:00:00Z");

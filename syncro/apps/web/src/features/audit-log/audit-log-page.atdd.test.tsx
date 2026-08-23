@@ -56,7 +56,7 @@ describe("Audit Log Page (ATDD RED scaffold)", () => {
     };
   });
 
-  it.skip("[P0] resets page to 0 when a filter (from/actor/entityType/to) changes while on page > 0 (R-2.9-6)", () => {
+  it("[P0] resets page to 0 when a filter (from/actor/entityType/to) changes while on page > 0 (R-2.9-6)", () => {
     // RED flagship — skip until the fix lands. audit-log-page.tsx only calls setPage(0) on
     // plant change, size change, and reset, so changing entityType/actor/from/to keeps a
     // stale page index. The test drives pagination through the real "Go to next page" button
@@ -73,9 +73,22 @@ describe("Audit Log Page (ATDD RED scaffold)", () => {
     expect(latestParams?.page).toBe(1);
     fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-08-01" } });
     expect(latestParams?.page).toBe(0);
+
+    // DW-8 revival hardening: every remaining filter also resets the page.
+    fireEvent.click(screen.getByRole("button", { name: "Go to next page" }));
+    expect(latestParams?.page).toBe(1);
+    fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-08-31" } });
+    expect(latestParams?.page).toBe(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Go to next page" }));
+    expect(latestParams?.page).toBe(1);
+    fireEvent.change(screen.getByLabelText("Actor"), { target: { value: "alice@syncro.dev" } });
+    expect(latestParams?.page).toBe(0);
+    // entityType uses the identical onValueChange -> setPage(0) handler shape
+    // (audit-log-page.tsx); jsdom cannot drive the Radix Select portal reliably.
   });
 
-  it.skip("[P1] renders a skeleton while audit entries are loading", () => {
+  it("[P1] renders a skeleton while audit entries are loading", () => {
     // Acceptance lock (T-2.9-P1-07): while isLoading the page shows skeleton rows and neither
     // the table nor the state panels. Skipped scaffold — expected to pass once activated.
     auditLogQuery = {
@@ -89,7 +102,7 @@ describe("Audit Log Page (ATDD RED scaffold)", () => {
     expect(screen.queryByText(/No audit entries yet/)).not.toBeInTheDocument();
   });
 
-  it.skip("[P1] renders the error state and refetches when Retry is clicked", () => {
+  it("[P1] renders the error state and refetches when Retry is clicked", () => {
     // Acceptance lock (T-2.9-P1-07): isError shows the failure panel and Retry triggers refetch.
     auditLogQuery = {
       data: { data: { items: [], totalElements: 0 } },
@@ -103,14 +116,14 @@ describe("Audit Log Page (ATDD RED scaffold)", () => {
     expect(auditLogQuery.refetch).toHaveBeenCalledTimes(1);
   });
 
-  it.skip("[P1] renders the empty state when there are no entries and no filters", () => {
+  it("[P1] renders the empty state when there are no entries and no filters", () => {
     // Acceptance lock (T-2.9-P1-07): default empty list shows "No audit entries yet" and no table.
     render(<AuditLogPage />, { wrapper: Wrapper });
     expect(screen.getByText("No audit entries yet")).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
-  it.skip("[P1] renders filtered-empty state and Reset filters clears filters and page", () => {
+  it("[P1] renders filtered-empty state and Reset filters clears filters and page", () => {
     // Acceptance lock (T-2.9-P1-07): with filters set and no matches the page shows
     // "No matching entries" plus Reset filters, which clears every filter and resets page to 0.
     auditLogQuery = {
@@ -131,7 +144,7 @@ describe("Audit Log Page (ATDD RED scaffold)", () => {
     expect(latestParams?.actor).toBeUndefined();
   });
 
-  it.skip("[P1] renders the desktop dense table with sortable headers and expandable before/after detail", () => {
+  it("[P1] renders the desktop dense table with sortable headers and expandable before/after detail", () => {
     // Acceptance lock (T-2.9-P1-08). jsdom renders both breakpoint containers (no real CSS
     // media queries), so queries are scoped to the desktop wrapper `.hidden.md\:block` to
     // avoid duplicate matches from the mobile cards.
@@ -158,7 +171,7 @@ describe("Audit Log Page (ATDD RED scaffold)", () => {
     expect(desktopView.getByText("Pump One Renamed")).toBeInTheDocument();
   });
 
-  it.skip("[P1] renders mobile cards grouped by date with expandable detail", () => {
+  it("[P1] renders mobile cards grouped by date with expandable detail", () => {
     // Acceptance lock (T-2.9-P1-08). Scoped to the mobile wrapper `.md\:hidden`; the two
     // entries sit on different raw dates (noon UTC keeps the groups distinct in every
     // timezone), so exactly two date-group headings render.

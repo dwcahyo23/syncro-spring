@@ -15,7 +15,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLogEntity, UUID> 
       select entry from AuditLogEntity entry
       where (:entityType is null or entry.entityType = :entityType)
         and (:entityId is null or entry.entityId = :entityId)
-        and (:actor is null or lower(entry.actorName) like :actor)
+        and (:actor is null or lower(entry.actorName) like :actor escape '\\')
         and (:plantId is null or entry.plantId = :plantId)
         and entry.createdAt >= :from
         and entry.createdAt <= :to

@@ -90,7 +90,13 @@ export function AuditLogPage() {
           <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[repeat(auto-fill,minmax(13rem,13rem))] sm:justify-start">
             <div className="grid min-w-0 gap-2">
               <Label htmlFor="audit-entity-type">Entity type</Label>
-              <Select value={entityType} onValueChange={(value) => setEntityType(value as EntityFilter)}>
+              <Select
+                value={entityType}
+                onValueChange={(value) => {
+                  setEntityType(value as EntityFilter);
+                  setPage(0);
+                }}
+              >
                 <SelectTrigger id="audit-entity-type" className="w-full min-w-0">
                   <SelectValue placeholder="Entity type" />
                 </SelectTrigger>
@@ -109,7 +115,10 @@ export function AuditLogPage() {
               <Input
                 id="audit-actor"
                 value={actor}
-                onChange={(event) => setActor(event.target.value)}
+                onChange={(event) => {
+                  setActor(event.target.value);
+                  setPage(0);
+                }}
                 placeholder="Actor name"
                 className="w-full min-w-0"
               />
@@ -137,8 +146,24 @@ export function AuditLogPage() {
                 </SelectContent>
               </Select>
             </div>
-            <DatePickerField id="audit-from" label="From" value={from} onChange={setFrom} />
-            <DatePickerField id="audit-to" label="To" value={to} onChange={setTo} />
+            <DatePickerField
+              id="audit-from"
+              label="From"
+              value={from}
+              onChange={(value) => {
+                setFrom(value);
+                setPage(0);
+              }}
+            />
+            <DatePickerField
+              id="audit-to"
+              label="To"
+              value={to}
+              onChange={(value) => {
+                setTo(value);
+                setPage(0);
+              }}
+            />
             {hasFilters ? (
               <Button variant="outline" className="self-end" onClick={resetFilters}>
                 <XIcon />
@@ -177,7 +202,15 @@ export function AuditLogPage() {
             />
           ) : null}
           {!entries.isLoading && !entries.isError && items.length > 0 ? (
-            <AuditLogTable entries={items} plantNameById={plantNameById} sort={sort} onSortChange={setSort} />
+            <AuditLogTable
+              entries={items}
+              plantNameById={plantNameById}
+              sort={sort}
+              onSortChange={(value) => {
+                setSort(value);
+                setPage(0);
+              }}
+            />
           ) : null}
           {!entries.isLoading && !entries.isError && entries.data?.data ? (
             <DataTablePagination
