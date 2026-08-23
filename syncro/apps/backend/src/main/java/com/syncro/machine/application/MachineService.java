@@ -17,8 +17,10 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -245,8 +247,18 @@ public class MachineService {
   }
 
   private List<String> validateCommand(MachineCommand command) {
-    if (command.plantId() == null || command.machineGroupId() == null || command.status() == null) {
-      throw new MachineValidationException();
+    Map<String, String> missing = new LinkedHashMap<>();
+    if (command.plantId() == null) {
+      missing.put("plantId", "Plant is required.");
+    }
+    if (command.machineGroupId() == null) {
+      missing.put("machineGroupId", "Machine group is required.");
+    }
+    if (command.status() == null) {
+      missing.put("status", "Status is required.");
+    }
+    if (!missing.isEmpty()) {
+      throw new MachineValidationException(missing);
     }
     return normalizeOptionalTelemetryFields(command.optionalTelemetryFields());
   }
@@ -261,20 +273,35 @@ public class MachineService {
       if (trimmed.isEmpty()) {
         continue;
       }
-      if (trimmed.length() > MAX_OPTIONAL_FIELD_LENGTH
-          || trimmed.startsWith("_")
-          || !OPTIONAL_FIELD_PATTERN.matcher(trimmed).matches()
-          || RESERVED_OPTIONAL_FIELDS.contains(trimmed)) {
-        throw new MachineValidationException();
+      String reason = optionalFieldRejectionReason(trimmed);
+      if (reason != null) {
+        throw new MachineValidationException(Map.of("optionalTelemetryFields", "'" + trimmed + "' " + reason));
       }
       if (!normalized.contains(trimmed)) {
         normalized.add(trimmed);
       }
     }
     if (normalized.size() > MAX_OPTIONAL_FIELDS) {
-      throw new MachineValidationException();
+      throw new MachineValidationException(Map.of("optionalTelemetryFields",
+          "At most " + MAX_OPTIONAL_FIELDS + " optional telemetry fields are allowed."));
     }
     return List.copyOf(normalized);
+  }
+
+  private static String optionalFieldRejectionReason(String trimmed) {
+    if (trimmed.length() > MAX_OPTIONAL_FIELD_LENGTH) {
+      return "must be at most " + MAX_OPTIONAL_FIELD_LENGTH + " characters.";
+    }
+    if (trimmed.startsWith("_")) {
+      return "must not start with an underscore.";
+    }
+    if (!OPTIONAL_FIELD_PATTERN.matcher(trimmed).matches()) {
+      return "may only contain letters, numbers and underscores.";
+    }
+    if (RESERVED_OPTIONAL_FIELDS.contains(trimmed)) {
+      return "is reserved by the base telemetry contract.";
+    }
+    return null;
   }
 
   private String normalizeSearch(String search) {
@@ -287,14 +314,14 @@ public class MachineService {
 
   private int normalizePage(int page) {
     if (page < 0) {
-      throw new MachineValidationException();
+      throw new MachineValidationException(Map.of("page", "Page must be zero or greater."));
     }
     return page;
   }
 
   private int normalizeSize(int size) {
     if (size < 1 || size > MAX_PAGE_SIZE) {
-      throw new MachineValidationException();
+      throw new MachineValidationException(Map.of("size", "Size must be between 1 and " + MAX_PAGE_SIZE + "."));
     }
     return size;
   }
@@ -306,7 +333,7 @@ public class MachineService {
     var parts = sort.split(",", 2);
     var property = parts[0].trim();
     if (!ALLOWED_SORTS.contains(property)) {
-      throw new MachineValidationException();
+      throw new MachineValidationException(Map.of("sort", "Sort property is not allowed."));
     }
     var direction = parts.length > 1 && "desc".equalsIgnoreCase(parts[1].trim()) ? Sort.Direction.DESC : Sort.Direction.ASC;
     return Sort.by(direction, property);
@@ -319,11 +346,11 @@ public class MachineService {
 
   private String normalizeCode(String code) {
     if (code == null) {
-      throw new MachineValidationException();
+      throw new MachineValidationException(Map.of("code", "Machine code is required."));
     }
     var normalized = code.trim().toUpperCase(Locale.ROOT);
     if (!MACHINE_CODE_PATTERN.matcher(normalized).matches()) {
-      throw new MachineValidationException();
+      throw new MachineValidationException(Map.of("code", "Machine code format is invalid."));
     }
     return normalized;
   }
@@ -376,6 +403,22 @@ public class MachineService {
   }
 
   public static class MachineValidationException extends RuntimeException {
+
+    private final Map<String, String> fieldErrors;
+
+    public MachineValidationException() {
+      this.fieldErrors = Map.of();
+    }
+
+    public MachineValidationException(Map<String, String> fieldErrors) {
+      this.fieldErrors = fieldErrors == null
+          ? Map.of()
+          : java.util.Collections.unmodifiableMap(new LinkedHashMap<>(fieldErrors));
+    }
+
+    public Map<String, String> getFieldErrors() {
+      return fieldErrors;
+    }
   }
 
   public static class PlantNotFoundForMachineException extends RuntimeException {

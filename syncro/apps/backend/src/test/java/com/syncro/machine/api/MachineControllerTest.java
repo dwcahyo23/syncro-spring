@@ -27,6 +27,7 @@ import com.syncro.machine.application.MachineService.MachineDataIntegrityExcepti
 import com.syncro.machine.application.MachineService.MachineGroupPlantMismatchException;
 import com.syncro.machine.application.MachineService.MachineMutationForbiddenException;
 import com.syncro.machine.application.MachineService.MachineNotFoundException;
+import com.syncro.machine.application.MachineService.MachineValidationException;
 import com.syncro.machine.application.MachineService.MachineListView;
 import com.syncro.machine.application.MachineService.MachineView;
 import com.syncro.machine.domain.MachineStatus;
@@ -135,6 +136,26 @@ class MachineControllerTest {
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
         .andExpect(jsonPath("$.fieldErrors").isNotEmpty());
+  }
+
+  @Test
+  @DisplayName("DW-30 handler passes field-aware errors through to the response")
+  void machineValidationFieldErrorsPassThrough() throws Exception {
+    var user = user(ApplicationRole.MANAGE);
+    doThrow(new MachineValidationException(Map.of(
+        "optionalTelemetryFields", "'_vibration' must not start with an underscore.",
+        "code", "Machine code format is invalid.")))
+        .when(machines).create(eq(user), any());
+
+    mockMvc.perform(post("/api/v1/machines")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(payload(UUID.randomUUID(), UUID.randomUUID(), "BF-08410", "ACTIVE")))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.fieldErrors.optionalTelemetryFields")
+            .value("'_vibration' must not start with an underscore."))
+        .andExpect(jsonPath("$.fieldErrors.code").value("Machine code format is invalid."));
   }
 
   @Test

@@ -370,7 +370,9 @@ class MachineServiceIntegrationTest {
 
     assertThatThrownBy(() -> machineService.create(admin, command(plant.getId(), group.getId(), "BF-08410",
         MachineStatus.ACTIVE, List.of("counting"))))
-        .isInstanceOf(MachineValidationException.class);
+        .isInstanceOfSatisfying(MachineValidationException.class, ex ->
+            assertThat(ex.getFieldErrors())
+                .containsEntry("optionalTelemetryFields", "'counting' is reserved by the base telemetry contract."));
   }
 
   @Test
@@ -382,7 +384,28 @@ class MachineServiceIntegrationTest {
 
     assertThatThrownBy(() -> machineService.create(admin, command(plant.getId(), group.getId(), "BF-08410",
         MachineStatus.ACTIVE, List.of("bad-name"))))
-        .isInstanceOf(MachineValidationException.class);
+        .isInstanceOfSatisfying(MachineValidationException.class, ex ->
+            assertThat(ex.getFieldErrors())
+                .containsEntry("optionalTelemetryFields", "'bad-name' may only contain letters, numbers and underscores."));
+  }
+
+  @Test
+  @DisplayName("DW-30 duplicates collapse before the over-count check")
+  void duplicateEntriesCollapseBeforeOverCount() {
+    var plant = plant("GM1", "Plant GM1");
+    var group = group(plant, "Forming");
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    // 20 raw entries collapse to exactly 10 unique fields -> accepted
+    var withDuplicates = new java.util.ArrayList<String>();
+    for (int i = 1; i <= 10; i++) {
+      withDuplicates.add(String.format("field%02d", i));
+      withDuplicates.add(String.format("field%02d", i));
+    }
+
+    var created = machineService.create(admin, command(plant.getId(), group.getId(), "BF-08410",
+        MachineStatus.ACTIVE, withDuplicates));
+
+    assertThat(created.optionalTelemetryFields()).hasSize(10);
   }
 
   @Test
@@ -407,7 +430,55 @@ class MachineServiceIntegrationTest {
 
     assertThatThrownBy(() -> machineService.create(admin, command(plant.getId(), group.getId(), "BF-08410",
         MachineStatus.ACTIVE, List.of("_vibration"))))
-        .isInstanceOf(MachineValidationException.class);
+        .isInstanceOfSatisfying(MachineValidationException.class, ex ->
+            assertThat(ex.getFieldErrors())
+                .containsEntry("optionalTelemetryFields", "'_vibration' must not start with an underscore."));
+  }
+
+  // --- DW-30: field-aware validation errors ---
+
+  @Test
+  @DisplayName("DW-30 pattern rejection blames optionalTelemetryFields with reason")
+  void patternRejectionBlamesConfigField() {
+    var plant = plant("GM1", "Plant GM1");
+    var group = group(plant, "Forming");
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+
+    assertThatThrownBy(() -> machineService.create(admin, command(plant.getId(), group.getId(), "BF-08410",
+        MachineStatus.ACTIVE, List.of("bad-name"))))
+        .isInstanceOfSatisfying(MachineValidationException.class, ex ->
+            assertThat(ex.getFieldErrors())
+                .containsEntry("optionalTelemetryFields", "'bad-name' may only contain letters, numbers and underscores."));
+  }
+
+  @Test
+  @DisplayName("DW-30 over-count rejection blames optionalTelemetryFields with limit")
+  void overCountRejectionBlamesConfigField() {
+    var plant = plant("GM1", "Plant GM1");
+    var group = group(plant, "Forming");
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    var overLimit = List.of("f01", "f02", "f03", "f04", "f05", "f06", "f07", "f08", "f09", "f10", "f11");
+
+    assertThatThrownBy(() -> machineService.create(admin, command(plant.getId(), group.getId(), "BF-08410",
+        MachineStatus.ACTIVE, overLimit)))
+        .isInstanceOfSatisfying(MachineValidationException.class, ex ->
+            assertThat(ex.getFieldErrors())
+                .containsEntry("optionalTelemetryFields", "At most 10 optional telemetry fields are allowed."));
+  }
+
+  @Test
+  @DisplayName("DW-30 multiple missing required command fields are collected together")
+  void missingCommandFieldsAreCollected() {
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+
+    assertThatThrownBy(() -> machineService.create(admin,
+        new MachineCommand(null, null, null, "JBF19", MachineStatus.ACTIVE, "Juki",
+            LocalDate.parse("2026-05-27"), "Pilot machine", List.of())))
+        .isInstanceOfSatisfying(MachineValidationException.class, ex -> {
+          assertThat(ex.getFieldErrors()).containsEntry("plantId", "Plant is required.");
+          assertThat(ex.getFieldErrors()).containsEntry("machineGroupId", "Machine group is required.");
+          assertThat(ex.getFieldErrors()).doesNotContainKey("status");
+        });
   }
 
   private MachineCommand command(UUID plantId, UUID groupId, String code, MachineStatus status) {

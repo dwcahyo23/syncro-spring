@@ -59,8 +59,12 @@ public class MachineExceptionHandler {
   }
 
   @ExceptionHandler(MachineValidationException.class)
-  ResponseEntity<ErrorResponse> machineValidation() {
-    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", Map.of("code", "Invalid value."));
+  ResponseEntity<ErrorResponse> machineValidation(MachineValidationException exception) {
+    var fieldErrors = exception.getFieldErrors();
+    if (fieldErrors.isEmpty()) {
+      return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", Map.of("code", "Invalid value."));
+    }
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", fieldErrors);
   }
 
   @ExceptionHandler(MachineResponsibilityService.DuplicateResponsibilityException.class)
