@@ -281,7 +281,8 @@ origin: code review of spec-3-6-support-optional-machine-telemetry-fields.md
 location: MachineExceptionHandler.java
 severity: medium
 reason: `MachineExceptionHandler` maps every `MachineValidationException` to `Map.of("code", "Invalid value.")`, so Story 3.6's new config-rule rejections produce a `VALIDATION_ERROR` that blames the `code` field the client never touched. DTO-level failures correctly key the error on `optionalTelemetryFields`, but service-level rule failures route through the pre-existing shared handler's hardcoded `code` key. Fixing requires a field-aware exception/message contract shared by all machine validation paths.
-status: open
+status: done 2026-08-23
+resolution: resolved by deferred-work bundle 11 — MachineValidationException carries fieldErrors; all eight throw sites annotated (required fields collected together, optionalTelemetryFields reasons quote the entry, page/size/sort/code blame their own param); handler passes map verbatim; frontend form renders keys in-place
 
 ### DW-31: Stale `optional.*` keys linger in the Redis latest hash after a field is removed from machine config
 
