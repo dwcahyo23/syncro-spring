@@ -105,6 +105,30 @@ services:
       - waha_sessions:/app/.sessions
       - waha_media:/app/.media
 
+  garage:
+    image: dxflrs/garage:v2.3.0
+    restart: unless-stopped
+    command: ["/garage", "server", "--single-node", "--default-bucket"]
+    environment:
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:?GARAGE_RPC_SECRET is required}
+      # Token-guards the admin API (port 3903, reachable by every container on the compose
+      # network even though it is not published to the host).
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:?GARAGE_ADMIN_TOKEN is required}
+      GARAGE_DEFAULT_ACCESS_KEY: ${GARAGE_ACCESS_KEY:?GARAGE_ACCESS_KEY is required}
+      GARAGE_DEFAULT_SECRET_KEY: ${GARAGE_SECRET_KEY:?GARAGE_SECRET_KEY is required}
+      GARAGE_DEFAULT_BUCKET: ${GARAGE_BUCKET:?GARAGE_BUCKET is required}
+    ports:
+      - "${GARAGE_S3_PORT:?GARAGE_S3_PORT is required}:3900"
+    volumes:
+      - garage_data:/var/lib/garage
+      - ./garage/garage.toml:/etc/garage.toml:ro
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
 volumes:
   postgres_data:
   pgadmin_data:
@@ -115,3 +139,4 @@ volumes:
   emqx_log:
   waha_sessions:
   waha_media:
+  garage_data:

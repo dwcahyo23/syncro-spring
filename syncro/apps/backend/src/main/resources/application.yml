@@ -62,6 +62,13 @@ syncro:
     url: http://${INFLUXDB_HOST}:${INFLUXDB_PORT}
     token: ${INFLUXDB_TOKEN}
     database: ${INFLUXDB_DATABASE}
+  garage:
+    url: http://${GARAGE_HOST}:${GARAGE_S3_PORT}
+    access-key: ${GARAGE_ACCESS_KEY}
+    secret-key: ${GARAGE_SECRET_KEY}
+    bucket: ${GARAGE_BUCKET}
+    region: ${GARAGE_REGION:garage}
+    presign-ttl-seconds: ${GARAGE_PRESIGN_TTL_SECONDS:300}
   waha:
     url: http://${WAHA_HOST}:${WAHA_PORT}
     api-key: ${WAHA_API_KEY}

@@ -924,3 +924,9 @@ source_spec: `_bmad-output/implementation-artifacts/spec-deferred-work-bundle-14
 summary: The identical three-replace escape chain (\ -> \\, % -> \%, _ -> \_) now exists in SparepartService.nextBomCode, MachineService.normalizeSearch, MachineGroupService.normalizeSearch, AuditLogService.normalizeActor, and SparepartService bomCodeForUpdate-adjacent paths - drift hazard if one copy is later fixed or reordered.
 evidence: grep shows the same replace triple in four services; order (backslash first) is load-bearing and only documented at some sites.
 status: open
+- source_spec: spec-8-1-add-garage-object-storage-and-backend-integration.md
+  summary: Add an automated Testcontainers-based Garage integration test proving real S3 semantics (path-style addressing, region/credential acceptance, HeadBucket) before or with Story 8.4's image API.
+  evidence: Review found all 8-1 tests mock S3Client/S3Presigner; correct wiring is the story's core deliverable but is only verified by one-off manual live-stack checks, so a regression (e.g. dropping pathStyleAccessEnabled) would keep CI green until manual testing.
+- source_spec: spec-8-1-add-garage-object-storage-and-backend-integration.md
+  summary: Introduce a shared mechanism (test-scope config fragment or base support class) so full-context tests stop hand-pinning six env vars per external service (now GARAGE_* x6 on top of REDIS_/INFLUXDB_/MQTT/WAHA pins in 19 files).
+  evidence: Review flagged the growing copy-paste burden; every new external service forces identical edits across all @SpringBootTest files and a missed file dies on confusing placeholder-resolution errors.

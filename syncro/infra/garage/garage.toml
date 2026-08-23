@@ -1,0 +1,22 @@
+# Garage single-node configuration (local/dev only).
+# Secrets are NOT stored here: rpc_secret comes from the GARAGE_RPC_SECRET environment
+# variable and the S3 default access key / secret key / bucket come from
+# GARAGE_DEFAULT_ACCESS_KEY / GARAGE_DEFAULT_SECRET_KEY / GARAGE_DEFAULT_BUCKET
+# (see infra/docker-compose.yml). Data lives on the `garage_data` named volume so
+# uploaded objects survive container restarts.
+
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "sqlite"
+
+replication_factor = 1
+
+rpc_bind_addr = "[::]:3901"
+
+[s3_api]
+s3_region = "garage"
+api_bind_addr = "[::]:3900"
+root_domain = ".s3.garage.localhost"
+
+[admin]
+api_bind_addr = "[::]:3903"

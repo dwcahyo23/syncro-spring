@@ -41,3 +41,10 @@ syncro:
   waha:
     url: http://${WAHA_HOST:localhost}:${WAHA_PORT:3000}
     api-key: ${WAHA_API_KEY:syncro-waha-dev-key}
+  garage:
+    url: http://${GARAGE_HOST:localhost}:${GARAGE_S3_PORT:3900}
+    access-key: ${GARAGE_ACCESS_KEY:syncro-garage-dev}
+    secret-key: ${GARAGE_SECRET_KEY:syncro-garage-dev-secret}
+    bucket: ${GARAGE_BUCKET:syncro-spareparts}
+    region: ${GARAGE_REGION:garage}
+    presign-ttl-seconds: ${GARAGE_PRESIGN_TTL_SECONDS:300}
