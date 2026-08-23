@@ -417,4 +417,219 @@ class SparepartServiceIntegrationTest {
     assertThat(created.code()).contains("MCH_A");
     assertThat(created.code()).endsWith("000");
   }
+
+  // --- Story 8-2: procurement readiness (material code + lead time) ---
+
+  @Autowired
+  private com.syncro.machine.infrastructure.MachineResponsibilityRepository responsibilities;
+  @Autowired
+  private com.syncro.audit.infrastructure.AuditLogRepository auditLogs;
+
+  @Test
+  @DisplayName("8.2-SVC-001 P0 LEADER-scoped MANAGE patches procurement values; list and detail expose them")
+  void leaderScopedManagePatchesProcurementValues() {
+    var manageLeader = persistedUser(ApplicationRole.MANAGE, "leader-sparepart@syncro.dev");
+    var machine = machine();
+    assign(manageLeader, machine.getPlant());
+    assignJobScope(manageLeader, machine, com.syncro.machine.domain.ResponsibilityLevel.LEADER);
+    var created = sparepartService.create(
+        authenticatedUser(ApplicationRole.SUPER_ADMIN), command("PLC-PROC-1", "Wecon LX5 PLC", machine, taxonomyRefs()));
+
+    var patched = sparepartService.patchProcurement(manageLeader, created.id(),
+        new SparepartService.SparepartProcurementCommand("MC-001", new java.math.BigDecimal("36")));
+
+    assertThat(patched.materialCode()).isEqualTo("MC-001");
+    assertThat(patched.leadTimeHours()).isEqualByComparingTo("36");
+    var listed = sparepartService.list(manageLeader,
+        new SparepartFilters(null, null, null, null, null, null, null), PageRequest.of(0, 200));
+    assertThat(listed.items()).extracting(SparepartService.SparepartView::materialCode).contains("MC-001");
+    var detail = sparepartService.get(manageLeader, created.id());
+    assertThat(detail.leadTimeHours()).isEqualByComparingTo("36");
+  }
+
+  @Test
+  @DisplayName("8.2-SVC-002 P1 null clears procurement values and the clear is audited")
+  void nullClearsProcurementValues() {
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    var created = sparepartService.create(admin, command("PLC-PROC-2", "Wecon LX5 PLC", taxonomyRefs()));
+    sparepartService.patchProcurement(admin, created.id(),
+        new SparepartService.SparepartProcurementCommand("MC-CLEAR", new java.math.BigDecimal("7.5")));
+
+    var cleared = sparepartService.patchProcurement(admin, created.id(),
+        new SparepartService.SparepartProcurementCommand(null, null));
+
+    assertThat(cleared.materialCode()).isNull();
+    assertThat(cleared.leadTimeHours()).isNull();
+    var entry = latestAuditEntryFor(created.id());
+    assertThat(entry.getPreviousValue()).contains("MC-CLEAR").contains("7.5");
+    assertThat(entry.getNewValue()).contains("\"materialCode\":null");
+  }
+
+  @Test
+  @DisplayName("8.2-SVC-003 P0 duplicate material code is rejected case-insensitively across spareparts")
+  void duplicateMaterialCodeRejectedCaseInsensitively() {
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    var first = sparepartService.create(admin, command("PLC-DUP-A", "Wecon LX5 PLC A", taxonomyRefs()));
+    var second = sparepartService.create(admin, command("PLC-DUP-B", "Wecon LX5 PLC B",
+        taxonomyRefs("ELECTRIC", "Electric", "OMRON", "Omron", "RELAY", "Relay", "MY2N", "MY2N")));
+    sparepartService.patchProcurement(admin, first.id(),
+        new SparepartService.SparepartProcurementCommand("MC-DUP", null));
+
+    assertThatThrownBy(() -> sparepartService.patchProcurement(admin, second.id(),
+        new SparepartService.SparepartProcurementCommand("mc-dup ", null)))
+        .isInstanceOf(SparepartService.DuplicateMaterialCodeException.class);
+  }
+
+  @Test
+  @DisplayName("8.2-SVC-004 P1 fractional lead time survives persistence at scale 2")
+  void fractionalLeadTimeRoundTrips() {
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    var created = sparepartService.create(admin, command("PLC-FRAC", "Wecon LX5 PLC", taxonomyRefs()));
+
+    var patched = sparepartService.patchProcurement(admin, created.id(),
+        new SparepartService.SparepartProcurementCommand(null, new java.math.BigDecimal("7.5")));
+
+    assertThat(patched.leadTimeHours()).isEqualByComparingTo(new java.math.BigDecimal("7.50"));
+  }
+
+  @Test
+  @DisplayName("8.2-SVC-005 P0 MANAGE without LEADER+ job scope is denied with no mutation and no audit")
+  void manageWithoutLeaderScopeDenied() {
+    var manageNoScope = persistedUser(ApplicationRole.MANAGE, "noscope-sparepart@syncro.dev");
+    var machine = machine();
+    assign(manageNoScope, machine.getPlant());
+    var created = sparepartService.create(
+        authenticatedUser(ApplicationRole.SUPER_ADMIN), command("PLC-NOSCOPE", "Wecon LX5 PLC", machine, taxonomyRefs()));
+    var auditCountBefore = auditCountFor(created.id());
+
+    assertThatThrownBy(() -> sparepartService.patchProcurement(manageNoScope, created.id(),
+        new SparepartService.SparepartProcurementCommand("MC-X", java.math.BigDecimal.ONE)))
+        .isInstanceOf(com.syncro.auth.application.JobScopeForbiddenException.class)
+        .hasMessageContaining("LEADER");
+
+    assertThat(auditCountFor(created.id())).isEqualTo(auditCountBefore);
+    assertThat(spareparts.findById(created.id()).orElseThrow().getMaterialCode()).isNull();
+  }
+
+  @Test
+  @DisplayName("8.2-SVC-006 P1 SUPER_ADMIN bypasses job scope without responsibility rows")
+  void superAdminBypassesJobScope() {
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    var created = sparepartService.create(admin, command("PLC-BYPASS", "Wecon LX5 PLC", taxonomyRefs()));
+
+    var patched = sparepartService.patchProcurement(admin, created.id(),
+        new SparepartService.SparepartProcurementCommand("MC-ADMIN", null));
+
+    assertThat(patched.materialCode()).isEqualTo("MC-ADMIN");
+  }
+
+  @Test
+  @DisplayName("8.2-SVC-007 P0 VIEWER cannot patch procurement even with LEADER responsibility")
+  void viewerDeniedByAppRoleFirst() {
+    var viewerWithScope = persistedUser(ApplicationRole.VIEWER, "viewer-proc@syncro.dev");
+    var machine = machine();
+    assign(viewerWithScope, machine.getPlant());
+    assignJobScope(viewerWithScope, machine, com.syncro.machine.domain.ResponsibilityLevel.LEADER);
+    var created = sparepartService.create(
+        authenticatedUser(ApplicationRole.SUPER_ADMIN), command("PLC-VIEWER", "Wecon LX5 PLC", machine, taxonomyRefs()));
+
+    assertThatThrownBy(() -> sparepartService.patchProcurement(viewerWithScope, created.id(),
+        new SparepartService.SparepartProcurementCommand("MC-V", null)))
+        .isInstanceOf(SparepartMutationForbiddenException.class);
+  }
+
+  @Test
+  @DisplayName("8.2-SVC-008 P1 out-of-plant sparepart is masked as not found for scoped MANAGE")
+  void wrongPlantSparepartMaskedAsNotFound() {
+    var outsider = persistedUser(ApplicationRole.MANAGE, "outsider-sparepart@syncro.dev");
+    assignJobScope(outsider, machine(), com.syncro.machine.domain.ResponsibilityLevel.MANAGER);
+    var created = sparepartService.create(
+        authenticatedUser(ApplicationRole.SUPER_ADMIN), command("PLC-OTHER", "Wecon LX5 PLC", taxonomyRefs()));
+    // create() itself writes a CREATE audit row — capture the baseline before the denied PATCH.
+    var auditCountBefore = auditCountFor(created.id());
+
+    assertThatThrownBy(() -> sparepartService.patchProcurement(outsider, created.id(),
+        new SparepartService.SparepartProcurementCommand("MC-O", null)))
+        .isInstanceOf(SparepartNotFoundException.class);
+    assertThat(auditCountFor(created.id())).isEqualTo(auditCountBefore);
+  }
+
+  @Test
+  @DisplayName("8.2-SVC-009 P0 audit entry captures previous and new procurement values")
+  void auditCapturesPreviousAndNewValues() throws Exception {
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    var created = sparepartService.create(admin, command("PLC-AUDIT", "Wecon LX5 PLC", taxonomyRefs()));
+
+    sparepartService.patchProcurement(admin, created.id(),
+        new SparepartService.SparepartProcurementCommand("MC-A1", new java.math.BigDecimal("180")));
+
+    var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+    var entry = latestAuditEntryFor(created.id());
+    var previous = mapper.readTree(entry.getPreviousValue());
+    var newValue = mapper.readTree(entry.getNewValue());
+    assertThat(previous.get("materialCode").isNull()).isTrue();
+    assertThat(newValue.get("materialCode").asText()).isEqualTo("MC-A1");
+    // Scale in the audit JSON follows the submitted value; compare numerically.
+    assertThat(new java.math.BigDecimal(newValue.get("leadTimeHours").asText()))
+        .isEqualByComparingTo("180");
+  }
+
+  @Test
+  @DisplayName("8.2-SVC-010 P0 DB constraint name backing DuplicateMaterialCodeException matches the index")
+  void materialCodeConstraintNameMatchesServiceConstant() {
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    var refs = taxonomyRefs();
+    var first = sparepartService.create(admin, command("PLC-DBC-1", "Wecon LX5 PLC A", refs));
+    var second = sparepartService.create(admin, command("PLC-DBC-2", "Wecon LX5 PLC B",
+        taxonomyRefs("ELECTRIC", "Electric", "OMRON", "Omron", "RELAY", "Relay", "MY2N", "MY2N")));
+    sparepartService.patchProcurement(admin, first.id(),
+        new SparepartService.SparepartProcurementCommand("MC-DBC", null));
+
+    // Insert a conflicting row directly, bypassing the service pre-check, so the DB-level
+    // index (the real TOCTOU backstop) fires — exactly the violation save() translates.
+    // Raw value carries no normalization (service trims), so it must match exactly.
+    assertThatThrownBy(() -> {
+      var entity = spareparts.findById(second.id()).orElseThrow();
+      entity.updateProcurement("mc-dbc", null, Instant.parse("2026-05-28T00:00:00Z"));
+      spareparts.saveAndFlush(entity);
+    }).isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  @Test
+  @DisplayName("8.2-SVC-011 P1 repeated identical PATCH is a no-op: no extra audit row")
+  void identicalPatchIsNoOpWithoutAuditRow() {
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    var created = sparepartService.create(admin, command("PLC-NOOP", "Wecon LX5 PLC", taxonomyRefs()));
+    sparepartService.patchProcurement(admin, created.id(),
+        new SparepartService.SparepartProcurementCommand("MC-NOOP", new java.math.BigDecimal("36")));
+    var auditCountAfterSet = auditCountFor(created.id());
+    var updatedAtAfterSet = spareparts.findById(created.id()).orElseThrow().getUpdatedAt();
+
+    sparepartService.patchProcurement(admin, created.id(),
+        new SparepartService.SparepartProcurementCommand("MC-NOOP", new java.math.BigDecimal("36.00")));
+
+    assertThat(auditCountFor(created.id())).isEqualTo(auditCountAfterSet);
+    assertThat(spareparts.findById(created.id()).orElseThrow().getUpdatedAt()).isEqualTo(updatedAtAfterSet);
+  }
+
+  private void assignJobScope(AuthenticatedUser user, MachineEntity machine,
+      com.syncro.machine.domain.ResponsibilityLevel level) {
+    var now = Instant.parse("2026-05-28T00:00:00Z");
+    var userEntity = users.findById(UUID.fromString(user.id())).orElseThrow();
+    responsibilities.saveAndFlush(new com.syncro.machine.infrastructure.MachineResponsibilityEntity(
+        UUID.randomUUID(), machine, userEntity, level, now, now));
+  }
+
+  private com.syncro.audit.infrastructure.AuditLogEntity latestAuditEntryFor(UUID entityId) {
+    return auditLogs.findAll(org.springframework.data.domain.Sort.by(
+            org.springframework.data.domain.Sort.Direction.DESC, "createdAt"))
+        .stream()
+        .filter(entry -> entityId.equals(entry.getEntityId()))
+        .findFirst()
+        .orElseThrow();
+  }
+
+  private long auditCountFor(UUID entityId) {
+    return auditLogs.findAll().stream().filter(entry -> entityId.equals(entry.getEntityId())).count();
+  }
 }

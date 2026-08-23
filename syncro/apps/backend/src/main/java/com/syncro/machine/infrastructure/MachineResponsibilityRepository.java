@@ -1,6 +1,7 @@
 package com.syncro.machine.infrastructure;
 
 import com.syncro.machine.domain.ResponsibilityLevel;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -14,6 +15,8 @@ import org.springframework.data.domain.Pageable;
 public interface MachineResponsibilityRepository extends JpaRepository<MachineResponsibilityEntity, UUID> {
     
     boolean existsByMachineIdAndUserId(UUID machineId, UUID userId);
+
+    boolean existsByUserIdAndResponsibilityLevelIn(UUID userId, Collection<ResponsibilityLevel> levels);
 
     Optional<MachineResponsibilityEntity> findFirstByMachineIdAndResponsibilityLevelOrderByCreatedAtAsc(UUID machineId, ResponsibilityLevel responsibilityLevel);
     

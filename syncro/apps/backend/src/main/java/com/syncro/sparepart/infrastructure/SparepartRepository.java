@@ -14,6 +14,8 @@ public interface SparepartRepository extends JpaRepository<SparepartEntity, UUID
 
   boolean existsByCodeIgnoreCase(String code);
 
+  boolean existsByMaterialCodeIgnoreCaseAndIdNot(String materialCode, UUID id);
+
   @Query("""
       select count(sparepart) from SparepartEntity sparepart
       where sparepart.machine.plant.id in :plantIds

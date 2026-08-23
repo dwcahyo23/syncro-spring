@@ -1,5 +1,7 @@
 package com.syncro.sparepart.api;
 
+import com.syncro.auth.application.JobScopeForbiddenException;
+import com.syncro.sparepart.application.SparepartService.DuplicateMaterialCodeException;
 import com.syncro.sparepart.application.SparepartService.DuplicateSparepartException;
 import com.syncro.sparepart.application.SparepartService.SparepartDataIntegrityException;
 import com.syncro.sparepart.application.SparepartService.SparepartMachineNotFoundException;
@@ -63,6 +65,18 @@ public class SparepartExceptionHandler {
   @ExceptionHandler(DuplicateSparepartException.class)
   ResponseEntity<ErrorResponse> duplicateSparepart() {
     return error(HttpStatus.BAD_REQUEST, "DUPLICATE_SPAREPART", "Sparepart identity already exists for this machine.", Map.of());
+  }
+
+  @ExceptionHandler(DuplicateMaterialCodeException.class)
+  ResponseEntity<ErrorResponse> duplicateMaterialCode() {
+    return error(HttpStatus.BAD_REQUEST, "DUPLICATE_MATERIAL_CODE",
+        "Material code is already used by another sparepart.",
+        Map.of("materialCode", "Already used by another sparepart."));
+  }
+
+  @ExceptionHandler(JobScopeForbiddenException.class)
+  ResponseEntity<ErrorResponse> jobScopeForbidden(JobScopeForbiddenException exception) {
+    return error(HttpStatus.FORBIDDEN, "JOB_SCOPE_REQUIRED", exception.getMessage(), Map.of());
   }
 
   @ExceptionHandler(SparepartTaxonomyReferenceNotFoundException.class)

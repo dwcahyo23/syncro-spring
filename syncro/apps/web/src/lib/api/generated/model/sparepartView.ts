@@ -16,6 +16,8 @@ export interface SparepartView {
   brand?: SparepartTaxonomyRefView;
   kind?: SparepartTaxonomyRefView;
   type?: SparepartTaxonomyRefView;
+  materialCode?: string;
+  leadTimeHours?: number;
   createdAt?: string;
   updatedAt?: string;
 }

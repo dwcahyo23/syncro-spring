@@ -3,12 +3,14 @@ package com.syncro.sparepart.api;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.sparepart.api.SparepartDtos.SparepartListResponse;
 import com.syncro.sparepart.api.SparepartDtos.SparepartMachineRefView;
+import com.syncro.sparepart.api.SparepartDtos.SparepartProcurementRequest;
 import com.syncro.sparepart.api.SparepartDtos.SparepartRequest;
 import com.syncro.sparepart.api.SparepartDtos.SparepartTaxonomyRefView;
 import com.syncro.sparepart.api.SparepartDtos.SparepartView;
 import com.syncro.sparepart.application.SparepartService;
 import com.syncro.sparepart.application.SparepartService.SparepartCommand;
 import com.syncro.sparepart.application.SparepartService.SparepartFilters;
+import com.syncro.sparepart.application.SparepartService.SparepartProcurementCommand;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -23,6 +25,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -103,6 +106,23 @@ public class SparepartController {
     return toDto(spareparts.update(user, sparepartId, command(request)));
   }
 
+  @Operation(operationId = "patchSparepartProcurement", summary =
+      "Replace the procurement-readiness subset (material code, lead time) of a sparepart")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Procurement values replaced"),
+      @ApiResponse(responseCode = "400", description = "Validation or duplicate material code", content = @Content),
+      @ApiResponse(responseCode = "401", description = "Authentication required", content = @Content),
+      @ApiResponse(responseCode = "403", description = "Forbidden (role or job scope)", content = @Content),
+      @ApiResponse(responseCode = "404", description = "Sparepart not found", content = @Content),
+      @ApiResponse(responseCode = "409", description = "Sparepart data integrity conflict", content = @Content)
+  })
+  @PatchMapping("/{sparepartId}")
+  public SparepartView patchProcurement(@AuthenticationPrincipal AuthenticatedUser user,
+      @PathVariable UUID sparepartId, @Valid @RequestBody SparepartProcurementRequest request) {
+    var command = new SparepartProcurementCommand(request.materialCode(), request.leadTimeHours());
+    return toDto(spareparts.patchProcurement(user, sparepartId, command));
+  }
+
   @Operation(operationId = "deleteSparepart", summary = "Delete sparepart")
   @ApiResponses({
       @ApiResponse(responseCode = "204", description = "Sparepart deleted", content = @Content),
@@ -131,6 +151,8 @@ public class SparepartController {
         toDto(sparepart.brand()),
         toDto(sparepart.kind()),
         toDto(sparepart.type()),
+        sparepart.materialCode(),
+        sparepart.leadTimeHours(),
         sparepart.createdAt(),
         sparepart.updatedAt());
   }

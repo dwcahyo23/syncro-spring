@@ -68,6 +68,7 @@ import type {
   ResolveRequest,
   SetupCompletenessResponse,
   SparepartListResponse,
+  SparepartProcurementRequest,
   SparepartRequest,
   SparepartTaxonomyListResponse,
   SparepartTaxonomyRequest,
@@ -452,6 +453,117 @@ export const useDeleteSparepart = <TError = void,
         TContext
       > => {
       return useMutation(getDeleteSparepartMutationOptions(options), queryClient);
+    }
+
+export type patchSparepartProcurementResponse200 = {
+  data: SparepartView
+  status: 200
+}
+
+export type patchSparepartProcurementResponse400 = {
+  data: void
+  status: 400
+}
+
+export type patchSparepartProcurementResponse401 = {
+  data: void
+  status: 401
+}
+
+export type patchSparepartProcurementResponse403 = {
+  data: void
+  status: 403
+}
+
+export type patchSparepartProcurementResponse404 = {
+  data: void
+  status: 404
+}
+
+export type patchSparepartProcurementResponse409 = {
+  data: void
+  status: 409
+}
+
+export type patchSparepartProcurementResponseSuccess = (patchSparepartProcurementResponse200) & {
+  headers: Headers;
+};
+export type patchSparepartProcurementResponseError = (patchSparepartProcurementResponse400 | patchSparepartProcurementResponse401 | patchSparepartProcurementResponse403 | patchSparepartProcurementResponse404 | patchSparepartProcurementResponse409) & {
+  headers: Headers;
+};
+
+export type patchSparepartProcurementResponse = (patchSparepartProcurementResponseSuccess | patchSparepartProcurementResponseError)
+
+export const getPatchSparepartProcurementUrl = (sparepartId: string,) => {
+
+
+
+
+  return `/api/v1/spareparts/${sparepartId}`
+}
+
+/**
+ * @summary Replace the procurement-readiness subset (material code, lead time) of a sparepart
+ */
+export const patchSparepartProcurement = async (sparepartId: string,
+    sparepartProcurementRequest: SparepartProcurementRequest, options?: Parameters<typeof syncroFetch>[1]): Promise<patchSparepartProcurementResponse> => {
+
+  return syncroFetch<patchSparepartProcurementResponse>(getPatchSparepartProcurementUrl(sparepartId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(sparepartProcurementRequest)
+  }
+);}
+
+
+
+
+
+export const getPatchSparepartProcurementMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchSparepartProcurement>>, TError,{sparepartId: string;data: SparepartProcurementRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof patchSparepartProcurement>>, TError,{sparepartId: string;data: SparepartProcurementRequest}, TContext> => {
+
+const mutationKey = ['patchSparepartProcurement'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchSparepartProcurement>>, {sparepartId: string;data: SparepartProcurementRequest}> = (props) => {
+          const {sparepartId,data} = props ?? {};
+
+          return  patchSparepartProcurement(sparepartId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PatchSparepartProcurementMutationResult = NonNullable<Awaited<ReturnType<typeof patchSparepartProcurement>>>
+    export type PatchSparepartProcurementMutationBody = SparepartProcurementRequest
+    export type PatchSparepartProcurementMutationError = void
+
+    /**
+ * @summary Replace the procurement-readiness subset (material code, lead time) of a sparepart
+ */
+export const usePatchSparepartProcurement = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchSparepartProcurement>>, TError,{sparepartId: string;data: SparepartProcurementRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof patchSparepartProcurement>>,
+        TError,
+        {sparepartId: string;data: SparepartProcurementRequest},
+        TContext
+      > => {
+      return useMutation(getPatchSparepartProcurementMutationOptions(options), queryClient);
     }
 
 export type getSparepartTaxonomyResponse200 = {

@@ -17,6 +17,8 @@ public final class SparepartAuditValues {
     values.put("brandCode", sparepart.getBrand().getCode());
     values.put("kindCode", sparepart.getKind().getCode());
     values.put("typeCode", sparepart.getType().getCode());
+    values.put("materialCode", sparepart.getMaterialCode());
+    values.put("leadTimeHours", sparepart.getLeadTimeHours());
     return values;
   }
 }

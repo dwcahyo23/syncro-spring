@@ -6,6 +6,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, SearchIcon, Trash2, TriangleAlertIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { LeadTimeInput } from "@/components/syncro/lead-time-input";
+import { MaterialCodeField } from "@/components/syncro/material-code-field";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -33,7 +35,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { MachineView, SparepartRequest, SparepartTaxonomyView, SparepartView } from "@/lib/api/generated/model";
+import type {
+  MachineView,
+  SparepartProcurementRequest,
+  SparepartRequest,
+  SparepartTaxonomyView,
+  SparepartView,
+} from "@/lib/api/generated/model";
 import { SparepartTaxonomyRequestDimension } from "@/lib/api/generated/model";
 import {
   getListSparepartsQueryKey,
@@ -44,6 +52,7 @@ import {
   useListMachines,
   useListSpareparts,
   useListSparepartTaxonomies,
+  usePatchSparepartProcurement,
   useUpdateSparepart,
 } from "@/lib/api/generated/syncro";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
@@ -69,6 +78,8 @@ const EMPTY_FORM: SparepartRequest = {
   kindId: "",
   typeId: "",
 };
+type ProcurementDraft = { materialCode: string; leadTimeHours: string };
+const EMPTY_PROCUREMENT: ProcurementDraft = { materialCode: "", leadTimeHours: "" };
 
 export function SparepartManagement() {
   const user = useAuthUser();
@@ -95,6 +106,9 @@ export function SparepartManagement() {
   const createSparepart = useCreateSparepart({ mutation: { onSuccess: invalidateSparepartData } });
   const createTaxonomy = useCreateSparepartTaxonomy({ mutation: { onSuccess: invalidateTaxonomyData } });
   const updateSparepart = useUpdateSparepart({ mutation: { onSuccess: invalidateSparepartData } });
+  const patchSparepartProcurement = usePatchSparepartProcurement({
+    mutation: { onSuccess: invalidateSparepartData },
+  });
   const deleteSparepart = useDeleteSparepart({ mutation: { onSuccess: invalidateSparepartData } });
   const [dialogMode, setDialogMode] = useState<{ type: "create" } | { type: "edit"; sparepart: SparepartView } | null>(
     null,
@@ -105,11 +119,13 @@ export function SparepartManagement() {
   const [formError, setFormError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<SparepartView | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [procurement, setProcurement] = useState<ProcurementDraft>(EMPTY_PROCUREMENT);
+  const [procurementOriginal, setProcurementOriginal] = useState<ProcurementDraft>(EMPTY_PROCUREMENT);
   const taxonomyItems = taxonomy.data?.data.items ?? [];
   const taxonomyByDimension = useMemo(() => groupByDimension(taxonomyItems), [taxonomyItems]);
   const machineItems = machines.data?.data.items ?? [];
   const items = spareparts.data?.data.items ?? [];
-  const isSaving = createSparepart.isPending || updateSparepart.isPending;
+  const isSaving = createSparepart.isPending || updateSparepart.isPending || patchSparepartProcurement.isPending;
   const taxonomyReady = hasRequiredTaxonomy(taxonomyByDimension);
 
   function invalidateSparepartData() {
@@ -139,9 +155,18 @@ export function SparepartManagement() {
   function openCreateDialog() {
     setDialogMode({ type: "create" });
     setForm(EMPTY_FORM);
+    setProcurement(EMPTY_PROCUREMENT);
+    setProcurementOriginal(EMPTY_PROCUREMENT);
     setFieldErrors({});
     setFormError(null);
     setStep(1);
+  }
+
+  function procurementDraftFor(sparepart: SparepartView): ProcurementDraft {
+    return {
+      materialCode: sparepart.materialCode ?? "",
+      leadTimeHours: sparepart.leadTimeHours != null ? String(sparepart.leadTimeHours) : "",
+    };
   }
 
   function openEditDialog(sparepart: SparepartView) {
@@ -153,15 +178,61 @@ export function SparepartManagement() {
       kindId: sparepart.kind?.id ?? "",
       typeId: sparepart.type?.id ?? "",
     });
+    const draft = procurementDraftFor(sparepart);
+    setProcurement(draft);
+    setProcurementOriginal(draft);
     setFieldErrors({});
     setFormError(null);
     setStep(1);
+  }
+
+  function procurementChanged(): boolean {
+    return (
+      procurement.materialCode.trim() !== procurementOriginal.materialCode ||
+      procurement.leadTimeHours.trim() !== procurementOriginal.leadTimeHours
+    );
+  }
+
+  /** UX-level guidance only; the backend remains authoritative. */
+  function validateProcurementDraft(): Record<string, string> | null {
+    const errors: Record<string, string> = {};
+    const materialCode = procurement.materialCode.trim();
+    if (materialCode.length > 64) {
+      errors.materialCode = "Material code must be at most 64 characters.";
+    }
+    const hours = procurement.leadTimeHours.trim();
+    const hoursValid =
+      hours === "" ||
+      (/^\d+(\.\d{1,2})?$/.test(hours) && Number(hours) > 0);
+    if (!hoursValid) {
+      errors.leadTimeHours = "Enter a positive number of hours with at most two decimals.";
+    }
+    return Object.keys(errors).length > 0 ? errors : null;
+  }
+
+  function procurementPayload(): SparepartProcurementRequest {
+    // Omitted keys clear values per the PATCH contract, so undefined == clear here.
+    const payload: SparepartProcurementRequest = {};
+    const materialCode = procurement.materialCode.trim();
+    if (materialCode !== "") {
+      payload.materialCode = materialCode;
+    }
+    if (procurement.leadTimeHours.trim() !== "") {
+      payload.leadTimeHours = Number(procurement.leadTimeHours.trim());
+    }
+    return payload;
   }
 
   async function submitSparepart(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFieldErrors({});
     setFormError(null);
+
+    const procurementErrors = dialogMode?.type === "edit" ? validateProcurementDraft() : null;
+    if (procurementErrors) {
+      setFieldErrors(procurementErrors);
+      return;
+    }
 
     try {
       const finalForm = { ...form };
@@ -194,6 +265,22 @@ export function SparepartManagement() {
           return;
         }
         await updateSparepart.mutateAsync({ sparepartId: dialogMode.sparepart.id, data: finalForm });
+        if (procurementChanged()) {
+          try {
+            await patchSparepartProcurement.mutateAsync({
+              sparepartId: dialogMode.sparepart.id,
+              data: procurementPayload(),
+            });
+          } catch (patchError) {
+            // The base sparepart update already committed; the procurement change did not.
+            // Surface that clearly and let the user reopen to retry procurement separately.
+            const message =
+              errorResponse(patchError)?.message ?? "Procurement values could not be saved.";
+            toast.error(`Sparepart updated, but procurement was not saved: ${message}`);
+            setDialogMode(null);
+            return;
+          }
+        }
         toast.success("Sparepart updated.");
       } else {
         await createSparepart.mutateAsync({ data: finalForm });
@@ -400,6 +487,27 @@ export function SparepartManagement() {
                 onCreate={(name) => Promise.resolve(setForm((current) => ({ ...current, typeId: `pending-${name}` })))}
                 onChange={(typeId) => setForm((current) => ({ ...current, typeId }))}
               />
+              {dialogMode?.type === "edit" ? (
+                <div className="grid gap-4 rounded-md border border-dashed p-3 md:col-span-2">
+                  <div>
+                    <span className="font-medium text-sm">Procurement readiness</span>
+                    <p className="text-muted-foreground text-xs">
+                      Requires job scope LEADER or above. Changes are recorded in the audit log.
+                    </p>
+                  </div>
+                  <MaterialCodeField
+                    value={procurement.materialCode}
+                    error={fieldErrors.materialCode}
+                    onChange={(materialCode) => setProcurement((current) => ({ ...current, materialCode }))}
+                  />
+                  <LeadTimeInput
+                    key={dialogMode?.type === "edit" ? (dialogMode.sparepart.id ?? "new") : "new"}
+                    value={procurement.leadTimeHours}
+                    error={fieldErrors.leadTimeHours}
+                    onChange={(leadTimeHours) => setProcurement((current) => ({ ...current, leadTimeHours }))}
+                  />
+                </div>
+              ) : null}
             </div>
 
             {step === 2 && (
@@ -566,6 +674,8 @@ function SparepartTable({
             <TableHead className="whitespace-nowrap">
               <DataTableSortHeader title="Type" field="type.name" sort={sort} onSortChange={setSort} />
             </TableHead>
+            <TableHead className="whitespace-nowrap">Material code</TableHead>
+            <TableHead className="whitespace-nowrap">Lead time</TableHead>
             <TableHead>Created</TableHead>
             <TableHead>Updated</TableHead>
             <TableHead className="text-right">Actions</TableHead>
@@ -582,6 +692,8 @@ function SparepartTable({
               <TableCell>{sparepart.kind?.name ?? "-"}</TableCell>
               <TableCell>{sparepart.brand?.name ?? "-"}</TableCell>
               <TableCell>{sparepart.type?.name ?? "-"}</TableCell>
+              <TableCell className="font-mono text-xs">{sparepart.materialCode ?? "-"}</TableCell>
+              <TableCell>{sparepart.leadTimeHours != null ? `${sparepart.leadTimeHours} h` : "-"}</TableCell>
               <TableCell>{sparepart.createdAt ? formatDate(sparepart.createdAt) : "-"}</TableCell>
               <TableCell>{sparepart.updatedAt ? formatDate(sparepart.updatedAt) : "-"}</TableCell>
               <TableCell className="text-right">

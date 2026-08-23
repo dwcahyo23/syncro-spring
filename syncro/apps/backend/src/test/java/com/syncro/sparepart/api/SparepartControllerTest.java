@@ -6,6 +6,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -19,6 +20,7 @@ import com.syncro.auth.infrastructure.JwtAuthenticationFilter;
 import com.syncro.config.SecurityConfig;
 import com.syncro.config.TimeConfig;
 import com.syncro.sparepart.application.SparepartService;
+import com.syncro.sparepart.application.SparepartService.DuplicateMaterialCodeException;
 import com.syncro.sparepart.application.SparepartService.DuplicateSparepartException;
 import com.syncro.sparepart.application.SparepartService.SparepartDataIntegrityException;
 import com.syncro.sparepart.application.SparepartService.SparepartMutationForbiddenException;
@@ -317,6 +319,86 @@ class SparepartControllerTest {
         """.formatted(categoryId, brandId, kindId, typeId);
   }
 
+  // --- Story 8-2: PATCH procurement subset ---
+
+  @Test
+  @DisplayName("8.2-API-001 P0 MANAGE replaces procurement values via PATCH")
+  void managePatchesProcurementValues() throws Exception {
+    var user = user(ApplicationRole.MANAGE);
+    var sparepartId = UUID.randomUUID();
+    var view = new SparepartView(
+        sparepartId, "PLC-WECON-LX5",
+        new SparepartMachineRefView(UUID.randomUUID(), "MCH-1", "Machine 1", UUID.randomUUID(), "PLANT-1", "Plant 1"),
+        new SparepartTaxonomyRefView(UUID.randomUUID(), "ELEC", "Electric"),
+        new SparepartTaxonomyRefView(UUID.randomUUID(), "WECON", "Wecon"),
+        new SparepartTaxonomyRefView(UUID.randomUUID(), "PLC", "PLC"),
+        new SparepartTaxonomyRefView(UUID.randomUUID(), "LX5", "LX5"),
+        "MC-001", new java.math.BigDecimal("36.00"),
+        Instant.parse("2026-05-28T00:00:00Z"), Instant.parse("2026-08-24T00:00:00Z"));
+    when(spareparts.patchProcurement(eq(user), eq(sparepartId), any())).thenReturn(view);
+
+    mockMvc.perform(patch("/api/v1/spareparts/{sparepartId}", sparepartId).with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"materialCode\":\"MC-001\",\"leadTimeHours\":36}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(sparepartId.toString()))
+        .andExpect(jsonPath("$.materialCode").value("MC-001"))
+        .andExpect(jsonPath("$.leadTimeHours").value(36.00));
+  }
+
+  @Test
+  @DisplayName("8.2-API-002 P0 duplicate material code returns DUPLICATE_MATERIAL_CODE with field error")
+  void duplicateMaterialCodeReturnsFieldError() throws Exception {
+    var user = user(ApplicationRole.MANAGE);
+    doThrow(new DuplicateMaterialCodeException()).when(spareparts)
+        .patchProcurement(eq(user), any(), any());
+
+    mockMvc.perform(patch("/api/v1/spareparts/{sparepartId}", UUID.randomUUID()).with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"materialCode\":\"MC-DUP\",\"leadTimeHours\":null}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("DUPLICATE_MATERIAL_CODE"))
+        .andExpect(jsonPath("$.fieldErrors.materialCode").isNotEmpty());
+  }
+
+  @Test
+  @DisplayName("8.2-API-003 P0 below-LEADER job scope returns JOB_SCOPE_REQUIRED with explanation")
+  void belowLeaderJobScopeReturnsExplanation() throws Exception {
+    var user = user(ApplicationRole.MANAGE);
+    doThrow(new com.syncro.auth.application.JobScopeForbiddenException("LEADER")).when(spareparts)
+        .patchProcurement(eq(user), any(), any());
+
+    mockMvc.perform(patch("/api/v1/spareparts/{sparepartId}", UUID.randomUUID()).with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"materialCode\":\"MC-X\",\"leadTimeHours\":12}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("JOB_SCOPE_REQUIRED"))
+        .andExpect(jsonPath("$.message").value("This action requires job scope LEADER or above."));
+  }
+
+  @Test
+  @DisplayName("8.2-API-004 P1 non-positive lead time fails bean validation")
+  void nonPositiveLeadTimeFailsValidation() throws Exception {
+    var user = user(ApplicationRole.SUPER_ADMIN);
+
+    mockMvc.perform(patch("/api/v1/spareparts/{sparepartId}", UUID.randomUUID()).with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"materialCode\":\"MC-N\",\"leadTimeHours\":0}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.fieldErrors.leadTimeHours").exists());
+  }
+
+  @Test
+  @DisplayName("8.2-API-005 P1 unauthenticated PATCH is rejected")
+  void unauthenticatedPatchRejected() throws Exception {
+    mockMvc.perform(patch("/api/v1/spareparts/{sparepartId}", UUID.randomUUID())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"materialCode\":\"MC-U\",\"leadTimeHours\":null}"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
+  }
+
   private static SparepartView view(UUID sparepartId, UUID categoryId, UUID brandId, UUID kindId, UUID typeId) {
     return new SparepartView(
         sparepartId,
@@ -332,6 +414,8 @@ class SparepartControllerTest {
         new SparepartTaxonomyRefView(brandId, "WECON", "Wecon"),
         new SparepartTaxonomyRefView(kindId, "PLC", "PLC"),
         new SparepartTaxonomyRefView(typeId, "LX5", "LX5"),
+        null,
+        null,
         Instant.parse("2026-05-28T00:00:00Z"),
         Instant.parse("2026-05-28T00:00:00Z"));
   }

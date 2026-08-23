@@ -930,3 +930,7 @@ status: open
 - source_spec: spec-8-1-add-garage-object-storage-and-backend-integration.md
   summary: Introduce a shared mechanism (test-scope config fragment or base support class) so full-context tests stop hand-pinning six env vars per external service (now GARAGE_* x6 on top of REDIS_/INFLUXDB_/MQTT/WAHA pins in 19 files).
   evidence: Review flagged the growing copy-paste burden; every new external service forces identical edits across all @SpringBootTest files and a missed file dies on confusing placeholder-resolution errors.
+
+- source_spec: `spec-8-2-manage-sparepart-material-code-and-lead-time.md`
+  summary: The generated API client directory (`apps/web/src/lib/api/generated/`) is gitignored while partially force-added, so every Orval regeneration silently orphans newly created model files from commits — a fresh checkout breaks tsc. Decide a durable policy (commit a force-add helper script, or keep a tracked manifest, or stop ignoring the dir) before the next regeneration.
+  evidence: Review found 34 untracked+ignored generated model files referenced by tracked index.ts/syncro.ts (sparepartProcurementRequest.ts among them) after this story's regeneration.

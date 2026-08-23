@@ -200,6 +200,61 @@
             "description": "Sparepart data integrity conflict"
           }
         }
+      },
+      "patch": {
+        "tags": [
+          "sparepart-controller"
+        ],
+        "summary": "Replace the procurement-readiness subset (material code, lead time) of a sparepart",
+        "operationId": "patchSparepartProcurement",
+        "parameters": [
+          {
+            "name": "sparepartId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SparepartProcurementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Procurement values replaced",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or duplicate material code"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden (role or job scope)"
+          },
+          "404": {
+            "description": "Sparepart not found"
+          },
+          "409": {
+            "description": "Sparepart data integrity conflict"
+          }
+        }
       }
     },
     "/api/v1/sparepart-taxonomies/{taxonomyId}": {
@@ -3518,6 +3573,12 @@
           "type": {
             "$ref": "#/components/schemas/SparepartTaxonomyRefView"
           },
+          "materialCode": {
+            "type": "string"
+          },
+          "leadTimeHours": {
+            "type": "number"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -4252,6 +4313,19 @@
           }
         }
       },
+      "SparepartProcurementRequest": {
+        "type": "object",
+        "properties": {
+          "materialCode": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 0
+          },
+          "leadTimeHours": {
+            "type": "number"
+          }
+        }
+      },
       "StaleMachineItem": {
         "type": "object",
         "properties": {
@@ -4298,13 +4372,13 @@
       "PageQuarantineEntryView": {
         "type": "object",
         "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           },
           "size": {
             "type": "integer",
@@ -4320,21 +4394,21 @@
             "type": "integer",
             "format": "int32"
           },
-          "sort": {
-            "$ref": "#/components/schemas/SortObject"
-          },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
-          },
           "first": {
             "type": "boolean"
           },
           "last": {
             "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
           },
           "empty": {
             "type": "boolean"
@@ -4354,11 +4428,11 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "pageNumber": {
+          "pageSize": {
             "type": "integer",
             "format": "int32"
           },
-          "pageSize": {
+          "pageNumber": {
             "type": "integer",
             "format": "int32"
           },

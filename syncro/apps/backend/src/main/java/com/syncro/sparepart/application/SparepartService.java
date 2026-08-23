@@ -4,6 +4,7 @@ import com.syncro.audit.application.AuditLogWriter;
 import com.syncro.audit.application.AuditRecord;
 import com.syncro.audit.domain.AuditAction;
 import com.syncro.audit.domain.AuditEntityType;
+import com.syncro.auth.application.JobScopeService;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
@@ -14,6 +15,7 @@ import com.syncro.sparepart.infrastructure.SparepartEntity;
 import com.syncro.sparepart.infrastructure.SparepartRepository;
 import com.syncro.sparepart.infrastructure.SparepartTaxonomyEntity;
 import com.syncro.sparepart.infrastructure.SparepartTaxonomyRepository;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -30,6 +32,9 @@ public class SparepartService {
   private static final int MAX_PAGE_SIZE = 200;
   private static final String DUPLICATE_CODE_CONSTRAINT = "uq_spareparts_lower_code";
   private static final String DUPLICATE_IDENTITY_CONSTRAINT = "uq_spareparts_machine_taxonomy_identity";
+  private static final String DUPLICATE_MATERIAL_CODE_CONSTRAINT = "uq_spareparts_material_code";
+  private static final String PROCUREMENT_JOB_SCOPE_LEVEL = "LEADER";
+  private static final int MAX_MATERIAL_CODE_LENGTH = 64;
 
   private final SparepartRepository spareparts;
   private final SparepartTaxonomyRepository taxonomy;
@@ -37,15 +42,17 @@ public class SparepartService {
   private final AuthUserPlantAssignmentRepository assignments;
   private final AuditLogWriter auditLog;
   private final Clock clock;
+  private final JobScopeService jobScopes;
 
   public SparepartService(SparepartRepository spareparts, SparepartTaxonomyRepository taxonomy, MachineRepository machines,
-      AuthUserPlantAssignmentRepository assignments, AuditLogWriter auditLog, Clock clock) {
+      AuthUserPlantAssignmentRepository assignments, AuditLogWriter auditLog, Clock clock, JobScopeService jobScopes) {
     this.spareparts = spareparts;
     this.taxonomy = taxonomy;
     this.machines = machines;
     this.assignments = assignments;
     this.auditLog = auditLog;
     this.clock = clock;
+    this.jobScopes = jobScopes;
   }
 
   @Transactional(readOnly = true)
@@ -126,6 +133,35 @@ public class SparepartService {
     } catch (DataIntegrityViolationException exception) {
       throw new SparepartDataIntegrityException();
     }
+  }
+
+  /**
+   * Replaces only the procurement-readiness subset (material code, lead time) — Story 8-2.
+   * Nulls clear values. Enforces the app-role gate, then the LEADER-or-above job scope
+   * (SUPER_ADMIN bypasses), then plant access, then global material-code uniqueness.
+   */
+  @Transactional
+  public SparepartView patchProcurement(AuthenticatedUser user, UUID sparepartId, SparepartProcurementCommand command) {
+    requireMutationRole(user);
+    jobScopes.requireLevelOrAbove(user, PROCUREMENT_JOB_SCOPE_LEVEL);
+    var sparepart = find(sparepartId);
+    requireSparepartPlantAccess(user, sparepart);
+    var materialCode = normalizeMaterialCode(command.materialCode());
+    var leadTimeHours = normalizeLeadTimeHours(command.leadTimeHours());
+    // No-op (nothing changed): return without writing audit or bumping updatedAt, so
+    // immutable audit history does not accumulate noise from repeated identical PATCHes.
+    if (java.util.Objects.equals(sparepart.getMaterialCode(), materialCode)
+        && java.util.Objects.equals(sparepart.getLeadTimeHours(), leadTimeHours)) {
+      return toView(sparepart);
+    }
+    var entityLabel = sparepart.getCode();
+    var previous = SparepartAuditValues.of(sparepart);
+    rejectDuplicateMaterialCode(sparepartId, materialCode);
+    sparepart.updateProcurement(materialCode, leadTimeHours, Instant.now(clock));
+    var saved = save(sparepart);
+    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.SPAREPART, sparepartId, entityLabel,
+        saved.getMachine().getPlant().getId(), previous, SparepartAuditValues.of(saved)));
+    return toView(saved);
   }
 
   private SparepartEntity find(UUID sparepartId) {
@@ -247,6 +283,44 @@ public class SparepartService {
     return machine;
   }
 
+  /** Same plant-access semantics as {@link #resolveMachine}, derived from an existing sparepart. */
+  private void requireSparepartPlantAccess(AuthenticatedUser user, SparepartEntity sparepart) {
+    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
+      return;
+    }
+    var assignedPlantIds = assignments.findByAuthUserId(UUID.fromString(user.id())).stream()
+        .map(assignment -> assignment.getPlantId())
+        .toList();
+    if (!assignedPlantIds.contains(sparepart.getMachine().getPlant().getId())) {
+      throw new SparepartNotFoundException();
+    }
+  }
+
+  private String normalizeMaterialCode(String materialCode) {
+    if (materialCode == null) {
+      return null;
+    }
+    var trimmed = materialCode.trim();
+    if (trimmed.isEmpty()) {
+      return null;
+    }
+    if (trimmed.length() > MAX_MATERIAL_CODE_LENGTH) {
+      throw new SparepartValidationException();
+    }
+    return trimmed;
+  }
+
+  /** Canonicalizes to scale 2 so {@code 36} and {@code 36.00} are equal for no-op detection. */
+  private BigDecimal normalizeLeadTimeHours(BigDecimal leadTimeHours) {
+    return leadTimeHours == null ? null : leadTimeHours.stripTrailingZeros();
+  }
+
+  private void rejectDuplicateMaterialCode(UUID sparepartId, String materialCode) {
+    if (materialCode != null && spareparts.existsByMaterialCodeIgnoreCaseAndIdNot(materialCode, sparepartId)) {
+      throw new DuplicateMaterialCodeException();
+    }
+  }
+
   private TaxonomyRefs resolveTaxonomies(SparepartCommand command) {
     var refs = new TaxonomyRefs(
         taxonomy(command.categoryId(), SparepartTaxonomyDimension.CATEGORY),
@@ -282,20 +356,25 @@ public class SparepartService {
     try {
       return spareparts.saveAndFlush(sparepart);
     } catch (DataIntegrityViolationException exception) {
-      if (isDuplicateSparepartViolation(exception)) {
+      if (isConstraintViolation(exception, DUPLICATE_CODE_CONSTRAINT, DUPLICATE_IDENTITY_CONSTRAINT)) {
         throw new DuplicateSparepartException();
+      }
+      if (isConstraintViolation(exception, DUPLICATE_MATERIAL_CODE_CONSTRAINT)) {
+        throw new DuplicateMaterialCodeException();
       }
       throw new SparepartDataIntegrityException();
     }
   }
 
-  private boolean isDuplicateSparepartViolation(DataIntegrityViolationException exception) {
+  private boolean isConstraintViolation(DataIntegrityViolationException exception, String... constraintNames) {
     var cause = exception.getCause();
     while (cause != null) {
-      if (cause instanceof ConstraintViolationException constraint
-          && (DUPLICATE_CODE_CONSTRAINT.equalsIgnoreCase(constraint.getConstraintName())
-              || DUPLICATE_IDENTITY_CONSTRAINT.equalsIgnoreCase(constraint.getConstraintName()))) {
-        return true;
+      if (cause instanceof ConstraintViolationException constraint) {
+        for (var name : constraintNames) {
+          if (name.equalsIgnoreCase(constraint.getConstraintName())) {
+            return true;
+          }
+        }
       }
       cause = cause.getCause();
     }
@@ -311,6 +390,8 @@ public class SparepartService {
         toTaxonomyRef(sparepart.getBrand()),
         toTaxonomyRef(sparepart.getKind()),
         toTaxonomyRef(sparepart.getType()),
+        sparepart.getMaterialCode(),
+        sparepart.getLeadTimeHours(),
         sparepart.getCreatedAt(),
         sparepart.getUpdatedAt());
   }
@@ -334,6 +415,10 @@ public class SparepartService {
   public record SparepartCommand(UUID machineId, UUID categoryId, UUID brandId, UUID kindId, UUID typeId) {
   }
 
+  /** Procurement-readiness subset for PATCH. Null clears a value (Story 8-2). */
+  public record SparepartProcurementCommand(String materialCode, BigDecimal leadTimeHours) {
+  }
+
   public record SparepartFilters(UUID categoryId, UUID brandId, UUID kindId, UUID typeId, String search, String machineCode, UUID machineId) {
   }
 
@@ -354,11 +439,17 @@ public class SparepartService {
       SparepartTaxonomyRefView brand,
       SparepartTaxonomyRefView kind,
       SparepartTaxonomyRefView type,
+      String materialCode,
+      BigDecimal leadTimeHours,
       Instant createdAt,
       Instant updatedAt) {
   }
 
   public static class DuplicateSparepartException extends RuntimeException {
+  }
+
+  /** Global material-code uniqueness violation (DB index {@code uq_spareparts_material_code}). */
+  public static class DuplicateMaterialCodeException extends RuntimeException {
   }
 
   public static class SparepartDataIntegrityException extends RuntimeException {

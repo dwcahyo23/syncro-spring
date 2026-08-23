@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -48,6 +49,12 @@ public class SparepartEntity {
 
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
+
+  @Column(name = "material_code", length = 64)
+  private String materialCode;
+
+  @Column(name = "lead_time_hours", precision = 12, scale = 2)
+  private BigDecimal leadTimeHours;
 
   protected SparepartEntity() {
   }
@@ -115,6 +122,14 @@ public class SparepartEntity {
     return updatedAt;
   }
 
+  public String getMaterialCode() {
+    return materialCode;
+  }
+
+  public BigDecimal getLeadTimeHours() {
+    return leadTimeHours;
+  }
+
   public void update(
       String code,
       String name,
@@ -131,6 +146,16 @@ public class SparepartEntity {
     this.brand = brand;
     this.kind = kind;
     this.type = type;
+    this.updatedAt = updatedAt;
+  }
+
+  /**
+   * Replaces only the procurement-readiness subset (Story 8-2). {@code null} clears a value.
+   * Identity, taxonomy, and lifecycle columns are untouched.
+   */
+  public void updateProcurement(String materialCode, BigDecimal leadTimeHours, Instant updatedAt) {
+    this.materialCode = materialCode;
+    this.leadTimeHours = leadTimeHours;
     this.updatedAt = updatedAt;
   }
 }
