@@ -2,11 +2,11 @@
 title: 'Add Garage Object Storage and Backend Integration'
 type: 'feature'
 created: '2026-08-23'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 baseline_commit: 1feb3b8
-final_revision: PLACEHOLDER
+final_revision: ab3e5d3
 context:
   - '{project-root}/syncro/infra/docker-compose.yml'
 warnings: []
