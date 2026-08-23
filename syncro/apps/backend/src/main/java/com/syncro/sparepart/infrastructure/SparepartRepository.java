@@ -52,11 +52,15 @@ public interface SparepartRepository extends JpaRepository<SparepartEntity, UUID
       @Param("kindId") UUID kindId,
       @Param("typeId") UUID typeId);
 
+  /**
+   * {@param prefix} MUST already be LIKE-escaped by the caller (backslash, % and underscore)
+   * - the trailing wildcard is appended here. See SparepartService.nextBomCode.
+   */
   @Query("""
       select sparepart.code from SparepartEntity sparepart
-      where upper(sparepart.code) like concat(upper(:prefix), '%')
+      where upper(sparepart.code) like concat(upper(:prefix), '%') escape '\\'
       """)
-  List<String> findCodesByPrefix(@Param("prefix") String prefix);
+  List<String> findCodesByEscapedPrefix(@Param("prefix") String prefix);
 
   @Query(value = """
       select sparepart from SparepartEntity sparepart

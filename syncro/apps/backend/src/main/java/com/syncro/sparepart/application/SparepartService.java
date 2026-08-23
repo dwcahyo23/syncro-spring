@@ -201,7 +201,10 @@ public class SparepartService {
   }
 
   private String nextBomCode(String prefix) {
-    var maxSeries = spareparts.findCodesByPrefix(prefix).stream()
+    // DW-121: machine codes may contain _ (and defensively %/\); escape them so the
+    // LIKE only matches this machine's own BOM series instead of wildcarding.
+    var escaped = prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+    var maxSeries = spareparts.findCodesByEscapedPrefix(escaped).stream()
         .filter(code -> code.length() == prefix.length() + 3)
         .map(code -> code.substring(prefix.length()))
         .filter(series -> series.chars().allMatch(Character::isDigit))

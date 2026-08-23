@@ -336,6 +336,17 @@ class SparepartServiceIntegrationTest {
             UUID.randomUUID(), plant, group, "MCH-1", "Machine 1", MachineStatus.ACTIVE, null, null, null, List.of(), now, now)));
   }
 
+  private MachineEntity machineWithCode(String code) {
+    var now = Instant.parse("2026-05-28T00:00:00Z");
+    var plant = plants.findByCodeIgnoreCase("PLANT-1")
+        .orElseGet(() -> plants.saveAndFlush(new PlantEntity(UUID.randomUUID(), "PLANT-1", "Plant 1", now, now)));
+    var group = machineGroups.findByPlantIdAndNameIgnoreCase(plant.getId(), "Assembly")
+        .orElseGet(() -> machineGroups.saveAndFlush(new MachineGroupEntity(UUID.randomUUID(), plant, "Assembly", now, now)));
+    return machines.findByPlantIdAndCodeIgnoreCase(plant.getId(), code)
+        .orElseGet(() -> machines.saveAndFlush(new MachineEntity(
+            UUID.randomUUID(), plant, group, code, "Machine " + code, MachineStatus.ACTIVE, null, null, null, List.of(), now, now)));
+  }
+
   private TaxonomyRefs taxonomyRefs() {
     return taxonomyRefs("ELECTRIC", "Electric", "WECON", "Wecon", "PLC", "PLC", "LX5", "LX5");
   }
@@ -377,5 +388,27 @@ class SparepartServiceIntegrationTest {
       SparepartTaxonomyEntity brand,
       SparepartTaxonomyEntity kind,
       SparepartTaxonomyEntity type) {
+  }
+
+  // --- DW-121: BOM series LIKE escape ---
+
+  @Test
+  @DisplayName("DW-121 underscore in machine code does not leak into another machines BOM series")
+  void underscorePrefixDoesNotWildcardMatchSiblingSeries() {
+    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
+    var refs = taxonomyRefs();
+
+    // Sibling machine whose code is IDENTICAL to MCH_A except the underscore slot -
+    // without the LIKE escape this sibling's series inflates maxSeries (red/green guard).
+    var sibling = machineWithCode("MCHAA");
+    var first = sparepartService.create(admin, command("IGNORED-SIB", "Sibling PLC", sibling, refs));
+    assertThat(first.code()).startsWith("MCHAA").endsWith("000");
+
+    // First sparepart for the underscore machine must get its own series 000, not 001.
+    var target = machineWithCode("MCH_A");
+    var created = sparepartService.create(admin, command("IGNORED-TGT", "Target PLC", target, refs));
+
+    assertThat(created.code()).contains("MCH_A");
+    assertThat(created.code()).endsWith("000");
   }
 }
