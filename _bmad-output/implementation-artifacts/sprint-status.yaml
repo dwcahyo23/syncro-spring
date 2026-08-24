@@ -1,5 +1,5 @@
 # generated: 2026-05-25
-# last_updated: 2026-08-23
+# last_updated: 2026-08-24
 # project: Syncro
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-25
-last_updated: 2026-08-23
+last_updated: 2026-08-24
 project: Syncro
 project_key: NOKEY
 tracking_system: file-system
@@ -131,12 +131,12 @@ development_status:
   epic-7-retrospective: optional
 
   # Epic 8: Sparepart Procurement Readiness & Operating Calendar
-  epic-8: backlog
-  8-1-add-garage-object-storage-and-backend-integration: backlog
-  8-2-manage-sparepart-material-code-and-lead-time: backlog
-  8-3-manage-estimated-price-entries-with-currency-and-kurs: backlog
-  8-4-manage-sparepart-image-via-garage: backlog
-  8-5-configure-shift-schedule-with-machine-override: backlog
+  epic-8: in-progress
+  8-1-add-garage-object-storage-and-backend-integration: done
+  8-2-manage-sparepart-material-code-and-lead-time: done
+  8-3-manage-estimated-price-entries-with-currency-and-kurs: done
+  8-4-manage-sparepart-image-via-garage: done
+  8-5-configure-shift-schedule-with-machine-override: done
   8-6-estimate-counter-rate-and-shift-aware-projections: backlog
   8-7-raise-procurement-risk-alert-within-lead-time-window: backlog
   epic-8-retrospective: optional
