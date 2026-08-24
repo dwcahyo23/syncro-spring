@@ -40,6 +40,7 @@ import org.testcontainers.utility.MountableFile;
 
 @SpringBootTest(properties = {
     "server.port=0",
+    "spring.lifecycle.timeout-per-shutdown-phase=5s",
     "REDIS_HOST=localhost",
     "REDIS_PORT=6379",
     "INFLUXDB_HOST=localhost",
@@ -109,13 +110,19 @@ class TelemetryPersistenceIntegrationTest {
   @Container
   static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
 
+  static {
+    postgres.withReuse(true);
+  }
+
   @Container
   static final GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine")
+      .withReuse(true)
       .withExposedPorts(6379)
       .waitingFor(Wait.forLogMessage(".*Ready to accept connections.*\\n", 1));
 
   @Container
   static final GenericContainer<?> influx = new GenericContainer<>("influxdb:3-core")
+      .withReuse(true)
       .withCopyToContainer(MountableFile.forHostPath(ADMIN_TOKEN_FILE), "/etc/influxdb3/admin-token.json")
       .withCommand("serve",
           "--node-id=test-node-1",

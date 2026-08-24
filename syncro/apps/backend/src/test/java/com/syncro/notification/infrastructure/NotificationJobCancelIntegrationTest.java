@@ -40,6 +40,10 @@ class NotificationJobCancelIntegrationTest {
   @Container
   static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
 
+  static {
+    postgres.withReuse(true);
+  }
+
   @DynamicPropertySource
   static void postgresProperties(DynamicPropertyRegistry registry) {
     registry.add("spring.datasource.url", postgres::getJdbcUrl);

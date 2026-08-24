@@ -3,6 +3,7 @@ package com.syncro.db;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.syncro.AbstractPostgresIntegrationTest;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.sparepart.domain.SparepartTaxonomyDimension;
@@ -18,63 +19,13 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
-@SpringBootTest(properties = {
-    "server.port=0",
-    "REDIS_HOST=localhost",
-    "REDIS_PORT=6379",
-    "INFLUXDB_HOST=localhost",
-    "INFLUXDB_PORT=8086",
-    "INFLUXDB_USERNAME=test",
-    "INFLUXDB_PASSWORD=test",
-    "INFLUXDB_TOKEN=test",
-    "INFLUXDB_ORG=test",
-    "INFLUXDB_BUCKET=test",
-    "SYNCRO_MQTT_HOST=localhost",
-    "SYNCRO_MQTT_PORT=1883",
-    "SYNCRO_MQTT_USERNAME=test",
-    "SYNCRO_MQTT_PASSWORD=test",
-    "SYNCRO_MQTT_CLIENT_ID=test",
-    "SYNCRO_MQTT_TOPIC_FILTER=syncro/+/telemetry",
-    "WAHA_HOST=localhost",
-    "WAHA_PORT=3000",
-    "WAHA_API_KEY=test",
-    "GARAGE_HOST=localhost",
-    "GARAGE_S3_PORT=3900",
-    "GARAGE_ACCESS_KEY=test",
-    "GARAGE_SECRET_KEY=test",
-    "GARAGE_BUCKET=test",
-    "GARAGE_REGION=garage",
-    "syncro.auth.jwt.secret=test-secret-for-auth-integration-32x",
-    "syncro.auth.jwt.issuer=syncro-test",
-    "syncro.auth.jwt.ttl-minutes=30",
-    "syncro.auth.local-admin.enabled=false",
-    "syncro.auth.local-admin.login-identifier=admin@syncro.dev",
-    "syncro.auth.local-admin.password=test-password"
-})
-@Testcontainers
-class DbIndexHygieneMigrationTest {
-
-  @Container
-  static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
-
-  @DynamicPropertySource
-  static void postgresProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", postgres::getJdbcUrl);
-    registry.add("spring.datasource.username", postgres::getUsername);
-    registry.add("spring.datasource.password", postgres::getPassword);
-  }
+class DbIndexHygieneMigrationTest extends AbstractPostgresIntegrationTest {
 
   @Autowired
   private JdbcTemplate jdbc;

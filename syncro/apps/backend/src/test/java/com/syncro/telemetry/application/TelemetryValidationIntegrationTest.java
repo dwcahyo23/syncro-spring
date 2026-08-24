@@ -30,6 +30,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @SpringBootTest(properties = {
     "server.port=0",
+    "spring.lifecycle.timeout-per-shutdown-phase=5s",
     "REDIS_HOST=localhost",
     "REDIS_PORT=6379",
     "INFLUXDB_HOST=localhost",
@@ -62,7 +63,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @Transactional
 class TelemetryValidationIntegrationTest {
   @Container
-  static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
+  static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine")
+      .withReuse(true);
 
   @MockitoBean
   InfluxDBClient influxDBClient;

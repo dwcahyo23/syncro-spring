@@ -48,6 +48,7 @@ import org.springframework.test.web.servlet.MockMvc;
     classes = ActuatorHealthIntegrationTest.HealthTestApplication.class,
     properties = {
       "server.port=0",
+    "spring.lifecycle.timeout-per-shutdown-phase=5s",
       "spring.autoconfigure.exclude="
           + "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration,"
           + "org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration,"

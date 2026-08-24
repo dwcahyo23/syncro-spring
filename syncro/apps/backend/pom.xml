@@ -177,14 +177,25 @@
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <!-- Default true recompiles the whole module on any change; false lets
+               javac only rebuild stale sources (big win for 100+ test files). -->
+          <useIncrementalCompilation>false</useIncrementalCompilation>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
           <argLine>
             -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar
-            -Xshare:off
             --add-opens=java.base/java.nio=ALL-UNNAMED
             --sun-misc-unsafe-memory-access=allow
           </argLine>
+          <!-- Non-daemon Spring threads (MQTT adapter, workers) can keep the forked
+               JVM alive after the last test; kill it if it does not exit in time. -->
+          <forkedProcessExitTimeoutInSeconds>30</forkedProcessExitTimeoutInSeconds>
         </configuration>
       </plugin>
     </plugins>

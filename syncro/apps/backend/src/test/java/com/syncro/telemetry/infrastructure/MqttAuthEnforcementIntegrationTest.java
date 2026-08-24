@@ -54,6 +54,7 @@ class MqttAuthEnforcementIntegrationTest {
 
   @Container
   static final GenericContainer<?> emqx = new GenericContainer<>("emqx/emqx:6.2.2")
+      .withReuse(true)
       .withCreateContainerCmdModifier(cmd -> cmd.withEntrypoint("/bin/sh", "-c",
           "cat > /opt/emqx/etc/emqx.conf << 'EOF'\n" + EMQX_CONF + "\nEOF\n"
               + "mkdir -p /opt/emqx/etc/syncro\n"

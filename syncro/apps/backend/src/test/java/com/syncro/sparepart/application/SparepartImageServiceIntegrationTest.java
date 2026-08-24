@@ -66,6 +66,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @SpringBootTest(properties = {
     "server.port=0",
+    "spring.lifecycle.timeout-per-shutdown-phase=5s",
     "REDIS_HOST=localhost",
     "REDIS_PORT=6379",
     "INFLUXDB_HOST=localhost",
@@ -103,6 +104,10 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 class SparepartImageServiceIntegrationTest {
   @Container
   static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
+
+  static {
+    postgres.withReuse(true);
+  }
 
   @DynamicPropertySource
   static void postgresProperties(DynamicPropertyRegistry registry) {
