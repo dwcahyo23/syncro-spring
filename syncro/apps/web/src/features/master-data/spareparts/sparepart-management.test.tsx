@@ -137,6 +137,25 @@ const mockPriceEntries = {
 
 let mockCreatePriceEntry = { mutateAsync: vi.fn(), mutate: vi.fn(), isPending: false };
 
+type MockImageQuery = {
+  data: { data: { sparepartId: string; objectKey?: string; presignedUrl?: string } };
+  isLoading: boolean;
+  isError: boolean;
+  error?: unknown;
+  refetch: ReturnType<typeof vi.fn>;
+};
+
+let mockImageQuery: MockImageQuery = {
+  data: { data: { sparepartId: "sp-1", objectKey: "spareparts/sp-1/a.png", presignedUrl: "https://presigned/a.png" } },
+  isLoading: false,
+  isError: false,
+  error: undefined,
+  refetch: vi.fn(),
+};
+
+let mockCreateImage = { mutateAsync: vi.fn(), mutate: vi.fn(), isPending: false };
+let mockDeleteImage = { mutateAsync: vi.fn(), mutate: vi.fn(), isPending: false };
+
 vi.mock("@/lib/api/generated/syncro", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   useListSparepartTaxonomies: vi.fn(() => mockListTaxonomies),
@@ -149,9 +168,13 @@ vi.mock("@/lib/api/generated/syncro", async (importOriginal) => ({
   useDeleteSparepart: vi.fn(() => ({ mutateAsync: vi.fn(), mutate: vi.fn(), isPending: false })),
   useListSparepartPriceEntries: vi.fn(() => mockPriceEntries),
   useCreateSparepartPriceEntries: vi.fn(() => mockCreatePriceEntry),
+  useGetSparepartImage: vi.fn(() => mockImageQuery),
+  useCreateSparepartImage: vi.fn(() => mockCreateImage),
+  useDeleteSparepartImage: vi.fn(() => mockDeleteImage),
   getListSparepartsQueryKey: vi.fn(() => ["/mock-spareparts-key"]),
   getListSparepartTaxonomiesQueryKey: vi.fn(() => ["/mock-taxonomies-key"]),
   getListSparepartPriceEntriesQueryKey: vi.fn((sparepartId: string) => ["mock-price-entries", sparepartId]),
+  getGetSparepartImageQueryKey: vi.fn((sparepartId: string) => ["mock-sparepart-image", sparepartId]),
 }));
 
 // ---------------------------------------------------------------------------
@@ -173,6 +196,17 @@ function resetMocks() {
   mockCreatePriceEntry = { mutateAsync: vi.fn().mockResolvedValue({ data: {} }), mutate: vi.fn(), isPending: false };
   mockPriceEntries.data.data[0].enteredByName = "writer@syncro.dev";
   mockPriceEntries.refetch = vi.fn();
+  mockImageQuery = {
+    data: {
+      data: { sparepartId: "sp-1", objectKey: "spareparts/sp-1/a.png", presignedUrl: "https://presigned/a.png" },
+    },
+    isLoading: false,
+    isError: false,
+    error: undefined,
+    refetch: vi.fn(),
+  };
+  mockCreateImage = { mutateAsync: vi.fn().mockResolvedValue({ data: {} }), mutate: vi.fn(), isPending: false };
+  mockDeleteImage = { mutateAsync: vi.fn().mockResolvedValue({ data: {} }), mutate: vi.fn(), isPending: false };
 }
 
 describe("SparepartManagement procurement readiness (Story 8-2)", () => {
@@ -380,5 +414,110 @@ describe("SparepartManagement price history (Story 8-3)", () => {
 
     expect(screen.getByTestId("price-amount-input")).toHaveValue("1000");
     expect(screen.getByTestId("price-kurs-input")).toHaveValue("15500");
+  });
+});
+
+describe("SparepartManagement sparepart image (Story 8-4)", () => {
+  beforeEach(() => {
+    resetMocks();
+  });
+
+  it("hides the Image section in create mode", () => {
+    render(
+      <Wrapper>
+        <SparepartManagement />
+      </Wrapper>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Create sparepart" }));
+
+    expect(screen.getByText("1. Details")).toBeInTheDocument();
+    expect(screen.queryByText("Image")).not.toBeInTheDocument();
+  });
+
+  it("shows the Image section with a presigned preview when editing", async () => {
+    render(
+      <Wrapper>
+        <SparepartManagement />
+      </Wrapper>,
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Edit" })[0]);
+
+    expect(await screen.findByTestId("sparepart-image-section")).toBeInTheDocument();
+    expect(screen.getByTestId("sparepart-image-preview")).toHaveAttribute("src", "https://presigned/a.png");
+    expect(screen.getByRole("button", { name: "Replace image" })).toBeInTheDocument();
+  });
+
+  it("uploads the selected file once through the create hook", async () => {
+    mockImageQuery = {
+      ...mockImageQuery,
+      data: { data: { sparepartId: "sp-1", objectKey: undefined, presignedUrl: undefined } },
+    };
+
+    render(
+      <Wrapper>
+        <SparepartManagement />
+      </Wrapper>,
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Edit" })[0]);
+    await screen.findByTestId("sparepart-image-section");
+
+    const file = new File(["image"], "part.png", { type: "image/png" });
+    fireEvent.change(screen.getByTestId("sparepart-image-input"), { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(mockCreateImage.mutateAsync).toHaveBeenCalledTimes(1);
+    });
+    expect(mockCreateImage.mutateAsync).toHaveBeenCalledWith({
+      sparepartId: "sp-1",
+      params: { filename: "part.png", contentType: "image/png" },
+      data: { data: file },
+    });
+  });
+
+  it("removes the image once through the delete hook", async () => {
+    render(
+      <Wrapper>
+        <SparepartManagement />
+      </Wrapper>,
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Edit" })[0]);
+    await screen.findByTestId("sparepart-image-section");
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+
+    await waitFor(() => {
+      expect(mockDeleteImage.mutateAsync).toHaveBeenCalledTimes(1);
+    });
+    expect(mockDeleteImage.mutateAsync).toHaveBeenCalledWith({ sparepartId: "sp-1" });
+  });
+
+  it("surfaces a JOB_SCOPE_REQUIRED denial verbatim from the upload", async () => {
+    mockCreateImage = {
+      mutateAsync: vi.fn().mockRejectedValue(
+        new (await import("@/lib/api/orval-mutator")).SyncroApiError(403, {
+          code: "JOB_SCOPE_REQUIRED",
+          message: "This action requires job scope LEADER or above.",
+        }),
+      ),
+      mutate: vi.fn(),
+      isPending: false,
+    };
+
+    render(
+      <Wrapper>
+        <SparepartManagement />
+      </Wrapper>,
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Edit" })[0]);
+    await screen.findByTestId("sparepart-image-section");
+
+    const file = new File(["image"], "part.png", { type: "image/png" });
+    fireEvent.change(screen.getByTestId("sparepart-image-input"), { target: { files: [file] } });
+
+    expect(await screen.findByText("This action requires job scope LEADER or above.")).toBeInTheDocument();
   });
 });

@@ -48,3 +48,6 @@ syncro:
     bucket: ${GARAGE_BUCKET:syncro-spareparts}
     region: ${GARAGE_REGION:garage}
     presign-ttl-seconds: ${GARAGE_PRESIGN_TTL_SECONDS:300}
+  sparepart:
+    image:
+      max-bytes: ${SYNCRO_SPAREPART_IMAGE_MAX_BYTES:5242880}

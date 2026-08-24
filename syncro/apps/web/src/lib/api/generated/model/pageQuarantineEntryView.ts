@@ -15,10 +15,10 @@ export interface PageQuarantineEntryView {
   size?: number;
   content?: QuarantineEntryView[];
   number?: number;
-  first?: boolean;
-  last?: boolean;
   numberOfElements?: number;
   pageable?: PageableObject;
   sort?: SortObject;
+  first?: boolean;
+  last?: boolean;
   empty?: boolean;
 }

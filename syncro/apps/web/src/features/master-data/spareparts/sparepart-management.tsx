@@ -10,6 +10,7 @@ import { CurrencyPriceInput, type CurrencyPriceValue } from "@/components/syncro
 import { LeadTimeInput } from "@/components/syncro/lead-time-input";
 import { MaterialCodeField } from "@/components/syncro/material-code-field";
 import { PriceHistoryTable } from "@/components/syncro/price-history-table";
+import { SparepartImageUpload } from "@/components/syncro/sparepart-image-upload";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -47,13 +48,17 @@ import type {
 } from "@/lib/api/generated/model";
 import { SparepartTaxonomyRequestDimension } from "@/lib/api/generated/model";
 import {
+  getGetSparepartImageQueryKey,
   getListSparepartPriceEntriesQueryKey,
   getListSparepartsQueryKey,
   getListSparepartTaxonomiesQueryKey,
   useCreateSparepart,
+  useCreateSparepartImage,
   useCreateSparepartPriceEntries,
   useCreateSparepartTaxonomy,
   useDeleteSparepart,
+  useDeleteSparepartImage,
+  useGetSparepartImage,
   useListMachines,
   useListSparepartPriceEntries,
   useListSpareparts,
@@ -131,11 +136,33 @@ export function SparepartManagement() {
   const [procurementOriginal, setProcurementOriginal] = useState<ProcurementDraft>(EMPTY_PROCUREMENT);
   const [priceDraft, setPriceDraft] = useState<CurrencyPriceValue>(EMPTY_PRICE_DRAFT);
   const [priceError, setPriceError] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
   const historySparepartId = dialogMode?.type === "edit" ? dialogMode.sparepart.id : undefined;
   const priceHistory = useListSparepartPriceEntries(historySparepartId ?? "", {
     query: { enabled: Boolean(historySparepartId) },
   });
+  const imageQuery = useGetSparepartImage(historySparepartId ?? "", {
+    query: { enabled: Boolean(historySparepartId) },
+  });
+  const createImage = useCreateSparepartImage({
+    mutation: {
+      onSuccess: (_data, variables) => {
+        queryClient.invalidateQueries({ queryKey: getGetSparepartImageQueryKey(variables.sparepartId) });
+      },
+    },
+  });
+  const deleteImage = useDeleteSparepartImage({
+    mutation: {
+      onSuccess: (_data, variables) => {
+        queryClient.invalidateQueries({ queryKey: getGetSparepartImageQueryKey(variables.sparepartId) });
+      },
+    },
+  });
   const priceHistoryItems: SparepartPriceEntryView[] = priceHistory.data?.data ?? [];
+  const imageView = imageQuery.data?.data;
+  const imageLoadError = errorResponse(imageQuery.error);
+  const imageMissing = imageQuery.isError && imageLoadError?.code === "SPAREPART_IMAGE_NOT_FOUND";
+  const imageLoadFailed = imageQuery.isError && !imageMissing;
   const taxonomyItems = taxonomy.data?.data.items ?? [];
   const taxonomyByDimension = useMemo(() => groupByDimension(taxonomyItems), [taxonomyItems]);
   const machineItems = machines.data?.data.items ?? [];
@@ -174,6 +201,7 @@ export function SparepartManagement() {
     setProcurementOriginal(EMPTY_PROCUREMENT);
     setPriceDraft(EMPTY_PRICE_DRAFT);
     setPriceError(null);
+    setImageError(null);
     setFieldErrors({});
     setFormError(null);
     setStep(1);
@@ -200,6 +228,7 @@ export function SparepartManagement() {
     setProcurementOriginal(draft);
     setPriceDraft(EMPTY_PRICE_DRAFT);
     setPriceError(null);
+    setImageError(null);
     setFieldErrors({});
     setFormError(null);
     setStep(1);
@@ -380,6 +409,43 @@ export function SparepartManagement() {
       currency: entry.currency ?? "IDR",
       kursToIdr: entry.kursToIdr != null ? String(entry.kursToIdr) : "",
     });
+  }
+
+  async function uploadImage(file: File) {
+    const sparepartId = dialogMode?.type === "edit" ? dialogMode.sparepart.id : undefined;
+    if (!sparepartId || createImage.isPending) {
+      return;
+    }
+    setImageError(null);
+    try {
+      await createImage.mutateAsync({
+        sparepartId,
+        params: { filename: file.name, contentType: file.type },
+        data: { data: file },
+      });
+      toast.success("Image uploaded.");
+    } catch (error) {
+      const response = errorResponse(error);
+      const message = response?.message ?? "Uploading image failed.";
+      setImageError(message);
+      toast.error(message);
+    }
+  }
+
+  async function removeImage() {
+    const sparepartId = dialogMode?.type === "edit" ? dialogMode.sparepart.id : undefined;
+    if (!sparepartId || deleteImage.isPending) {
+      return;
+    }
+    setImageError(null);
+    try {
+      await deleteImage.mutateAsync({ sparepartId });
+      toast.success("Image removed.");
+    } catch (error) {
+      const message = errorResponse(error)?.message ?? "Removing image failed.";
+      setImageError(message);
+      toast.error(message);
+    }
   }
 
   return (
@@ -608,6 +674,27 @@ export function SparepartManagement() {
                     entries={priceHistoryItems}
                     isLoading={priceHistory.isLoading}
                     onReuse={reusePriceEntry}
+                  />
+                </div>
+              ) : null}
+              {dialogMode?.type === "edit" ? (
+                <div
+                  className="grid gap-4 rounded-md border border-dashed p-3 md:col-span-2"
+                  data-testid="sparepart-image-section"
+                >
+                  <div>
+                    <span className="font-medium text-sm">Image</span>
+                    <p className="text-muted-foreground text-xs">Requires job scope LEADER or above.</p>
+                  </div>
+                  <SparepartImageUpload
+                    value={imageView?.presignedUrl ?? null}
+                    onUpload={(file) => void uploadImage(file)}
+                    onRemove={() => void removeImage()}
+                    isUploading={createImage.isPending}
+                    isRemoving={deleteImage.isPending}
+                    error={imageError ?? (imageLoadFailed ? "The current image could not be loaded." : undefined)}
+                    readOnly={!canMutate}
+                    disabledReason="View only."
                   />
                 </div>
               ) : null}

@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
@@ -74,6 +75,20 @@ public class GarageObjectStorageService implements ObjectStorageService {
     } catch (Exception exception) {
       log.warn("Failed to presign GET URL for key={} bucket={}", key, properties.bucket(), exception);
       throw new ObjectStorageException("Failed to presign GET URL: " + key, exception);
+    }
+  }
+
+  @Override
+  public void delete(String key) {
+    requireArgument(key != null && !key.isBlank(), "object key must not be blank");
+    try {
+      DeleteObjectRequest request =
+          DeleteObjectRequest.builder().bucket(properties.bucket()).key(key).build();
+      s3Client.deleteObject(request);
+      log.info("Deleted object key={} in bucket={}", key, properties.bucket());
+    } catch (Exception exception) {
+      log.warn("Failed to delete object key={} in bucket={}", key, properties.bucket(), exception);
+      throw new ObjectStorageException("Failed to delete object: " + key, exception);
     }
   }
 

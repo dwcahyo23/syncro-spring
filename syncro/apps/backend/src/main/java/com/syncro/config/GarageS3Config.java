@@ -52,7 +52,13 @@ public class GarageS3Config {
             .apiCallAttemptTimeout(API_CALL_ATTEMPT_TIMEOUT)
             .apiCallTimeout(API_CALL_TOTAL_TIMEOUT)
             .build())
-        .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build());
+        .serviceConfiguration(S3Configuration.builder()
+            .pathStyleAccessEnabled(true)
+            // Newer SDK v2 defaults to aws-chunked + CRC32 trailer checksums
+            // (STREAMING-AWS4-HMAC-SHA256-PAYLOAD-TRAILER), which Garage v2.3 rejects as an
+            // invalid payload signature. Sending the payload non-chunked keeps Garage compatible.
+            .chunkedEncodingEnabled(false)
+            .build());
   }
 
   S3Presigner.Builder s3PresignerBuilder(GarageProperties properties) {

@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
@@ -118,5 +119,35 @@ class GarageObjectStorageServiceTest {
         .isInstanceOf(ObjectStorageException.class)
         .hasMessageContaining("img/a.png")
         .hasCauseInstanceOf(IllegalStateException.class);
+  }
+
+  @Test
+  void delete_deletesObjectWithConfiguredBucketAndKey() {
+    service.delete("img/sparepart-1.png");
+
+    ArgumentCaptor<DeleteObjectRequest> requestCaptor =
+        ArgumentCaptor.forClass(DeleteObjectRequest.class);
+    verify(s3Client).deleteObject(requestCaptor.capture());
+    DeleteObjectRequest request = requestCaptor.getValue();
+    assertThat(request.bucket()).isEqualTo("syncro-spareparts");
+    assertThat(request.key()).isEqualTo("img/sparepart-1.png");
+  }
+
+  @Test
+  void delete_rejectsBlankKey() {
+    assertThatThrownBy(() -> service.delete(" "))
+        .isInstanceOf(ObjectStorageException.class);
+    verifyNoInteractions(s3Client);
+  }
+
+  @Test
+  void delete_wrapsClientFailureInObjectStorageException() {
+    when(s3Client.deleteObject(any(DeleteObjectRequest.class)))
+        .thenThrow(RuntimeException.class);
+
+    assertThatThrownBy(() -> service.delete("img/a.png"))
+        .isInstanceOf(ObjectStorageException.class)
+        .hasMessageContaining("img/a.png")
+        .hasCauseInstanceOf(RuntimeException.class);
   }
 }

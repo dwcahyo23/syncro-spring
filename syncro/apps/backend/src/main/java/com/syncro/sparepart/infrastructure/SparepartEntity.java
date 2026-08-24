@@ -56,6 +56,9 @@ public class SparepartEntity {
   @Column(name = "lead_time_hours", precision = 12, scale = 2)
   private BigDecimal leadTimeHours;
 
+  @Column(name = "image_object_key", length = 255)
+  private String imageObjectKey;
+
   protected SparepartEntity() {
   }
 
@@ -130,6 +133,10 @@ public class SparepartEntity {
     return leadTimeHours;
   }
 
+  public String getImageObjectKey() {
+    return imageObjectKey;
+  }
+
   public void update(
       String code,
       String name,
@@ -156,6 +163,15 @@ public class SparepartEntity {
   public void updateProcurement(String materialCode, BigDecimal leadTimeHours, Instant updatedAt) {
     this.materialCode = materialCode;
     this.leadTimeHours = leadTimeHours;
+    this.updatedAt = updatedAt;
+  }
+
+  /**
+   * Replaces the image object key (Story 8-4). {@code null} clears the reference.
+   * The old Garage object must be deleted by the caller before calling this.
+   */
+  public void updateImageObjectKey(String imageObjectKey, Instant updatedAt) {
+    this.imageObjectKey = imageObjectKey;
     this.updatedAt = updatedAt;
   }
 }

@@ -32,6 +32,8 @@ import type {
   AuditLogListResponse,
   AuthUserView,
   CreateMachineResponsibilityRequest,
+  CreateSparepartImageBody,
+  CreateSparepartImageParams,
   Health200,
   IngestWorkerStatus,
   InstallationListResponse,
@@ -67,6 +69,7 @@ import type {
   ResolveOverrideRequest,
   ResolveRequest,
   SetupCompletenessResponse,
+  SparepartImageView,
   SparepartListResponse,
   SparepartPriceEntryRequest,
   SparepartPriceEntryView,
@@ -3206,6 +3209,299 @@ export const useCreateSparepartPriceEntries = <TError = void,
         TContext
       > => {
       return useMutation(getCreateSparepartPriceEntriesMutationOptions(options), queryClient);
+    }
+
+export type getSparepartImageResponse200 = {
+  data: SparepartImageView
+  status: 200
+}
+
+export type getSparepartImageResponseSuccess = (getSparepartImageResponse200) & {
+  headers: Headers;
+};
+;
+
+export type getSparepartImageResponse = (getSparepartImageResponseSuccess)
+
+export const getGetSparepartImageUrl = (sparepartId: string,) => {
+
+
+
+
+  return `/api/v1/spareparts/${sparepartId}/image`
+}
+
+/**
+ * @summary Get a sparepart's image presigned URL
+ */
+export const getSparepartImage = async (sparepartId: string, options?: Parameters<typeof syncroFetch>[1]): Promise<getSparepartImageResponse> => {
+
+  return syncroFetch<getSparepartImageResponse>(getGetSparepartImageUrl(sparepartId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSparepartImageQueryKey = (sparepartId: string,) => {
+    return [
+    `/api/v1/spareparts/${sparepartId}/image`
+    ] as const;
+    }
+
+
+export const getGetSparepartImageQueryOptions = <TData = Awaited<ReturnType<typeof getSparepartImage>>, TError = unknown>(sparepartId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSparepartImage>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSparepartImageQueryKey(sparepartId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSparepartImage>>> = ({ signal }) => getSparepartImage(sparepartId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: sparepartId !== null && sparepartId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSparepartImage>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSparepartImageQueryResult = NonNullable<Awaited<ReturnType<typeof getSparepartImage>>>
+export type GetSparepartImageQueryError = unknown
+
+
+export function useGetSparepartImage<TData = Awaited<ReturnType<typeof getSparepartImage>>, TError = unknown>(
+ sparepartId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSparepartImage>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSparepartImage>>,
+          TError,
+          Awaited<ReturnType<typeof getSparepartImage>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSparepartImage<TData = Awaited<ReturnType<typeof getSparepartImage>>, TError = unknown>(
+ sparepartId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSparepartImage>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSparepartImage>>,
+          TError,
+          Awaited<ReturnType<typeof getSparepartImage>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSparepartImage<TData = Awaited<ReturnType<typeof getSparepartImage>>, TError = unknown>(
+ sparepartId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSparepartImage>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get a sparepart's image presigned URL
+ */
+
+export function useGetSparepartImage<TData = Awaited<ReturnType<typeof getSparepartImage>>, TError = unknown>(
+ sparepartId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSparepartImage>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSparepartImageQueryOptions(sparepartId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type createSparepartImageResponse200 = {
+  data: SparepartImageView
+  status: 200
+}
+
+export type createSparepartImageResponseSuccess = (createSparepartImageResponse200) & {
+  headers: Headers;
+};
+;
+
+export type createSparepartImageResponse = (createSparepartImageResponseSuccess)
+
+export const getCreateSparepartImageUrl = (sparepartId: string,
+    params: CreateSparepartImageParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/spareparts/${sparepartId}/image?${stringifiedParams}` : `/api/v1/spareparts/${sparepartId}/image`
+}
+
+/**
+ * @summary Upload or replace a sparepart's image
+ */
+export const createSparepartImage = async (sparepartId: string,
+    params: CreateSparepartImageParams,
+    createSparepartImageBody?: CreateSparepartImageBody, options?: Parameters<typeof syncroFetch>[1]): Promise<createSparepartImageResponse> => {
+    const formData = new FormData();
+if(createSparepartImageBody?.data !== undefined) {
+ formData.append(`data`, createSparepartImageBody.data);
+ }
+
+  return syncroFetch<createSparepartImageResponse>(getCreateSparepartImageUrl(sparepartId,params),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+
+export const getCreateSparepartImageMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSparepartImage>>, TError,{sparepartId: string;params: CreateSparepartImageParams;data?: CreateSparepartImageBody}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSparepartImage>>, TError,{sparepartId: string;params: CreateSparepartImageParams;data?: CreateSparepartImageBody}, TContext> => {
+
+const mutationKey = ['createSparepartImage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSparepartImage>>, {sparepartId: string;params: CreateSparepartImageParams;data?: CreateSparepartImageBody}> = (props) => {
+          const {sparepartId,params,data} = props ?? {};
+
+          return  createSparepartImage(sparepartId,params,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSparepartImageMutationResult = NonNullable<Awaited<ReturnType<typeof createSparepartImage>>>
+    export type CreateSparepartImageMutationBody = CreateSparepartImageBody | undefined
+    export type CreateSparepartImageMutationError = unknown
+
+    /**
+ * @summary Upload or replace a sparepart's image
+ */
+export const useCreateSparepartImage = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSparepartImage>>, TError,{sparepartId: string;params: CreateSparepartImageParams;data?: CreateSparepartImageBody}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createSparepartImage>>,
+        TError,
+        {sparepartId: string;params: CreateSparepartImageParams;data?: CreateSparepartImageBody},
+        TContext
+      > => {
+      return useMutation(getCreateSparepartImageMutationOptions(options), queryClient);
+    }
+
+export type deleteSparepartImageResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteSparepartImageResponseSuccess = (deleteSparepartImageResponse204) & {
+  headers: Headers;
+};
+;
+
+export type deleteSparepartImageResponse = (deleteSparepartImageResponseSuccess)
+
+export const getDeleteSparepartImageUrl = (sparepartId: string,) => {
+
+
+
+
+  return `/api/v1/spareparts/${sparepartId}/image`
+}
+
+/**
+ * @summary Remove a sparepart's image
+ */
+export const deleteSparepartImage = async (sparepartId: string, options?: Parameters<typeof syncroFetch>[1]): Promise<deleteSparepartImageResponse> => {
+
+  return syncroFetch<deleteSparepartImageResponse>(getDeleteSparepartImageUrl(sparepartId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteSparepartImageMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSparepartImage>>, TError,{sparepartId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteSparepartImage>>, TError,{sparepartId: string}, TContext> => {
+
+const mutationKey = ['deleteSparepartImage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteSparepartImage>>, {sparepartId: string}> = (props) => {
+          const {sparepartId} = props ?? {};
+
+          return  deleteSparepartImage(sparepartId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteSparepartImageMutationResult = NonNullable<Awaited<ReturnType<typeof deleteSparepartImage>>>
+
+    export type DeleteSparepartImageMutationError = unknown
+
+    /**
+ * @summary Remove a sparepart's image
+ */
+export const useDeleteSparepartImage = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSparepartImage>>, TError,{sparepartId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteSparepartImage>>,
+        TError,
+        {sparepartId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteSparepartImageMutationOptions(options), queryClient);
     }
 
 export type listSparepartTaxonomiesResponse200 = {

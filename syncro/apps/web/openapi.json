@@ -1689,6 +1689,209 @@
         }
       }
     },
+    "/api/v1/spareparts/{sparepartId}/image": {
+      "get": {
+        "tags": [
+          "sparepart-image-controller"
+        ],
+        "summary": "Get a sparepart's image presigned URL",
+        "operationId": "getSparepartImage",
+        "parameters": [
+          {
+            "name": "sparepartId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Presigned URL returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartImageView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid sparepart id",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Sparepart or image not found",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "502": {
+            "description": "Object storage operation failed",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "sparepart-image-controller"
+        ],
+        "summary": "Upload or replace a sparepart's image",
+        "operationId": "createSparepartImage",
+        "parameters": [
+          {
+            "name": "sparepartId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "filename",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "contentType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "data": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "data"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Image stored; presigned URL returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartImageView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or multipart error",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "403": {
+            "description": "Forbidden (role or job scope)",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Sparepart not found",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "502": {
+            "description": "Object storage operation failed",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "sparepart-image-controller"
+        ],
+        "summary": "Remove a sparepart's image",
+        "operationId": "deleteSparepartImage",
+        "parameters": [
+          {
+            "name": "sparepartId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Image removed (or absent, no-op)"
+          },
+          "400": {
+            "description": "Invalid sparepart id",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "403": {
+            "description": "Forbidden (role or job scope)",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Sparepart not found",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "502": {
+            "description": "Object storage operation failed",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
     "/api/v1/sparepart-taxonomies": {
       "get": {
         "tags": [
@@ -4306,6 +4509,21 @@
           }
         }
       },
+      "SparepartImageView": {
+        "type": "object",
+        "properties": {
+          "sparepartId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "objectKey": {
+            "type": "string"
+          },
+          "presignedUrl": {
+            "type": "string"
+          }
+        }
+      },
       "InstallationRequest": {
         "type": "object",
         "properties": {
@@ -4548,12 +4766,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
@@ -4563,6 +4775,12 @@
           },
           "sort": {
             "$ref": "#/components/schemas/SortObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"

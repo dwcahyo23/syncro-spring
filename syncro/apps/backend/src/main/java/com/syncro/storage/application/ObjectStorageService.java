@@ -31,4 +31,13 @@ public interface ObjectStorageService {
    * @throws ObjectStorageException if presigning fails
    */
   String presignGetUrl(String key);
+
+  /**
+   * Deletes the object stored under {@code key}. Idempotent: deleting a key that does not
+   * exist in the bucket is a no-op, not an error.
+   *
+   * @param key bucket-relative object key
+   * @throws ObjectStorageException if the delete fails
+   */
+  void delete(String key);
 }

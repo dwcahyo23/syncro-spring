@@ -117,7 +117,6 @@ class SparepartLifetimeEvaluatorTest {
   void evaluate_zeroExpectedProductionCount_returnsEmpty() {
     when(redisLatestWriter.readCounting(MACHINE_ID)).thenReturn(Optional.of(350L));
     when(installationRepository.findById(INSTALLATION_ID)).thenReturn(Optional.of(installationEntity));
-    when(installationEntity.getBaselineCounter()).thenReturn(100L);
     when(installationEntity.getExpectedProductionCount()).thenReturn(0L);
 
     Optional<SparepartLifetimeEvaluator.EvaluationResult> result =
@@ -128,11 +127,8 @@ class SparepartLifetimeEvaluatorTest {
 
   @Test
   void evaluateAll_zeroExpectedProductionCount_skipsInstallation() {
-    UUID installationId = UUID.randomUUID();
     when(installationRepository.findAllByMachineId(MACHINE_ID)).thenReturn(List.of(installationEntity));
     when(redisLatestWriter.readCounting(MACHINE_ID)).thenReturn(Optional.of(350L));
-    when(installationEntity.getId()).thenReturn(installationId);
-    when(installationEntity.getBaselineCounter()).thenReturn(100L);
     when(installationEntity.getExpectedProductionCount()).thenReturn(0L);
 
     Map<UUID, SparepartLifetimeEvaluator.EvaluationResult> result =

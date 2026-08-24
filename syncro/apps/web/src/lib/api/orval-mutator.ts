@@ -18,7 +18,10 @@ export async function syncroFetch<T>(url: string, options?: RequestInit): Promis
   const token = getAuthToken();
   const headers = new Headers(options?.headers);
 
-  if (!headers.has("Content-Type") && options?.body) {
+  // Multipart bodies must keep the browser-set boundary; forcing application/json
+  // would corrupt FormData requests generated for upload endpoints.
+  const isFormData = options?.body instanceof FormData;
+  if (!headers.has("Content-Type") && options?.body && !isFormData) {
     headers.set("Content-Type", "application/json");
   }
   if (token) {
