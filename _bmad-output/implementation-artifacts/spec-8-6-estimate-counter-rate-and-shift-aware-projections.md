@@ -6,6 +6,7 @@ status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: true
 baseline_commit: c97a859
+final_revision: dce7798
 context:
   - '{project-root}/_bmad-output/project-context.md'
 warnings:
@@ -160,3 +161,17 @@ warnings:
 
 **Manual checks:**
 - Boot docker stack + backend; login; `GET /api/v1/machines/{id}/sparepart-projections` on pilot machine BF-08410: expect explicit insufficient-data (no history) → then publish pilot MQTT counting payloads (story 7-3 script) and re-request: rate + basis + depletion + lead-time fields appear; `redis-cli TTL syncro:machine:{id}:projections` ≈ 300; PUT a shift-config change and confirm the key is evicted.
+
+## Auto Run Result
+
+Status: done (final_revision dce7798; baseline c97a859).
+
+**Summary:** Machines now expose `GET /api/v1/machines/{id}/sparepart-projections`: a wrap-safe rolling 30-day counter-rate per effective operating hour (transparent FULL_HISTORY fallback, explicit insufficient states incl. NO_PRODUCTION_DELTA), per-installation remaining counters, calendar depletion instants derived from the resolved shift calendar (cross-midnight-safe, overlap-unioned), and expected consumption during the sparepart's lead-time window. Results are look-aside cached in Redis (PT5M TTL) and evicted via AFTER_COMMIT events on telemetry/shift/installation/procurement writes. Machine Hub overview renders CounterRateProjectionCard with basis badge, window evidence, and insufficient-reason copy.
+
+**Files changed:** backend — new projection module (config, calendar, estimator, Influx history reader, Redis cache, eviction event/listener, service, controller/DTOs/handler), ShiftConfigService internal resolver + publisher hooks, installation/sparepart publishers, repository fetch-join, application.yml; frontend — CounterRateProjectionCard (+tests), hub wiring (+test), Orval regen with 5 force-added model files.
+
+**Review findings breakdown:** 11 patches applied (1 high zero-rate 500 → explicit NO_PRODUCTION_DELTA state; 3 medium: AFTER_COMMIT eviction, telemetry-write invalidation, integration coverage gaps; 7 low incl. overlap union, exception mapping, tx/fetch hygiene, DTO doc corrections, cache-mapper leniency, loud ordering assertion), 2 deferred (counter-reset vs wrap policy — pre-existing Epic-4-wide; KEYS→SCAN at scale), 5 rejected as spec/architecture-pinned.
+
+**Verification performed:** targeted backend suite 107/107 BUILD SUCCESS (estimator/calendar/integration/WebMvc incl. new cases); live stack evidence — BF-08410 GET returned explicit STALE_DATA view, Redis key TTL=300s, shift PUT evicted key and recompute reflected shiftSource MACHINE + dailyOperatingHours 8.0, override cleaned up 204; frontend vitest 263/263, tsc exit 0, biome infos-only.
+
+**Residual risks:** daily-average depletion may land outside shift windows (documented approximation); single plant timezone per deployment (pilot-pinned); counter-reset fabrication deferred pending product policy; Redis ALL-eviction uses KEYS (dev-scale).
