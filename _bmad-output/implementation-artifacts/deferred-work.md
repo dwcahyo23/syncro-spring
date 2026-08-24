@@ -938,3 +938,11 @@ status: open
 - source_spec: '_bmad-output/implementation-artifacts/spec-8-3-manage-estimated-price-entries-with-currency-and-kurs.md'
   summary: SparepartLifetimeEvaluatorTest fails at baseline with 2 Mockito UnnecessaryStubbingException errors (strict stubs at lines 120/134/135), unrelated to 8-3; fix the stubs or mark strictness off.
   evidence: Full Sparepart* suite run during 8-3 showed 2 Errors; file is unmodified by 8-3, fails standalone, and has zero import overlap with price-entry code.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-5-configure-shift-schedule-with-machine-override.md`
+  summary: Frontend cannot know a user's job-scope level, so below-LEADER MANAGE users see enabled shift/procurement editors and only discover denial via the server's 403 JOB_SCOPE_REQUIRED on submit; expose effective job scope from an auth endpoint so all Epic-8 mutation screens can render true read-only state.
+  evidence: Blind Hunter review of 8-5 (finding: AC 8.5-4 read-only-for-below-LEADER only achievable with role flag); same limitation shipped in stories 8-2/8-3/8-4 which gate on applicationRole + static LEADER hint; JobScopeService lives purely server-side.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-5-configure-shift-schedule-with-machine-override.md`
+  summary: Integration-test helpers latestAuditEntryFor/auditCount stream the whole audit_log table and order only by createdAt, making assertions O(entire-table) and nondeterministic when two audits share a timestamp; introduce a bounded/ordered query or sequence tiebreaker shared across suites.
+  evidence: Edge-prone pattern cloned into ShiftConfigServiceIntegrationTest from SparepartImageServiceIntegrationTest; works at current table sizes but degrades as suites accumulate audits.
