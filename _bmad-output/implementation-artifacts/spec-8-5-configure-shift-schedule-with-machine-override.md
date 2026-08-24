@@ -6,6 +6,7 @@ status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: true
 baseline_commit: 914624b
+final_revision: 7b57b9d
 context:
   - '{project-root}/_bmad-output/project-context.md'
 warnings:
@@ -153,3 +154,17 @@ warnings:
 
 **Manual checks:**
 - Boot stack; login admin; `PUT /machine-groups/{id}/shift-config` with a cross-midnight window → 200; `PUT /machines/{id}/shift-config` → GET shows `source: MACHINE`; DELETE → GET shows `source: MACHINE_GROUP`; psql confirms window rows and audit_log entries with MACHINE_GROUP/MACHINE entity types and window snapshots.
+
+## Auto Run Result
+
+Status: done (final_revision 7b57b9d; baseline 914624b).
+
+**Summary:** Machine groups can now hold up to three daily wall-clock shift windows (cross-midnight permitted) in `machine_group_shift_windows`, machines can override them in `machine_shift_windows` (machine wins), and reads expose the resolved source (`MACHINE`/`MACHINE_GROUP`/`NONE`). Mutations enforce app role → LEADER job scope → plant access server-side and write immutable audit records with window snapshots. UI ships `ShiftConfigEditor` + `InheritedConfigBadge` wired into the machine-group edit dialog and a Machine Hub Shift section with override/clear and verbatim denial surfacing.
+
+**Files changed:** backend — V40 migration, new `syncro/shiftconfig/` module (2 entities, 2 repositories, ShiftConfigService, ShiftConfigController/Dtos/ExceptionHandler) + integration/WebMvc tests (37 tests incl. 19 API-level); frontend — `ShiftConfigEditor`, `InheritedConfigBadge`, hub `ShiftSection`, group-dialog integration, hub page wiring, tests (+5 files, +2 modified), Orval clients regenerated with 5 force-added model files.
+
+**Review findings breakdown:** 12 patches applied (4 medium: null-payload destructive clear now 400; null array element NPE→400; client completeness guard + fieldErrors.shifts surfacing; dirty-guarded resync), 2 deferred (frontend job-scope visibility; audit-test helper scalability), 10 rejected.
+
+**Verification performed:** targeted Maven suite 187/187 green pre-review (Flyway "now at version v40" from empty DB); post-review ShiftConfig* 37/37 green; frontend vitest 252/252, tsc exit 0, biome warnings-only on touched files; live docker-stack round-trip via curl: group PUT cross-midnight windows persisted numbered, machine GET resolved MACHINE_GROUP→override PUT source MACHINE→DELETE 204→fallback re-confirmed, psql window rows + MACHINE_GROUP/MACHINE audit rows with snapshots confirmed.
+
+**Residual risks:** below-LEADER MANAGE users see enabled editors until the server's 403 (deferred, cross-story); concurrent replace is surfaced as retryable 409 rather than serialized; sparepart-management suite showed load-related timeout flakiness once (passes consistently in isolation and full-suite reruns).
