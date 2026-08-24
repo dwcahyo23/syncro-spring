@@ -3535,6 +3535,62 @@
         }
       }
     },
+    "/api/v1/machines/{machineId}/sparepart-projections": {
+      "get": {
+        "tags": [
+          "projection-controller"
+        ],
+        "summary": "Get counter-rate estimate and per-installation depletion projections for a machine",
+        "operationId": "getMachineSparepartProjections",
+        "parameters": [
+          {
+            "name": "machineId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Projection view returned; insufficient data is explicit, never guessed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineSparepartProjectionsView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid path value",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "403": {
+            "description": "Forbidden (plant scope)",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Machine not found",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
     "/api/v1/machines/code/{machineCode}": {
       "get": {
         "tags": [
@@ -5128,11 +5184,11 @@
             "type": "integer",
             "format": "int32"
           },
-          "sort": {
-            "$ref": "#/components/schemas/SortObject"
-          },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
           },
           "empty": {
             "type": "boolean"
@@ -5146,19 +5202,19 @@
             "type": "integer",
             "format": "int64"
           },
-          "paged": {
-            "type": "boolean"
-          },
-          "sort": {
-            "$ref": "#/components/schemas/SortObject"
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
           },
           "pageNumber": {
             "type": "integer",
             "format": "int32"
           },
-          "pageSize": {
-            "type": "integer",
-            "format": "int32"
+          "paged": {
+            "type": "boolean"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
           },
           "unpaged": {
             "type": "boolean"
@@ -5568,6 +5624,110 @@
           },
           "sort": {
             "type": "string"
+          }
+        }
+      },
+      "InstallationProjection": {
+        "type": "object",
+        "properties": {
+          "installationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sparepartId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "functionName": {
+            "type": "string"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "NO_TELEMETRY",
+              "INSUFFICIENT_SAMPLES",
+              "STALE_DATA",
+              "NO_OPERATING_TIME",
+              "NO_PRODUCTION_DELTA"
+            ]
+          },
+          "remainingCounters": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "projectedDepletionAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "leadTimeHours": {
+            "type": "number"
+          },
+          "consumptionDuringLeadTime": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "MachineSparepartProjectionsView": {
+        "type": "object",
+        "properties": {
+          "machineId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "rateAvailable": {
+            "type": "boolean"
+          },
+          "calculationBasis": {
+            "type": "string",
+            "enum": [
+              "ROLLING_30_DAY",
+              "FULL_HISTORY"
+            ]
+          },
+          "windowStartAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "windowEndAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "firstSampleAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastSampleAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "insufficientReason": {
+            "type": "string",
+            "enum": [
+              "NO_TELEMETRY",
+              "INSUFFICIENT_SAMPLES",
+              "STALE_DATA",
+              "NO_OPERATING_TIME",
+              "NO_PRODUCTION_DELTA"
+            ]
+          },
+          "ratePerOperatingHour": {
+            "type": "number"
+          },
+          "shiftSource": {
+            "type": "string"
+          },
+          "dailyOperatingHours": {
+            "type": "number"
+          },
+          "projections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InstallationProjection"
+            }
           }
         }
       },

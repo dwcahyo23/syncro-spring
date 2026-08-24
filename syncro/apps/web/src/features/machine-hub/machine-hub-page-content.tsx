@@ -5,6 +5,7 @@ import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
+import { CounterRateProjectionCard } from "@/components/syncro/counter-rate-projection-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { getMachineByCodeResponse } from "@/lib/api/generated/syncro";
 import { useGetMachineByCode } from "@/lib/api/generated/syncro";
@@ -98,6 +99,7 @@ export function MachineHubPageContent({ machineCode }: { machineCode: string }) 
         <TabsContent value="overview" className="mt-6 space-y-6">
           <OverviewTab machine={machine} isLoading={machineQuery.isLoading} />
           {machine?.id ? <ShiftSection machineId={machine.id} /> : null}
+          {machine?.id ? <CounterRateProjectionCard machineId={machine.id} /> : null}
         </TabsContent>
 
         <TabsContent value="telemetry" className="mt-6">

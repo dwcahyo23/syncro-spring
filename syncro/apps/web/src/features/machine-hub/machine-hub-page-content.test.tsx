@@ -45,13 +45,18 @@ let mockMachineQuery = {
   refetch: vi.fn(),
 };
 
-// Hub tabs other than the Shift section are out of scope here.
+// Hub tabs other than the Shift and projection sections are out of scope here.
 vi.mock("./alerts-tab", () => ({ AlertsTab: () => <div data-testid="alerts-stub" /> }));
 vi.mock("./audit-log-tab", () => ({ AuditLogTab: () => <div data-testid="audit-stub" /> }));
 vi.mock("./machine-header", () => ({ MachineHeader: () => <div data-testid="header-stub" /> }));
 vi.mock("./overview-tab", () => ({ OverviewTab: () => <div data-testid="overview-stub" /> }));
 vi.mock("./spareparts-tab", () => ({ SparepartsTab: () => <div data-testid="spareparts-stub" /> }));
 vi.mock("./telemetry-tab", () => ({ TelemetryTab: () => <div data-testid="telemetry-stub" /> }));
+vi.mock("@/components/syncro/counter-rate-projection-card", () => ({
+  CounterRateProjectionCard: ({ machineId }: { machineId?: string | null }) => (
+    <div data-testid="projection-card-stub" data-machine-id={machineId ?? ""} />
+  ),
+}));
 
 let mockShiftConfig = {
   data: {
@@ -318,5 +323,32 @@ describe("MachineHubPageContent shift section (Story 8-5)", () => {
     expect(screen.queryByRole("button", { name: /save shift override/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /clear shift override/i })).toBeNull();
     expect(screen.getByText(/requires job scope leader or above/i)).toBeTruthy();
+  });
+
+  it("renders the counter-rate projection card keyed to the machine id below the shift section (Story 8-6)", async () => {
+    mockShiftConfig = {
+      data: {
+        data: {
+          source: "MACHINE",
+          inheritedFromGroup: false,
+          shifts: [{ shiftNumber: 1, startTime: "07:00", endTime: "15:00" }],
+        },
+      },
+      isLoading: false,
+      isError: false,
+      status: "success",
+    };
+
+    renderHub();
+
+    const projectionCard = await screen.findByTestId("projection-card-stub");
+    expect(projectionCard.getAttribute("data-machine-id")).toBe("m-1");
+
+    const shiftCard = screen.getByLabelText("Shift 1 start").closest("[data-slot='card']");
+    // A missing card must fail loudly here, not silently skip the ordering assertion below.
+    expect(shiftCard).not.toBeNull();
+    if (shiftCard) {
+      expect(shiftCard.compareDocumentPosition(projectionCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
   });
 });

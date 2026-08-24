@@ -77,4 +77,12 @@ public interface MachineSparepartInstallationRepository extends JpaRepository<Ma
   Optional<MachineSparepartInstallationEntity> findByIdWithDetails(@Param("id") UUID id);
 
   List<MachineSparepartInstallationEntity> findAllByMachineId(UUID machineId);
+
+  @Query("""
+      select installation from MachineSparepartInstallationEntity installation
+      join fetch installation.sparepart sparepart
+      where installation.machine.id = :machineId
+      """)
+  List<MachineSparepartInstallationEntity> findAllByMachineIdWithSparepart(
+      @Param("machineId") UUID machineId);
 }

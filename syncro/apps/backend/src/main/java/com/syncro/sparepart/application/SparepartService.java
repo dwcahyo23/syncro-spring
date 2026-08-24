@@ -10,6 +10,7 @@ import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
+import com.syncro.projection.application.ProjectionCacheEvictionEvent;
 import com.syncro.sparepart.domain.SparepartTaxonomyDimension;
 import com.syncro.sparepart.infrastructure.SparepartEntity;
 import com.syncro.sparepart.infrastructure.SparepartRepository;
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -43,9 +45,11 @@ public class SparepartService {
   private final AuditLogWriter auditLog;
   private final Clock clock;
   private final JobScopeService jobScopes;
+  private final ApplicationEventPublisher events;
 
   public SparepartService(SparepartRepository spareparts, SparepartTaxonomyRepository taxonomy, MachineRepository machines,
-      AuthUserPlantAssignmentRepository assignments, AuditLogWriter auditLog, Clock clock, JobScopeService jobScopes) {
+      AuthUserPlantAssignmentRepository assignments, AuditLogWriter auditLog, Clock clock, JobScopeService jobScopes,
+      ApplicationEventPublisher events) {
     this.spareparts = spareparts;
     this.taxonomy = taxonomy;
     this.machines = machines;
@@ -53,6 +57,7 @@ public class SparepartService {
     this.auditLog = auditLog;
     this.clock = clock;
     this.jobScopes = jobScopes;
+    this.events = events;
   }
 
   @Transactional(readOnly = true)
@@ -161,6 +166,7 @@ public class SparepartService {
     var saved = save(sparepart);
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.SPAREPART, sparepartId, entityLabel,
         saved.getMachine().getPlant().getId(), previous, SparepartAuditValues.of(saved)));
+    events.publishEvent(ProjectionCacheEvictionEvent.all());
     return toView(saved);
   }
 

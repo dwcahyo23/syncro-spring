@@ -60,6 +60,7 @@ import type {
   MachineRequest,
   MachineResponsibilityResponse,
   MachineShiftConfigView,
+  MachineSparepartProjectionsView,
   MachineView,
   NotificationWorkerStatus,
   PageQuarantineEntryView,
@@ -6725,6 +6726,119 @@ export function useGetNotificationWorkerStatus<TData = Awaited<ReturnType<typeof
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetNotificationWorkerStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type getMachineSparepartProjectionsResponse200 = {
+  data: MachineSparepartProjectionsView
+  status: 200
+}
+
+export type getMachineSparepartProjectionsResponseSuccess = (getMachineSparepartProjectionsResponse200) & {
+  headers: Headers;
+};
+;
+
+export type getMachineSparepartProjectionsResponse = (getMachineSparepartProjectionsResponseSuccess)
+
+export const getGetMachineSparepartProjectionsUrl = (machineId: string,) => {
+
+
+
+
+  return `/api/v1/machines/${machineId}/sparepart-projections`
+}
+
+/**
+ * @summary Get counter-rate estimate and per-installation depletion projections for a machine
+ */
+export const getMachineSparepartProjections = async (machineId: string, options?: Parameters<typeof syncroFetch>[1]): Promise<getMachineSparepartProjectionsResponse> => {
+
+  return syncroFetch<getMachineSparepartProjectionsResponse>(getGetMachineSparepartProjectionsUrl(machineId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMachineSparepartProjectionsQueryKey = (machineId: string,) => {
+    return [
+    `/api/v1/machines/${machineId}/sparepart-projections`
+    ] as const;
+    }
+
+
+export const getGetMachineSparepartProjectionsQueryOptions = <TData = Awaited<ReturnType<typeof getMachineSparepartProjections>>, TError = unknown>(machineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMachineSparepartProjections>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMachineSparepartProjectionsQueryKey(machineId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMachineSparepartProjections>>> = ({ signal }) => getMachineSparepartProjections(machineId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: machineId !== null && machineId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMachineSparepartProjections>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetMachineSparepartProjectionsQueryResult = NonNullable<Awaited<ReturnType<typeof getMachineSparepartProjections>>>
+export type GetMachineSparepartProjectionsQueryError = unknown
+
+
+export function useGetMachineSparepartProjections<TData = Awaited<ReturnType<typeof getMachineSparepartProjections>>, TError = unknown>(
+ machineId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMachineSparepartProjections>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMachineSparepartProjections>>,
+          TError,
+          Awaited<ReturnType<typeof getMachineSparepartProjections>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMachineSparepartProjections<TData = Awaited<ReturnType<typeof getMachineSparepartProjections>>, TError = unknown>(
+ machineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMachineSparepartProjections>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMachineSparepartProjections>>,
+          TError,
+          Awaited<ReturnType<typeof getMachineSparepartProjections>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMachineSparepartProjections<TData = Awaited<ReturnType<typeof getMachineSparepartProjections>>, TError = unknown>(
+ machineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMachineSparepartProjections>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get counter-rate estimate and per-installation depletion projections for a machine
+ */
+
+export function useGetMachineSparepartProjections<TData = Awaited<ReturnType<typeof getMachineSparepartProjections>>, TError = unknown>(
+ machineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMachineSparepartProjections>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetMachineSparepartProjectionsQueryOptions(machineId,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

@@ -11,6 +11,7 @@ import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
 import com.syncro.auth.infrastructure.PlantRepository;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
+import com.syncro.projection.application.ProjectionCacheEvictionEvent;
 import com.syncro.sparepart.infrastructure.MachineSparepartInstallationEntity;
 import com.syncro.sparepart.infrastructure.MachineSparepartInstallationRepository;
 import com.syncro.sparepart.infrastructure.SparepartEntity;
@@ -21,6 +22,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
@@ -39,11 +41,12 @@ public class MachineSparepartInstallationService {
   private final AuditLogWriter auditLog;
   private final Clock clock;
   private final SparepartLifetimeEvaluator evaluator;
+  private final ApplicationEventPublisher events;
 
   public MachineSparepartInstallationService(MachineSparepartInstallationRepository installations,
       MachineRepository machines, SparepartRepository spareparts, PlantRepository plants,
       PlantScopeService plantScopes, AuthUserPlantAssignmentRepository assignments, AuditLogWriter auditLog,
-      Clock clock, SparepartLifetimeEvaluator evaluator) {
+      Clock clock, SparepartLifetimeEvaluator evaluator, ApplicationEventPublisher events) {
     this.installations = installations;
     this.machines = machines;
     this.spareparts = spareparts;
@@ -53,6 +56,7 @@ public class MachineSparepartInstallationService {
     this.auditLog = auditLog;
     this.clock = clock;
     this.evaluator = evaluator;
+    this.events = events;
   }
 
   @Transactional(readOnly = true)
@@ -85,6 +89,7 @@ public class MachineSparepartInstallationService {
     auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.INSTALLATION, saved.getId(),
         machine.getCode() + " / " + sparepart.getCode(), machine.getPlant().getId(), null,
         InstallationAuditValues.of(saved)));
+    events.publishEvent(new ProjectionCacheEvictionEvent(machine.getId()));
     return toView(saved);
   }
 
@@ -100,6 +105,7 @@ public class MachineSparepartInstallationService {
     var saved = save(installation);
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.INSTALLATION, installationId, entityLabel,
         installation.getMachine().getPlant().getId(), previous, InstallationAuditValues.of(saved)));
+    events.publishEvent(new ProjectionCacheEvictionEvent(installation.getMachine().getId()));
     return toView(saved);
   }
 
@@ -119,6 +125,7 @@ public class MachineSparepartInstallationService {
     } catch (ObjectOptimisticLockingFailureException exception) {
       throw new InstallationConcurrentModificationException();
     }
+    events.publishEvent(new ProjectionCacheEvictionEvent(installation.getMachine().getId()));
   }
 
   private void validateFilterScope(AuthenticatedUser user, InstallationFilters filters, boolean superAdmin) {

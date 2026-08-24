@@ -12,6 +12,7 @@ import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.masterdata.infrastructure.MachineGroupEntity;
 import com.syncro.masterdata.infrastructure.MachineGroupRepository;
+import com.syncro.projection.application.ProjectionCacheEvictionEvent;
 import com.syncro.shiftconfig.infrastructure.MachineGroupShiftWindowEntity;
 import com.syncro.shiftconfig.infrastructure.MachineGroupShiftWindowRepository;
 import com.syncro.shiftconfig.infrastructure.MachineShiftWindowEntity;
@@ -25,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,10 +53,12 @@ public class ShiftConfigService {
   private final JobScopeService jobScopes;
   private final AuditLogWriter auditLog;
   private final Clock clock;
+  private final ApplicationEventPublisher events;
 
   public ShiftConfigService(MachineGroupRepository machineGroups, MachineRepository machines,
       MachineGroupShiftWindowRepository groupWindows, MachineShiftWindowRepository machineWindows,
-      PlantScopeService plantScopes, JobScopeService jobScopes, AuditLogWriter auditLog, Clock clock) {
+      PlantScopeService plantScopes, JobScopeService jobScopes, AuditLogWriter auditLog, Clock clock,
+      ApplicationEventPublisher events) {
     this.machineGroups = machineGroups;
     this.machines = machines;
     this.groupWindows = groupWindows;
@@ -63,6 +67,7 @@ public class ShiftConfigService {
     this.jobScopes = jobScopes;
     this.auditLog = auditLog;
     this.clock = clock;
+    this.events = events;
   }
 
   @Transactional(readOnly = true)
@@ -84,6 +89,7 @@ public class ShiftConfigService {
         groupWindows.deleteByMachineGroupId(group.getId());
         auditLog.record(user, new AuditRecord(AuditAction.DELETE, AuditEntityType.MACHINE_GROUP, group.getId(),
             group.getName(), group.getPlant().getId(), snapshot(previous), null));
+        events.publishEvent(ProjectionCacheEvictionEvent.all());
       }
       return new MachineGroupShiftConfigView(List.of());
     }
@@ -91,12 +97,14 @@ public class ShiftConfigService {
       var saved = insertGroupWindows(group, normalized);
       auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.MACHINE_GROUP, group.getId(),
           group.getName(), group.getPlant().getId(), null, snapshot(storedGroupShifts(saved))));
+      events.publishEvent(ProjectionCacheEvictionEvent.all());
       return toGroupView(storedGroupShifts(saved));
     }
     groupWindows.deleteByMachineGroupId(group.getId());
     var saved = insertGroupWindows(group, normalized);
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.MACHINE_GROUP, group.getId(),
         group.getName(), group.getPlant().getId(), snapshot(previous), snapshot(storedGroupShifts(saved))));
+    events.publishEvent(ProjectionCacheEvictionEvent.all());
     return toGroupView(storedGroupShifts(saved));
   }
 
@@ -120,11 +128,13 @@ public class ShiftConfigService {
       var saved = insertMachineWindows(machine, normalized);
       auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.MACHINE, machine.getId(),
           machine.getCode(), machine.getPlant().getId(), null, snapshot(storedMachineShifts(saved))));
+      events.publishEvent(new ProjectionCacheEvictionEvent(machine.getId()));
     } else {
       machineWindows.deleteByMachineId(machine.getId());
       var saved = insertMachineWindows(machine, normalized);
       auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.MACHINE, machine.getId(),
           machine.getCode(), machine.getPlant().getId(), snapshot(previous), snapshot(storedMachineShifts(saved))));
+      events.publishEvent(new ProjectionCacheEvictionEvent(machine.getId()));
     }
     return resolveMachineConfig(machine);
   }
@@ -138,6 +148,23 @@ public class ShiftConfigService {
     clearOverride(user, machine, previous);
   }
 
+  /**
+   * Server-side shift resolution without authentication or plant gating, for downstream
+   * computation that enforces its own access control (story 8-6 projections). Reuses the exact
+   * precedence of the user-facing read so MACHINE &gt; MACHINE_GROUP &gt; NONE has one owner.
+   */
+  @Transactional(readOnly = true)
+  public MachineShiftConfigView resolveByMachineId(UUID machineId) {
+    var machine = machines.findByIdWithPlantAndGroup(machineId).orElseThrow(MachineNotFoundException::new);
+    return resolveMachineConfig(machine);
+  }
+
+  /** Overload for callers that already hold the machine, avoiding a duplicate fetch. */
+  @Transactional(readOnly = true)
+  public MachineShiftConfigView resolveByMachine(com.syncro.machine.infrastructure.MachineEntity machine) {
+    return resolveMachineConfig(machine);
+  }
+
   private void clearOverride(AuthenticatedUser user, MachineEntity machine, List<StoredShift> previous) {
     if (previous.isEmpty()) {
       return;
@@ -145,6 +172,7 @@ public class ShiftConfigService {
     machineWindows.deleteByMachineId(machine.getId());
     auditLog.record(user, new AuditRecord(AuditAction.DELETE, AuditEntityType.MACHINE, machine.getId(),
         machine.getCode(), machine.getPlant().getId(), snapshot(previous), null));
+    events.publishEvent(new ProjectionCacheEvictionEvent(machine.getId()));
   }
 
   private MachineShiftConfigView resolveMachineConfig(MachineEntity machine) {

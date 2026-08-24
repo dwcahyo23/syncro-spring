@@ -40,12 +40,14 @@ public class TelemetryPersistenceService {
   private final Clock clock;
   private final TelemetryDataQualityTracker dataQualityTracker;
   private final PerMachineExecution perMachineExecution;
+  private final org.springframework.context.ApplicationEventPublisher events;
 
   public TelemetryPersistenceService(MachineRepository machines, InfluxTelemetryWriter influxWriter,
       RedisLatestTelemetryWriter redisLatestWriter, StringRedisTemplate redis, TelemetryProperties properties,
       SparepartLifetimeEvaluator evaluator, SparepartAlertService alertService,
       MachineCounterStateRepository counterStateRepo, Clock clock,
-      TelemetryDataQualityTracker dataQualityTracker, PerMachineExecution perMachineExecution) {
+      TelemetryDataQualityTracker dataQualityTracker, PerMachineExecution perMachineExecution,
+      org.springframework.context.ApplicationEventPublisher events) {
     this.machines = machines;
     this.influxWriter = influxWriter;
     this.redisLatestWriter = redisLatestWriter;
@@ -57,6 +59,7 @@ public class TelemetryPersistenceService {
     this.clock = clock;
     this.dataQualityTracker = dataQualityTracker;
     this.perMachineExecution = perMachineExecution;
+    this.events = events;
   }
 
   public void persist(TelemetryValidationService.Result.Accepted accepted, TelemetryEnvelope envelope) {
@@ -147,6 +150,9 @@ public class TelemetryPersistenceService {
       counterStateRepo.save(new MachineCounterStateEntity(machineId, currentCounting));
     });
     long countingDelta = countingDeltaHolder[0];
+    // Accepted telemetry is the fastest-changing input to story 8-6 projections; evict the
+    // machine's cached estimate so a fresh GET reflects the new sample immediately.
+    events.publishEvent(new com.syncro.projection.application.ProjectionCacheEvictionEvent(machineId));
 
     try {
       var results = evaluator.evaluateAll(machineId);

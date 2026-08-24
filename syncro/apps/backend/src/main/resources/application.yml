@@ -114,6 +114,15 @@ syncro:
     ingest:
       queue-capacity: 1000
       worker-threads: 2
+  projection:
+    # Counter-rate estimation window in days (story 8-6)
+    window-days: ${SYNCRO_PROJECTION_WINDOW_DAYS:30}
+    # Samples older than this are considered stale and gate the estimate off (default: 48 hours)
+    staleness: ${SYNCRO_PROJECTION_STALENESS:PT48H}
+    # Redis cache TTL for computed machine projections (default: 5 minutes)
+    cache-ttl: ${SYNCRO_PROJECTION_CACHE_TTL:PT5M}
+    # IANA zone used only at the wall-clock boundary for shift-window math
+    plant-timezone: ${SYNCRO_PROJECTION_PLANT_TIMEZONE:Asia/Jakarta}
   cache:
     telemetry:
       ttl-minutes: 5
