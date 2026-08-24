@@ -85,4 +85,12 @@ public interface MachineSparepartInstallationRepository extends JpaRepository<Ma
       """)
   List<MachineSparepartInstallationEntity> findAllByMachineIdWithSparepart(
       @Param("machineId") UUID machineId);
+
+  @Query("""
+      select case when count(installation) > 0 then true else false end
+      from MachineSparepartInstallationEntity installation
+      where installation.machine.id = :machineId
+        and installation.sparepart.leadTimeHours is not null
+      """)
+  boolean existsByMachineIdAndSparepartLeadTimeHoursIsNotNull(@Param("machineId") UUID machineId);
 }

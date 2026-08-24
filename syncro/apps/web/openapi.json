@@ -6008,9 +6008,17 @@
           "functionName": {
             "type": "string"
           },
+          "alertType": {
+            "type": "string",
+            "enum": [
+              "THRESHOLD_PERCENTAGE",
+              "PROCUREMENT_RISK"
+            ]
+          },
           "thresholdPercentage": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "nullable": true
           },
           "baselineCounter": {
             "type": "integer",
@@ -6022,14 +6030,17 @@
           },
           "currentCounterSnapshot": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "nullable": true
           },
           "consumedProductionCountSnapshot": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "nullable": true
           },
           "consumedPercentageSnapshot": {
-            "type": "number"
+            "type": "number",
+            "nullable": true
           },
           "status": {
             "type": "string",
@@ -6052,6 +6063,27 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "leadTimeHours": {
+            "type": "number",
+            "nullable": true
+          },
+          "ratePerOperatingHour": {
+            "type": "number",
+            "nullable": true
+          },
+          "calculationBasis": {
+            "type": "string",
+            "enum": [
+              "ROLLING_30_DAY",
+              "FULL_HISTORY"
+            ],
+            "nullable": true
+          },
+          "projectedDepletionAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           },
           "notificationSummary": {
             "$ref": "#/components/schemas/NotificationSummary"

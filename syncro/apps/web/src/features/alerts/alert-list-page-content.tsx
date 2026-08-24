@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useListAlerts } from "@/lib/api/generated/syncro";
 import type { AlertViewStatus } from "@/lib/api/generated/model";
+import { useListAlerts } from "@/lib/api/generated/syncro";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
 
 import { AlertStatusBadge } from "./alert-status-badge";
+import { AlertTypeBadge } from "./alert-type-badge";
 import { NotificationStatePill } from "./notification-state-pill";
 
 interface AlertListPageContentProps {
@@ -53,17 +54,17 @@ export function AlertListPageContent({ statusFilter, machineId }: AlertListPageC
     if (error instanceof SyncroApiError && error.status === 403) {
       return (
         <div className="rounded-lg border p-6 text-center">
-          <h2 className="text-lg font-semibold">Access denied</h2>
-          <p className="mt-1 text-sm text-muted-foreground">You do not have access to alerts.</p>
+          <h2 className="font-semibold text-lg">Access denied</h2>
+          <p className="mt-1 text-muted-foreground text-sm">You do not have access to alerts.</p>
         </div>
       );
     }
     return (
       <div className="flex flex-col items-center gap-3 rounded-lg border p-6">
-        <p className="text-sm text-muted-foreground">Failed to load alerts.</p>
+        <p className="text-muted-foreground text-sm">Failed to load alerts.</p>
         <button
           type="button"
-          className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          className="rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground text-sm hover:bg-primary/90"
           onClick={() => void refetch()}
         >
           Retry
@@ -73,12 +74,7 @@ export function AlertListPageContent({ statusFilter, machineId }: AlertListPageC
   }
 
   if (items.length === 0) {
-    return (
-      <EmptyState
-        title="No alerts"
-        description="No sparepart lifetime alerts match the current filter."
-      />
-    );
+    return <EmptyState title="No alerts" description="No sparepart lifetime alerts match the current filter." />;
   }
 
   return (
@@ -86,12 +82,13 @@ export function AlertListPageContent({ statusFilter, machineId }: AlertListPageC
       <TableHeader>
         <TableRow>
           <TableHead>Status</TableHead>
+          <TableHead>Type</TableHead>
           <TableHead className="hidden sm:table-cell">Notification</TableHead>
           <TableHead>Machine</TableHead>
           <TableHead className="hidden md:table-cell">Plant</TableHead>
           <TableHead>Sparepart</TableHead>
-          <TableHead className="hidden sm:table-cell text-right">Threshold</TableHead>
-          <TableHead className="hidden sm:table-cell text-right">Consumed</TableHead>
+          <TableHead className="hidden text-right sm:table-cell">Threshold</TableHead>
+          <TableHead className="hidden text-right sm:table-cell">Consumed</TableHead>
           <TableHead className="hidden lg:table-cell">Created</TableHead>
         </TableRow>
       </TableHeader>
@@ -113,32 +110,31 @@ export function AlertListPageContent({ statusFilter, machineId }: AlertListPageC
             <TableCell>
               <AlertStatusBadge status={item.status as AlertViewStatus} />
             </TableCell>
+            <TableCell>
+              <AlertTypeBadge alertType={item.alertType} />
+            </TableCell>
             <TableCell className="hidden sm:table-cell">
               <NotificationStatePill summary={item.notificationSummary} />
             </TableCell>
             <TableCell>
               <div className="font-medium">{item.machineCode}</div>
-              {item.machineName && (
-                <div className="text-xs text-muted-foreground">{item.machineName}</div>
-              )}
+              {item.machineName && <div className="text-muted-foreground text-xs">{item.machineName}</div>}
             </TableCell>
-            <TableCell className="hidden md:table-cell text-sm">
+            <TableCell className="hidden text-sm md:table-cell">
               {item.plantCode}
-              {item.plantName && (
-                <span className="ml-1 text-muted-foreground">({item.plantName})</span>
-              )}
+              {item.plantName && <span className="ml-1 text-muted-foreground">({item.plantName})</span>}
             </TableCell>
             <TableCell>
               <div className="font-medium">{item.sparepartName ?? item.sparepartCode}</div>
-              <div className="text-xs text-muted-foreground">{item.functionName}</div>
+              <div className="text-muted-foreground text-xs">{item.functionName}</div>
             </TableCell>
-            <TableCell className="hidden sm:table-cell text-right tabular-nums">
-              {item.thresholdPercentage}%
+            <TableCell className="hidden text-right tabular-nums sm:table-cell">
+              {item.thresholdPercentage != null ? `${item.thresholdPercentage}%` : "-"}
             </TableCell>
-            <TableCell className="hidden sm:table-cell text-right tabular-nums">
-              {Number(item.consumedPercentageSnapshot).toFixed(1)}%
+            <TableCell className="hidden text-right tabular-nums sm:table-cell">
+              {item.consumedPercentageSnapshot != null ? `${Number(item.consumedPercentageSnapshot).toFixed(1)}%` : "-"}
             </TableCell>
-            <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+            <TableCell className="hidden text-muted-foreground text-sm lg:table-cell">
               {item.createdAt ? new Date(item.createdAt).toLocaleString() : "-"}
             </TableCell>
           </TableRow>

@@ -61,8 +61,25 @@ public class SparepartProjectionService {
 
   public MachineSparepartProjectionsView getProjections(AuthenticatedUser user, UUID machineId) {
     var machine = findScopedMachine(user, machineId);
-    return cache.get(machineId, MachineSparepartProjectionsView.class).orElseGet(
-        () -> computeAndCache(machine));
+    return cachedOrCompute(machine);
+  }
+
+  /**
+   * No-auth read seam consumed by the alert module (story 8-7). Returns the cached-or-computed
+   * view for the machine, or {@code null} when the machine is unknown. Reuses the exact
+   * {@link #computeAndCache} path, cache key, and TTL — scope gates belong to the HTTP caller.
+   */
+  public MachineSparepartProjectionsView getProjectionsForMachine(UUID machineId) {
+    var machine = machines.findByIdWithPlantAndGroup(machineId).orElse(null);
+    if (machine == null) {
+      return null;
+    }
+    return cachedOrCompute(machine);
+  }
+
+  private MachineSparepartProjectionsView cachedOrCompute(MachineEntity machine) {
+    return cache.get(machine.getId(), MachineSparepartProjectionsView.class)
+        .orElseGet(() -> computeAndCache(machine));
   }
 
   private MachineSparepartProjectionsView computeAndCache(MachineEntity machine) {

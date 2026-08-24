@@ -155,8 +155,11 @@ FROM sparepart_taxonomy electric_category
 WHERE electric_category.dimension = 'CATEGORY' AND electric_category.code = 'ELECTRIC'
   AND NOT EXISTS (SELECT 1 FROM sparepart_taxonomy t WHERE t.dimension = 'TYPE' AND t.code = 'LX5');
 
--- 5. Sparepart with the backend-exact generated code and label
-INSERT INTO spareparts (id, code, name, machine_id, category_id, category_dimension, brand_id, brand_dimension, kind_id, kind_dimension, type_id, type_dimension, created_at, updated_at)
+-- 5. Sparepart with the backend-exact generated code and label. The material code is a stable,
+--    globally-unique literal (uq_spareparts_material_code is case-insensitive, multi-null safe)
+--    and lead_time_hours (72 = 3 days, operating hours) drives the story 8-6 lead-time
+--    consumption projection and the story 8-7 procurement-risk window.
+INSERT INTO spareparts (id, code, name, machine_id, category_id, category_dimension, brand_id, brand_dimension, kind_id, kind_dimension, type_id, type_dimension, material_code, lead_time_hours, created_at, updated_at)
 SELECT
   'eb6090e5-436c-40aa-b427-640b1abaf9da'::uuid,
   'BF-08410GM1ELEPLCWEC000',
@@ -166,6 +169,8 @@ SELECT
   brand.id, 'BRAND',
   kind.id, 'KIND',
   type.id, 'TYPE',
+  'BF08410GM1ELEPLCWECLX5',
+  72,
   CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 FROM machines m
 JOIN plants p ON p.id = m.plant_id
@@ -212,6 +217,31 @@ WHERE NOT EXISTS (SELECT 1 FROM auth_users u WHERE u.login_identifier = 'staff.g
 INSERT INTO auth_users (id, login_identifier, password_hash, application_role, enabled, whatsapp_number, created_at, updated_at)
 SELECT '391dfdf2-5103-456a-a71b-121a7174ec18'::uuid, 'leader.gm1@syncro.dev', '$2a$10$DuNkwH3TJ5QEjynPGceUTeBCT2IwUEIDhTL9T4FNa5XSWdm.M5ux2', 'VIEWER', TRUE, '6281234567803', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 WHERE NOT EXISTS (SELECT 1 FROM auth_users u WHERE u.login_identifier = 'leader.gm1@syncro.dev');
+
+-- 7.5 IDR price-entry example for the pilot sparepart (story 8-3 / validation data for the
+--     procurement workflow). Idempotent per sparepart; entered_by resolves to the technician
+--     pilot user (the seed's own fixed UUID, or a pre-existing row adopted via natural key).
+INSERT INTO sparepart_price_entries (id, sparepart_id, amount, currency, kurs_to_idr, idr_amount, entered_by, entered_at, version)
+SELECT
+  'd4a62e5f-8f4b-4d0e-8d5a-9e2b1c3f4a5b'::uuid,
+  sp.id,
+  3500000.00,
+  'IDR',
+  NULL,
+  3500000.00,
+  u.id,
+  CURRENT_TIMESTAMP,
+  0
+FROM spareparts sp
+JOIN machines m ON m.id = sp.machine_id
+JOIN plants p ON p.id = m.plant_id
+JOIN auth_users u ON u.login_identifier = 'technician.gm1@syncro.dev'
+WHERE p.code = 'GM1'
+  AND lower(m.code) = 'bf-08410'
+  AND lower(sp.code) = 'bf-08410gm1eleplcwec000'
+  AND NOT EXISTS (
+    SELECT 1 FROM sparepart_price_entries pe WHERE pe.sparepart_id = sp.id
+  );
 
 -- 8. Plant assignments to GM1 for all three recipients (enables the 7-6
 --    acknowledge path for any authenticated user with plant access)

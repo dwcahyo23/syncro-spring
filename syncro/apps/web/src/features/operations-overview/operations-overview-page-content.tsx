@@ -6,10 +6,10 @@ import { AlertTriangle, Bell } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useListAlerts } from "@/lib/api/generated/syncro";
 import { AlertStatusBadge } from "@/features/alerts/alert-status-badge";
 import { NotificationStatePill } from "@/features/alerts/notification-state-pill";
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
+import { useListAlerts } from "@/lib/api/generated/syncro";
 
 function timeAgo(dateStr?: string): string {
   if (!dateStr) return "-";
@@ -24,8 +24,7 @@ function timeAgo(dateStr?: string): string {
 export function OperationsOverviewPageContent() {
   const { scope, activePlantId, loadError } = usePlantScope();
 
-  const plantId =
-    activePlantId && activePlantId !== "all" ? activePlantId : undefined;
+  const plantId = activePlantId && activePlantId !== "all" ? activePlantId : undefined;
 
   const openAlertsQuery = useListAlerts(
     { status: "OPEN", plantId, page: 0, size: 5, sort: "createdAt,asc" },
@@ -38,15 +37,15 @@ export function OperationsOverviewPageContent() {
     return (
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <header className="space-y-1">
-          <p className="text-sm font-medium text-muted-foreground">Syncro</p>
-          <h1 className="text-3xl font-semibold tracking-tight">Operations Overview</h1>
+          <p className="font-medium text-muted-foreground text-sm">Syncro</p>
+          <h1 className="font-semibold text-3xl tracking-tight">Operations Overview</h1>
         </header>
         <Card>
           <CardHeader>
             <CardTitle>Plant scope unavailable</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Plant scope could not be loaded. Try again or contact your administrator.
             </p>
           </CardContent>
@@ -59,8 +58,8 @@ export function OperationsOverviewPageContent() {
     return (
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <header className="space-y-1">
-          <p className="text-sm font-medium text-muted-foreground">Syncro</p>
-          <h1 className="text-3xl font-semibold tracking-tight">Operations Overview</h1>
+          <p className="font-medium text-muted-foreground text-sm">Syncro</p>
+          <h1 className="font-semibold text-3xl tracking-tight">Operations Overview</h1>
         </header>
         <Skeleton className="h-32 w-full" />
       </main>
@@ -71,15 +70,15 @@ export function OperationsOverviewPageContent() {
     return (
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <header className="space-y-1">
-          <p className="text-sm font-medium text-muted-foreground">Syncro</p>
-          <h1 className="text-3xl font-semibold tracking-tight">Operations Overview</h1>
+          <p className="font-medium text-muted-foreground text-sm">Syncro</p>
+          <h1 className="font-semibold text-3xl tracking-tight">Operations Overview</h1>
         </header>
         <Card>
           <CardHeader>
             <CardTitle>No plants assigned</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               No plants assigned to your account. Contact your administrator.
             </p>
           </CardContent>
@@ -97,23 +96,23 @@ export function OperationsOverviewPageContent() {
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       {/* Page header */}
       <header className="space-y-1">
-        <p className="text-sm font-medium text-muted-foreground">Syncro</p>
-        <h1 className="text-3xl font-semibold tracking-tight">Operations Overview</h1>
+        <p className="font-medium text-muted-foreground text-sm">Syncro</p>
+        <h1 className="font-semibold text-3xl tracking-tight">Operations Overview</h1>
         <p className="text-muted-foreground">What needs attention now.</p>
       </header>
 
       {/* Summary metric bar */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Link href="/alerts?status=OPEN" className="block">
-          <Card className="hover:border-foreground/20 transition-colors">
+          <Card className="transition-colors hover:border-foreground/20">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Open Alerts</CardTitle>
+              <CardTitle className="font-medium text-muted-foreground text-sm">Open Alerts</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoadingAlerts ? (
                 <Skeleton className="h-8 w-12" />
               ) : (
-                <p className="text-2xl font-bold tabular-nums">{openAlertsTotal}</p>
+                <p className="font-bold text-2xl tabular-nums">{openAlertsTotal}</p>
               )}
             </CardContent>
           </Card>
@@ -121,26 +120,26 @@ export function OperationsOverviewPageContent() {
         {/* Placeholder metrics — Epic 5+ will fill these */}
         <Card className="opacity-50">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Machines</CardTitle>
+            <CardTitle className="font-medium text-muted-foreground text-sm">Active Machines</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-muted-foreground">—</p>
+            <p className="font-bold text-2xl text-muted-foreground">—</p>
           </CardContent>
         </Card>
         <Card className="opacity-50">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Stale Telemetry</CardTitle>
+            <CardTitle className="font-medium text-muted-foreground text-sm">Stale Telemetry</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-muted-foreground">—</p>
+            <p className="font-bold text-2xl text-muted-foreground">—</p>
           </CardContent>
         </Card>
         <Card className="opacity-50">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Health Status</CardTitle>
+            <CardTitle className="font-medium text-muted-foreground text-sm">Health Status</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-muted-foreground">—</p>
+            <p className="font-bold text-2xl text-muted-foreground">—</p>
           </CardContent>
         </Card>
       </div>
@@ -148,14 +147,11 @@ export function OperationsOverviewPageContent() {
       {/* Alerts Requiring Action */}
       <section aria-labelledby="alerts-section-heading">
         <div className="mb-3 flex items-center justify-between">
-          <h2 id="alerts-section-heading" className="flex items-center gap-2 text-base font-semibold">
+          <h2 id="alerts-section-heading" className="flex items-center gap-2 font-semibold text-base">
             <AlertTriangle className="h-4 w-4 text-destructive" aria-hidden="true" />
             Alerts Requiring Action
           </h2>
-          <Link
-            href="/alerts"
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
+          <Link href="/alerts" className="text-muted-foreground text-sm hover:text-foreground">
             View all alerts →
           </Link>
         </div>
@@ -171,10 +167,10 @@ export function OperationsOverviewPageContent() {
         {isErrorAlerts && (
           <Card>
             <CardContent className="flex flex-col items-center gap-3 py-6">
-              <p className="text-sm text-muted-foreground">Failed to load alerts.</p>
+              <p className="text-muted-foreground text-sm">Failed to load alerts.</p>
               <button
                 type="button"
-                className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                className="rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground text-sm hover:bg-primary/90"
                 onClick={() => void openAlertsQuery.refetch()}
               >
                 Retry
@@ -187,10 +183,8 @@ export function OperationsOverviewPageContent() {
           <Card>
             <CardContent className="py-8 text-center">
               <Bell className="mx-auto mb-2 h-6 w-6 text-muted-foreground" aria-hidden="true" />
-              <p className="text-sm font-medium">No open alerts</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                All spareparts within threshold.
-              </p>
+              <p className="font-medium text-sm">No open alerts</p>
+              <p className="mt-1 text-muted-foreground text-xs">No open sparepart alerts.</p>
             </CardContent>
           </Card>
         )}
@@ -198,7 +192,7 @@ export function OperationsOverviewPageContent() {
         {!isLoadingAlerts && !isErrorAlerts && openAlerts.length > 0 && (
           <Card>
             <CardContent className="p-0">
-              <ul role="list" className="divide-y">
+              <ul className="divide-y">
                 {openAlerts.map((item) => (
                   <li key={item.id}>
                     <Link
@@ -210,20 +204,26 @@ export function OperationsOverviewPageContent() {
                         <AlertStatusBadge status={item.status} />
                         <NotificationStatePill summary={item.notificationSummary} />
                         <div>
-                          <p className="text-sm font-medium">
+                          <p className="font-medium text-sm">
                             {item.machineCode}
                             {item.machineName ? ` — ${item.machineName}` : ""}
                           </p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-muted-foreground text-xs">
                             {item.sparepartName ?? item.sparepartCode} · {item.functionName}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4 pl-9 text-xs text-muted-foreground sm:pl-0">
+                      <div className="flex items-center gap-4 pl-9 text-muted-foreground text-xs sm:pl-0">
                         <span className="tabular-nums">
-                          {Number(item.consumedPercentageSnapshot).toFixed(1)}% consumed
-                          <span className="mx-1">·</span>
-                          threshold {item.thresholdPercentage}%
+                          {item.consumedPercentageSnapshot != null
+                            ? `${Number(item.consumedPercentageSnapshot).toFixed(1)}% consumed`
+                            : "No consumed snapshot"}
+                          {item.thresholdPercentage != null ? (
+                            <>
+                              <span className="mx-1">·</span>
+                              threshold {item.thresholdPercentage}%
+                            </>
+                          ) : null}
                         </span>
                         <span className="hidden sm:inline">{timeAgo(item.createdAt)}</span>
                       </div>
@@ -233,7 +233,7 @@ export function OperationsOverviewPageContent() {
               </ul>
               {openAlertsTotal > 5 && (
                 <div className="border-t px-4 py-3 text-center">
-                  <Link href="/alerts?status=OPEN" className="text-sm text-muted-foreground hover:text-foreground">
+                  <Link href="/alerts?status=OPEN" className="text-muted-foreground text-sm hover:text-foreground">
                     +{openAlertsTotal - 5} more open alerts — view all
                   </Link>
                 </div>

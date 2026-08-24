@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.syncro.alert.domain.SparepartAlertStatus;
+import com.syncro.alert.domain.SparepartAlertType;
 import com.syncro.alert.infrastructure.SparepartAlertEntity;
 import com.syncro.alert.infrastructure.SparepartAlertRepository;
 import com.syncro.auth.infrastructure.AuthUserEntity;
@@ -71,7 +72,7 @@ class EscalationServiceTest {
   private SparepartAlertEntity openAlert() {
     return new SparepartAlertEntity(
         ALERT_ID, MACHINE_ID, UUID.randomUUID(),
-        80, 1000L, 800L, BigDecimal.valueOf(80.00),
+        SparepartAlertType.THRESHOLD_PERCENTAGE, 80, 1000L, 800L, BigDecimal.valueOf(80.00),
         TRACE_ID, SparepartAlertStatus.OPEN, null,
         FIXED_NOW.minusSeconds(3600), FIXED_NOW.minusSeconds(3600));
   }
@@ -147,7 +148,7 @@ class EscalationServiceTest {
   void escalate_whenAlertAcknowledged_skipsWithoutMutatingJob() {
     var job = sentJob("TECHNICIAN");
     var alert = new SparepartAlertEntity(
-        ALERT_ID, MACHINE_ID, UUID.randomUUID(), 80, 1000L, 800L,
+        ALERT_ID, MACHINE_ID, UUID.randomUUID(), SparepartAlertType.THRESHOLD_PERCENTAGE, 80, 1000L, 800L,
         BigDecimal.valueOf(80.00), TRACE_ID, SparepartAlertStatus.ACKNOWLEDGED,
         null, FIXED_NOW.minusSeconds(3600), FIXED_NOW.minusSeconds(3600));
     when(sparepartAlertRepository.findById(ALERT_ID)).thenReturn(Optional.of(alert));
@@ -162,7 +163,7 @@ class EscalationServiceTest {
   void escalate_whenAlertResolved_skipsWithoutMutatingJob() {
     var job = sentJob("STAFF");
     var alert = new SparepartAlertEntity(
-        ALERT_ID, MACHINE_ID, UUID.randomUUID(), 80, 1000L, 800L,
+        ALERT_ID, MACHINE_ID, UUID.randomUUID(), SparepartAlertType.THRESHOLD_PERCENTAGE, 80, 1000L, 800L,
         BigDecimal.valueOf(80.00), TRACE_ID, SparepartAlertStatus.RESOLVED,
         "resolved", FIXED_NOW.minusSeconds(3600), FIXED_NOW.minusSeconds(3600));
     when(sparepartAlertRepository.findById(ALERT_ID)).thenReturn(Optional.of(alert));

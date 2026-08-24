@@ -158,6 +158,7 @@ public class TelemetryPersistenceService {
       var results = evaluator.evaluateAll(machineId);
       try {
         alertService.evaluateAndCreateAlerts(machineId, results, envelope.traceId());
+        alertService.evaluateAndCreateProcurementRiskAlerts(machineId, envelope.traceId());
       } catch (Exception alertEx) {
         log.warn("sparepart_alert_evaluation_failed traceId={} machineId={}",
             envelope.traceId(), machineId, alertEx);

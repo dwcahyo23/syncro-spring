@@ -92,6 +92,7 @@ class SparepartAlertQueryServiceTest {
         alertId,
         installation.getMachine().getId(),
         installation.getId(),
+        com.syncro.alert.domain.SparepartAlertType.THRESHOLD_PERCENTAGE,
         90,
         950L,
         950L,

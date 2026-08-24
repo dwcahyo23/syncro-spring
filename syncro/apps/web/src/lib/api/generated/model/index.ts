@@ -10,6 +10,8 @@ export * from './acknowledgeRequest';
 export * from './alertListResponse';
 export * from './alertNotificationHistoryResponse';
 export * from './alertView';
+export * from './alertViewAlertType';
+export * from './alertViewCalculationBasis';
 export * from './alertViewStatus';
 export * from './auditLogEntryView';
 export * from './auditLogEntryViewAction';

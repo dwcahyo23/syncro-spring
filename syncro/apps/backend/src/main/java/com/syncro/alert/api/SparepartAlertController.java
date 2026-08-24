@@ -174,6 +174,7 @@ public class SparepartAlertController {
         view.sparepartCode(),
         view.sparepartName(),
         view.functionName(),
+        view.alertType(),
         view.thresholdPercentage(),
         view.baselineCounter(),
         view.expectedProductionCount(),
@@ -185,6 +186,10 @@ public class SparepartAlertController {
         view.traceId(),
         view.createdAt(),
         view.updatedAt(),
+        view.leadTimeHours(),
+        view.ratePerOperatingHour(),
+        view.calculationBasis(),
+        view.projectedDepletionAt(),
         notificationSummary);
   }
 }

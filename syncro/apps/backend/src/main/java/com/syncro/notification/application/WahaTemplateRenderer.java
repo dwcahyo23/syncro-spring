@@ -1,10 +1,17 @@
 package com.syncro.notification.application;
 
+import com.syncro.alert.domain.SparepartAlertType;
 import com.syncro.alert.infrastructure.SparepartAlertEntity;
 import com.syncro.alert.infrastructure.SparepartAlertRepository;
+import com.syncro.auth.infrastructure.PlantEntity;
+import com.syncro.machine.infrastructure.MachineEntity;
+import com.syncro.masterdata.infrastructure.MachineGroupEntity;
 import com.syncro.notification.domain.WahaTemplate;
 import com.syncro.notification.infrastructure.WahaTemplateRepository;
+import com.syncro.projection.application.CounterRateEstimator.CalculationBasis;
+import com.syncro.sparepart.infrastructure.MachineSparepartInstallationEntity;
 import com.syncro.sparepart.infrastructure.MachineSparepartInstallationRepository;
+import com.syncro.sparepart.infrastructure.SparepartEntity;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
@@ -53,21 +60,54 @@ public class WahaTemplateRenderer {
     var machineGroup = machine.getMachineGroup();
     var sparepart = installation.getSparepart();
 
+    // PROCUREMENT_RISK alerts carry no threshold snapshot, so the shared threshold-shaped
+    // template would render a misleading "-%". Surface the risk evidence instead (story 8-7).
+    if (alert.getAlertType() == SparepartAlertType.PROCUREMENT_RISK) {
+      return renderProcurementRisk(alert, machine, plant, machineGroup, sparepart, installation);
+    }
+
     String body = templateEntity.getBody();
     body = body.replace("{machineCode}", safeStr(machine.getCode()));
     body = body.replace("{machineName}", safeStr(machine.getName()));
     body = body.replace("{plantCode}", safeStr(plant.getCode()));
     body = body.replace("{machineGroup}", safeStr(machineGroup.getName()));
     body = body.replace("{sparepartName}", safeStr(sparepart.getName()));
-    body = body.replace("{thresholdPercent}", String.valueOf(alert.getThresholdPercentage()));
-    body = body.replace("{currentCount}", String.valueOf(alert.getCurrentCounterSnapshot()));
+    body = body.replace("{thresholdPercent}", safeNumber(alert.getThresholdPercentage()));
+    body = body.replace("{currentCount}", safeNumber(alert.getCurrentCounterSnapshot()));
     body = body.replace("{alertTime}", ALERT_TIME_FORMAT.format(alert.getCreatedAt()));
 
     return body;
   }
 
+  private static String renderProcurementRisk(SparepartAlertEntity alert,
+      MachineEntity machine, PlantEntity plant, MachineGroupEntity machineGroup,
+      SparepartEntity sparepart, MachineSparepartInstallationEntity installation) {
+    String basis = alert.getCalculationBasis() != null
+        ? (alert.getCalculationBasis() == CalculationBasis.ROLLING_30_DAY
+            ? "30 hari berjalan" : "seluruh riwayat")
+        : "-";
+    String depletion = alert.getProjectedDepletionAt() != null
+        ? ALERT_TIME_FORMAT.format(alert.getProjectedDepletionAt())
+        : "-";
+    return "Peringatan pengadaan: proyeksi penipisan sparepart "
+        + safeStr(sparepart.getName())
+        + " (fungsi " + safeStr(installation.getFunctionName())
+        + ") pada mesin " + safeStr(machine.getCode())
+        + " jatuh dalam jendela waktu lead time. "
+        + "Lead time: " + safeNumber(alert.getLeadTimeHours()) + " jam · "
+        + "Laju: " + safeNumber(alert.getRatePerOperatingHour()) + " counter/jam operasi · "
+        + "Basis proyeksi: " + basis + " · "
+        + "Perkiraan habis: " + depletion + ". "
+        + "Pabrik " + safeStr(plant.getCode()) + " / " + safeStr(machineGroup.getName()) + ".";
+  }
+
   private static String safeStr(String value) {
     return value != null ? value : "";
+  }
+
+  /** Renders a possibly-null numeric alert snapshot as a dash instead of the literal "null". */
+  private static String safeNumber(Number value) {
+    return value != null ? String.valueOf(value) : "-";
   }
 
   public static class WahaTemplateRenderException extends RuntimeException {

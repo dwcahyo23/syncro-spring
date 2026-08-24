@@ -1,7 +1,9 @@
 package com.syncro.alert.application;
 
 import com.syncro.alert.domain.SparepartAlertStatus;
+import com.syncro.alert.domain.SparepartAlertType;
 import com.syncro.alert.infrastructure.SparepartAlertEntity;
+import com.syncro.projection.application.CounterRateEstimator.CalculationBasis;
 import com.syncro.alert.infrastructure.SparepartAlertRepository;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.application.PlantScopeService;
@@ -149,6 +151,7 @@ public class SparepartAlertQueryService {
         sparepart.getCode(),
         sparepart.getName(),
         installation.getFunctionName(),
+        alert.getAlertType(),
         alert.getThresholdPercentage(),
         installation.getBaselineCounter(),
         installation.getExpectedProductionCount(),
@@ -160,6 +163,10 @@ public class SparepartAlertQueryService {
         alert.getTraceId(),
         alert.getCreatedAt(),
         alert.getUpdatedAt(),
+        alert.getLeadTimeHours(),
+        alert.getRatePerOperatingHour(),
+        alert.getCalculationBasis(),
+        alert.getProjectedDepletionAt(),
         notificationSummary);
   }
 
@@ -208,17 +215,22 @@ public class SparepartAlertQueryService {
       String sparepartCode,
       String sparepartName,
       String functionName,
-      int thresholdPercentage,
+      SparepartAlertType alertType,
+      @Nullable Integer thresholdPercentage,
       long baselineCounter,
       long expectedProductionCount,
-      long currentCounterSnapshot,
-      long consumedProductionCountSnapshot,
-      BigDecimal consumedPercentageSnapshot,
+      @Nullable Long currentCounterSnapshot,
+      @Nullable Long consumedProductionCountSnapshot,
+      @Nullable BigDecimal consumedPercentageSnapshot,
       SparepartAlertStatus status,
       String statusReason,
       String traceId,
       Instant createdAt,
       Instant updatedAt,
+      @Nullable BigDecimal leadTimeHours,
+      @Nullable BigDecimal ratePerOperatingHour,
+      @Nullable CalculationBasis calculationBasis,
+      @Nullable Instant projectedDepletionAt,
       @Nullable NotificationSummary notificationSummary) {
   }
 

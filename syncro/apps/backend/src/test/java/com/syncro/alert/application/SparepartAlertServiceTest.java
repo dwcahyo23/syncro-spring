@@ -8,12 +8,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.syncro.alert.domain.SparepartAlertStatus;
+import com.syncro.alert.domain.SparepartAlertType;
 import com.syncro.alert.infrastructure.SparepartAlertEntity;
 import com.syncro.alert.infrastructure.SparepartAlertRepository;
 import com.syncro.audit.application.AuditLogWriter;
 import com.syncro.audit.application.AuditRecord;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
+import com.syncro.notification.domain.AlertOpenedEvent;
+import com.syncro.projection.application.SparepartProjectionService;
 import com.syncro.sparepart.application.SparepartLifetimeEvaluator;
 import com.syncro.sparepart.infrastructure.MachineSparepartInstallationEntity;
 import com.syncro.sparepart.infrastructure.MachineSparepartInstallationRepository;
@@ -22,6 +25,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -48,13 +52,18 @@ class SparepartAlertServiceTest {
   private MachineRepository machineRepository;
 
   @Mock
+  private SparepartProjectionService projectionService;
+
+  @Mock
   private ApplicationEventPublisher eventPublisher;
 
   private final Clock clock = Clock.fixed(Instant.parse("2026-08-19T00:00:00Z"), ZoneOffset.UTC);
 
   private SparepartAlertService service() {
+    var creator = new SparepartProcurementRiskAlertCreator(
+        alertRepository, auditLogWriter, clock, eventPublisher);
     return new SparepartAlertService(alertRepository, auditLogWriter, installationRepository,
-        machineRepository, clock, eventPublisher);
+        machineRepository, projectionService, creator, clock, eventPublisher);
   }
 
   // --- helpers ---
@@ -109,12 +118,17 @@ class SparepartAlertServiceTest {
     SparepartAlertEntity saved = captor.getValue();
     assertThat(saved.getMachineId()).isEqualTo(machineId);
     assertThat(saved.getMachineSparepartInstallationId()).isEqualTo(installationId);
+    assertThat(saved.getAlertType()).isEqualTo(SparepartAlertType.THRESHOLD_PERCENTAGE);
     assertThat(saved.getThresholdPercentage()).isEqualTo(80);
     assertThat(saved.getStatus()).isEqualTo(SparepartAlertStatus.OPEN);
     assertThat(saved.getCurrentCounterSnapshot()).isEqualTo(900L);
     assertThat(saved.getConsumedProductionCountSnapshot()).isEqualTo(800L);
     assertThat(saved.getConsumedPercentageSnapshot()).isEqualByComparingTo(new BigDecimal("80.00"));
     assertThat(saved.getTraceId()).isEqualTo(traceId);
+    assertThat(saved.getLeadTimeHours()).isNull();
+    assertThat(saved.getRatePerOperatingHour()).isNull();
+    assertThat(saved.getCalculationBasis()).isNull();
+    assertThat(saved.getProjectedDepletionAt()).isNull();
 
     verify(auditLogWriter).recordSystem(any(AuditRecord.class));
   }
@@ -190,5 +204,272 @@ class SparepartAlertServiceTest {
     verify(machineRepository, never()).findByIdWithPlantAndGroup(any());
     verify(alertRepository, never()).save(any());
     verify(auditLogWriter, never()).recordSystem(any());
+  }
+
+  // --- procurement-risk evaluation (story 8-7) ---
+
+  private com.syncro.projection.api.ProjectionDtos.InstallationProjection projection(
+      UUID installationId, boolean available, BigDecimal leadTime, Long consumption, Long remaining) {
+    return new com.syncro.projection.api.ProjectionDtos.InstallationProjection(
+        installationId, UUID.randomUUID(), "func", available, null, remaining,
+        Instant.parse("2026-08-25T00:00:00Z"), leadTime, consumption);
+  }
+
+  private com.syncro.projection.api.ProjectionDtos.MachineSparepartProjectionsView riskView(
+      UUID machineId, List<com.syncro.projection.api.ProjectionDtos.InstallationProjection> rows) {
+    return new com.syncro.projection.api.ProjectionDtos.MachineSparepartProjectionsView(
+        machineId, true, com.syncro.projection.application.CounterRateEstimator.CalculationBasis.ROLLING_30_DAY,
+        null, null, null, null, null, new BigDecimal("15.00"), "MACHINE",
+        new BigDecimal("8.00"), rows);
+  }
+
+  @Test
+  void procurementRisk_depletionWithinWindow_createsAlertWithEvidence() {
+    UUID machineId = UUID.randomUUID();
+    UUID plantId = UUID.randomUUID();
+    UUID installationId = UUID.randomUUID();
+    String traceId = "trace-risk-001";
+
+    when(machineRepository.findByIdWithPlantAndGroup(machineId))
+        .thenReturn(Optional.of(machineWithPlant(machineId, plantId)));
+    when(installationRepository.existsByMachineIdAndSparepartLeadTimeHoursIsNotNull(machineId))
+        .thenReturn(true);
+    var view = riskView(machineId, List.of(
+        projection(installationId, true, new BigDecimal("36.5"), 548L, 500L)));
+    when(projectionService.getProjectionsForMachine(machineId)).thenReturn(view);
+    when(alertRepository.existsByMachineSparepartInstallationIdAndAlertTypeAndStatusNot(
+        installationId, SparepartAlertType.PROCUREMENT_RISK, SparepartAlertStatus.RESOLVED))
+        .thenReturn(false);
+    when(alertRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    service().evaluateAndCreateProcurementRiskAlerts(machineId, traceId);
+
+    var captor = ArgumentCaptor.forClass(SparepartAlertEntity.class);
+    verify(alertRepository).saveAndFlush(captor.capture());
+    SparepartAlertEntity saved = captor.getValue();
+    assertThat(saved.getMachineId()).isEqualTo(machineId);
+    assertThat(saved.getMachineSparepartInstallationId()).isEqualTo(installationId);
+    assertThat(saved.getAlertType()).isEqualTo(SparepartAlertType.PROCUREMENT_RISK);
+    assertThat(saved.getThresholdPercentage()).isNull();
+    assertThat(saved.getCurrentCounterSnapshot()).isNull();
+    assertThat(saved.getConsumedProductionCountSnapshot()).isNull();
+    assertThat(saved.getConsumedPercentageSnapshot()).isNull();
+    assertThat(saved.getStatus()).isEqualTo(SparepartAlertStatus.OPEN);
+    assertThat(saved.getLeadTimeHours()).isEqualByComparingTo(new BigDecimal("36.5"));
+    assertThat(saved.getRatePerOperatingHour()).isEqualByComparingTo(new BigDecimal("15.00"));
+    assertThat(saved.getCalculationBasis())
+        .isEqualTo(com.syncro.projection.application.CounterRateEstimator.CalculationBasis.ROLLING_30_DAY);
+    assertThat(saved.getProjectedDepletionAt()).isEqualTo(Instant.parse("2026-08-25T00:00:00Z"));
+    assertThat(saved.getTraceId()).isEqualTo(traceId);
+
+    verify(eventPublisher).publishEvent(any(AlertOpenedEvent.class));
+    verify(auditLogWriter).recordSystem(any(AuditRecord.class));
+  }
+
+  @Test
+  void procurementRisk_equalityBoundary_createsAlert() {
+    UUID machineId = UUID.randomUUID();
+    UUID plantId = UUID.randomUUID();
+    UUID installationId = UUID.randomUUID();
+
+    when(machineRepository.findByIdWithPlantAndGroup(machineId))
+        .thenReturn(Optional.of(machineWithPlant(machineId, plantId)));
+    when(installationRepository.existsByMachineIdAndSparepartLeadTimeHoursIsNotNull(machineId))
+        .thenReturn(true);
+    var view = riskView(machineId, List.of(
+        projection(installationId, true, new BigDecimal("36.5"), 500L, 500L)));
+    when(projectionService.getProjectionsForMachine(machineId)).thenReturn(view);
+    when(alertRepository.existsByMachineSparepartInstallationIdAndAlertTypeAndStatusNot(
+        installationId, SparepartAlertType.PROCUREMENT_RISK, SparepartAlertStatus.RESOLVED))
+        .thenReturn(false);
+    when(alertRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    service().evaluateAndCreateProcurementRiskAlerts(machineId, "trace-risk-eq");
+
+    verify(alertRepository).saveAndFlush(any(SparepartAlertEntity.class));
+  }
+
+  @Test
+  void procurementRisk_dedupeNonResolved_skips() {
+    UUID machineId = UUID.randomUUID();
+    UUID plantId = UUID.randomUUID();
+    UUID installationId = UUID.randomUUID();
+
+    when(machineRepository.findByIdWithPlantAndGroup(machineId))
+        .thenReturn(Optional.of(machineWithPlant(machineId, plantId)));
+    when(installationRepository.existsByMachineIdAndSparepartLeadTimeHoursIsNotNull(machineId))
+        .thenReturn(true);
+    var view = riskView(machineId, List.of(
+        projection(installationId, true, new BigDecimal("36.5"), 548L, 500L)));
+    when(projectionService.getProjectionsForMachine(machineId)).thenReturn(view);
+    when(alertRepository.existsByMachineSparepartInstallationIdAndAlertTypeAndStatusNot(
+        installationId, SparepartAlertType.PROCUREMENT_RISK, SparepartAlertStatus.RESOLVED))
+        .thenReturn(true);
+
+    service().evaluateAndCreateProcurementRiskAlerts(machineId, "trace-risk-dup");
+
+    verify(alertRepository, never()).saveAndFlush(any());
+    verify(auditLogWriter, never()).recordSystem(any());
+  }
+
+  @Test
+  void procurementRisk_missingLeadTime_silentNoOp() {
+    UUID machineId = UUID.randomUUID();
+    UUID plantId = UUID.randomUUID();
+    UUID installationId = UUID.randomUUID();
+
+    when(machineRepository.findByIdWithPlantAndGroup(machineId))
+        .thenReturn(Optional.of(machineWithPlant(machineId, plantId)));
+    when(installationRepository.existsByMachineIdAndSparepartLeadTimeHoursIsNotNull(machineId))
+        .thenReturn(true);
+    var view = riskView(machineId, List.of(
+        projection(installationId, true, null, null, 500L)));
+    when(projectionService.getProjectionsForMachine(machineId)).thenReturn(view);
+
+    service().evaluateAndCreateProcurementRiskAlerts(machineId, "trace-risk-nolt");
+
+    verify(alertRepository, never()).saveAndFlush(any());
+    verify(auditLogWriter, never()).recordSystem(any());
+  }
+
+  @Test
+  void procurementRisk_outsideWindow_silentNoOp() {
+    UUID machineId = UUID.randomUUID();
+    UUID plantId = UUID.randomUUID();
+    UUID installationId = UUID.randomUUID();
+
+    when(machineRepository.findByIdWithPlantAndGroup(machineId))
+        .thenReturn(Optional.of(machineWithPlant(machineId, plantId)));
+    when(installationRepository.existsByMachineIdAndSparepartLeadTimeHoursIsNotNull(machineId))
+        .thenReturn(true);
+    var view = riskView(machineId, List.of(
+        projection(installationId, true, new BigDecimal("36.5"), 400L, 500L)));
+    when(projectionService.getProjectionsForMachine(machineId)).thenReturn(view);
+
+    service().evaluateAndCreateProcurementRiskAlerts(machineId, "trace-risk-out");
+
+    verify(alertRepository, never()).saveAndFlush(any());
+    verify(auditLogWriter, never()).recordSystem(any());
+  }
+
+  @Test
+  void procurementRisk_rateUnavailable_silentNoOp() {
+    UUID machineId = UUID.randomUUID();
+    UUID plantId = UUID.randomUUID();
+
+    when(machineRepository.findByIdWithPlantAndGroup(machineId))
+        .thenReturn(Optional.of(machineWithPlant(machineId, plantId)));
+    when(installationRepository.existsByMachineIdAndSparepartLeadTimeHoursIsNotNull(machineId))
+        .thenReturn(true);
+    when(projectionService.getProjectionsForMachine(machineId)).thenReturn(
+        new com.syncro.projection.api.ProjectionDtos.MachineSparepartProjectionsView(
+            machineId, false, null, null, null, null, null,
+            com.syncro.projection.application.CounterRateEstimator.InsufficientReason.NO_TELEMETRY,
+            null, "NONE", BigDecimal.ZERO.setScale(2), List.of()));
+
+    service().evaluateAndCreateProcurementRiskAlerts(machineId, "trace-risk-norate");
+
+    verify(alertRepository, never()).saveAndFlush(any());
+    verify(auditLogWriter, never()).recordSystem(any());
+  }
+
+  @Test
+  void procurementRisk_viewNull_silentNoOp() {
+    UUID machineId = UUID.randomUUID();
+    UUID plantId = UUID.randomUUID();
+
+    when(machineRepository.findByIdWithPlantAndGroup(machineId))
+        .thenReturn(Optional.of(machineWithPlant(machineId, plantId)));
+    when(installationRepository.existsByMachineIdAndSparepartLeadTimeHoursIsNotNull(machineId))
+        .thenReturn(true);
+    when(projectionService.getProjectionsForMachine(machineId)).thenReturn(null);
+
+    service().evaluateAndCreateProcurementRiskAlerts(machineId, "trace-risk-nullview");
+
+    verify(alertRepository, never()).saveAndFlush(any());
+    verify(auditLogWriter, never()).recordSystem(any());
+  }
+
+  @Test
+  void procurementRisk_noLeadTimeSpareparts_perfGuardShortCircuits() {
+    UUID machineId = UUID.randomUUID();
+    UUID plantId = UUID.randomUUID();
+
+    when(machineRepository.findByIdWithPlantAndGroup(machineId))
+        .thenReturn(Optional.of(machineWithPlant(machineId, plantId)));
+    when(installationRepository.existsByMachineIdAndSparepartLeadTimeHoursIsNotNull(machineId))
+        .thenReturn(false);
+
+    service().evaluateAndCreateProcurementRiskAlerts(machineId, "trace-risk-guard");
+
+    verify(projectionService, never()).getProjectionsForMachine(any());
+    verify(alertRepository, never()).saveAndFlush(any());
+    verify(auditLogWriter, never()).recordSystem(any());
+  }
+
+  @Test
+  void procurementRisk_unknownMachine_warnSkip() {
+    UUID machineId = UUID.randomUUID();
+    when(machineRepository.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.empty());
+
+    service().evaluateAndCreateProcurementRiskAlerts(machineId, "trace-risk-unknown");
+
+    verify(installationRepository, never()).existsByMachineIdAndSparepartLeadTimeHoursIsNotNull(any());
+    verify(alertRepository, never()).saveAndFlush(any());
+  }
+
+  @Test
+  void procurementRisk_depletedNow_createsAlert() {
+    UUID machineId = UUID.randomUUID();
+    UUID plantId = UUID.randomUUID();
+    UUID installationId = UUID.randomUUID();
+
+    when(machineRepository.findByIdWithPlantAndGroup(machineId))
+        .thenReturn(Optional.of(machineWithPlant(machineId, plantId)));
+    when(installationRepository.existsByMachineIdAndSparepartLeadTimeHoursIsNotNull(machineId))
+        .thenReturn(true);
+    var view = riskView(machineId, List.of(
+        projection(installationId, true, new BigDecimal("36.5"), 100L, 0L)));
+    when(projectionService.getProjectionsForMachine(machineId)).thenReturn(view);
+    when(alertRepository.existsByMachineSparepartInstallationIdAndAlertTypeAndStatusNot(
+        installationId, SparepartAlertType.PROCUREMENT_RISK, SparepartAlertStatus.RESOLVED))
+        .thenReturn(false);
+    when(alertRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    service().evaluateAndCreateProcurementRiskAlerts(machineId, "trace-risk-depleted");
+
+    verify(alertRepository).saveAndFlush(any(SparepartAlertEntity.class));
+    verify(auditLogWriter).recordSystem(any(AuditRecord.class));
+  }
+
+  @Test
+  void procurementRisk_auditRecordsEvidenceAndLabel() {
+    UUID machineId = UUID.randomUUID();
+    UUID plantId = UUID.randomUUID();
+    UUID installationId = UUID.randomUUID();
+
+    when(machineRepository.findByIdWithPlantAndGroup(machineId))
+        .thenReturn(Optional.of(machineWithPlant(machineId, plantId)));
+    when(installationRepository.existsByMachineIdAndSparepartLeadTimeHoursIsNotNull(machineId))
+        .thenReturn(true);
+    var view = riskView(machineId, List.of(
+        projection(installationId, true, new BigDecimal("36.5"), 548L, 500L)));
+    when(projectionService.getProjectionsForMachine(machineId)).thenReturn(view);
+    when(alertRepository.existsByMachineSparepartInstallationIdAndAlertTypeAndStatusNot(
+        installationId, SparepartAlertType.PROCUREMENT_RISK, SparepartAlertStatus.RESOLVED))
+        .thenReturn(false);
+    when(alertRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    service().evaluateAndCreateProcurementRiskAlerts(machineId, "trace-risk-audit");
+
+    var captor = ArgumentCaptor.forClass(AuditRecord.class);
+    verify(auditLogWriter).recordSystem(captor.capture());
+    AuditRecord record = captor.getValue();
+    assertThat(record.entityLabel()).isEqualTo("ALERT:" + installationId + "@PROCUREMENT_RISK");
+    assertThat(record.newValue()).containsEntry("alertType", "PROCUREMENT_RISK");
+    assertThat(record.newValue()).containsEntry("ratePerOperatingHour", "15.00");
+    assertThat(record.newValue()).containsEntry("calculationBasis", "ROLLING_30_DAY");
+    assertThat(record.newValue()).containsEntry("leadTimeHours", "36.5");
+    assertThat(record.newValue()).containsEntry("traceId", "trace-risk-audit");
   }
 }

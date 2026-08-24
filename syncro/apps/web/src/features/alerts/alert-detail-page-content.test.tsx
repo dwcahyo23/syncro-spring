@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -97,5 +97,54 @@ describe("AlertDetailPageContent mutations", () => {
 
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["alerts", "list"] });
     expect(detailRefetch).toHaveBeenCalled();
+  });
+});
+
+describe("AlertDetailPageContent procurement risk", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    acknowledgeOptions.current = undefined;
+  });
+
+  it("renders procurement risk evidence (rate, basis, lead time, projected depletion) and does not show threshold sentence", () => {
+    alertData = {
+      data: alert({
+        alertType: "PROCUREMENT_RISK",
+        thresholdPercentage: null,
+        currentCounterSnapshot: null,
+        consumedProductionCountSnapshot: null,
+        consumedPercentageSnapshot: null,
+        leadTimeHours: 36.5,
+        ratePerOperatingHour: 1200,
+        calculationBasis: "ROLLING_30_DAY",
+        projectedDepletionAt: "2026-09-05T10:00:00Z",
+      }),
+    };
+
+    render(<AlertDetailPageContent alertId="a-1" />, { wrapper: Wrapper });
+
+    expect(screen.getByText("Projected depletion falls within the sparepart lead-time window.")).toBeInTheDocument();
+    expect(screen.getByText("1200.00 counters/op-hour")).toBeInTheDocument();
+    expect(screen.getByText("Rolling 30 days")).toBeInTheDocument();
+    expect(screen.getByText("36.50 h")).toBeInTheDocument();
+    expect(screen.getByText("Sep 5, 2026, 10:00 AM UTC")).toBeInTheDocument();
+    expect(screen.queryByText(/consumed percentage/i)).toBeNull();
+    expect(screen.queryByText("Lifetime Evidence")).toBeNull();
+  });
+
+  it("renders threshold alert with null thresholdPercentage guard", () => {
+    alertData = {
+      data: alert({
+        alertType: "THRESHOLD_PERCENTAGE",
+        thresholdPercentage: 90,
+        consumedPercentageSnapshot: 90.0,
+      }),
+    };
+
+    render(<AlertDetailPageContent alertId="a-1" />, { wrapper: Wrapper });
+
+    expect(screen.getAllByText("90.00%").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("90%").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/reached the configured threshold/i).length).toBeGreaterThan(0);
   });
 });

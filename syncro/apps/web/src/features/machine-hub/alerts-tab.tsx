@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useListAlerts } from "@/lib/api/generated/syncro";
-import { SyncroApiError } from "@/lib/api/orval-mutator";
 import { AlertStatusBadge } from "@/features/alerts/alert-status-badge";
+import { AlertTypeBadge } from "@/features/alerts/alert-type-badge";
 import { NotificationStatePill } from "@/features/alerts/notification-state-pill";
+import { useListAlerts } from "@/lib/api/generated/syncro";
 
 export interface AlertsTabProps {
   machineId?: string;
@@ -36,10 +36,10 @@ export function AlertsTab({ machineId }: AlertsTabProps) {
   if (isError) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-lg border p-6">
-        <p className="text-sm text-muted-foreground">Failed to load alerts.</p>
+        <p className="text-muted-foreground text-sm">Failed to load alerts.</p>
         <button
           type="button"
-          className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          className="rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground text-sm hover:bg-primary/90"
           onClick={() => void refetch()}
         >
           Retry
@@ -49,12 +49,7 @@ export function AlertsTab({ machineId }: AlertsTabProps) {
   }
 
   if (items.length === 0) {
-    return (
-      <EmptyState
-        title="No alerts"
-        description="This machine has no active sparepart lifetime alerts."
-      />
-    );
+    return <EmptyState title="No alerts" description="This machine has no active sparepart lifetime alerts." />;
   }
 
   return (
@@ -62,10 +57,11 @@ export function AlertsTab({ machineId }: AlertsTabProps) {
       <TableHeader>
         <TableRow>
           <TableHead>Status</TableHead>
+          <TableHead>Type</TableHead>
           <TableHead className="hidden sm:table-cell">Notification</TableHead>
           <TableHead>Sparepart</TableHead>
-          <TableHead className="hidden sm:table-cell text-right">Threshold</TableHead>
-          <TableHead className="hidden sm:table-cell text-right">Consumed</TableHead>
+          <TableHead className="hidden text-right sm:table-cell">Threshold</TableHead>
+          <TableHead className="hidden text-right sm:table-cell">Consumed</TableHead>
           <TableHead className="hidden md:table-cell">Created</TableHead>
         </TableRow>
       </TableHeader>
@@ -87,20 +83,23 @@ export function AlertsTab({ machineId }: AlertsTabProps) {
             <TableCell>
               <AlertStatusBadge status={item.status} />
             </TableCell>
+            <TableCell>
+              <AlertTypeBadge alertType={item.alertType} />
+            </TableCell>
             <TableCell className="hidden sm:table-cell">
               <NotificationStatePill summary={item.notificationSummary} />
             </TableCell>
             <TableCell>
               <div className="font-medium">{item.sparepartName ?? item.sparepartCode}</div>
-              <div className="text-xs text-muted-foreground">{item.functionName}</div>
+              <div className="text-muted-foreground text-xs">{item.functionName}</div>
             </TableCell>
-            <TableCell className="hidden sm:table-cell text-right tabular-nums">
-              {item.thresholdPercentage}%
+            <TableCell className="hidden text-right tabular-nums sm:table-cell">
+              {item.thresholdPercentage != null ? `${item.thresholdPercentage}%` : "-"}
             </TableCell>
-            <TableCell className="hidden sm:table-cell text-right tabular-nums">
-              {Number(item.consumedPercentageSnapshot).toFixed(1)}%
+            <TableCell className="hidden text-right tabular-nums sm:table-cell">
+              {item.consumedPercentageSnapshot != null ? `${Number(item.consumedPercentageSnapshot).toFixed(1)}%` : "-"}
             </TableCell>
-            <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+            <TableCell className="hidden text-muted-foreground text-sm md:table-cell">
               {item.createdAt ? new Date(item.createdAt).toLocaleString() : "-"}
             </TableCell>
           </TableRow>

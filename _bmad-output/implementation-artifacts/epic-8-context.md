@@ -54,3 +54,4 @@ Give maintenance teams procurement readiness data (material code, lead time, pri
 - 8.7 also requires 8.2 (lead time).
 - 8.2 and 8.5 can proceed in parallel. Recommended sequence: 8.2 ∥ 8.5 → 8.6 → 8.7, with 8.1 before 8.4.
 - Builds on Epics 1–7 outputs (machine/sparepart master data, accepted telemetry, alert evaluation path); no existing story is reworked.
+- Epic 8 outputs are deliberate groundwork for later roadmap phases (outside this epic's scope): the global material code becomes the identity key for future stock/inventory aggregation, the resolved shift configuration feeds calendar-based scheduling, and the Garage key-only storage pattern is the template for future evidence storage.

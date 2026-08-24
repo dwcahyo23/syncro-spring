@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.syncro.alert.application.SparepartAlertCommandService.AlertInvalidTransitionException;
 import com.syncro.alert.application.SparepartAlertQueryService.AlertNotFoundException;
 import com.syncro.alert.domain.SparepartAlertStatus;
+import com.syncro.alert.domain.SparepartAlertType;
 import com.syncro.alert.infrastructure.SparepartAlertEntity;
 import com.syncro.alert.infrastructure.SparepartAlertRepository;
 import com.syncro.audit.application.AuditLogWriter;
@@ -96,6 +97,7 @@ class SparepartAlertCommandServiceTest {
         alertId,
         installation.getMachine().getId(),
         installation.getId(),
+        SparepartAlertType.THRESHOLD_PERCENTAGE,
         90,
         950L,
         950L,

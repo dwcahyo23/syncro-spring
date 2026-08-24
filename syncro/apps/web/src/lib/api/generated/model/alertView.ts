@@ -5,6 +5,8 @@
  * Syncro backend REST API.
  * OpenAPI spec version: v1
  */
+import type { AlertViewAlertType } from './alertViewAlertType';
+import type { AlertViewCalculationBasis } from './alertViewCalculationBasis';
 import type { AlertViewStatus } from './alertViewStatus';
 import type { NotificationSummary } from './notificationSummary';
 
@@ -23,16 +25,21 @@ export interface AlertView {
   sparepartCode?: string;
   sparepartName?: string;
   functionName?: string;
-  thresholdPercentage?: number;
+  alertType?: AlertViewAlertType;
+  thresholdPercentage?: number | null;
   baselineCounter?: number;
   expectedProductionCount?: number;
-  currentCounterSnapshot?: number;
-  consumedProductionCountSnapshot?: number;
-  consumedPercentageSnapshot?: number;
+  currentCounterSnapshot?: number | null;
+  consumedProductionCountSnapshot?: number | null;
+  consumedPercentageSnapshot?: number | null;
   status?: AlertViewStatus;
   statusReason?: string;
   traceId?: string;
   createdAt?: string;
   updatedAt?: string;
+  leadTimeHours?: number | null;
+  ratePerOperatingHour?: number | null;
+  calculationBasis?: AlertViewCalculationBasis;
+  projectedDepletionAt?: string | null;
   notificationSummary?: NotificationSummary;
 }

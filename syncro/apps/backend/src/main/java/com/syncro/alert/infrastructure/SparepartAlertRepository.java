@@ -1,6 +1,7 @@
 package com.syncro.alert.infrastructure;
 
 import com.syncro.alert.domain.SparepartAlertStatus;
+import com.syncro.alert.domain.SparepartAlertType;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -14,6 +15,9 @@ public interface SparepartAlertRepository extends JpaRepository<SparepartAlertEn
 
   boolean existsByMachineSparepartInstallationIdAndThresholdPercentageAndStatusNot(
       UUID installationId, int thresholdPercentage, SparepartAlertStatus excludedStatus);
+
+  boolean existsByMachineSparepartInstallationIdAndAlertTypeAndStatusNot(
+      UUID installationId, SparepartAlertType alertType, SparepartAlertStatus excludedStatus);
 
   @Query("""
       select alert from SparepartAlertEntity alert

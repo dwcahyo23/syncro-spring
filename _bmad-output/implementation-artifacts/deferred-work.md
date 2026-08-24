@@ -946,3 +946,10 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-8-5-configure-shift-schedule-with-machine-override.md`
   summary: Integration-test helpers latestAuditEntryFor/auditCount stream the whole audit_log table and order only by createdAt, making assertions O(entire-table) and nondeterministic when two audits share a timestamp; introduce a bounded/ordered query or sequence tiebreaker shared across suites.
   evidence: Edge-prone pattern cloned into ShiftConfigServiceIntegrationTest from SparepartImageServiceIntegrationTest; works at current table sizes but degrades as suites accumulate audits.
+
+### DW-124: Projection cache eviction failure silently leaves the 8-7 alert evaluation reading a stale cached view
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-7-raise-procurement-risk-alert-within-lead-time-window.md`
+  summary: TelemetryPersistenceService.persist evicts the per-machine projection cache before the 8-7 alert evaluation, but ProjectionRedisCache.evictMachine swallows Redis errors, so on eviction failure the subsequent cache.get returns the pre-message view and the alert is evaluated against stale telemetry with no staleness signal in the alert path.
+  evidence: ProjectionRedisCache.evictMachine logs projection_cache_evict_failed and continues; 8-7's evaluateAndCreateProcurementRiskAlerts reads through the same cache with no freshness check; a successful stale read is not distinguishable from a fresh one.
+  status: open

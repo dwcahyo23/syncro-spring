@@ -1,6 +1,8 @@
 package com.syncro.alert.api;
 
 import com.syncro.alert.domain.SparepartAlertStatus;
+import com.syncro.alert.domain.SparepartAlertType;
+import com.syncro.projection.application.CounterRateEstimator.CalculationBasis;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -38,17 +40,22 @@ public final class SparepartAlertDtos {
       @Schema(nullable = false) String sparepartCode,
       @Schema(nullable = false) String sparepartName,
       @Schema(nullable = false) String functionName,
-      @Schema(nullable = false) int thresholdPercentage,
+      @Schema(nullable = false) SparepartAlertType alertType,
+      @Schema(nullable = true) @Nullable Integer thresholdPercentage,
       @Schema(nullable = false) long baselineCounter,
       @Schema(nullable = false) long expectedProductionCount,
-      @Schema(nullable = false) long currentCounterSnapshot,
-      @Schema(nullable = false) long consumedProductionCountSnapshot,
-      @Schema(nullable = false) BigDecimal consumedPercentageSnapshot,
+      @Schema(nullable = true) @Nullable Long currentCounterSnapshot,
+      @Schema(nullable = true) @Nullable Long consumedProductionCountSnapshot,
+      @Schema(nullable = true) @Nullable BigDecimal consumedPercentageSnapshot,
       @Schema(nullable = false) SparepartAlertStatus status,
       @Schema(nullable = true) String statusReason,
       @Schema(nullable = false) String traceId,
       @Schema(nullable = false) Instant createdAt,
       @Schema(nullable = false) Instant updatedAt,
+      @Schema(nullable = true) @Nullable BigDecimal leadTimeHours,
+      @Schema(nullable = true) @Nullable BigDecimal ratePerOperatingHour,
+      @Schema(nullable = true) @Nullable CalculationBasis calculationBasis,
+      @Schema(nullable = true) @Nullable Instant projectedDepletionAt,
       @Schema(nullable = true) @Nullable NotificationSummary notificationSummary) {
   }
 
