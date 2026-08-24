@@ -14,6 +14,7 @@ import { AlertsTab } from "./alerts-tab";
 import { AuditLogTab } from "./audit-log-tab";
 import { MachineHeader } from "./machine-header";
 import { OverviewTab } from "./overview-tab";
+import { ShiftSection } from "./shift-section";
 import { SparepartsTab } from "./spareparts-tab";
 import { TelemetryTab } from "./telemetry-tab";
 
@@ -94,8 +95,9 @@ export function MachineHubPageContent({ machineCode }: { machineCode: string }) 
           <TabsTrigger value="audit">Audit Log</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="mt-6">
+        <TabsContent value="overview" className="mt-6 space-y-6">
           <OverviewTab machine={machine} isLoading={machineQuery.isLoading} />
+          {machine?.id ? <ShiftSection machineId={machine.id} /> : null}
         </TabsContent>
 
         <TabsContent value="telemetry" className="mt-6">

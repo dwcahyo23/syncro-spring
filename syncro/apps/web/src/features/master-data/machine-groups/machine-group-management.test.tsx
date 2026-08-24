@@ -1,6 +1,7 @@
+import type { ReactNode } from "react";
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SyncroApiError } from "@/lib/api/orval-mutator";
@@ -10,6 +11,12 @@ import { MachineGroupManagement } from "./machine-group-management";
 // ---------------------------------------------------------------------------
 // Module-level mocks (hoisted by Vitest — cannot reference outer variables)
 // ---------------------------------------------------------------------------
+
+vi.mock("sonner", () => ({
+  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
+}));
+
+import { toast } from "sonner";
 
 let mockPlantScope = {
   activePlantId: "plant-1" as string | null,
@@ -64,12 +71,36 @@ let mockCreateMachineGroup = {
   isPending: false,
 };
 
+let mockGetGroupShiftConfig = {
+  data: {
+    data: {
+      shifts: [{ shiftNumber: 1, startTime: "07:00", endTime: "15:00" }] as {
+        shiftNumber: number;
+        startTime?: string;
+        endTime?: string;
+      }[],
+    },
+  },
+  isLoading: false,
+  isError: false,
+  status: "success",
+};
+
+let mockUpdateGroupShiftConfig = {
+  mutateAsync: vi.fn(),
+  mutate: vi.fn(),
+  isPending: false,
+};
+
 vi.mock("@/lib/api/generated/syncro", () => ({
   useListPlants: vi.fn(() => mockListPlants),
   useListMachineGroups: vi.fn(() => mockListMachineGroups),
   useCreateMachineGroup: vi.fn(() => mockCreateMachineGroup),
   useUpdateMachineGroup: vi.fn(() => ({ mutateAsync: vi.fn(), mutate: vi.fn(), isPending: false })),
   useDeleteMachineGroup: vi.fn(() => ({ mutateAsync: vi.fn(), mutate: vi.fn(), isPending: false })),
+  useGetMachineGroupShiftConfig: vi.fn(() => mockGetGroupShiftConfig),
+  useUpdateMachineGroupShiftConfig: vi.fn(() => mockUpdateGroupShiftConfig),
+  getGetMachineGroupShiftConfigQueryKey: vi.fn(() => ["/mock-group-shift-key"]),
   getListMachineGroupsQueryKey: vi.fn(() => ["/mock-machine-groups-key"]),
   getListPlantsQueryKey: vi.fn(() => ["/mock-plants-key"]),
 }));
@@ -119,6 +150,21 @@ describe("MachineGroupManagement UI states", () => {
       mutate: vi.fn(),
       isPending: false,
     };
+    mockGetGroupShiftConfig = {
+      data: {
+        data: {
+          shifts: [{ shiftNumber: 1, startTime: "07:00", endTime: "15:00" }],
+        },
+      },
+      isLoading: false,
+      isError: false,
+      status: "success",
+    };
+    mockUpdateGroupShiftConfig = {
+      mutateAsync: vi.fn(),
+      mutate: vi.fn(),
+      isPending: false,
+    };
     queryClient.clear();
   });
 
@@ -164,9 +210,7 @@ describe("MachineGroupManagement UI states", () => {
 
     render(<MachineGroupManagement />, { wrapper: Wrapper });
 
-    expect(
-      screen.getByRole("heading", { name: /machine groups could not be loaded/i }),
-    ).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /machine groups could not be loaded/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /retry/i })).toBeTruthy();
   });
 
@@ -292,5 +336,146 @@ describe("MachineGroupManagement UI states", () => {
     expect(screen.getByText("View only")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /edit/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /delete/i })).toBeNull();
+  });
+
+  // -------------------------------------------------------------------------
+  // 9. Shift Configuration section hidden in create dialog (Story 8-5)
+  // -------------------------------------------------------------------------
+  it("hides the Shift configuration section in the create dialog", async () => {
+    render(<MachineGroupManagement />, { wrapper: Wrapper });
+
+    fireEvent.click(screen.getByRole("button", { name: /create machine group/i }));
+
+    expect(await screen.findByRole("heading", { name: /create machine group/i })).toBeTruthy();
+    expect(screen.queryByText("Shift configuration")).toBeNull();
+    expect(screen.queryByLabelText("Shift 1 start")).toBeNull();
+  });
+
+  // -------------------------------------------------------------------------
+  // 10. Edit dialog shows shift section with fetched windows and PUTs once (8-5)
+  // -------------------------------------------------------------------------
+  it("edit dialog loads group shifts and PUTs them once on Save shift schedule", async () => {
+    mockListMachineGroups = {
+      ...mockListMachineGroups,
+      data: {
+        data: {
+          items: [
+            {
+              id: "g-1",
+              name: "Forming",
+              plantId: "plant-1",
+              plantCode: "P1",
+              plantName: "Plant 1",
+              createdAt: "2026-08-01T00:00:00Z",
+            },
+          ],
+          totalElements: 1,
+        },
+      },
+    };
+
+    render(<MachineGroupManagement />, { wrapper: Wrapper });
+
+    fireEvent.click(screen.getByRole("button", { name: /^edit$/i }));
+    expect(await screen.findByText("Shift configuration")).toBeTruthy();
+
+    const startInput = screen.getByLabelText("Shift 1 start") as HTMLInputElement;
+    expect(startInput.value).toBe("07:00");
+    expect(screen.getByText(/requires job scope leader or above/i)).toBeTruthy();
+
+    mockUpdateGroupShiftConfig.mutateAsync.mockResolvedValue({
+      data: { shifts: [{ shiftNumber: 1, startTime: "07:00", endTime: "15:00" }] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /save shift schedule/i }));
+
+    await waitFor(() => {
+      expect(mockUpdateGroupShiftConfig.mutateAsync).toHaveBeenCalledTimes(1);
+    });
+    expect(mockUpdateGroupShiftConfig.mutateAsync).toHaveBeenCalledWith({
+      machineGroupId: "g-1",
+      data: { shifts: [{ startTime: "07:00", endTime: "15:00" }] },
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 11. VIEWER never reaches the shift editor from the groups table (8-5)
+  // -------------------------------------------------------------------------
+  it("gives VIEWER no edit entry point so the shift editor stays unreachable", () => {
+    mockUser = {
+      id: "user-1",
+      loginIdentifier: "viewer@syncro.dev",
+      applicationRole: "VIEWER",
+    };
+    mockListMachineGroups = {
+      ...mockListMachineGroups,
+      data: {
+        data: {
+          items: [
+            {
+              id: "g-1",
+              name: "Forming",
+              plantId: "plant-1",
+              plantCode: "P1",
+              plantName: "Plant 1",
+              createdAt: "2026-08-01T00:00:00Z",
+            },
+          ],
+          totalElements: 1,
+        },
+      },
+    };
+
+    render(<MachineGroupManagement />, { wrapper: Wrapper });
+
+    expect(screen.getByText("View only")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^edit$/i })).toBeNull();
+    expect(screen.queryByText("Shift configuration")).toBeNull();
+    expect(screen.queryByLabelText("Shift 1 start")).toBeNull();
+  });
+
+  // -------------------------------------------------------------------------
+  // 12. Shift schedule denial surfaces verbatim message (8-5)
+  // -------------------------------------------------------------------------
+  it("surfaces verbatim denial when shift schedule PUT is rejected", async () => {
+    mockListMachineGroups = {
+      ...mockListMachineGroups,
+      data: {
+        data: {
+          items: [
+            {
+              id: "g-1",
+              name: "Forming",
+              plantId: "plant-1",
+              plantCode: "P1",
+              plantName: "Plant 1",
+              createdAt: "2026-08-01T00:00:00Z",
+            },
+          ],
+          totalElements: 1,
+        },
+      },
+    };
+    const denialMessage = "This action requires job scope LEADER or above.";
+    mockUpdateGroupShiftConfig = {
+      mutateAsync: vi.fn().mockRejectedValue(
+        new SyncroApiError(403, {
+          code: "JOB_SCOPE_REQUIRED",
+          message: denialMessage,
+        }),
+      ),
+      mutate: vi.fn(),
+      isPending: false,
+    };
+
+    render(<MachineGroupManagement />, { wrapper: Wrapper });
+
+    fireEvent.click(screen.getByRole("button", { name: /^edit$/i }));
+    expect(await screen.findByText("Shift configuration")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /save shift schedule/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(denialMessage);
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent(denialMessage);
   });
 });

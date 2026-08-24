@@ -54,10 +54,12 @@ import type {
   Logout200,
   MachineGroupListResponse,
   MachineGroupRequest,
+  MachineGroupShiftConfigView,
   MachineGroupView,
   MachineListResponse,
   MachineRequest,
   MachineResponsibilityResponse,
+  MachineShiftConfigView,
   MachineView,
   NotificationWorkerStatus,
   PageQuarantineEntryView,
@@ -68,6 +70,7 @@ import type {
   PlantView,
   ResolveOverrideRequest,
   ResolveRequest,
+  SetShiftConfigRequest,
   SetupCompletenessResponse,
   SparepartImageView,
   SparepartListResponse,
@@ -1854,6 +1857,286 @@ export const useDeleteMachine = <TError = void,
       return useMutation(getDeleteMachineMutationOptions(options), queryClient);
     }
 
+export type getMachineShiftConfigResponse200 = {
+  data: MachineShiftConfigView
+  status: 200
+}
+
+export type getMachineShiftConfigResponseSuccess = (getMachineShiftConfigResponse200) & {
+  headers: Headers;
+};
+;
+
+export type getMachineShiftConfigResponse = (getMachineShiftConfigResponseSuccess)
+
+export const getGetMachineShiftConfigUrl = (machineId: string,) => {
+
+
+
+
+  return `/api/v1/machines/${machineId}/shift-config`
+}
+
+/**
+ * @summary Get a machine's effective shift schedule with resolved source
+ */
+export const getMachineShiftConfig = async (machineId: string, options?: Parameters<typeof syncroFetch>[1]): Promise<getMachineShiftConfigResponse> => {
+
+  return syncroFetch<getMachineShiftConfigResponse>(getGetMachineShiftConfigUrl(machineId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMachineShiftConfigQueryKey = (machineId: string,) => {
+    return [
+    `/api/v1/machines/${machineId}/shift-config`
+    ] as const;
+    }
+
+
+export const getGetMachineShiftConfigQueryOptions = <TData = Awaited<ReturnType<typeof getMachineShiftConfig>>, TError = unknown>(machineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMachineShiftConfig>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMachineShiftConfigQueryKey(machineId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMachineShiftConfig>>> = ({ signal }) => getMachineShiftConfig(machineId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: machineId !== null && machineId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMachineShiftConfig>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetMachineShiftConfigQueryResult = NonNullable<Awaited<ReturnType<typeof getMachineShiftConfig>>>
+export type GetMachineShiftConfigQueryError = unknown
+
+
+export function useGetMachineShiftConfig<TData = Awaited<ReturnType<typeof getMachineShiftConfig>>, TError = unknown>(
+ machineId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMachineShiftConfig>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMachineShiftConfig>>,
+          TError,
+          Awaited<ReturnType<typeof getMachineShiftConfig>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMachineShiftConfig<TData = Awaited<ReturnType<typeof getMachineShiftConfig>>, TError = unknown>(
+ machineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMachineShiftConfig>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMachineShiftConfig>>,
+          TError,
+          Awaited<ReturnType<typeof getMachineShiftConfig>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMachineShiftConfig<TData = Awaited<ReturnType<typeof getMachineShiftConfig>>, TError = unknown>(
+ machineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMachineShiftConfig>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get a machine's effective shift schedule with resolved source
+ */
+
+export function useGetMachineShiftConfig<TData = Awaited<ReturnType<typeof getMachineShiftConfig>>, TError = unknown>(
+ machineId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMachineShiftConfig>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetMachineShiftConfigQueryOptions(machineId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type updateMachineShiftConfigResponse200 = {
+  data: MachineShiftConfigView
+  status: 200
+}
+
+export type updateMachineShiftConfigResponseSuccess = (updateMachineShiftConfigResponse200) & {
+  headers: Headers;
+};
+;
+
+export type updateMachineShiftConfigResponse = (updateMachineShiftConfigResponseSuccess)
+
+export const getUpdateMachineShiftConfigUrl = (machineId: string,) => {
+
+
+
+
+  return `/api/v1/machines/${machineId}/shift-config`
+}
+
+/**
+ * @summary Replace a machine's shift override
+ */
+export const updateMachineShiftConfig = async (machineId: string,
+    setShiftConfigRequest: SetShiftConfigRequest, options?: Parameters<typeof syncroFetch>[1]): Promise<updateMachineShiftConfigResponse> => {
+
+  return syncroFetch<updateMachineShiftConfigResponse>(getUpdateMachineShiftConfigUrl(machineId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(setShiftConfigRequest)
+  }
+);}
+
+
+
+
+
+export const getUpdateMachineShiftConfigMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMachineShiftConfig>>, TError,{machineId: string;data: SetShiftConfigRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMachineShiftConfig>>, TError,{machineId: string;data: SetShiftConfigRequest}, TContext> => {
+
+const mutationKey = ['updateMachineShiftConfig'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMachineShiftConfig>>, {machineId: string;data: SetShiftConfigRequest}> = (props) => {
+          const {machineId,data} = props ?? {};
+
+          return  updateMachineShiftConfig(machineId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMachineShiftConfigMutationResult = NonNullable<Awaited<ReturnType<typeof updateMachineShiftConfig>>>
+    export type UpdateMachineShiftConfigMutationBody = SetShiftConfigRequest
+    export type UpdateMachineShiftConfigMutationError = unknown
+
+    /**
+ * @summary Replace a machine's shift override
+ */
+export const useUpdateMachineShiftConfig = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMachineShiftConfig>>, TError,{machineId: string;data: SetShiftConfigRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateMachineShiftConfig>>,
+        TError,
+        {machineId: string;data: SetShiftConfigRequest},
+        TContext
+      > => {
+      return useMutation(getUpdateMachineShiftConfigMutationOptions(options), queryClient);
+    }
+
+export type deleteMachineShiftConfigResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteMachineShiftConfigResponseSuccess = (deleteMachineShiftConfigResponse204) & {
+  headers: Headers;
+};
+;
+
+export type deleteMachineShiftConfigResponse = (deleteMachineShiftConfigResponseSuccess)
+
+export const getDeleteMachineShiftConfigUrl = (machineId: string,) => {
+
+
+
+
+  return `/api/v1/machines/${machineId}/shift-config`
+}
+
+/**
+ * @summary Clear a machine's shift override (falls back to its group)
+ */
+export const deleteMachineShiftConfig = async (machineId: string, options?: Parameters<typeof syncroFetch>[1]): Promise<deleteMachineShiftConfigResponse> => {
+
+  return syncroFetch<deleteMachineShiftConfigResponse>(getDeleteMachineShiftConfigUrl(machineId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteMachineShiftConfigMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMachineShiftConfig>>, TError,{machineId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteMachineShiftConfig>>, TError,{machineId: string}, TContext> => {
+
+const mutationKey = ['deleteMachineShiftConfig'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMachineShiftConfig>>, {machineId: string}> = (props) => {
+          const {machineId} = props ?? {};
+
+          return  deleteMachineShiftConfig(machineId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteMachineShiftConfigMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMachineShiftConfig>>>
+
+    export type DeleteMachineShiftConfigMutationError = unknown
+
+    /**
+ * @summary Clear a machine's shift override (falls back to its group)
+ */
+export const useDeleteMachineShiftConfig = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMachineShiftConfig>>, TError,{machineId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteMachineShiftConfig>>,
+        TError,
+        {machineId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteMachineShiftConfigMutationOptions(options), queryClient);
+    }
+
 export type getMachineSparepartInstallationResponse200 = {
   data: InstallationView
   status: 200
@@ -2731,6 +3014,203 @@ export const useDeleteMachineGroup = <TError = void,
         TContext
       > => {
       return useMutation(getDeleteMachineGroupMutationOptions(options), queryClient);
+    }
+
+export type getMachineGroupShiftConfigResponse200 = {
+  data: MachineGroupShiftConfigView
+  status: 200
+}
+
+export type getMachineGroupShiftConfigResponseSuccess = (getMachineGroupShiftConfigResponse200) & {
+  headers: Headers;
+};
+;
+
+export type getMachineGroupShiftConfigResponse = (getMachineGroupShiftConfigResponseSuccess)
+
+export const getGetMachineGroupShiftConfigUrl = (machineGroupId: string,) => {
+
+
+
+
+  return `/api/v1/machine-groups/${machineGroupId}/shift-config`
+}
+
+/**
+ * @summary Get a machine group's shift schedule
+ */
+export const getMachineGroupShiftConfig = async (machineGroupId: string, options?: Parameters<typeof syncroFetch>[1]): Promise<getMachineGroupShiftConfigResponse> => {
+
+  return syncroFetch<getMachineGroupShiftConfigResponse>(getGetMachineGroupShiftConfigUrl(machineGroupId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMachineGroupShiftConfigQueryKey = (machineGroupId: string,) => {
+    return [
+    `/api/v1/machine-groups/${machineGroupId}/shift-config`
+    ] as const;
+    }
+
+
+export const getGetMachineGroupShiftConfigQueryOptions = <TData = Awaited<ReturnType<typeof getMachineGroupShiftConfig>>, TError = unknown>(machineGroupId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMachineGroupShiftConfig>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMachineGroupShiftConfigQueryKey(machineGroupId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMachineGroupShiftConfig>>> = ({ signal }) => getMachineGroupShiftConfig(machineGroupId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: machineGroupId !== null && machineGroupId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMachineGroupShiftConfig>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetMachineGroupShiftConfigQueryResult = NonNullable<Awaited<ReturnType<typeof getMachineGroupShiftConfig>>>
+export type GetMachineGroupShiftConfigQueryError = unknown
+
+
+export function useGetMachineGroupShiftConfig<TData = Awaited<ReturnType<typeof getMachineGroupShiftConfig>>, TError = unknown>(
+ machineGroupId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMachineGroupShiftConfig>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMachineGroupShiftConfig>>,
+          TError,
+          Awaited<ReturnType<typeof getMachineGroupShiftConfig>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMachineGroupShiftConfig<TData = Awaited<ReturnType<typeof getMachineGroupShiftConfig>>, TError = unknown>(
+ machineGroupId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMachineGroupShiftConfig>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMachineGroupShiftConfig>>,
+          TError,
+          Awaited<ReturnType<typeof getMachineGroupShiftConfig>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMachineGroupShiftConfig<TData = Awaited<ReturnType<typeof getMachineGroupShiftConfig>>, TError = unknown>(
+ machineGroupId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMachineGroupShiftConfig>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get a machine group's shift schedule
+ */
+
+export function useGetMachineGroupShiftConfig<TData = Awaited<ReturnType<typeof getMachineGroupShiftConfig>>, TError = unknown>(
+ machineGroupId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMachineGroupShiftConfig>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetMachineGroupShiftConfigQueryOptions(machineGroupId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type updateMachineGroupShiftConfigResponse200 = {
+  data: MachineGroupShiftConfigView
+  status: 200
+}
+
+export type updateMachineGroupShiftConfigResponseSuccess = (updateMachineGroupShiftConfigResponse200) & {
+  headers: Headers;
+};
+;
+
+export type updateMachineGroupShiftConfigResponse = (updateMachineGroupShiftConfigResponseSuccess)
+
+export const getUpdateMachineGroupShiftConfigUrl = (machineGroupId: string,) => {
+
+
+
+
+  return `/api/v1/machine-groups/${machineGroupId}/shift-config`
+}
+
+/**
+ * @summary Replace a machine group's shift schedule
+ */
+export const updateMachineGroupShiftConfig = async (machineGroupId: string,
+    setShiftConfigRequest: SetShiftConfigRequest, options?: Parameters<typeof syncroFetch>[1]): Promise<updateMachineGroupShiftConfigResponse> => {
+
+  return syncroFetch<updateMachineGroupShiftConfigResponse>(getUpdateMachineGroupShiftConfigUrl(machineGroupId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(setShiftConfigRequest)
+  }
+);}
+
+
+
+
+
+export const getUpdateMachineGroupShiftConfigMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMachineGroupShiftConfig>>, TError,{machineGroupId: string;data: SetShiftConfigRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMachineGroupShiftConfig>>, TError,{machineGroupId: string;data: SetShiftConfigRequest}, TContext> => {
+
+const mutationKey = ['updateMachineGroupShiftConfig'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMachineGroupShiftConfig>>, {machineGroupId: string;data: SetShiftConfigRequest}> = (props) => {
+          const {machineGroupId,data} = props ?? {};
+
+          return  updateMachineGroupShiftConfig(machineGroupId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMachineGroupShiftConfigMutationResult = NonNullable<Awaited<ReturnType<typeof updateMachineGroupShiftConfig>>>
+    export type UpdateMachineGroupShiftConfigMutationBody = SetShiftConfigRequest
+    export type UpdateMachineGroupShiftConfigMutationError = unknown
+
+    /**
+ * @summary Replace a machine group's shift schedule
+ */
+export const useUpdateMachineGroupShiftConfig = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMachineGroupShiftConfig>>, TError,{machineGroupId: string;data: SetShiftConfigRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateMachineGroupShiftConfig>>,
+        TError,
+        {machineGroupId: string;data: SetShiftConfigRequest},
+        TContext
+      > => {
+      return useMutation(getUpdateMachineGroupShiftConfigMutationOptions(options), queryClient);
     }
 
 export type listSparepartsResponse200 = {

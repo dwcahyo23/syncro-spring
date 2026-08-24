@@ -944,6 +944,173 @@
         }
       }
     },
+    "/api/v1/machines/{machineId}/shift-config": {
+      "get": {
+        "tags": [
+          "shift-config-controller"
+        ],
+        "summary": "Get a machine's effective shift schedule with resolved source",
+        "operationId": "getMachineShiftConfig",
+        "parameters": [
+          {
+            "name": "machineId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Effective shift schedule returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineShiftConfigView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid path value",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "403": {
+            "description": "Forbidden (plant scope)",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Machine not found",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "shift-config-controller"
+        ],
+        "summary": "Replace a machine's shift override",
+        "operationId": "updateMachineShiftConfig",
+        "parameters": [
+          {
+            "name": "machineId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetShiftConfigRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Override stored; empty array clears it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineShiftConfigView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "403": {
+            "description": "Forbidden (role, job scope, or plant)",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Machine not found",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "shift-config-controller"
+        ],
+        "summary": "Clear a machine's shift override (falls back to its group)",
+        "operationId": "deleteMachineShiftConfig",
+        "parameters": [
+          {
+            "name": "machineId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Override removed (or absent, no-op)"
+          },
+          "400": {
+            "description": "Invalid path value",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "403": {
+            "description": "Forbidden (role, job scope, or plant)",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Machine not found",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    },
     "/api/v1/machine-sparepart-installations/{installationId}": {
       "get": {
         "tags": [
@@ -1405,6 +1572,126 @@
           },
           "409": {
             "description": "Machine group data integrity conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/machine-groups/{machineGroupId}/shift-config": {
+      "get": {
+        "tags": [
+          "shift-config-controller"
+        ],
+        "summary": "Get a machine group's shift schedule",
+        "operationId": "getMachineGroupShiftConfig",
+        "parameters": [
+          {
+            "name": "machineGroupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shift schedule returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupShiftConfigView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid path value",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "403": {
+            "description": "Forbidden (plant scope)",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Machine group not found",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "shift-config-controller"
+        ],
+        "summary": "Replace a machine group's shift schedule",
+        "operationId": "updateMachineGroupShiftConfig",
+        "parameters": [
+          {
+            "name": "machineGroupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetShiftConfigRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Shift schedule stored; empty array clears it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineGroupShiftConfigView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "403": {
+            "description": "Forbidden (role, job scope, or plant)",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "404": {
+            "description": "Machine group not found",
+            "content": {
+              "application/json": {}
+            }
           }
         }
       }
@@ -4202,6 +4489,60 @@
           }
         }
       },
+      "SetShiftConfigRequest": {
+        "type": "object",
+        "properties": {
+          "shifts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShiftWindowRequest"
+            }
+          }
+        }
+      },
+      "ShiftWindowRequest": {
+        "type": "object",
+        "properties": {
+          "startTime": {
+            "type": "string"
+          },
+          "endTime": {
+            "type": "string"
+          }
+        }
+      },
+      "MachineShiftConfigView": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "inheritedFromGroup": {
+            "type": "boolean"
+          },
+          "shifts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShiftWindowView"
+            }
+          }
+        }
+      },
+      "ShiftWindowView": {
+        "type": "object",
+        "properties": {
+          "shiftNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "startTime": {
+            "type": "string"
+          },
+          "endTime": {
+            "type": "string"
+          }
+        }
+      },
       "InstallationUpdateRequest": {
         "type": "object",
         "properties": {
@@ -4452,6 +4793,17 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "MachineGroupShiftConfigView": {
+        "type": "object",
+        "properties": {
+          "shifts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShiftWindowView"
+            }
           }
         }
       },
@@ -4766,21 +5118,21 @@
             "type": "integer",
             "format": "int32"
           },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
-          },
-          "sort": {
-            "$ref": "#/components/schemas/SortObject"
-          },
           "first": {
             "type": "boolean"
           },
           "last": {
             "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
           },
           "empty": {
             "type": "boolean"
@@ -4794,6 +5146,12 @@
             "type": "integer",
             "format": "int64"
           },
+          "paged": {
+            "type": "boolean"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
           "pageNumber": {
             "type": "integer",
             "format": "int32"
@@ -4801,12 +5159,6 @@
           "pageSize": {
             "type": "integer",
             "format": "int32"
-          },
-          "paged": {
-            "type": "boolean"
-          },
-          "sort": {
-            "$ref": "#/components/schemas/SortObject"
           },
           "unpaged": {
             "type": "boolean"

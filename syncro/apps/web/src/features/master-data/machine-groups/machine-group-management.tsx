@@ -1,11 +1,12 @@
 "use client";
 
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, Trash2, TriangleAlertIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { ShiftConfigEditor, type ShiftWindowInput } from "@/components/syncro/shift-config-editor";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,13 +43,16 @@ import type {
   PlantView,
 } from "@/lib/api/generated/model";
 import {
+  getGetMachineGroupShiftConfigQueryKey,
   getListMachineGroupsQueryKey,
   getListPlantsQueryKey,
   useCreateMachineGroup,
   useDeleteMachineGroup,
+  useGetMachineGroupShiftConfig,
   useListMachineGroups,
   useListPlants,
   useUpdateMachineGroup,
+  useUpdateMachineGroupShiftConfig,
 } from "@/lib/api/generated/syncro";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
@@ -58,6 +62,10 @@ type DialogMode = { type: "create"; group?: never } | { type: "edit"; group: Mac
 type ErrorResponse = { code: string; message: string; fieldErrors?: Record<string, string> };
 
 const EMPTY_FORM: MachineGroupFormState = { plantId: "", name: "" };
+
+function toShiftWindowInput(window: { startTime?: string; endTime?: string }): ShiftWindowInput {
+  return { startTime: window.startTime ?? "", endTime: window.endTime ?? "" };
+}
 
 export function MachineGroupManagement() {
   const user = useAuthUser();
@@ -105,6 +113,27 @@ export function MachineGroupManagement() {
   const [deleteTarget, setDeleteTarget] = useState<MachineGroupView | null>(null);
   const isSaving = createGroup.isPending || updateGroup.isPending;
   const groupItems = machineGroups.data?.data.items ?? [];
+  const editingGroupId = dialogMode?.type === "edit" ? (dialogMode.group.id ?? "") : "";
+  const groupShiftConfig = useGetMachineGroupShiftConfig(editingGroupId, {
+    query: { enabled: Boolean(editingGroupId) },
+  });
+  const [groupShifts, setGroupShifts] = useState<ShiftWindowInput[]>([]);
+  const [shiftError, setShiftError] = useState<string | null>(null);
+  const saveGroupShifts = useUpdateMachineGroupShiftConfig();
+  const groupShiftsDirtyRef = useRef(false);
+
+  useEffect(() => {
+    // A background refetch (window focus, invalidation) must never clobber in-progress edits.
+    if (groupShiftsDirtyRef.current) {
+      return;
+    }
+    setGroupShifts((groupShiftConfig.data?.data.shifts ?? []).map(toShiftWindowInput));
+  }, [groupShiftConfig.data]);
+
+  function updateGroupShiftRows(next: ShiftWindowInput[]) {
+    groupShiftsDirtyRef.current = true;
+    setGroupShifts(next);
+  }
 
   useEffect(() => {
     if (!effectivePlantId) {
@@ -127,6 +156,9 @@ export function MachineGroupManagement() {
     setForm({ plantId: effectivePlantId, name: "" });
     setFieldErrors({});
     setFormError(null);
+    groupShiftsDirtyRef.current = false;
+    setGroupShifts([]);
+    setShiftError(null);
   }
 
   function openEditDialog(group: MachineGroupView) {
@@ -134,6 +166,9 @@ export function MachineGroupManagement() {
     setForm({ plantId: group.plantId ?? effectivePlantId, name: group.name ?? "" });
     setFieldErrors({});
     setFormError(null);
+    groupShiftsDirtyRef.current = false;
+    setGroupShifts((groupShiftConfig.data?.data.shifts ?? []).map(toShiftWindowInput));
+    setShiftError(null);
   }
 
   async function submitMachineGroup(event: FormEvent<HTMLFormElement>) {
@@ -155,6 +190,41 @@ export function MachineGroupManagement() {
       setFieldErrors(response?.fieldErrors ?? {});
       setFormError(response?.message ?? "Machine group request failed.");
       toast.error(response?.message ?? "Machine group request failed.");
+    }
+  }
+
+  function shiftErrorMessage(response: ErrorResponse | null): string {
+    return response?.fieldErrors?.shifts ?? response?.message ?? "Shift schedule request failed.";
+  }
+
+  async function submitShiftSchedule() {
+    if (dialogMode?.type !== "edit") {
+      return;
+    }
+    setShiftError(null);
+    if (groupShifts.some((window) => window.startTime === "" || window.endTime === "")) {
+      setShiftError("Each shift needs both a start and an end time.");
+      return;
+    }
+
+    try {
+      await saveGroupShifts.mutateAsync({
+        machineGroupId: dialogMode.group.id ?? "",
+        data: { shifts: groupShifts },
+      });
+      groupShiftsDirtyRef.current = false;
+      queryClient.invalidateQueries({
+        queryKey: getGetMachineGroupShiftConfigQueryKey(dialogMode.group.id ?? ""),
+      });
+      // Machines inheriting this schedule cache their resolved config; refresh them too.
+      queryClient.invalidateQueries({
+        predicate: (query) => String(query.queryKey[0] ?? "").includes("/shift-config"),
+      });
+      toast.success("Shift schedule saved.");
+    } catch (error) {
+      const response = errorResponse(error);
+      setShiftError(shiftErrorMessage(response));
+      toast.error(shiftErrorMessage(response));
     }
   }
 
@@ -322,6 +392,39 @@ export function MachineGroupManagement() {
               />
               {fieldErrors.name ? <p className="text-destructive text-sm">{fieldErrors.name}</p> : null}
             </div>
+            {dialogMode?.type === "edit" ? (
+              <fieldset className="grid gap-2 rounded-lg border p-3">
+                <legend className="px-1 font-medium text-sm">Shift configuration</legend>
+                {groupShiftConfig.status === "pending" ? (
+                  <p className="text-muted-foreground text-sm">Loading shift schedule…</p>
+                ) : null}
+                {groupShiftConfig.status === "error" ? (
+                  <p className="text-destructive text-sm">Shift schedule could not be loaded.</p>
+                ) : null}
+                {groupShiftConfig.status === "success" ? (
+                  <>
+                    <ShiftConfigEditor
+                      value={groupShifts}
+                      onChange={updateGroupShiftRows}
+                      error={shiftError ?? undefined}
+                      readOnly={!canMutate || saveGroupShifts.isPending}
+                    />
+                    {canMutate ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-fit"
+                        onClick={() => void submitShiftSchedule()}
+                        disabled={saveGroupShifts.isPending}
+                      >
+                        {saveGroupShifts.isPending ? <Loader2Icon className="animate-spin" /> : null}
+                        Save shift schedule
+                      </Button>
+                    ) : null}
+                  </>
+                ) : null}
+              </fieldset>
+            ) : null}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogMode(null)} disabled={isSaving}>
                 Cancel
