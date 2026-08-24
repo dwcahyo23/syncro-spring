@@ -1,11 +1,11 @@
 ---
 project_name: 'Syncro'
 user_name: 'Yusuf'
-date: '2026-08-20'
+date: '2026-08-24'
 status: 'complete'
 rule_count: 236
 optimized_for_llm: true
-sections_completed: ['discovery', 'technology_stack', 'documentation_mcp_rules', 'language_specific_rules', 'framework_specific_rules', 'testing_rules', 'code_quality_style_rules', 'development_workflow_rules', 'critical_dont_miss_rules']
+sections_completed: ['discovery', 'technology_stack', 'documentation_mcp_rules', 'language_specific_rules', 'framework_specific_rules', 'testing_rules', 'code_quality_style_rules', 'development_workflow_rules', 'critical_dont_miss_rules', 'phase2_maintenance_opa']
 existing_patterns_found: 31
 source_artifacts:
   - _bmad-output/planning-artifacts/architecture.md
@@ -13,6 +13,8 @@ source_artifacts:
   - _bmad-output/planning-artifacts/ux-design-specification.md
   - _bmad-output/planning-artifacts/frontend-hardening-specification.md
   - _bmad-output/planning-artifacts/page-specifications.md
+  - _bmad-output/planning-artifacts/prds/prd-Syncro-2026-08-24/prd.md
+  - _bmad-output/planning-artifacts/architecture/architecture-Syncro-2026-08-24/ARCHITECTURE-SPINE.md
   - opencode.json
   - syncro/scripts/postgres-mcp.ps1
   - syncro/scripts/chrome-devtools-mcp.ps1
@@ -298,4 +300,62 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - Review periodically for outdated rules.
 - Remove rules that become obvious or duplicated elsewhere.
 
-Last Updated: 2026-08-20 (added Documentation MCP Reference — anti-hallucination via opencode.json MCPs)
+Last Updated: 2026-08-24 (Phase 2 section added: maintenance workorder/preventive/sparepart-request, OPA authorization, hardened sync, org structure — see "Phase 2: Maintenance Execution & OPA Authorization")
+
+## Phase 2: Maintenance Execution & OPA Authorization (2026-08-24)
+
+> Source of truth: PRD `prd-Syncro-2026-08-24` (FR-100..FR-181), Architecture Spine `architecture-Syncro-2026-08-24/ARCHITECTURE-SPINE.md` (AD-1..AD-16), Epics 9-14 in `epics.md`. Read these before implementing Phase 2 stories.
+
+### OPA Authorization (AD-1, AD-2, AD-13, AD-15, AD-16)
+
+- OPA runs as a **sidecar HTTP service** (docker-compose stable name `opa`, v1.19.1) — never embedded WASM/IR. Backend calls `POST /v1/data/syncro/authz/...` via a single `authz.PolicyDecisionPoint` service (RestClient + Resilience4j timeout/retry/circuit-breaker, WAHA-client pattern).
+- **OPA default-deny.** A failing/sidecar-down OPA call denies except a configurable degraded-mode allowlist for health/read endpoints.
+- **Org data stays in PostgreSQL; never copy org data into the OPA data store.** OPA input is minimal and self-contained: `subject` (roles, plantIds, machineGroupIds, activeTeamIds) + `resource` + `action` + `context`. Derived scope is passed per request.
+- **OPA input assembly is single-sourced** in `authz.PolicyDecisionPoint`; the interceptor, application services, and `/api/v1/authz/allowed-actions` all use it. Frontend never calls OPA directly (NFR-013a); it consumes `allowed-actions` for menu/button rendering (UX only, not enforcement).
+- **Scope dimensions are exactly `{plantIds, machineGroupIds, activeTeamIds}`** — section is a container, NOT a scoping dimension. Scope is derived by a single service in the `org` module; the maintenance query layer consumes it and applies the same set to SQL row filtering and OPA input.
+- **Role taxonomy (AD-15):** additive V41+ migration extends `auth_users.application_role` CHECK. MANAGE→MANAGER_MAINTENANCE, VIEWER→read-only. `subject.roles` = application role + derived scope. **MANAGE→MANAGER_MAINTENANCE is NOT a global promotion** — MANAGER_MAINTENANCE still requires plant assignments (AD-2). SUPER_ADMIN bypasses all checks.
+- **Approval SoD (AD-16):** requester can never approve their own request, enforced server-side before OPA/state machine. Threshold by estimated cost (qty × est. price); tiers configurable via `escalation_configs` (defaults ≤5M / 5M–50M / >50M IDR); no-price requests require section-leader approval.
+- **Decision logs** enabled with input masking (no WAHA secrets, no full phone numbers), 30-day configurable retention; each decision's `decision_id` stored alongside the app audit record.
+
+### Org & Scope (AD-2, AD-13)
+
+- Sections: `MACHINERY | UTILITY | WORKSHOP` per plant; `machine_groups.section_id` (one group = one section).
+- **Section leadership is derived from `machine_responsibilities.level = LEADER` (or above)** on a machine group — no separate role assignment. Section leaders read/write only their own machine group(s); sibling-group data within the same section is excluded (FR-103).
+- **Section leader cannot execute their own workorders** (FR-113); they delegate to technicians. Ratings immutable after submission.
+- **Cross-plant teams are expiry-dated**; OPA input includes only active (non-expired) memberships. Team machine IDs merge into `machineGroupIds` for SQL filtering (identical to OPA input).
+- Section leaders also monitor sparepart lifetime for machines in their own group.
+
+### Workorder (AD-3, AD-4, AD-5, AD-6, AD-14)
+
+- **Dual source:** `work_orders.id` VARCHAR(50) UTF-8 = external `sheet_no` (source SYNCED) or `WO-YYMM-XXXXX` (source INTERNAL, transaction + row lock, monthly sequence). `parent_id` self-FK, cross-source chains allowed. Create endpoint accepts optional `idempotencyKey` (5-min dedupe).
+- **Lifecycle:** `DRAFT → OPEN → ASSIGNED → IN_PROGRESS → ON_PROCUREMENT → IN_PROGRESS → DONE → CLOSED` (+ CANCELLED from OPEN/ASSIGNED). Invalid transitions → `INVALID_STATE_TRANSITION`.
+- **ON_PROCUREMENT is derived** from live non-READY sparepart requests (recomputed on transition events, guarded by a lock, writes `_status_history` with `source=DERIVED`, `actor=SYSTEM`). Manual placement allowed only when no live request exists. The 4-hour ack clock excludes ON_PROCUREMENT and is computed from history rows, not live status.
+- **Parent cannot CLOSE while children are not CLOSED/CANCELLED**; closing a parent takes `SELECT ... FOR UPDATE` on children in the same transaction; override = SUPER_ADMIN/MANAGER with audit-logged reason.
+- **MTBF ordered by `woStopAt` (not id)** between consecutive breakdown workorders; MTTR = cumulative repair-session durations; both backend-computed (frontend renders only). Analytics recomputed from current data; sync mutations invalidate cache.
+- CP/CPK optional on any category; FMEA tag; stop-time reason required before DONE for breakdown.
+
+### Sparepart Request & Stock (AD-4, AD-9, AD-11)
+
+- Types: `SPAREPART` (electric/mechanic taxonomy), `CONSUMABLE` (no machine binding required), `SERVICE_EXTERNAL` (bound to parent workorder, no stock flow).
+- **Request state machine:** `REQUESTED → ACKED → PROCESSING → [READY | PURCHASE_REQUESTED → PART_RECEIVED → READY] → PICKED_UP → CLOSED`; each transition writes timeline event + audit. ACK/PROCESSING/READY/PART_RECEIVED by INVENTORY_MAINTENANCE/STOREKEEPER; PICKED_UP/CLOSED by the workorder's section leader.
+- MRE code is **manual** (no auto-generation); `purchase_reference_url` stored; new-item requests start `PENDING_COMPLETION` and are completed by inventory with material code/image/est price.
+- **Stock OP/OQ is keyed by MATERIAL CODE** (global one-code-one-sparepart), per plant: `sparepart_stock(material_code, plant_id, stock_on_hand, order_point, order_qty)` unique per (material_code, plant_id). Reorder rule (`stock ≤ OP → PR qty=OQ`) is a business-rule signal in the application layer; the PR action is OPA-authorized.
+- **Stock mutation is owned by the inventory module**; PICKED_UP decrements via inventory application service; optimistic lock + atomic conditional update; negative stock rejected. PENDING_COMPLETION creates/updates `spareparts` via the `masterdata` module's application service — never direct cross-module writes.
+
+### Sync Module (AD-7, AD-8)
+
+- Hardened pipeline: batch in transaction, ordered by `sheet_no ASC`, idempotent upsert by external id, watermark resume, distributed lock, quarantine failed rows (reason + payload + traceId), `sync_runs` audit, typed config (no hardcoded creds), retry/backoff, Asia/Jakarta → UTC.
+- **Sync never writes `work_orders` via JPA** — passes every row to `maintenance.workorder.application.WorkorderImportService.upsert()` (owns history/audit/ON_PROCUREMENT/notifications). Sync does not notify independently.
+- Machine/plant/category mapping via configurable mapping tables; unmapped → quarantine (no stubs, no silent skip). Field classification via `sync_field_mappings` config (MASTER vs OPERATIONAL); unmapped defaults MASTER.
+- **Terminal-state protection:** sync must not regress DONE/CLOSED workorders (quarantine `TERMINAL_STATE_PROTECTED`); external status does not override derived ON_PROCUREMENT; sync child upsert rejects when parent CLOSED.
+
+### Notifications (AD-9)
+
+- `notification_jobs` extended polymorphically: nullable `target_type`/`target_id`; `alert_id` becomes nullable (additive migration; existing rows keep their non-null alert_id and unique `(alert_id, escalation_level)` semantics). **Polymorphic idempotency key = `target_type + target_id + template_name + recipient_id`.**
+- Maintenance module enqueues via the `notification` module's application service (never writes `notification_jobs` directly). Same outbox/worker/rate-limit/circuit-breaker/escalation machinery as Epic 5.
+- WA link auto-login token: short-lived (15-min default TTL or first-use), bound to registered WA number, revoked on expiry/mismatch/reuse.
+
+### Frontend (Phase 2)
+
+- Main operational views (workorder, preventive, sparepart request, dashboards) use **TanStack Table v9** (headless, shadcn/Radix pairing), server-side mode (sort/filter/page serialize to backend query names; no hidden client-side filtering with server pagination). Row actions driven by backend-provided `allowed-actions`.
+- WYSIWYG print (workorder & preventive): browser print of HTML report — tabular, configurable logo, signature block (image + signer identity + timestamp). No server-side PDF generation in v1.

@@ -1,5 +1,5 @@
-﻿---
-stepsCompleted: [1, 2, 3, 4]
+---
+stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
 inputDocuments:
   - _bmad-output/planning-artifacts/prds/prd-Syncro-2026-05-22/prd.md
   - _bmad-output/planning-artifacts/architecture.md
@@ -7,8 +7,10 @@ inputDocuments:
   - _bmad-output/planning-artifacts/prds/prd-Syncro-2026-05-22/review-prd.md
   - _bmad-output/planning-artifacts/research/domain-manufacturing-machinery-maintenance-research-2026-05-25.md
   - _bmad-output/planning-artifacts/research/technical-next-js-spring-boot-openjdk25-maven-mqtt-emqx-redis-postgresql-influxdb-research-2026-05-25.md
-revisedAt: 2026-05-25
-revisionReason: Research reconciliation — new FRs, NFRs, UX components, and stories added
+  - _bmad-output/planning-artifacts/prds/prd-Syncro-2026-08-24/prd.md
+  - _bmad-output/planning-artifacts/architecture/architecture-Syncro-2026-08-24/ARCHITECTURE-SPINE.md
+revisedAt: 2026-08-24
+revisionReason: Phase 2 appended: Epics 9-14 (maintenance execution + OPA), 27 stories, FR-100..FR-181
 ---
 
 # Syncro - Epic Breakdown
@@ -1644,4 +1646,891 @@ So that I can detect data quality degradation and processing delays before they 
 **NFRs covered:** —
 **UX-DRs covered:** UX-DR-031, UX-DR-033
 **Success Metrics covered:** SM-008, SM-009
+
+
+---
+
+## Phase 2 Requirements Inventory (Maintenance Execution & OPA) — 2026-08-24
+
+### Functional Requirements (FR-100 .. FR-181)
+
+**Org Structure & Sections**
+
+FR-100: Manage sections (MACHINERY|UTILITY|WORKSHOP) per plant; deactivation guarded; audit-logged.
+FR-101: Assign each machine group to exactly one section.
+FR-102: Derive section leadership from machine responsibilities level LEADER (or above) on a machine group.
+FR-103: Scope section leaders to their own machine groups only (no sibling-group/section visibility).
+FR-104: Monitor sparepart lifetime within derived scope.
+FR-105: Manage expiry-dated cross-plant teams; membership grants scoped extra access.
+
+**Workorder**
+
+FR-110: Create internal workorders (INTERNAL, WO-YYMMxxxx, safe under transaction+lock); PRODUCTION_LEADER may create breakdown for own line.
+FR-111: Import synced workorders (SYNCED, id = external sheet_no; idempotent upsert).
+FR-112: Manage WO categories (code+label, e.g. 01 Breakdown, 02 Preventive); leader+ can add.
+FR-113: Assign and delegate workorders; section leader cannot execute their own.
+FR-114: Transition workorder status (DRAFT->OPEN->ASSIGNED->IN_PROGRESS->ON_PROCUREMENT->IN_PROGRESS->DONE->CLOSED, +CANCELLED); invalid -> INVALID_STATE_TRANSITION.
+FR-115: Record multi repair sessions; cumulative MTTR.
+FR-116: Upload evidence before/after + technical drawings (JPEG/PNG/WebP/PDF <=10MB) to Garage.
+FR-117: Optional CP/CPK values + PDF on any category report.
+FR-118: Tag workorders with FMEA failure type.
+FR-119: Manage workorder todos / kanban view.
+FR-120: Parent cannot CLOSED while children not CLOSED/CANCELLED; override by SUPER_ADMIN/MANAGER with note.
+FR-121: Rate technicians (by section leader) with configurable dimensions 1-5 stars.
+FR-122: Capture stop-time reason on breakdown workorders.
+FR-123: Record SLA response time per category.
+FR-124: Rate maintenance workorder (by PRODUCTION_LEADER), configurable dimensions 1-5 stars.
+
+**Preventive**
+
+FR-130: Define preventive programs per machine (mechanical/electrical; MONTHLY/ANNUAL).
+FR-131: Generate and track schedules (calendar/shift based, floating interval).
+FR-132: Complete checklist with assessment; leader approves with signature.
+FR-133: Print preventive report (WYSIWYG tabular, logo, signature).
+FR-134: Auto-create preventive workorders from due schedules.
+
+**Sparepart Request & Inventory**
+
+FR-140: Create requests (SPAREPART/CONSUMABLE/SERVICE_EXTERNAL) with qty, purchase URL, optional new-item.
+FR-141: Manage request state machine (REQUESTED->ACKED->PROCESSING->[READY|PURCHASE_REQUESTED->PART_RECEIVED->READY]->PICKED_UP->CLOSED); timeline events + audit.
+FR-142: Approve with separation of duty (approver != requester); threshold by estimated cost (qty x est price).
+FR-143: Record purchase reference URL.
+FR-144: Complete new-item requests (PENDING_COMPLETION) with material code, image, est price.
+FR-145: Record manual MRE code (no auto-generation).
+FR-146: Track stock by material code per plant with OP/OQ reorder warning.
+FR-147: Escalate requests per configurable escalation_configs; WAHA per step.
+
+**Sync Module (hardened)**
+
+FR-150: Scheduled sync from external PostgreSQL (typed config, watermark, lock, ordered by sheet_no, batch transaction).
+FR-151: Upsert idempotently by external id; duplicates to quarantine.
+FR-152: Resolve conflicts: external master wins, local operational preserved; deterministic + audited.
+FR-153: Quarantine failed records; observability on health dashboard.
+FR-154: Normalize Asia/Jakarta -> UTC; notification hygiene (dedupe, no storm).
+
+**OPA Authorization & Allowed Actions**
+
+FR-160: Enforce OPA default-deny on every authorization-sensitive request; decision_id correlated to audit.
+FR-161: Provide allowed-actions endpoint for frontend rendering; frontend never calls OPA directly.
+FR-162: Deploy policy as code with CI (opa test); versioned bundles; decision-log masking + retention.
+FR-163: Derive operational scope from org data (roles, plants, sections, machine groups, active teams) passed as input.
+FR-164: Audit policy decisions; AUDITOR can trace allow/deny with policy revision + decision_id.
+
+**Dashboards & Reports**
+
+FR-170: Machine dashboard (status, telemetry freshness, open WO, alerts, lifetime) within scope.
+FR-171: Workorder dashboard (counts by status/category) within scope.
+FR-172: Preventive dashboard (due/overdue) within scope.
+FR-173: MTBF (woStopAt-ordered) / MTTR (cumulative sessions) dashboards; units/window/freshness defined.
+FR-174: Technician KPI dashboard (configurable ratings + objective KPIs).
+FR-175: WYSIWYG print workorder & preventive reports (tabular, logo, signature block).
+
+**WAHA Notifications**
+
+FR-180: Notify workorder lifecycle events to section leaders+ and inventory roles with phone.
+FR-181: Send 4-hour acknowledgment request with auto-login link bound to registered WA number; task list (ack/rating status).
+
+### NonFunctional Requirements (Phase 2 additions)
+
+NFR-P2-1: OPA deployed as sidecar HTTP; default-deny; degraded-mode allowlist for health/read endpoints.
+NFR-P2-2: Backend owns MTBF/MTTR/state-machine/stock calculations; frontend renders only.
+NFR-P2-3: All new schema via Flyway V41+; ddl-auto=validate; additive migrations.
+NFR-P2-4: Scope dims exactly {plantIds, machineGroupIds, activeTeamIds}; single org scope service for OPA input AND SQL filter.
+NFR-P2-5: Separation of duty (approver != requester) enforced server-side before OPA.
+NFR-P2-6: Stock mutations use optimistic lock + atomic conditional update; no negative stock.
+NFR-P2-7: Decision logs masked (no WAHA secrets/phones); retention 30 days configurable.
+NFR-P2-8: Sync module writes workorders only via maintenance WorkorderImportService (module boundary).
+NFR-P2-9: Terminal states (DONE/CLOSED) protected from sync regression (TERMINAL_STATE_PROTECTED quarantine).
+NFR-P2-10: Frontend uses TanStack Table v9 for tabular main views.
+
+### Additional Requirements (Architecture)
+
+- Role taxonomy migration: PRD ten roles via additive V41 CHECK; MANAGE->MANAGER_MAINTENANCE, VIEWER->read-only; OPA subject.roles = application role + derived scope (AD-15).
+- OPA input assembly via single authz.PolicyDecisionPoint service (Addendum A3 authoritative).
+- Workorder id VARCHAR(50) UTF-8; internal WO-YYMM-XXXXX; idempotencyKey on creation.
+- notification_jobs polymorphic target (target_type/target_id nullable; alert_id nullable; dedupe key target_type+target_id+template+recipient).
+- Sync field classification via sync_field_mappings config (MASTER vs OPERATIONAL).
+- Parent-child close uses SELECT FOR UPDATE on children; sync child upsert rejects when parent CLOSED.
+- Garage for evidence; material code reused for stock OP/OQ.
+
+---
+
+## Phase 2 Epic List (approved 2026-08-24)
+
+### Epic 9: Org Structure & OPA Authorization Foundation
+
+Users can configure org structure (sections, teams) and every access decision is enforced by OPA, establishing the authorization backbone for all maintenance features.
+
+**FRs covered:** FR-100, FR-101, FR-102, FR-103, FR-104, FR-105, FR-160, FR-161, FR-162, FR-163, FR-164
+
+### Epic 10: Workorder Execution
+
+Maintenance leaders and technicians can run breakdown/preventive workorders end-to-end: create, assign, delegate, status lifecycle (with ON_PROCUREMENT), multi repair sessions, evidence upload, parent-child chains, technician & maintenance ratings.
+
+**FRs covered:** FR-110, FR-111, FR-112, FR-113, FR-114, FR-115, FR-116, FR-117, FR-118, FR-119, FR-120, FR-121, FR-122, FR-123, FR-124
+
+### Epic 11: Preventive Maintenance
+
+Leaders and technicians can run monthly/annual preventive programs: define programs, generate schedules, complete checklists with assessment, signature approval, and WYSIWYG report printing.
+
+**FRs covered:** FR-130, FR-131, FR-132, FR-133, FR-134
+
+### Epic 12: Sparepart Request & Inventory
+
+Leaders request parts; storekeeper/inventory manage the request state machine, stock OP/OQ by material code, MRE recording, and escalation with WAHA notifications.
+
+**FRs covered:** FR-140, FR-141, FR-142, FR-143, FR-144, FR-145, FR-146, FR-147
+
+### Epic 13: External Sync & Hardening
+
+Synced workorders from the internal system arrive reliably and safely: transactional batches, watermark resume, quarantine, conflict resolution, and notification hygiene.
+
+**FRs covered:** FR-150, FR-151, FR-152, FR-153, FR-154
+
+### Epic 14: Dashboards, Reports & Notifications
+
+Leaders see machine/workorder/preventive dashboards, MTBF/MTTR, technician KPI; print WYSIWYG reports with logo & signature; receive WAHA notifications per lifecycle step and the 4-hour ack with auto-login link.
+
+**FRs covered:** FR-170, FR-171, FR-172, FR-173, FR-174, FR-175, FR-180, FR-181
+
+## Phase 2 FR Coverage Map
+
+FR-100: Epic 9 - Manage sections
+FR-101: Epic 9 - Assign machine groups to sections
+FR-102: Epic 9 - Derive section leadership from responsibilities
+FR-103: Epic 9 - Scope leaders to own machine groups
+FR-104: Epic 9 - Monitor lifetime within scope
+FR-105: Epic 9 - Cross-plant teams
+FR-110: Epic 10 - Create internal workorders
+FR-111: Epic 10 - Import synced workorders
+FR-112: Epic 10 - Manage WO categories
+FR-113: Epic 10 - Assign/delegate workorders
+FR-114: Epic 10 - Transition WO status
+FR-115: Epic 10 - Multi repair sessions
+FR-116: Epic 10 - Evidence upload
+FR-117: Epic 10 - Optional CP/CPK
+FR-118: Epic 10 - FMEA tag
+FR-119: Epic 10 - Todos/kanban
+FR-120: Epic 10 - Parent-child close rule
+FR-121: Epic 10 - Rate technicians
+FR-122: Epic 10 - Stop-time reason
+FR-123: Epic 10 - SLA response time
+FR-124: Epic 10 - Rate maintenance WO
+FR-130: Epic 11 - Preventive programs
+FR-131: Epic 11 - Schedules
+FR-132: Epic 11 - Checklist/assessment
+FR-133: Epic 11 - Print preventive report
+FR-134: Epic 11 - Auto-create preventive WO
+FR-140: Epic 12 - Create requests
+FR-141: Epic 12 - Request state machine
+FR-142: Epic 12 - Approval SoD
+FR-143: Epic 12 - Purchase URL
+FR-144: Epic 12 - New-item completion
+FR-145: Epic 12 - MRE manual
+FR-146: Epic 12 - Stock OP/OQ
+FR-147: Epic 12 - Escalation + WAHA
+FR-150: Epic 13 - Scheduled sync
+FR-151: Epic 13 - Idempotent upsert
+FR-152: Epic 13 - Conflict resolution
+FR-153: Epic 13 - Quarantine + observability
+FR-154: Epic 13 - Timezone + notification hygiene
+FR-160: Epic 9 - OPA enforcement
+FR-161: Epic 9 - Allowed-actions endpoint
+FR-162: Epic 9 - Policy as code CI
+FR-163: Epic 9 - Derive scope from org data
+FR-164: Epic 9 - Audit decisions
+FR-170: Epic 14 - Machine dashboard
+FR-171: Epic 14 - Workorder dashboard
+FR-172: Epic 14 - Preventive dashboard
+FR-173: Epic 14 - MTBF/MTTR dashboards
+FR-174: Epic 14 - Technician KPI
+FR-175: Epic 14 - WYSIWYG print reports
+FR-180: Epic 14 - Notify lifecycle events
+FR-181: Epic 14 - 4-hour ack auto-login
+
+---
+
+## Epic 9: Org Structure & OPA Authorization Foundation
+
+Users can configure org structure (sections, teams) and every access decision is enforced by OPA, establishing the authorization backbone for all maintenance features.
+
+### Story 9.1: Sections Foundation
+
+As a SUPER_ADMIN or MANAGER_MAINTENANCE,
+I want to define sections (MACHINERY/UTILITY/WORKSHOP) per plant and assign each machine group to one section,
+So that operational scope can be derived from the org structure instead of manual role assignment.
+
+**Acceptance Criteria:**
+
+**Given** a plant exists with machine groups
+**When** I create a section and assign machine groups to it
+**Then** sections are persisted in PostgreSQL via migration V41+
+**And** a machine group belongs to exactly one section; assigning to another section is rejected with a validation error
+**And** deactivating a section with active machine groups is rejected with a machine-readable code
+**And** section mutations are audit-logged with actor and traceId
+
+**Given** a user holds responsibility level LEADER (or above) on a machine group
+**When** their operational scope is derived
+**Then** they become a section leader for that machine group without any additional role assignment
+**And** demoting/removing the responsibility immediately removes the scope server-side
+**And** list/detail endpoints for workorders and sparepart lifetime filter rows by derived scope (machineGroupId), excluding sibling-group data within the same section
+
+**FRs covered:** FR-100, FR-101, FR-102, FR-103, FR-104
+**NFRs covered:** NFR-P2-3, NFR-P2-4
+
+### Story 9.2: Cross-Plant Teams
+
+As a SUPER_ADMIN or MANAGER_MAINTENANCE,
+I want to create expiry-dated cross-plant teams and add members,
+So that shared repair work across plants is possible without permanent access leaks.
+
+**Acceptance Criteria:**
+
+**Given** a cross-plant team with an expiry date and members
+**When** the team is active
+**Then** members gain scoped access to the specified machines/workorders across plants
+**And** the scope is merged into the machineGroupIds set used for SQL filtering (AD-2, AD-13)
+
+**Given** a cross-plant team has expired
+**When** a member requests access to the previously shared resource
+**Then** access is denied server-side (OPA input excludes the expired team)
+**And** no policy redeploy is required to revoke the extra scope
+
+**Given** a SUPER_ADMIN or MANAGER_MAINTENANCE creates/updates/deletes a team
+**When** the mutation is submitted
+**Then** team mutations are audit-logged with actor, action, target, and traceId
+
+**FRs covered:** FR-105
+**NFRs covered:** NFR-P2-4
+
+### Story 9.3: OPA Infrastructure
+
+As an implementer,
+I want OPA deployed as a sidecar and a PolicyDecisionPoint service in the backend,
+So that every authorization decision is evaluated by policy rather than scattered service checks.
+
+**Acceptance Criteria:**
+
+**Given** the local infra stack is started
+**Then** an `opa` service runs in docker-compose (v1.19.1) with a stable name
+**And** OPA input assembly is centralized in a single `authz.PolicyDecisionPoint` service (RestClient + Resilience4j timeout/retry/circuit-breaker)
+**And** the input schema (subject/resource/action/context) follows Addendum A3
+
+**Given** a request reaches an authorization-sensitive endpoint
+**When** the interceptor builds OPA input and calls `POST /v1/data/syncro/authz/allow`
+**Then** a denied decision returns the standard permission-denied error shape before any business logic runs
+**And** a failing OPA call (sidecar down) defaults to deny except a configurable degraded-mode allowlist for health/read endpoints
+
+**Given** a decision is returned
+**When** the request proceeds
+**Then** the `decision_id` is stored alongside the audit record for correlation (FR-164)
+
+**Given** the frontend needs to render menus/buttons
+**When** it calls `/api/v1/authz/allowed-actions`
+**Then** the endpoint returns the allowed-actions set from OPA, and the frontend never calls OPA directly (NFR-013a)
+
+**FRs covered:** FR-160, FR-161, FR-164
+**NFRs covered:** NFR-P2-1, NFR-P2-7
+
+### Story 9.4: Role Taxonomy Migration
+
+As an implementer,
+I want the PRD role taxonomy to replace the Phase 1 application-role model via additive migration,
+So that maintenance roles (MANAGER_MAINTENANCE, SECTION_LEADER, INVENTORY_MAINTENANCE, etc.) are enforceable without breaking existing users.
+
+**Acceptance Criteria:**
+
+**Given** the Phase 1 `auth_users.application_role` CHECK constraint allows only SUPER_ADMIN/MANAGE/VIEWER
+**When** migration V41+ runs
+**Then** the CHECK is extended to the PRD roles; existing SUPER_ADMIN rows remain valid
+**And** MANAGE maps to MANAGER_MAINTENANCE; VIEWER maps to a read-only role; mapping is documented
+**And** the migration is additive (no existing data dropped)
+**And** the mapping is explicit that MANAGE (a capability) does NOT imply MANAGER_MAINTENANCE global scope — MANAGER_MAINTENANCE still requires plant assignments, so no user is silently promoted to global access (scope is enforced per AD-2 via plant assignments, never inferred from the role name)
+
+**Given** OPA input is assembled for a user
+**When** their roles are resolved
+**Then** `subject.roles` = the application role (extended enum) plus the derived scope (plantIds/machineGroupIds/activeTeamIds) per AD-2/AD-15
+**And** PRODUCTION_LEADER scope is derived from plant/line assignments; SUPER_ADMIN bypasses checks (Phase 1 pattern)
+
+**Given** a Phase 1 service switches on ApplicationRole
+**When** the module is touched
+**Then** in-service checks are migrated to the new role names without changing semantics
+
+**FRs covered:** FR-160, FR-163
+**NFRs covered:** NFR-P2-3
+**Additional:** role taxonomy migration (AD-15)
+
+### Story 9.5: OPA Enforcement on Maintenance Endpoints
+
+As an implementer,
+I want every authorization-sensitive maintenance/org/sync endpoint to be enforced by OPA,
+So that server-side authorization is uniform and audit traceable.
+
+**Acceptance Criteria:**
+
+**Given** an authorization-sensitive endpoint in maintenance/org/sync
+**When** the request is processed
+**Then** OPA is evaluated (default-deny) before business logic, using the single PolicyDecisionPoint
+**And** row-level scoping is applied in queries using the derived scope set identical to the OPA input (AD-2)
+**And** out-of-scope resource access returns a permission-denied code
+
+**Given** a decision is logged
+**When** an AUDITOR reviews it
+**Then** they can trace which policy allowed/denied the action, with policy revision and decision_id (FR-164)
+**And** decision logs mask sensitive fields (no WAHA secrets, no full phone numbers) and retain 30 days configurable
+
+**FRs covered:** FR-160, FR-162, FR-164
+**NFRs covered:** NFR-P2-7
+
+---
+
+## Epic 10: Workorder Execution
+
+Maintenance leaders and technicians can run breakdown/preventive workorders end-to-end: create, assign, delegate, status lifecycle (with ON_PROCUREMENT), multi repair sessions, evidence upload, parent-child chains, technician & maintenance ratings.
+
+### Story 10.1: Workorder Schema & Categories
+
+As a maintenance team member,
+I want workorders stored with a dual-source ID scheme and configurable categories,
+So that synced and internal workorders coexist without collision and categories reflect the maintenance workflow.
+
+**Acceptance Criteria:**
+
+**Given** migration V41+ creates the workorder schema
+**Then** `work_orders` has id VARCHAR(50) UTF-8, source ENUM (SYNCED/INTERNAL), parent_id self-FK, sync_version, and lifecycle fields
+**And** `work_order_categories` stores code+label (e.g. 01 Breakdown, 02 Preventive) with unique codes
+**And** `work_order_status_history` records every transition with actor, from/to, source (MANUAL/DERIVED/SYNC), and traceId
+
+**Given** a section leader (or above) creates/updates a WO category
+**When** the mutation is submitted
+**Then** the category is persisted and audit-logged
+**And** users below section leader receive a server-side permission-denied error
+
+**Given** an internal workorder ID is generated
+**When** it is created
+**Then** the format is WO-YYMM-XXXXX (5-digit, monthly reset) generated under transaction + row lock
+**And** concurrent creation does not produce duplicate IDs
+
+**FRs covered:** FR-110, FR-111, FR-112
+**NFRs covered:** NFR-P2-3
+**Additional:** workorder id VARCHAR(50), parent-child chains (AD-3)
+
+### Story 10.2: Create & Assign Workorders
+
+As a section leader or staff maintenance,
+I want to create internal workorders and delegate them to technicians,
+So that breakdowns and planned work have an owner without the leader executing the repair themselves.
+
+**Acceptance Criteria:**
+
+**Given** an authorized user creates an internal workorder
+**When** the POST `/api/v1/workorders` request is submitted
+**Then** a WO-YYMM-XXXXX id is returned with source INTERNAL
+**And** an optional idempotencyKey header dedupes double-submission within a 5-minute window (frontend sends a UUID)
+**And** creating a child workorder requires access to the parent section scope
+
+**Given** a PRODUCTION_LEADER creates a workorder
+**When** the request is submitted
+**Then** only breakdown category is allowed and only for machines on their own production lines (server-side, FR-110)
+
+**Given** a section leader assigns a workorder to a technician
+**When** the assignment is submitted
+**Then** the workorder transitions OPEN → ASSIGNED
+**And** the system rejects assigning the section leader as executing technician of their own workorders with a machine-readable code (FR-113)
+
+**FRs covered:** FR-110, FR-113
+**NFRs covered:** NFR-P2-3
+**Additional:** idempotencyKey on creation (AD-3)
+
+### Story 10.3: Status Lifecycle & ON_PROCUREMENT
+
+As a maintenance team,
+I want workorders to follow an explicit status lifecycle with ON_PROCUREMENT derived from sparepart requests,
+So that waiting-for-part time is tracked correctly and invalid transitions are prevented.
+
+**Acceptance Criteria:**
+
+**Given** a workorder exists
+**When** a status transition is requested
+**Then** the transition must be valid per `DRAFT → OPEN → ASSIGNED → IN_PROGRESS → ON_PROCUREMENT → IN_PROGRESS → DONE → CLOSED` (+ CANCELLED from OPEN/ASSIGNED)
+**And** invalid transitions return `INVALID_STATE_TRANSITION`
+
+**Given** a sparepart request on the workorder becomes non-READY
+**When** the request state changes
+**Then** the workorder enters ON_PROCUREMENT and a status-history row is written with source=DERIVED, actor=SYSTEM
+**And** it resumes IN_PROGRESS when all requests are READY (recomputed on transition events, not a poller)
+**And** the recompute is guarded by a lock (row/advisory) so concurrent request transitions cannot produce conflicting derived transitions or duplicate history rows
+**And** manual leader placement to ON_PROCUREMENT is allowed only when no live request exists
+
+**Given** a parent workorder has children
+**When** a leader tries to CLOSE the parent
+**Then** closing is blocked (machine-readable code) while any child is not CLOSED/CANCELLED
+**And** SUPER_ADMIN/MANAGER may override with an audit-logged reason
+**And** closing a parent takes `SELECT ... FOR UPDATE` on child statuses within the same transaction (AD-3)
+
+**FRs covered:** FR-114, FR-120
+**NFRs covered:** NFR-P2-9
+**Additional:** AD-4, AD-5
+
+### Story 10.4: Repair Sessions & MTTR
+
+As a technician,
+I want to log multiple repair sessions on a workorder,
+So that interrupted repairs (e.g. waiting for parts) accumulate correct working time and MTTR.
+
+**Acceptance Criteria:**
+
+**Given** a technician is assigned a workorder
+**When** they start and stop a repair session
+**Then** the session (start/end, description, technicians) is persisted
+**And** a workorder may have multiple sessions without overlap
+**And** cumulative session duration equals the workorder MTTR (backend-computed, FR-115)
+
+**Given** a workorder is being closed as DONE
+**When** it has no completed session
+**Then** closing is blocked unless a documented reason is provided
+
+**Given** a category defines a target response time
+**When** the first IN_PROGRESS session starts
+**Then** response time (OPEN → first session start) is recorded and surfaced on dashboards (FR-123)
+
+**FRs covered:** FR-115, FR-123
+**NFRs covered:** NFR-P2-2
+**Additional:** AD-6
+
+### Story 10.5: Evidence & Technical Drawings
+
+As a technician or leader,
+I want to upload before/after photos and technical drawings to a workorder,
+So that repair evidence is durable and auditable.
+
+**Acceptance Criteria:**
+
+**Given** an authorized user uploads a file to a workorder
+**When** the upload is submitted
+**Then** accepted types are JPEG/PNG/WebP/PDF with a 10 MB configurable limit
+**And** the object is stored in Garage via ObjectStorageService; PostgreSQL stores only the object key
+**And** replacing/deleting an attachment removes the previous object
+
+**Given** an out-of-scope or over-limit upload
+**When** it is submitted
+**Then** a standard validation/permission error is returned; nothing is persisted
+
+**FRs covered:** FR-116
+**NFRs covered:** NFR-P2-2
+**Additional:** AD-10 (reuse SparepartImageService pattern)
+
+### Story 10.6: Reports, CP/CPK, FMEA & Stop-Time
+
+As a section leader or staff maintenance,
+I want to complete workorder reports with optional CP/CPK, FMEA tagging, and stop-time reasons,
+So that the closed workorder carries full evidence and future MTBF/FMEA analysis is possible.
+
+**Acceptance Criteria:**
+
+**Given** a workorder report is written
+**Then** the narrative (chronological/analyze/corrective/preventive) is persisted
+**And** any category may record optional CP/CPK values and an optional CP/CPK PDF; never mandatory (FR-117)
+**And** a workorder can close without CP/CPK
+
+**Given** a user tags a workorder with an FMEA failure type
+**When** the tag is submitted
+**Then** it is stored and appears in report and machine history (FR-118)
+
+**Given** a breakdown workorder is being completed
+**When** no stop-time reason code is provided
+**Then** DONE is blocked; the reason (electric/mechanical/pneumatic/hydraulic/etc.) is required (FR-122)
+
+**FRs covered:** FR-117, FR-118, FR-122
+**NFRs covered:** NFR-P2-2
+
+### Story 10.7: Todos & Kanban
+
+As a section leader,
+I want to create workorder todos and see work in a kanban view,
+So that tasks within a repair are tracked and the team sees what is pending.
+
+**Acceptance Criteria:**
+
+**Given** a section leader creates todos on a workorder (own group)
+**When** todos are assigned to technicians
+**Then** todo create/assign/complete is scoped to the workorder group and audit-logged
+**And** a kanban view shows workorders/todos grouped by backend-provided status
+**And** kanban respects derived scope and backend statuses (no client-side state invention)
+
+**FRs covered:** FR-119
+**NFRs covered:** NFR-P2-10 (TanStack Table tabular)
+
+### Story 10.8: Ratings
+
+As a section leader and production leader,
+I want to rate technicians and maintenance workorders with configurable dimensions,
+So that KPI dashboards reflect team performance and maintenance quality.
+
+**Acceptance Criteria:**
+
+**Given** a workorder is closed
+**When** its section leader rates the executing technicians
+**Then** ratings use configurable dimensions rendered as 1–5 stars; dimensions are data configured by SUPER_ADMIN (AD-14)
+**And** only the workorder group's section leader can rate; ratings are immutable after submission (FR-121)
+
+**Given** a maintenance workorder is closed
+**When** the PRODUCTION_LEADER of the affected line rates it
+**Then** the rating is bound to the workorder (not a technician) with configurable dimensions 1–5 stars (FR-124)
+**And** one rating per workorder; immutable; feeds the maintenance-quality view
+
+**FRs covered:** FR-121, FR-124
+**NFRs covered:** NFR-P2-2
+
+---
+
+## Epic 11: Preventive Maintenance
+
+Leaders and technicians can run monthly/annual preventive programs: define programs, generate schedules, complete checklists with assessment, signature approval, and WYSIWYG report printing.
+
+### Story 11.1: Preventive Programs & Schedules
+
+As a staff maintenance or leader,
+I want to define preventive programs per machine and generate monthly/annual schedules,
+So that routine maintenance runs on the calendar without requiring telemetry.
+
+**Acceptance Criteria:**
+
+**Given** an authorized user creates a preventive program for a machine
+**When** the program is submitted
+**Then** it stores category (mechanical/electrical) and schedule type limited to MONTHLY or ANNUAL (FR-130)
+**And** the program is scoped to the machine's section/group
+
+**Given** a program is active
+**When** schedules are due
+**Then** schedules are generated on the calendar/shift basis (using shift config V40) and work without telemetry (FR-131)
+**And** the next due date rolls forward from completion (floating interval)
+**And** a calendar view lists due/overdue items computed from the server clock
+**And** due/overdue items surface on the preventive dashboard (FR-172)
+
+**FRs covered:** FR-130, FR-131
+**NFRs covered:** NFR-P2-3
+**Additional:** AD-12 (calendar/shift-based, floating interval)
+
+### Story 11.2: Checklist, Assessment & Signature
+
+As a technician and leader,
+I want to complete preventive checklists with a leader assessment and signature approval,
+So that performed checks are evidenced and approved.
+
+**Acceptance Criteria:**
+
+**Given** a due preventive schedule exists
+**When** a technician/staff completes the checklist
+**Then** the result is persisted with performed-by, timestamp, notes, and evidence (FR-132)
+**And** checklist items with assessment values (including LSL/USL bounds where applicable) are stored
+
+**Given** a leader assesses the result
+**When** they approve
+**Then** approval is a leader action with signature capture (image + signer identity + timestamp), audit-logged
+**And** the schedule is marked performed and the next due date rolls forward
+
+**FRs covered:** FR-132
+**NFRs covered:** NFR-P2-3
+**Additional:** signature mechanism pending OQ-5
+
+### Story 11.3: Preventive Report & Auto-Workorder
+
+As a leader,
+I want to print preventive reports via WYSIWYG and have due schedules generate preventive workorders,
+So that reports are presentable and preventive tasks enter the workorder flow.
+
+**Acceptance Criteria:**
+
+**Given** a completed preventive schedule
+**When** the report is printed
+**Then** the WYSIWYG report renders checklist, results, logo, and signature block (FR-133)
+**And** print works for workorder reports and preventive reports (tabular view)
+
+**Given** a due schedule is configured to generate workorders
+**When** the schedule period arrives
+**Then** an internal preventive workorder (category 02 Preventive) is created, linked back to the schedule (FR-134)
+**And** duplicate generation is prevented per schedule period (idempotent)
+
+**FRs covered:** FR-133, FR-134
+**NFRs covered:** NFR-P2-10
+**Additional:** AD-10, AD-12
+
+---
+
+## Epic 12: Sparepart Request & Inventory
+
+Leaders request parts; storekeeper/inventory manage the request state machine, stock OP/OQ by material code, MRE recording, and escalation with WAHA notifications.
+
+### Story 12.1: Request Creation & Types
+
+As a leader/staff/technician with workorder scope,
+I want to create sparepart requests of different types with a purchase reference URL and optional new-item details,
+So that needed parts are requested precisely even when the material code is unknown.
+
+**Acceptance Criteria:**
+
+**Given** an authorized user creates a request on a workorder
+**When** the request is submitted
+**Then** type rules are enforced: SERVICE_EXTERNAL requires a workorder; CONSUMABLE does not require a machine; SPAREPART uses electric/mechanic taxonomy (FR-140)
+**And** a purchase reference URL (http/https) may be stored and rendered for the storekeeper (FR-143)
+**And** a new-item request without a material code starts in PENDING_COMPLETION (FR-144)
+**And** request creation is audit-logged
+
+**FRs covered:** FR-140, FR-143, FR-144
+**NFRs covered:** NFR-P2-3
+
+### Story 12.2: Request State Machine
+
+As inventory/storekeeper and leaders,
+I want requests to flow through an explicit state machine with a recorded timeline,
+So that the procurement and pickup status of every part is known and auditable.
+
+**Acceptance Criteria:**
+
+**Given** a request exists
+**When** a transition is requested
+**Then** valid transitions are `REQUESTED → ACKED → PROCESSING → [READY | PURCHASE_REQUESTED → PART_RECEIVED → READY] → PICKED_UP → CLOSED`
+**And** invalid transitions return `INVALID_STATE_TRANSITION`; each transition records a timeline event + audit (FR-141)
+
+**Given** a request is not READY on a workorder
+**When** its state changes
+**Then** the workorder enters ON_PROCUREMENT (derived, AD-5) and resumes when all requests are READY
+
+**Given** INVENTORY_MAINTENANCE records an MRE code
+**When** a request is in PURCHASE_REQUESTED
+**Then** the MRE code is manual (no auto-generation), format-free (e.g. MRE26023xxxx), and stored on the timeline (FR-145)
+
+**Given** the workorder section leader picks up / closes
+**When** the request is READY
+**Then** PICKED_UP and CLOSED are performed by the workorder section leader (FR-141)
+
+**FRs covered:** FR-141, FR-145
+**NFRs covered:** NFR-P2-3
+**Additional:** AD-4, AD-5
+
+### Story 12.3: Approval, Separation of Duty & Escalation
+
+As a maintenance organization,
+I want request approvals with separation of duty and configurable escalation,
+So that no one approves their own request and overdue requests escalate with WhatsApp notifications.
+
+**Acceptance Criteria:**
+
+**Given** a request requires approval
+**When** the requester submits their own request for approval
+**Then** requester != approver is enforced server-side before OPA/state machine (FR-142, AD-16)
+**And** threshold tiering by estimated cost (qty × est. price) is computed in the application layer
+**And** when est. price is absent, the request requires section-leader approval regardless of quantity
+**And** threshold tiers are configurable via escalation_configs (v1 defaults ≤5M / 5M–50M / >50M IDR)
+
+**Given** a request is unacknowledged or overdue
+**When** the escalation worker runs
+**Then** it escalates per configurable escalation_configs durations (not hardcoded) (FR-147)
+**And** WAHA notifications fire per step (request part → escalation) with idempotency (dedupe key target_type+target_id+template+recipient) and rate-limit/circuit-breaker (Epic 5 patterns)
+
+**FRs covered:** FR-142, FR-147
+**NFRs covered:** NFR-P2-5
+**Additional:** AD-9, AD-16
+
+### Story 12.4: Stock OP/OQ & New-Item Completion
+
+As inventory/storekeeper,
+I want to manage stock by material code with order-point/order-quantity and complete new-item requests,
+So that reorder warnings fire at the right time and unknown parts get properly registered.
+
+**Acceptance Criteria:**
+
+**Given** a sparepart has a material code
+**When** stock is recorded per plant
+**Then** `sparepart_stock(material_code, plant_id, stock_on_hand, order_point, order_qty)` is unique per (material_code, plant_id) (FR-146)
+**And** a reorder warning fires when stock_on_hand <= order_point, recommending a purchase request of order_qty (business-rule signal; the PR action is OPA-authorized)
+**And** stock mutations use version optimistic lock + atomic conditional update; negative stock is rejected server-side (AD-11)
+
+**Given** INVENTORY_MAINTENANCE/STOREKEEPER completes a PENDING_COMPLETION request
+**When** they provide material code, image, and estimated price
+**Then** the material code links to the existing sparepart/material-code identity (global uniqueness enforced); duplicate rejected (FR-144)
+**And** the sparepart record is created/updated via the masterdata module application service (not a direct cross-module write)
+**And** completion is audit-logged
+
+**FRs covered:** FR-144, FR-146
+**NFRs covered:** NFR-P2-6
+**Additional:** AD-11
+
+---
+
+## Epic 13: External Sync & Hardening
+
+Synced workorders from the internal system arrive reliably and safely: transactional batches, watermark resume, quarantine, conflict resolution, and notification hygiene.
+
+### Story 13.1: Sync Pipeline Foundation
+
+As an implementer,
+I want a hardened scheduled sync job that imports workorders from the internal PostgreSQL,
+So that synced workorders arrive reliably without duplicate workorders or lost batches.
+
+**Acceptance Criteria:**
+
+**Given** the external datasource is configured via typed config (SyncProperties)
+**When** the scheduled job runs
+**Then** it processes rows in batches inside a transaction, ordered by sheet_no ASC (FR-150)
+**And** upserts are idempotent by external id (re-sync updates, never duplicates) (FR-151)
+**And** processing resumes from a watermark (last_synced_sheet_no) after restart
+**And** a distributed lock (Redis/DB advisory) prevents concurrent runs
+**And** the sync module writes workorders only via maintenance.workorder.application.WorkorderImportService (AD-7) — never via JPA directly
+**And** retry with backoff on external DB outage; no crash
+
+**FRs covered:** FR-150, FR-151
+**NFRs covered:** NFR-P2-8
+**Additional:** AD-7
+
+### Story 13.2: Conflict Resolution & Field Mapping
+
+As an implementer,
+I want deterministic conflict resolution between external master fields and local operational fields,
+So that local evidence is never overwritten and terminal workorders are never regressed.
+
+**Acceptance Criteria:**
+
+**Given** a synced workorder is upserted
+**When** external master fields (status, timestamps, machine, category) arrive
+**Then** master fields take external values; local operational fields (report, evidence, ratings) are preserved (FR-152)
+**And** the field classification is configuration via sync_field_mappings (MASTER vs OPERATIONAL); unmapped fields default to MASTER (AD-8)
+
+**Given** the external system sends a regressed status for a DONE/CLOSED workorder
+**When** the sync processes it
+**Then** the row is quarantined with TERMINAL_STATE_PROTECTED; the workorder is not reopened (NFR-P2-9)
+**And** external status does not override a locally-derived ON_PROCUREMENT state
+**And** sync upsert of a child workorder rejects (quarantine) when the parent is CLOSED
+
+**Given** a batch completes
+**When** its results are recorded
+**Then** resolution is deterministic and audit-logged per run (FR-152)
+
+**FRs covered:** FR-152
+**NFRs covered:** NFR-P2-9
+**Additional:** AD-8
+
+### Story 13.3: Quarantine & Observability
+
+As a SUPER_ADMIN,
+I want failed sync records quarantined and sync run status observable,
+So that sync failures are diagnosable without silent data loss.
+
+**Acceptance Criteria:**
+
+**Given** a row fails mapping or conflicts terminally
+**When** the sync processes it
+**Then** it is persisted in sync_quarantine with reason, raw payload, and traceId (FR-153)
+**And** sync_runs records status, counts (created/updated/failed), timestamps, and error detail
+**And** the health dashboard shows last run, counts, and last run timestamp (FR-153)
+
+**Given** external timestamps are processed
+**When** they are persisted
+**Then** Asia/Jakarta timestamps are normalized to UTC (FR-154)
+
+**Given** new workorders or important transitions are synced
+**When** notifications are sent
+**Then** they are deduplicated and limited (no notification storm); the sync module does not notify independently (AD-7/AD-8)
+
+**FRs covered:** FR-153, FR-154
+**NFRs covered:** NFR-P2-8
+**Additional:** AD-7, AD-8
+
+---
+
+## Epic 14: Dashboards, Reports & Notifications
+
+Leaders see machine/workorder/preventive dashboards, MTBF/MTTR, technician KPI; print WYSIWYG reports with logo & signature; receive WAHA notifications per lifecycle step and the 4-hour ack with auto-login link.
+
+### Story 14.1: Machine, Workorder & Preventive Dashboards
+
+As a maintenance leader,
+I want dashboards for machines, workorders, and preventive schedules within my scope,
+So that I can see what needs attention at a glance.
+
+**Acceptance Criteria:**
+
+**Given** an authorized user opens the machine dashboard
+**Then** it shows machines with status, telemetry freshness (when available), open workorders, alerts, and lifetime risk within scope (FR-170)
+**And** it respects derived scope (plant/machineGroup/team) and renders loading/empty/error/stale/forbidden states (UX-DR-019)
+
+**Given** a user opens the workorder dashboard
+**Then** it shows workorder counts by status/category within scope, backend-computed (FR-171)
+**And** filtering by plant/section/status/category is available
+
+**Given** a user opens the preventive dashboard
+**Then** it shows due/overdue preventive schedules within scope from the server clock (FR-172)
+**And** overdue items are visibly distinct without color-only status
+
+**FRs covered:** FR-170, FR-171, FR-172
+**NFRs covered:** NFR-P2-2, NFR-P2-10 (TanStack Table)
+
+### Story 14.2: MTBF/MTTR & Technician KPI Dashboards
+
+As a maintenance leader,
+I want MTBF/MTTR and technician KPI dashboards,
+So that reliability and team performance are measurable.
+
+**Acceptance Criteria:**
+
+**Given** breakdown workorder data exists
+**When** MTBF/MTTR is computed
+**Then** MTBF is ordered by woStopAt (not id) between consecutive breakdown workorders; MTTR = cumulative session durations (FR-173, AD-6)
+**And** units (hours), window (monthly rolling), and freshness (30-min Redis TTL with stale indicator) are documented
+**And** insufficient-data state is explicit when fewer than 2 breakdown workorders exist
+
+**Given** a leader opens the technician KPI dashboard
+**Then** it shows configurable ratings (1–5 stars) and objective KPIs (completed count, average MTTR, on-time %) per technician (FR-174)
+**And** leader sees own-group technicians; manager sees plant; manager-global sees all
+
+**FRs covered:** FR-173, FR-174
+**NFRs covered:** NFR-P2-2
+**Additional:** AD-6
+
+### Story 14.3: WYSIWYG Print Reports with Signature
+
+As a leader or SPV,
+I want to print workorder and preventive reports in WYSIWYG format with logo and signature,
+So that reports are presentable and approvals are evidenced.
+
+**Acceptance Criteria:**
+
+**Given** a completed workorder or preventive report
+**When** it is printed
+**Then** the WYSIWYG report renders tabular view with configurable logo (FR-175)
+**And** it includes WO fields, sessions, parts, report narrative, CP/CPK (if present), evidence references
+**And** a signature block captures leader/SPV input (image + signer identity + timestamp) for approval and close
+**And** signature renders correctly in print output (AD-10, pending OQ-5 mechanism)
+
+**FRs covered:** FR-175
+**NFRs covered:** NFR-P2-10
+**Additional:** AD-10, OQ-5
+
+### Story 14.4: WAHA Notifications & 4-Hour Acknowledgment
+
+As a maintenance and production leader,
+I want WhatsApp notifications for workorder lifecycle events and a 4-hour acknowledgment with auto-login,
+So that the right people are reached in time without notification fatigue.
+
+**Acceptance Criteria:**
+
+**Given** a workorder lifecycle event occurs (new breakdown, ON_PROCUREMENT, part READY, DONE/CLOSED)
+**When** notification routing runs
+**Then** WAHA messages are sent to section leaders and above plus inventory roles with phone numbers (FR-180)
+**And** messages use templates; each event is idempotent (dedupe key target_type+target_id+template+recipient) (AD-9)
+**And** rate limit + circuit breaker apply (Epic 5 patterns)
+
+**Given** a workorder has been in IN_PROGRESS (net of ON_PROCUREMENT) for more than 4 hours (configurable)
+**When** the escalation worker runs
+**Then** a WAHA message with a direct link is sent to the PRODUCTION_LEADER (FR-181)
+**And** the link carries a short-lived token (bound to the recipient's registered WA number) that auto-authenticates the leader; the token expires after first use or after a configurable TTL (default 15 minutes), whichever comes first — revoke on expiry, mismatch, or login reuse
+**And** if the token is expired or the phone number mismatch, the fallback is a normal login (no residual access via the stale link)
+**And** the landing task list shows acknowledged vs pending acks and rated vs unrated closed workorders
+**And** acknowledging records the action in the timeline + audit and stops further escalation
+**And** the 4-hour clock excludes ON_PROCUREMENT time (AD-5, computed from status-history rows)
+
+**FRs covered:** FR-180, FR-181
+**NFRs covered:** NFR-P2-7
+**Additional:** AD-5, AD-9
 
