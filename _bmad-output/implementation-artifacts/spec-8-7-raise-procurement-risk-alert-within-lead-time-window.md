@@ -6,7 +6,7 @@ status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: true
 baseline_revision: 05c28c8
-final_revision: <FINAL_REVISION>
+final_revision: c4c7b63
 context:
   - '{project-root}/_bmad-output/project-context.md'
 warnings:
@@ -167,7 +167,7 @@ warnings:
 
 ## Auto Run Result
 
-Status: done (final_revision <FINAL_REVISION>; baseline 05c28c8).
+Status: done (final_revision c4c7b63; baseline 05c28c8).
 
 **Summary:** Added a `PROCUREMENT_RISK` alert type to the Epic-4 alert path (V41 discriminator + nullable threshold/snapshots with mirror CHECKs + per-installation dedupe index), evaluated on accepted telemetry by reusing the story 8-6 projections. When an installation's projected depletion falls within its lead-time window, a distinct alert is created snapshotting rate, projection basis, lead time used, and projected depletion instant, deduped per installation, audited with traceId, and routed to notifications. Threshold alerts, dedupe, and evaluation are untouched. Frontend renders the type distinctly (badge, evidence card, null-threshold-safe list/tab/detail/operations) and the WAHA message is now type-aware.
 
