@@ -68,6 +68,8 @@ import type {
   ResolveRequest,
   SetupCompletenessResponse,
   SparepartListResponse,
+  SparepartPriceEntryRequest,
+  SparepartPriceEntryView,
   SparepartProcurementRequest,
   SparepartRequest,
   SparepartTaxonomyListResponse,
@@ -2963,6 +2965,247 @@ export const useCreateSparepart = <TError = SparepartView,
         TContext
       > => {
       return useMutation(getCreateSparepartMutationOptions(options), queryClient);
+    }
+
+export type listSparepartPriceEntriesResponse200 = {
+  data: SparepartPriceEntryView[]
+  status: 200
+}
+
+export type listSparepartPriceEntriesResponse400 = {
+  data: void
+  status: 400
+}
+
+export type listSparepartPriceEntriesResponse401 = {
+  data: void
+  status: 401
+}
+
+export type listSparepartPriceEntriesResponse404 = {
+  data: void
+  status: 404
+}
+
+export type listSparepartPriceEntriesResponseSuccess = (listSparepartPriceEntriesResponse200) & {
+  headers: Headers;
+};
+export type listSparepartPriceEntriesResponseError = (listSparepartPriceEntriesResponse400 | listSparepartPriceEntriesResponse401 | listSparepartPriceEntriesResponse404) & {
+  headers: Headers;
+};
+
+export type listSparepartPriceEntriesResponse = (listSparepartPriceEntriesResponseSuccess | listSparepartPriceEntriesResponseError)
+
+export const getListSparepartPriceEntriesUrl = (sparepartId: string,) => {
+
+
+
+
+  return `/api/v1/spareparts/${sparepartId}/price-entries`
+}
+
+/**
+ * @summary List a sparepart's price history (newest first)
+ */
+export const listSparepartPriceEntries = async (sparepartId: string, options?: Parameters<typeof syncroFetch>[1]): Promise<listSparepartPriceEntriesResponse> => {
+
+  return syncroFetch<listSparepartPriceEntriesResponse>(getListSparepartPriceEntriesUrl(sparepartId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSparepartPriceEntriesQueryKey = (sparepartId: string,) => {
+    return [
+    `/api/v1/spareparts/${sparepartId}/price-entries`
+    ] as const;
+    }
+
+
+export const getListSparepartPriceEntriesQueryOptions = <TData = Awaited<ReturnType<typeof listSparepartPriceEntries>>, TError = void>(sparepartId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSparepartPriceEntries>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSparepartPriceEntriesQueryKey(sparepartId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSparepartPriceEntries>>> = ({ signal }) => listSparepartPriceEntries(sparepartId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: sparepartId !== null && sparepartId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSparepartPriceEntries>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListSparepartPriceEntriesQueryResult = NonNullable<Awaited<ReturnType<typeof listSparepartPriceEntries>>>
+export type ListSparepartPriceEntriesQueryError = void
+
+
+export function useListSparepartPriceEntries<TData = Awaited<ReturnType<typeof listSparepartPriceEntries>>, TError = void>(
+ sparepartId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSparepartPriceEntries>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSparepartPriceEntries>>,
+          TError,
+          Awaited<ReturnType<typeof listSparepartPriceEntries>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListSparepartPriceEntries<TData = Awaited<ReturnType<typeof listSparepartPriceEntries>>, TError = void>(
+ sparepartId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSparepartPriceEntries>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSparepartPriceEntries>>,
+          TError,
+          Awaited<ReturnType<typeof listSparepartPriceEntries>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListSparepartPriceEntries<TData = Awaited<ReturnType<typeof listSparepartPriceEntries>>, TError = void>(
+ sparepartId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSparepartPriceEntries>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List a sparepart's price history (newest first)
+ */
+
+export function useListSparepartPriceEntries<TData = Awaited<ReturnType<typeof listSparepartPriceEntries>>, TError = void>(
+ sparepartId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSparepartPriceEntries>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListSparepartPriceEntriesQueryOptions(sparepartId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type createSparepartPriceEntriesResponse201 = {
+  data: SparepartPriceEntryView
+  status: 201
+}
+
+export type createSparepartPriceEntriesResponse400 = {
+  data: void
+  status: 400
+}
+
+export type createSparepartPriceEntriesResponse401 = {
+  data: void
+  status: 401
+}
+
+export type createSparepartPriceEntriesResponse403 = {
+  data: void
+  status: 403
+}
+
+export type createSparepartPriceEntriesResponse404 = {
+  data: void
+  status: 404
+}
+
+export type createSparepartPriceEntriesResponse409 = {
+  data: void
+  status: 409
+}
+
+export type createSparepartPriceEntriesResponseSuccess = (createSparepartPriceEntriesResponse201) & {
+  headers: Headers;
+};
+export type createSparepartPriceEntriesResponseError = (createSparepartPriceEntriesResponse400 | createSparepartPriceEntriesResponse401 | createSparepartPriceEntriesResponse403 | createSparepartPriceEntriesResponse404 | createSparepartPriceEntriesResponse409) & {
+  headers: Headers;
+};
+
+export type createSparepartPriceEntriesResponse = (createSparepartPriceEntriesResponseSuccess | createSparepartPriceEntriesResponseError)
+
+export const getCreateSparepartPriceEntriesUrl = (sparepartId: string,) => {
+
+
+
+
+  return `/api/v1/spareparts/${sparepartId}/price-entries`
+}
+
+/**
+ * @summary Append a price entry to a sparepart's history
+ */
+export const createSparepartPriceEntries = async (sparepartId: string,
+    sparepartPriceEntryRequest: SparepartPriceEntryRequest, options?: Parameters<typeof syncroFetch>[1]): Promise<createSparepartPriceEntriesResponse> => {
+
+  return syncroFetch<createSparepartPriceEntriesResponse>(getCreateSparepartPriceEntriesUrl(sparepartId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(sparepartPriceEntryRequest)
+  }
+);}
+
+
+
+
+
+export const getCreateSparepartPriceEntriesMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSparepartPriceEntries>>, TError,{sparepartId: string;data: SparepartPriceEntryRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSparepartPriceEntries>>, TError,{sparepartId: string;data: SparepartPriceEntryRequest}, TContext> => {
+
+const mutationKey = ['createSparepartPriceEntries'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSparepartPriceEntries>>, {sparepartId: string;data: SparepartPriceEntryRequest}> = (props) => {
+          const {sparepartId,data} = props ?? {};
+
+          return  createSparepartPriceEntries(sparepartId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSparepartPriceEntriesMutationResult = NonNullable<Awaited<ReturnType<typeof createSparepartPriceEntries>>>
+    export type CreateSparepartPriceEntriesMutationBody = SparepartPriceEntryRequest
+    export type CreateSparepartPriceEntriesMutationError = void
+
+    /**
+ * @summary Append a price entry to a sparepart's history
+ */
+export const useCreateSparepartPriceEntries = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSparepartPriceEntries>>, TError,{sparepartId: string;data: SparepartPriceEntryRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createSparepartPriceEntries>>,
+        TError,
+        {sparepartId: string;data: SparepartPriceEntryRequest},
+        TContext
+      > => {
+      return useMutation(getCreateSparepartPriceEntriesMutationOptions(options), queryClient);
     }
 
 export type listSparepartTaxonomiesResponse200 = {

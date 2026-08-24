@@ -78,6 +78,8 @@ export * from './setupCompletenessResponse';
 export * from './sortObject';
 export * from './sparepartListResponse';
 export * from './sparepartMachineRefView';
+export * from './sparepartPriceEntryRequest';
+export * from './sparepartPriceEntryView';
 export * from './sparepartProcurementRequest';
 export * from './sparepartRequest';
 export * from './sparepartTaxonomyListResponse';

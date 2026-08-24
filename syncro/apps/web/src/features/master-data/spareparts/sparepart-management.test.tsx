@@ -114,6 +114,29 @@ const mockListSpareparts = {
 let mockUpdateSparepart = { mutateAsync: vi.fn(), mutate: vi.fn(), isPending: false };
 let mockPatchProcurement = { mutateAsync: vi.fn(), mutate: vi.fn(), isPending: false };
 
+const mockPriceEntries = {
+  data: {
+    data: [
+      {
+        id: "entry-1",
+        sparepartId: "sp-1",
+        amount: 1000,
+        currency: "USD",
+        kursToIdr: 15500,
+        idrAmount: 15500000,
+        enteredBy: "user-9",
+        enteredByName: "writer@syncro.dev",
+        enteredAt: "2026-08-01T10:15:00Z",
+      },
+    ],
+  },
+  isLoading: false,
+  isError: false,
+  refetch: vi.fn(),
+};
+
+let mockCreatePriceEntry = { mutateAsync: vi.fn(), mutate: vi.fn(), isPending: false };
+
 vi.mock("@/lib/api/generated/syncro", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   useListSparepartTaxonomies: vi.fn(() => mockListTaxonomies),
@@ -124,8 +147,11 @@ vi.mock("@/lib/api/generated/syncro", async (importOriginal) => ({
   useUpdateSparepart: vi.fn(() => mockUpdateSparepart),
   usePatchSparepartProcurement: vi.fn(() => mockPatchProcurement),
   useDeleteSparepart: vi.fn(() => ({ mutateAsync: vi.fn(), mutate: vi.fn(), isPending: false })),
+  useListSparepartPriceEntries: vi.fn(() => mockPriceEntries),
+  useCreateSparepartPriceEntries: vi.fn(() => mockCreatePriceEntry),
   getListSparepartsQueryKey: vi.fn(() => ["/mock-spareparts-key"]),
   getListSparepartTaxonomiesQueryKey: vi.fn(() => ["/mock-taxonomies-key"]),
+  getListSparepartPriceEntriesQueryKey: vi.fn((sparepartId: string) => ["mock-price-entries", sparepartId]),
 }));
 
 // ---------------------------------------------------------------------------
@@ -144,6 +170,9 @@ function resetMocks() {
   mockUser = { id: "user-1", loginIdentifier: "admin@syncro.dev", applicationRole: "SUPER_ADMIN" };
   mockUpdateSparepart = { mutateAsync: vi.fn().mockResolvedValue({ data: {} }), mutate: vi.fn(), isPending: false };
   mockPatchProcurement = { mutateAsync: vi.fn().mockResolvedValue({ data: {} }), mutate: vi.fn(), isPending: false };
+  mockCreatePriceEntry = { mutateAsync: vi.fn().mockResolvedValue({ data: {} }), mutate: vi.fn(), isPending: false };
+  mockPriceEntries.data.data[0].enteredByName = "writer@syncro.dev";
+  mockPriceEntries.refetch = vi.fn();
 }
 
 describe("SparepartManagement procurement readiness (Story 8-2)", () => {
@@ -236,7 +265,120 @@ describe("SparepartManagement procurement readiness (Story 8-2)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save sparepart" }));
 
     await waitFor(() => {
-      expect(screen.getByText(/job scope LEADER or above/)).toBeInTheDocument();
+      expect(mockUpdateSparepart.mutateAsync).toHaveBeenCalledTimes(1);
     });
+    // Story 8-3: the denial must persist inline (not toast-only), alongside the
+    // static "Requires job scope LEADER or above." hints rendered by both sections.
+    expect(
+      await screen.findByText(/Sparepart updated, but procurement was not saved.*LEADER or above/),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("SparepartManagement price history (Story 8-3)", () => {
+  beforeEach(() => {
+    resetMocks();
+  });
+
+  it("hides the Price History section in create mode", () => {
+    render(
+      <Wrapper>
+        <SparepartManagement />
+      </Wrapper>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Create sparepart" }));
+
+    expect(screen.getByText("1. Details")).toBeInTheDocument();
+    expect(screen.queryByText("Price History")).not.toBeInTheDocument();
+  });
+
+  it("shows the Price History section with rows only when editing", async () => {
+    render(
+      <Wrapper>
+        <SparepartManagement />
+      </Wrapper>,
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Edit" })[0]);
+
+    expect(await screen.findByText("Price History")).toBeInTheDocument();
+    expect(screen.getByTestId("price-history-table")).toBeInTheDocument();
+    expect(screen.getByText("writer@syncro.dev")).toBeInTheDocument();
+
+    // Create mode stays clean even after an edit dialog was used before.
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create sparepart" }));
+    expect(screen.queryByText("Price History")).not.toBeInTheDocument();
+  });
+
+  it("appends an entry once through the create hook and resets the draft", async () => {
+    render(
+      <Wrapper>
+        <SparepartManagement />
+      </Wrapper>,
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Edit" })[0]);
+    fireEvent.change(await screen.findByTestId("price-amount-input"), { target: { value: "1500000" } });
+    fireEvent.click(screen.getByRole("button", { name: "Append entry" }));
+
+    await waitFor(() => {
+      expect(mockCreatePriceEntry.mutateAsync).toHaveBeenCalledTimes(1);
+    });
+    expect(mockCreatePriceEntry.mutateAsync).toHaveBeenCalledWith({
+      sparepartId: "sp-1",
+      data: { amount: 1500000, currency: "IDR", kursToIdr: undefined },
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("price-amount-input")).toHaveValue("");
+    });
+  });
+
+  it("surfaces a JOB_SCOPE_REQUIRED denial verbatim without resetting the draft", async () => {
+    mockCreatePriceEntry = {
+      mutateAsync: vi.fn().mockRejectedValue(
+        new (await import("@/lib/api/orval-mutator")).SyncroApiError(403, {
+          code: "JOB_SCOPE_REQUIRED",
+          message: "This action requires job scope LEADER or above.",
+        }),
+      ),
+      mutate: vi.fn(),
+      isPending: false,
+    };
+
+    render(
+      <Wrapper>
+        <SparepartManagement />
+      </Wrapper>,
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Edit" })[0]);
+    fireEvent.change(await screen.findByTestId("price-amount-input"), { target: { value: "1500000" } });
+    fireEvent.click(screen.getByRole("button", { name: "Append entry" }));
+
+    await waitFor(() => {
+      expect(mockCreatePriceEntry.mutateAsync).toHaveBeenCalledTimes(1);
+    });
+    const alerts = await screen.findAllByText(/job scope LEADER or above/);
+    expect(alerts.length).toBeGreaterThan(0);
+    expect(screen.getByTestId("price-amount-input")).toHaveValue("1500000");
+  });
+
+  it("copies a history row into the draft via Reuse, including switching to non-IDR kurs", async () => {
+    render(
+      <Wrapper>
+        <SparepartManagement />
+      </Wrapper>,
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Edit" })[0]);
+    await screen.findByText("Price History");
+    // IDR default hides the kurs field until the USD row is reused.
+    expect(screen.queryByTestId("price-kurs-input")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Reuse" }));
+
+    expect(screen.getByTestId("price-amount-input")).toHaveValue("1000");
+    expect(screen.getByTestId("price-kurs-input")).toHaveValue("15500");
   });
 });

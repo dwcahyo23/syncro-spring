@@ -1590,6 +1590,105 @@
         }
       }
     },
+    "/api/v1/spareparts/{sparepartId}/price-entries": {
+      "get": {
+        "tags": [
+          "sparepart-price-entry-controller"
+        ],
+        "summary": "List a sparepart's price history (newest first)",
+        "operationId": "listSparepartPriceEntries",
+        "parameters": [
+          {
+            "name": "sparepartId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Price entries returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SparepartPriceEntryView"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid sparepart id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Sparepart not found"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "sparepart-price-entry-controller"
+        ],
+        "summary": "Append a price entry to a sparepart's history",
+        "operationId": "createSparepartPriceEntries",
+        "parameters": [
+          {
+            "name": "sparepartId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SparepartPriceEntryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Price entry appended",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SparepartPriceEntryView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or malformed JSON"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden (role or job scope)"
+          },
+          "404": {
+            "description": "Sparepart not found"
+          },
+          "409": {
+            "description": "Price entry data integrity conflict"
+          }
+        }
+      }
+    },
     "/api/v1/sparepart-taxonomies": {
       "get": {
         "tags": [
@@ -3124,7 +3223,8 @@
                 "SPAREPART",
                 "INSTALLATION",
                 "RESPONSIBILITY",
-                "ALERT"
+                "ALERT",
+                "SPAREPART_PRICE_ENTRY"
               ]
             }
           },
@@ -4152,6 +4252,60 @@
           }
         }
       },
+      "SparepartPriceEntryRequest": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "[A-Z]{3}"
+          },
+          "kursToIdr": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "amount"
+        ]
+      },
+      "SparepartPriceEntryView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sparepartId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "kursToIdr": {
+            "type": "number"
+          },
+          "idrAmount": {
+            "type": "number"
+          },
+          "enteredBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "enteredByName": {
+            "type": "string"
+          },
+          "enteredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "InstallationRequest": {
         "type": "object",
         "properties": {
@@ -4372,13 +4526,13 @@
       "PageQuarantineEntryView": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -4404,11 +4558,11 @@
             "type": "integer",
             "format": "int32"
           },
-          "sort": {
-            "$ref": "#/components/schemas/SortObject"
-          },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
           },
           "empty": {
             "type": "boolean"
@@ -4422,19 +4576,19 @@
             "type": "integer",
             "format": "int64"
           },
-          "paged": {
-            "type": "boolean"
-          },
-          "sort": {
-            "$ref": "#/components/schemas/SortObject"
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
           },
           "pageSize": {
             "type": "integer",
             "format": "int32"
           },
-          "pageNumber": {
-            "type": "integer",
-            "format": "int32"
+          "paged": {
+            "type": "boolean"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
           },
           "unpaged": {
             "type": "boolean"
@@ -4992,7 +5146,8 @@
               "SPAREPART",
               "INSTALLATION",
               "RESPONSIBILITY",
-              "ALERT"
+              "ALERT",
+              "SPAREPART_PRICE_ENTRY"
             ]
           },
           "entityId": {

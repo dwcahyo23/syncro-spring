@@ -8,5 +8,6 @@ public enum AuditEntityType {
   SPAREPART,
   INSTALLATION,
   RESPONSIBILITY,
-  ALERT
+  ALERT,
+  SPAREPART_PRICE_ENTRY
 }

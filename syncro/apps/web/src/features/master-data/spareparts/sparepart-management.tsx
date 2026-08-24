@@ -6,8 +6,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, SearchIcon, Trash2, TriangleAlertIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { CurrencyPriceInput, type CurrencyPriceValue } from "@/components/syncro/currency-price-input";
 import { LeadTimeInput } from "@/components/syncro/lead-time-input";
 import { MaterialCodeField } from "@/components/syncro/material-code-field";
+import { PriceHistoryTable } from "@/components/syncro/price-history-table";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -37,6 +39,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type {
   MachineView,
+  SparepartPriceEntryView,
   SparepartProcurementRequest,
   SparepartRequest,
   SparepartTaxonomyView,
@@ -44,12 +47,15 @@ import type {
 } from "@/lib/api/generated/model";
 import { SparepartTaxonomyRequestDimension } from "@/lib/api/generated/model";
 import {
+  getListSparepartPriceEntriesQueryKey,
   getListSparepartsQueryKey,
   getListSparepartTaxonomiesQueryKey,
   useCreateSparepart,
+  useCreateSparepartPriceEntries,
   useCreateSparepartTaxonomy,
   useDeleteSparepart,
   useListMachines,
+  useListSparepartPriceEntries,
   useListSpareparts,
   useListSparepartTaxonomies,
   usePatchSparepartProcurement,
@@ -80,6 +86,7 @@ const EMPTY_FORM: SparepartRequest = {
 };
 type ProcurementDraft = { materialCode: string; leadTimeHours: string };
 const EMPTY_PROCUREMENT: ProcurementDraft = { materialCode: "", leadTimeHours: "" };
+const EMPTY_PRICE_DRAFT: CurrencyPriceValue = { amount: "", currency: "IDR", kursToIdr: "" };
 
 export function SparepartManagement() {
   const user = useAuthUser();
@@ -110,6 +117,7 @@ export function SparepartManagement() {
     mutation: { onSuccess: invalidateSparepartData },
   });
   const deleteSparepart = useDeleteSparepart({ mutation: { onSuccess: invalidateSparepartData } });
+  const createPriceEntry = useCreateSparepartPriceEntries();
   const [dialogMode, setDialogMode] = useState<{ type: "create" } | { type: "edit"; sparepart: SparepartView } | null>(
     null,
   );
@@ -121,6 +129,13 @@ export function SparepartManagement() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [procurement, setProcurement] = useState<ProcurementDraft>(EMPTY_PROCUREMENT);
   const [procurementOriginal, setProcurementOriginal] = useState<ProcurementDraft>(EMPTY_PROCUREMENT);
+  const [priceDraft, setPriceDraft] = useState<CurrencyPriceValue>(EMPTY_PRICE_DRAFT);
+  const [priceError, setPriceError] = useState<string | null>(null);
+  const historySparepartId = dialogMode?.type === "edit" ? dialogMode.sparepart.id : undefined;
+  const priceHistory = useListSparepartPriceEntries(historySparepartId ?? "", {
+    query: { enabled: Boolean(historySparepartId) },
+  });
+  const priceHistoryItems: SparepartPriceEntryView[] = priceHistory.data?.data ?? [];
   const taxonomyItems = taxonomy.data?.data.items ?? [];
   const taxonomyByDimension = useMemo(() => groupByDimension(taxonomyItems), [taxonomyItems]);
   const machineItems = machines.data?.data.items ?? [];
@@ -157,6 +172,8 @@ export function SparepartManagement() {
     setForm(EMPTY_FORM);
     setProcurement(EMPTY_PROCUREMENT);
     setProcurementOriginal(EMPTY_PROCUREMENT);
+    setPriceDraft(EMPTY_PRICE_DRAFT);
+    setPriceError(null);
     setFieldErrors({});
     setFormError(null);
     setStep(1);
@@ -181,6 +198,8 @@ export function SparepartManagement() {
     const draft = procurementDraftFor(sparepart);
     setProcurement(draft);
     setProcurementOriginal(draft);
+    setPriceDraft(EMPTY_PRICE_DRAFT);
+    setPriceError(null);
     setFieldErrors({});
     setFormError(null);
     setStep(1);
@@ -201,9 +220,7 @@ export function SparepartManagement() {
       errors.materialCode = "Material code must be at most 64 characters.";
     }
     const hours = procurement.leadTimeHours.trim();
-    const hoursValid =
-      hours === "" ||
-      (/^\d+(\.\d{1,2})?$/.test(hours) && Number(hours) > 0);
+    const hoursValid = hours === "" || (/^\d+(\.\d{1,2})?$/.test(hours) && Number(hours) > 0);
     if (!hoursValid) {
       errors.leadTimeHours = "Enter a positive number of hours with at most two decimals.";
     }
@@ -273,11 +290,11 @@ export function SparepartManagement() {
             });
           } catch (patchError) {
             // The base sparepart update already committed; the procurement change did not.
-            // Surface that clearly and let the user reopen to retry procurement separately.
-            const message =
-              errorResponse(patchError)?.message ?? "Procurement values could not be saved.";
+            // Persist the denial inline (toast alone disappears) and keep the dialog open
+            // so the operator sees what happened and can retry the procurement save.
+            const message = errorResponse(patchError)?.message ?? "Procurement values could not be saved.";
             toast.error(`Sparepart updated, but procurement was not saved: ${message}`);
-            setDialogMode(null);
+            setFormError(`Sparepart updated, but procurement was not saved: ${message}`);
             return;
           }
         }
@@ -314,6 +331,55 @@ export function SparepartManagement() {
       setDeleteError(message);
       toast.error(message);
     }
+  }
+
+  async function submitPriceEntry() {
+    const sparepartId = dialogMode?.type === "edit" ? dialogMode.sparepart.id : undefined;
+    if (!sparepartId || createPriceEntry.isPending) {
+      return;
+    }
+    const amount = Number(priceDraft.amount.trim());
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setFieldErrors((current) => ({ ...current, amount: "Enter a positive amount." }));
+      return;
+    }
+    setFieldErrors((current) => {
+      const next = { ...current };
+      delete next.amount;
+      delete next.currency;
+      delete next.kursToIdr;
+      return next;
+    });
+    setPriceError(null);
+    try {
+      await createPriceEntry.mutateAsync({
+        sparepartId,
+        data: {
+          amount,
+          currency: priceDraft.currency,
+          kursToIdr: priceDraft.currency === "IDR" ? undefined : Number(priceDraft.kursToIdr),
+        },
+      });
+      await queryClient.invalidateQueries({
+        queryKey: getListSparepartPriceEntriesQueryKey(sparepartId),
+      });
+      setPriceDraft(EMPTY_PRICE_DRAFT);
+      toast.success("Price entry appended.");
+    } catch (error) {
+      const response = errorResponse(error);
+      setFieldErrors(response?.fieldErrors ?? {});
+      const message = response?.message ?? "Appending price entry failed.";
+      setPriceError(message);
+      toast.error(message);
+    }
+  }
+
+  function reusePriceEntry(entry: SparepartPriceEntryView) {
+    setPriceDraft({
+      amount: entry.amount != null ? String(entry.amount) : "",
+      currency: entry.currency ?? "IDR",
+      kursToIdr: entry.kursToIdr != null ? String(entry.kursToIdr) : "",
+    });
   }
 
   return (
@@ -505,6 +571,43 @@ export function SparepartManagement() {
                     value={procurement.leadTimeHours}
                     error={fieldErrors.leadTimeHours}
                     onChange={(leadTimeHours) => setProcurement((current) => ({ ...current, leadTimeHours }))}
+                  />
+                </div>
+              ) : null}
+              {dialogMode?.type === "edit" ? (
+                <div className="grid gap-4 rounded-md border border-dashed p-3 md:col-span-2">
+                  <div>
+                    <span className="font-medium text-sm">Price History</span>
+                    <p className="text-muted-foreground text-xs">Requires job scope LEADER or above.</p>
+                  </div>
+                  {priceError ? (
+                    <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{priceError}</p>
+                  ) : null}
+                  <div className="grid gap-3">
+                    <CurrencyPriceInput
+                      value={priceDraft}
+                      errors={{
+                        amount: fieldErrors.amount,
+                        currency: fieldErrors.currency,
+                        kursToIdr: fieldErrors.kursToIdr,
+                      }}
+                      onChange={setPriceDraft}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="justify-self-start"
+                      disabled={createPriceEntry.isPending}
+                      onClick={() => void submitPriceEntry()}
+                    >
+                      {createPriceEntry.isPending ? <Loader2Icon className="animate-spin" /> : null}
+                      Append entry
+                    </Button>
+                  </div>
+                  <PriceHistoryTable
+                    entries={priceHistoryItems}
+                    isLoading={priceHistory.isLoading}
+                    onReuse={reusePriceEntry}
                   />
                 </div>
               ) : null}

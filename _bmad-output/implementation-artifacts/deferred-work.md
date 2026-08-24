@@ -934,3 +934,7 @@ status: open
 - source_spec: `spec-8-2-manage-sparepart-material-code-and-lead-time.md`
   summary: The generated API client directory (`apps/web/src/lib/api/generated/`) is gitignored while partially force-added, so every Orval regeneration silently orphans newly created model files from commits — a fresh checkout breaks tsc. Decide a durable policy (commit a force-add helper script, or keep a tracked manifest, or stop ignoring the dir) before the next regeneration.
   evidence: Review found 34 untracked+ignored generated model files referenced by tracked index.ts/syncro.ts (sparepartProcurementRequest.ts among them) after this story's regeneration.
+
+- source_spec: '_bmad-output/implementation-artifacts/spec-8-3-manage-estimated-price-entries-with-currency-and-kurs.md'
+  summary: SparepartLifetimeEvaluatorTest fails at baseline with 2 Mockito UnnecessaryStubbingException errors (strict stubs at lines 120/134/135), unrelated to 8-3; fix the stubs or mark strictness off.
+  evidence: Full Sparepart* suite run during 8-3 showed 2 Errors; file is unmodified by 8-3, fails standalone, and has zero import overlap with price-entry code.

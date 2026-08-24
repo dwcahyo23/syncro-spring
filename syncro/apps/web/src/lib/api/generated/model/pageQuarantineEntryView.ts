@@ -10,15 +10,15 @@ import type { QuarantineEntryView } from './quarantineEntryView';
 import type { SortObject } from './sortObject';
 
 export interface PageQuarantineEntryView {
-  totalPages?: number;
   totalElements?: number;
+  totalPages?: number;
   size?: number;
   content?: QuarantineEntryView[];
   number?: number;
   first?: boolean;
   last?: boolean;
   numberOfElements?: number;
-  sort?: SortObject;
   pageable?: PageableObject;
+  sort?: SortObject;
   empty?: boolean;
 }
