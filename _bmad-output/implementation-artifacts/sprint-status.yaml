@@ -148,7 +148,7 @@ development_status:
   9-2-cross-plant-teams: done
   9-3-opa-infrastructure: done
   9-4-role-taxonomy-migration: done
-  9-5-opa-enforcement-on-maintenance-endpoints: in-progress
+  9-5-opa-enforcement-on-maintenance-endpoints: done
   epic-9-retrospective: optional
 
   # Epic 10: Workorder Execution

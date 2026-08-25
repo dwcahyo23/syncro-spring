@@ -2,9 +2,10 @@
 title: 'OPA Enforcement on Maintenance Endpoints'
 type: 'feature'
 created: '2026-08-26'
-status: 'in-review'
-review_loop_iteration: 0
-followup_review_recommended: false
+status: 'done'
+review_loop_iteration: 1
+followup_review_recommended: true
+final_revision: 9591753
 baseline_revision: 0b561e5
 context:
   - '{project-root}/_bmad-output/project-context.md'
@@ -152,7 +153,22 @@ warnings: ['oversized']
 ## Verification
 
 **Commands:**
-- `opa test syncro/authz/policy/` (via `syncro/authz/run-opa-test.ps1`) -- expected: pass.
-- `mvn -o -f syncro/apps/backend/pom.xml test "-Dtest=AuthzEnforcementIntegrationTest,DecisionLogServiceTest,AuthzDecisionLogMigrationTest,PolicyDecisionPointTest,AuthzInterceptorTest,AuthzControllerTest,AuditLogServiceIntegrationTest,RoleTaxonomyMigrationTest"` -- expected: BUILD SUCCESS (run integration classes one-per-JVM as usual).
-- `cd syncro/apps/web && npm run generate:api && npx tsc --noEmit && npm run test:unit` -- expected: green.
-- Manual: `docker compose -f syncro/infra/docker-compose.yml up` → login as pilot `staff.gm1` (STAFF_MAINTENANCE) → GET /api/v1/machines 200, POST /api/v1/machines 403; login SUPER_ADMIN → everything 200; GET /api/v1/authz/decisions shows rows with revision; audit-log shows decision_id; `decision_logs.console=true` prints masked console lines.
+- `mvn -o -f syncro/apps/backend/pom.xml test "-Dtest=AuthzEnforcementIntegrationTest,DecisionLogServiceTest,AuthzDecisionLogMigrationTest,PolicyDecisionPointTest,AuthzInterceptorTest,AuthzControllerTest,AuditLogServiceIntegrationTest,RoleTaxonomyMigrationTest"` -- run one-per-JVM (DW-127): AuthzEnforcement 3/3, DecisionLog 3/3, Migration 3/3, PDP/Interceptor/Controller 28/28, AuditLog 8/8, RoleTaxonomy 5/5. All BUILD SUCCESS.
+- `cd syncro/authz && ./run-opa-test.ps1` -- PASS 38/38 (rego parity matrix + action rules).
+- `cd syncro/apps/web && npx tsc --noEmit && npm run test:unit` -- PASS (0 tsc errors; 287/287 vitest).
+- Manual (enforcement live): compose up, login as pilot `staff.gm1` (STAFF_MAINTENANCE) → GET /api/v1/machines 200, POST /api/v1/machines 403; SUPER_ADMIN full; GET /api/v1/authz/decisions lists rows with revision; audit-log shows decision_id.
+
+## Auto Run Result
+
+| Step | Outcome | Notes |
+|------|---------|-------|
+| 01 route | pass | epic 9, story 5; epic-9-context.md valid |
+| 02 plan | pass | spec-9-5 written; parity-rego + decision-log design |
+| 03 implement | pass | rego matrix, compose mount, V46, DecisionLogService, PDP persistence, API, frontend; subagent terse — implementation re-verified independently (backend/rego/frontend all green) |
+| 04 review | pass | Blind Hunter (2 high/4 medium/2 low) + Edge Case Hunter (1 P1/1 P2/2 P3); 8 patches applied, 2 defers (DW-132, DW-133), 3 rejects |
+| commit | 9591753 | `feat(authz): OPA enforcement on maintenance/org/sync endpoints (story 9-5)` |
+| finalize | 9591753~1 | status done; followup_review_recommended: true |
+
+**Defers appended:** DW-132 (sync DB write per decision), DW-133 (decision-log tab mobile variant).
+
+**Residual risks:** policy revision derives from a file hash when OPA is not bundle-configured (real revision appears only with a bundle); anonymous requests to enforced endpoints 403 instead of 401 (both deny; documented delta); the known multi-integration-class Testcontainers quirk (DW-127) persists; degraded-allowlist stays latent until health is ever enforced (DW-129).
