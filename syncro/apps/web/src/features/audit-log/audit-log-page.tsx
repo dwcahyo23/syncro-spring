@@ -12,10 +12,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuthUser } from "@/lib/auth/use-auth-user";
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
 import type { ListAuditLogEntriesEntityType, ListAuditLogEntriesParams, PlantView } from "@/lib/api/generated/model";
 import { ListAuditLogEntriesEntityType as EntityTypeValues } from "@/lib/api/generated/model";
 import { useListAuditLogEntries, useListPlants } from "@/lib/api/generated/syncro";
+import { DecisionLogTab } from "./decision-log-tab";
 
 const ENTITY_TYPE_OPTIONS = Object.values(EntityTypeValues).map((value) => ({ value, label: entityTypeLabel(value) }));
 
@@ -23,6 +26,9 @@ type EntityFilter = "ALL" | ListAuditLogEntriesEntityType;
 type PlantFilter = "ALL" | string;
 
 export function AuditLogPage() {
+  const user = useAuthUser();
+  const canReadDecisions =
+    user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "AUDITOR";
   const plantScope = usePlantScope();
   const scope = plantScope.scope;
   const isAssignedEmpty = scope?.mode === "EMPTY";
@@ -78,15 +84,20 @@ export function AuditLogPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Audit Log</CardTitle>
-          <CardDescription>
-            Immutable history of master data changes. Entries can not be edited or deleted.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+    <Tabs defaultValue="audit-log" className="space-y-4">
+      <TabsList className="w-full justify-start overflow-x-auto">
+        <TabsTrigger value="audit-log">Audit Log</TabsTrigger>
+        {canReadDecisions ? <TabsTrigger value="decision-log">Decision Log</TabsTrigger> : null}
+      </TabsList>
+      <TabsContent value="audit-log">
+        <Card>
+          <CardHeader>
+            <CardTitle>Audit Log</CardTitle>
+            <CardDescription>
+              Immutable history of master data changes. Entries can not be edited or deleted.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
           <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[repeat(auto-fill,minmax(13rem,13rem))] sm:justify-start">
             <div className="grid min-w-0 gap-2">
               <Label htmlFor="audit-entity-type">Entity type</Label>
@@ -223,10 +234,25 @@ export function AuditLogPage() {
                 setPage(0);
               }}
             />
-          ) : null}
+                    ) : null}
         </CardContent>
       </Card>
-    </div>
+      </TabsContent>
+      {canReadDecisions ? (        <TabsContent value="decision-log">
+          <Card>
+            <CardHeader>
+              <CardTitle>Decision Log</CardTitle>
+              <CardDescription>
+                Persisted OPA enforcement decisions with their policy revision for audit tracing.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DecisionLogTab />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      ) : null}
+    </Tabs>
   );
 }
 

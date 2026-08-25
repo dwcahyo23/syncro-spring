@@ -140,11 +140,15 @@ public class OpaClient {
     }
 
     String decisionId = null;
+    String revision = null;
     boolean allowed = false;
     try {
       var envelope = objectMapper.readTree(response.getBody());
       if (envelope.path("decision_id").isTextual()) {
         decisionId = envelope.path("decision_id").asText();
+      }
+      if (envelope.path("revision").isTextual()) {
+        revision = envelope.path("revision").asText();
       }
       if (envelope.path("result").isBoolean()) {
         allowed = envelope.path("result").asBoolean();
@@ -153,8 +157,8 @@ public class OpaClient {
       log.error("[OPA] Malformed decision envelope for rule {}: {}", rule, e.getMessage());
       return new Result(false, statusCode, detail, null, false);
     }
-    log.debug("[OPA] rule {} evaluated status={} decisionId={}", rule, statusCode, decisionId);
-    return new Result(true, statusCode, detail, decisionId, allowed);
+    log.debug("[OPA] rule {} evaluated status={} decisionId={} revision={}", rule, statusCode, decisionId, revision);
+    return new Result(true, statusCode, detail, decisionId, allowed, revision);
   }
 
   static String truncate(String value) {
@@ -171,9 +175,16 @@ public class OpaClient {
   /**
    * Raw rule-call envelope. {@code allowed} is meaningful only for boolean rules
    * ({@code allow}); array rules (actions) are interpreted by the caller from {@code body}.
+   * {@code revision} carries the OPA envelope revision when the bundle supplies it.
    */
   public record Result(boolean success, int httpStatus, String body, String decisionId,
-      boolean allowed) {
+      boolean allowed, String revision) {
+
+    /** Backwards-compatible five-arg form (no revision). */
+    public Result(boolean success, int httpStatus, String body, String decisionId,
+        boolean allowed) {
+      this(success, httpStatus, body, decisionId, allowed, null);
+    }
   }
 
   /**

@@ -7,13 +7,19 @@ import com.syncro.org.application.OperationalScopeService;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.core.io.DefaultResourceLoader;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -27,25 +33,35 @@ import org.springframework.web.context.request.ServletRequestAttributes;
  * <p>Fail posture is default-deny: any client failure denies, EXCEPT when the current
  * request path matches {@code syncro.authz.degraded-allowlist}, which yields a
  * degraded allow so health/read endpoints survive an OPA outage. Methods never throw.
+ *
+ * <p>Every enforcement decision is persisted to the decision log (FR-164) via
+ * {@link DecisionLogService}. A persistence failure never breaks the enforcement path
+ * (fail-open on logging, fail-deny on authz).
  */
 @Service
 public class PolicyDecisionPoint {
 
   private static final Logger log = LoggerFactory.getLogger(PolicyDecisionPoint.class);
+  private static final String DEFAULT_REVISION_FALLBACK_PATH = "classpath:authz-policy.rego";
+  private static final String UNKNOWN_REVISION = "unknown";
   static final String ALLOW_RULE = "allow";
   static final String ACTIONS_RULE = "actions";
 
   private final OpaClient opa;
   private final AuthzProperties authzProperties;
   private final OperationalScopeService operationalScopes;
+  private final DecisionLogService decisionLogs;
+  private final ResourceLoader resourceLoader;
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
   public PolicyDecisionPoint(OpaClient opa, AuthzProperties authzProperties,
-      OperationalScopeService operationalScopes) {
+      OperationalScopeService operationalScopes, DecisionLogService decisionLogs) {
     this.opa = opa;
     this.authzProperties = authzProperties;
     this.operationalScopes = operationalScopes;
+    this.decisionLogs = decisionLogs;
+    this.resourceLoader = new DefaultResourceLoader();
   }
 
   /** Evaluates the {@code allow} rule using the current request path for degraded matching. */
@@ -59,20 +75,25 @@ public class PolicyDecisionPoint {
    */
   public Decision evaluate(AuthenticatedUser user, OpaResource resource, String action,
       String requestPath) {
+    Decision decision;
+    String revision = null;
     try {
       var result = opa.post(ALLOW_RULE, buildInput(user, resource, action));
       if (result.success() && result.httpStatus() == 200) {
         var decisionId = result.decisionId() != null ? result.decisionId()
             : UUID.randomUUID().toString();
-        return new Decision(result.allowed(), false, decisionId);
+        decision = new Decision(result.allowed(), false, decisionId);
+        revision = result.revision();
+      } else {
+        log.warn("[AUTHZ] OPA unavailable — default-deny posture detail={}", result.body());
+        decision = degradedOrDeny(requestPath);
       }
-      log.warn("[AUTHZ] OPA unavailable — default-deny posture detail={}", result.body());
     } catch (Exception failure) {
-      // Scope derivation or serialization must never surface as a 500: the contract is
-      // fail-deny (or degraded-allow on the allowlist), never an exception upward.
       log.warn("[AUTHZ] Evaluation failed before OPA call — default-deny posture", failure);
+      decision = degradedOrDeny(requestPath);
     }
-    return degradedOrDeny(requestPath);
+    persistDecision(decision, revision, user, action, resource, requestPath);
+    return decision;
   }
 
   public AllowedActions resolvedActions(AuthenticatedUser user) {
@@ -86,7 +107,6 @@ public class PolicyDecisionPoint {
     } catch (Exception failure) {
       log.warn("[AUTHZ] Actions resolution failed — degrading to empty set", failure);
     }
-    // Dashboard-safe degradation: empty set plus explicit flag instead of a failed render
     return new AllowedActions(List.of(), true);
   }
 
@@ -106,6 +126,20 @@ public class PolicyDecisionPoint {
   // -------------------------------------------------------------------------
   // Internal
   // -------------------------------------------------------------------------
+
+  private void persistDecision(Decision decision, String opaRevision, AuthenticatedUser user,
+      String action, OpaResource resource, String requestPath) {
+    try {
+      var revision = computePolicyRevision(opaRevision);
+      var userId = user != null ? java.util.UUID.fromString(user.id()) : null;
+      var resourceType = resource != null ? resource.type() : "endpoint";
+      decisionLogs.record(decision.decisionId(), revision, decision.allowed(), decision.degraded(),
+          userId, action, resourceType);
+    } catch (Exception failure) {
+      // Fail-open on logging: a broken decision log must never break the enforcement path.
+      log.warn("[AUTHZ] Failed to persist decision log — enforcement outcome unchanged", failure);
+    }
+  }
 
   private Decision degradedOrDeny(String requestPath) {
     if (requestPath != null && matchesAllowlist(requestPath)) {
@@ -171,5 +205,53 @@ public class PolicyDecisionPoint {
       return attributes.getRequest().getRequestURI();
     }
     return null;
+  }
+
+  /**
+   * Returns the OPA envelope revision when present; otherwise computes a sha256 hex of the
+   * deployed policy file so the decision log always carries a revision (FR-164). Tries, in
+   * order: the configured {@code syncro.authz.policy-revision-fallback-path} (classpath: or
+   * file:), a classpath copy, the in-repo file from the workspace root, then the backend
+   * working dir. Falls back to {@code "unknown"} only when no policy file is reachable.
+   */
+  String computePolicyRevision(String opaRevision) {
+    if (opaRevision != null && !opaRevision.isBlank()) {
+      return opaRevision;
+    }
+    for (String candidate : revisionCandidates()) {
+      var hash = tryPolicyHash(candidate);
+      if (hash != null) {
+        return hash;
+      }
+    }
+    return UNKNOWN_REVISION;
+  }
+
+  private List<String> revisionCandidates() {
+    var candidates = new ArrayList<String>();
+    var configured = authzProperties.policyRevisionFallbackPath();
+    if (configured != null && !configured.isBlank()) {
+      candidates.add(configured);
+    }
+    candidates.add(DEFAULT_REVISION_FALLBACK_PATH);
+    candidates.add("file:authz/policy/authz.rego");
+    candidates.add("file:syncro/authz/policy/authz.rego");
+    return candidates;
+  }
+
+  private String tryPolicyHash(String location) {
+    try (InputStream is = resourceLoader.getResource(location).getInputStream()) {
+      var digest = MessageDigest.getInstance("SHA-256");
+      var buffer = new byte[8192];
+      int read;
+      while ((read = is.read(buffer)) != -1) {
+        digest.update(buffer, 0, read);
+      }
+      return HexFormat.of().formatHex(digest.digest());
+    } catch (Exception failure) {
+      log.debug("[AUTHZ] Policy revision fallback unavailable at {} ({})", location,
+          failure.getMessage());
+      return null;
+    }
   }
 }

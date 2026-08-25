@@ -22,7 +22,8 @@ public final class AuditLogDtos {
       UUID plantId,
       Map<String, Object> previousValue,
       Map<String, Object> newValue,
-      Instant createdAt) {
+      Instant createdAt,
+      UUID decisionId) {
   }
 
   public record AuditLogListResponse(List<AuditLogEntryView> items, long totalElements, int page, int size, String sort) {

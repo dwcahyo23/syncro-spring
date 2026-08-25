@@ -29,7 +29,8 @@ class AuthzWebMvcConfigTest {
   @Test
   @DisplayName("9.3-CFG-001 empty enforced-paths registers nothing")
   void emptyPathsRegisterNothing() {
-    new AuthzWebMvcConfigurer(interceptor, new AuthzProperties()).addInterceptors(registry);
+    new AuthzWebMvcConfigurer(interceptor, new AuthzProperties(List.of(), null, 30, null))
+        .addInterceptors(registry);
 
     verify(registry, never()).addInterceptor(any());
   }
@@ -40,7 +41,7 @@ class AuthzWebMvcConfigTest {
     when(registry.addInterceptor(interceptor)).thenReturn(registration);
     when(registration.addPathPatterns(any(String[].class))).thenReturn(registration);
 
-    new AuthzWebMvcConfigurer(interceptor, new AuthzProperties(List.of("/api/v1/**"), null))
+    new AuthzWebMvcConfigurer(interceptor, new AuthzProperties(List.of("/api/v1/**"), null, 30, null))
         .addInterceptors(registry);
 
     verify(registry).addInterceptor(interceptor);
@@ -52,7 +53,7 @@ class AuthzWebMvcConfigTest {
   @Test
   @DisplayName("9.3-CFG-003 explicit empty allowlist is respected (strict fail-deny)")
   void explicitEmptyAllowlistRespected() {
-    var props = new AuthzProperties(List.of(), List.of());
+    var props = new AuthzProperties(List.of(), List.of(), 30, null);
 
     assertThat(props.degradedAllowlist()).isEmpty();
   }
@@ -60,7 +61,7 @@ class AuthzWebMvcConfigTest {
   @Test
   @DisplayName("9.3-CFG-004 unset allowlist falls back to health defaults")
   void unsetAllowlistDefaults() {
-    var props = new AuthzProperties();
+    var props = new AuthzProperties(List.of(), null, 30, null);
 
     assertThat(props.degradedAllowlist()).containsExactly("/api/v1/health", "/actuator/**");
   }

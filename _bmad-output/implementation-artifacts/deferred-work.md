@@ -1002,3 +1002,17 @@ status: open
   summary: The legacy gate (`if (role == VIEWER) throw`) only worked because non-VIEWER roles did not exist; mapping it literally to `!= AUDITOR` after the taxonomy lands would silently grant template mutation to the seven new identity roles (TECHNICIAN, STAFF_MAINTENANCE, SECTION_LEADER, MAINTENANCE_LEADER, INVENTORY_MAINTENANCE, STOREKEEPER, PRODUCTION_LEADER). Review converged (Blind Hunter R3 + Edge Case Hunter R6) on the fail-closed uniform allow-list; consequence: pilot technician.gm1 gets 403 on WAHA template PUT, as intended. Revisit only if a future story deliberately grants template management to an identity role.
   evidence: spec-9-4 Review Triage Log R3/R6; WahaTemplateServiceTest confirms AUDITOR-403 and MANAGER_MAINTENANCE-200.
   status: resolved
+
+### DW-132: Decision-log persistence does a synchronous DB commit per enforcement decision
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-5-opa-enforcement-on-maintenance-endpoints.md`
+  summary: Every PolicyDecisionPoint.evaluate() writes one authz_decisions row on the hot request path (its own transaction per record), doubling DB round-trips per enforced request and making a slow DB able to trip the lowered OPA breaker.
+  evidence: DecisionLogService.record() → repository.save() (SimpleJpaRepository, one tx each), called synchronously from PDP.evaluate; surfaced by Blind Hunter on 9-5. Fix = async/queue-backed batch write or a write-behind buffer, revisit when enforcement traffic is measured.
+  status: open
+
+### DW-133: Decision-log tab renders an empty surface on small screens (no mobile card variant)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-5-opa-enforcement-on-maintenance-endpoints.md`
+  summary: decision-log-tab.tsx wraps its table in `hidden md:block`; on mobile only the pagination renders, unlike the audit-log page which has both desktop table and card variants.
+  evidence: Edge Case Hunter on 9-5. Fix = add a card-based mobile layout mirroring audit-log-table.tsx.
+  status: open

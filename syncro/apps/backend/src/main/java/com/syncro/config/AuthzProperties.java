@@ -11,13 +11,16 @@ import org.springframework.validation.annotation.Validated;
  * <p>{@code enforced-paths} ships EMPTY for story 9.3 — zero behavior change to existing
  * routes; story 9.5 populates it when endpoints are mapped to policy actions.
  * {@code degraded-allowlist} holds Ant patterns that stay allowed when the OPA sidecar
- * is unreachable (fail-deny applies everywhere else).
+ * is unreachable (fail-deny applies everywhere else). {@code decisionLogRetentionDays}
+ * drives the {@code authz_decisions} purge window (default 30 days, NFR-P2-7).
  */
 @Validated
 @ConfigurationProperties(prefix = "syncro.authz")
 public record AuthzProperties(
     @NotNull List<String> enforcedPaths,
-    @NotNull List<String> degradedAllowlist) {
+    @NotNull List<String> degradedAllowlist,
+    int decisionLogRetentionDays,
+    String policyRevisionFallbackPath) {
 
   /** Canonical constructor — null lists normalize onto safe defaults; explicit empty stays authoritative. */
   public AuthzProperties {
@@ -29,10 +32,8 @@ public record AuthzProperties(
     } else {
       degradedAllowlist = List.copyOf(degradedAllowlist);
     }
-  }
-
-  /** Convenience factory with production-safe defaults. */
-  public AuthzProperties() {
-    this(List.of(), null);
+    if (decisionLogRetentionDays <= 0) {
+      decisionLogRetentionDays = 30;
+    }
   }
 }

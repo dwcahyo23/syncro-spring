@@ -110,9 +110,12 @@ services:
     # healthcheck could not run; -debug ships busybox with wget.
     image: openpolicyagent/opa:1.19.1-debug
     restart: unless-stopped
-    command: ["run", "--server", "--addr=0.0.0.0:8181", "--set", "decision_logs.console=true"]
+    command: ["run", "--server", "--addr=0.0.0.0:8181", "--set", "decision_logs.console=true", "/policies"]
     ports:
       - "${OPA_PORT:?OPA_PORT is required}:8181"
+    volumes:
+      # Mount the policy bundle read-only so the sidecar loads the committed rego files.
+      - ../authz/policy:/policies:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://localhost:8181/health"]
       interval: 10s

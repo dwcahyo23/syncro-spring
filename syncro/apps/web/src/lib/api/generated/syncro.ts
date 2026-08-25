@@ -33,11 +33,13 @@ import type {
   AssignSectionRequest,
   AuditLogListResponse,
   AuthUserView,
+  AuthzDecisionsPageView,
   CreateMachineResponsibilityRequest,
   CreateSectionRequest,
   CreateSparepartImageBody,
   CreateSparepartImageParams,
   CreateTeamRequest,
+  GetAuthzDecisionsParams,
   Health200,
   IngestWorkerStatus,
   InstallationListResponse,
@@ -9532,4 +9534,136 @@ export const useUnlinkTeamMachine = <TError = void,
       > => {
       return useMutation(getUnlinkTeamMachineMutationOptions(options), queryClient);
     }
+
+export type getAuthzDecisionsResponse200 = {
+  data: AuthzDecisionsPageView
+  status: 200
+}
+
+export type getAuthzDecisionsResponse401 = {
+  data: AuthzDecisionsPageView
+  status: 401
+}
+
+export type getAuthzDecisionsResponse403 = {
+  data: AuthzDecisionsPageView
+  status: 403
+}
+
+export type getAuthzDecisionsResponseSuccess = (getAuthzDecisionsResponse200) & {
+  headers: Headers;
+};
+export type getAuthzDecisionsResponseError = (getAuthzDecisionsResponse401 | getAuthzDecisionsResponse403) & {
+  headers: Headers;
+};
+
+export type getAuthzDecisionsResponse = (getAuthzDecisionsResponseSuccess | getAuthzDecisionsResponseError)
+
+export const getGetAuthzDecisionsUrl = (params?: GetAuthzDecisionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/authz/decisions?${stringifiedParams}` : `/api/v1/authz/decisions`
+}
+
+/**
+ * @summary List persisted OPA enforcement decisions
+ */
+export const getAuthzDecisions = async (params?: GetAuthzDecisionsParams, options?: Parameters<typeof syncroFetch>[1]): Promise<getAuthzDecisionsResponse> => {
+
+  return syncroFetch<getAuthzDecisionsResponse>(getGetAuthzDecisionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAuthzDecisionsQueryKey = (params?: GetAuthzDecisionsParams,) => {
+    return [
+    `/api/v1/authz/decisions`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAuthzDecisionsQueryOptions = <TData = Awaited<ReturnType<typeof getAuthzDecisions>>, TError = AuthzDecisionsPageView>(params?: GetAuthzDecisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthzDecisions>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAuthzDecisionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAuthzDecisions>>> = ({ signal }) => getAuthzDecisions(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAuthzDecisions>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAuthzDecisionsQueryResult = NonNullable<Awaited<ReturnType<typeof getAuthzDecisions>>>
+export type GetAuthzDecisionsQueryError = AuthzDecisionsPageView
+
+
+export function useGetAuthzDecisions<TData = Awaited<ReturnType<typeof getAuthzDecisions>>, TError = AuthzDecisionsPageView>(
+ params: undefined |  GetAuthzDecisionsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthzDecisions>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAuthzDecisions>>,
+          TError,
+          Awaited<ReturnType<typeof getAuthzDecisions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAuthzDecisions<TData = Awaited<ReturnType<typeof getAuthzDecisions>>, TError = AuthzDecisionsPageView>(
+ params?: GetAuthzDecisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthzDecisions>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAuthzDecisions>>,
+          TError,
+          Awaited<ReturnType<typeof getAuthzDecisions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAuthzDecisions<TData = Awaited<ReturnType<typeof getAuthzDecisions>>, TError = AuthzDecisionsPageView>(
+ params?: GetAuthzDecisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthzDecisions>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List persisted OPA enforcement decisions
+ */
+
+export function useGetAuthzDecisions<TData = Awaited<ReturnType<typeof getAuthzDecisions>>, TError = AuthzDecisionsPageView>(
+ params?: GetAuthzDecisionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAuthzDecisions>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAuthzDecisionsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 

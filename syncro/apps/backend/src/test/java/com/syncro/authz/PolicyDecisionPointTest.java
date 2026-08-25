@@ -2,12 +2,15 @@ package com.syncro.authz;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.domain.ApplicationRole;
+import com.syncro.authz.application.DecisionLogService;
 import com.syncro.authz.application.OpaInput;
 import com.syncro.authz.application.OpaResource;
 import com.syncro.authz.application.PolicyDecisionPoint;
@@ -44,6 +47,9 @@ class PolicyDecisionPointTest {
   @Mock
   private OperationalScopeService operationalScopes;
 
+  @Mock
+  private DecisionLogService decisionLogs;
+
   private PolicyDecisionPoint pdp;
 
   private final AuthenticatedUser user =
@@ -53,8 +59,8 @@ class PolicyDecisionPointTest {
   @BeforeEach
   void setUp() {
     pdp = new PolicyDecisionPoint(opaClient,
-        new AuthzProperties(List.of(), List.of("/api/v1/health", "/actuator/**")),
-        operationalScopes);
+        new AuthzProperties(List.of(), List.of("/api/v1/health", "/actuator/**"), 30, null),
+        operationalScopes, decisionLogs);
     // Default empty scope so evaluate() paths that carry an identity never see null scope
     Mockito.lenient().when(operationalScopes.derive(any()))
         .thenReturn(new OperationalScope(Set.of(), Set.of(), Set.of()));
@@ -252,5 +258,71 @@ class PolicyDecisionPointTest {
   private void stubScope() {
     when(operationalScopes.derive(user))
         .thenReturn(new OperationalScope(Set.of(UUID.randomUUID()), Set.of(), Set.of()));
+  }
+
+  @Test
+  @DisplayName("9.5-PDP-013 revision from OPA envelope is passed to decision log")
+  void revisionFromEnvelopePassedToDecisionLog() {
+    stubScope();
+    var revision = "sha256:policy";
+    when(opaClient.post(eq("allow"), any()))
+        .thenReturn(new OpaClient.Result(true, 200,
+            "{\"decision_id\":\"d1\",\"result\":true,\"revision\":\"" + revision + "\"}",
+            "d1", true, revision));
+
+    var decision = pdp.evaluate(user, resource, "POST /api/v1/work-orders");
+
+    assertThat(decision.allowed()).isTrue();
+    verify(decisionLogs).record(eq("d1"), eq(revision), eq(true), eq(false),
+        eq(UUID.fromString(user.id())), eq("POST /api/v1/work-orders"), eq("workorder"));
+  }
+
+  @Test
+  @DisplayName("9.5-PDP-014 revision fallback is used when envelope has no revision")
+  void revisionFallbackUsedWhenEnvelopeOmission() {
+    stubScope();
+    when(opaClient.post(eq("allow"), any()))
+        .thenReturn(new OpaClient.Result(true, 200,
+            "{\"decision_id\":\"d1\",\"result\":true}", "d1", true));
+
+    var decision = pdp.evaluate(user, resource, "POST /api/v1/work-orders");
+
+    assertThat(decision.allowed()).isTrue();
+    verify(decisionLogs).record(eq("d1"), anyString(), eq(true), eq(false),
+        eq(UUID.fromString(user.id())), eq("POST /api/v1/work-orders"), eq("workorder"));
+  }
+
+  @Test
+  @DisplayName("9.5-PDP-015 denied decision is still persisted to decision log")
+  void deniedDecisionIsPersisted() {
+    stubScope();
+    when(opaClient.post(eq("allow"), any()))
+        .thenReturn(new OpaClient.Result(true, 200,
+            "{\"decision_id\":\"d2\",\"result\":false}", "d2", false));
+
+    var decision = pdp.evaluate(user, resource, "POST /api/v1/work-orders");
+
+    assertThat(decision.allowed()).isFalse();
+    verify(decisionLogs).record(eq("d2"), anyString(), eq(false), eq(false),
+        eq(UUID.fromString(user.id())), eq("POST /api/v1/work-orders"), eq("workorder"));
+  }
+
+  @Test
+  @DisplayName("9.5-PDP-016 DB failure in decision log does not break enforcement outcome")
+  void decisionLogFailureDoesNotBreakEnforcement() {
+    stubScope();
+    when(opaClient.post(eq("allow"), any()))
+        .thenReturn(new OpaClient.Result(true, 200,
+            "{\"decision_id\":\"d1\",\"result\":true}", "d1", true));
+    // Simulate a DB failure: the log service throws
+    org.mockito.Mockito.doThrow(new RuntimeException("DB down"))
+        .when(decisionLogs)
+        .record(anyString(), anyString(), anyBoolean(), anyBoolean(),
+            any(UUID.class), anyString(), anyString());
+
+    var decision = pdp.evaluate(user, resource, "POST /api/v1/work-orders");
+
+    assertThat(decision.allowed()).isTrue();
+    assertThat(decision.degraded()).isFalse();
   }
 }

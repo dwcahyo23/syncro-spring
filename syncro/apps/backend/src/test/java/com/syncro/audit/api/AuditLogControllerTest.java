@@ -68,7 +68,8 @@ class AuditLogControllerTest {
         UUID.randomUUID(),
         Map.of("status", "ACTIVE"),
         Map.of("status", "INACTIVE"),
-        Instant.parse("2026-08-07T08:00:00Z"));
+        Instant.parse("2026-08-07T08:00:00Z"),
+        null);
     when(auditLog.list(any(), any())).thenReturn(new AuditLogListResponse(List.of(entry), 1, 0, 100, "createdAt,desc"));
 
     mockMvc.perform(get("/api/v1/audit-log")

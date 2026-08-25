@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.authz.application.DecisionContext;
+import com.syncro.authz.application.DecisionLogService;
 import com.syncro.authz.application.OpaInput;
 import com.syncro.authz.application.PolicyDecisionPoint;
 import com.syncro.authz.infrastructure.AuthzInterceptor;
@@ -53,7 +54,7 @@ class AuthzInterceptorTest {
 
   private final AuthzProperties props = new AuthzProperties(
       List.of("/api/v1/secure/**", "/api/v1/health/**"),
-      List.of("/api/v1/health/**"));
+      List.of("/api/v1/health/**"), 30, null);
 
   @Mock
   private com.syncro.authz.infrastructure.OpaClient opaClient;
@@ -61,13 +62,16 @@ class AuthzInterceptorTest {
   @Mock
   private OperationalScopeService operationalScopes;
 
+  @Mock
+  private DecisionLogService decisionLogs;
+
   private PolicyDecisionPoint pdp;
   private MockMvc mockMvc;
   private final ProbeController probe = new ProbeController();
 
   @BeforeEach
   void setUp() {
-    pdp = new PolicyDecisionPoint(opaClient, props, operationalScopes);
+    pdp = new PolicyDecisionPoint(opaClient, props, operationalScopes, decisionLogs);
     Mockito.lenient().when(operationalScopes.derive(any(AuthenticatedUser.class)))
         .thenReturn(new OperationalScope(Set.of(), Set.of(), Set.of()));
     var interceptor = new AuthzInterceptor(pdp, props, new ObjectMapper(), Clock.systemUTC());
@@ -137,6 +141,20 @@ class AuthzInterceptorTest {
       return "GET /api/v1/secure/probe".equals(captured.action())
           && "endpoint".equals(captured.resource().type());
     }));
+  }
+
+  @Test
+  @DisplayName("9.5-INT-005 P1 interceptor persists decision via PDP after an allowed evaluate")
+  void interceptorPersistsDecisionOnAllow() throws Exception {
+    when(opaClient.post(eq("allow"), any()))
+        .thenReturn(new com.syncro.authz.infrastructure.OpaClient.Result(
+            true, 200, "{\"decision_id\":\"d5\",\"result\":true,\"revision\":\"r1\"}", "d5", true, "r1"));
+
+    mockMvc.perform(request("/api/v1/secure/probe"))
+        .andExpect(status().isOk());
+
+    verify(decisionLogs).record(eq("d5"), eq("r1"), eq(true), eq(false),
+        any(UUID.class), eq("GET /api/v1/secure/probe"), eq("endpoint"));
   }
 
   private MockHttpServletRequestBuilder request(String uri) {

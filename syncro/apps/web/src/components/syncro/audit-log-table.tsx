@@ -88,6 +88,7 @@ function AuditLogTableDesktop({
           </TableHead>
           <TableHead>Record</TableHead>
           <TableHead>Plant</TableHead>
+          <TableHead>Decision</TableHead>
           <TableHead className="w-10" />
         </TableRow>
       </TableHeader>
@@ -137,6 +138,11 @@ function EntryRows({
           </span>
         </TableCell>
         <TableCell>{plantLabel(entry.plantId, plantNameById)}</TableCell>
+        <TableCell>
+          <span className="font-mono text-xs text-muted-foreground" title={entry.decisionId ?? undefined}>
+            {entry.decisionId ? shortenId(entry.decisionId) : "-"}
+          </span>
+        </TableCell>
         <TableCell className="text-right">
           <Button
             variant="ghost"
@@ -195,6 +201,11 @@ function AuditLogCards({
                       <p className="text-muted-foreground text-xs">
                         {entry.actorName ?? "-"} · {plantLabel(entry.plantId, plantNameById)}
                       </p>
+                      {entry.decisionId ? (
+                        <p className="font-mono text-muted-foreground text-xs">
+                          decision {shortenId(entry.decisionId)}
+                        </p>
+                      ) : null}
                       <p className="font-mono text-muted-foreground text-xs">{formatTime(entry.createdAt)}</p>
                     </div>
                     <Button
@@ -360,4 +371,8 @@ function formatTime(value: string | undefined) {
     return "-";
   }
   return new Intl.DateTimeFormat("en", { timeStyle: "short" }).format(new Date(value));
+}
+
+function shortenId(id: string): string {
+  return id.length > 8 ? id.slice(0, 8) + "…" : id;
 }

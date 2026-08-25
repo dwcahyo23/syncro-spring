@@ -100,8 +100,9 @@ syncro:
       timeout: ${SYNCRO_OPA_TIMEOUT_MS:5000}ms
       # Failure-rate threshold (%) at which the circuit opens (default: 50%)
       failure-rate-threshold: ${SYNCRO_OPA_CB_FAILURE_RATE:50}
-      # Minimum number of calls before failure rate is evaluated (default: 5)
-      minimum-number-of-calls: ${SYNCRO_OPA_CB_MIN_CALLS:5}
+      # Minimum number of calls before failure rate is evaluated (default: 2 since 9.5 —
+      # a hung OPA sidecar must trip the breaker fast under live enforcement, DW-130)
+      minimum-number-of-calls: ${SYNCRO_OPA_CB_MIN_CALLS:2}
       # Sliding window size for failure rate computation (default: 10)
       sliding-window-size: ${SYNCRO_OPA_CB_WINDOW_SIZE:10}
       # Time circuit stays OPEN before transitioning to HALF_OPEN (default: 60 seconds)
@@ -113,6 +114,14 @@ syncro:
     enforced-paths: ${SYNCRO_AUTHZ_ENFORCED_PATHS:}
     # Ant patterns still allowed when OPA is unreachable (fail-deny everywhere else)
     degraded-allowlist: ${SYNCRO_AUTHZ_DEGRADED_ALLOWLIST:/api/v1/health,/actuator/**}
+    # Policy file used to derive the decision-log revision when OPA does not emit a bundle
+    # revision; classpath: or file: resource (default: classpath:authz-policy.rego)
+    policy-revision-fallback-path: ${SYNCRO_AUTHZ_POLICY_FILE:}
+    decision-log:
+      # Retention window for persisted authz decisions (default: 30 days)
+      retention-days: ${SYNCRO_AUTHZ_DECISION_LOG_RETENTION_DAYS:30}
+      # Purge job cadence for the decision log (default: hourly)
+      purge-interval-ms: ${SYNCRO_AUTHZ_DECISION_LOG_PURGE_INTERVAL_MS:3600000}
   notification:
     worker:
       # Poll interval in milliseconds for the notification dispatch worker (default: 30 seconds)

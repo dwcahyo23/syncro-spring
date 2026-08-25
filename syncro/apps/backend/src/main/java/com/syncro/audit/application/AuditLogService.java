@@ -88,7 +88,8 @@ public class AuditLogService {
         entry.getPlantId(),
         readJson(entry.getPreviousValue()),
         readJson(entry.getNewValue()),
-        entry.getCreatedAt());
+        entry.getCreatedAt(),
+        entry.getDecisionId());
   }
 
   private Map<String, Object> readJson(String value) {

@@ -46,6 +46,9 @@ syncro:
   authz:
     enforced-paths: ${SYNCRO_AUTHZ_ENFORCED_PATHS:}
     degraded-allowlist: ${SYNCRO_AUTHZ_DEGRADED_ALLOWLIST:/api/v1/health,/actuator/**}
+    decision-log:
+      retention-days: ${SYNCRO_AUTHZ_DECISION_LOG_RETENTION_DAYS:30}
+      purge-interval-ms: ${SYNCRO_AUTHZ_DECISION_LOG_PURGE_INTERVAL_MS:3600000}
   garage:
     url: http://${GARAGE_HOST:localhost}:${GARAGE_S3_PORT:3900}
     access-key: ${GARAGE_ACCESS_KEY:syncro-garage-dev}

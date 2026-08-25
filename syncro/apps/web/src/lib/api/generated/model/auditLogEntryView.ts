@@ -22,4 +22,5 @@ export interface AuditLogEntryView {
   previousValue?: AuditLogEntryViewPreviousValue;
   newValue?: AuditLogEntryViewNewValue;
   createdAt?: string;
+  decisionId?: string | null;
 }
