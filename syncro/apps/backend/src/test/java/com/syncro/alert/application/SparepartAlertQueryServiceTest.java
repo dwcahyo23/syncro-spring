@@ -20,6 +20,8 @@ import com.syncro.auth.infrastructure.PlantEntity;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.notification.infrastructure.NotificationJobRepository;
 import com.syncro.masterdata.infrastructure.MachineGroupEntity;
+import com.syncro.org.application.OperationalScope;
+import com.syncro.org.application.OperationalScopeService;
 import com.syncro.sparepart.infrastructure.MachineSparepartInstallationEntity;
 import com.syncro.sparepart.infrastructure.SparepartEntity;
 import java.math.BigDecimal;
@@ -43,12 +45,13 @@ class SparepartAlertQueryServiceTest {
   @Mock private AuthUserPlantAssignmentRepository assignments;
   @Mock private PlantScopeService plantScopes;
   @Mock private NotificationJobRepository notificationJobRepository;
+  @Mock private OperationalScopeService operationalScopes;
 
   private final Clock clock = Clock.fixed(Instant.parse("2026-08-19T00:00:00Z"), ZoneOffset.UTC);
 
   private SparepartAlertQueryService service() {
     return new SparepartAlertQueryService(alertRepository, assignments, plantScopes,
-        notificationJobRepository);
+        notificationJobRepository, operationalScopes);
   }
 
   // --- helpers ---
@@ -163,7 +166,9 @@ class SparepartAlertQueryServiceTest {
 
     when(assignments.findByAuthUserId(userId))
         .thenReturn(List.of(new AuthUserPlantAssignmentEntity(userId, plantId, Instant.now(clock))));
-    when(alertRepository.findAllScoped(eq(List.of(plantId)), isNull(), isNull(), isNull(), any(Pageable.class)))
+    when(operationalScopes.derive(any(AuthenticatedUser.class)))
+        .thenReturn(new OperationalScope(java.util.Set.of(), java.util.Set.of(), java.util.Set.of()));
+    when(alertRepository.findAllScoped(eq(List.of(plantId)), isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
         .thenReturn(new PageImpl<>(List.of(a)));
 
     var result = service().list(manageUser(userId), null, null, null, 0, 50, "createdAt,desc");
@@ -257,10 +262,42 @@ class SparepartAlertQueryServiceTest {
 
     when(assignments.findByAuthUserId(userId))
         .thenReturn(List.of(new AuthUserPlantAssignmentEntity(userId, plantId, Instant.now(clock))));
-    when(alertRepository.findByIdWithDetailsScopedToPlants(eq(alertId), eq(List.of(plantId))))
+    when(operationalScopes.derive(any(AuthenticatedUser.class)))
+        .thenReturn(new OperationalScope(java.util.Set.of(), java.util.Set.of(), java.util.Set.of()));
+    when(alertRepository.findByIdWithDetailsScopedToPlants(eq(alertId), eq(List.of(plantId)), isNull()))
         .thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service().get(manageUser(userId), alertId))
         .isInstanceOf(AlertNotFoundException.class);
+  }
+
+  @Test
+  void list_leader_passesMachineGroupIdsToRepository() {
+    var userId = UUID.randomUUID();
+    var plantId = UUID.randomUUID();
+    var groupId = UUID.randomUUID();
+    var machineId = UUID.randomUUID();
+    var installationId = UUID.randomUUID();
+    var alertId = UUID.randomUUID();
+    var sparepartId = UUID.randomUUID();
+
+    var p = plant(plantId);
+    var g = machineGroup(groupId, p);
+    var m = machine(machineId, p, g);
+    var sp = sparepart(sparepartId);
+    var inst = installation(installationId, m, sp);
+    var a = alert(alertId, inst);
+
+    when(assignments.findByAuthUserId(userId))
+        .thenReturn(List.of(new AuthUserPlantAssignmentEntity(userId, plantId, Instant.now(clock))));
+    when(operationalScopes.derive(any(AuthenticatedUser.class)))
+        .thenReturn(new OperationalScope(java.util.Set.of(plantId), java.util.Set.of(groupId), java.util.Set.of()));
+    when(alertRepository.findAllScoped(eq(List.of(plantId)), eq(List.of(groupId)), isNull(), isNull(), isNull(), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(a)));
+
+    var result = service().list(manageUser(userId), null, null, null, 0, 50, "createdAt,desc");
+
+    assertThat(result.items()).hasSize(1);
+    assertThat(result.items().get(0).id()).isEqualTo(alertId);
   }
 }

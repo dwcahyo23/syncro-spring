@@ -32,6 +32,9 @@ class MachineGroupServiceTest {
   private MachineGroupRepository machineGroups;
 
   @Mock
+  private com.syncro.org.infrastructure.SectionRepository sections;
+
+  @Mock
   private PlantRepository plants;
 
   @Mock
@@ -49,7 +52,7 @@ class MachineGroupServiceTest {
     when(plants.findById(plantId)).thenReturn(Optional.of(plant));
     when(machineGroups.existsByPlantIdAndNameIgnoreCase(plantId, "Forming")).thenReturn(false);
     when(machineGroups.saveAndFlush(any())).thenThrow(uniqueViolation("uq_machine_groups_plant_id_lower_name"));
-    var machineGroupService = new MachineGroupService(machineGroups, plants, plantScopes, auditLog, clock);
+    var machineGroupService = new MachineGroupService(machineGroups, plants, sections, plantScopes, auditLog, clock);
 
     assertThatThrownBy(() -> machineGroupService.create(
         user(ApplicationRole.SUPER_ADMIN),
@@ -64,7 +67,7 @@ class MachineGroupServiceTest {
     when(plants.findById(plantId)).thenReturn(Optional.of(plant));
     when(machineGroups.existsByPlantIdAndNameIgnoreCase(plantId, "Forming")).thenReturn(false);
     when(machineGroups.saveAndFlush(any())).thenThrow(uniqueViolation("other_constraint"));
-    var machineGroupService = new MachineGroupService(machineGroups, plants, plantScopes, auditLog, clock);
+    var machineGroupService = new MachineGroupService(machineGroups, plants, sections, plantScopes, auditLog, clock);
 
     assertThatThrownBy(() -> machineGroupService.create(
         user(ApplicationRole.SUPER_ADMIN),

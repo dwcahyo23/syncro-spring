@@ -13,6 +13,9 @@ public final class MachineGroupAuditValues {
     values.put("plantCode", machineGroup.getPlant().getCode());
     values.put("plantName", machineGroup.getPlant().getName());
     values.put("name", machineGroup.getName());
+    if (machineGroup.getSectionId() != null) {
+      values.put("sectionId", machineGroup.getSectionId().toString());
+    }
     return values;
   }
 }

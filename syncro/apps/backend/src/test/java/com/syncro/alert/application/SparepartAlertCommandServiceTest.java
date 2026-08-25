@@ -180,7 +180,7 @@ class SparepartAlertCommandServiceTest {
 
     when(assignments.findByAuthUserId(userId))
         .thenReturn(List.of(new AuthUserPlantAssignmentEntity(userId, plantId, Instant.now(clock))));
-    when(alertRepository.findByIdWithDetailsScopedToPlants(alertId, List.of(plantId)))
+    when(alertRepository.findByIdWithDetailsScopedToPlants(alertId, List.of(plantId), null))
         .thenReturn(Optional.of(a));
     when(alertRepository.save(a)).thenReturn(a);
 
@@ -444,7 +444,7 @@ class SparepartAlertCommandServiceTest {
 
     when(assignments.findByAuthUserId(userId))
         .thenReturn(List.of(new AuthUserPlantAssignmentEntity(userId, plantId, Instant.now(clock))));
-    when(alertRepository.findByIdWithDetailsScopedToPlants(alertId, List.of(plantId)))
+    when(alertRepository.findByIdWithDetailsScopedToPlants(alertId, List.of(plantId), null))
         .thenReturn(Optional.of(a));
     when(alertRepository.save(a)).thenReturn(a);
 
@@ -470,7 +470,7 @@ class SparepartAlertCommandServiceTest {
     when(assignments.findByAuthUserId(userId))
         .thenReturn(List.of(new AuthUserPlantAssignmentEntity(userId, userPlantId, Instant.now(clock))));
     // scoped query returns empty — alert not in user's plant
-    when(alertRepository.findByIdWithDetailsScopedToPlants(alertId, List.of(userPlantId)))
+    when(alertRepository.findByIdWithDetailsScopedToPlants(alertId, List.of(userPlantId), null))
         .thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service().resolve(manageUser(userId), alertId, null))
@@ -619,7 +619,7 @@ class SparepartAlertCommandServiceTest {
     when(assignments.findByAuthUserId(userId))
         .thenReturn(List.of(new AuthUserPlantAssignmentEntity(userId, userPlantId, Instant.now(clock))));
     // scoped query returns empty — alert not in user's plant
-    when(alertRepository.findByIdWithDetailsScopedToPlants(alertId, List.of(userPlantId)))
+    when(alertRepository.findByIdWithDetailsScopedToPlants(alertId, List.of(userPlantId), null))
         .thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service().acknowledge(manageUser(userId), alertId, null))

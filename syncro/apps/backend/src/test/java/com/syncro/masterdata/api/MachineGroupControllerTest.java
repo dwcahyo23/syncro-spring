@@ -26,6 +26,9 @@ import com.syncro.masterdata.application.MachineGroupService.MachineGroupMutatio
 import com.syncro.masterdata.application.MachineGroupService.MachineGroupNotFoundException;
 import com.syncro.masterdata.application.MachineGroupService.MachineGroupListView;
 import com.syncro.masterdata.application.MachineGroupService.MachineGroupView;
+import com.syncro.masterdata.application.MachineGroupService.SectionNotFoundForMachineGroupException;
+import com.syncro.masterdata.application.MachineGroupService.SectionPlantMismatchException;
+import com.syncro.masterdata.application.MachineGroupService.SectionReassignmentRejectedException;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -71,14 +74,8 @@ class MachineGroupControllerTest {
     var user = user(ApplicationRole.SUPER_ADMIN);
     var plantId = UUID.randomUUID();
     var groupId = UUID.randomUUID();
-    when(machineGroups.list(user, plantId, null, 0, 100, "name,asc")).thenReturn(new MachineGroupListView(List.of(new MachineGroupView(
-        groupId,
-        plantId,
-        "GM1",
-        "Plant GM1",
-        "Forming",
-        Instant.parse("2026-05-27T00:00:00Z"),
-        Instant.parse("2026-05-27T00:00:00Z"))), 1, 0, 100, "name,asc"));
+    when(machineGroups.list(user, plantId, null, 0, 100, "name,asc")).thenReturn(new MachineGroupListView(List.of(
+        groupView(groupId, plantId)), 1, 0, 100, "name,asc"));
 
     mockMvc.perform(get("/api/v1/machine-groups").param("plantId", plantId.toString()).with(auth(user)))
         .andExpect(status().isOk())
@@ -86,7 +83,9 @@ class MachineGroupControllerTest {
         .andExpect(jsonPath("$.items[0].plantId").value(plantId.toString()))
         .andExpect(jsonPath("$.items[0].plantCode").value("GM1"))
         .andExpect(jsonPath("$.items[0].plantName").value("Plant GM1"))
-        .andExpect(jsonPath("$.items[0].name").value("Forming"));
+        .andExpect(jsonPath("$.items[0].name").value("Forming"))
+        .andExpect(jsonPath("$.items[0].sectionId").doesNotExist())
+        .andExpect(jsonPath("$.items[0].sectionName").doesNotExist());
   }
 
   @Test
@@ -95,14 +94,7 @@ class MachineGroupControllerTest {
     var user = user(ApplicationRole.MANAGE);
     var plantId = UUID.randomUUID();
     var groupId = UUID.randomUUID();
-    when(machineGroups.create(eq(user), any())).thenReturn(new MachineGroupView(
-        groupId,
-        plantId,
-        "GM1",
-        "Plant GM1",
-        "Forming",
-        Instant.parse("2026-05-27T00:00:00Z"),
-        Instant.parse("2026-05-27T00:00:00Z")));
+    when(machineGroups.create(eq(user), any())).thenReturn(groupView(groupId, plantId));
 
     mockMvc.perform(post("/api/v1/machine-groups")
         .with(auth(user))
@@ -316,6 +308,116 @@ class MachineGroupControllerTest {
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value("MACHINE_GROUP_DATA_INTEGRITY_VIOLATION"))
         .andExpect(jsonPath("$.message").value("Machine group data conflicts with existing records."));
+  }
+
+  @Test
+  @DisplayName("9.1-API-016 P1 assign section returns 204")
+  void assignSectionReturnsNoContent() throws Exception {
+    var user = user(ApplicationRole.MANAGE);
+    var groupId = UUID.randomUUID();
+    var sectionId = UUID.randomUUID();
+
+    mockMvc.perform(put("/api/v1/machine-groups/{machineGroupId}/section", groupId)
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"sectionId\":\"" + sectionId + "\"}"))
+        .andExpect(status().isNoContent());
+  }
+
+  @Test
+  @DisplayName("9.1-API-017 P1 clear section returns 204")
+  void clearSectionReturnsNoContent() throws Exception {
+    var user = user(ApplicationRole.MANAGE);
+    var groupId = UUID.randomUUID();
+
+    mockMvc.perform(delete("/api/v1/machine-groups/{machineGroupId}/section", groupId).with(auth(user)))
+        .andExpect(status().isNoContent());
+  }
+
+  @Test
+  @DisplayName("9.1-API-018 P1 assign section to unknown section maps to 404 SECTION_NOT_FOUND")
+  void assignUnknownSectionReturnsNotFound() throws Exception {
+    var user = user(ApplicationRole.MANAGE);
+    var groupId = UUID.randomUUID();
+    var sectionId = UUID.randomUUID();
+    doThrow(new SectionNotFoundForMachineGroupException())
+        .when(machineGroups).assignSection(user, groupId, sectionId);
+
+    mockMvc.perform(put("/api/v1/machine-groups/{machineGroupId}/section", groupId)
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"sectionId\":\"" + sectionId + "\"}"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("SECTION_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("9.1-API-019 P1 plant-mismatch section maps to 400 SECTION_PLANT_MISMATCH")
+  void assignPlantMismatchSectionReturnsBadRequest() throws Exception {
+    var user = user(ApplicationRole.MANAGE);
+    var groupId = UUID.randomUUID();
+    var sectionId = UUID.randomUUID();
+    doThrow(new SectionPlantMismatchException())
+        .when(machineGroups).assignSection(user, groupId, sectionId);
+
+    mockMvc.perform(put("/api/v1/machine-groups/{machineGroupId}/section", groupId)
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"sectionId\":\"" + sectionId + "\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("SECTION_PLANT_MISMATCH"));
+  }
+
+  @Test
+  @DisplayName("9.1-API-020 P1 reassignment maps to 400 SECTION_REASSIGNMENT_REJECTED")
+  void reassignSectionReturnsBadRequest() throws Exception {
+    var user = user(ApplicationRole.MANAGE);
+    var groupId = UUID.randomUUID();
+    var sectionId = UUID.randomUUID();
+    doThrow(new SectionReassignmentRejectedException())
+        .when(machineGroups).assignSection(user, groupId, sectionId);
+
+    mockMvc.perform(put("/api/v1/machine-groups/{machineGroupId}/section", groupId)
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"sectionId\":\"" + sectionId + "\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("SECTION_REASSIGNMENT_REJECTED"));
+  }
+
+  @Test
+  @DisplayName("9.1-API-021 P1 VIEWER assign section is forbidden")
+  void viewerAssignSectionForbidden() throws Exception {
+    var user = user(ApplicationRole.VIEWER);
+    var groupId = UUID.randomUUID();
+    var sectionId = UUID.randomUUID();
+    doThrow(new MachineGroupMutationForbiddenException())
+        .when(machineGroups).assignSection(user, groupId, sectionId);
+
+    mockMvc.perform(put("/api/v1/machine-groups/{machineGroupId}/section", groupId)
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"sectionId\":\"" + sectionId + "\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  @DisplayName("9.1-API-022 unauthenticated assign section is rejected")
+  void assignSectionRequiresAuthentication() throws Exception {
+    var groupId = UUID.randomUUID();
+    var sectionId = UUID.randomUUID();
+
+    mockMvc.perform(put("/api/v1/machine-groups/{machineGroupId}/section", groupId)
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"sectionId\":\"" + sectionId + "\"}"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
+  }
+
+  private static MachineGroupView groupView(UUID id, UUID plantId) {
+    return new MachineGroupView(id, plantId, "GM1", "Plant GM1", "Forming", null, null, null,
+        Instant.parse("2026-05-27T00:00:00Z"), Instant.parse("2026-05-27T00:00:00Z"));
   }
 
   private static AuthenticatedUser user(ApplicationRole role) {

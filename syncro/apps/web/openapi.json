@@ -4118,6 +4118,208 @@
           }
         }
       }
+    },
+    "/api/v1/sections": {
+      "get": {
+        "tags": [
+          "section-controller"
+        ],
+        "summary": "List sections",
+        "operationId": "listSections",
+        "parameters": [
+          { "name": "plantId", "in": "query", "required": false, "schema": { "type": "string", "format": "uuid" } },
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sections returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "section-controller"
+        ],
+        "summary": "Create a section",
+        "operationId": "createSection",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Section created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sections/{sectionId}": {
+      "get": {
+        "tags": [
+          "section-controller"
+        ],
+        "summary": "Get a section",
+        "operationId": "getSection",
+        "parameters": [
+          {
+            "name": "sectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Section returned",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "section-controller"
+        ],
+        "summary": "Update a section (name, active); deactivation is guarded",
+        "operationId": "updateSection",
+        "parameters": [
+          {
+            "name": "sectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Section updated",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionView"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "SECTION_HAS_ACTIVE_MACHINE_GROUPS",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/machine-groups/{machineGroupId}/section": {
+      "put": {
+        "tags": [
+          "machine-group-controller"
+        ],
+        "summary": "Assign the machine group to a section (reassignment rejected)",
+        "operationId": "assignMachineGroupSection",
+        "parameters": [
+          {
+            "name": "machineGroupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignSectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Assigned"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "machine-group-controller"
+        ],
+        "summary": "Clear the machine group's section assignment",
+        "operationId": "clearMachineGroupSection",
+        "parameters": [
+          {
+            "name": "machineGroupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Cleared"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4849,6 +5051,16 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "sectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sectionCode": {
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
           }
         }
       },
@@ -6239,6 +6451,117 @@
             "description": "Attempt history 0..3 items ordered by attemptNumber asc",
             "items": {
               "$ref": "#/components/schemas/NotificationAttemptView"
+            }
+          }
+        }
+      },
+      "SectionView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "plantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "plantCode": {
+            "type": "string"
+          },
+          "plantName": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "MACHINERY",
+              "UTILITY",
+              "WORKSHOP"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateSectionRequest": {
+        "type": "object",
+        "required": [
+          "plantId",
+          "code",
+          "name"
+        ],
+        "properties": {
+          "plantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "MACHINERY",
+              "UTILITY",
+              "WORKSHOP"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1
+          }
+        }
+      },
+      "UpdateSectionRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "active"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AssignSectionRequest": {
+        "type": "object",
+        "required": [
+          "sectionId"
+        ],
+        "properties": {
+          "sectionId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "SectionListResponse": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SectionView"
             }
           }
         }

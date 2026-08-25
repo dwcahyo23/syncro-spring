@@ -72,9 +72,12 @@ class PilotSeedTest {
     assertThat(plant.get("name")).isEqualTo("Plant GM1");
 
     Map<String, Object> group = jdbc.queryForMap(
-        "SELECT g.name FROM machine_groups g JOIN plants p ON p.id = g.plant_id "
+        "SELECT g.name, s.code AS section_code FROM machine_groups g "
+            + "JOIN plants p ON p.id = g.plant_id "
+            + "LEFT JOIN sections s ON s.id = g.section_id "
             + "WHERE p.code = 'GM1' AND g.name = 'Forming'");
     assertThat(group.get("name")).isEqualTo("Forming");
+    assertThat(group.get("section_code")).isEqualTo("MACHINERY");
 
     Map<String, Object> machine = jdbc.queryForMap(
         "SELECT m.code, m.name, m.status, m.brand, g.name AS group_name "
@@ -224,6 +227,9 @@ class PilotSeedTest {
   @Test
   @DisplayName("[7.1] Seed is idempotent - a second apply changes no row counts")
   void seedIsIdempotent() throws Exception {
+    // Re-establish the canonical seeded state first so this test is order-independent
+    // (a sibling test's scenario may have deleted rows before self-healing).
+    applySeed();
     Map<String, Long> before = snapshotCounts();
 
     applySeed();
@@ -234,6 +240,7 @@ class PilotSeedTest {
     // migration content (a future migration seeding more rows must not fail here).
     Map<String, Long> expected = new LinkedHashMap<>(postMigrationCounts);
     expected.merge("plants", 1L, Long::sum);
+    expected.merge("sections", 1L, Long::sum);
     expected.merge("machine_groups", 1L, Long::sum);
     expected.merge("machines", 1L, Long::sum);
     expected.merge("sparepart_taxonomy", 3L, Long::sum);
@@ -255,6 +262,7 @@ class PilotSeedTest {
     // a different level for the same (machine, user).
     jdbc.update("DELETE FROM machine_responsibilities");
     jdbc.update("DELETE FROM machine_sparepart_installations");
+    jdbc.update("DELETE FROM sparepart_price_entries");
     jdbc.update("DELETE FROM spareparts");
     jdbc.update("DELETE FROM machines");
     jdbc.update("DELETE FROM auth_user_plant_assignments a USING auth_users u "
@@ -313,6 +321,7 @@ class PilotSeedTest {
     // methods always observe the canonical state, regardless of run order.
     jdbc.update("DELETE FROM machine_responsibilities");
     jdbc.update("DELETE FROM machine_sparepart_installations");
+    jdbc.update("DELETE FROM sparepart_price_entries");
     jdbc.update("DELETE FROM spareparts");
     jdbc.update("DELETE FROM machines");
     jdbc.update("DELETE FROM auth_user_plant_assignments a USING auth_users u "
@@ -351,6 +360,7 @@ class PilotSeedTest {
     Map<String, Long> counts = new LinkedHashMap<>();
     for (String table : List.of(
         "plants",
+        "sections",
         "machine_groups",
         "machines",
         "sparepart_taxonomy",

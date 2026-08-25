@@ -3,6 +3,7 @@ package com.syncro.masterdata.api;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.masterdata.api.MachineGroupDtos.MachineGroupListResponse;
 import com.syncro.masterdata.api.MachineGroupDtos.MachineGroupRequest;
+import com.syncro.masterdata.api.MachineGroupDtos.MachineGroupSectionRequest;
 import com.syncro.masterdata.api.MachineGroupDtos.MachineGroupView;
 import com.syncro.masterdata.application.MachineGroupService;
 import com.syncro.masterdata.application.MachineGroupService.CreateMachineGroupCommand;
@@ -114,6 +115,38 @@ public class MachineGroupController {
     return ResponseEntity.noContent().build();
   }
 
+  @Operation(operationId = "assignMachineGroupSection",
+      summary = "Assign a machine group to a section (set-once; reassignment is rejected)")
+  @ApiResponses({
+      @ApiResponse(responseCode = "204", description = "Machine group assigned to section", content = @Content),
+      @ApiResponse(responseCode = "400", description = "Section plant mismatch or section reassignment rejected"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Machine group or section not found")
+  })
+  @PutMapping("/{machineGroupId}/section")
+  public ResponseEntity<Void> assignSection(@AuthenticationPrincipal AuthenticatedUser user,
+      @PathVariable UUID machineGroupId, @Valid @RequestBody MachineGroupSectionRequest request) {
+    machineGroups.assignSection(user, machineGroupId, request.sectionId());
+    return ResponseEntity.noContent().build();
+  }
+
+  @Operation(operationId = "clearMachineGroupSection",
+      summary = "Clear a machine group's section assignment")
+  @ApiResponses({
+      @ApiResponse(responseCode = "204", description = "Machine group section cleared (or absent, no-op)", content = @Content),
+      @ApiResponse(responseCode = "400", description = "Invalid machine group id"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Machine group not found")
+  })
+  @DeleteMapping("/{machineGroupId}/section")
+  public ResponseEntity<Void> clearSection(@AuthenticationPrincipal AuthenticatedUser user,
+      @PathVariable UUID machineGroupId) {
+    machineGroups.clearSection(user, machineGroupId);
+    return ResponseEntity.noContent().build();
+  }
+
   private CreateMachineGroupCommand command(MachineGroupRequest request) {
     return new CreateMachineGroupCommand(request.plantId(), request.name());
   }
@@ -125,6 +158,9 @@ public class MachineGroupController {
         machineGroup.plantCode(),
         machineGroup.plantName(),
         machineGroup.name(),
+        machineGroup.sectionId(),
+        machineGroup.sectionCode(),
+        machineGroup.sectionName(),
         machineGroup.createdAt(),
         machineGroup.updatedAt());
   }

@@ -118,12 +118,28 @@ INSERT INTO plants (id, code, name, created_at, updated_at)
 SELECT 'b212500e-b17b-4f14-b073-5bb4bab4aadd'::uuid, 'GM1', 'Plant GM1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 WHERE NOT EXISTS (SELECT 1 FROM plants WHERE code = 'GM1');
 
--- 2. Machine group Forming under GM1 (V4 uniqueness is (plant_id, lower(name)))
-INSERT INTO machine_groups (id, plant_id, name, created_at, updated_at)
-SELECT '604310bd-2930-4220-bb80-cd6d506e5e62'::uuid, p.id, 'Forming', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+-- 1.5 Section MACHINERY under GM1 (story 9-1; the Forming group below is assigned to it)
+INSERT INTO sections (id, plant_id, code, name, active, version, created_at, updated_at)
+SELECT 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'::uuid, p.id, 'MACHINERY', 'Machinery', TRUE, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 FROM plants p
 WHERE p.code = 'GM1'
+  AND NOT EXISTS (SELECT 1 FROM sections s WHERE s.plant_id = p.id AND s.code = 'MACHINERY');
+
+-- 2. Machine group Forming under GM1, assigned to the MACHINERY section
+INSERT INTO machine_groups (id, plant_id, name, section_id, created_at, updated_at)
+SELECT '604310bd-2930-4220-bb80-cd6d506e5e62'::uuid, p.id, 'Forming', s.id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM plants p
+LEFT JOIN sections s ON s.plant_id = p.id AND s.code = 'MACHINERY'
+WHERE p.code = 'GM1'
   AND NOT EXISTS (SELECT 1 FROM machine_groups g WHERE g.plant_id = p.id AND lower(g.name) = 'forming');
+
+-- 2.5 Adopt a pre-existing Forming group (e.g. seeded before story 9.1) into the
+--     MACHINERY section — guarded so a re-run never reassigns an existing section.
+UPDATE machine_groups g
+SET section_id = s.id, updated_at = CURRENT_TIMESTAMP
+FROM plants p
+JOIN sections s ON s.plant_id = p.id AND s.code = 'MACHINERY'
+WHERE g.plant_id = p.id AND p.code = 'GM1' AND lower(g.name) = 'forming' AND g.section_id IS NULL;
 
 -- 3. Machine BF-08410 / JBF19 (one machine: code and name; V5 uniqueness is
 --    (plant_id, lower(code)) - guard and downstream resolution share it)

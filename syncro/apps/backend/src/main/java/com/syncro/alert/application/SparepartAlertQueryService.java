@@ -12,6 +12,7 @@ import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
 import com.syncro.notification.domain.NotificationJobStatus;
 import com.syncro.notification.infrastructure.NotificationJobEntity;
 import com.syncro.notification.infrastructure.NotificationJobRepository;
+import com.syncro.org.application.OperationalScopeService;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.HashMap;
@@ -31,16 +32,19 @@ public class SparepartAlertQueryService {
   private final AuthUserPlantAssignmentRepository assignments;
   private final PlantScopeService plantScopes;
   private final NotificationJobRepository notificationJobRepository;
+  private final OperationalScopeService operationalScopes;
 
   public SparepartAlertQueryService(
       SparepartAlertRepository alertRepository,
       AuthUserPlantAssignmentRepository assignments,
       PlantScopeService plantScopes,
-      NotificationJobRepository notificationJobRepository) {
+      NotificationJobRepository notificationJobRepository,
+      OperationalScopeService operationalScopes) {
     this.alertRepository = alertRepository;
     this.assignments = assignments;
     this.plantScopes = plantScopes;
     this.notificationJobRepository = notificationJobRepository;
+    this.operationalScopes = operationalScopes;
   }
 
   @Transactional(readOnly = true)
@@ -60,7 +64,7 @@ public class SparepartAlertQueryService {
 
     var result = superAdmin
         ? alertRepository.findAllUnscoped(machineId, plantId, status, pageable)
-        : alertRepository.findAllScoped(scopedPlantIds, machineId, plantId, status, pageable);
+        : alertRepository.findAllScoped(scopedPlantIds, scopedMachineGroupIds(user), machineId, plantId, status, pageable);
 
     var alertIds = result.getContent().stream().map(SparepartAlertEntity::getId).toList();
     var summaryMap = buildNotificationSummaryMap(alertIds);
@@ -112,7 +116,7 @@ public class SparepartAlertQueryService {
       if (scopedPlantIds.isEmpty()) {
         throw new AlertNotFoundException();
       }
-      alert = alertRepository.findByIdWithDetailsScopedToPlants(alertId, scopedPlantIds)
+      alert = alertRepository.findByIdWithDetailsScopedToPlants(alertId, scopedPlantIds, scopedMachineGroupIds(user))
           .orElseThrow(AlertNotFoundException::new);
     }
     // Single-alert detail view: no notification summary (detail page loads it separately)
@@ -185,6 +189,17 @@ public class SparepartAlertQueryService {
     return assignments.findByAuthUserId(UUID.fromString(user.id())).stream()
         .map(a -> a.getPlantId())
         .toList();
+  }
+
+  /**
+   * Derived section-leader machineGroupIds (AD-2). Empty derived set = no group
+   * restriction — Phase 1 plant-scope behavior preserved for non-leaders. A leader
+   * sees only their own groups; sibling-group data within the same section is
+   * excluded (section is a container, never a scoping dimension).
+   */
+  private List<UUID> scopedMachineGroupIds(AuthenticatedUser user) {
+    var machineGroupIds = operationalScopes.derive(user).machineGroupIds();
+    return machineGroupIds.isEmpty() ? null : List.copyOf(machineGroupIds);
   }
 
   // --- View records ---

@@ -10,6 +10,7 @@ import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.auth.infrastructure.PlantRepository;
 import com.syncro.masterdata.infrastructure.MachineGroupEntity;
 import com.syncro.masterdata.infrastructure.MachineGroupRepository;
+import com.syncro.org.infrastructure.SectionRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -30,6 +31,7 @@ public class MachineGroupService {
 
   private final MachineGroupRepository machineGroups;
   private final PlantRepository plants;
+  private final SectionRepository sections;
   private final PlantScopeService plantScopes;
   private final AuditLogWriter auditLog;
   private final Clock clock;
@@ -37,11 +39,13 @@ public class MachineGroupService {
   public MachineGroupService(
       MachineGroupRepository machineGroups,
       PlantRepository plants,
+      SectionRepository sections,
       PlantScopeService plantScopes,
       AuditLogWriter auditLog,
       Clock clock) {
     this.machineGroups = machineGroups;
     this.plants = plants;
+    this.sections = sections;
     this.plantScopes = plantScopes;
     this.auditLog = auditLog;
     this.clock = clock;
@@ -139,6 +143,37 @@ public class MachineGroupService {
     return machineGroup;
   }
 
+  @Transactional
+  public void assignSection(AuthenticatedUser user, UUID machineGroupId, UUID sectionId) {
+    requireMutationRole(user);
+    var machineGroup = findScoped(user, machineGroupId);
+    var section = sections.findByIdWithPlant(sectionId).orElseThrow(SectionNotFoundForMachineGroupException::new);
+    if (!section.getPlant().getId().equals(machineGroup.getPlant().getId())) {
+      throw new SectionPlantMismatchException();
+    }
+    if (machineGroup.getSectionId() != null && !machineGroup.getSectionId().equals(sectionId)) {
+      throw new SectionReassignmentRejectedException();
+    }
+    var entityLabel = machineGroup.getName();
+    var previous = MachineGroupAuditValues.of(machineGroup);
+    machineGroup.assignSection(sectionId, Instant.now(clock));
+    var saved = machineGroups.saveAndFlush(machineGroup);
+    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.MACHINE_GROUP, machineGroupId,
+        entityLabel, machineGroup.getPlant().getId(), previous, MachineGroupAuditValues.of(saved)));
+  }
+
+  @Transactional
+  public void clearSection(AuthenticatedUser user, UUID machineGroupId) {
+    requireMutationRole(user);
+    var machineGroup = findScoped(user, machineGroupId);
+    var entityLabel = machineGroup.getName();
+    var previous = MachineGroupAuditValues.of(machineGroup);
+    machineGroup.clearSection(Instant.now(clock));
+    var saved = machineGroups.saveAndFlush(machineGroup);
+    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.MACHINE_GROUP, machineGroupId,
+        entityLabel, machineGroup.getPlant().getId(), previous, MachineGroupAuditValues.of(saved)));
+  }
+
   private void requireMutationRole(AuthenticatedUser user) {
     if (user.applicationRole() != ApplicationRole.SUPER_ADMIN && user.applicationRole() != ApplicationRole.MANAGE) {
       throw new MachineGroupMutationForbiddenException();
@@ -208,12 +243,16 @@ public class MachineGroupService {
 
   private MachineGroupView toView(MachineGroupEntity machineGroup) {
     var plant = machineGroup.getPlant();
+    var section = machineGroup.getSection();
     return new MachineGroupView(
         machineGroup.getId(),
         plant.getId(),
         plant.getCode(),
         plant.getName(),
         machineGroup.getName(),
+        section == null ? null : section.getId(),
+        section == null ? null : section.getCode(),
+        section == null ? null : section.getName(),
         machineGroup.getCreatedAt(),
         machineGroup.getUpdatedAt());
   }
@@ -227,6 +266,9 @@ public class MachineGroupService {
       String plantCode,
       String plantName,
       String name,
+      UUID sectionId,
+      String sectionCode,
+      String sectionName,
       Instant createdAt,
       Instant updatedAt) {
   }
@@ -247,5 +289,14 @@ public class MachineGroupService {
   }
 
   public static class PlantNotFoundForMachineGroupException extends RuntimeException {
+  }
+
+  public static class SectionNotFoundForMachineGroupException extends RuntimeException {
+  }
+
+  public static class SectionPlantMismatchException extends RuntimeException {
+  }
+
+  public static class SectionReassignmentRejectedException extends RuntimeException {
   }
 }

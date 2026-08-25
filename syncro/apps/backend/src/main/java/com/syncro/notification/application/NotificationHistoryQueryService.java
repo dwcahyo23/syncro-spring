@@ -66,7 +66,7 @@ public class NotificationHistoryQueryService {
       if (scopedPlantIds.isEmpty()) {
         throw new AlertNotFoundException();
       }
-      alertRepository.findByIdWithDetailsScopedToPlants(alertId, scopedPlantIds)
+      alertRepository.findByIdWithDetailsScopedToPlants(alertId, scopedPlantIds, null)
           .orElseThrow(AlertNotFoundException::new);
     }
 

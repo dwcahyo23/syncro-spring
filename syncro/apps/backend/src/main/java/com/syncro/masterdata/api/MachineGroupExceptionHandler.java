@@ -7,6 +7,9 @@ import com.syncro.masterdata.application.MachineGroupService.MachineGroupDataInt
 import com.syncro.masterdata.application.MachineGroupService.MachineGroupMutationForbiddenException;
 import com.syncro.masterdata.application.MachineGroupService.MachineGroupNotFoundException;
 import com.syncro.masterdata.application.MachineGroupService.PlantNotFoundForMachineGroupException;
+import com.syncro.masterdata.application.MachineGroupService.SectionNotFoundForMachineGroupException;
+import com.syncro.masterdata.application.MachineGroupService.SectionPlantMismatchException;
+import com.syncro.masterdata.application.MachineGroupService.SectionReassignmentRejectedException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -77,6 +80,23 @@ public class MachineGroupExceptionHandler {
   @ExceptionHandler(PlantNotFoundForMachineGroupException.class)
   ResponseEntity<ErrorResponse> plantNotFound() {
     return error(HttpStatus.NOT_FOUND, "PLANT_NOT_FOUND", "Plant was not found.", Map.of());
+  }
+
+  @ExceptionHandler(SectionNotFoundForMachineGroupException.class)
+  ResponseEntity<ErrorResponse> sectionNotFound() {
+    return error(HttpStatus.NOT_FOUND, "SECTION_NOT_FOUND", "Section was not found.", Map.of());
+  }
+
+  @ExceptionHandler(SectionPlantMismatchException.class)
+  ResponseEntity<ErrorResponse> sectionPlantMismatch() {
+    return error(HttpStatus.BAD_REQUEST, "SECTION_PLANT_MISMATCH",
+        "Section belongs to a different plant than the machine group.", Map.of());
+  }
+
+  @ExceptionHandler(SectionReassignmentRejectedException.class)
+  ResponseEntity<ErrorResponse> sectionReassignmentRejected() {
+    return error(HttpStatus.BAD_REQUEST, "SECTION_REASSIGNMENT_REJECTED",
+        "Machine group is already assigned to another section; clear it before reassigning.", Map.of());
   }
 
   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message, Map<String, String> fieldErrors) {

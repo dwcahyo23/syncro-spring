@@ -36,6 +36,7 @@
 
 generated: 2026-05-25
 last_updated: 2026-08-25
+# updated: epic 9 + 9-1 added (in-progress); epic-8 done (8-7 done); epics 10-14 added as backlog
 project: Syncro
 project_key: NOKEY
 tracking_system: file-system
@@ -131,12 +132,63 @@ development_status:
   epic-7-retrospective: optional
 
   # Epic 8: Sparepart Procurement Readiness & Operating Calendar
-  epic-8: in-progress
+  epic-8: done
   8-1-add-garage-object-storage-and-backend-integration: done
   8-2-manage-sparepart-material-code-and-lead-time: done
   8-3-manage-estimated-price-entries-with-currency-and-kurs: done
   8-4-manage-sparepart-image-via-garage: done
   8-5-configure-shift-schedule-with-machine-override: done
   8-6-estimate-counter-rate-and-shift-aware-projections: done
-  8-7-raise-procurement-risk-alert-within-lead-time-window: backlog
+  8-7-raise-procurement-risk-alert-within-lead-time-window: done
   epic-8-retrospective: optional
+
+  # Epic 9: Org Structure & OPA Authorization Foundation
+  epic-9: in-progress
+  9-1-sections-foundation: in-progress
+  9-2-cross-plant-teams: backlog
+  9-3-opa-infrastructure: backlog
+  9-4-role-taxonomy-migration: backlog
+  9-5-opa-enforcement-on-maintenance-endpoints: backlog
+  epic-9-retrospective: optional
+
+  # Epic 10: Workorder Execution
+  epic-10: backlog
+  10-1-workorder-schema-and-categories: backlog
+  10-2-create-and-assign-workorders: backlog
+  10-3-status-lifecycle-and-on-procurement: backlog
+  10-4-repair-sessions-and-mttr: backlog
+  10-5-evidence-and-technical-drawings: backlog
+  10-6-reports-cp-cpk-fmea-and-stop-time: backlog
+  10-7-todos-and-kanban: backlog
+  10-8-ratings: backlog
+  epic-10-retrospective: optional
+
+  # Epic 11: Preventive Maintenance
+  epic-11: backlog
+  11-1-preventive-programs-and-schedules: backlog
+  11-2-checklist-assessment-and-signature: backlog
+  11-3-preventive-report-and-auto-workorder: backlog
+  epic-11-retrospective: optional
+
+  # Epic 12: Sparepart Request & Inventory
+  epic-12: backlog
+  12-1-request-creation-and-types: backlog
+  12-2-request-state-machine: backlog
+  12-3-approval-separation-of-duty-and-escalation: backlog
+  12-4-stock-op-oq-and-new-item-completion: backlog
+  epic-12-retrospective: optional
+
+  # Epic 13: External Sync & Hardening
+  epic-13: backlog
+  13-1-sync-pipeline-foundation: backlog
+  13-2-conflict-resolution-and-field-mapping: backlog
+  13-3-quarantine-and-observability: backlog
+  epic-13-retrospective: optional
+
+  # Epic 14: Dashboards, Reports & Notifications
+  epic-14: backlog
+  14-1-machine-workorder-and-preventive-dashboards: backlog
+  14-2-mtbf-mttr-and-technician-kpi-dashboards: backlog
+  14-3-wysiwyg-print-reports-with-signature: backlog
+  14-4-waha-notifications-and-4-hour-acknowledgment: backlog
+  epic-14-retrospective: optional

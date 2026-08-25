@@ -63,6 +63,7 @@ export const sidebarItems: NavGroup[] = [
         roles: ["SUPER_ADMIN", "MANAGE"],
         subItems: [
           { title: "Plants", url: "/master-data/plants" },
+          { title: "Sections", url: "/master-data/sections" },
           { title: "Machine Groups", url: "/master-data/machine-groups" },
           { title: "Machines", url: "/master-data/machines" },
           { title: "Spareparts", url: "/master-data/spareparts" },

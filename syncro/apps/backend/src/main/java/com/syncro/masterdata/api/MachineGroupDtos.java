@@ -16,12 +16,19 @@ public final class MachineGroupDtos {
       @NotBlank @Size(max = 255) String name) {
   }
 
+  public record MachineGroupSectionRequest(
+      @NotNull UUID sectionId) {
+  }
+
   public record MachineGroupView(
       UUID id,
       UUID plantId,
       String plantCode,
       String plantName,
       String name,
+      UUID sectionId,
+      String sectionCode,
+      String sectionName,
       Instant createdAt,
       Instant updatedAt) {
   }

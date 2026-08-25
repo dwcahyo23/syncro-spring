@@ -150,7 +150,9 @@ public class SparepartAlertCommandService {
     if (scopedPlantIds.isEmpty()) {
       throw new SparepartAlertQueryService.AlertNotFoundException();
     }
-    return alertRepository.findByIdWithDetailsScopedToPlants(alertId, scopedPlantIds)
+    // Alert transitions are not group-scoped in 9.1 (only list/detail reads are); a user who
+    // can see the alert via plant scope may transition it.
+    return alertRepository.findByIdWithDetailsScopedToPlants(alertId, scopedPlantIds, null)
         .orElseThrow(SparepartAlertQueryService.AlertNotFoundException::new);
   }
 

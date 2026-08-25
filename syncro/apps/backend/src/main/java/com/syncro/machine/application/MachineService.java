@@ -13,6 +13,7 @@ import com.syncro.machine.domain.MachineStatus;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.masterdata.infrastructure.MachineGroupRepository;
+import com.syncro.org.application.OperationalScopeService;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -50,16 +51,19 @@ public class MachineService {
   private final PlantScopeService plantScopes;
   private final AuthUserPlantAssignmentRepository assignments;
   private final AuditLogWriter auditLog;
+  private final OperationalScopeService operationalScopes;
   private final Clock clock;
 
   public MachineService(MachineRepository machines, PlantRepository plants, MachineGroupRepository machineGroups,
-      PlantScopeService plantScopes, AuthUserPlantAssignmentRepository assignments, AuditLogWriter auditLog, Clock clock) {
+      PlantScopeService plantScopes, AuthUserPlantAssignmentRepository assignments, AuditLogWriter auditLog,
+      OperationalScopeService operationalScopes, Clock clock) {
     this.machines = machines;
     this.plants = plants;
     this.machineGroups = machineGroups;
     this.plantScopes = plantScopes;
     this.assignments = assignments;
     this.auditLog = auditLog;
+    this.operationalScopes = operationalScopes;
     this.clock = clock;
   }
 
@@ -108,7 +112,7 @@ public class MachineService {
     var pageable = PageRequest.of(normalizedPage, normalizedSize, normalizedSort);
     var result = superAdmin
         ? machines.findAllUnscoped(plantId, machineGroupId, status, normalizedSearch, pageable)
-        : machines.findAllScoped(scopedPlantIds, plantId, machineGroupId, status, normalizedSearch, pageable);
+        : machines.findAllScoped(scopedPlantIds, plantId, machineGroupId, scopedMachineGroupIds(user), status, normalizedSearch, pageable);
     return new MachineListView(
         result.stream().map(this::toView).toList(), result.getTotalElements(), normalizedPage, normalizedSize, sortName(normalizedSort));
   }
@@ -223,6 +227,16 @@ public class MachineService {
       plantScopes.requirePlantAccess(user, machine.getPlant().getId());
     }
     return machine;
+  }
+
+  /**
+   * Derived section-leader machineGroupIds (AD-2). Empty derived set = no group
+   * restriction — Phase 1 plant-scope behavior preserved for non-leaders; a leader
+   * sees only their own groups (sibling-group data in the same section excluded).
+   */
+  private List<UUID> scopedMachineGroupIds(AuthenticatedUser user) {
+    var machineGroupIds = operationalScopes.derive(user).machineGroupIds();
+    return machineGroupIds.isEmpty() ? null : List.copyOf(machineGroupIds);
   }
 
   private void requireMutationRole(AuthenticatedUser user) {

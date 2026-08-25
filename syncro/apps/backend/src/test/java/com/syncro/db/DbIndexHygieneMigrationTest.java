@@ -126,7 +126,7 @@ class DbIndexHygieneMigrationTest extends AbstractPostgresIntegrationTest {
         firstMachine, plantId, groupId);
 
     List<String> scopedCodes = machineRepository
-        .findAllScoped(List.of(plantId), null, null, null, null,
+        .findAllScoped(List.of(plantId), null, null, null, null, null,
             PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "code")))
         .stream()
         .map(MachineEntity::getCode)

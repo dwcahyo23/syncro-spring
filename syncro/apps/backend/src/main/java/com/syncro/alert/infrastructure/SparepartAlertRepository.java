@@ -48,10 +48,12 @@ public interface SparepartAlertRepository extends JpaRepository<SparepartAlertEn
         and (:machineId is null or machine.id = :machineId)
         and (:plantId is null or plant.id = :plantId)
         and (:status is null or alert.status = :status)
+        and (:machineGroupIds is null or machineGroup.id in :machineGroupIds)
       order by alert.createdAt desc
       """)
   Page<SparepartAlertEntity> findAllScoped(
       @Param("plantIds") List<UUID> plantIds,
+      @Param("machineGroupIds") List<UUID> machineGroupIds,
       @Param("machineId") UUID machineId,
       @Param("plantId") UUID plantId,
       @Param("status") SparepartAlertStatus status,
@@ -77,9 +79,11 @@ public interface SparepartAlertRepository extends JpaRepository<SparepartAlertEn
       join fetch installation.sparepart sparepart
       where alert.id = :id
         and plant.id in :plantIds
+        and (:machineGroupIds is null or machineGroup.id in :machineGroupIds)
       """)
   Optional<SparepartAlertEntity> findByIdWithDetailsScopedToPlants(
       @Param("id") UUID id,
-      @Param("plantIds") List<UUID> plantIds);
+      @Param("plantIds") List<UUID> plantIds,
+      @Param("machineGroupIds") List<UUID> machineGroupIds);
 }
 

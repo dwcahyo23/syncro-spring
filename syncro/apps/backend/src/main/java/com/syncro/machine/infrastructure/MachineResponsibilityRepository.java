@@ -4,6 +4,7 @@ import com.syncro.machine.domain.ResponsibilityLevel;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -29,4 +30,13 @@ public interface MachineResponsibilityRepository extends JpaRepository<MachineRe
     @Query("SELECT count(mr) FROM MachineResponsibilityEntity mr " +
            "WHERE mr.machine.plant.id IN :plantIds")
     long countByMachinePlantIdIn(@Param("plantIds") List<UUID> plantIds);
+
+    @Query("""
+        select distinct mr.machine.machineGroup.id
+        from MachineResponsibilityEntity mr
+        where mr.userId = :userId
+          and mr.responsibilityLevel in :levels
+        """)
+    Set<UUID> findDistinctMachineGroupIdsByUserIdAndLevelIn(
+        @Param("userId") UUID userId, @Param("levels") Collection<ResponsibilityLevel> levels);
 }

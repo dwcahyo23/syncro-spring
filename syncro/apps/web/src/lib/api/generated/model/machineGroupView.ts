@@ -14,4 +14,7 @@ export interface MachineGroupView {
   name?: string;
   createdAt?: string;
   updatedAt?: string;
+  sectionId?: string;
+  sectionCode?: string;
+  sectionName?: string;
 }

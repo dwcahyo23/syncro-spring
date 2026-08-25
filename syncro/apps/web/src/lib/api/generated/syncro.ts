@@ -29,9 +29,11 @@ import type {
   AlertListResponse,
   AlertNotificationHistoryResponse,
   AlertView,
+  AssignSectionRequest,
   AuditLogListResponse,
   AuthUserView,
   CreateMachineResponsibilityRequest,
+  CreateSectionRequest,
   CreateSparepartImageBody,
   CreateSparepartImageParams,
   Health200,
@@ -46,6 +48,7 @@ import type {
   ListMachineResponsibilitiesParams,
   ListMachineSparepartInstallationsParams,
   ListMachinesParams,
+  ListSectionsParams,
   ListSparepartTaxonomiesParams,
   ListSparepartsParams,
   ListTelemetryQuarantineParams,
@@ -71,6 +74,8 @@ import type {
   PlantView,
   ResolveOverrideRequest,
   ResolveRequest,
+  SectionListResponse,
+  SectionView,
   SetShiftConfigRequest,
   SetupCompletenessResponse,
   SparepartImageView,
@@ -87,6 +92,7 @@ import type {
   TelemetryDataQualityStatus,
   TelemetryFreshnessStatus,
   UpdateMachineResponsibilityRequest,
+  UpdateSectionRequest,
   UpsertTemplateRequest,
   WahaTemplateView
 } from './model';
@@ -7948,4 +7954,578 @@ export function useGetAlertNotifications<TData = Awaited<ReturnType<typeof getAl
 
 
 
+
+export type listSectionsResponse200 = {
+  data: SectionListResponse
+  status: 200
+}
+
+export type listSectionsResponseSuccess = (listSectionsResponse200) & {
+  headers: Headers;
+};
+;
+
+export type listSectionsResponse = (listSectionsResponseSuccess)
+
+export const getListSectionsUrl = (params?: ListSectionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/sections?${stringifiedParams}` : `/api/v1/sections`
+}
+
+/**
+ * @summary List sections
+ */
+export const listSections = async (params?: ListSectionsParams, options?: Parameters<typeof syncroFetch>[1]): Promise<listSectionsResponse> => {
+
+  return syncroFetch<listSectionsResponse>(getListSectionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSectionsQueryKey = (params?: ListSectionsParams,) => {
+    return [
+    `/api/v1/sections`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListSectionsQueryOptions = <TData = Awaited<ReturnType<typeof listSections>>, TError = unknown>(params?: ListSectionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSections>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSectionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSections>>> = ({ signal }) => listSections(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSections>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListSectionsQueryResult = NonNullable<Awaited<ReturnType<typeof listSections>>>
+export type ListSectionsQueryError = unknown
+
+
+export function useListSections<TData = Awaited<ReturnType<typeof listSections>>, TError = unknown>(
+ params: undefined |  ListSectionsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSections>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSections>>,
+          TError,
+          Awaited<ReturnType<typeof listSections>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListSections<TData = Awaited<ReturnType<typeof listSections>>, TError = unknown>(
+ params?: ListSectionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSections>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSections>>,
+          TError,
+          Awaited<ReturnType<typeof listSections>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListSections<TData = Awaited<ReturnType<typeof listSections>>, TError = unknown>(
+ params?: ListSectionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSections>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List sections
+ */
+
+export function useListSections<TData = Awaited<ReturnType<typeof listSections>>, TError = unknown>(
+ params?: ListSectionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listSections>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListSectionsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type createSectionResponse201 = {
+  data: SectionView
+  status: 201
+}
+
+export type createSectionResponseSuccess = (createSectionResponse201) & {
+  headers: Headers;
+};
+;
+
+export type createSectionResponse = (createSectionResponseSuccess)
+
+export const getCreateSectionUrl = () => {
+
+
+
+
+  return `/api/v1/sections`
+}
+
+/**
+ * @summary Create a section
+ */
+export const createSection = async (createSectionRequest: CreateSectionRequest, options?: Parameters<typeof syncroFetch>[1]): Promise<createSectionResponse> => {
+
+  return syncroFetch<createSectionResponse>(getCreateSectionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createSectionRequest)
+  }
+);}
+
+
+
+
+
+export const getCreateSectionMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSection>>, TError,{data: CreateSectionRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSection>>, TError,{data: CreateSectionRequest}, TContext> => {
+
+const mutationKey = ['createSection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSection>>, {data: CreateSectionRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createSection(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSectionMutationResult = NonNullable<Awaited<ReturnType<typeof createSection>>>
+    export type CreateSectionMutationBody = CreateSectionRequest
+    export type CreateSectionMutationError = unknown
+
+    /**
+ * @summary Create a section
+ */
+export const useCreateSection = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSection>>, TError,{data: CreateSectionRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createSection>>,
+        TError,
+        {data: CreateSectionRequest},
+        TContext
+      > => {
+      return useMutation(getCreateSectionMutationOptions(options), queryClient);
+    }
+
+export type getSectionResponse200 = {
+  data: SectionView
+  status: 200
+}
+
+export type getSectionResponseSuccess = (getSectionResponse200) & {
+  headers: Headers;
+};
+;
+
+export type getSectionResponse = (getSectionResponseSuccess)
+
+export const getGetSectionUrl = (sectionId: string,) => {
+
+
+
+
+  return `/api/v1/sections/${sectionId}`
+}
+
+/**
+ * @summary Get a section
+ */
+export const getSection = async (sectionId: string, options?: Parameters<typeof syncroFetch>[1]): Promise<getSectionResponse> => {
+
+  return syncroFetch<getSectionResponse>(getGetSectionUrl(sectionId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSectionQueryKey = (sectionId: string,) => {
+    return [
+    `/api/v1/sections/${sectionId}`
+    ] as const;
+    }
+
+
+export const getGetSectionQueryOptions = <TData = Awaited<ReturnType<typeof getSection>>, TError = unknown>(sectionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSection>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSectionQueryKey(sectionId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSection>>> = ({ signal }) => getSection(sectionId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: sectionId !== null && sectionId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSection>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSectionQueryResult = NonNullable<Awaited<ReturnType<typeof getSection>>>
+export type GetSectionQueryError = unknown
+
+
+export function useGetSection<TData = Awaited<ReturnType<typeof getSection>>, TError = unknown>(
+ sectionId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSection>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSection>>,
+          TError,
+          Awaited<ReturnType<typeof getSection>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSection<TData = Awaited<ReturnType<typeof getSection>>, TError = unknown>(
+ sectionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSection>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSection>>,
+          TError,
+          Awaited<ReturnType<typeof getSection>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSection<TData = Awaited<ReturnType<typeof getSection>>, TError = unknown>(
+ sectionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSection>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get a section
+ */
+
+export function useGetSection<TData = Awaited<ReturnType<typeof getSection>>, TError = unknown>(
+ sectionId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSection>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSectionQueryOptions(sectionId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type updateSectionResponse200 = {
+  data: SectionView
+  status: 200
+}
+
+export type updateSectionResponse409 = {
+  data: SectionView
+  status: 409
+}
+
+export type updateSectionResponseSuccess = (updateSectionResponse200) & {
+  headers: Headers;
+};
+export type updateSectionResponseError = (updateSectionResponse409) & {
+  headers: Headers;
+};
+
+export type updateSectionResponse = (updateSectionResponseSuccess | updateSectionResponseError)
+
+export const getUpdateSectionUrl = (sectionId: string,) => {
+
+
+
+
+  return `/api/v1/sections/${sectionId}`
+}
+
+/**
+ * @summary Update a section (name, active); deactivation is guarded
+ */
+export const updateSection = async (sectionId: string,
+    updateSectionRequest: UpdateSectionRequest, options?: Parameters<typeof syncroFetch>[1]): Promise<updateSectionResponse> => {
+
+  return syncroFetch<updateSectionResponse>(getUpdateSectionUrl(sectionId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateSectionRequest)
+  }
+);}
+
+
+
+
+
+export const getUpdateSectionMutationOptions = <TError = SectionView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSection>>, TError,{sectionId: string;data: UpdateSectionRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSection>>, TError,{sectionId: string;data: UpdateSectionRequest}, TContext> => {
+
+const mutationKey = ['updateSection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSection>>, {sectionId: string;data: UpdateSectionRequest}> = (props) => {
+          const {sectionId,data} = props ?? {};
+
+          return  updateSection(sectionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSectionMutationResult = NonNullable<Awaited<ReturnType<typeof updateSection>>>
+    export type UpdateSectionMutationBody = UpdateSectionRequest
+    export type UpdateSectionMutationError = SectionView
+
+    /**
+ * @summary Update a section (name, active); deactivation is guarded
+ */
+export const useUpdateSection = <TError = SectionView,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSection>>, TError,{sectionId: string;data: UpdateSectionRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateSection>>,
+        TError,
+        {sectionId: string;data: UpdateSectionRequest},
+        TContext
+      > => {
+      return useMutation(getUpdateSectionMutationOptions(options), queryClient);
+    }
+
+export type assignMachineGroupSectionResponse204 = {
+  data: void
+  status: 204
+}
+
+export type assignMachineGroupSectionResponseSuccess = (assignMachineGroupSectionResponse204) & {
+  headers: Headers;
+};
+;
+
+export type assignMachineGroupSectionResponse = (assignMachineGroupSectionResponseSuccess)
+
+export const getAssignMachineGroupSectionUrl = (machineGroupId: string,) => {
+
+
+
+
+  return `/api/v1/machine-groups/${machineGroupId}/section`
+}
+
+/**
+ * @summary Assign the machine group to a section (reassignment rejected)
+ */
+export const assignMachineGroupSection = async (machineGroupId: string,
+    assignSectionRequest: AssignSectionRequest, options?: Parameters<typeof syncroFetch>[1]): Promise<assignMachineGroupSectionResponse> => {
+
+  return syncroFetch<assignMachineGroupSectionResponse>(getAssignMachineGroupSectionUrl(machineGroupId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(assignSectionRequest)
+  }
+);}
+
+
+
+
+
+export const getAssignMachineGroupSectionMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignMachineGroupSection>>, TError,{machineGroupId: string;data: AssignSectionRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assignMachineGroupSection>>, TError,{machineGroupId: string;data: AssignSectionRequest}, TContext> => {
+
+const mutationKey = ['assignMachineGroupSection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assignMachineGroupSection>>, {machineGroupId: string;data: AssignSectionRequest}> = (props) => {
+          const {machineGroupId,data} = props ?? {};
+
+          return  assignMachineGroupSection(machineGroupId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssignMachineGroupSectionMutationResult = NonNullable<Awaited<ReturnType<typeof assignMachineGroupSection>>>
+    export type AssignMachineGroupSectionMutationBody = AssignSectionRequest
+    export type AssignMachineGroupSectionMutationError = unknown
+
+    /**
+ * @summary Assign the machine group to a section (reassignment rejected)
+ */
+export const useAssignMachineGroupSection = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignMachineGroupSection>>, TError,{machineGroupId: string;data: AssignSectionRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof assignMachineGroupSection>>,
+        TError,
+        {machineGroupId: string;data: AssignSectionRequest},
+        TContext
+      > => {
+      return useMutation(getAssignMachineGroupSectionMutationOptions(options), queryClient);
+    }
+
+export type clearMachineGroupSectionResponse204 = {
+  data: void
+  status: 204
+}
+
+export type clearMachineGroupSectionResponseSuccess = (clearMachineGroupSectionResponse204) & {
+  headers: Headers;
+};
+;
+
+export type clearMachineGroupSectionResponse = (clearMachineGroupSectionResponseSuccess)
+
+export const getClearMachineGroupSectionUrl = (machineGroupId: string,) => {
+
+
+
+
+  return `/api/v1/machine-groups/${machineGroupId}/section`
+}
+
+/**
+ * @summary Clear the machine group's section assignment
+ */
+export const clearMachineGroupSection = async (machineGroupId: string, options?: Parameters<typeof syncroFetch>[1]): Promise<clearMachineGroupSectionResponse> => {
+
+  return syncroFetch<clearMachineGroupSectionResponse>(getClearMachineGroupSectionUrl(machineGroupId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getClearMachineGroupSectionMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof clearMachineGroupSection>>, TError,{machineGroupId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof clearMachineGroupSection>>, TError,{machineGroupId: string}, TContext> => {
+
+const mutationKey = ['clearMachineGroupSection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof clearMachineGroupSection>>, {machineGroupId: string}> = (props) => {
+          const {machineGroupId} = props ?? {};
+
+          return  clearMachineGroupSection(machineGroupId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ClearMachineGroupSectionMutationResult = NonNullable<Awaited<ReturnType<typeof clearMachineGroupSection>>>
+
+    export type ClearMachineGroupSectionMutationError = unknown
+
+    /**
+ * @summary Clear the machine group's section assignment
+ */
+export const useClearMachineGroupSection = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof clearMachineGroupSection>>, TError,{machineGroupId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof clearMachineGroupSection>>,
+        TError,
+        {machineGroupId: string},
+        TContext
+      > => {
+      return useMutation(getClearMachineGroupSectionMutationOptions(options), queryClient);
+    }
 

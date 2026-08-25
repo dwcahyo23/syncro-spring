@@ -13,6 +13,7 @@ public interface MachineGroupRepository extends JpaRepository<MachineGroupEntity
   @Query("""
       select group from MachineGroupEntity group
       join fetch group.plant plant
+      left join fetch group.section section
       where plant.id = :plantId
         and (:search is null or lower(group.name) like :search escape '\\' or lower(plant.code) like :search escape '\\' or lower(plant.name) like :search escape '\\')
       """)
@@ -23,4 +24,16 @@ public interface MachineGroupRepository extends JpaRepository<MachineGroupEntity
   boolean existsByPlantIdAndNameIgnoreCase(UUID plantId, String name);
 
   long countByPlantIdIn(List<UUID> plantIds);
+
+  @Query("""
+      select case when count(mg) > 0 then true else false end
+      from MachineGroupEntity mg
+      where mg.sectionId = :sectionId
+        and exists (
+          select m from MachineEntity m
+          where m.machineGroup.id = mg.id
+            and m.status = com.syncro.machine.domain.MachineStatus.ACTIVE
+        )
+      """)
+  boolean existsGroupInSectionWithActiveMachine(@Param("sectionId") UUID sectionId);
 }

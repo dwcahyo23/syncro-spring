@@ -1,6 +1,7 @@
 package com.syncro.masterdata.infrastructure;
 
 import com.syncro.auth.infrastructure.PlantEntity;
+import com.syncro.org.infrastructure.SectionEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -23,6 +24,13 @@ public class MachineGroupEntity {
 
   @Column(nullable = false)
   private String name;
+
+  @Column(name = "section_id")
+  private UUID sectionId;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "section_id", insertable = false, updatable = false)
+  private SectionEntity section;
 
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
@@ -53,6 +61,18 @@ public class MachineGroupEntity {
     return name;
   }
 
+  public UUID getSectionId() {
+    return sectionId;
+  }
+
+  public void setSectionId(UUID sectionId) {
+    this.sectionId = sectionId;
+  }
+
+  public SectionEntity getSection() {
+    return section;
+  }
+
   public Instant getCreatedAt() {
     return createdAt;
   }
@@ -64,6 +84,16 @@ public class MachineGroupEntity {
   public void update(PlantEntity plant, String name, Instant updatedAt) {
     this.plant = plant;
     this.name = name;
+    this.updatedAt = updatedAt;
+  }
+
+  public void assignSection(UUID sectionId, Instant updatedAt) {
+    this.sectionId = sectionId;
+    this.updatedAt = updatedAt;
+  }
+
+  public void clearSection(Instant updatedAt) {
+    this.sectionId = null;
     this.updatedAt = updatedAt;
   }
 }

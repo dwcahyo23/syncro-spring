@@ -46,11 +46,14 @@ import {
   getGetMachineGroupShiftConfigQueryKey,
   getListMachineGroupsQueryKey,
   getListPlantsQueryKey,
+  useAssignMachineGroupSection,
+  useClearMachineGroupSection,
   useCreateMachineGroup,
   useDeleteMachineGroup,
   useGetMachineGroupShiftConfig,
   useListMachineGroups,
   useListPlants,
+  useListSections,
   useUpdateMachineGroup,
   useUpdateMachineGroupShiftConfig,
 } from "@/lib/api/generated/syncro";
@@ -106,6 +109,19 @@ export function MachineGroupManagement() {
   const deleteGroup = useDeleteMachineGroup({
     mutation: { onSuccess: () => invalidateMachineGroupData(effectivePlantId) },
   });
+  const sections = useListSections(
+    { plantId: effectivePlantId || undefined, includeInactive: true },
+    { query: { enabled: Boolean(effectivePlantId) && !isAssignedEmpty, queryKey: ["sections", effectivePlantId] } },
+  );
+  const sectionItems = sections.data?.data.items ?? [];
+  const assignSection = useAssignMachineGroupSection({
+    mutation: { onSuccess: () => invalidateMachineGroupData(effectivePlantId) },
+  });
+  const clearSection = useClearMachineGroupSection({
+    mutation: { onSuccess: () => invalidateMachineGroupData(effectivePlantId) },
+  });
+  const [sectionTarget, setSectionTarget] = useState<MachineGroupView | null>(null);
+  const [selectedSectionId, setSelectedSectionId] = useState("");
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
   const [form, setForm] = useState<MachineGroupFormState>(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -242,6 +258,39 @@ export function MachineGroupManagement() {
     }
   }
 
+  function openSectionDialog(group: MachineGroupView) {
+    setSectionTarget(group);
+    setSelectedSectionId(group.sectionId ?? "");
+  }
+
+  async function submitSectionAssignment() {
+    if (!sectionTarget) {
+      return;
+    }
+    try {
+      if (selectedSectionId) {
+        await assignSection.mutateAsync({
+          machineGroupId: sectionTarget.id ?? "",
+          data: { sectionId: selectedSectionId },
+        });
+        toast.success("Section assigned.");
+      } else if (sectionTarget.sectionId) {
+        await clearSection.mutateAsync({ machineGroupId: sectionTarget.id ?? "" });
+        toast.success("Section assignment cleared.");
+      }
+      setSectionTarget(null);
+    } catch (error) {
+      const response = errorResponse(error);
+      if (response?.code === "SECTION_REASSIGNMENT_REJECTED") {
+        toast.error("This group already belongs to another section. Clear the current section first.");
+      } else if (response?.code === "SECTION_PLANT_MISMATCH") {
+        toast.error("The selected section belongs to a different plant.");
+      } else {
+        toast.error(response?.message ?? "Section assignment failed.");
+      }
+    }
+  }
+
   return (
     <div className="space-y-4">
       <Card>
@@ -309,6 +358,7 @@ export function MachineGroupManagement() {
                     <DataTableSortHeader title="Name" field="name" sort={sort} onSortChange={setSort} />
                   </TableHead>
                   <TableHead>Plant</TableHead>
+                  <TableHead>Section</TableHead>
                   <TableHead>
                     <DataTableSortHeader title="Created" field="createdAt" sort={sort} onSortChange={setSort} />
                   </TableHead>
@@ -322,10 +372,23 @@ export function MachineGroupManagement() {
                     <TableCell>
                       {group.plantCode} · {group.plantName}
                     </TableCell>
+                    <TableCell>
+                      {group.sectionCode ? (
+                        <Badge variant="outline">
+                          {group.sectionCode}
+                          {group.sectionName ? ` · ${group.sectionName}` : ""}
+                        </Badge>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
                     <TableCell>{group.createdAt ? formatDate(group.createdAt) : "-"}</TableCell>
                     <TableCell className="text-right">
                       {canMutate ? (
                         <div className="flex justify-end gap-2">
+                          <Button variant="outline" size="sm" onClick={() => openSectionDialog(group)}>
+                            Section
+                          </Button>
                           <Button variant="outline" size="sm" onClick={() => openEditDialog(group)}>
                             Edit
                           </Button>
@@ -435,6 +498,46 @@ export function MachineGroupManagement() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={sectionTarget !== null} onOpenChange={(open) => !open && setSectionTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign section</DialogTitle>
+            <DialogDescription>
+              {sectionTarget?.name} belongs to exactly one section. Reassignment to a different section is rejected —
+              clear the current section first.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2">
+            <Label htmlFor="group-section">Section</Label>
+            <Select value={selectedSectionId} onValueChange={setSelectedSectionId}>
+              <SelectTrigger id="group-section">
+                <SelectValue placeholder="No section (unassigned)" />
+              </SelectTrigger>
+              <SelectContent>
+                {sectionItems.map((section) => (
+                  <SelectItem key={section.id} value={section.id ?? ""}>
+                    {section.code} — {section.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setSectionTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void submitSectionAssignment()}
+              disabled={assignSection.isPending || clearSection.isPending}
+            >
+              {assignSection.isPending || clearSection.isPending ? <Loader2Icon className="animate-spin" /> : null}
+              Save assignment
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

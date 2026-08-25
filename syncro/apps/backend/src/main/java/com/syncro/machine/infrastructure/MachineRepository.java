@@ -34,6 +34,7 @@ public interface MachineRepository extends JpaRepository<MachineEntity, UUID> {
       where plant.id in :plantIds
         and (:plantId is null or plant.id = :plantId)
         and (:machineGroupId is null or machineGroup.id = :machineGroupId)
+        and (:machineGroupIds is null or machineGroup.id in :machineGroupIds)
         and (:status is null or machine.status = :status)
         and (:search is null or lower(machine.code) like :search escape '\\' or lower(machine.name) like :search escape '\\' or lower(plant.code) like :search escape '\\' or lower(plant.name) like :search escape '\\')
       """)
@@ -41,6 +42,7 @@ public interface MachineRepository extends JpaRepository<MachineEntity, UUID> {
       @Param("plantIds") List<UUID> plantIds,
       @Param("plantId") UUID plantId,
       @Param("machineGroupId") UUID machineGroupId,
+      @Param("machineGroupIds") List<UUID> machineGroupIds,
       @Param("status") MachineStatus status,
       @Param("search") String search,
       Pageable pageable);
