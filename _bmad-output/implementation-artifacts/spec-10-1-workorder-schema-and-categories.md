@@ -2,9 +2,10 @@
 title: 'Workorder Schema & Categories'
 type: 'feature'
 created: '2026-08-26'
-status: 'in-review'
-review_loop_iteration: 0
+status: 'done'
+review_loop_iteration: 1
 followup_review_recommended: false
+final_revision: 52f1e00
 baseline_revision: db0aadb
 context:
   - '{project-root}/_bmad-output/project-context.md'
@@ -149,7 +150,21 @@ warnings: []
 ## Verification
 
 **Commands:**
-- `mvn -o -f syncro/apps/backend/pom.xml test "-Dtest=WorkorderSchemaMigrationTest,WorkOrderCategoryServiceTest,WorkOrderCategoryControllerTest,WorkOrderIdGeneratorTest"` -- per-class JVM (DW-127). Expected: BUILD SUCCESS.
-- `opa test syncro/authz/policy/` -- 38+tests pass.
-- `cd syncro/apps/web && npx tsc --noEmit` -- green (no frontend changes in this story).
-- `.env.example` enforced-paths includes `/api/v1/work-order-categories/**`.
+- `mvn -o -f syncro/apps/backend/pom.xml test "-Dtest=WorkOrderIdGeneratorTest,WorkOrderCategoryServiceTest,WorkOrderCategoryControllerTest,WorkorderSchemaMigrationTest"` -- per-class JVM (DW-127): ID gen 4/4, service 7/7, controller 7/7, migration 8/8. All BUILD SUCCESS.
+- `cd syncro/authz && ./run-opa-test.ps1` -- PASS 46/46.
+- `cd syncro/apps/web && npx tsc --noEmit` -- green (no frontend changes).
+
+## Auto Run Result
+
+| Step | Outcome | Notes |
+|------|---------|-------|
+| 01 route | pass | epic 10, story 1; epic-10-context compiled via subagent |
+| 02 plan | pass | spec-10-1 written; schema + categories + ID generator |
+| 03 implement | pass | V47 migration, WorkOrderIdGenerator, category CRUD, rego; subagent returned clean; verified independently |
+| 04 review | pass | Blind Hunter (3 medium/2 low) + Edge Case Hunter (3 P2/4 P3); 6 patches applied, 1 bad_spec aligned, 2 defers (DW-134, DW-135), 3 rejects |
+| commit | 52f1e00 | `feat(workorder): schema, categories and WO id generator (story 10-1)` |
+| finalize | 52f1e00~1 | status done; followup_review_recommended: false |
+
+**Defers appended:** DW-134 (UTC month prefix vs plant-local zone), DW-135 (WorkorderIdExhaustedException handler for 10-2).
+
+**Residual risks:** ID format WO-YYMM is UTC-based (DW-134); the known multi-integration-class Testcontainers quirk (DW-127) persists; no frontend changes in this story.
