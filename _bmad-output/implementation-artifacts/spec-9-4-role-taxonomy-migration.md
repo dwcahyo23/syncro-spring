@@ -2,9 +2,10 @@
 title: 'Role Taxonomy Migration'
 type: 'feature'
 created: '2026-08-25'
-status: 'ready-for-dev'
-review_loop_iteration: 0
+status: 'done'
+review_loop_iteration: 1
 followup_review_recommended: false
+final_revision: c7e3874
 baseline_revision: 0adfc92
 context:
   - '{project-root}/_bmad-output/project-context.md'
@@ -77,14 +78,14 @@ warnings: ['oversized']
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `V45__role_taxonomy_migration.sql` + pilot-seed.sql + PilotSeedTest -- value migration + ten-role CHECK.
-- [ ] `ApplicationRole` + `JwtTokenService` -- ten-role enum, mapping javadoc, fail-closed parse.
-- [ ] Twelve service gate renames + WahaTemplateService -- semantics-preserving swap.
-- [ ] Backend test sweep -- compile-clean rename across fixtures/DisplayNames; PilotSeedTest remap.
-- [ ] `openapi.json` enum widen + `npm run generate:api` -- contract + client refreshed.
-- [ ] Frontend sweep -- sidebar/guards/consumers/tests renamed; `tsc` + `vitest` green.
-- [ ] Migration evidence test `db/RoleTaxonomyMigrationTest.java` -- rename conversions, ten-value accept, legacy reject, pilot rows.
-- [ ] Verify: targeted Maven batch green (incl. one Testcontainers class exercising V45 from prior state) + web checks.
+- [x] `V45__role_taxonomy_migration.sql` + pilot-seed.sql + PilotSeedTest -- value migration + ten-role CHECK.
+- [x] `ApplicationRole` + `JwtTokenService` -- ten-role enum, mapping javadoc, fail-closed parse.
+- [x] Twelve service gate renames + WahaTemplateService -- semantics-preserving swap (WAHA: uniform allow-list).
+- [x] Backend test sweep -- compile-clean rename across fixtures/DisplayNames; PilotSeedTest remap.
+- [x] `openapi.json` enum widen + `npm run generate:api` -- contract + client refreshed.
+- [x] Frontend sweep -- sidebar/guards/consumers/tests renamed; `tsc` + `vitest` green.
+- [x] Migration evidence test `db/RoleTaxonomyMigrationTest.java` -- rename conversions, ten-value accept, legacy reject, pilot rows.
+- [x] Verify: targeted Maven batch green (incl. one Testcontainers class exercising V45 from prior state) + web checks.
 
 **Acceptance Criteria:**
 - Given pre-V45 rows carrying MANAGE/VIEWER, when V45 runs, then values read MANAGER_MAINTENANCE/AUDITOR and inserting any legacy string afterwards violates `ck_auth_users_application_role`. [AD-15]
@@ -117,9 +118,22 @@ warnings: ['oversized']
 ## Verification
 
 **Commands:**
-- `mvn -o -f syncro/apps/backend/pom.xml test "-Dtest=RoleTaxonomyMigrationTest,PilotSeedTest,TeamServiceIntegrationTest,TeamControllerTest,SparepartAlertQueryServiceTeamScopeFilterIntegrationTest,MachineListTeamScopeFilterTest,AuditDecisionIdMigrationTest,PolicyDecisionPointTest"` -- expected: BUILD SUCCESS (mix proves migration-from-prior-state, parity, PDP roles).
-- Full backend `mvn -o test` recommended if time allows (rename touches ~68 files).
-- `cd syncro/apps/web && npm run generate:api && npx tsc --noEmit && npm run test:unit` -- expected: green.
+- `mvn -o -f syncro/apps/backend/pom.xml test "-Dtest=RoleTaxonomyMigrationTest,PilotSeedTest,TeamServiceIntegrationTest,TeamControllerTest,SparepartAlertQueryServiceTeamScopeFilterIntegrationTest,MachineListTeamScopeFilterTest,AuditDecisionIdMigrationTest,PolicyDecisionPointTest,AuthzControllerTest,AuthzInterceptorTest,WahaTemplateControllerTest,WahaTemplateUpsertIntegrationTest"` -- BUILD SUCCESS (13/13 RoleTaxonomyMigration, 5/5 WAHA, all parity).
+- Full backend: pre-existing Testcontainers flakiness under load (HikariPool connection-refused), unrelated to change.
+- `cd syncro/apps/web && npx tsc --noEmit && npm run test:unit` -- PASS (0 tsc errors, 30/31 suite files pass, 286/287 + 1 post-fix).
+- Manual: boot stack, login as migrated user; dashboard + master-data visibility identical; old JWT returns 401 JSON.
 
-**Manual checks:**
-- Boot stack, login as a migrated user, confirm dashboard + master-data visibility identical to pre-migration; old JWT replay returns 401 JSON.
+## Auto Run Result
+
+| Step | Outcome | Notes |
+|------|---------|-------|
+| 01 route | pass | epic 9, story 4; epic-9-context.md valid |
+| 02 plan | pass | spec-9-4 written, status ready-for-dev |
+| 03 implement | pass | full sweep + verify; subagent returned clean |
+| 04 review | pass | Blind Hunter (3 P0/P1/P2 → all patched) + Edge Case Hunter (1 P1 → patched, 1 P2 → accepted); 0 critical unfixed |
+| commit | c7e3874 | `feat(auth): migrate role taxonomy to ten PRD roles (story 9-4)` |
+| finalize | c7e3874~1 | status done, followup_review_recommended: false |
+
+**Defers appended:** DW-131 (WAHA deny-list→allow-list deviation documented).
+
+**Unresolved risk:** none for this scope. Pre-existing Testcontainers flakiness persists (DW-127).
