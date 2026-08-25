@@ -79,7 +79,7 @@ public class PlantService {
       assignments.save(new AuthUserPlantAssignmentEntity(UUID.fromString(user.id()), plant.getId(), now));
     }
     auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.PLANT, plant.getId(), plant.getCode(),
-        plant.getId(), null, PlantAuditValues.of(plant)));
+        plant.getId(), null, PlantAuditValues.of(plant), null));
     return toView(plant);
   }
 
@@ -100,7 +100,7 @@ public class PlantService {
     plant.update(code, normalizeName(command.name()), Instant.now(clock));
     var saved = savePlant(plant);
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PLANT, plantId, entityLabel, plantId,
-        previous, PlantAuditValues.of(saved)));
+        previous, PlantAuditValues.of(saved), null));
     return toView(saved);
   }
 
@@ -116,7 +116,7 @@ public class PlantService {
     plants.delete(plant);
     plants.flush();
     auditLog.record(user, new AuditRecord(AuditAction.DELETE, AuditEntityType.PLANT, plantId, entityLabel, null,
-        previous, null));
+        previous, null, null));
   }
 
   private void requireMutationRole(AuthenticatedUser user) {

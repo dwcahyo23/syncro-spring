@@ -166,7 +166,7 @@ public class MachineService {
         command.status(), normalizeOptional(command.brand()), command.installedAt(), normalizeOptional(command.notes()),
         optionalTelemetryFields, now, now));
     auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.MACHINE, machine.getId(), machine.getCode(),
-        command.plantId(), null, MachineAuditValues.of(machine)));
+        command.plantId(), null, MachineAuditValues.of(machine), null));
     return toView(machine);
   }
 
@@ -202,7 +202,7 @@ public class MachineService {
         command.installedAt(), normalizeOptional(command.notes()), optionalTelemetryFields, Instant.now(clock));
     var saved = saveMachine(machine);
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.MACHINE, machineId, entityLabel, plantId,
-        previous, MachineAuditValues.of(saved)));
+        previous, MachineAuditValues.of(saved), null));
     return toView(saved);
   }
 
@@ -216,7 +216,7 @@ public class MachineService {
       machines.delete(machine);
       machines.flush();
       auditLog.record(user, new AuditRecord(AuditAction.DELETE, AuditEntityType.MACHINE, machineId, entityLabel,
-          machine.getPlant().getId(), previous, null));
+          machine.getPlant().getId(), previous, null, null));
     } catch (DataIntegrityViolationException exception) {
       throw new MachineDataIntegrityException();
     }

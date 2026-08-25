@@ -94,7 +94,7 @@ class AuditLogWiringIntegrationTest extends AbstractPostgresIntegrationTest {
         "alert-writer-label",
         null,
         null,
-        Map.of("thresholdPercentage", 90)));
+        Map.of("thresholdPercentage", 90), null));
 
     var response = auditLog.list(admin,
         new AuditLogQuery(AuditEntityType.ALERT, null, null, null, null, null, 0, 100, "createdAt,asc"));

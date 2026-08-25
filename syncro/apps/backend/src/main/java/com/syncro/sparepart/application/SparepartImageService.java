@@ -92,7 +92,7 @@ public class SparepartImageService {
     var previous = previousKey == null ? null : Map.<String, Object>of("imageObjectKey", previousKey);
     auditLog.record(user, new AuditRecord(action, AuditEntityType.SPAREPART, sparepartId,
         saved.getCode(), saved.getMachine().getPlant().getId(), previous,
-        Map.<String, Object>of("imageObjectKey", newKey)));
+        Map.<String, Object>of("imageObjectKey", newKey), null));
     return new SparepartImageView(saved.getId(), newKey, presignedGetUrl(newKey));
   }
 
@@ -111,7 +111,7 @@ public class SparepartImageService {
     var saved = spareparts.saveAndFlush(sparepart);
     auditLog.record(user, new AuditRecord(AuditAction.DELETE, AuditEntityType.SPAREPART,
         sparepartId, saved.getCode(), saved.getMachine().getPlant().getId(),
-        Map.<String, Object>of("imageObjectKey", previousKey), null));
+        Map.<String, Object>of("imageObjectKey", previousKey), null, null));
   }
 
   private void validate(SparepartImageCommand command) {

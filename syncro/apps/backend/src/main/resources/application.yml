@@ -93,6 +93,26 @@ syncro:
       wait-duration-in-open-state: ${SYNCRO_WAHA_CB_WAIT_MS:60000}ms
       # Number of probe calls allowed in HALF_OPEN state (default: 3)
       permitted-calls-in-half-open: ${SYNCRO_WAHA_CB_HALF_OPEN_CALLS:3}
+  opa:
+    url: http://${OPA_HOST}:${OPA_PORT}
+    resilience:
+      # HTTP connect + read timeout per OPA call (default: 5 seconds)
+      timeout: ${SYNCRO_OPA_TIMEOUT_MS:5000}ms
+      # Failure-rate threshold (%) at which the circuit opens (default: 50%)
+      failure-rate-threshold: ${SYNCRO_OPA_CB_FAILURE_RATE:50}
+      # Minimum number of calls before failure rate is evaluated (default: 5)
+      minimum-number-of-calls: ${SYNCRO_OPA_CB_MIN_CALLS:5}
+      # Sliding window size for failure rate computation (default: 10)
+      sliding-window-size: ${SYNCRO_OPA_CB_WINDOW_SIZE:10}
+      # Time circuit stays OPEN before transitioning to HALF_OPEN (default: 60 seconds)
+      wait-duration-in-open-state: ${SYNCRO_OPA_CB_WAIT_MS:60000}ms
+      # Number of probe calls allowed in HALF_OPEN state (default: 3)
+      permitted-calls-in-half-open: ${SYNCRO_OPA_CB_HALF_OPEN_CALLS:3}
+  authz:
+    # Paths gated by the AuthzInterceptor; empty until story 9.5 rolls out enforcement
+    enforced-paths: ${SYNCRO_AUTHZ_ENFORCED_PATHS:}
+    # Ant patterns still allowed when OPA is unreachable (fail-deny everywhere else)
+    degraded-allowlist: ${SYNCRO_AUTHZ_DEGRADED_ALLOWLIST:/api/v1/health,/actuator/**}
   notification:
     worker:
       # Poll interval in milliseconds for the notification dispatch worker (default: 30 seconds)

@@ -41,6 +41,11 @@ syncro:
   waha:
     url: http://${WAHA_HOST:localhost}:${WAHA_PORT:3000}
     api-key: ${WAHA_API_KEY:syncro-waha-dev-key}
+  opa:
+    url: http://${OPA_HOST:localhost}:${OPA_PORT:18181}
+  authz:
+    enforced-paths: ${SYNCRO_AUTHZ_ENFORCED_PATHS:}
+    degraded-allowlist: ${SYNCRO_AUTHZ_DEGRADED_ALLOWLIST:/api/v1/health,/actuator/**}
   garage:
     url: http://${GARAGE_HOST:localhost}:${GARAGE_S3_PORT:3900}
     access-key: ${GARAGE_ACCESS_KEY:syncro-garage-dev}

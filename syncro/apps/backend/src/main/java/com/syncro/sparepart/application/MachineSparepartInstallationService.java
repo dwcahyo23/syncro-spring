@@ -88,7 +88,7 @@ public class MachineSparepartInstallationService {
         installedAt, now, now));
     auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.INSTALLATION, saved.getId(),
         machine.getCode() + " / " + sparepart.getCode(), machine.getPlant().getId(), null,
-        InstallationAuditValues.of(saved)));
+        InstallationAuditValues.of(saved), null));
     events.publishEvent(new ProjectionCacheEvictionEvent(machine.getId()));
     return toView(saved);
   }
@@ -104,7 +104,7 @@ public class MachineSparepartInstallationService {
     installation.update(normalized.functionName(), normalized.expectedProductionCount(), normalized.baselineCounter(), threshold, Instant.now(clock));
     var saved = save(installation);
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.INSTALLATION, installationId, entityLabel,
-        installation.getMachine().getPlant().getId(), previous, InstallationAuditValues.of(saved)));
+        installation.getMachine().getPlant().getId(), previous, InstallationAuditValues.of(saved), null));
     events.publishEvent(new ProjectionCacheEvictionEvent(installation.getMachine().getId()));
     return toView(saved);
   }
@@ -119,7 +119,7 @@ public class MachineSparepartInstallationService {
       installations.delete(installation);
       installations.flush();
       auditLog.record(user, new AuditRecord(AuditAction.DELETE, AuditEntityType.INSTALLATION, installationId,
-          entityLabel, installation.getMachine().getPlant().getId(), previous, null));
+          entityLabel, installation.getMachine().getPlant().getId(), previous, null, null));
     } catch (DataIntegrityViolationException exception) {
       throw new InstallationDataIntegrityException();
     } catch (ObjectOptimisticLockingFailureException exception) {

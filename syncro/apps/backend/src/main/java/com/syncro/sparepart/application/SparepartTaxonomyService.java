@@ -73,7 +73,7 @@ public class SparepartTaxonomyService {
     var now = Instant.now(clock);
     var saved = save(new SparepartTaxonomyEntity(UUID.randomUUID(), command.dimension(), code, name, category, now, now));
     auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.SPAREPART_TAXONOMY, saved.getId(),
-        saved.getCode(), null, null, SparepartTaxonomyAuditValues.of(saved)));
+        saved.getCode(), null, null, SparepartTaxonomyAuditValues.of(saved), null));
     return toView(saved);
   }
 
@@ -99,7 +99,7 @@ public class SparepartTaxonomyService {
     entry.update(code, name, category, Instant.now(clock));
     var saved = save(entry);
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.SPAREPART_TAXONOMY, taxonomyId, entityLabel,
-        null, previous, SparepartTaxonomyAuditValues.of(saved)));
+        null, previous, SparepartTaxonomyAuditValues.of(saved), null));
     return toView(saved);
   }
 
@@ -113,7 +113,7 @@ public class SparepartTaxonomyService {
       taxonomy.delete(entry);
       taxonomy.flush();
       auditLog.record(user, new AuditRecord(AuditAction.DELETE, AuditEntityType.SPAREPART_TAXONOMY, taxonomyId,
-          entityLabel, null, previous, null));
+          entityLabel, null, previous, null, null));
     } catch (DataIntegrityViolationException exception) {
       throw new SparepartTaxonomyDataIntegrityException();
     }

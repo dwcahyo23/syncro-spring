@@ -83,7 +83,7 @@ public class MachineResponsibilityService {
     }
 
     auditLog.record(currentUser, new AuditRecord(AuditAction.CREATE, AuditEntityType.RESPONSIBILITY, entity.getId(),
-        user.getLoginIdentifier(), machine.getPlant().getId(), null, ResponsibilityAuditValues.of(entity)));
+        user.getLoginIdentifier(), machine.getPlant().getId(), null, ResponsibilityAuditValues.of(entity), null));
     return toResponse(entity);
   }
 
@@ -101,7 +101,7 @@ public class MachineResponsibilityService {
     entity.update(request.level(), clock.instant());
     entity = responsibilityRepository.save(entity);
     auditLog.record(currentUser, new AuditRecord(AuditAction.UPDATE, AuditEntityType.RESPONSIBILITY, id, entityLabel,
-        plantId, previous, ResponsibilityAuditValues.of(entity)));
+        plantId, previous, ResponsibilityAuditValues.of(entity), null));
     return toResponse(entity);
   }
 
@@ -118,7 +118,7 @@ public class MachineResponsibilityService {
     var plantId = entity.getMachine().getPlant().getId();
     responsibilityRepository.delete(entity);
     auditLog.record(currentUser, new AuditRecord(AuditAction.DELETE, AuditEntityType.RESPONSIBILITY, id, entityLabel,
-        plantId, previous, null));
+        plantId, previous, null, null));
   }
 
   private void requireMutationRole(AuthenticatedUser user) {

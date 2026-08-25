@@ -49,11 +49,21 @@ public class AuditLogEntity {
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
+  @Column(name = "decision_id")
+  private UUID decisionId;
+
   protected AuditLogEntity() {
   }
 
   public AuditLogEntity(UUID id, UUID actorId, String actorName, AuditAction action, AuditEntityType entityType,
       UUID entityId, String entityLabel, UUID plantId, String previousValue, String newValue, Instant createdAt) {
+    this(id, actorId, actorName, action, entityType, entityId, entityLabel, plantId, previousValue, newValue,
+        createdAt, null);
+  }
+
+  public AuditLogEntity(UUID id, UUID actorId, String actorName, AuditAction action, AuditEntityType entityType,
+      UUID entityId, String entityLabel, UUID plantId, String previousValue, String newValue, Instant createdAt,
+      UUID decisionId) {
     this.id = id;
     this.actorId = actorId;
     this.actorName = actorName;
@@ -65,6 +75,7 @@ public class AuditLogEntity {
     this.previousValue = previousValue;
     this.newValue = newValue;
     this.createdAt = createdAt;
+    this.decisionId = decisionId;
   }
 
   public UUID getId() {
@@ -109,5 +120,13 @@ public class AuditLogEntity {
 
   public Instant getCreatedAt() {
     return createdAt;
+  }
+
+  public UUID getDecisionId() {
+    return decisionId;
+  }
+
+  public void setDecisionId(UUID decisionId) {
+    this.decisionId = decisionId;
   }
 }

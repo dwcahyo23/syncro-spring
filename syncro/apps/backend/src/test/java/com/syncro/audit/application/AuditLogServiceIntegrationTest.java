@@ -61,7 +61,7 @@ class AuditLogServiceIntegrationTest extends AbstractPostgresIntegrationTest {
     var plant = plant("GM1", "Plant GM1");
     var actor = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     auditLogWriter.record(actor, new AuditRecord(AuditAction.CREATE, AuditEntityType.PLANT, plant.getId(),
-        plant.getCode(), plant.getId(), null, Map.of("code", "GM1", "name", "Plant GM1")));
+        plant.getCode(), plant.getId(), null, Map.of("code", "GM1", "name", "Plant GM1"), null));
 
     var response = auditLog.list(actor, new AuditLogQuery(null, null, null, null, null, null, 0, 100, "createdAt,desc"));
 
@@ -85,11 +85,11 @@ class AuditLogServiceIntegrationTest extends AbstractPostgresIntegrationTest {
     var plant2 = plant("GM2", "Plant GM2");
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     auditLogWriter.record(admin, new AuditRecord(AuditAction.CREATE, AuditEntityType.PLANT, plant1.getId(), "GM1",
-        plant1.getId(), null, Map.of("code", "GM1")));
+        plant1.getId(), null, Map.of("code", "GM1"), null));
     auditLogWriter.record(admin, new AuditRecord(AuditAction.CREATE, AuditEntityType.PLANT, plant2.getId(), "GM2",
-        plant2.getId(), null, Map.of("code", "GM2")));
+        plant2.getId(), null, Map.of("code", "GM2"), null));
     auditLogWriter.record(admin, new AuditRecord(AuditAction.CREATE, AuditEntityType.SPAREPART_TAXONOMY,
-        UUID.randomUUID(), "ELEC", null, null, Map.of("code", "ELEC")));
+        UUID.randomUUID(), "ELEC", null, null, Map.of("code", "ELEC"), null));
 
     var manage = persistedUser(ApplicationRole.MANAGE, "scoped-manage@syncro.dev");
     assign(manage, plant1);
@@ -106,9 +106,9 @@ class AuditLogServiceIntegrationTest extends AbstractPostgresIntegrationTest {
     var plant = plant("GM1", "Plant GM1");
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     auditLogWriter.record(admin, new AuditRecord(AuditAction.CREATE, AuditEntityType.SPAREPART_TAXONOMY,
-        UUID.randomUUID(), "ELEC", null, null, Map.of("code", "ELEC")));
+        UUID.randomUUID(), "ELEC", null, null, Map.of("code", "ELEC"), null));
     auditLogWriter.record(admin, new AuditRecord(AuditAction.CREATE, AuditEntityType.PLANT, plant.getId(), "GM1",
-        plant.getId(), null, Map.of("code", "GM1")));
+        plant.getId(), null, Map.of("code", "GM1"), null));
 
     var viewer = persistedUser(ApplicationRole.VIEWER, "empty-scope-viewer@syncro.dev");
 
@@ -137,11 +137,11 @@ class AuditLogServiceIntegrationTest extends AbstractPostgresIntegrationTest {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     var engineer = persistedUser(ApplicationRole.MANAGE, "yusuf@syncro.dev");
     auditLogWriter.record(admin, new AuditRecord(AuditAction.CREATE, AuditEntityType.PLANT, plant1.getId(), "GM1",
-        plant1.getId(), null, Map.of("code", "GM1")));
+        plant1.getId(), null, Map.of("code", "GM1"), null));
     auditLogWriter.record(engineer, new AuditRecord(AuditAction.CREATE, AuditEntityType.MACHINE, UUID.randomUUID(),
-        "BF-08410", plant1.getId(), null, Map.of("code", "BF-08410")));
+        "BF-08410", plant1.getId(), null, Map.of("code", "BF-08410"), null));
     auditLogWriter.record(admin, new AuditRecord(AuditAction.CREATE, AuditEntityType.PLANT, plant2.getId(), "GM2",
-        plant2.getId(), null, Map.of("code", "GM2")));
+        plant2.getId(), null, Map.of("code", "GM2"), null));
 
     var byType = auditLog.list(admin, new AuditLogQuery(AuditEntityType.MACHINE, null, null, null, null, null, 0, 100, "createdAt,desc"));
     assertThat(byType.totalElements()).isEqualTo(1);
@@ -170,10 +170,10 @@ class AuditLogServiceIntegrationTest extends AbstractPostgresIntegrationTest {
     var plant = plant("GM1", "Plant GM1");
     var actor = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     auditLogWriter.record(actor, new AuditRecord(AuditAction.CREATE, AuditEntityType.PLANT, plant.getId(), "GM1",
-        plant.getId(), null, Map.of("code", "GM1")));
+        plant.getId(), null, Map.of("code", "GM1"), null));
     Thread.sleep(5);
     auditLogWriter.record(actor, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PLANT, plant.getId(), "GM1",
-        plant.getId(), Map.of("code", "GM1"), Map.of("code", "GM1", "name", "Plant GM1 Updated")));
+        plant.getId(), Map.of("code", "GM1"), Map.of("code", "GM1", "name", "Plant GM1 Updated"), null));
 
     var response = auditLog.list(actor, new AuditLogQuery(null, null, null, null, null, null, 0, 100, "createdAt,desc"));
 
@@ -188,7 +188,7 @@ class AuditLogServiceIntegrationTest extends AbstractPostgresIntegrationTest {
     var plant = plant("GM1", "Plant GM1");
     var actor = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     auditLogWriter.record(actor, new AuditRecord(AuditAction.CREATE, AuditEntityType.PLANT, plant.getId(), "GM1",
-        plant.getId(), null, Map.of("code", "GM1")));
+        plant.getId(), null, Map.of("code", "GM1"), null));
     entityManager.flush();
     var auditId = auditRowId(plant.getId());
 
@@ -202,7 +202,7 @@ class AuditLogServiceIntegrationTest extends AbstractPostgresIntegrationTest {
     var plant = plant("GM1", "Plant GM1");
     var actor = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     auditLogWriter.record(actor, new AuditRecord(AuditAction.CREATE, AuditEntityType.PLANT, plant.getId(), "GM1",
-        plant.getId(), null, Map.of("code", "GM1")));
+        plant.getId(), null, Map.of("code", "GM1"), null));
     entityManager.flush();
     var auditId = auditRowId(plant.getId());
 

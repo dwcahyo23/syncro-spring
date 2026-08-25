@@ -90,7 +90,7 @@ public class SectionService {
     var now = Instant.now(clock);
     var saved = saveSection(new SectionEntity(UUID.randomUUID(), plant, code, name, true, now, now));
     auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.SECTION, saved.getId(),
-        saved.getCode(), plantId, null, SectionAuditValues.of(saved)));
+        saved.getCode(), plantId, null, SectionAuditValues.of(saved), null));
     return toView(saved);
   }
 
@@ -114,7 +114,7 @@ public class SectionService {
     section.update(name, command.active(), Instant.now(clock));
     var saved = saveSection(section);
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.SECTION, sectionId, entityLabel,
-        plantId, previous, SectionAuditValues.of(saved)));
+        plantId, previous, SectionAuditValues.of(saved), null));
     return toView(saved);
   }
 

@@ -105,6 +105,21 @@ services:
       - waha_sessions:/app/.sessions
       - waha_media:/app/.media
 
+  opa:
+    # -debug variant: the default 1.19.1 image is distroless (no shell/curl), so the
+    # healthcheck could not run; -debug ships busybox with wget.
+    image: openpolicyagent/opa:1.19.1-debug
+    restart: unless-stopped
+    command: ["run", "--server", "--addr=0.0.0.0:8181", "--set", "decision_logs.console=true"]
+    ports:
+      - "${OPA_PORT:?OPA_PORT is required}:8181"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8181/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   garage:
     image: dxflrs/garage:v2.3.0
     restart: unless-stopped

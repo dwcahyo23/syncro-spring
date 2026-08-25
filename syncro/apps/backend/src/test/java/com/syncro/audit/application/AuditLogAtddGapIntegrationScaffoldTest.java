@@ -65,7 +65,7 @@ class AuditLogAtddGapIntegrationScaffoldTest extends AbstractPostgresIntegration
     var plant = plant("GM1", "Plant GM1");
     var actor = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     auditLogWriter.record(actor, new AuditRecord(AuditAction.CREATE, AuditEntityType.PLANT, plant.getId(), "GM1",
-        plant.getId(), null, Map.of("code", "GM1")));
+        plant.getId(), null, Map.of("code", "GM1"), null));
     entityManager.flush();
     var auditId = auditRowId(plant.getId());
 
@@ -131,7 +131,7 @@ class AuditLogAtddGapIntegrationScaffoldTest extends AbstractPostgresIntegration
     var actor = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     var entityId = UUID.randomUUID();
     auditLogWriter.record(actor, new AuditRecord(AuditAction.CREATE, AuditEntityType.SPAREPART_TAXONOMY,
-        entityId, "ELEC", null, null, Map.of("code", "ELEC")));
+        entityId, "ELEC", null, null, Map.of("code", "ELEC"), null));
     entityManager.flush();
     var auditId = auditRowId(entityId);
 
@@ -166,7 +166,7 @@ class AuditLogAtddGapIntegrationScaffoldTest extends AbstractPostgresIntegration
   void actorFilterEscapesLikeWildcards() {
     var actor = persistedUser(ApplicationRole.SUPER_ADMIN, "yusuf_dev");
     auditLogWriter.record(actor, new AuditRecord(AuditAction.CREATE, AuditEntityType.SPAREPART_TAXONOMY,
-        UUID.randomUUID(), "ELEC", null, null, Map.of("code", "ELEC")));
+        UUID.randomUUID(), "ELEC", null, null, Map.of("code", "ELEC"), null));
 
     var exact = auditLog.list(actor, new AuditLogQuery(null, null, "yusuf_dev", null, null, null, 0, 100, "createdAt,desc"));
     assertThat(exact.totalElements()).isEqualTo(1);
@@ -181,7 +181,7 @@ class AuditLogAtddGapIntegrationScaffoldTest extends AbstractPostgresIntegration
     var actor = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     for (int i = 0; i < 5; i++) {
       auditLogWriter.record(actor, new AuditRecord(AuditAction.CREATE, AuditEntityType.SPAREPART_TAXONOMY,
-          UUID.randomUUID(), "ELEC-" + i, null, null, Map.of("code", "ELEC-" + i)));
+          UUID.randomUUID(), "ELEC-" + i, null, null, Map.of("code", "ELEC-" + i), null));
     }
 
     var response = auditLog.list(actor, new AuditLogQuery(null, null, null, null, null, null, 1, 2, "createdAt,asc"));

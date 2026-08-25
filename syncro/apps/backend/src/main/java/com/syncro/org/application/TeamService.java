@@ -101,7 +101,7 @@ public class TeamService {
     var now = Instant.now(clock);
     var team = saveTeam(new TeamEntity(UUID.randomUUID(), name, expiresAt, now, now));
     auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.TEAM, team.getId(), team.getName(),
-        null, null, TeamAuditValues.of(team, 0, 0)));
+        null, null, TeamAuditValues.of(team, 0, 0), null));
     return toView(team, 0, 0, now);
   }
 
@@ -121,7 +121,7 @@ public class TeamService {
     team.update(name, expiresAt, now);
     var saved = saveTeam(team);
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.TEAM, teamId, team.getName(), null,
-        previous, TeamAuditValues.of(saved, memberCount, machineCount)));
+        previous, TeamAuditValues.of(saved, memberCount, machineCount), null));
     return toView(saved, memberCount, machineCount, now);
   }
 
@@ -139,7 +139,7 @@ public class TeamService {
     teams.delete(team);
     teams.flush();
     auditLog.record(user, new AuditRecord(AuditAction.DELETE, AuditEntityType.TEAM, teamId, team.getName(), null,
-        previous, null));
+        previous, null, null));
   }
 
   @Transactional
@@ -242,7 +242,7 @@ public class TeamService {
     current.put("memberCount", memberCountAfter);
     current.put("machineCount", machineCountAfter);
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.TEAM, team.getId(), team.getName(),
-        null, previous, current));
+        null, previous, current, null));
   }
 
   /** Phase 1 gate: every team endpoint — read or write — requires SUPER_ADMIN|MANAGE. */

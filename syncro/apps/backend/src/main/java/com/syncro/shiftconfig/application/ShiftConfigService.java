@@ -88,7 +88,7 @@ public class ShiftConfigService {
       if (!previous.isEmpty()) {
         groupWindows.deleteByMachineGroupId(group.getId());
         auditLog.record(user, new AuditRecord(AuditAction.DELETE, AuditEntityType.MACHINE_GROUP, group.getId(),
-            group.getName(), group.getPlant().getId(), snapshot(previous), null));
+            group.getName(), group.getPlant().getId(), snapshot(previous), null, null));
         events.publishEvent(ProjectionCacheEvictionEvent.all());
       }
       return new MachineGroupShiftConfigView(List.of());
@@ -96,14 +96,14 @@ public class ShiftConfigService {
     if (previous.isEmpty()) {
       var saved = insertGroupWindows(group, normalized);
       auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.MACHINE_GROUP, group.getId(),
-          group.getName(), group.getPlant().getId(), null, snapshot(storedGroupShifts(saved))));
+          group.getName(), group.getPlant().getId(), null, snapshot(storedGroupShifts(saved)), null));
       events.publishEvent(ProjectionCacheEvictionEvent.all());
       return toGroupView(storedGroupShifts(saved));
     }
     groupWindows.deleteByMachineGroupId(group.getId());
     var saved = insertGroupWindows(group, normalized);
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.MACHINE_GROUP, group.getId(),
-        group.getName(), group.getPlant().getId(), snapshot(previous), snapshot(storedGroupShifts(saved))));
+        group.getName(), group.getPlant().getId(), snapshot(previous), snapshot(storedGroupShifts(saved)), null));
     events.publishEvent(ProjectionCacheEvictionEvent.all());
     return toGroupView(storedGroupShifts(saved));
   }
@@ -127,13 +127,13 @@ public class ShiftConfigService {
     } else if (previous.isEmpty()) {
       var saved = insertMachineWindows(machine, normalized);
       auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.MACHINE, machine.getId(),
-          machine.getCode(), machine.getPlant().getId(), null, snapshot(storedMachineShifts(saved))));
+          machine.getCode(), machine.getPlant().getId(), null, snapshot(storedMachineShifts(saved)), null));
       events.publishEvent(new ProjectionCacheEvictionEvent(machine.getId()));
     } else {
       machineWindows.deleteByMachineId(machine.getId());
       var saved = insertMachineWindows(machine, normalized);
       auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.MACHINE, machine.getId(),
-          machine.getCode(), machine.getPlant().getId(), snapshot(previous), snapshot(storedMachineShifts(saved))));
+          machine.getCode(), machine.getPlant().getId(), snapshot(previous), snapshot(storedMachineShifts(saved)), null));
       events.publishEvent(new ProjectionCacheEvictionEvent(machine.getId()));
     }
     return resolveMachineConfig(machine);
@@ -171,7 +171,7 @@ public class ShiftConfigService {
     }
     machineWindows.deleteByMachineId(machine.getId());
     auditLog.record(user, new AuditRecord(AuditAction.DELETE, AuditEntityType.MACHINE, machine.getId(),
-        machine.getCode(), machine.getPlant().getId(), snapshot(previous), null));
+        machine.getCode(), machine.getPlant().getId(), snapshot(previous), null, null));
     events.publishEvent(new ProjectionCacheEvictionEvent(machine.getId()));
   }
 

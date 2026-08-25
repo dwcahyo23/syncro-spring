@@ -77,7 +77,8 @@ public class SparepartAlertCommandService {
         "ALERT:" + alertId,
         resolvePlantId(alert),
         Map.of("status", "OPEN"),
-        Map.of("actorId", user.id(), "transition", "OPEN→ACKNOWLEDGED", "status", "ACKNOWLEDGED", "reason", reason != null ? reason : "", "escalationCancelledCount", escalationCancelledCount)));
+        Map.of("actorId", user.id(), "transition", "OPEN→ACKNOWLEDGED", "status", "ACKNOWLEDGED", "reason", reason != null ? reason : "", "escalationCancelledCount", escalationCancelledCount),
+        null));
   }
 
   /**
@@ -103,7 +104,8 @@ public class SparepartAlertCommandService {
         "ALERT:" + alertId,
         resolvePlantId(alert),
         Map.of("status", "ACKNOWLEDGED"),
-        Map.of("actorId", user.id(), "transition", "ACKNOWLEDGED→RESOLVED", "status", "RESOLVED", "reason", reason != null ? reason : "")));
+        Map.of("actorId", user.id(), "transition", "ACKNOWLEDGED→RESOLVED", "status", "RESOLVED", "reason", reason != null ? reason : ""),
+        null));
   }
 
   /**
@@ -134,7 +136,8 @@ public class SparepartAlertCommandService {
         "ALERT:" + alertId,
         resolvePlantId(alert),
         Map.of("status", "OPEN"),
-        Map.of("actorId", user.id(), "transition", "OPEN→RESOLVED(override)", "status", "RESOLVED", "reason", reason != null ? reason : "")));
+        Map.of("actorId", user.id(), "transition", "OPEN→RESOLVED(override)", "status", "RESOLVED", "reason", reason != null ? reason : ""),
+        null));
   }
 
   // ---------------------------------------------------------------------------

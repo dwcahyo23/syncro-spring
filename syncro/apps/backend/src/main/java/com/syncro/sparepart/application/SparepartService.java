@@ -95,7 +95,7 @@ public class SparepartService {
         now,
         now));
     auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.SPAREPART, saved.getId(), saved.getCode(),
-        machine.getPlant().getId(), null, SparepartAuditValues.of(saved)));
+        machine.getPlant().getId(), null, SparepartAuditValues.of(saved), null));
     return toView(saved);
   }
 
@@ -120,7 +120,7 @@ public class SparepartService {
         Instant.now(clock));
     var saved = save(sparepart);
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.SPAREPART, sparepartId, entityLabel,
-        machine.getPlant().getId(), previous, SparepartAuditValues.of(saved)));
+        machine.getPlant().getId(), previous, SparepartAuditValues.of(saved), null));
     return toView(saved);
   }
 
@@ -134,7 +134,7 @@ public class SparepartService {
       spareparts.delete(sparepart);
       spareparts.flush();
       auditLog.record(user, new AuditRecord(AuditAction.DELETE, AuditEntityType.SPAREPART, sparepartId, entityLabel,
-          sparepart.getMachine().getPlant().getId(), previous, null));
+          sparepart.getMachine().getPlant().getId(), previous, null, null));
     } catch (DataIntegrityViolationException exception) {
       throw new SparepartDataIntegrityException();
     }
@@ -165,7 +165,7 @@ public class SparepartService {
     sparepart.updateProcurement(materialCode, leadTimeHours, Instant.now(clock));
     var saved = save(sparepart);
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.SPAREPART, sparepartId, entityLabel,
-        saved.getMachine().getPlant().getId(), previous, SparepartAuditValues.of(saved)));
+        saved.getMachine().getPlant().getId(), previous, SparepartAuditValues.of(saved), null));
     events.publishEvent(ProjectionCacheEvictionEvent.all());
     return toView(saved);
   }

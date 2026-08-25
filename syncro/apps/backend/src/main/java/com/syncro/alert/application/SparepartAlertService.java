@@ -140,7 +140,8 @@ public class SparepartAlertService {
               "installationId", installationId.toString(),
               "thresholdPercentage", thresholdPercentage,
               "consumedPercentage", result.consumedPercentage().toPlainString(),
-              "traceId", traceId)));
+              "traceId", traceId),
+          null));
 
       log.info("[traceId={}] Alert created for installation {} threshold {}% consumed {}%",
           traceId, installationId, thresholdPercentage, result.consumedPercentage());

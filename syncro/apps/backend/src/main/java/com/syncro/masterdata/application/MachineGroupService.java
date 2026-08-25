@@ -92,7 +92,7 @@ public class MachineGroupService {
     var now = Instant.now(clock);
     var saved = saveMachineGroup(new MachineGroupEntity(UUID.randomUUID(), plant, name, now, now));
     auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.MACHINE_GROUP, saved.getId(),
-        saved.getName(), plantId, null, MachineGroupAuditValues.of(saved)));
+        saved.getName(), plantId, null, MachineGroupAuditValues.of(saved), null));
     return toView(saved);
   }
 
@@ -115,7 +115,7 @@ public class MachineGroupService {
     machineGroup.update(plant, name, Instant.now(clock));
     var saved = saveMachineGroup(machineGroup);
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.MACHINE_GROUP, machineGroupId, entityLabel,
-        plantId, previous, MachineGroupAuditValues.of(saved)));
+        plantId, previous, MachineGroupAuditValues.of(saved), null));
     return toView(saved);
   }
 
@@ -129,7 +129,7 @@ public class MachineGroupService {
       machineGroups.delete(machineGroup);
       machineGroups.flush();
       auditLog.record(user, new AuditRecord(AuditAction.DELETE, AuditEntityType.MACHINE_GROUP, machineGroupId,
-          entityLabel, machineGroup.getPlant().getId(), previous, null));
+          entityLabel, machineGroup.getPlant().getId(), previous, null, null));
     } catch (DataIntegrityViolationException exception) {
       throw new MachineGroupDataIntegrityException();
     }
@@ -159,7 +159,7 @@ public class MachineGroupService {
     machineGroup.assignSection(sectionId, Instant.now(clock));
     var saved = machineGroups.saveAndFlush(machineGroup);
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.MACHINE_GROUP, machineGroupId,
-        entityLabel, machineGroup.getPlant().getId(), previous, MachineGroupAuditValues.of(saved)));
+        entityLabel, machineGroup.getPlant().getId(), previous, MachineGroupAuditValues.of(saved), null));
   }
 
   @Transactional
@@ -171,7 +171,7 @@ public class MachineGroupService {
     machineGroup.clearSection(Instant.now(clock));
     var saved = machineGroups.saveAndFlush(machineGroup);
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.MACHINE_GROUP, machineGroupId,
-        entityLabel, machineGroup.getPlant().getId(), previous, MachineGroupAuditValues.of(saved)));
+        entityLabel, machineGroup.getPlant().getId(), previous, MachineGroupAuditValues.of(saved), null));
   }
 
   private void requireMutationRole(AuthenticatedUser user) {

@@ -89,7 +89,8 @@ public class SparepartPriceEntryService {
         sparepart.getCode(),
         sparepart.getMachine().getPlant().getId(),
         null,
-        newValuesOf(sparepart, saved)));
+        newValuesOf(sparepart, saved),
+        null));
     return toView(saved);
   }
 

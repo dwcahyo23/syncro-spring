@@ -974,3 +974,24 @@ status: open
   summary: Running multiple AbstractPostgresIntegrationTest classes in one surefire JVM fails later classes with connection-refused because the shared static container restarts on a new mapped port while the cached Spring context keeps the first port; each class passes individually.
   evidence: Story 9-2 Debug Log; pre-existing quirk also affects 9-1 integration suites. Fix belongs to test infra (reuse-friendly container lifecycle or per-class datasource), not to story code.
   status: open
+
+### DW-128: audit_log immutable-update trigger does not cover id and plant_id columns
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-3-opa-infrastructure.md`
+  summary: V16's BEFORE UPDATE OF column list omitted id and plant_id; V44 faithfully recreated that list (plus decision_id), so UPDATE audit_log SET plant_id/id remains possible despite the immutability intent.
+  evidence: V44__add_audit_decision_id.sql trigger column-for-column matches V16's original list; surfaced by Edge Case Hunter on 9-3. Fix = follow-up migration recreating the trigger to cover every column.
+  status: open
+
+### DW-129: Health/read posture under healthy OPA is inverted once enforced-paths include public probes
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-3-opa-infrastructure.md`
+  summary: Rego grants only SUPER_ADMIN, so anonymous health probes on enforced paths get 403 while OPA is healthy and 200 only when it is down — the degraded-allowlist alone cannot express "always-public".
+  evidence: Blind Hunter + Edge Case Hunter convergence on 9-3; harmless today (empty enforced-paths) but 9.5 must add an always-public allowance (rego rule or bypass list distinct from degraded-allowlist) before populating enforcement.
+  status: open
+
+### DW-130: Sparse traffic during an OPA hang pays full client timeout per request
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-3-opa-infrastructure.md`
+  summary: With minimum-number-of-calls=5, low-volume periods never trip the circuit breaker, so a hung (not refusing) OPA yields sustained 5s stalls per authz call until volume accumulates.
+  evidence: OpaClient mirrors WahaClient's R4j tuning (house pattern); consider lower min-calls or a failure-rate-based timeout budget for the opa breaker specifically when enforcement goes live in 9.5.
+  status: open

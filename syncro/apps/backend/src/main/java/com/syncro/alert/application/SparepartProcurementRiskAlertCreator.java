@@ -120,7 +120,8 @@ public class SparepartProcurementRiskAlertCreator {
             "calculationBasis", calculationBasis.name(),
             "leadTimeHours", leadTimeHours.toPlainString(),
             "projectedDepletionAt", projectedDepletionAt.toString(),
-            "traceId", traceId)));
+            "traceId", traceId),
+        null));
 
     log.info("[traceId={}] PROCUREMENT_RISK alert created for installation {} leadTime {}h rate {}/op-h",
         traceId, installationId, leadTimeHours, ratePerOperatingHour);
