@@ -53,6 +53,14 @@ core_mutation_paths := {
   "/api/v1/notification/templates",
 }
 
+# Work-order category mutation (story 10-1): global config gate — SECTION_LEADER and
+# above may mutate; mirrors the in-service requireCategoryRole set exactly (9-5 parity).
+# Category reads (GET) are allowed for any authenticated user via read_allowed below.
+category_mutation_paths := {
+  "/api/v1/work-order-categories",
+  "/api/v1/work-order-categories/*",
+}
+
 # Alert commands are action-scoped in service (any authenticated user with plant access
 # can acknowledge/resolve — SparepartAlertCommandService.loadAndCheckAccess); the
 # SUPER_ADMIN-only resolve-override path is deliberately NOT here, so it stays
@@ -74,6 +82,24 @@ mutation_allowed if {
   input.subject.roles[_] == "MANAGER_MAINTENANCE"
   is_mutation
   path_matches(core_mutation_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(category_mutation_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(category_mutation_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(category_mutation_paths)
 }
 
 mutation_allowed if {
@@ -112,7 +138,8 @@ normalized_path(action) := regex.replace(path_only(action), "\\{[^}]*\\}", "*")
 path_only(action) := substring(action, indexof(action, " ") + 1, -1)
 
 # Allowed-actions mirror of the matrix (FR-161): SUPER_ADMIN full, MANAGER_MAINTENANCE
-# read + write, every other role read-only.
+# read + write, SECTION_LEADER and MAINTENANCE_LEADER read + write for category mutations,
+# every other role read-only.
 actions contains "*" if super_admin
 
 actions contains "*.read" if not super_admin
@@ -120,4 +147,14 @@ actions contains "*.read" if not super_admin
 actions contains "*.write" if {
   not super_admin
   input.subject.roles[_] == "MANAGER_MAINTENANCE"
+}
+
+actions contains "*.write" if {
+  not super_admin
+  input.subject.roles[_] == "SECTION_LEADER"
+}
+
+actions contains "*.write" if {
+  not super_admin
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
 }

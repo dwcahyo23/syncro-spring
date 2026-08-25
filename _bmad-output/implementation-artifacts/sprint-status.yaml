@@ -153,7 +153,7 @@ development_status:
 
   # Epic 10: Workorder Execution
   epic-10: backlog
-  10-1-workorder-schema-and-categories: backlog
+  10-1-workorder-schema-and-categories: in-progress
   10-2-create-and-assign-workorders: backlog
   10-3-status-lifecycle-and-on-procurement: backlog
   10-4-repair-sessions-and-mttr: backlog

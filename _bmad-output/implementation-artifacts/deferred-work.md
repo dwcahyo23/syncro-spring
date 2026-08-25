@@ -1016,3 +1016,17 @@ status: open
   summary: decision-log-tab.tsx wraps its table in `hidden md:block`; on mobile only the pagination renders, unlike the audit-log page which has both desktop table and card variants.
   evidence: Edge Case Hunter on 9-5. Fix = add a card-based mobile layout mirroring audit-log-table.tsx.
   status: open
+
+### DW-134: Workorder month prefix derives from UTC clock, not the plant-local timezone
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-10-1-workorder-schema-and-categories.md`
+  summary: WorkOrderIdGenerator derives WO-YYMM from Clock.systemUTC() (TimeConfig), so at a UTC+7 plant workorders created 00:00-07:00 local on the 1st carry the previous month's prefix.
+  evidence: Blind Hunter on 10-1; ProjectionProperties already models plantTimezone, so the UTC derivation is inconsistent. Fix = derive prefix from YearMonth.now(clock.withZone(plantZoneId)) or document UTC semantics.
+  status: open
+
+### DW-135: WorkorderIdExhaustedException has no @ExceptionHandler mapping until story 10-2
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-10-1-workorder-schema-and-categories.md`
+  summary: nextId() throwing WorkorderIdExhaustedException surfaces as a generic Spring 500; no endpoint can trigger it yet (generator only exercised in tests).
+  evidence: Edge Case Hunter on 10-1. Fix = add an @ExceptionHandler(WorkorderIdExhaustedException.class) returning 503 + code when 10-2 introduces the create-workorder endpoint.
+  status: open

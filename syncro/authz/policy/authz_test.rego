@@ -136,6 +136,41 @@ test_auditor_admin_only_denied if {
   not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/telemetry/freshness"}
 }
 
+# -- Category (story 10-1): SECTION_LEADER+/MAINTENANCE_LEADER+/MANAGER_MAINTENANCE
+#    mutate; TECHNICIAN denied; reads allowed for any authenticated ----------------
+
+test_section_leader_category_post_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/work-order-categories"}
+}
+
+test_technician_category_post_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/work-order-categories"}
+}
+
+test_technician_category_put_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "PUT /api/v1/work-order-categories/01"}
+}
+
+test_auditor_category_get_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/work-order-categories"}
+}
+
+test_maintenance_leader_category_put_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "PUT /api/v1/work-order-categories/01"}
+}
+
+test_manager_category_post_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/work-order-categories"}
+}
+
+test_super_admin_category_mutation_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/work-order-categories"}
+}
+
+test_technician_category_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "GET /api/v1/work-order-categories"}
+}
+
 # -- Anonymous (no userId): default deny everywhere ------------------------
 
 test_anonymous_admin_only_denied if {
