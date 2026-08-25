@@ -4,8 +4,9 @@ type: 'feature'
 created: '2026-08-25'
 status: 'done'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 baseline_revision: ae31d2f
+final_revision: 13cd4b5
 context:
   - '{project-root}/_bmad-output/project-context.md'
 warnings:
@@ -160,7 +161,7 @@ warnings:
 
 ## Auto Run Result
 
-Status: done (final_revision <FINAL_REVISION>; baseline ae31d2f).
+Status: done (final_revision 13cd4b5; baseline ae31d2f).
 
 **Summary:** Org foundation landed: new `com.syncro.org` bounded context with sections CRUD (MACHINERY/UTILITY/WORKSHOP per plant, deactivate guard `SECTION_HAS_ACTIVE_MACHINE_GROUPS`, SECTION audit type), machine-group→section assignment (`PUT/DELETE /api/v1/machine-groups/{id}/section`, reassignment rejected, plant mismatch rejected, MACHINE_GROUP UPDATE audit), and a single `OperationalScopeService` deriving `{plantIds, machineGroupIds, activeTeamIds}` (machineGroupIds from machine_responsibilities level ≥ LEADER via a port implemented in the machine module). Derived machineGroupIds now filter the alert list/detail and machine-list read paths (section leaders see only their own groups; non-leaders keep Phase 1 plant-scope behavior; SUPER_ADMIN unscoped). V42 adds the sections table + nullable `machine_groups.section_id` + SECTION audit CHECK. Frontend: sections CRUD page (+route+sidebar), machine-group Section column with assign/clear dialog, Orval regen.
 
