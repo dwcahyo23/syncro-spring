@@ -2,10 +2,11 @@
 title: 'OPA Infrastructure'
 type: 'feature'
 created: '2026-08-25'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 baseline_revision: d61c463
+final_revision: 9c87273
 context:
   - '{project-root}/_bmad-output/project-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-9-2-cross-plant-teams.md'

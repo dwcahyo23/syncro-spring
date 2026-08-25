@@ -36,7 +36,7 @@
 
 generated: 2026-05-25
 last_updated: 2026-08-25
-# updated: 9-2 done (code review applied: 15 patched, 3 deferred DW-125..127); epic 9 in-progress (9-1, 9-2 done; 9-3 next); epics 10-14 backlog
+# updated: 9-2 done; 9-3 done (dev-auto: implemented + adversarial review, 8 patched / 3 deferred DW-128..130); epic 9 in-progress; epics 10-14 backlog
 project: Syncro
 project_key: NOKEY
 tracking_system: file-system
@@ -146,7 +146,7 @@ development_status:
   epic-9: in-progress
   9-1-sections-foundation: done
   9-2-cross-plant-teams: done
-  9-3-opa-infrastructure: in-progress
+  9-3-opa-infrastructure: done
   9-4-role-taxonomy-migration: backlog
   9-5-opa-enforcement-on-maintenance-endpoints: backlog
   epic-9-retrospective: optional
