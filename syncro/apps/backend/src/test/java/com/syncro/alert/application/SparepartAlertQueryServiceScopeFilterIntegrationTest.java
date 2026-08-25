@@ -147,11 +147,11 @@ class SparepartAlertQueryServiceScopeFilterIntegrationTest extends AbstractPostg
         UUID.randomUUID(),
         loginIdentifier,
         passwordEncoder.encode("syncro-test-password"),
-        ApplicationRole.VIEWER,
+        ApplicationRole.AUDITOR,
         true,
         TS.toInstant(),
         TS.toInstant()));
-    return new AuthenticatedUser(user.getId().toString(), user.getLoginIdentifier(), ApplicationRole.VIEWER);
+    return new AuthenticatedUser(user.getId().toString(), user.getLoginIdentifier(), ApplicationRole.AUDITOR);
   }
 
   private void assign(AuthenticatedUser user, UUID plantId) {

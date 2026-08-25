@@ -80,7 +80,7 @@ export function SectionManagement() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
 
-  const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGE";
+  const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGER_MAINTENANCE";
   const items = sectionsQuery.data?.data.items ?? [];
   const isSaving = createSection.isPending || updateSection.isPending;
 

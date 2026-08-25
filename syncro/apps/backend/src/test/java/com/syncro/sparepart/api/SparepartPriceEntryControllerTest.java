@@ -53,9 +53,9 @@ class SparepartPriceEntryControllerTest {
   private JwtTokenService jwtTokenService;
 
   @Test
-  @DisplayName("8.3-API-001 P0 MANAGE appends a price entry and receives 201 with Location")
+  @DisplayName("8.3-API-001 P0 MANAGER_MAINTENANCE appends a price entry and receives 201 with Location")
   void manageAppendsPriceEntry() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var sparepartId = UUID.randomUUID();
     var entryId = UUID.randomUUID();
     when(priceEntries.create(eq(user), eq(sparepartId), any())).thenReturn(view(entryId, sparepartId));
@@ -76,7 +76,7 @@ class SparepartPriceEntryControllerTest {
   @Test
   @DisplayName("8.3-API-002 P0 invalid request returns VALIDATION_ERROR with field errors")
   void invalidRequestReturnsFieldErrors() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
 
     mockMvc.perform(post("/api/v1/spareparts/{sparepartId}/price-entries", UUID.randomUUID()).with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
@@ -91,7 +91,7 @@ class SparepartPriceEntryControllerTest {
   @Test
   @DisplayName("8.3-API-003 P1 missing amount fails bean validation")
   void missingAmountFailsValidation() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
 
     mockMvc.perform(post("/api/v1/spareparts/{sparepartId}/price-entries", UUID.randomUUID()).with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
@@ -104,7 +104,7 @@ class SparepartPriceEntryControllerTest {
   @Test
   @DisplayName("8.3-API-004 P0 below-LEADER job scope returns JOB_SCOPE_REQUIRED with explanation")
   void belowLeaderJobScopeReturnsExplanation() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new JobScopeForbiddenException("LEADER")).when(priceEntries).create(eq(user), any(), any());
 
     mockMvc.perform(post("/api/v1/spareparts/{sparepartId}/price-entries", UUID.randomUUID()).with(auth(user))
@@ -116,9 +116,9 @@ class SparepartPriceEntryControllerTest {
   }
 
   @Test
-  @DisplayName("8.3-API-005 P0 VIEWER is forbidden by the app-role gate")
+  @DisplayName("8.3-API-005 P0 AUDITOR is forbidden by the app-role gate")
   void viewerForbiddenByAppRoleGate() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     doThrow(new MutationForbiddenException()).when(priceEntries).create(eq(user), any(), any());
 
     mockMvc.perform(post("/api/v1/spareparts/{sparepartId}/price-entries", UUID.randomUUID()).with(auth(user))
@@ -150,7 +150,7 @@ class SparepartPriceEntryControllerTest {
   @Test
   @DisplayName("8.3-API-007 P1 data integrity conflict returns 409 with stable code")
   void dataIntegrityConflictReturnsConflict() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new DataIntegrityException()).when(priceEntries).create(eq(user), any(), any());
 
     mockMvc.perform(post("/api/v1/spareparts/{sparepartId}/price-entries", UUID.randomUUID()).with(auth(user))
@@ -163,7 +163,7 @@ class SparepartPriceEntryControllerTest {
   @Test
   @DisplayName("8.3-API-008 P1 list returns newest-first history array")
   void listReturnsHistoryArray() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     var sparepartId = UUID.randomUUID();
     when(priceEntries.list(eq(user), eq(sparepartId))).thenReturn(List.of(view(UUID.randomUUID(), sparepartId)));
 
@@ -176,7 +176,7 @@ class SparepartPriceEntryControllerTest {
   @Test
   @DisplayName("8.3-API-009 P1 empty history returns empty array")
   void emptyHistoryReturnsEmptyArray() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     when(priceEntries.list(eq(user), any())).thenReturn(List.of());
 
     mockMvc.perform(get("/api/v1/spareparts/{sparepartId}/price-entries", UUID.randomUUID()).with(auth(user)))

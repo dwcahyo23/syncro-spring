@@ -33,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Shift schedule configuration (Story 8-5). Machine groups own up to three daily wall-clock
  * windows; machines may override them (machine wins). Mutation gate order mirrors the sparepart
- * module: app role (SUPER_ADMIN|MANAGE) first, then LEADER-or-above job scope, then plant access.
+ * module: app role (SUPER_ADMIN|MANAGER_MAINTENANCE) first, then LEADER-or-above job scope, then plant access.
  * Reads require only plant access so viewers can see the effective calendar.
  */
 @Service
@@ -252,7 +252,7 @@ public class ShiftConfigService {
 
   private void requireMutationRole(AuthenticatedUser user) {
     if (user.applicationRole() != ApplicationRole.SUPER_ADMIN
-        && user.applicationRole() != ApplicationRole.MANAGE) {
+        && user.applicationRole() != ApplicationRole.MANAGER_MAINTENANCE) {
       throw new MutationForbiddenException();
     }
   }

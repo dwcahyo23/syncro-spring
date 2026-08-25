@@ -38,7 +38,7 @@ export function ResponsibilityManagement() {
   const queryClient = useQueryClient();
   const user = useAuthUser();
   const plantScope = usePlantScope();
-  const isViewer = user?.applicationRole === "VIEWER";
+  const isViewer = user?.applicationRole === "AUDITOR";
   const plantId = plantScope.activePlantId === "all" ? undefined : plantScope.activePlantId;
 
   const { data: machinesRes, isLoading: isLoadingMachines } = useListMachines({
@@ -109,7 +109,7 @@ export function ResponsibilityManagement() {
         <CardHeader>
           <CardTitle>Assign Responsibility</CardTitle>
           <CardDescription>
-            Assign a user responsibility for a specific machine. Note: The MANAGE application role is distinct from the
+            Assign a user responsibility for a specific machine. Note: The MANAGER_MAINTENANCE application role is distinct from the
             MANAGER machine responsibility level.
           </CardDescription>
         </CardHeader>

@@ -106,7 +106,7 @@ class ProjectionControllerTest {
   @Test
   @DisplayName("8.6-API-003 P0 wrong-plant machine maps to 403 FORBIDDEN")
   void wrongPlantForbidden() throws Exception {
-    var user = new AuthenticatedUser("u-2", "other@syncro.dev", ApplicationRole.MANAGE);
+    var user = new AuthenticatedUser("u-2", "other@syncro.dev", ApplicationRole.MANAGER_MAINTENANCE);
     var machineId = UUID.randomUUID();
     when(projections.getProjections(eq(user), eq(machineId))).thenThrow(new PlantAccessDeniedException());
 

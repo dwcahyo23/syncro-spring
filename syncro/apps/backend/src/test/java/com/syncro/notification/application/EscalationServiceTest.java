@@ -86,7 +86,7 @@ class EscalationServiceTest {
   private AuthUserEntity userWithPhoneViaReflection(String phone) throws Exception {
     var user = new AuthUserEntity(
         USER_ID, "user@test.com", "hash",
-        com.syncro.auth.domain.ApplicationRole.MANAGE, true,
+        com.syncro.auth.domain.ApplicationRole.MANAGER_MAINTENANCE, true,
         FIXED_NOW.minusSeconds(7200), FIXED_NOW.minusSeconds(7200));
     var field = AuthUserEntity.class.getDeclaredField("whatsappNumber");
     field.setAccessible(true);
@@ -210,7 +210,7 @@ class EscalationServiceTest {
     // User with null whatsappNumber (no reflection needed — field stays null by default)
     var userNoPhone = new AuthUserEntity(
         USER_ID, "staff@test.com", "hash",
-        com.syncro.auth.domain.ApplicationRole.MANAGE, true,
+        com.syncro.auth.domain.ApplicationRole.MANAGER_MAINTENANCE, true,
         FIXED_NOW.minusSeconds(7200), FIXED_NOW.minusSeconds(7200));
     when(authUserRepository.findById(USER_ID)).thenReturn(Optional.of(userNoPhone));
     when(notificationJobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));

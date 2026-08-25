@@ -74,7 +74,7 @@ class PlantScopeControllerTest {
 
   @Test
   void assignedUserReceivesAssignedPlantScope() throws Exception {
-    var user = new AuthenticatedUser("user-2", "manage@syncro.dev", ApplicationRole.MANAGE);
+    var user = new AuthenticatedUser("user-2", "manage@syncro.dev", ApplicationRole.MANAGER_MAINTENANCE);
     when(plantScopes.effectiveScope(user)).thenReturn(new PlantScopeResponse(
         "ASSIGNED",
         List.of(new PlantScopeView("plant-2", "PLANT-2", "Plant Two")),
@@ -91,7 +91,7 @@ class PlantScopeControllerTest {
 
   @Test
   void unassignedUserReceivesEmptyScopeReason() throws Exception {
-    var user = new AuthenticatedUser("user-3", "viewer@syncro.dev", ApplicationRole.VIEWER);
+    var user = new AuthenticatedUser("user-3", "viewer@syncro.dev", ApplicationRole.AUDITOR);
     when(plantScopes.effectiveScope(user)).thenReturn(new PlantScopeResponse(
         "EMPTY",
         List.of(),
@@ -109,7 +109,7 @@ class PlantScopeControllerTest {
 
   @Test
   void assignedViewerReceivesAssignedPlantScope() throws Exception {
-    var user = new AuthenticatedUser("user-4", "viewer@syncro.dev", ApplicationRole.VIEWER);
+    var user = new AuthenticatedUser("user-4", "viewer@syncro.dev", ApplicationRole.AUDITOR);
     when(plantScopes.effectiveScope(user)).thenReturn(new PlantScopeResponse(
         "ASSIGNED",
         List.of(new PlantScopeView("plant-4", "PLANT-4", "Plant Four")),
@@ -126,7 +126,7 @@ class PlantScopeControllerTest {
 
   @Test
   void outOfScopeResourceCheckReturnsSafeForbiddenError() throws Exception {
-    var user = new AuthenticatedUser("user-5", "viewer@syncro.dev", ApplicationRole.VIEWER);
+    var user = new AuthenticatedUser("user-5", "viewer@syncro.dev", ApplicationRole.AUDITOR);
     var plantId = UUID.randomUUID();
     doThrow(new PlantScopeService.PlantAccessDeniedException()).when(plantScopes).requirePlantAccess(user, plantId);
 

@@ -98,7 +98,7 @@ class SetupCompletenessControllerTest {
     when(setupCompleteness.get(any())).thenReturn(response);
 
     mockMvc.perform(get("/api/v1/setup-completeness")
-        .with(auth(user(ApplicationRole.MANAGE))))
+        .with(auth(user(ApplicationRole.MANAGER_MAINTENANCE))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.scope.mode").value("EMPTY"))
         .andExpect(jsonPath("$.scope.emptyReason").value("NO_PLANTS_ASSIGNED"))
@@ -126,7 +126,7 @@ class SetupCompletenessControllerTest {
     when(setupCompleteness.get(any())).thenReturn(response);
 
     mockMvc.perform(get("/api/v1/setup-completeness")
-        .with(auth(user(ApplicationRole.MANAGE))))
+        .with(auth(user(ApplicationRole.MANAGER_MAINTENANCE))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.overallStatus").value("COMPLETE"))
         .andExpect(jsonPath("$.steps[5].status").value("COMPLETE"));
@@ -135,7 +135,7 @@ class SetupCompletenessControllerTest {
   @Test
   @DisplayName("2.8-API-004 P1 forbidden scope error returns safe 403 shape")
   void forbiddenScopeReturnsSafeForbiddenError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new PlantAccessDeniedException()).when(setupCompleteness).get(user);
 
     mockMvc.perform(get("/api/v1/setup-completeness")

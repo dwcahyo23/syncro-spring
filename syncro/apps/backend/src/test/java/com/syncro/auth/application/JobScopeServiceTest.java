@@ -35,7 +35,7 @@ class JobScopeServiceTest {
   }
 
   private static AuthenticatedUser manage() {
-    return new AuthenticatedUser(UUID.randomUUID().toString(), "manage@syncro.dev", ApplicationRole.MANAGE);
+    return new AuthenticatedUser(UUID.randomUUID().toString(), "manage@syncro.dev", ApplicationRole.MANAGER_MAINTENANCE);
   }
 
   @Test

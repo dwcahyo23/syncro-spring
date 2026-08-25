@@ -25,9 +25,10 @@
 --                   series 000, per nextBomCode/codePart/sparepartLabel)
 --   Installation    expected_production_count 1000, baseline_counter 0,
 --                   threshold_percentage 90, function_name "Primary"
---   Recipients      technician.gm1@syncro.dev / staff.gm1@syncro.dev /
---                   leader.gm1@syncro.dev (VIEWER, enabled, WhatsApp
---                   placeholders 6281234567801/02/03)
+--   Recipients      technician.gm1@syncro.dev (TECHNICIAN) /
+--                   staff.gm1@syncro.dev (STAFF_MAINTENANCE) /
+--                   leader.gm1@syncro.dev (SECTION_LEADER), enabled,
+--                   WhatsApp placeholders 6281234567801/02/03
 --
 -- Preconditions:
 --   Flyway migrations V1..V30 must already be applied. Boot the backend once
@@ -64,7 +65,7 @@
 --     GM1 row is still created.
 --   * A pre-existing pilot login is adopted AS-IS: application_role,
 --     enabled, and whatsapp_number are never overwritten or validated.
---     A disabled/non-VIEWER/whatsapp-less pre-existing user yields dead
+--     A disabled/legacy-role/whatsapp-less pre-existing user yields dead
 --     WhatsApp routing - verify before a live pilot.
 --   * A pre-existing machine responsibility for the same (machine, user)
 --     with a DIFFERENT level is not overwritten (V14 uniqueness is
@@ -223,15 +224,15 @@ WHERE p.code = 'GM1'
 
 -- 7. Pilot recipient users (shared bcrypt hash of "syncro-pilot-dev")
 INSERT INTO auth_users (id, login_identifier, password_hash, application_role, enabled, whatsapp_number, created_at, updated_at)
-SELECT '2b67b210-61a6-4184-9454-47443c416e84'::uuid, 'technician.gm1@syncro.dev', '$2a$10$DuNkwH3TJ5QEjynPGceUTeBCT2IwUEIDhTL9T4FNa5XSWdm.M5ux2', 'VIEWER', TRUE, '6281234567801', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+SELECT '2b67b210-61a6-4184-9454-47443c416e84'::uuid, 'technician.gm1@syncro.dev', '$2a$10$DuNkwH3TJ5QEjynPGceUTeBCT2IwUEIDhTL9T4FNa5XSWdm.M5ux2', 'TECHNICIAN', TRUE, '6281234567801', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 WHERE NOT EXISTS (SELECT 1 FROM auth_users u WHERE u.login_identifier = 'technician.gm1@syncro.dev');
 
 INSERT INTO auth_users (id, login_identifier, password_hash, application_role, enabled, whatsapp_number, created_at, updated_at)
-SELECT '7f2991a5-0f4c-43ce-b550-058003e88b74'::uuid, 'staff.gm1@syncro.dev', '$2a$10$DuNkwH3TJ5QEjynPGceUTeBCT2IwUEIDhTL9T4FNa5XSWdm.M5ux2', 'VIEWER', TRUE, '6281234567802', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+SELECT '7f2991a5-0f4c-43ce-b550-058003e88b74'::uuid, 'staff.gm1@syncro.dev', '$2a$10$DuNkwH3TJ5QEjynPGceUTeBCT2IwUEIDhTL9T4FNa5XSWdm.M5ux2', 'STAFF_MAINTENANCE', TRUE, '6281234567802', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 WHERE NOT EXISTS (SELECT 1 FROM auth_users u WHERE u.login_identifier = 'staff.gm1@syncro.dev');
 
 INSERT INTO auth_users (id, login_identifier, password_hash, application_role, enabled, whatsapp_number, created_at, updated_at)
-SELECT '391dfdf2-5103-456a-a71b-121a7174ec18'::uuid, 'leader.gm1@syncro.dev', '$2a$10$DuNkwH3TJ5QEjynPGceUTeBCT2IwUEIDhTL9T4FNa5XSWdm.M5ux2', 'VIEWER', TRUE, '6281234567803', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+SELECT '391dfdf2-5103-456a-a71b-121a7174ec18'::uuid, 'leader.gm1@syncro.dev', '$2a$10$DuNkwH3TJ5QEjynPGceUTeBCT2IwUEIDhTL9T4FNa5XSWdm.M5ux2', 'SECTION_LEADER', TRUE, '6281234567803', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 WHERE NOT EXISTS (SELECT 1 FROM auth_users u WHERE u.login_identifier = 'leader.gm1@syncro.dev');
 
 -- 7.5 IDR price-entry example for the pilot sparepart (story 8-3 / validation data for the

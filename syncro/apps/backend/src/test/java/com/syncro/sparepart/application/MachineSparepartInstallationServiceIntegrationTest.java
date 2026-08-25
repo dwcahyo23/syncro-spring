@@ -66,7 +66,7 @@ class MachineSparepartInstallationServiceIntegrationTest extends AbstractPostgre
     var plant = plant("GM1");
     var machine = machine(plant, "BF-08410");
     var sparepart = sparepart("PLC-WECON-LX5");
-    var user = persistedUser(ApplicationRole.MANAGE, "manage-install@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "manage-install@syncro.dev");
     assign(user, plant);
 
     var created = service.create(user, new InstallationCommand(machine.getId(), sparepart.getId(), "Primary", 1_000_000L, 1_200L, null));
@@ -146,13 +146,13 @@ class MachineSparepartInstallationServiceIntegrationTest extends AbstractPostgre
   }
 
   @Test
-  @DisplayName("2.6-SVC-004 P0 VIEWER can read assigned plant but cannot mutate")
+  @DisplayName("2.6-SVC-004 P0 AUDITOR can read assigned plant but cannot mutate")
   void viewerCanReadAssignedPlantButCannotMutate() {
     var plant = plant("GM1");
     var machine = machine(plant, "BF-08410");
     var sparepart = sparepart("PLC-WECON-LX5");
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    var viewer = persistedUser(ApplicationRole.VIEWER, "viewer-install@syncro.dev");
+    var viewer = persistedUser(ApplicationRole.AUDITOR, "viewer-install@syncro.dev");
     assign(viewer, plant);
     var created = service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), "Primary", 1_000_000L, 1_200L, null));
 
@@ -164,14 +164,14 @@ class MachineSparepartInstallationServiceIntegrationTest extends AbstractPostgre
   }
 
   @Test
-  @DisplayName("2.6-SVC-005 P0 MANAGE cannot access out-of-scope machine installation")
+  @DisplayName("2.6-SVC-005 P0 MANAGER_MAINTENANCE cannot access out-of-scope machine installation")
   void manageCannotAccessOutOfScopeMachineInstallation() {
     var plant = plant("GM1");
     var other = plant("GM2");
     var machine = machine(other, "BF-08410");
     var sparepart = sparepart("PLC-WECON-LX5");
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    var manage = persistedUser(ApplicationRole.MANAGE, "manage-out-install@syncro.dev");
+    var manage = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "manage-out-install@syncro.dev");
     assign(manage, plant);
     var created = service.create(admin, new InstallationCommand(machine.getId(), sparepart.getId(), "Primary", 1_000_000L, 1_200L, null));
 

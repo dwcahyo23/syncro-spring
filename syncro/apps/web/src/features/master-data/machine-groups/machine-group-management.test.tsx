@@ -218,13 +218,13 @@ describe("MachineGroupManagement UI states", () => {
   });
 
   // -------------------------------------------------------------------------
-  // 4. Read-only state (VIEWER role)
+  // 4. Read-only state (AUDITOR role)
   // -------------------------------------------------------------------------
-  it("shows read-only badge instead of create button for VIEWER role", () => {
+  it("shows read-only badge instead of create button for AUDITOR role", () => {
     mockUser = {
       id: "user-1",
       loginIdentifier: "viewer@syncro.dev",
-      applicationRole: "VIEWER",
+      applicationRole: "AUDITOR",
     };
 
     render(<MachineGroupManagement />, { wrapper: Wrapper });
@@ -313,7 +313,7 @@ describe("MachineGroupManagement UI states", () => {
     mockUser = {
       id: "user-1",
       loginIdentifier: "viewer@syncro.dev",
-      applicationRole: "VIEWER",
+      applicationRole: "AUDITOR",
     };
     mockListMachineGroups = {
       ...mockListMachineGroups,
@@ -401,13 +401,13 @@ describe("MachineGroupManagement UI states", () => {
   });
 
   // -------------------------------------------------------------------------
-  // 11. VIEWER never reaches the shift editor from the groups table (8-5)
+  // 11. AUDITOR never reaches the shift editor from the groups table (8-5)
   // -------------------------------------------------------------------------
-  it("gives VIEWER no edit entry point so the shift editor stays unreachable", () => {
+  it("gives AUDITOR no edit entry point so the shift editor stays unreachable", () => {
     mockUser = {
       id: "user-1",
       loginIdentifier: "viewer@syncro.dev",
-      applicationRole: "VIEWER",
+      applicationRole: "AUDITOR",
     };
     mockListMachineGroups = {
       ...mockListMachineGroups,

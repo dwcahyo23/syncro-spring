@@ -15,13 +15,13 @@ class RoleCheckTestController {
   }
 
   @GetMapping("/api/v1/auth/role-check/manage")
-  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MANAGE')")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MANAGER_MAINTENANCE')")
   Map<String, String> manageRoleCheck() {
     return Map.of("status", "OK");
   }
 
   @PostMapping("/api/v1/auth/role-check/mutation")
-  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MANAGE')")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MANAGER_MAINTENANCE')")
   Map<String, String> mutationRoleCheck() {
     return Map.of("status", "OK");
   }

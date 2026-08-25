@@ -77,7 +77,7 @@ export function MachineGroupManagement() {
   const activePlantId = plantScope.activePlantId;
   const queryClient = useQueryClient();
   const isAssignedEmpty = scope?.mode === "EMPTY";
-  const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGE";
+  const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGER_MAINTENANCE";
   const plants = useListPlants({ query: { enabled: Boolean(scope) && !isAssignedEmpty } });
   const plantItems = plants.data?.data.items ?? [];
   const availablePlants = useMemo(() => permittedPlants(plantItems, scope), [plantItems, scope]);

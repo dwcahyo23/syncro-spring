@@ -125,10 +125,10 @@ function WahaTemplateContent({ readOnly }: { readOnly: boolean }) {
 
 export function WahaTemplatePageContent() {
   const user = useAuthUser();
-  const readOnly = user?.applicationRole === "VIEWER";
+  const readOnly = user?.applicationRole === "AUDITOR";
 
   return (
-    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGE", "VIEWER"]} title="WAHA Templates">
+    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGER_MAINTENANCE", "AUDITOR"]} title="WAHA Templates">
       <WahaTemplateContent readOnly={readOnly} />
     </RoleGuard>
   );

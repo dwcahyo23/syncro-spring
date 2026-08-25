@@ -151,11 +151,11 @@ class MachineGroupSectionAssignmentIntegrationTest extends AbstractPostgresInteg
   }
 
   @Test
-  @DisplayName("9.1-ASSIGN-007 P0 VIEWER cannot assign a section")
+  @DisplayName("9.1-ASSIGN-007 P0 AUDITOR cannot assign a section")
   void viewerCannotAssignSection() {
     var plant = plant("GM1", "Plant GM1");
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    var viewer = persistedUser(ApplicationRole.VIEWER, "viewer-assign-section@syncro.dev");
+    var viewer = persistedUser(ApplicationRole.AUDITOR, "viewer-assign-section@syncro.dev");
     assign(viewer, plant);
     var group = machineGroupService.create(admin, new CreateMachineGroupCommand(plant.getId(), "Forming"));
     var section = section(plant, "MACHINERY", "Machinery");
@@ -169,7 +169,7 @@ class MachineGroupSectionAssignmentIntegrationTest extends AbstractPostgresInteg
   void viewerCannotClearSection() {
     var plant = plant("GM1", "Plant GM1");
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    var viewer = persistedUser(ApplicationRole.VIEWER, "viewer-clear-section@syncro.dev");
+    var viewer = persistedUser(ApplicationRole.AUDITOR, "viewer-clear-section@syncro.dev");
     assign(viewer, plant);
     var group = machineGroupService.create(admin, new CreateMachineGroupCommand(plant.getId(), "Forming"));
 

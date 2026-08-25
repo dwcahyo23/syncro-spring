@@ -264,7 +264,7 @@ public class MachineService {
   }
 
   private void requireMutationRole(AuthenticatedUser user) {
-    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN && user.applicationRole() != ApplicationRole.MANAGE) {
+    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN && user.applicationRole() != ApplicationRole.MANAGER_MAINTENANCE) {
       throw new MachineMutationForbiddenException();
     }
   }

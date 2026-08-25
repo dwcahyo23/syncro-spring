@@ -17,7 +17,18 @@ export interface NavSubItem {
   comingSoon?: boolean;
   newTab?: boolean;
   isNew?: boolean;
-  roles?: Array<"SUPER_ADMIN" | "MANAGE" | "VIEWER">;
+  roles?: Array<
+    | "SUPER_ADMIN"
+    | "MANAGER_MAINTENANCE"
+    | "MAINTENANCE_LEADER"
+    | "SECTION_LEADER"
+    | "STAFF_MAINTENANCE"
+    | "TECHNICIAN"
+    | "INVENTORY_MAINTENANCE"
+    | "STOREKEEPER"
+    | "PRODUCTION_LEADER"
+    | "AUDITOR"
+  >;
 }
 
 export interface NavMainItem {
@@ -28,7 +39,18 @@ export interface NavMainItem {
   comingSoon?: boolean;
   newTab?: boolean;
   isNew?: boolean;
-  roles?: Array<"SUPER_ADMIN" | "MANAGE" | "VIEWER">;
+  roles?: Array<
+    | "SUPER_ADMIN"
+    | "MANAGER_MAINTENANCE"
+    | "MAINTENANCE_LEADER"
+    | "SECTION_LEADER"
+    | "STAFF_MAINTENANCE"
+    | "TECHNICIAN"
+    | "INVENTORY_MAINTENANCE"
+    | "STOREKEEPER"
+    | "PRODUCTION_LEADER"
+    | "AUDITOR"
+  >;
 }
 
 export interface NavGroup {
@@ -60,7 +82,7 @@ export const sidebarItems: NavGroup[] = [
         title: "Master Data",
         url: "/master-data",
         icon: Database,
-        roles: ["SUPER_ADMIN", "MANAGE"],
+        roles: ["SUPER_ADMIN", "MANAGER_MAINTENANCE"],
         subItems: [
           { title: "Plants", url: "/master-data/plants" },
           { title: "Sections", url: "/master-data/sections" },
@@ -83,7 +105,7 @@ export const sidebarItems: NavGroup[] = [
         title: "Audit Log",
         url: "/audit-log",
         icon: FileText,
-        roles: ["SUPER_ADMIN", "MANAGE"],
+        roles: ["SUPER_ADMIN", "MANAGER_MAINTENANCE"],
       },
       {
         title: "System Health",

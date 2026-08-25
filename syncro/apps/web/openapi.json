@@ -5644,8 +5644,15 @@
             "type": "string",
             "enum": [
               "SUPER_ADMIN",
-              "MANAGE",
-              "VIEWER"
+              "MANAGER_MAINTENANCE",
+              "MAINTENANCE_LEADER",
+              "SECTION_LEADER",
+              "STAFF_MAINTENANCE",
+              "TECHNICIAN",
+              "INVENTORY_MAINTENANCE",
+              "STOREKEEPER",
+              "PRODUCTION_LEADER",
+              "AUDITOR"
             ]
           }
         }

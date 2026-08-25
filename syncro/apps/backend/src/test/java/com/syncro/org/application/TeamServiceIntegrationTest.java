@@ -68,9 +68,9 @@ class TeamServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   private static final AtomicInteger seedSeq = new AtomicInteger();
 
   @Test
-  @DisplayName("9.2-SVC-001 P0 VIEWER cannot call any team endpoint (mutation or read)")
+  @DisplayName("9.2-SVC-001 P0 AUDITOR cannot call any team endpoint (mutation or read)")
   void viewerCannotCallAnyTeamEndpoint() {
-    var viewer = persistedUser(ApplicationRole.VIEWER, "viewer-team@syncro.dev");
+    var viewer = persistedUser(ApplicationRole.AUDITOR, "viewer-team@syncro.dev");
     var teamId = UUID.randomUUID();
     var command = new CreateTeamCommand("Cross Repair", future(30));
 
@@ -96,9 +96,9 @@ class TeamServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   }
 
   @Test
-  @DisplayName("9.2-SVC-002 P1 MANAGE creates a team and audits TEAM CREATE with null plant")
+  @DisplayName("9.2-SVC-002 P1 MANAGER_MAINTENANCE creates a team and audits TEAM CREATE with null plant")
   void manageCreatesTeamAndAudits() {
-    var manager = persistedUser(ApplicationRole.MANAGE, "manage-team@syncro.dev");
+    var manager = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "manage-team@syncro.dev");
 
     var created = teamService.create(manager, new CreateTeamCommand(" Cross Repair ", future(30)));
 
@@ -139,7 +139,7 @@ class TeamServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   @Test
   @DisplayName("9.2-SVC-005 P1 update renames and extends expiry and audits TEAM UPDATE")
   void updateRenamesAndExtendsExpiry() {
-    var manager = persistedUser(ApplicationRole.MANAGE, "manage-team-update@syncro.dev");
+    var manager = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "manage-team-update@syncro.dev");
     var created = teamService.create(manager, new CreateTeamCommand("Cross Repair", future(30)));
 
     var updated = teamService.update(manager, created.id(),
@@ -191,7 +191,7 @@ class TeamServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   void deleteCascadesAndAudits() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     var created = teamService.create(admin, new CreateTeamCommand("Cascade Team", future(30)));
-    var member = persistedUser(ApplicationRole.VIEWER, "cascade-member@syncro.dev");
+    var member = persistedUser(ApplicationRole.AUDITOR, "cascade-member@syncro.dev");
     teamService.addMember(admin, created.id(), UUID.fromString(member.id()));
     var machine = seedMachine("M-" + seedSeq.incrementAndGet());
     teamService.linkMachine(admin, created.id(), machine.getId());
@@ -210,9 +210,9 @@ class TeamServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   @Test
   @DisplayName("9.2-SVC-010 P0 adding a member persists it and audits TEAM UPDATE with memberAdded")
   void addMemberPersistsAndAudits() {
-    var manager = persistedUser(ApplicationRole.MANAGE, "manage-team-member@syncro.dev");
+    var manager = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "manage-team-member@syncro.dev");
     var created = teamService.create(manager, new CreateTeamCommand("Member Team", future(30)));
-    var member = persistedUser(ApplicationRole.VIEWER, "member@syncro.dev");
+    var member = persistedUser(ApplicationRole.AUDITOR, "member@syncro.dev");
 
     teamService.addMember(manager, created.id(), UUID.fromString(member.id()));
 
@@ -228,7 +228,7 @@ class TeamServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   void addMemberDuplicateIdempotent() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     var created = teamService.create(admin, new CreateTeamCommand("Dup Member Team", future(30)));
-    var member = persistedUser(ApplicationRole.VIEWER, "dup-member@syncro.dev");
+    var member = persistedUser(ApplicationRole.AUDITOR, "dup-member@syncro.dev");
 
     teamService.addMember(admin, created.id(), UUID.fromString(member.id()));
     teamService.addMember(admin, created.id(), UUID.fromString(member.id()));
@@ -242,7 +242,7 @@ class TeamServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   void removeMemberDeletes() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     var created = teamService.create(admin, new CreateTeamCommand("Remove Member Team", future(30)));
-    var member = persistedUser(ApplicationRole.VIEWER, "remove-member@syncro.dev");
+    var member = persistedUser(ApplicationRole.AUDITOR, "remove-member@syncro.dev");
     teamService.addMember(admin, created.id(), UUID.fromString(member.id()));
 
     teamService.removeMember(admin, created.id(), UUID.fromString(member.id()));
@@ -258,7 +258,7 @@ class TeamServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   void removeNonMemberIdempotent() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     var created = teamService.create(admin, new CreateTeamCommand("Remove Missing Team", future(30)));
-    var member = persistedUser(ApplicationRole.VIEWER, "remove-missing@syncro.dev");
+    var member = persistedUser(ApplicationRole.AUDITOR, "remove-missing@syncro.dev");
 
     teamService.removeMember(admin, created.id(), UUID.fromString(member.id()));
 
@@ -281,7 +281,7 @@ class TeamServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   @Test
   @DisplayName("9.2-SVC-015 P0 linking a machine persists it and audits machineLinked")
   void linkMachinePersistsAndAudits() {
-    var manager = persistedUser(ApplicationRole.MANAGE, "manage-team-machine@syncro.dev");
+    var manager = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "manage-team-machine@syncro.dev");
     var created = teamService.create(manager, new CreateTeamCommand("Machine Team", future(30)));
     var machine = seedMachine("M-" + seedSeq.incrementAndGet());
 
@@ -361,7 +361,7 @@ class TeamServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   void getReturnsDetailWithMembersAndMachines() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     var created = teamService.create(admin, new CreateTeamCommand("Detail Team", future(30)));
-    var member = persistedUser(ApplicationRole.VIEWER, "detail-member@syncro.dev");
+    var member = persistedUser(ApplicationRole.AUDITOR, "detail-member@syncro.dev");
     teamService.addMember(admin, created.id(), UUID.fromString(member.id()));
     var machine = seedMachine("M-" + seedSeq.incrementAndGet());
     teamService.linkMachine(admin, created.id(), machine.getId());
@@ -386,11 +386,11 @@ class TeamServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   }
 
   @Test
-  @DisplayName("9.2-SVC-022 P0 list and get are forbidden for VIEWER (reads gated, review decision)")
+  @DisplayName("9.2-SVC-022 P0 list and get are forbidden for AUDITOR (reads gated, review decision)")
   void readsForbiddenToViewer() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     teamService.create(admin, new CreateTeamCommand("Gated Team", future(30)));
-    var viewer = authenticatedUser(ApplicationRole.VIEWER);
+    var viewer = authenticatedUser(ApplicationRole.AUDITOR);
 
     assertThatThrownBy(() -> teamService.list(viewer))
         .isInstanceOf(TeamMutationForbiddenException.class);

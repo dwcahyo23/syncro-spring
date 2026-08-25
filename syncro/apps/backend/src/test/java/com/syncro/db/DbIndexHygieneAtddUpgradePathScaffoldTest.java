@@ -34,7 +34,7 @@ class DbIndexHygieneAtddUpgradePathScaffoldTest {
     java.util.UUID sparepartId =
         DbIndexHygieneTestData.sparepart(jdbc, "SP-001", "Spare", machineId, categoryId, brandId, kindId, typeId);
     DbIndexHygieneTestData.installation(jdbc, machineId, sparepartId);
-    java.util.UUID userId = DbIndexHygieneTestData.authUser(jdbc, "operator@syncro.dev", "MANAGE");
+    java.util.UUID userId = DbIndexHygieneTestData.authUser(jdbc, "operator@syncro.dev", "MANAGER_MAINTENANCE");
     DbIndexHygieneTestData.plantAssignment(jdbc, userId, plantId);
 
     migrateTo("17");

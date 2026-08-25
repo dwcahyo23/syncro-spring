@@ -71,9 +71,9 @@ class SparepartControllerTest {
   }
 
   @Test
-  @DisplayName("2.5-API-002 P1 VIEWER can list spareparts with filters")
+  @DisplayName("2.5-API-002 P1 AUDITOR can list spareparts with filters")
   void viewerCanListSparepartsWithFilters() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     var sparepartId = UUID.randomUUID();
     var categoryId = UUID.randomUUID();
     var brandId = UUID.randomUUID();
@@ -102,9 +102,9 @@ class SparepartControllerTest {
   }
 
   @Test
-  @DisplayName("2.5-API-003 P1 MANAGE can create sparepart")
+  @DisplayName("2.5-API-003 P1 MANAGER_MAINTENANCE can create sparepart")
   void manageCanCreateSparepart() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var sparepartId = UUID.randomUUID();
     var categoryId = UUID.randomUUID();
     var brandId = UUID.randomUUID();
@@ -132,7 +132,7 @@ class SparepartControllerTest {
       "{\"machineId\":\"00000000-0000-0000-0000-000000000010\",\"categoryId\":\"00000000-0000-0000-0000-000000000001\",\"brandId\":\"00000000-0000-0000-0000-000000000002\",\"kindId\":\"00000000-0000-0000-0000-000000000003\",\"typeId\":null}"
   })
   void invalidSparepartRequestReturnsFieldErrors(String payload) throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
 
     mockMvc.perform(post("/api/v1/spareparts")
         .with(auth(user))
@@ -147,7 +147,7 @@ class SparepartControllerTest {
   @Test
   @DisplayName("2.5-API-005 P1 malformed JSON returns safe error")
   void malformedJsonReturnsSafeError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
 
     mockMvc.perform(post("/api/v1/spareparts")
         .with(auth(user))
@@ -161,7 +161,7 @@ class SparepartControllerTest {
   @Test
   @DisplayName("2.5-API-006 P1 duplicate sparepart returns safe validation error")
   void duplicateSparepartReturnsSafeValidationError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var categoryId = UUID.randomUUID();
     var brandId = UUID.randomUUID();
     var kindId = UUID.randomUUID();
@@ -180,7 +180,7 @@ class SparepartControllerTest {
   @Test
   @DisplayName("2.5-API-007 P1 missing taxonomy reference returns safe validation error")
   void missingTaxonomyReferenceReturnsSafeValidationError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var categoryId = UUID.randomUUID();
     var brandId = UUID.randomUUID();
     var kindId = UUID.randomUUID();
@@ -198,7 +198,7 @@ class SparepartControllerTest {
   @Test
   @DisplayName("2.5-API-008 P1 wrong taxonomy dimension returns safe validation error")
   void wrongTaxonomyDimensionReturnsSafeValidationError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var categoryId = UUID.randomUUID();
     var brandId = UUID.randomUUID();
     var kindId = UUID.randomUUID();
@@ -235,9 +235,9 @@ class SparepartControllerTest {
   }
 
   @Test
-  @DisplayName("2.5-API-010 P0 VIEWER cannot update sparepart")
+  @DisplayName("2.5-API-010 P0 AUDITOR cannot update sparepart")
   void viewerCannotUpdateSparepart() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     var sparepartId = UUID.randomUUID();
     var categoryId = UUID.randomUUID();
     var brandId = UUID.randomUUID();
@@ -254,9 +254,9 @@ class SparepartControllerTest {
   }
 
   @Test
-  @DisplayName("2.5-API-011 P0 VIEWER cannot delete sparepart")
+  @DisplayName("2.5-API-011 P0 AUDITOR cannot delete sparepart")
   void viewerCannotDeleteSparepart() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     var sparepartId = UUID.randomUUID();
     doThrow(new SparepartMutationForbiddenException()).when(spareparts).delete(user, sparepartId);
 
@@ -303,7 +303,7 @@ class SparepartControllerTest {
   @Test
   @DisplayName("2.5-API-014 P1 delete integrity conflict returns safe conflict error")
   void deleteIntegrityConflictReturnsSafeConflictError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var sparepartId = UUID.randomUUID();
     doThrow(new SparepartDataIntegrityException()).when(spareparts).delete(user, sparepartId);
 
@@ -322,9 +322,9 @@ class SparepartControllerTest {
   // --- Story 8-2: PATCH procurement subset ---
 
   @Test
-  @DisplayName("8.2-API-001 P0 MANAGE replaces procurement values via PATCH")
+  @DisplayName("8.2-API-001 P0 MANAGER_MAINTENANCE replaces procurement values via PATCH")
   void managePatchesProcurementValues() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var sparepartId = UUID.randomUUID();
     var view = new SparepartView(
         sparepartId, "PLC-WECON-LX5",
@@ -349,7 +349,7 @@ class SparepartControllerTest {
   @Test
   @DisplayName("8.2-API-002 P0 duplicate material code returns DUPLICATE_MATERIAL_CODE with field error")
   void duplicateMaterialCodeReturnsFieldError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new DuplicateMaterialCodeException()).when(spareparts)
         .patchProcurement(eq(user), any(), any());
 
@@ -364,7 +364,7 @@ class SparepartControllerTest {
   @Test
   @DisplayName("8.2-API-003 P0 below-LEADER job scope returns JOB_SCOPE_REQUIRED with explanation")
   void belowLeaderJobScopeReturnsExplanation() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new com.syncro.auth.application.JobScopeForbiddenException("LEADER")).when(spareparts)
         .patchProcurement(eq(user), any(), any());
 

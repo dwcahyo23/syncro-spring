@@ -290,7 +290,7 @@ class SparepartProjectionServiceIntegrationTest {
   void wrongPlantUserDenied() {
     var seeded = seedMachineWithHistory(false);
     var outsider = new AuthenticatedUser(UUID.randomUUID().toString(), "wrong-plant@syncro.dev",
-        ApplicationRole.MANAGE);
+        ApplicationRole.MANAGER_MAINTENANCE);
 
     assertThatThrownBy(() -> projectionService.getProjections(outsider, seeded.machine().getId()))
         .isInstanceOf(PlantAccessDeniedException.class);

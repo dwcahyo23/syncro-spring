@@ -174,7 +174,7 @@ class AuditLogWiringIntegrationTest extends AbstractPostgresIntegrationTest {
   @Test
   @DisplayName("2.9-SVC-011 P2 manage user machine status update records one entry with before and after")
   void machineMutationsAreAudited() {
-    var manage = persistedUser(ApplicationRole.MANAGE, "wiring-manage@syncro.dev");
+    var manage = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "wiring-manage@syncro.dev");
     var plantView = plants.create(manage, new CreatePlantCommand("GM1", "Plant GM1"));
     var groupView = machineGroups.create(manage, new CreateMachineGroupCommand(plantView.id(), "Forming"));
     var machineView = machines.create(manage, new MachineCommand(plantView.id(), groupView.id(), "BF-08410",
@@ -293,7 +293,7 @@ class AuditLogWiringIntegrationTest extends AbstractPostgresIntegrationTest {
     var admin = persistedUser(ApplicationRole.SUPER_ADMIN, "wiring-admin@syncro.dev");
     var machineView = machineChain(admin);
     var technician = users.saveAndFlush(new AuthUserEntity(UUID.randomUUID(), "technician@syncro.dev",
-        passwordEncoder.encode("syncro-test-password"), ApplicationRole.VIEWER, true, Instant.parse("2026-05-28T00:00:00Z"),
+        passwordEncoder.encode("syncro-test-password"), ApplicationRole.AUDITOR, true, Instant.parse("2026-05-28T00:00:00Z"),
         Instant.parse("2026-05-28T00:00:00Z")));
     var assigned = responsibilities.assign(admin, new CreateMachineResponsibilityRequest(machineView.id(), technician.getId(), ResponsibilityLevel.TECHNICIAN));
 

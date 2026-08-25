@@ -36,7 +36,7 @@ class PlantScopeRepositoryIntegrationTest extends AbstractPostgresIntegrationTes
         UUID.randomUUID(),
         "manage@syncro.dev",
         passwordEncoder.encode("syncro-manage-dev"),
-        ApplicationRole.MANAGE,
+        ApplicationRole.MANAGER_MAINTENANCE,
         true,
         now,
         now));
@@ -66,7 +66,7 @@ class PlantScopeRepositoryIntegrationTest extends AbstractPostgresIntegrationTes
         UUID.randomUUID(),
         "viewer@syncro.dev",
         passwordEncoder.encode("syncro-viewer-dev"),
-        ApplicationRole.VIEWER,
+        ApplicationRole.AUDITOR,
         true,
         now,
         now));

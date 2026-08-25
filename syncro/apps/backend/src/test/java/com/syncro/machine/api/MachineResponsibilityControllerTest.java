@@ -121,7 +121,7 @@ class MachineResponsibilityControllerTest {
             .thenThrow(new com.syncro.machine.application.MachineService.MachineMutationForbiddenException());
 
         mockMvc.perform(post("/api/v1/machine-responsibilities")
-                .with(auth(user(ApplicationRole.VIEWER)))
+                .with(auth(user(ApplicationRole.AUDITOR)))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(validJson)) 
                 .andExpect(status().isForbidden());

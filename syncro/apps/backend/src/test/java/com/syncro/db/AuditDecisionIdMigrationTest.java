@@ -95,7 +95,7 @@ class AuditDecisionIdMigrationTest extends AbstractPostgresIntegrationTest {
   @Test
   @DisplayName("9.3-DB-004 P1 writer round-trips an explicit decisionId")
   void writerPersistsExplicitDecisionId() {
-    var actor = new AuthenticatedUser(UUID.randomUUID().toString(), "writer@syncro.dev", ApplicationRole.MANAGE);
+    var actor = new AuthenticatedUser(UUID.randomUUID().toString(), "writer@syncro.dev", ApplicationRole.MANAGER_MAINTENANCE);
     auditLogWriter.record(actor, new AuditRecord(AuditAction.CREATE, AuditEntityType.PLANT,
         UUID.randomUUID(), "GM1", null, null, Map.of("code", "GM1"), UUID.fromString(DECISION_ID)));
     entityManager.flush();
@@ -112,7 +112,7 @@ class AuditDecisionIdMigrationTest extends AbstractPostgresIntegrationTest {
     DecisionContext.stash(request, DECISION_ID);
     RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 
-    var actor = new AuthenticatedUser(UUID.randomUUID().toString(), "autofill@syncro.dev", ApplicationRole.MANAGE);
+    var actor = new AuthenticatedUser(UUID.randomUUID().toString(), "autofill@syncro.dev", ApplicationRole.MANAGER_MAINTENANCE);
     auditLogWriter.record(actor, new AuditRecord(AuditAction.CREATE, AuditEntityType.PLANT,
         UUID.randomUUID(), "GM2", null, null, Map.of("code", "GM2"), null));
     entityManager.flush();
@@ -125,7 +125,7 @@ class AuditDecisionIdMigrationTest extends AbstractPostgresIntegrationTest {
   @Test
   @DisplayName("9.3-DB-006 P2 outside any request the writer leaves decision_id NULL")
   void writerOutsideRequestLeavesDecisionIdNull() {
-    var actor = new AuthenticatedUser(UUID.randomUUID().toString(), "system-ish@syncro.dev", ApplicationRole.MANAGE);
+    var actor = new AuthenticatedUser(UUID.randomUUID().toString(), "system-ish@syncro.dev", ApplicationRole.MANAGER_MAINTENANCE);
     auditLogWriter.record(actor, new AuditRecord(AuditAction.CREATE, AuditEntityType.PLANT,
         UUID.randomUUID(), "GM3", null, null, Map.of("code", "GM3"), null));
     entityManager.flush();

@@ -47,7 +47,7 @@ class PolicyDecisionPointTest {
   private PolicyDecisionPoint pdp;
 
   private final AuthenticatedUser user =
-      new AuthenticatedUser("11111111-1111-1111-1111-111111111111", "tech@syncro.dev", ApplicationRole.MANAGE);
+      new AuthenticatedUser("11111111-1111-1111-1111-111111111111", "tech@syncro.dev", ApplicationRole.MANAGER_MAINTENANCE);
   private final OpaResource resource = new OpaResource("workorder", null, null, null, null);
 
   @BeforeEach
@@ -180,7 +180,7 @@ class PolicyDecisionPointTest {
     var input = (OpaInput) captor.getValue();
 
     assertThat(input.subject().userId()).isEqualTo("11111111-1111-1111-1111-111111111111");
-    assertThat(input.subject().roles()).containsExactly("MANAGE");
+    assertThat(input.subject().roles()).containsExactly("MANAGER_MAINTENANCE");
     assertThat(input.subject().plantIds()).containsExactly(plantId);
     assertThat(input.subject().machineGroupIds()).containsExactly(groupId);
     assertThat(input.subject().activeTeamIds()).containsExactly(teamGroupId);

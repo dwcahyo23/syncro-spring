@@ -36,7 +36,8 @@ public class WahaTemplateService {
 
   @Transactional
   public WahaTemplate upsertTemplate(String body, AuthenticatedUser actor) {
-    if (actor.applicationRole() == com.syncro.auth.domain.ApplicationRole.VIEWER) {
+    if (actor.applicationRole() != com.syncro.auth.domain.ApplicationRole.SUPER_ADMIN
+        && actor.applicationRole() != com.syncro.auth.domain.ApplicationRole.MANAGER_MAINTENANCE) {
       throw new WahaTemplateForbiddenException();
     }
     validateVariables(body);

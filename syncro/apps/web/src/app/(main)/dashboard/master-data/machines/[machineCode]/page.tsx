@@ -19,7 +19,7 @@ export default function Page() {
   const machineCode = decodeURIComponent(String(params.machineCode ?? ""));
 
   return (
-    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGE", "VIEWER"]} title="Machine Hub">
+    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGER_MAINTENANCE", "AUDITOR"]} title="Machine Hub">
       <div className="flex flex-col gap-6">
         <Breadcrumb>
           <BreadcrumbList>

@@ -75,7 +75,7 @@ public class PlantService {
     }
     var now = Instant.now(clock);
     var plant = savePlant(new PlantEntity(UUID.randomUUID(), code, name, now, now));
-    if (user.applicationRole() == ApplicationRole.MANAGE) {
+    if (user.applicationRole() == ApplicationRole.MANAGER_MAINTENANCE) {
       assignments.save(new AuthUserPlantAssignmentEntity(UUID.fromString(user.id()), plant.getId(), now));
     }
     auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.PLANT, plant.getId(), plant.getCode(),
@@ -120,7 +120,7 @@ public class PlantService {
   }
 
   private void requireMutationRole(AuthenticatedUser user) {
-    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN && user.applicationRole() != ApplicationRole.MANAGE) {
+    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN && user.applicationRole() != ApplicationRole.MANAGER_MAINTENANCE) {
       throw new PlantMutationForbiddenException();
     }
   }

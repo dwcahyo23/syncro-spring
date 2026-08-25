@@ -161,7 +161,7 @@ class SparepartAlertControllerTest {
   @Test
   @DisplayName("8.7-API-005 out-of-scope alert maps to 403 FORBIDDEN")
   void outOfScopeAlertForbidden() throws Exception {
-    var user = new AuthenticatedUser("u-2", "other@syncro.dev", ApplicationRole.MANAGE);
+    var user = new AuthenticatedUser("u-2", "other@syncro.dev", ApplicationRole.MANAGER_MAINTENANCE);
     var alertId = UUID.randomUUID();
     when(alertQuery.get(eq(user), eq(alertId))).thenThrow(new PlantAccessDeniedException());
 

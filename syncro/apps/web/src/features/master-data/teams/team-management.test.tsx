@@ -61,8 +61,8 @@ vi.mock("@/lib/api/generated/syncro", () => ({
   useListUsers: vi.fn(() => ({
     data: {
       data: [
-        { id: "u-1", loginIdentifier: "technician@syncro.dev", applicationRole: "VIEWER" },
-        { id: "u-2", loginIdentifier: "manager@syncro.dev", applicationRole: "MANAGE" },
+        { id: "u-1", loginIdentifier: "technician@syncro.dev", applicationRole: "AUDITOR" },
+        { id: "u-2", loginIdentifier: "manager@syncro.dev", applicationRole: "MANAGER_MAINTENANCE" },
       ],
     },
     isLoading: false,
@@ -291,8 +291,8 @@ describe("TeamManagement", () => {
     expect(new Date(payload.data.expiresAt).toISOString()).toBe("2026-09-30T10:00:07.000Z");
   });
 
-  it("renders a read-only table without mutation actions for VIEWER", () => {
-    mockAuthUser = { applicationRole: "VIEWER" };
+  it("renders a read-only table without mutation actions for AUDITOR", () => {
+    mockAuthUser = { applicationRole: "AUDITOR" };
     mockListTeams = {
       data: {
         data: {

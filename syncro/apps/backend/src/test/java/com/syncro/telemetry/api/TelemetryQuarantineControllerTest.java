@@ -77,18 +77,18 @@ class TelemetryQuarantineControllerTest {
   }
 
   @Test
-  @DisplayName("3.11-API-003 P0 MANAGE user gets 403")
+  @DisplayName("3.11-API-003 P0 MANAGER_MAINTENANCE user gets 403")
   void manageUserIsForbidden() throws Exception {
     mockMvc.perform(get("/api/v1/telemetry/quarantine")
-        .with(auth(user(ApplicationRole.MANAGE))))
+        .with(auth(user(ApplicationRole.MANAGER_MAINTENANCE))))
         .andExpect(status().isForbidden());
   }
 
   @Test
-  @DisplayName("3.11-API-004 P0 VIEWER user gets 403")
+  @DisplayName("3.11-API-004 P0 AUDITOR user gets 403")
   void viewerUserIsForbidden() throws Exception {
     mockMvc.perform(get("/api/v1/telemetry/quarantine")
-        .with(auth(user(ApplicationRole.VIEWER))))
+        .with(auth(user(ApplicationRole.AUDITOR))))
         .andExpect(status().isForbidden());
   }
 

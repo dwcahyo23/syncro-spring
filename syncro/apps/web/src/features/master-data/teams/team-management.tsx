@@ -87,7 +87,7 @@ function fromDatetimeLocal(value: string): string {
 export function TeamManagement() {
   const user = useAuthUser();
   const queryClient = useQueryClient();
-  const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGE";
+  const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGER_MAINTENANCE";
 
   const teamsQuery = useListTeams({ query: { enabled: Boolean(user) } });
   const invalidateTeams = () => queryClient.invalidateQueries({ queryKey: getListTeamsQueryKey() });

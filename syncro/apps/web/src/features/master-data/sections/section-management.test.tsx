@@ -99,13 +99,13 @@ describe("SectionManagement", () => {
     expect(screen.getByRole("button", { name: /edit/i })).toBeInTheDocument();
   });
 
-  it("shows a read-only badge for VIEWER role", () => {
+  it("shows a read-only badge for AUDITOR role", () => {
     const authUser = vi.doMock("@/lib/auth/use-auth-user", () => ({
-      useAuthUser: () => ({ applicationRole: "VIEWER" }),
+      useAuthUser: () => ({ applicationRole: "AUDITOR" }),
     }));
     void authUser;
     // Re-render with the default (SUPER_ADMIN) mock but assert the create button exists there;
-    // VIEWER coverage is handled by the RoleGuard on the route.
+    // AUDITOR coverage is handled by the RoleGuard on the route.
     render(<SectionManagement />, { wrapper: Wrapper });
     expect(screen.getByRole("button", { name: /create section/i })).toBeInTheDocument();
   });

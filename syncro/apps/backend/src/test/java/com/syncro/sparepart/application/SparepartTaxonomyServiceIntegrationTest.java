@@ -43,9 +43,9 @@ class SparepartTaxonomyServiceIntegrationTest extends AbstractPostgresIntegratio
   private JdbcTemplate jdbc;
 
   @Test
-  @DisplayName("2.4-SVC-001 P1 MANAGE creates normalized taxonomy entry")
+  @DisplayName("2.4-SVC-001 P1 MANAGER_MAINTENANCE creates normalized taxonomy entry")
   void manageCreatesNormalizedTaxonomyEntry() {
-    var user = persistedUser(ApplicationRole.MANAGE, "manage-taxonomy@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "manage-taxonomy@syncro.dev");
 
     var created = taxonomyService.create(user, command(SparepartTaxonomyDimension.CATEGORY, " ELECTRONIC ", " Electronic "));
 
@@ -122,9 +122,9 @@ class SparepartTaxonomyServiceIntegrationTest extends AbstractPostgresIntegratio
   }
 
   @Test
-  @DisplayName("2.4-SVC-007 P0 VIEWER can list taxonomy but cannot mutate")
+  @DisplayName("2.4-SVC-007 P0 AUDITOR can list taxonomy but cannot mutate")
   void viewerCanListButCannotMutateTaxonomy() {
-    var viewer = persistedUser(ApplicationRole.VIEWER, "viewer-taxonomy@syncro.dev");
+    var viewer = persistedUser(ApplicationRole.AUDITOR, "viewer-taxonomy@syncro.dev");
     var entry = seededElectricCategory();
 
     assertThat(taxonomyService.list(viewer, null)).extracting(taxonomy -> taxonomy.id()).contains(entry.getId());

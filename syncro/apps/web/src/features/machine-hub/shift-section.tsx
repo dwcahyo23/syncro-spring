@@ -37,7 +37,7 @@ function errorResponse(error: unknown): ErrorResponse | null {
  */
 export function ShiftSection({ machineId }: { machineId: string }) {
   const user = useAuthUser();
-  const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGE";
+  const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGER_MAINTENANCE";
   const queryClient = useQueryClient();
   const shiftConfig = useGetMachineShiftConfig(machineId);
   const updateShifts = useUpdateMachineShiftConfig();

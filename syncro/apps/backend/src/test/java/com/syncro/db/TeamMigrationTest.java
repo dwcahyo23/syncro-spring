@@ -143,7 +143,7 @@ class TeamMigrationTest extends AbstractPostgresIntegrationTest {
         INSERT INTO auth_users (id, login_identifier, password_hash, application_role, enabled, created_at, updated_at)
         VALUES (?,?,?,?,?,?,?)
         """, userId, "team-migration-user-" + seedSeq.incrementAndGet() + "@syncro.dev",
-        "hash", "VIEWER", true, TS, TS);
+        "hash", "AUDITOR", true, TS, TS);
     return userId;
   }
 

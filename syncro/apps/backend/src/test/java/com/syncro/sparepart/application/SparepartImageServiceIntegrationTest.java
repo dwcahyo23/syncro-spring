@@ -161,9 +161,9 @@ class SparepartImageServiceIntegrationTest {
   private PasswordEncoder passwordEncoder;
 
   @Test
-  @DisplayName("8.4-SVC-001 P0 LEADER-scoped MANAGE upload persists key, stores object, audits CREATE")
+  @DisplayName("8.4-SVC-001 P0 LEADER-scoped MANAGER_MAINTENANCE upload persists key, stores object, audits CREATE")
   void leaderManageUploadPersistsKeyAndAuditsCreate() throws Exception {
-    var user = persistedUser(ApplicationRole.MANAGE, "img-upload@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "img-upload@syncro.dev");
     var machine = machine();
     assign(user, machine.getPlant());
     assignJobScope(user, machine, ResponsibilityLevel.LEADER);
@@ -204,7 +204,7 @@ class SparepartImageServiceIntegrationTest {
   @Test
   @DisplayName("8.4-SVC-002 P0 replace deletes the previous object before storing and audits UPDATE")
   void replaceDeletesPreviousObjectAndAuditsUpdate() throws Exception {
-    var user = persistedUser(ApplicationRole.MANAGE, "img-replace@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "img-replace@syncro.dev");
     var machine = machine();
     assign(user, machine.getPlant());
     assignJobScope(user, machine, ResponsibilityLevel.LEADER);
@@ -238,7 +238,7 @@ class SparepartImageServiceIntegrationTest {
   @Test
   @DisplayName("8.4-SVC-003 P0 store failure after old delete leaves entity untouched with no audit")
   void storeFailureAfterOldDeleteLeavesEntityUntouched() {
-    var user = persistedUser(ApplicationRole.MANAGE, "img-store-fail@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "img-store-fail@syncro.dev");
     var machine = machine();
     assign(user, machine.getPlant());
     assignJobScope(user, machine, ResponsibilityLevel.LEADER);
@@ -264,7 +264,7 @@ class SparepartImageServiceIntegrationTest {
   @Test
   @DisplayName("8.4-SVC-004 P0 old-delete failure surfaces 502 without touching the entity")
   void oldDeleteFailureSurfacesStorageError() {
-    var user = persistedUser(ApplicationRole.MANAGE, "img-del-fail@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "img-del-fail@syncro.dev");
     var machine = machine();
     assign(user, machine.getPlant());
     assignJobScope(user, machine, ResponsibilityLevel.LEADER);
@@ -288,7 +288,7 @@ class SparepartImageServiceIntegrationTest {
   @Test
   @DisplayName("8.4-SVC-005 P0 remove deletes the object, clears the key, and audits DELETE")
   void removeDeletesObjectClearsKeyAndAuditsDelete() throws Exception {
-    var user = persistedUser(ApplicationRole.MANAGE, "img-remove@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "img-remove@syncro.dev");
     var machine = machine();
     assign(user, machine.getPlant());
     assignJobScope(user, machine, ResponsibilityLevel.LEADER);
@@ -315,7 +315,7 @@ class SparepartImageServiceIntegrationTest {
   @Test
   @DisplayName("8.4-SVC-006 P0 remove-when-absent is an idempotent no-op with no storage call and no audit")
   void removeWhenAbsentIsNoop() {
-    var user = persistedUser(ApplicationRole.MANAGE, "img-noop@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "img-noop@syncro.dev");
     var machine = machine();
     assign(user, machine.getPlant());
     assignJobScope(user, machine, ResponsibilityLevel.LEADER);
@@ -332,7 +332,7 @@ class SparepartImageServiceIntegrationTest {
   @Test
   @DisplayName("8.4-SVC-007 P1 GET presigns when an image exists")
   void getPresignsWhenImageExists() {
-    var user = persistedUser(ApplicationRole.MANAGE, "img-get@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "img-get@syncro.dev");
     var machine = machine();
     assign(user, machine.getPlant());
     assignJobScope(user, machine, ResponsibilityLevel.LEADER);
@@ -353,7 +353,7 @@ class SparepartImageServiceIntegrationTest {
   @Test
   @DisplayName("8.4-SVC-008 P1 GET without image returns image-not-found")
   void getWithoutImageReturnsImageNotFound() {
-    var user = persistedUser(ApplicationRole.MANAGE, "img-no-get@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "img-no-get@syncro.dev");
     var machine = machine();
     assign(user, machine.getPlant());
     assignJobScope(user, machine, ResponsibilityLevel.LEADER);
@@ -367,7 +367,7 @@ class SparepartImageServiceIntegrationTest {
   @Test
   @DisplayName("8.4-SVC-009 P0 non-image content type is rejected with no storage call")
   void badContentTypeRejected() {
-    var user = persistedUser(ApplicationRole.MANAGE, "img-badtype@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "img-badtype@syncro.dev");
     var machine = machine();
     assign(user, machine.getPlant());
     assignJobScope(user, machine, ResponsibilityLevel.LEADER);
@@ -385,7 +385,7 @@ class SparepartImageServiceIntegrationTest {
   @Test
   @DisplayName("8.4-SVC-010 P0 oversize upload is rejected with no storage call")
   void oversizeRejected() {
-    var user = persistedUser(ApplicationRole.MANAGE, "img-oversize@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "img-oversize@syncro.dev");
     var machine = machine();
     assign(user, machine.getPlant());
     assignJobScope(user, machine, ResponsibilityLevel.LEADER);
@@ -403,7 +403,7 @@ class SparepartImageServiceIntegrationTest {
   @Test
   @DisplayName("8.4-SVC-011 P0 empty file is rejected with no storage call")
   void emptyFileRejected() {
-    var user = persistedUser(ApplicationRole.MANAGE, "img-empty@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "img-empty@syncro.dev");
     var machine = machine();
     assign(user, machine.getPlant());
     assignJobScope(user, machine, ResponsibilityLevel.LEADER);
@@ -420,7 +420,7 @@ class SparepartImageServiceIntegrationTest {
   @Test
   @DisplayName("8.4-SVC-012 P0 blank filename is rejected with no storage call")
   void blankFilenameRejected() {
-    var user = persistedUser(ApplicationRole.MANAGE, "img-name@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "img-name@syncro.dev");
     var machine = machine();
     assign(user, machine.getPlant());
     assignJobScope(user, machine, ResponsibilityLevel.LEADER);
@@ -435,9 +435,9 @@ class SparepartImageServiceIntegrationTest {
   }
 
   @Test
-  @DisplayName("8.4-SVC-013 P0 MANAGE below LEADER job scope is denied with no mutation, storage, or audit")
+  @DisplayName("8.4-SVC-013 P0 MANAGER_MAINTENANCE below LEADER job scope is denied with no mutation, storage, or audit")
   void manageBelowLeaderDenied() {
-    var user = persistedUser(ApplicationRole.MANAGE, "img-noscope@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "img-noscope@syncro.dev");
     var machine = machine();
     assign(user, machine.getPlant());
     var sparepart = createdSparepart(authenticatedUser(ApplicationRole.SUPER_ADMIN));
@@ -456,9 +456,9 @@ class SparepartImageServiceIntegrationTest {
   }
 
   @Test
-  @DisplayName("8.4-SVC-014 P0 VIEWER is rejected by the app-role gate before job scope")
+  @DisplayName("8.4-SVC-014 P0 AUDITOR is rejected by the app-role gate before job scope")
   void viewerRejectedByAppRoleGate() {
-    var viewer = persistedUser(ApplicationRole.VIEWER, "img-viewer@syncro.dev");
+    var viewer = persistedUser(ApplicationRole.AUDITOR, "img-viewer@syncro.dev");
     var machine = machine();
     assign(viewer, machine.getPlant());
     assignJobScope(viewer, machine, ResponsibilityLevel.LEADER);
@@ -492,7 +492,7 @@ class SparepartImageServiceIntegrationTest {
   @Test
   @DisplayName("8.4-SVC-016 P1 out-of-plant sparepart is masked as not found")
   void wrongPlantMaskedAsNotFound() {
-    var outsider = persistedUser(ApplicationRole.MANAGE, "img-outsider@syncro.dev");
+    var outsider = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "img-outsider@syncro.dev");
     assignJobScope(outsider, machine(), ResponsibilityLevel.MANAGER);
     var sparepart = createdSparepart(authenticatedUser(ApplicationRole.SUPER_ADMIN));
 
@@ -523,7 +523,7 @@ class SparepartImageServiceIntegrationTest {
   @Test
   @DisplayName("8.4-SVC-018 P1 plant-scoped user without job scope can still read the image")
   void plantScopedReaderReadsWithoutJobScope() {
-    var reader = persistedUser(ApplicationRole.MANAGE, "img-reader@syncro.dev");
+    var reader = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "img-reader@syncro.dev");
     var writer = persistedUser(ApplicationRole.SUPER_ADMIN, "img-writer@syncro.dev");
     var machine = machine();
     assign(reader, machine.getPlant());
@@ -543,7 +543,7 @@ class SparepartImageServiceIntegrationTest {
   @Test
   @DisplayName("8.4-SVC-019 P1 storage-down on upload surfaces storage error with no entity change")
   void storageDownOnUpload() {
-    var user = persistedUser(ApplicationRole.MANAGE, "img-storage-down@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "img-storage-down@syncro.dev");
     var machine = machine();
     assign(user, machine.getPlant());
     assignJobScope(user, machine, ResponsibilityLevel.LEADER);
@@ -563,7 +563,7 @@ class SparepartImageServiceIntegrationTest {
   @Test
   @DisplayName("8.4-SVC-020 P1 storage-down on get surfaces storage error")
   void storageDownOnGet() {
-    var user = persistedUser(ApplicationRole.MANAGE, "img-get-down@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "img-get-down@syncro.dev");
     var machine = machine();
     assign(user, machine.getPlant());
     assignJobScope(user, machine, ResponsibilityLevel.LEADER);
@@ -584,7 +584,7 @@ class SparepartImageServiceIntegrationTest {
   @Test
   @DisplayName("8.4-SVC-021 P1 storage-down on remove leaves entity with old key and no audit")
   void storageDownOnRemove() {
-    var user = persistedUser(ApplicationRole.MANAGE, "img-remove-down@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "img-remove-down@syncro.dev");
     var machine = machine();
     assign(user, machine.getPlant());
     assignJobScope(user, machine, ResponsibilityLevel.LEADER);

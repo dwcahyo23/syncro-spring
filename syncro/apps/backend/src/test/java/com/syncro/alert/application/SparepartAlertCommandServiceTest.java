@@ -63,7 +63,7 @@ class SparepartAlertCommandServiceTest {
   }
 
   private AuthenticatedUser manageUser(UUID userId) {
-    return new AuthenticatedUser(userId.toString(), "manager", ApplicationRole.MANAGE);
+    return new AuthenticatedUser(userId.toString(), "manager", ApplicationRole.MANAGER_MAINTENANCE);
   }
 
   private PlantEntity plant(UUID plantId) {

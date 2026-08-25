@@ -64,10 +64,18 @@ public class JwtTokenService {
     if (exp <= Instant.now(clock).getEpochSecond()) {
       throw new InvalidTokenException();
     }
+    // Pre-deploy tokens may carry legacy role names (MANAGE/VIEWER); fail closed to
+    // the standard invalid-token path (401 re-login) instead of a 500 from valueOf.
+    ApplicationRole role;
+    try {
+      role = ApplicationRole.valueOf(String.valueOf(payload.get("role")));
+    } catch (IllegalArgumentException exception) {
+      throw new InvalidTokenException();
+    }
     return new AuthenticatedUser(
         String.valueOf(payload.get("sub")),
         String.valueOf(payload.get("loginIdentifier")),
-        ApplicationRole.valueOf(String.valueOf(payload.get("role"))));
+        role);
   }
 
   public long expiresInSeconds() {

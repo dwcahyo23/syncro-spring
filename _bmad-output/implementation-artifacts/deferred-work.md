@@ -995,3 +995,10 @@ status: open
   summary: With minimum-number-of-calls=5, low-volume periods never trip the circuit breaker, so a hung (not refusing) OPA yields sustained 5s stalls per authz call until volume accumulates.
   evidence: OpaClient mirrors WahaClient's R4j tuning (house pattern); consider lower min-calls or a failure-rate-based timeout budget for the opa breaker specifically when enforcement goes live in 9.5.
   status: open
+
+### DW-131: WAHA template mutation gate follows uniform SUPER_ADMIN || MANAGER_MAINTENANCE allow-list instead of legacy deny-list
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-4-role-taxonomy-migration.md`
+  summary: The legacy gate (`if (role == VIEWER) throw`) only worked because non-VIEWER roles did not exist; mapping it literally to `!= AUDITOR` after the taxonomy lands would silently grant template mutation to the seven new identity roles (TECHNICIAN, STAFF_MAINTENANCE, SECTION_LEADER, MAINTENANCE_LEADER, INVENTORY_MAINTENANCE, STOREKEEPER, PRODUCTION_LEADER). Review converged (Blind Hunter R3 + Edge Case Hunter R6) on the fail-closed uniform allow-list; consequence: pilot technician.gm1 gets 403 on WAHA template PUT, as intended. Revisit only if a future story deliberately grants template management to an identity role.
+  evidence: spec-9-4 Review Triage Log R3/R6; WahaTemplateServiceTest confirms AUDITOR-403 and MANAGER_MAINTENANCE-200.
+  status: resolved

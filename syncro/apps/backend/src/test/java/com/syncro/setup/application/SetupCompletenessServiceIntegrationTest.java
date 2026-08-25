@@ -79,7 +79,7 @@ class SetupCompletenessServiceIntegrationTest extends AbstractPostgresIntegratio
     var sparepart = sparepart(plant, machine, "Electric PLC Wecon LX5");
     installation(machine, sparepart);
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    responsibility(machine, persistedUser(ApplicationRole.VIEWER, "responsibility-user@syncro.dev"));
+    responsibility(machine, persistedUser(ApplicationRole.AUDITOR, "responsibility-user@syncro.dev"));
 
     var response = setupCompleteness.get(admin);
 
@@ -140,7 +140,7 @@ class SetupCompletenessServiceIntegrationTest extends AbstractPostgresIntegratio
   @Test
   @DisplayName("2.8-SVC-004 P1 EMPTY scope blocks the plant step and zeroes counts")
   void emptyScopeBlocksPlantStep() {
-    var manage = persistedUser(ApplicationRole.MANAGE, "empty-scope-manage@syncro.dev");
+    var manage = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "empty-scope-manage@syncro.dev");
 
     var response = setupCompleteness.get(manage);
 
@@ -164,7 +164,7 @@ class SetupCompletenessServiceIntegrationTest extends AbstractPostgresIntegratio
     var otherMachine = machine(otherPlant, otherGroup, "PK-001", "Packer");
     machine(assignedPlant, assignedGroup, "AA-0002", "Second");
 
-    var manage = persistedUser(ApplicationRole.MANAGE, "scoped-manage@syncro.dev");
+    var manage = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "scoped-manage@syncro.dev");
     assign(manage, assignedPlant);
 
     var response = setupCompleteness.get(manage);
@@ -185,7 +185,7 @@ class SetupCompletenessServiceIntegrationTest extends AbstractPostgresIntegratio
     var machineB = machine(plant, group, "PK-001", "Packer");
     var sparepart = sparepart(plant, machineA, "Electric PLC Wecon LX5");
     installation(machineA, sparepart);
-    responsibility(machineA, persistedUser(ApplicationRole.VIEWER, "eligible-responsibility@syncro.dev"));
+    responsibility(machineA, persistedUser(ApplicationRole.AUDITOR, "eligible-responsibility@syncro.dev"));
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
 
     var response = setupCompleteness.get(admin);

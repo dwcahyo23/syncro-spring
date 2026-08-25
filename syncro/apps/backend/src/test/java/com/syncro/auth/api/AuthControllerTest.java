@@ -112,7 +112,7 @@ class AuthControllerTest {
   void manageCannotAccessSuperAdminRoleCheck() throws Exception {
     mockMvc.perform(get("/api/v1/auth/role-check/super-admin")
         .with(SecurityMockMvcRequestPostProcessors.authentication(authenticationFor(
-            new AuthenticatedUser("user-2", "manage@syncro.dev", ApplicationRole.MANAGE)))))
+            new AuthenticatedUser("user-2", "manage@syncro.dev", ApplicationRole.MANAGER_MAINTENANCE)))))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("FORBIDDEN"))
         .andExpect(jsonPath("$.message").value("You do not have permission to access this resource."))
@@ -124,7 +124,7 @@ class AuthControllerTest {
   void viewerCannotAccessManageRoleCheck() throws Exception {
     mockMvc.perform(get("/api/v1/auth/role-check/manage")
         .with(SecurityMockMvcRequestPostProcessors.authentication(authenticationFor(
-            new AuthenticatedUser("user-3", "viewer@syncro.dev", ApplicationRole.VIEWER)))))
+            new AuthenticatedUser("user-3", "viewer@syncro.dev", ApplicationRole.AUDITOR)))))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("FORBIDDEN"))
         .andExpect(jsonPath("$.message").value("You do not have permission to access this resource."))
@@ -136,7 +136,7 @@ class AuthControllerTest {
   void viewerCannotAccessMutationRoleCheck() throws Exception {
     mockMvc.perform(post("/api/v1/auth/role-check/mutation")
         .with(SecurityMockMvcRequestPostProcessors.authentication(authenticationFor(
-            new AuthenticatedUser("user-3", "viewer@syncro.dev", ApplicationRole.VIEWER)))))
+            new AuthenticatedUser("user-3", "viewer@syncro.dev", ApplicationRole.AUDITOR)))))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("FORBIDDEN"))
         .andExpect(jsonPath("$.message").value("You do not have permission to access this resource."))

@@ -40,7 +40,7 @@ class AuthUserRepositoryIntegrationTest extends AbstractPostgresIntegrationTest 
         UUID.randomUUID(),
         "admin@syncro.dev",
         passwordEncoder.encode("other-password"),
-        ApplicationRole.VIEWER,
+        ApplicationRole.AUDITOR,
         true,
         now,
         now);

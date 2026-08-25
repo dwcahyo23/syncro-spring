@@ -5,7 +5,18 @@ import { useSyncExternalStore } from "react";
 import { AUTH_USER_COOKIE, type AuthUser } from "@/lib/auth/auth-session";
 import { getClientCookie } from "@/lib/cookie.client";
 
-const APPLICATION_ROLES = new Set<AuthUser["applicationRole"]>(["SUPER_ADMIN", "MANAGE", "VIEWER"]);
+const APPLICATION_ROLES = new Set<AuthUser["applicationRole"]>([
+  "SUPER_ADMIN",
+  "MANAGER_MAINTENANCE",
+  "MAINTENANCE_LEADER",
+  "SECTION_LEADER",
+  "STAFF_MAINTENANCE",
+  "TECHNICIAN",
+  "INVENTORY_MAINTENANCE",
+  "STOREKEEPER",
+  "PRODUCTION_LEADER",
+  "AUDITOR",
+]);
 const AUTH_SESSION_EVENT = "syncro-auth-session-changed";
 
 let cachedAuthUserCookie: string | undefined;

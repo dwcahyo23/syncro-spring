@@ -63,7 +63,7 @@ class ShiftConfigControllerTest {
   @Test
   @DisplayName("8.5-API-001 P0 PUT group config returns 200 with stored windows")
   void putGroupConfigReturnsView() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var groupId = UUID.randomUUID();
     when(shiftConfigs.setGroupConfig(eq(user), eq(groupId),
         eq(List.of(new ShiftWindowCommand(LocalTime.of(7, 0), LocalTime.of(15, 0)),
@@ -90,7 +90,7 @@ class ShiftConfigControllerTest {
   @Test
   @DisplayName("8.5-API-002 P0 GET group config returns 200 with windows")
   void getGroupConfigReturnsView() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     var groupId = UUID.randomUUID();
     when(shiftConfigs.getGroupConfig(eq(user), eq(groupId)))
         .thenReturn(new MachineGroupShiftConfigView(List.of(
@@ -104,7 +104,7 @@ class ShiftConfigControllerTest {
   @Test
   @DisplayName("8.5-API-003 P0 PUT machine config returns 200 with resolved view")
   void putMachineConfigReturnsResolvedView() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var machineId = UUID.randomUUID();
     when(shiftConfigs.setMachineConfig(eq(user), eq(machineId),
         eq(List.of(new ShiftWindowCommand(LocalTime.of(9, 0), LocalTime.of(17, 0))))))
@@ -126,7 +126,7 @@ class ShiftConfigControllerTest {
   @Test
   @DisplayName("8.5-API-004 P0 GET machine config returns 200 with inherited source")
   void getMachineConfigReturnsInherited() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     var machineId = UUID.randomUUID();
     when(shiftConfigs.getMachineConfig(eq(user), eq(machineId)))
         .thenReturn(new MachineShiftConfigView("MACHINE_GROUP", true,
@@ -141,7 +141,7 @@ class ShiftConfigControllerTest {
   @Test
   @DisplayName("8.5-API-005 P0 GET machine config returns 200 with source NONE when empty")
   void getMachineConfigReturnsNone() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     var machineId = UUID.randomUUID();
     when(shiftConfigs.getMachineConfig(eq(user), eq(machineId)))
         .thenReturn(new MachineShiftConfigView("NONE", false, List.of()));
@@ -155,7 +155,7 @@ class ShiftConfigControllerTest {
   @Test
   @DisplayName("8.5-API-006 P0 DELETE machine config returns 204")
   void deleteMachineConfigReturnsNoContent() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
 
     mockMvc.perform(delete("/api/v1/machines/{machineId}/shift-config", UUID.randomUUID()).with(auth(user)))
         .andExpect(status().isNoContent());
@@ -164,7 +164,7 @@ class ShiftConfigControllerTest {
   @Test
   @DisplayName("8.5-API-007 P0 four shifts return 400 VALIDATION_ERROR with fieldErrors.shifts")
   void fourShiftsReturnsValidationError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new ValidationException(Map.of("shifts", "At most 3 shifts are allowed.")))
         .when(shiftConfigs).setGroupConfig(eq(user), any(), any());
 
@@ -182,7 +182,7 @@ class ShiftConfigControllerTest {
   @Test
   @DisplayName("8.5-API-008 P0 below-LEADER job scope returns 403 JOB_SCOPE_REQUIRED with explanation")
   void belowLeaderJobScopeReturnsExplanation() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new JobScopeForbiddenException("LEADER")).when(shiftConfigs).setGroupConfig(eq(user), any(), any());
 
     mockMvc.perform(put("/api/v1/machine-groups/{machineGroupId}/shift-config", UUID.randomUUID())
@@ -197,9 +197,9 @@ class ShiftConfigControllerTest {
   }
 
   @Test
-  @DisplayName("8.5-API-009 P0 VIEWER app-role denial returns 403 FORBIDDEN")
+  @DisplayName("8.5-API-009 P0 AUDITOR app-role denial returns 403 FORBIDDEN")
   void viewerForbiddenByAppRoleGate() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     doThrow(new MutationForbiddenException()).when(shiftConfigs).setGroupConfig(eq(user), any(), any());
 
     mockMvc.perform(put("/api/v1/machine-groups/{machineGroupId}/shift-config", UUID.randomUUID())
@@ -215,7 +215,7 @@ class ShiftConfigControllerTest {
   @Test
   @DisplayName("8.5-API-010 P0 plant-access denial returns 403 FORBIDDEN")
   void plantAccessDenialReturnsForbidden() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new PlantAccessDeniedException()).when(shiftConfigs).getMachineConfig(eq(user), any());
 
     mockMvc.perform(get("/api/v1/machines/{machineId}/shift-config", UUID.randomUUID()).with(auth(user)))
@@ -226,7 +226,7 @@ class ShiftConfigControllerTest {
   @Test
   @DisplayName("8.5-API-011 P0 unknown machine group returns 404 MACHINE_GROUP_NOT_FOUND")
   void unknownGroupReturnsNotFound() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new MachineGroupNotFoundException()).when(shiftConfigs).setGroupConfig(eq(user), any(), any());
 
     mockMvc.perform(put("/api/v1/machine-groups/{machineGroupId}/shift-config", UUID.randomUUID())
@@ -242,7 +242,7 @@ class ShiftConfigControllerTest {
   @Test
   @DisplayName("8.5-API-012 P0 unknown machine returns 404 MACHINE_NOT_FOUND on all endpoints")
   void unknownMachineReturnsNotFound() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new MachineNotFoundException()).when(shiftConfigs).setMachineConfig(eq(user), any(), any());
     doThrow(new MachineNotFoundException()).when(shiftConfigs).getMachineConfig(eq(user), any());
     doThrow(new MachineNotFoundException()).when(shiftConfigs).clearMachineConfig(eq(user), any());
@@ -268,7 +268,7 @@ class ShiftConfigControllerTest {
   @Test
   @DisplayName("8.5-API-013 P0 malformed time value returns 400 MALFORMED_JSON without calling the service")
   void malformedTimeReturnsMalformedJson() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
 
     mockMvc.perform(put("/api/v1/machines/{machineId}/shift-config", UUID.randomUUID())
             .with(auth(user))
@@ -291,7 +291,7 @@ class ShiftConfigControllerTest {
   @Test
   @DisplayName("8.5-API-015 P1 group PUT with empty array clears the schedule")
   void groupPutEmptyArrayClears() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var groupId = UUID.randomUUID();
     when(shiftConfigs.setGroupConfig(eq(user), eq(groupId), eq(List.of())))
         .thenReturn(new MachineGroupShiftConfigView(List.of()));
@@ -309,7 +309,7 @@ class ShiftConfigControllerTest {
   @Test
   @DisplayName("8.5-API-016 P1 machine PUT zero-length window returns 400 VALIDATION_ERROR")
   void machinePutZeroLengthWindowReturnsValidationError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     when(shiftConfigs.setMachineConfig(eq(user), any(), any())).thenThrow(
         new ValidationException(Map.of("shifts", "Shift 1 must not be zero-length.")));
 
@@ -327,7 +327,7 @@ class ShiftConfigControllerTest {
   @Test
   @DisplayName("8.5-API-017 P1 null shifts payload returns 400 instead of clearing the schedule")
   void nullShiftsPayloadReturnsValidationError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
 
     mockMvc.perform(put("/api/v1/machines/{machineId}/shift-config", UUID.randomUUID())
             .with(auth(user))
@@ -341,9 +341,9 @@ class ShiftConfigControllerTest {
   }
 
   @Test
-  @DisplayName("8.5-API-018 P1 VIEWER DELETE override returns 403 FORBIDDEN")
+  @DisplayName("8.5-API-018 P1 AUDITOR DELETE override returns 403 FORBIDDEN")
   void viewerDeleteOverrideForbidden() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     doThrow(new MutationForbiddenException()).when(shiftConfigs).clearMachineConfig(eq(user), any());
 
     mockMvc.perform(delete("/api/v1/machines/{machineId}/shift-config", UUID.randomUUID()).with(auth(user)))
@@ -354,7 +354,7 @@ class ShiftConfigControllerTest {
   @Test
   @DisplayName("8.5-API-019 P1 concurrent replace conflict returns 409 SHIFT_CONFIG_CONFLICT")
   void concurrentReplaceReturnsConflict() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new DataIntegrityViolationException("uq_machine_shift_windows_machine_shift_number"))
         .when(shiftConfigs).setMachineConfig(eq(user), any(), any());
 

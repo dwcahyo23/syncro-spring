@@ -68,7 +68,7 @@ class TeamControllerTest {
   @Test
   @DisplayName("9.2-API-001 P1 create team returns 201")
   void createTeamReturnsCreated() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var teamId = UUID.randomUUID();
     when(teams.create(eq(user), any(CreateTeamCommand.class)))
         .thenReturn(new TeamView(teamId, "Cross Repair", NOW.plusSeconds(86400), true, 0, 0, NOW, NOW));
@@ -120,7 +120,7 @@ class TeamControllerTest {
   @Test
   @DisplayName("9.2-API-004 P1 update team returns 200")
   void updateTeamReturnsOk() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var teamId = UUID.randomUUID();
     when(teams.update(eq(user), eq(teamId), any(UpdateTeamCommand.class)))
         .thenReturn(new TeamView(teamId, "Extended Repair", NOW.plusSeconds(172800), true, 0, 0, NOW, NOW));
@@ -136,7 +136,7 @@ class TeamControllerTest {
   @Test
   @DisplayName("9.2-API-005 P1 delete team returns 204")
   void deleteTeamReturnsNoContent() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var teamId = UUID.randomUUID();
 
     mockMvc.perform(delete("/api/v1/teams/{teamId}", teamId).with(auth(user)))
@@ -146,7 +146,7 @@ class TeamControllerTest {
   @Test
   @DisplayName("9.2-API-006 P1 add member returns 204")
   void addMemberReturnsNoContent() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var teamId = UUID.randomUUID();
 
     mockMvc.perform(post("/api/v1/teams/{teamId}/members", teamId)
@@ -159,7 +159,7 @@ class TeamControllerTest {
   @Test
   @DisplayName("9.2-API-007 P1 remove member returns 204")
   void removeMemberReturnsNoContent() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var teamId = UUID.randomUUID();
 
     mockMvc.perform(delete("/api/v1/teams/{teamId}/members/{userId}", teamId, UUID.randomUUID()).with(auth(user)))
@@ -169,7 +169,7 @@ class TeamControllerTest {
   @Test
   @DisplayName("9.2-API-008 P1 link machine returns 204")
   void linkMachineReturnsNoContent() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var teamId = UUID.randomUUID();
 
     mockMvc.perform(post("/api/v1/teams/{teamId}/machines", teamId)
@@ -182,7 +182,7 @@ class TeamControllerTest {
   @Test
   @DisplayName("9.2-API-009 P1 unlink machine returns 204")
   void unlinkMachineReturnsNoContent() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var teamId = UUID.randomUUID();
 
     mockMvc.perform(delete("/api/v1/teams/{teamId}/machines/{machineId}", teamId, UUID.randomUUID()).with(auth(user)))
@@ -190,9 +190,9 @@ class TeamControllerTest {
   }
 
   @Test
-  @DisplayName("9.2-API-010 P0 VIEWER create is forbidden with FORBIDDEN")
+  @DisplayName("9.2-API-010 P0 AUDITOR create is forbidden with FORBIDDEN")
   void viewerCreateForbidden() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     doThrow(new TeamMutationForbiddenException()).when(teams).create(eq(user), any());
 
     mockMvc.perform(post("/api/v1/teams")
@@ -206,9 +206,9 @@ class TeamControllerTest {
   }
 
   @Test
-  @DisplayName("9.2-API-010b P0 VIEWER list is forbidden (reads gated, review decision)")
+  @DisplayName("9.2-API-010b P0 AUDITOR list is forbidden (reads gated, review decision)")
   void viewerReadsForbidden() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     doThrow(new TeamMutationForbiddenException()).when(teams).list(user);
 
     mockMvc.perform(get("/api/v1/teams").with(auth(user)))
@@ -231,7 +231,7 @@ class TeamControllerTest {
   @Test
   @DisplayName("9.2-API-012 P1 duplicate name maps to 400 DUPLICATE_TEAM_NAME")
   void duplicateNameMapsToBadRequest() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new DuplicateTeamNameException()).when(teams).create(eq(user), any());
 
     mockMvc.perform(post("/api/v1/teams")
@@ -245,7 +245,7 @@ class TeamControllerTest {
   @Test
   @DisplayName("9.2-API-013 P1 past expiry maps to 400 TEAM_EXPIRY_IN_PAST")
   void pastExpiryMapsToBadRequest() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new TeamExpiryInPastException()).when(teams).create(eq(user), any());
 
     mockMvc.perform(post("/api/v1/teams")
@@ -259,7 +259,7 @@ class TeamControllerTest {
   @Test
   @DisplayName("9.2-API-014 P1 unknown user maps to 404 USER_NOT_FOUND")
   void unknownUserMapsToNotFound() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var teamId = UUID.randomUUID();
     doThrow(new UserNotFoundException()).when(teams).addMember(eq(user), eq(teamId), any(UUID.class));
 
@@ -274,7 +274,7 @@ class TeamControllerTest {
   @Test
   @DisplayName("9.2-API-015 P1 unknown machine maps to 404 MACHINE_NOT_FOUND")
   void unknownMachineMapsToNotFound() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var teamId = UUID.randomUUID();
     doThrow(new MachineNotFoundException()).when(teams).linkMachine(eq(user), eq(teamId), any(UUID.class));
 
@@ -289,7 +289,7 @@ class TeamControllerTest {
   @Test
   @DisplayName("9.2-API-016 P1 data integrity maps to 400 TEAM_DATA_INTEGRITY")
   void dataIntegrityMapsToBadRequest() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new TeamDataIntegrityException()).when(teams).create(eq(user), any());
 
     mockMvc.perform(post("/api/v1/teams")
@@ -303,7 +303,7 @@ class TeamControllerTest {
   @Test
   @DisplayName("9.2-API-017 P1 invalid request returns VALIDATION_ERROR")
   void invalidRequestReturnsValidationError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
 
     mockMvc.perform(post("/api/v1/teams")
         .with(auth(user))
@@ -317,7 +317,7 @@ class TeamControllerTest {
   @Test
   @DisplayName("9.2-API-018 P1 malformed JSON returns MALFORMED_JSON")
   void malformedJsonReturnsSafeError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
 
     mockMvc.perform(post("/api/v1/teams")
         .with(auth(user))

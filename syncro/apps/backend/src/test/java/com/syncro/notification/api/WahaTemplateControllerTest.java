@@ -112,9 +112,9 @@ class WahaTemplateControllerTest {
   }
 
   @Test
-  @DisplayName("5.1-API-005 P0 PUT as VIEWER returns 403")
+  @DisplayName("5.1-API-005 P0 PUT as AUDITOR returns 403")
   void viewerCannotUpsertTemplate() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     when(templateService.upsertTemplate(any(), any()))
         .thenThrow(new WahaTemplateForbiddenException());
 
@@ -127,9 +127,9 @@ class WahaTemplateControllerTest {
   }
 
   @Test
-  @DisplayName("5.1-API-007 P1 MANAGE role PUT valid template returns 200")
+  @DisplayName("5.1-API-007 P1 MANAGER_MAINTENANCE role PUT valid template returns 200")
   void manageRoleCanUpsertValidTemplate() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var templateId = UUID.randomUUID();
     var now = Instant.parse("2026-08-20T08:00:00Z");
     var body = "Alert: {machineCode} sparepart {sparepartName} at {thresholdPercent}%";

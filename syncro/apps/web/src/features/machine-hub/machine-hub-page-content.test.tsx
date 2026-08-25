@@ -228,7 +228,7 @@ describe("MachineHubPageContent shift section (Story 8-5)", () => {
     mockUser = {
       id: "user-1",
       loginIdentifier: "leader@syncro.dev",
-      applicationRole: "MANAGE",
+      applicationRole: "MANAGER_MAINTENANCE",
     };
     mockUpdateMachineShiftConfig.mutateAsync.mockResolvedValue({
       data: { source: "MACHINE", inheritedFromGroup: false, shifts: [] },
@@ -297,11 +297,11 @@ describe("MachineHubPageContent shift section (Story 8-5)", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(denialMessage);
   });
 
-  it("renders a read-only editor without action buttons for VIEWER role", async () => {
+  it("renders a read-only editor without action buttons for AUDITOR role", async () => {
     mockUser = {
       id: "user-1",
       loginIdentifier: "viewer@syncro.dev",
-      applicationRole: "VIEWER",
+      applicationRole: "AUDITOR",
     };
     mockShiftConfig = {
       data: {

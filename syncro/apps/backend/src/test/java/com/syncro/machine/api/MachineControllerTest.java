@@ -102,9 +102,9 @@ class MachineControllerTest {
   }
 
   @Test
-  @DisplayName("2.3-API-003 P1 MANAGE can create machines")
+  @DisplayName("2.3-API-003 P1 MANAGER_MAINTENANCE can create machines")
   void manageCanCreateMachine() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var plantId = UUID.randomUUID();
     var groupId = UUID.randomUUID();
     var machineId = UUID.randomUUID();
@@ -130,7 +130,7 @@ class MachineControllerTest {
   })
   void invalidMachineRequestReturnsFieldErrors(String payload) throws Exception {
     mockMvc.perform(post("/api/v1/machines")
-        .with(auth(user(ApplicationRole.MANAGE)))
+        .with(auth(user(ApplicationRole.MANAGER_MAINTENANCE)))
         .contentType(MediaType.APPLICATION_JSON)
         .content(payload))
         .andExpect(status().isBadRequest())
@@ -141,7 +141,7 @@ class MachineControllerTest {
   @Test
   @DisplayName("DW-30 handler passes field-aware errors through to the response")
   void machineValidationFieldErrorsPassThrough() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new MachineValidationException(Map.of(
         "optionalTelemetryFields", "'_vibration' must not start with an underscore.",
         "code", "Machine code format is invalid.")))
@@ -165,7 +165,7 @@ class MachineControllerTest {
     var groupId = UUID.randomUUID();
 
     mockMvc.perform(post("/api/v1/machines")
-        .with(auth(user(ApplicationRole.MANAGE)))
+        .with(auth(user(ApplicationRole.MANAGER_MAINTENANCE)))
         .contentType(MediaType.APPLICATION_JSON)
         .content(payload(plantId, groupId, "BF-08410", "PAUSED")))
         .andExpect(status().isBadRequest())
@@ -175,7 +175,7 @@ class MachineControllerTest {
   @Test
   @DisplayName("2.3-API-006 P1 duplicate same-plant code returns safe validation error")
   void duplicateMachineCodeReturnsSafeError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var plantId = UUID.randomUUID();
     var groupId = UUID.randomUUID();
     doThrow(new DuplicateMachineCodeException()).when(machines).create(eq(user), any());
@@ -191,7 +191,7 @@ class MachineControllerTest {
   @Test
   @DisplayName("2.3-API-007 P1 machine group plant mismatch returns safe error")
   void machineGroupPlantMismatchReturnsSafeError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var plantId = UUID.randomUUID();
     var groupId = UUID.randomUUID();
     doThrow(new MachineGroupPlantMismatchException()).when(machines).create(eq(user), any());
@@ -205,9 +205,9 @@ class MachineControllerTest {
   }
 
   @Test
-  @DisplayName("2.3-API-008 P0 VIEWER cannot update machines")
+  @DisplayName("2.3-API-008 P0 AUDITOR cannot update machines")
   void viewerCannotUpdateMachine() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     var plantId = UUID.randomUUID();
     var groupId = UUID.randomUUID();
     var machineId = UUID.randomUUID();
@@ -224,7 +224,7 @@ class MachineControllerTest {
   @Test
   @DisplayName("2.3-API-009 P0 out-of-scope list returns safe forbidden error")
   void outOfScopeListReturnsSafeForbiddenError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var plantId = UUID.randomUUID();
     doThrow(new PlantAccessDeniedException()).when(machines).list(user, plantId, null, null, null, 0, 100, "code,asc");
 
@@ -248,7 +248,7 @@ class MachineControllerTest {
   @Test
   @DisplayName("2.3-API-011 P1 delete integrity conflict returns safe conflict error")
   void deleteIntegrityConflictReturnsSafeConflictError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var machineId = UUID.randomUUID();
     doThrow(new MachineDataIntegrityException()).when(machines).delete(user, machineId);
 
@@ -271,7 +271,7 @@ class MachineControllerTest {
   @Test
   @DisplayName("3.6-API-001 P1 optional telemetry fields map to machine command")
   void optionalTelemetryFieldsMapToMachineCommand() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var plantId = UUID.randomUUID();
     var groupId = UUID.randomUUID();
     var machineId = UUID.randomUUID();
@@ -296,7 +296,7 @@ class MachineControllerTest {
     String overLimit = "[\"f01\",\"f02\",\"f03\",\"f04\",\"f05\",\"f06\",\"f07\",\"f08\",\"f09\",\"f10\",\"f11\"]";
 
     mockMvc.perform(post("/api/v1/machines")
-        .with(auth(user(ApplicationRole.MANAGE)))
+        .with(auth(user(ApplicationRole.MANAGER_MAINTENANCE)))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"plantId\":\"" + plantId + "\",\"machineGroupId\":\"" + groupId
             + "\",\"code\":\"BF-08410\",\"status\":\"ACTIVE\",\"optionalTelemetryFields\":" + overLimit + "}"))

@@ -39,9 +39,9 @@ class PlantServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   private PasswordEncoder passwordEncoder;
 
   @Test
-  @DisplayName("2.1-SVC-001 P1 MANAGE creates normalized plant and receives assignment")
+  @DisplayName("2.1-SVC-001 P1 MANAGER_MAINTENANCE creates normalized plant and receives assignment")
   void manageCreatesNormalizedPlant() {
-    var user = persistedUser(ApplicationRole.MANAGE, "manage-create@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "manage-create@syncro.dev");
 
     var created = plantService.create(user, new CreatePlantCommand(" gm1 ", " Plant GM1 "));
 
@@ -56,7 +56,7 @@ class PlantServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   @Test
   @DisplayName("2.1-SVC-002 P1 duplicate plant code is rejected case-insensitively")
   void duplicatePlantCodeIsRejectedCaseInsensitively() {
-    var user = persistedUser(ApplicationRole.MANAGE, "manage-duplicate@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "manage-duplicate@syncro.dev");
     plantService.create(user, new CreatePlantCommand("GM1", "Plant GM1"));
 
     assertThatThrownBy(() -> plantService.create(user, new CreatePlantCommand("gm1", "Other")))
@@ -64,7 +64,7 @@ class PlantServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   }
 
   @Test
-  @DisplayName("2.1-SVC-003 P1 VIEWER lists assigned plants only")
+  @DisplayName("2.1-SVC-003 P1 AUDITOR lists assigned plants only")
   void viewerCanListAssignedPlantsOnly() {
     var now = Instant.parse("2026-05-27T00:00:00Z");
     var viewerId = UUID.randomUUID();
@@ -72,7 +72,7 @@ class PlantServiceIntegrationTest extends AbstractPostgresIntegrationTest {
         viewerId,
         "viewer-plant@syncro.dev",
         passwordEncoder.encode("syncro-viewer-dev"),
-        ApplicationRole.VIEWER,
+        ApplicationRole.AUDITOR,
         true,
         now,
         now));
@@ -80,14 +80,14 @@ class PlantServiceIntegrationTest extends AbstractPostgresIntegrationTest {
     var other = plants.saveAndFlush(new PlantEntity(UUID.randomUUID(), "GM2", "Plant GM2", now, now));
     assignments.saveAndFlush(new AuthUserPlantAssignmentEntity(viewerId, assigned.getId(), now));
 
-    var result = plantService.list(new AuthenticatedUser(viewerId.toString(), "viewer-plant@syncro.dev", ApplicationRole.VIEWER));
+    var result = plantService.list(new AuthenticatedUser(viewerId.toString(), "viewer-plant@syncro.dev", ApplicationRole.AUDITOR));
 
     assertThat(result).extracting("id").containsExactly(assigned.getId());
     assertThat(result).extracting("id").doesNotContain(other.getId());
   }
 
   @Test
-  @DisplayName("2.1-SVC-004 P0 MANAGE cannot update out-of-scope plant")
+  @DisplayName("2.1-SVC-004 P0 MANAGER_MAINTENANCE cannot update out-of-scope plant")
   void manageCannotUpdateOutOfScopePlant() {
     var now = Instant.parse("2026-05-27T00:00:00Z");
     var manageId = UUID.randomUUID();
@@ -95,14 +95,14 @@ class PlantServiceIntegrationTest extends AbstractPostgresIntegrationTest {
         manageId,
         "manage-plant@syncro.dev",
         passwordEncoder.encode("syncro-manage-dev"),
-        ApplicationRole.MANAGE,
+        ApplicationRole.MANAGER_MAINTENANCE,
         true,
         now,
         now));
     var target = plants.saveAndFlush(new PlantEntity(UUID.randomUUID(), "GM1", "Plant GM1", now, now));
 
     assertThatThrownBy(() -> plantService.update(
-        new AuthenticatedUser(manageId.toString(), "manage-plant@syncro.dev", ApplicationRole.MANAGE),
+        new AuthenticatedUser(manageId.toString(), "manage-plant@syncro.dev", ApplicationRole.MANAGER_MAINTENANCE),
         target.getId(),
         new CreatePlantCommand("GM1", "Updated")))
         .isInstanceOf(PlantAccessDeniedException.class);
@@ -117,7 +117,7 @@ class PlantServiceIntegrationTest extends AbstractPostgresIntegrationTest {
         UUID.randomUUID(),
         "assigned-user@syncro.dev",
         passwordEncoder.encode("syncro-viewer-dev"),
-        ApplicationRole.VIEWER,
+        ApplicationRole.AUDITOR,
         true,
         now,
         now));

@@ -83,9 +83,9 @@ class PlantControllerTest {
   }
 
   @Test
-  @DisplayName("2.1-API-003 P1 MANAGE can create plants")
+  @DisplayName("2.1-API-003 P1 MANAGER_MAINTENANCE can create plants")
   void manageCanCreatePlant() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var plantId = UUID.randomUUID();
     when(plants.create(eq(user), any())).thenReturn(new PlantView(
         plantId,
@@ -104,9 +104,9 @@ class PlantControllerTest {
   }
 
   @Test
-  @DisplayName("2.1-API-004 P0 VIEWER cannot create plants")
+  @DisplayName("2.1-API-004 P0 AUDITOR cannot create plants")
   void viewerCannotCreatePlant() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     doThrow(new PlantMutationForbiddenException()).when(plants).create(eq(user), any());
 
     mockMvc.perform(post("/api/v1/plants")
@@ -130,7 +130,7 @@ class PlantControllerTest {
       "{\"code\":\"GM1\",\"name\":\"ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ\"}"
   })
   void invalidPlantRequestReturnsFieldErrors(String payload) throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
 
     mockMvc.perform(post("/api/v1/plants")
         .with(auth(user))
@@ -145,7 +145,7 @@ class PlantControllerTest {
   @Test
   @DisplayName("2.1-API-006 P1 malformed JSON returns safe error")
   void malformedJsonReturnsSafeError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
 
     mockMvc.perform(post("/api/v1/plants")
         .with(auth(user))
@@ -160,7 +160,7 @@ class PlantControllerTest {
   @Test
   @DisplayName("2.1-API-007 P1 duplicate plant code returns safe validation error")
   void duplicatePlantCodeReturnsSafeValidationError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new DuplicatePlantCodeException()).when(plants).create(eq(user), any());
 
     mockMvc.perform(post("/api/v1/plants")
@@ -174,9 +174,9 @@ class PlantControllerTest {
   }
 
   @Test
-  @DisplayName("2.1-API-008 P0 MANAGE out-of-scope update returns safe forbidden error")
+  @DisplayName("2.1-API-008 P0 MANAGER_MAINTENANCE out-of-scope update returns safe forbidden error")
   void outOfScopeUpdateReturnsSafeForbiddenError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var plantId = UUID.randomUUID();
     doThrow(new PlantMutationForbiddenException()).when(plants).update(eq(user), eq(plantId), any());
 
@@ -203,9 +203,9 @@ class PlantControllerTest {
   }
 
   @Test
-  @DisplayName("2.1-API-010 P0 VIEWER cannot delete plants")
+  @DisplayName("2.1-API-010 P0 AUDITOR cannot delete plants")
   void viewerCannotDeletePlant() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     var plantId = UUID.randomUUID();
     doThrow(new PlantMutationForbiddenException()).when(plants).delete(user, plantId);
 
@@ -236,9 +236,9 @@ class PlantControllerTest {
   }
 
   @Test
-  @DisplayName("2.1-API-012 P0 VIEWER cannot update plants")
+  @DisplayName("2.1-API-012 P0 AUDITOR cannot update plants")
   void viewerCannotUpdatePlant() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     var plantId = UUID.randomUUID();
     doThrow(new PlantMutationForbiddenException()).when(plants).update(eq(user), eq(plantId), any());
 
@@ -251,9 +251,9 @@ class PlantControllerTest {
   }
 
   @Test
-  @DisplayName("2.1-API-013 P0 MANAGE out-of-scope delete returns safe forbidden error")
+  @DisplayName("2.1-API-013 P0 MANAGER_MAINTENANCE out-of-scope delete returns safe forbidden error")
   void outOfScopeDeleteReturnsSafeForbiddenError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var plantId = UUID.randomUUID();
     doThrow(new PlantMutationForbiddenException()).when(plants).delete(user, plantId);
 

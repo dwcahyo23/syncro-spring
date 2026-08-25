@@ -51,7 +51,7 @@ class MachineResponsibilityServiceIntegrationTest extends AbstractPostgresIntegr
       var plant = plant("GM1", "Plant GM1");
       var group = group(plant, "Forming");
       var machine = machine(plant, group, "BF-08410");
-      var userToAssign = persistedAuthUser(com.syncro.auth.domain.ApplicationRole.VIEWER, "assigned-user@syncro.dev");
+      var userToAssign = persistedAuthUser(com.syncro.auth.domain.ApplicationRole.AUDITOR, "assigned-user@syncro.dev");
       var admin = authenticatedUser(com.syncro.auth.domain.ApplicationRole.SUPER_ADMIN);
 
       // When assigned
@@ -69,7 +69,7 @@ class MachineResponsibilityServiceIntegrationTest extends AbstractPostgresIntegr
   }
 
   @Test
-  @org.junit.jupiter.api.DisplayName("2.7-SVC-002 P0 should filter by plant scope for MANAGE/VIEWER roles")
+  @org.junit.jupiter.api.DisplayName("2.7-SVC-002 P0 should filter by plant scope for MANAGER_MAINTENANCE/AUDITOR roles")
   void shouldEnforcePlantScope() {
       // Given user has limited plant access
       var assignedPlant = plant("GM1", "Plant GM1");
@@ -79,13 +79,13 @@ class MachineResponsibilityServiceIntegrationTest extends AbstractPostgresIntegr
       var assignedMachine = machine(assignedPlant, assignedGroup, "BF-08410");
       var otherMachine = machine(otherPlant, otherGroup, "PK-001");
       
-      var targetUser = persistedAuthUser(com.syncro.auth.domain.ApplicationRole.VIEWER, "assigned-user-scope@syncro.dev");
+      var targetUser = persistedAuthUser(com.syncro.auth.domain.ApplicationRole.AUDITOR, "assigned-user-scope@syncro.dev");
       
       var admin = authenticatedUser(com.syncro.auth.domain.ApplicationRole.SUPER_ADMIN);
       responsibilityService.assign(admin, new com.syncro.machine.api.MachineResponsibilityDtos.CreateMachineResponsibilityRequest(assignedMachine.getId(), UUID.fromString(targetUser.id()), com.syncro.machine.domain.ResponsibilityLevel.TECHNICIAN));
       responsibilityService.assign(admin, new com.syncro.machine.api.MachineResponsibilityDtos.CreateMachineResponsibilityRequest(otherMachine.getId(), UUID.fromString(targetUser.id()), com.syncro.machine.domain.ResponsibilityLevel.TECHNICIAN));
 
-      var manageUser = persistedAuthUser(com.syncro.auth.domain.ApplicationRole.MANAGE, "manage-machine@syncro.dev");
+      var manageUser = persistedAuthUser(com.syncro.auth.domain.ApplicationRole.MANAGER_MAINTENANCE, "manage-machine@syncro.dev");
       assignPlant(manageUser, assignedPlant);
 
       // When retrieving machine responsibilities
@@ -103,7 +103,7 @@ class MachineResponsibilityServiceIntegrationTest extends AbstractPostgresIntegr
       var plant = plant("GM1", "Plant GM1");
       var group = group(plant, "Forming");
       var machine = machine(plant, group, "BF-08410");
-      var targetUser = persistedAuthUser(com.syncro.auth.domain.ApplicationRole.VIEWER, "assigned-user-cascade@syncro.dev");
+      var targetUser = persistedAuthUser(com.syncro.auth.domain.ApplicationRole.AUDITOR, "assigned-user-cascade@syncro.dev");
       var admin = authenticatedUser(com.syncro.auth.domain.ApplicationRole.SUPER_ADMIN);
       
       var response = responsibilityService.assign(admin, new com.syncro.machine.api.MachineResponsibilityDtos.CreateMachineResponsibilityRequest(

@@ -104,7 +104,7 @@ export function InstallationManagement() {
   const activePlantId = plantScope.activePlantId;
   const queryClient = useQueryClient();
   const isAssignedEmpty = scope?.mode === "EMPTY";
-  const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGE";
+  const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGER_MAINTENANCE";
   const [filters, setFilters] = useState<Filters>({ plantId: normalizePlantId(activePlantId) });
   const [machineSearch, setMachineSearch] = useState("");
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);

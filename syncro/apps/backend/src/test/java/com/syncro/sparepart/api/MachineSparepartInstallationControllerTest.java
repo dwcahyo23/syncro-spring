@@ -66,9 +66,9 @@ class MachineSparepartInstallationControllerTest {
   }
 
   @Test
-  @DisplayName("2.6-API-002 P0 VIEWER can list installations with nullable telemetry evidence")
+  @DisplayName("2.6-API-002 P0 AUDITOR can list installations with nullable telemetry evidence")
   void viewerCanListInstallations() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     var installationId = UUID.randomUUID();
     when(installations.list(eq(user), any(), any())).thenReturn(new MachineSparepartInstallationService.InstallationListView(List.of(view(installationId)), 1, 0, 100, "installedAt: ASC"));
 
@@ -87,9 +87,9 @@ class MachineSparepartInstallationControllerTest {
   }
 
   @Test
-  @DisplayName("2.6-API-003 P0 MANAGE can create installation")
+  @DisplayName("2.6-API-003 P0 MANAGER_MAINTENANCE can create installation")
   void manageCanCreateInstallation() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var installationId = UUID.randomUUID();
     when(installations.create(eq(user), any())).thenReturn(view(installationId));
 
@@ -109,7 +109,7 @@ class MachineSparepartInstallationControllerTest {
       "{\"machineId\":\"00000000-0000-0000-0000-000000000001\",\"sparepartId\":\"00000000-0000-0000-0000-000000000002\",\"functionName\":\"Primary\",\"expectedProductionCount\":1000000,\"baselineCounter\":1200,\"thresholdPercentage\":null}"
   })
   void omittedAndNullThresholdAcceptedForDefaulting(String body) throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     when(installations.create(eq(user), any())).thenReturn(view(UUID.randomUUID()));
 
     mockMvc.perform(post("/api/v1/machine-sparepart-installations")
@@ -122,7 +122,7 @@ class MachineSparepartInstallationControllerTest {
   @Test
   @DisplayName("2.6-API-004B P0 blank threshold is accepted for defaulting")
   void blankThresholdAcceptedForDefaulting() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     when(installations.create(eq(user), any())).thenReturn(view(UUID.randomUUID()));
 
     mockMvc.perform(post("/api/v1/machine-sparepart-installations")
@@ -136,7 +136,7 @@ class MachineSparepartInstallationControllerTest {
   @Test
   @DisplayName("2.6-API-015 P1 explicit installedAt is accepted for retroactive logging")
   void explicitInstalledAtAcceptedForRetroactiveLogging() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     when(installations.create(eq(user), any())).thenReturn(view(UUID.randomUUID()));
 
     mockMvc.perform(post("/api/v1/machine-sparepart-installations")
@@ -149,7 +149,7 @@ class MachineSparepartInstallationControllerTest {
   @Test
   @DisplayName("2.6-API-016 P1 update with null threshold is accepted")
   void updateWithNullThresholdAccepted() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var installationId = UUID.randomUUID();
     when(installations.update(eq(user), eq(installationId), any())).thenReturn(view(installationId));
 
@@ -171,7 +171,7 @@ class MachineSparepartInstallationControllerTest {
       "{\"machineId\":\"00000000-0000-0000-0000-000000000001\",\"sparepartId\":\"00000000-0000-0000-0000-000000000002\",\"expectedProductionCount\":100,\"baselineCounter\":0,\"thresholdPercentage\":101}"
   })
   void invalidRequestsReturnFieldErrors(String body) throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
 
     mockMvc.perform(post("/api/v1/machine-sparepart-installations")
         .with(auth(user))
@@ -185,7 +185,7 @@ class MachineSparepartInstallationControllerTest {
   @Test
   @DisplayName("2.6-API-006 P0 malformed JSON returns safe error")
   void malformedJsonReturnsSafeError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
 
     mockMvc.perform(post("/api/v1/machine-sparepart-installations")
         .with(auth(user))
@@ -198,7 +198,7 @@ class MachineSparepartInstallationControllerTest {
   @Test
   @DisplayName("2.6-API-007 P0 missing machine returns safe not-found error")
   void missingMachineReturnsSafeNotFoundError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new MachineForInstallationNotFoundException()).when(installations).create(eq(user), any());
 
     mockMvc.perform(post("/api/v1/machine-sparepart-installations")
@@ -212,7 +212,7 @@ class MachineSparepartInstallationControllerTest {
   @Test
   @DisplayName("2.6-API-008 P0 missing sparepart returns safe not-found error")
   void missingSparepartReturnsSafeNotFoundError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new SparepartForInstallationNotFoundException()).when(installations).create(eq(user), any());
 
     mockMvc.perform(post("/api/v1/machine-sparepart-installations")
@@ -224,9 +224,9 @@ class MachineSparepartInstallationControllerTest {
   }
 
   @Test
-  @DisplayName("2.6-API-009 P0 VIEWER cannot update installation")
+  @DisplayName("2.6-API-009 P0 AUDITOR cannot update installation")
   void viewerCannotUpdateInstallation() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     var installationId = UUID.randomUUID();
     doThrow(new InstallationMutationForbiddenException()).when(installations).update(eq(user), eq(installationId), any());
 
@@ -239,9 +239,9 @@ class MachineSparepartInstallationControllerTest {
   }
 
   @Test
-  @DisplayName("2.6-API-010 P0 VIEWER cannot create installation")
+  @DisplayName("2.6-API-010 P0 AUDITOR cannot create installation")
   void viewerCannotCreateInstallation() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     doThrow(new InstallationMutationForbiddenException()).when(installations).create(eq(user), any());
 
     mockMvc.perform(post("/api/v1/machine-sparepart-installations")
@@ -253,9 +253,9 @@ class MachineSparepartInstallationControllerTest {
   }
 
   @Test
-  @DisplayName("2.6-API-011 P0 VIEWER cannot delete installation")
+  @DisplayName("2.6-API-011 P0 AUDITOR cannot delete installation")
   void viewerCannotDeleteInstallation() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     var installationId = UUID.randomUUID();
     doThrow(new InstallationMutationForbiddenException()).when(installations).delete(user, installationId);
 
@@ -269,7 +269,7 @@ class MachineSparepartInstallationControllerTest {
   @Test
   @DisplayName("2.6-API-013 P0 update preserves installation identity")
   void updateReturnsInstallation() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var installationId = UUID.randomUUID();
     when(installations.update(eq(user), eq(installationId), any())).thenReturn(view(installationId));
 
@@ -284,7 +284,7 @@ class MachineSparepartInstallationControllerTest {
   @Test
   @DisplayName("2.6-API-011 P0 delete installation returns no content")
   void deleteReturnsNoContent() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     mockMvc.perform(delete("/api/v1/machine-sparepart-installations/{installationId}", UUID.randomUUID()).with(auth(user)))
         .andExpect(status().isNoContent());
   }
@@ -292,7 +292,7 @@ class MachineSparepartInstallationControllerTest {
   @Test
   @DisplayName("2.6-API-012 P0 missing installation returns safe not-found error")
   void missingInstallationReturnsSafeNotFoundError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var installationId = UUID.randomUUID();
     doThrow(new InstallationNotFoundException()).when(installations).get(user, installationId);
 
@@ -304,7 +304,7 @@ class MachineSparepartInstallationControllerTest {
   @Test
   @DisplayName("2.6-API-013 P0 delete conflict returns safe conflict error")
   void deleteConflictReturnsSafeConflictError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var installationId = UUID.randomUUID();
     doThrow(new InstallationDataIntegrityException()).when(installations).delete(user, installationId);
 
@@ -316,7 +316,7 @@ class MachineSparepartInstallationControllerTest {
   @Test
   @DisplayName("DW-9-API-001 concurrent update returns 409 with concurrent-modification code")
   void concurrentUpdateReturnsConflictError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var installationId = UUID.randomUUID();
     doThrow(new InstallationConcurrentModificationException()).when(installations).update(eq(user), eq(installationId), any());
 
@@ -342,7 +342,7 @@ class MachineSparepartInstallationControllerTest {
   @Test
   @DisplayName("2.6-API-014 P0 invalid path UUID returns safe error")
   void invalidPathUuidReturnsSafeError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
 
     mockMvc.perform(get("/api/v1/machine-sparepart-installations/not-a-uuid").with(auth(user)))
         .andExpect(status().isBadRequest())

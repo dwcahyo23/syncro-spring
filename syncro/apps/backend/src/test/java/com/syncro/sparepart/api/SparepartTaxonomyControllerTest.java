@@ -65,9 +65,9 @@ class SparepartTaxonomyControllerTest {
   }
 
   @Test
-  @DisplayName("2.4-API-002 P1 VIEWER can list taxonomy")
+  @DisplayName("2.4-API-002 P1 AUDITOR can list taxonomy")
   void viewerCanListTaxonomy() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     var entryId = UUID.randomUUID();
     when(taxonomy.list(user, SparepartTaxonomyDimension.CATEGORY, null)).thenReturn(List.of(new SparepartTaxonomyView(
         entryId,
@@ -87,9 +87,9 @@ class SparepartTaxonomyControllerTest {
   }
 
   @Test
-  @DisplayName("2.4-API-003 P1 MANAGE can create taxonomy")
+  @DisplayName("2.4-API-003 P1 MANAGER_MAINTENANCE can create taxonomy")
   void manageCanCreateTaxonomy() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var entryId = UUID.randomUUID();
     when(taxonomy.create(eq(user), any())).thenReturn(new SparepartTaxonomyView(
         entryId,
@@ -112,9 +112,9 @@ class SparepartTaxonomyControllerTest {
   }
 
   @Test
-  @DisplayName("2.4-API-004 P0 VIEWER cannot create taxonomy")
+  @DisplayName("2.4-API-004 P0 AUDITOR cannot create taxonomy")
   void viewerCannotCreateTaxonomy() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     doThrow(new SparepartTaxonomyMutationForbiddenException()).when(taxonomy).create(eq(user), any());
 
     mockMvc.perform(post("/api/v1/sparepart-taxonomies")
@@ -138,7 +138,7 @@ class SparepartTaxonomyControllerTest {
       "{\"dimension\":\"CATEGORY\",\"code\":\"ELEC\",\"name\":\"ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ\"}"
   })
   void invalidTaxonomyRequestReturnsFieldErrors(String payload) throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
 
     mockMvc.perform(post("/api/v1/sparepart-taxonomies")
         .with(auth(user))
@@ -153,7 +153,7 @@ class SparepartTaxonomyControllerTest {
   @Test
   @DisplayName("2.4-API-006 P1 malformed JSON returns safe error")
   void malformedJsonReturnsSafeError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
 
     mockMvc.perform(post("/api/v1/sparepart-taxonomies")
         .with(auth(user))
@@ -167,7 +167,7 @@ class SparepartTaxonomyControllerTest {
   @Test
   @DisplayName("2.4-API-007 P1 duplicate taxonomy returns safe validation error")
   void duplicateTaxonomyReturnsSafeValidationError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new DuplicateSparepartTaxonomyException()).when(taxonomy).create(eq(user), any());
 
     mockMvc.perform(post("/api/v1/sparepart-taxonomies")
@@ -214,9 +214,9 @@ class SparepartTaxonomyControllerTest {
   }
 
   @Test
-  @DisplayName("2.4-API-010 P0 VIEWER cannot update taxonomy")
+  @DisplayName("2.4-API-010 P0 AUDITOR cannot update taxonomy")
   void viewerCannotUpdateTaxonomy() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     var entryId = UUID.randomUUID();
     doThrow(new SparepartTaxonomyMutationForbiddenException()).when(taxonomy).update(eq(user), eq(entryId), any());
 
@@ -229,9 +229,9 @@ class SparepartTaxonomyControllerTest {
   }
 
   @Test
-  @DisplayName("2.4-API-011 P0 VIEWER cannot delete taxonomy")
+  @DisplayName("2.4-API-011 P0 AUDITOR cannot delete taxonomy")
   void viewerCannotDeleteTaxonomy() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     var entryId = UUID.randomUUID();
     doThrow(new SparepartTaxonomyMutationForbiddenException()).when(taxonomy).delete(user, entryId);
 
@@ -254,7 +254,7 @@ class SparepartTaxonomyControllerTest {
   @Test
   @DisplayName("2.4-API-013 P1 delete integrity conflict returns safe conflict error")
   void deleteIntegrityConflictReturnsSafeConflictError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var entryId = UUID.randomUUID();
     doThrow(new SparepartTaxonomyDataIntegrityException()).when(taxonomy).delete(user, entryId);
 

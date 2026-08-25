@@ -124,7 +124,7 @@ class AuditLogControllerTest {
   @Test
   @DisplayName("2.9-API-003 P1 out-of-scope plant filter returns safe 403")
   void outOfScopePlantFilterReturnsForbidden() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new PlantAccessDeniedException()).when(auditLog).list(eq(user), any());
 
     mockMvc.perform(get("/api/v1/audit-log")
@@ -140,7 +140,7 @@ class AuditLogControllerTest {
     when(auditLog.list(any(), any())).thenReturn(new AuditLogListResponse(List.of(), 0, 0, 100, "createdAt,desc"));
 
     mockMvc.perform(get("/api/v1/audit-log")
-        .with(auth(user(ApplicationRole.VIEWER))))
+        .with(auth(user(ApplicationRole.AUDITOR))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items").isEmpty())
         .andExpect(jsonPath("$.totalElements").value(0));

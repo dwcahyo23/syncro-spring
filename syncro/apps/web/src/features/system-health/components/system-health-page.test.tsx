@@ -1065,7 +1065,7 @@ describe("System Health Page", () => {
   });
 
   it("6-4-forbidden: non-SUPER_ADMIN sees Permission denied and no dashboard content", () => {
-    mockUser = { id: "u-1", loginIdentifier: "user@test.com", applicationRole: "MANAGE" };
+    mockUser = { id: "u-1", loginIdentifier: "user@test.com", applicationRole: "MANAGER_MAINTENANCE" };
 
     render(
       <RoleGuard allowedRoles={["SUPER_ADMIN"]} title="System Health">

@@ -49,7 +49,7 @@ type ErrorResponse = { code: string; message: string; fieldErrors?: Record<strin
 export function SparepartTaxonomyManagement() {
   const user = useAuthUser();
   const queryClient = useQueryClient();
-  const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGE";
+  const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGER_MAINTENANCE";
   const taxonomy = useListSparepartTaxonomies();
   const createTaxonomy = useCreateSparepartTaxonomy({ mutation: { onSuccess: invalidateTaxonomyData } });
   const updateTaxonomy = useUpdateSparepartTaxonomy({ mutation: { onSuccess: invalidateTaxonomyData } });

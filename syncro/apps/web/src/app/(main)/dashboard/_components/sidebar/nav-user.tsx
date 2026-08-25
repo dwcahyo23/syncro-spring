@@ -20,8 +20,15 @@ import type { AuthUser } from "@/lib/auth/auth-session";
 
 const roleLabels: Record<AuthUser["applicationRole"], string> = {
   SUPER_ADMIN: "Super Admin",
-  MANAGE: "Manage",
-  VIEWER: "Viewer",
+  MANAGER_MAINTENANCE: "Manager Maintenance",
+  MAINTENANCE_LEADER: "Maintenance Leader",
+  SECTION_LEADER: "Section Leader",
+  STAFF_MAINTENANCE: "Staff Maintenance",
+  TECHNICIAN: "Technician",
+  INVENTORY_MAINTENANCE: "Inventory Maintenance",
+  STOREKEEPER: "Storekeeper",
+  PRODUCTION_LEADER: "Production Leader",
+  AUDITOR: "Auditor",
 };
 
 export function NavUser({ user }: { readonly user: AuthUser | null }) {

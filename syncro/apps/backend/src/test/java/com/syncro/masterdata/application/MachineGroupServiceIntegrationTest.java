@@ -47,10 +47,10 @@ class MachineGroupServiceIntegrationTest extends AbstractPostgresIntegrationTest
   private PasswordEncoder passwordEncoder;
 
   @Test
-  @DisplayName("2.2-SVC-001 P1 MANAGE creates normalized machine group under assigned plant")
+  @DisplayName("2.2-SVC-001 P1 MANAGER_MAINTENANCE creates normalized machine group under assigned plant")
   void manageCreatesMachineGroupUnderAssignedPlant() {
     var plant = plant("GM1", "Plant GM1");
-    var user = persistedUser(ApplicationRole.MANAGE, "manage-machine-group@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "manage-machine-group@syncro.dev");
     assign(user, plant);
 
     var created = machineGroupService.create(user, new CreateMachineGroupCommand(plant.getId(), " Forming "));
@@ -112,12 +112,12 @@ class MachineGroupServiceIntegrationTest extends AbstractPostgresIntegrationTest
   }
 
   @Test
-  @DisplayName("2.2-SVC-004 P1 VIEWER lists assigned plant machine groups only")
+  @DisplayName("2.2-SVC-004 P1 AUDITOR lists assigned plant machine groups only")
   void viewerListsAssignedPlantMachineGroupsOnly() {
     var assigned = plant("GM1", "Plant GM1");
     var other = plant("GM2", "Plant GM2");
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    var viewer = persistedUser(ApplicationRole.VIEWER, "viewer-machine-group@syncro.dev");
+    var viewer = persistedUser(ApplicationRole.AUDITOR, "viewer-machine-group@syncro.dev");
     assign(viewer, assigned);
     var assignedGroup = machineGroupService.create(admin, new CreateMachineGroupCommand(assigned.getId(), "Forming"));
     machineGroupService.create(admin, new CreateMachineGroupCommand(other.getId(), "Packing"));
@@ -145,32 +145,32 @@ class MachineGroupServiceIntegrationTest extends AbstractPostgresIntegrationTest
   }
 
   @Test
-  @DisplayName("2.2-SVC-005 P0 MANAGE cannot list out-of-scope plant machine groups")
+  @DisplayName("2.2-SVC-005 P0 MANAGER_MAINTENANCE cannot list out-of-scope plant machine groups")
   void manageCannotListOutOfScopePlantMachineGroups() {
     var target = plant("GM1", "Plant GM1");
-    var user = persistedUser(ApplicationRole.MANAGE, "manage-out-of-scope-list@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "manage-out-of-scope-list@syncro.dev");
 
     assertThatThrownBy(() -> machineGroupService.list(user, target.getId()))
         .isInstanceOf(PlantAccessDeniedException.class);
   }
 
   @Test
-  @DisplayName("2.2-SVC-006 P0 MANAGE cannot update out-of-scope machine group")
+  @DisplayName("2.2-SVC-006 P0 MANAGER_MAINTENANCE cannot update out-of-scope machine group")
   void manageCannotUpdateOutOfScopeMachineGroup() {
     var plant = plant("GM1", "Plant GM1");
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
     var group = machineGroupService.create(admin, new CreateMachineGroupCommand(plant.getId(), "Forming"));
-    var user = persistedUser(ApplicationRole.MANAGE, "manage-out-of-scope-update@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "manage-out-of-scope-update@syncro.dev");
 
     assertThatThrownBy(() -> machineGroupService.update(user, group.id(), new CreateMachineGroupCommand(plant.getId(), "Packing")))
         .isInstanceOf(PlantAccessDeniedException.class);
   }
 
   @Test
-  @DisplayName("2.2-SVC-007 P0 VIEWER cannot mutate machine groups")
+  @DisplayName("2.2-SVC-007 P0 AUDITOR cannot mutate machine groups")
   void viewerCannotMutateMachineGroups() {
     var plant = plant("GM1", "Plant GM1");
-    var viewer = persistedUser(ApplicationRole.VIEWER, "viewer-mutates-machine-group@syncro.dev");
+    var viewer = persistedUser(ApplicationRole.AUDITOR, "viewer-mutates-machine-group@syncro.dev");
     assign(viewer, plant);
 
     assertThatThrownBy(() -> machineGroupService.create(viewer, new CreateMachineGroupCommand(plant.getId(), "Forming")))

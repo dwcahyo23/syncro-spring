@@ -3,7 +3,7 @@ import { MachineGroupManagement } from "@/features/master-data/machine-groups/ma
 
 export default function Page() {
   return (
-    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGE", "VIEWER"]} title="Machine Groups">
+    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGER_MAINTENANCE", "AUDITOR"]} title="Machine Groups">
       <MachineGroupManagement />
     </RoleGuard>
   );

@@ -5,7 +5,7 @@ import { SparepartTaxonomyManagement } from "@/features/master-data/spareparts/s
 
 export default function Page() {
   return (
-    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGE", "VIEWER"]} title="Spareparts">
+    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGER_MAINTENANCE", "AUDITOR"]} title="Spareparts">
       <div className="space-y-6">
         <Tabs defaultValue="spareparts" className="w-full">
           <TabsList className="mb-4">

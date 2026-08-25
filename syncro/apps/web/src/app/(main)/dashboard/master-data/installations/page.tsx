@@ -3,7 +3,7 @@ import { InstallationManagement } from "@/features/master-data/installations/ins
 
 export default function Page() {
   return (
-    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGE", "VIEWER"]} title="Installations">
+    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGER_MAINTENANCE", "AUDITOR"]} title="Installations">
       <InstallationManagement />
     </RoleGuard>
   );

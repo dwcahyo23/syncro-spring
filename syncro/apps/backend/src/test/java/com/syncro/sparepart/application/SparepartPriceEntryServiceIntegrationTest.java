@@ -84,9 +84,9 @@ class SparepartPriceEntryServiceIntegrationTest extends AbstractPostgresIntegrat
   private PasswordEncoder passwordEncoder;
 
   @Test
-  @DisplayName("8.3-SVC-001 P0 LEADER-scoped MANAGE appends IDR entry defaulting currency and forcing kurs 1")
+  @DisplayName("8.3-SVC-001 P0 LEADER-scoped MANAGER_MAINTENANCE appends IDR entry defaulting currency and forcing kurs 1")
   void leaderScopedManageAppendsIdrEntry() {
-    var manageLeader = persistedUser(ApplicationRole.MANAGE, "price-leader@syncro.dev");
+    var manageLeader = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "price-leader@syncro.dev");
     var machine = machine();
     assign(manageLeader, machine.getPlant());
     assignJobScope(manageLeader, machine, ResponsibilityLevel.LEADER);
@@ -192,9 +192,9 @@ class SparepartPriceEntryServiceIntegrationTest extends AbstractPostgresIntegrat
   }
 
   @Test
-  @DisplayName("8.3-SVC-007 P0 MANAGE below LEADER job scope is denied with no mutation and no audit")
+  @DisplayName("8.3-SVC-007 P0 MANAGER_MAINTENANCE below LEADER job scope is denied with no mutation and no audit")
   void manageBelowLeaderDeniedWithoutMutationOrAudit() {
-    var manageNoScope = persistedUser(ApplicationRole.MANAGE, "price-noscope@syncro.dev");
+    var manageNoScope = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "price-noscope@syncro.dev");
     var machine = machine();
     assign(manageNoScope, machine.getPlant());
     var sparepart = createdSparepart(authenticatedUser(ApplicationRole.SUPER_ADMIN));
@@ -210,9 +210,9 @@ class SparepartPriceEntryServiceIntegrationTest extends AbstractPostgresIntegrat
   }
 
   @Test
-  @DisplayName("8.3-SVC-008 P0 VIEWER is rejected by the app-role gate before job scope")
+  @DisplayName("8.3-SVC-008 P0 AUDITOR is rejected by the app-role gate before job scope")
   void viewerRejectedByAppRoleFirst() {
-    var viewerWithScope = persistedUser(ApplicationRole.VIEWER, "price-viewer@syncro.dev");
+    var viewerWithScope = persistedUser(ApplicationRole.AUDITOR, "price-viewer@syncro.dev");
     var machine = machine();
     assign(viewerWithScope, machine.getPlant());
     assignJobScope(viewerWithScope, machine, ResponsibilityLevel.LEADER);
@@ -238,9 +238,9 @@ class SparepartPriceEntryServiceIntegrationTest extends AbstractPostgresIntegrat
   }
 
   @Test
-  @DisplayName("8.3-SVC-010 P0 out-of-plant sparepart is masked as not found for scoped MANAGE")
+  @DisplayName("8.3-SVC-010 P0 out-of-plant sparepart is masked as not found for scoped MANAGER_MAINTENANCE")
   void wrongPlantSparepartMaskedAsNotFound() {
-    var outsider = persistedUser(ApplicationRole.MANAGE, "price-outsider@syncro.dev");
+    var outsider = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "price-outsider@syncro.dev");
     assignJobScope(outsider, machine(), ResponsibilityLevel.MANAGER);
     var sparepart = createdSparepart(authenticatedUser(ApplicationRole.SUPER_ADMIN));
     long auditCountBefore = priceEntryAuditCount();
@@ -267,7 +267,7 @@ class SparepartPriceEntryServiceIntegrationTest extends AbstractPostgresIntegrat
   @Test
   @DisplayName("8.3-SVC-012 P1 plant-scoped user without job scope can still read history; empty list is empty array semantics")
   void plantScopedUserReadsWithoutJobScope() {
-    var reader = persistedUser(ApplicationRole.MANAGE, "price-reader@syncro.dev");
+    var reader = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "price-reader@syncro.dev");
     var writer = persistedUser(ApplicationRole.SUPER_ADMIN, "price-writer@syncro.dev");
     var machine = machine();
     assign(reader, machine.getPlant());

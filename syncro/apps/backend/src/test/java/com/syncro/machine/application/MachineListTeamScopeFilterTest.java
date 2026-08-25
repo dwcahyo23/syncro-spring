@@ -210,11 +210,11 @@ class MachineListTeamScopeFilterTest extends AbstractPostgresIntegrationTest {
         UUID.randomUUID(),
         loginIdentifier,
         passwordEncoder.encode("syncro-test-password"),
-        ApplicationRole.VIEWER,
+        ApplicationRole.AUDITOR,
         true,
         now,
         now));
-    return new AuthenticatedUser(user.getId().toString(), user.getLoginIdentifier(), ApplicationRole.VIEWER);
+    return new AuthenticatedUser(user.getId().toString(), user.getLoginIdentifier(), ApplicationRole.AUDITOR);
   }
 
   private void assign(AuthenticatedUser user, PlantEntity plant) {

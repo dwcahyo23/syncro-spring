@@ -95,7 +95,7 @@ public class SparepartPriceEntryService {
   }
 
   private void requireMutationRole(AuthenticatedUser user) {
-    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN && user.applicationRole() != ApplicationRole.MANAGE) {
+    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN && user.applicationRole() != ApplicationRole.MANAGER_MAINTENANCE) {
       throw new MutationForbiddenException();
     }
   }

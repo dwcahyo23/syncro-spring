@@ -63,11 +63,11 @@ class MachineServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   private JdbcTemplate jdbc;
 
   @Test
-  @DisplayName("2.3-SVC-001 P1 MANAGE creates normalized active machine under assigned plant")
+  @DisplayName("2.3-SVC-001 P1 MANAGER_MAINTENANCE creates normalized active machine under assigned plant")
   void manageCreatesMachineUnderAssignedPlant() {
     var plant = plant("GM1", "Plant GM1");
     var group = group(plant, "Forming");
-    var user = persistedUser(ApplicationRole.MANAGE, "manage-machine@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "manage-machine@syncro.dev");
     assign(user, plant);
 
     var created = machineService.create(user, command(plant.getId(), group.getId(), " bf-08410 ", MachineStatus.ACTIVE));
@@ -150,13 +150,13 @@ class MachineServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   }
 
   @Test
-  @DisplayName("2.3-SVC-007 P1 VIEWER lists assigned plant machines only")
+  @DisplayName("2.3-SVC-007 P1 AUDITOR lists assigned plant machines only")
   void viewerListsAssignedPlantMachinesOnly() {    var assigned = plant("GM1", "Plant GM1");
     var other = plant("GM2", "Plant GM2");
     var assignedGroup = group(assigned, "Forming");
     var otherGroup = group(other, "Packing");
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    var viewer = persistedUser(ApplicationRole.VIEWER, "viewer-machine@syncro.dev");
+    var viewer = persistedUser(ApplicationRole.AUDITOR, "viewer-machine@syncro.dev");
     assign(viewer, assigned);
     var assignedMachine = machineService.create(admin, command(assigned.getId(), assignedGroup.getId(), "BF-08410", MachineStatus.ACTIVE));
     machineService.create(admin, command(other.getId(), otherGroup.getId(), "PK-001", MachineStatus.ACTIVE));
@@ -195,33 +195,33 @@ class MachineServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   }
 
   @Test
-  @DisplayName("2.3-SVC-008 P0 MANAGE cannot list out-of-scope plant machines")
+  @DisplayName("2.3-SVC-008 P0 MANAGER_MAINTENANCE cannot list out-of-scope plant machines")
   void manageCannotListOutOfScopePlantMachines() {
     var target = plant("GM1", "Plant GM1");
-    var user = persistedUser(ApplicationRole.MANAGE, "manage-out-of-scope-machine-list@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "manage-out-of-scope-machine-list@syncro.dev");
 
     assertThatThrownBy(() -> machineService.list(user, target.getId(), null, null))
         .isInstanceOf(PlantAccessDeniedException.class);
   }
 
   @Test
-  @DisplayName("2.3-SVC-009 P0 unassigned MANAGE cannot list with out-of-scope machine group")
+  @DisplayName("2.3-SVC-009 P0 unassigned MANAGER_MAINTENANCE cannot list with out-of-scope machine group")
   void unassignedManageCannotListWithOutOfScopeMachineGroup() {
     var plant = plant("GM1", "Plant GM1");
     var group = group(plant, "Forming");
-    var user = persistedUser(ApplicationRole.MANAGE, "manage-unassigned-machine-group-list@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "manage-unassigned-machine-group-list@syncro.dev");
 
     assertThatThrownBy(() -> machineService.list(user, null, group.getId(), null))
         .isInstanceOf(PlantAccessDeniedException.class);
   }
 
   @Test
-  @DisplayName("2.3-SVC-010 P0 MANAGE cannot use out-of-scope machine group")
+  @DisplayName("2.3-SVC-010 P0 MANAGER_MAINTENANCE cannot use out-of-scope machine group")
   void manageCannotUseOutOfScopeMachineGroup() {
     var assigned = plant("GM1", "Plant GM1");
     var other = plant("GM2", "Plant GM2");
     var otherGroup = group(other, "Packing");
-    var user = persistedUser(ApplicationRole.MANAGE, "manage-out-of-scope-machine-group@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "manage-out-of-scope-machine-group@syncro.dev");
     assign(user, assigned);
 
     assertThatThrownBy(() -> machineService.create(user, command(assigned.getId(), otherGroup.getId(), "BF-08410", MachineStatus.ACTIVE)))
@@ -231,11 +231,11 @@ class MachineServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   }
 
   @Test
-  @DisplayName("2.3-SVC-011 P0 VIEWER cannot mutate machines")
+  @DisplayName("2.3-SVC-011 P0 AUDITOR cannot mutate machines")
   void viewerCannotMutateMachines() {
     var plant = plant("GM1", "Plant GM1");
     var group = group(plant, "Forming");
-    var viewer = persistedUser(ApplicationRole.VIEWER, "viewer-mutates-machine@syncro.dev");
+    var viewer = persistedUser(ApplicationRole.AUDITOR, "viewer-mutates-machine@syncro.dev");
     assign(viewer, plant);
 
     assertThatThrownBy(() -> machineService.create(viewer, command(plant.getId(), group.getId(), "BF-08410", MachineStatus.ACTIVE)))

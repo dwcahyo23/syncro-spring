@@ -85,14 +85,14 @@ class TelemetryStaleMachineControllerTest {
   @Test
   void manageUserIsForbidden() throws Exception {
     mockMvc.perform(get("/api/v1/telemetry/stale-machines")
-            .with(auth(user(ApplicationRole.MANAGE))))
+            .with(auth(user(ApplicationRole.MANAGER_MAINTENANCE))))
         .andExpect(status().isForbidden());
   }
 
   @Test
   void viewerUserIsForbidden() throws Exception {
     mockMvc.perform(get("/api/v1/telemetry/stale-machines")
-            .with(auth(user(ApplicationRole.VIEWER))))
+            .with(auth(user(ApplicationRole.AUDITOR))))
         .andExpect(status().isForbidden());
   }
 

@@ -96,7 +96,7 @@ const EMPTY_PRICE_DRAFT: CurrencyPriceValue = { amount: "", currency: "IDR", kur
 export function SparepartManagement() {
   const user = useAuthUser();
   const queryClient = useQueryClient();
-  const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGE";
+  const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGER_MAINTENANCE";
   const [filters, setFilters] = useState<Filters>({
     categoryId: null,
     brandId: null,

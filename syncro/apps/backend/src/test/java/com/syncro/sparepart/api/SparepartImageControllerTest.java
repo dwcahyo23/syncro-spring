@@ -64,9 +64,9 @@ class SparepartImageControllerTest {
   private JwtTokenService jwtTokenService;
 
   @Test
-  @DisplayName("8.4-API-001 P0 MANAGE uploads an image and receives 200 with view")
+  @DisplayName("8.4-API-001 P0 MANAGER_MAINTENANCE uploads an image and receives 200 with view")
   void manageUploadsImage() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var sparepartId = UUID.randomUUID();
     var key = "spareparts/" + sparepartId + "/uuid.jpg";
     when(images.replace(eq(user), eq(sparepartId), any(SparepartImageCommand.class)))
@@ -86,7 +86,7 @@ class SparepartImageControllerTest {
   @Test
   @DisplayName("8.4-API-002 P0 GET returns 200 with view when image exists")
   void getReturnsView() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var sparepartId = UUID.randomUUID();
     var key = "spareparts/" + sparepartId + "/uuid.png";
     when(images.get(eq(user), eq(sparepartId)))
@@ -102,7 +102,7 @@ class SparepartImageControllerTest {
   @Test
   @DisplayName("8.4-API-003 P0 GET returns 404 SPAREPART_IMAGE_NOT_FOUND when no image")
   void getReturnsImageNotFound() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     doThrow(new ImageNotFoundException()).when(images).get(eq(user), any());
 
     mockMvc.perform(get("/api/v1/spareparts/{sparepartId}/image", UUID.randomUUID()).with(auth(user)))
@@ -113,7 +113,7 @@ class SparepartImageControllerTest {
   @Test
   @DisplayName("8.4-API-004 P0 DELETE returns 204")
   void deleteReturnsNoContent() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
 
     mockMvc.perform(delete("/api/v1/spareparts/{sparepartId}/image", UUID.randomUUID()).with(auth(user)))
         .andExpect(status().isNoContent());
@@ -122,7 +122,7 @@ class SparepartImageControllerTest {
   @Test
   @DisplayName("8.4-API-005 P0 below-LEADER job scope returns JOB_SCOPE_REQUIRED with explanation")
   void belowLeaderJobScopeReturnsExplanation() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new JobScopeForbiddenException("LEADER")).when(images).replace(eq(user), any(), any());
 
     mockMvc.perform(multipart("/api/v1/spareparts/{sparepartId}/image", UUID.randomUUID())
@@ -136,9 +136,9 @@ class SparepartImageControllerTest {
   }
 
   @Test
-  @DisplayName("8.4-API-006 P0 VIEWER is forbidden by the app-role gate")
+  @DisplayName("8.4-API-006 P0 AUDITOR is forbidden by the app-role gate")
   void viewerForbiddenByAppRoleGate() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     doThrow(new MutationForbiddenException()).when(images).replace(eq(user), any(), any());
 
     mockMvc.perform(multipart("/api/v1/spareparts/{sparepartId}/image", UUID.randomUUID())
@@ -178,7 +178,7 @@ class SparepartImageControllerTest {
   @Test
   @DisplayName("8.4-API-008 P0 invalid content type returns VALIDATION_ERROR with fieldErrors")
   void invalidContentTypeReturnsFieldErrors() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new ValidationException(Map.of("contentType", "Content type must be one of image/jpeg, image/png, image/webp, or image/gif.")))
         .when(images).replace(eq(user), any(), any());
 
@@ -195,7 +195,7 @@ class SparepartImageControllerTest {
   @Test
   @DisplayName("8.4-API-009 P0 oversize upload returns VALIDATION_ERROR with fieldErrors")
   void oversizeUploadReturnsFieldErrors() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new ValidationException(Map.of("data", "Image file exceeds the maximum allowed size.")))
         .when(images).replace(eq(user), any(), any());
 
@@ -212,7 +212,7 @@ class SparepartImageControllerTest {
   @Test
   @DisplayName("8.4-API-010 P0 object storage error returns 502")
   void objectStorageError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new StorageException(new RuntimeException("s3 down")))
         .when(images).replace(eq(user), any(), any());
 

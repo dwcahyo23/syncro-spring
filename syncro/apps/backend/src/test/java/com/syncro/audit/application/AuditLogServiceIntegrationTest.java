@@ -91,7 +91,7 @@ class AuditLogServiceIntegrationTest extends AbstractPostgresIntegrationTest {
     auditLogWriter.record(admin, new AuditRecord(AuditAction.CREATE, AuditEntityType.SPAREPART_TAXONOMY,
         UUID.randomUUID(), "ELEC", null, null, Map.of("code", "ELEC"), null));
 
-    var manage = persistedUser(ApplicationRole.MANAGE, "scoped-manage@syncro.dev");
+    var manage = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "scoped-manage@syncro.dev");
     assign(manage, plant1);
 
     var response = auditLog.list(manage, new AuditLogQuery(null, null, null, null, null, null, 0, 100, "createdAt,desc"));
@@ -110,7 +110,7 @@ class AuditLogServiceIntegrationTest extends AbstractPostgresIntegrationTest {
     auditLogWriter.record(admin, new AuditRecord(AuditAction.CREATE, AuditEntityType.PLANT, plant.getId(), "GM1",
         plant.getId(), null, Map.of("code", "GM1"), null));
 
-    var viewer = persistedUser(ApplicationRole.VIEWER, "empty-scope-viewer@syncro.dev");
+    var viewer = persistedUser(ApplicationRole.AUDITOR, "empty-scope-viewer@syncro.dev");
 
     var response = auditLog.list(viewer, new AuditLogQuery(null, null, null, null, null, null, 0, 100, "createdAt,desc"));
 
@@ -122,7 +122,7 @@ class AuditLogServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   void outOfScopePlantFilterIsRejected() {
     var plant1 = plant("GM1", "Plant GM1");
     var plant2 = plant("GM2", "Plant GM2");
-    var manage = persistedUser(ApplicationRole.MANAGE, "scoped-manage@syncro.dev");
+    var manage = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "scoped-manage@syncro.dev");
     assign(manage, plant1);
 
     assertThatThrownBy(() -> auditLog.list(manage, new AuditLogQuery(null, null, null, plant2.getId(), null, null, 0, 100, "createdAt,desc")))
@@ -135,7 +135,7 @@ class AuditLogServiceIntegrationTest extends AbstractPostgresIntegrationTest {
     var plant1 = plant("GM1", "Plant GM1");
     var plant2 = plant("GM2", "Plant GM2");
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    var engineer = persistedUser(ApplicationRole.MANAGE, "yusuf@syncro.dev");
+    var engineer = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "yusuf@syncro.dev");
     auditLogWriter.record(admin, new AuditRecord(AuditAction.CREATE, AuditEntityType.PLANT, plant1.getId(), "GM1",
         plant1.getId(), null, Map.of("code", "GM1"), null));
     auditLogWriter.record(engineer, new AuditRecord(AuditAction.CREATE, AuditEntityType.MACHINE, UUID.randomUUID(),

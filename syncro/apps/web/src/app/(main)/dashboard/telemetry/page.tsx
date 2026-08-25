@@ -3,7 +3,7 @@ import { TelemetryDashboardPage } from "@/features/telemetry/components/telemetr
 
 export default function Page() {
   return (
-    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGE", "VIEWER"]} title="Telemetry">
+    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGER_MAINTENANCE", "AUDITOR"]} title="Telemetry">
       <TelemetryDashboardPage />
     </RoleGuard>
   );

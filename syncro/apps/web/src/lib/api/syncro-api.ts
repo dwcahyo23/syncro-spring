@@ -29,7 +29,16 @@ function isAuthUser(value: unknown): value is LoginResult["user"] {
   return (
     typeof user.id === "string" &&
     typeof user.loginIdentifier === "string" &&
-    (user.applicationRole === "SUPER_ADMIN" || user.applicationRole === "MANAGE" || user.applicationRole === "VIEWER")
+    (user.applicationRole === "SUPER_ADMIN" ||
+      user.applicationRole === "MANAGER_MAINTENANCE" ||
+      user.applicationRole === "MAINTENANCE_LEADER" ||
+      user.applicationRole === "SECTION_LEADER" ||
+      user.applicationRole === "STAFF_MAINTENANCE" ||
+      user.applicationRole === "TECHNICIAN" ||
+      user.applicationRole === "INVENTORY_MAINTENANCE" ||
+      user.applicationRole === "STOREKEEPER" ||
+      user.applicationRole === "PRODUCTION_LEADER" ||
+      user.applicationRole === "AUDITOR")
   );
 }
 

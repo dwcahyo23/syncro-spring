@@ -68,9 +68,9 @@ class SparepartServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   private PasswordEncoder passwordEncoder;
 
   @Test
-  @DisplayName("2.5-SVC-001 P1 MANAGE creates normalized sparepart with taxonomy references")
+  @DisplayName("2.5-SVC-001 P1 MANAGER_MAINTENANCE creates normalized sparepart with taxonomy references")
   void manageCreatesNormalizedSparepartWithTaxonomyReferences() {
-    var user = persistedUser(ApplicationRole.MANAGE, "manage-sparepart@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "manage-sparepart@syncro.dev");
     var machine = machine();
     assign(user, machine.getPlant());
     var refs = taxonomyRefs();
@@ -182,10 +182,10 @@ class SparepartServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   }
 
   @Test
-  @DisplayName("2.5-SVC-007 P0 VIEWER can list spareparts but cannot mutate")
+  @DisplayName("2.5-SVC-007 P0 AUDITOR can list spareparts but cannot mutate")
   void viewerCanListButCannotMutateSpareparts() {
     var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
-    var viewer = persistedUser(ApplicationRole.VIEWER, "viewer-sparepart@syncro.dev");
+    var viewer = persistedUser(ApplicationRole.AUDITOR, "viewer-sparepart@syncro.dev");
     var refs = taxonomyRefs();
     var created = sparepartService.create(admin, command("PLC-WECON-LX5", "Wecon LX5 PLC", refs));
 
@@ -375,9 +375,9 @@ class SparepartServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   private com.syncro.audit.infrastructure.AuditLogRepository auditLogs;
 
   @Test
-  @DisplayName("8.2-SVC-001 P0 LEADER-scoped MANAGE patches procurement values; list and detail expose them")
+  @DisplayName("8.2-SVC-001 P0 LEADER-scoped MANAGER_MAINTENANCE patches procurement values; list and detail expose them")
   void leaderScopedManagePatchesProcurementValues() {
-    var manageLeader = persistedUser(ApplicationRole.MANAGE, "leader-sparepart@syncro.dev");
+    var manageLeader = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "leader-sparepart@syncro.dev");
     var machine = machine();
     assign(manageLeader, machine.getPlant());
     assignJobScope(manageLeader, machine, com.syncro.machine.domain.ResponsibilityLevel.LEADER);
@@ -442,9 +442,9 @@ class SparepartServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   }
 
   @Test
-  @DisplayName("8.2-SVC-005 P0 MANAGE without LEADER+ job scope is denied with no mutation and no audit")
+  @DisplayName("8.2-SVC-005 P0 MANAGER_MAINTENANCE without LEADER+ job scope is denied with no mutation and no audit")
   void manageWithoutLeaderScopeDenied() {
-    var manageNoScope = persistedUser(ApplicationRole.MANAGE, "noscope-sparepart@syncro.dev");
+    var manageNoScope = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "noscope-sparepart@syncro.dev");
     var machine = machine();
     assign(manageNoScope, machine.getPlant());
     var created = sparepartService.create(
@@ -473,9 +473,9 @@ class SparepartServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   }
 
   @Test
-  @DisplayName("8.2-SVC-007 P0 VIEWER cannot patch procurement even with LEADER responsibility")
+  @DisplayName("8.2-SVC-007 P0 AUDITOR cannot patch procurement even with LEADER responsibility")
   void viewerDeniedByAppRoleFirst() {
-    var viewerWithScope = persistedUser(ApplicationRole.VIEWER, "viewer-proc@syncro.dev");
+    var viewerWithScope = persistedUser(ApplicationRole.AUDITOR, "viewer-proc@syncro.dev");
     var machine = machine();
     assign(viewerWithScope, machine.getPlant());
     assignJobScope(viewerWithScope, machine, com.syncro.machine.domain.ResponsibilityLevel.LEADER);
@@ -488,9 +488,9 @@ class SparepartServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   }
 
   @Test
-  @DisplayName("8.2-SVC-008 P1 out-of-plant sparepart is masked as not found for scoped MANAGE")
+  @DisplayName("8.2-SVC-008 P1 out-of-plant sparepart is masked as not found for scoped MANAGER_MAINTENANCE")
   void wrongPlantSparepartMaskedAsNotFound() {
-    var outsider = persistedUser(ApplicationRole.MANAGE, "outsider-sparepart@syncro.dev");
+    var outsider = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "outsider-sparepart@syncro.dev");
     assignJobScope(outsider, machine(), com.syncro.machine.domain.ResponsibilityLevel.MANAGER);
     var created = sparepartService.create(
         authenticatedUser(ApplicationRole.SUPER_ADMIN), command("PLC-OTHER", "Wecon LX5 PLC", taxonomyRefs()));

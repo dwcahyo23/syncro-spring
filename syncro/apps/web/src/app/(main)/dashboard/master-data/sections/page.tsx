@@ -3,7 +3,7 @@ import { SectionManagement } from "@/features/master-data/sections/section-manag
 
 export default function Page() {
   return (
-    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGE", "VIEWER"]} title="Sections">
+    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGER_MAINTENANCE", "AUDITOR"]} title="Sections">
       <SectionManagement />
     </RoleGuard>
   );

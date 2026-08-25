@@ -44,7 +44,7 @@ class AuthzControllerTest {
   @Test
   @DisplayName("9.3-API-001 P1 allowed-actions returns OPA-computed action set")
   void allowedActionsReturnsActionSet() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     when(policyDecisionPoint.resolvedActions(user))
         .thenReturn(new PolicyDecisionPoint.AllowedActions(List.of("health.read", "workorder.create"), false));
 
@@ -58,7 +58,7 @@ class AuthzControllerTest {
   @Test
   @DisplayName("9.3-API-002 P1 OPA failure degrades to empty set with degraded flag")
   void opaFailureDegradesToEmptySet() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     when(policyDecisionPoint.resolvedActions(user))
         .thenReturn(new PolicyDecisionPoint.AllowedActions(List.of(), true));
 

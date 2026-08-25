@@ -74,10 +74,10 @@ class SectionServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   private JdbcTemplate jdbc;
 
   @Test
-  @DisplayName("9.1-SVC-001 P0 VIEWER cannot create sections")
+  @DisplayName("9.1-SVC-001 P0 AUDITOR cannot create sections")
   void viewerCannotCreateSection() {
     var plant = plant("GM1", "Plant GM1");
-    var viewer = persistedUser(ApplicationRole.VIEWER, "viewer-section@syncro.dev");
+    var viewer = persistedUser(ApplicationRole.AUDITOR, "viewer-section@syncro.dev");
     assign(viewer, plant);
 
     assertThatThrownBy(() -> sectionService.create(viewer,
@@ -86,10 +86,10 @@ class SectionServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   }
 
   @Test
-  @DisplayName("9.1-SVC-002 P0 MANAGE without plant access cannot create sections")
+  @DisplayName("9.1-SVC-002 P0 MANAGER_MAINTENANCE without plant access cannot create sections")
   void manageWithoutPlantAccessCannotCreateSection() {
     var plant = plant("GM1", "Plant GM1");
-    var user = persistedUser(ApplicationRole.MANAGE, "manage-section-out-of-scope@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "manage-section-out-of-scope@syncro.dev");
 
     assertThatThrownBy(() -> sectionService.create(user,
         new CreateSectionCommand(plant.getId(), "MACHINERY", "Machinery")))
@@ -97,10 +97,10 @@ class SectionServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   }
 
   @Test
-  @DisplayName("9.1-SVC-003 P1 MANAGE creates a section under its assigned plant")
+  @DisplayName("9.1-SVC-003 P1 MANAGER_MAINTENANCE creates a section under its assigned plant")
   void manageCreatesSectionUnderAssignedPlant() {
     var plant = plant("GM1", "Plant GM1");
-    var user = persistedUser(ApplicationRole.MANAGE, "manage-section@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "manage-section@syncro.dev");
     assign(user, plant);
 
     var created = sectionService.create(user,
@@ -156,7 +156,7 @@ class SectionServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   @DisplayName("9.1-SVC-007 P1 update changes the section name and audits UPDATE")
   void updateSectionNameAndAudits() {
     var plant = plant("GM1", "Plant GM1");
-    var user = persistedUser(ApplicationRole.MANAGE, "manage-section-update@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "manage-section-update@syncro.dev");
     assign(user, plant);
     var created = sectionService.create(user,
         new CreateSectionCommand(plant.getId(), "MACHINERY", "Machinery"));
@@ -190,7 +190,7 @@ class SectionServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   @DisplayName("9.1-SVC-009 P1 deactivation of an empty section succeeds and audits UPDATE")
   void deactivateEmptySectionSucceeds() {
     var plant = plant("GM1", "Plant GM1");
-    var user = persistedUser(ApplicationRole.MANAGE, "manage-section-deactivate@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "manage-section-deactivate@syncro.dev");
     assign(user, plant);
     var created = sectionService.create(user,
         new CreateSectionCommand(plant.getId(), "MACHINERY", "Machinery"));
@@ -219,7 +219,7 @@ class SectionServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   @DisplayName("9.1-SVC-011 P1 create audits a SECTION CREATE row with actor and plantId")
   void createAuditsSectionCreateWithActorAndPlant() {
     var plant = plant("GM1", "Plant GM1");
-    var user = persistedUser(ApplicationRole.MANAGE, "manage-section-audit@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "manage-section-audit@syncro.dev");
     assign(user, plant);
 
     var created = sectionService.create(user,

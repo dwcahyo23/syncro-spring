@@ -11,7 +11,7 @@ import { useAuthUser } from "@/lib/auth/use-auth-user";
 export function SetupCompletenessPage() {
   const user = useAuthUser();
   const { scope } = usePlantScope();
-  const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGE";
+  const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGER_MAINTENANCE";
   const setupCompleteness = useGetSetupCompleteness({
     query: { enabled: Boolean(scope) },
   });

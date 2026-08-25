@@ -76,7 +76,7 @@ class PlantScopeServiceTest {
     var scope = plantScopes.effectiveScope(new AuthenticatedUser(
         userId.toString(),
         "manage@syncro.dev",
-        ApplicationRole.MANAGE));
+        ApplicationRole.MANAGER_MAINTENANCE));
 
     assertThat(scope.mode()).isEqualTo("ASSIGNED");
     assertThat(scope.defaultPlantId()).isEqualTo(assignedPlantId.toString());
@@ -92,7 +92,7 @@ class PlantScopeServiceTest {
     var scope = plantScopes.effectiveScope(new AuthenticatedUser(
         userId.toString(),
         "viewer@syncro.dev",
-        ApplicationRole.VIEWER));
+        ApplicationRole.AUDITOR));
 
     assertThat(scope.mode()).isEqualTo("EMPTY");
     assertThat(scope.availablePlants()).isEmpty();
@@ -111,7 +111,7 @@ class PlantScopeServiceTest {
     var scope = plantScopes.effectiveScope(new AuthenticatedUser(
         userId.toString(),
         "viewer@syncro.dev",
-        ApplicationRole.VIEWER));
+        ApplicationRole.AUDITOR));
 
     assertThat(scope.mode()).isEqualTo("EMPTY");
     assertThat(scope.availablePlants()).isEmpty();
@@ -130,7 +130,7 @@ class PlantScopeServiceTest {
     assertThatThrownBy(() -> plantScopes.requirePlantAccess(new AuthenticatedUser(
         userId.toString(),
         "viewer@syncro.dev",
-        ApplicationRole.VIEWER), requestedPlantId))
+        ApplicationRole.AUDITOR), requestedPlantId))
         .isInstanceOf(PlantScopeService.PlantAccessDeniedException.class);
   }
 
@@ -167,10 +167,10 @@ class PlantScopeServiceTest {
     assertThat(plantScopes.canAccessPlant(new AuthenticatedUser(
         userId.toString(),
         "manage@syncro.dev",
-        ApplicationRole.MANAGE), assignedPlantId)).isTrue();
+        ApplicationRole.MANAGER_MAINTENANCE), assignedPlantId)).isTrue();
     assertThat(plantScopes.canAccessPlant(new AuthenticatedUser(
         userId.toString(),
         "manage@syncro.dev",
-        ApplicationRole.MANAGE), UUID.randomUUID())).isFalse();
+        ApplicationRole.MANAGER_MAINTENANCE), UUID.randomUUID())).isFalse();
   }
 }

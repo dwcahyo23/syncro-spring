@@ -49,8 +49,8 @@ describe("Responsibility Management Feature (ATDD)", () => {
     expect(screen.getByRole("combobox", { name: /level/i })).toBeInTheDocument();
   });
 
-  it("[P1] should properly render read-only mode for VIEWER users", () => {
-    mockUser = { id: "user-1", loginIdentifier: "viewer@syncro.dev", applicationRole: "VIEWER" };
+  it("[P1] should properly render read-only mode for AUDITOR users", () => {
+    mockUser = { id: "user-1", loginIdentifier: "viewer@syncro.dev", applicationRole: "AUDITOR" };
     render(<ResponsibilityManagement />, { wrapper: Wrapper });
     expect(screen.queryByRole("button", { name: /assign/i })).not.toBeInTheDocument();
     expect(screen.getByText(/You do not have permission/i)).toBeInTheDocument();
@@ -62,9 +62,9 @@ describe("Responsibility Management Feature (ATDD)", () => {
     expect(screen.getByRole("button", { name: /assign/i })).toBeInTheDocument();
   });
 
-  it("[P2] should clearly distinguish MANAGE role from MANAGER scope in UI", () => {
+  it("[P2] should clearly distinguish MANAGER_MAINTENANCE role from MANAGER scope in UI", () => {
     render(<ResponsibilityManagement />, { wrapper: Wrapper });
-    expect(screen.getByText(/Note: The MANAGE application role is distinct/i)).toBeInTheDocument();
+    expect(screen.getByText(/Note: The MANAGER_MAINTENANCE application role is distinct/i)).toBeInTheDocument();
   });
 
   it("[P1] should clear and repopulate machine lists when plant context changes", () => {

@@ -142,17 +142,20 @@ class PilotSeedTest {
     assertThat(installation.get("threshold_percentage")).isEqualTo(90);
     assertThat(installation.get("function_name")).isEqualTo("Primary");
 
-    // Three enabled VIEWER recipients with non-blank WhatsApp placeholders
+    // Three enabled recipients with identity-matched taxonomy roles (story 9-4)
+    // and non-blank WhatsApp placeholders
     List<Map<String, Object>> users = jdbc.queryForList(
         "SELECT login_identifier, application_role, enabled, whatsapp_number FROM auth_users "
             + "WHERE login_identifier IN ('" + String.join("','", PILOT_LOGINS) + "') "
             + "ORDER BY login_identifier");
     assertThat(users).hasSize(3);
     assertThat(users).allSatisfy(user -> {
-      assertThat(user.get("application_role")).isEqualTo("VIEWER");
       assertThat(user.get("enabled")).isEqualTo(true);
       assertThat(user.get("whatsapp_number")).asString().isNotBlank();
     });
+    // ORDER BY login_identifier: leader < staff < technician
+    assertThat(users).extracting(user -> user.get("application_role"))
+        .containsExactly("SECTION_LEADER", "STAFF_MAINTENANCE", "TECHNICIAN");
     assertThat(users).extracting(user -> user.get("whatsapp_number"))
         .containsExactlyInAnyOrder("6281234567801", "6281234567802", "6281234567803");
 
@@ -280,7 +283,7 @@ class PilotSeedTest {
     jdbc.update("INSERT INTO auth_users (id, login_identifier, password_hash, application_role, "
         + "enabled, whatsapp_number, created_at, updated_at) "
         + "VALUES ('22222222-2222-4222-8222-222222222222'::uuid, 'staff.gm1@syncro.dev', "
-        + "'x', 'VIEWER', TRUE, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
+        + "'x', 'AUDITOR', TRUE, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
 
     // Pre-existing SPV responsibility for (machine, staff) - blocks the STAFF row
     jdbc.update("INSERT INTO machine_responsibilities (id, machine_id, user_id, level, "

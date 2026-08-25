@@ -89,9 +89,9 @@ class MachineGroupControllerTest {
   }
 
   @Test
-  @DisplayName("2.2-API-003 P1 MANAGE can create machine groups")
+  @DisplayName("2.2-API-003 P1 MANAGER_MAINTENANCE can create machine groups")
   void manageCanCreateMachineGroup() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var plantId = UUID.randomUUID();
     var groupId = UUID.randomUUID();
     when(machineGroups.create(eq(user), any())).thenReturn(groupView(groupId, plantId));
@@ -107,9 +107,9 @@ class MachineGroupControllerTest {
   }
 
   @Test
-  @DisplayName("2.2-API-004 P0 VIEWER cannot create machine groups")
+  @DisplayName("2.2-API-004 P0 AUDITOR cannot create machine groups")
   void viewerCannotCreateMachineGroup() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     var plantId = UUID.randomUUID();
     doThrow(new MachineGroupMutationForbiddenException()).when(machineGroups).create(eq(user), any());
 
@@ -133,7 +133,7 @@ class MachineGroupControllerTest {
       "{\"plantId\":\"00000000-0000-0000-0000-000000000001\",\"name\":\"ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ\"}"
   })
   void invalidMachineGroupRequestReturnsFieldErrors(String payload) throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
 
     mockMvc.perform(post("/api/v1/machine-groups")
         .with(auth(user))
@@ -148,7 +148,7 @@ class MachineGroupControllerTest {
   @Test
   @DisplayName("2.2-API-006 P1 malformed JSON returns safe error")
   void malformedJsonReturnsSafeError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
 
     mockMvc.perform(post("/api/v1/machine-groups")
         .with(auth(user))
@@ -163,7 +163,7 @@ class MachineGroupControllerTest {
   @Test
   @DisplayName("2.2-API-007 P1 duplicate same-plant name returns safe validation error")
   void duplicateMachineGroupNameReturnsSafeValidationError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var plantId = UUID.randomUUID();
     doThrow(new DuplicateMachineGroupNameException()).when(machineGroups).create(eq(user), any());
 
@@ -177,9 +177,9 @@ class MachineGroupControllerTest {
   }
 
   @Test
-  @DisplayName("2.2-API-008 P0 MANAGE out-of-scope list returns safe forbidden error")
+  @DisplayName("2.2-API-008 P0 MANAGER_MAINTENANCE out-of-scope list returns safe forbidden error")
   void outOfScopeListReturnsSafeForbiddenError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var plantId = UUID.randomUUID();
     doThrow(new PlantAccessDeniedException()).when(machineGroups).list(user, plantId, null, 0, 100, "name,asc");
 
@@ -222,9 +222,9 @@ class MachineGroupControllerTest {
   }
 
   @Test
-  @DisplayName("2.2-API-016 P0 MANAGE cannot create machine group for out-of-scope plant")
+  @DisplayName("2.2-API-016 P0 MANAGER_MAINTENANCE cannot create machine group for out-of-scope plant")
   void manageCannotCreateMachineGroupForOutOfScopePlant() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var plantId = UUID.randomUUID();
     doThrow(new PlantAccessDeniedException()).when(machineGroups).create(eq(user), any());
 
@@ -259,9 +259,9 @@ class MachineGroupControllerTest {
   }
 
   @Test
-  @DisplayName("2.2-API-011 P0 VIEWER cannot update machine groups")
+  @DisplayName("2.2-API-011 P0 AUDITOR cannot update machine groups")
   void viewerCannotUpdateMachineGroup() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     var plantId = UUID.randomUUID();
     var groupId = UUID.randomUUID();
     doThrow(new MachineGroupMutationForbiddenException()).when(machineGroups).update(eq(user), eq(groupId), any());
@@ -275,9 +275,9 @@ class MachineGroupControllerTest {
   }
 
   @Test
-  @DisplayName("2.2-API-012 P0 VIEWER cannot delete machine groups")
+  @DisplayName("2.2-API-012 P0 AUDITOR cannot delete machine groups")
   void viewerCannotDeleteMachineGroup() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     var groupId = UUID.randomUUID();
     doThrow(new MachineGroupMutationForbiddenException()).when(machineGroups).delete(user, groupId);
 
@@ -300,7 +300,7 @@ class MachineGroupControllerTest {
   @Test
   @DisplayName("2.2-API-017 P1 delete integrity conflict returns safe conflict error")
   void deleteIntegrityConflictReturnsSafeConflictError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var groupId = UUID.randomUUID();
     doThrow(new MachineGroupDataIntegrityException()).when(machineGroups).delete(user, groupId);
 
@@ -313,7 +313,7 @@ class MachineGroupControllerTest {
   @Test
   @DisplayName("9.1-API-016 P1 assign section returns 204")
   void assignSectionReturnsNoContent() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var groupId = UUID.randomUUID();
     var sectionId = UUID.randomUUID();
 
@@ -327,7 +327,7 @@ class MachineGroupControllerTest {
   @Test
   @DisplayName("9.1-API-017 P1 clear section returns 204")
   void clearSectionReturnsNoContent() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var groupId = UUID.randomUUID();
 
     mockMvc.perform(delete("/api/v1/machine-groups/{machineGroupId}/section", groupId).with(auth(user)))
@@ -337,7 +337,7 @@ class MachineGroupControllerTest {
   @Test
   @DisplayName("9.1-API-018 P1 assign section to unknown section maps to 404 SECTION_NOT_FOUND")
   void assignUnknownSectionReturnsNotFound() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var groupId = UUID.randomUUID();
     var sectionId = UUID.randomUUID();
     doThrow(new SectionNotFoundForMachineGroupException())
@@ -354,7 +354,7 @@ class MachineGroupControllerTest {
   @Test
   @DisplayName("9.1-API-019 P1 plant-mismatch section maps to 400 SECTION_PLANT_MISMATCH")
   void assignPlantMismatchSectionReturnsBadRequest() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var groupId = UUID.randomUUID();
     var sectionId = UUID.randomUUID();
     doThrow(new SectionPlantMismatchException())
@@ -371,7 +371,7 @@ class MachineGroupControllerTest {
   @Test
   @DisplayName("9.1-API-020 P1 reassignment maps to 400 SECTION_REASSIGNMENT_REJECTED")
   void reassignSectionReturnsBadRequest() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var groupId = UUID.randomUUID();
     var sectionId = UUID.randomUUID();
     doThrow(new SectionReassignmentRejectedException())
@@ -386,9 +386,9 @@ class MachineGroupControllerTest {
   }
 
   @Test
-  @DisplayName("9.1-API-021 P1 VIEWER assign section is forbidden")
+  @DisplayName("9.1-API-021 P1 AUDITOR assign section is forbidden")
   void viewerAssignSectionForbidden() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     var groupId = UUID.randomUUID();
     var sectionId = UUID.randomUUID();
     doThrow(new MachineGroupMutationForbiddenException())

@@ -25,10 +25,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Cross-plant teams (AD-13). Phase 1 role gate is {@code SUPER_ADMIN|MANAGE} for
- * ALL endpoints — mutations AND reads alike (review decision 2026-08-25: un-gated
+ * Cross-plant teams (AD-13). Phase 1 role gate is {@code SUPER_ADMIN|MANAGER_MAINTENANCE} for
+ * ALL endpoints - mutations AND reads alike (review decision 2026-08-25: un-gated
  * reads leaked cross-plant machine metadata and member identifiers past the plant
- * gate; 9.4 maps MANAGE to MANAGER_MAINTENANCE). Expiry is validated at mutation
+ * gate; story 9-4 mapped the legacy MANAGE name to MANAGER_MAINTENANCE). Expiry is validated at mutation
  * time against the injected {@link Clock} and evaluated lazily at scope-derive
  * time — no scheduled job. Member/machine link changes are audit-logged as TEAM
  * UPDATE with action-hint maps only when a change actually occurred; concurrent
@@ -245,9 +245,9 @@ public class TeamService {
         null, previous, current, null));
   }
 
-  /** Phase 1 gate: every team endpoint — read or write — requires SUPER_ADMIN|MANAGE. */
+  /** Phase 1 gate: every team endpoint — read or write — requires SUPER_ADMIN|MANAGER_MAINTENANCE. */
   private void requireManageRole(AuthenticatedUser user) {
-    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN && user.applicationRole() != ApplicationRole.MANAGE) {
+    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN && user.applicationRole() != ApplicationRole.MANAGER_MAINTENANCE) {
       throw new TeamMutationForbiddenException();
     }
   }

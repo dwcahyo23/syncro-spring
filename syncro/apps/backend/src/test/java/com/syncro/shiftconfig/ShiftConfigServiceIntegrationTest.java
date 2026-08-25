@@ -79,9 +79,9 @@ class ShiftConfigServiceIntegrationTest extends AbstractPostgresIntegrationTest 
   private PasswordEncoder passwordEncoder;
 
   @Test
-  @DisplayName("8.5-SVC-001 P0 SET_GROUP: LEADER+ MANAGE stores two windows (incl. cross-midnight) and audits CREATE")
+  @DisplayName("8.5-SVC-001 P0 SET_GROUP: LEADER+ MANAGER_MAINTENANCE stores two windows (incl. cross-midnight) and audits CREATE")
   void setGroupStoresWindowsAndAuditsCreate() throws Exception {
-    var user = persistedUser(ApplicationRole.MANAGE, "sg-create@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "sg-create@syncro.dev");
     var group = group();
     assign(user, group.getPlant());
     assignJobScope(user, machine(), ResponsibilityLevel.LEADER);
@@ -122,7 +122,7 @@ class ShiftConfigServiceIntegrationTest extends AbstractPostgresIntegrationTest 
   @Test
   @DisplayName("8.5-SVC-002 P0 REPLACE_GROUP: replaces old windows and audits UPDATE with snapshots")
   void replaceGroupWindowsAndAuditsUpdate() throws Exception {
-    var user = persistedUser(ApplicationRole.MANAGE, "sg-replace@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "sg-replace@syncro.dev");
     var group = group();
     assign(user, group.getPlant());
     assignJobScope(user, machine(), ResponsibilityLevel.LEADER);
@@ -155,7 +155,7 @@ class ShiftConfigServiceIntegrationTest extends AbstractPostgresIntegrationTest 
   @Test
   @DisplayName("8.5-SVC-003 P0 CLEAR_GROUP: empty PUT clears config and audits DELETE")
   void clearGroupConfigAndAuditsDelete() throws Exception {
-    var user = persistedUser(ApplicationRole.MANAGE, "sg-clear@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "sg-clear@syncro.dev");
     var group = group();
     assign(user, group.getPlant());
     assignJobScope(user, machine(), ResponsibilityLevel.LEADER);
@@ -176,7 +176,7 @@ class ShiftConfigServiceIntegrationTest extends AbstractPostgresIntegrationTest 
   @Test
   @DisplayName("8.5-SVC-004 P0 MACHINE_OVERRIDE_WINS: machine override returns source MACHINE and audits CREATE")
   void machineOverrideWinsAndAuditsCreate() throws Exception {
-    var user = persistedUser(ApplicationRole.MANAGE, "mo-create@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "mo-create@syncro.dev");
     var group = group();
     var machine = machine();
     assign(user, group.getPlant());
@@ -205,7 +205,7 @@ class ShiftConfigServiceIntegrationTest extends AbstractPostgresIntegrationTest 
   @Test
   @DisplayName("8.5-SVC-005 P0 MACHINE_FALLBACK: no override returns source MACHINE_GROUP with inheritedFromGroup true")
   void machineFallbackReturnsGroupConfig() {
-    var user = persistedUser(ApplicationRole.MANAGE, "mf-fallback@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "mf-fallback@syncro.dev");
     var group = group();
     var machine = machine();
     assign(user, group.getPlant());
@@ -225,7 +225,7 @@ class ShiftConfigServiceIntegrationTest extends AbstractPostgresIntegrationTest 
   @Test
   @DisplayName("8.5-SVC-006 P0 NO_CONFIG: neither group nor override returns source NONE with empty shifts")
   void noConfigReturnsSourceNone() {
-    var user = persistedUser(ApplicationRole.MANAGE, "nc-none@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "nc-none@syncro.dev");
     var group = group();
     var machine = machine();
     assign(user, group.getPlant());
@@ -241,7 +241,7 @@ class ShiftConfigServiceIntegrationTest extends AbstractPostgresIntegrationTest 
   @Test
   @DisplayName("8.5-SVC-007 P0 CLEAR_OVERRIDE: DELETE clears override, falls back to group, audits DELETE")
   void clearOverrideAndFallback() throws Exception {
-    var user = persistedUser(ApplicationRole.MANAGE, "co-clear@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "co-clear@syncro.dev");
     var group = group();
     var machine = machine();
     assign(user, group.getPlant());
@@ -269,7 +269,7 @@ class ShiftConfigServiceIntegrationTest extends AbstractPostgresIntegrationTest 
   @Test
   @DisplayName("8.5-SVC-008 P0 CLEAR_OVERRIDE when absent is idempotent no-op with no audit")
   void clearOverrideWhenAbsentIsNoop() {
-    var user = persistedUser(ApplicationRole.MANAGE, "co-noop@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "co-noop@syncro.dev");
     var group = group();
     var machine = machine();
     assign(user, group.getPlant());
@@ -285,7 +285,7 @@ class ShiftConfigServiceIntegrationTest extends AbstractPostgresIntegrationTest 
   @Test
   @DisplayName("8.5-SVC-009 P0 FOUR_SHIFTS: validation error with no write")
   void fourShiftsRejected() {
-    var user = persistedUser(ApplicationRole.MANAGE, "fs-reject@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "fs-reject@syncro.dev");
     var group = group();
     assign(user, group.getPlant());
     assignJobScope(user, machine(), ResponsibilityLevel.LEADER);
@@ -300,7 +300,7 @@ class ShiftConfigServiceIntegrationTest extends AbstractPostgresIntegrationTest 
   @Test
   @DisplayName("8.5-SVC-010 P0 ZERO_LENGTH: startTime equals endTime returns validation error")
   void zeroLengthWindowRejected() {
-    var user = persistedUser(ApplicationRole.MANAGE, "zl-reject@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "zl-reject@syncro.dev");
     var group = group();
     assign(user, group.getPlant());
     assignJobScope(user, machine(), ResponsibilityLevel.LEADER);
@@ -316,7 +316,7 @@ class ShiftConfigServiceIntegrationTest extends AbstractPostgresIntegrationTest 
   @Test
   @DisplayName("8.5-SVC-011 P0 MISSING_TIMES: null startTime or endTime returns validation error")
   void missingTimesRejected() {
-    var user = persistedUser(ApplicationRole.MANAGE, "mt-reject@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "mt-reject@syncro.dev");
     var group = group();
     assign(user, group.getPlant());
     assignJobScope(user, machine(), ResponsibilityLevel.LEADER);
@@ -330,9 +330,9 @@ class ShiftConfigServiceIntegrationTest extends AbstractPostgresIntegrationTest 
   }
 
   @Test
-  @DisplayName("8.5-SVC-012 P0 BELOW_LEADER: MANAGE without LEADER job scope is denied with no write/audit")
+  @DisplayName("8.5-SVC-012 P0 BELOW_LEADER: MANAGER_MAINTENANCE without LEADER job scope is denied with no write/audit")
   void belowLeaderDenied() {
-    var user = persistedUser(ApplicationRole.MANAGE, "bl-denied@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "bl-denied@syncro.dev");
     var group = group();
     assign(user, group.getPlant());
     long countBefore = auditCount(group.getId());
@@ -349,9 +349,9 @@ class ShiftConfigServiceIntegrationTest extends AbstractPostgresIntegrationTest 
   }
 
   @Test
-  @DisplayName("8.5-SVC-013 P0 VIEWER is rejected by app-role gate before job scope")
+  @DisplayName("8.5-SVC-013 P0 AUDITOR is rejected by app-role gate before job scope")
   void viewerRejected() {
-    var viewer = persistedUser(ApplicationRole.VIEWER, "viewer-rejected@syncro.dev");
+    var viewer = persistedUser(ApplicationRole.AUDITOR, "viewer-rejected@syncro.dev");
     var group = group();
     var machine = machine();
     assign(viewer, group.getPlant());
@@ -382,9 +382,9 @@ class ShiftConfigServiceIntegrationTest extends AbstractPostgresIntegrationTest 
   }
 
   @Test
-  @DisplayName("8.5-SVC-015 P0 WRONG_PLANT: MANAGE+LEADER on unassigned plant is denied")
+  @DisplayName("8.5-SVC-015 P0 WRONG_PLANT: MANAGER_MAINTENANCE+LEADER on unassigned plant is denied")
   void wrongPlantDenied() {
-    var outsider = persistedUser(ApplicationRole.MANAGE, "wp-denied@syncro.dev");
+    var outsider = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "wp-denied@syncro.dev");
     var plant1 = plant();
     var plant2 = otherPlant();
     var group2 = otherGroup(plant2);
@@ -422,7 +422,7 @@ class ShiftConfigServiceIntegrationTest extends AbstractPostgresIntegrationTest 
   @Test
   @DisplayName("8.5-SVC-017 P1 plant-scoped user without job scope can still read config")
   void plantScopedReaderReadsWithoutJobScope() {
-    var reader = persistedUser(ApplicationRole.MANAGE, "reader-no-scope@syncro.dev");
+    var reader = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "reader-no-scope@syncro.dev");
     var writer = persistedUser(ApplicationRole.SUPER_ADMIN, "writer-sa@syncro.dev");
     var group = group();
     var machine = machine();
@@ -440,7 +440,7 @@ class ShiftConfigServiceIntegrationTest extends AbstractPostgresIntegrationTest 
   @Test
   @DisplayName("8.5-SVC-018 P1 machine PUT with empty list clears override and audits DELETE")
   void machinePutEmptyListClearsOverride() throws Exception {
-    var user = persistedUser(ApplicationRole.MANAGE, "mp-clear@syncro.dev");
+    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "mp-clear@syncro.dev");
     var group = group();
     var machine = machine();
     assign(user, group.getPlant());

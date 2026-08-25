@@ -21,8 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Sections CRUD (per plant, {@code MACHINERY|UTILITY|WORKSHOP}). Role gate is the
- * Phase 1 {@code SUPER_ADMIN|MANAGE} pattern; MANAGE additionally needs plant
- * access. No DELETE — deactivation is a PUT with {@code active=false}, guarded by
+ * Phase 1 mutation-gate pattern ({@code SUPER_ADMIN|MANAGER_MAINTENANCE});
+ * MANAGER_MAINTENANCE additionally needs plant access. No DELETE — deactivation is a PUT with {@code active=false}, guarded by
  * {@link SectionActiveMachineGroupReader} so a section with an ACTIVE-machine group
  * cannot be deactivated. Audit follows the Phase 1 actor-correlated model.
  */
@@ -127,7 +127,7 @@ public class SectionService {
   }
 
   private void requireMutationRole(AuthenticatedUser user) {
-    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN && user.applicationRole() != ApplicationRole.MANAGE) {
+    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN && user.applicationRole() != ApplicationRole.MANAGER_MAINTENANCE) {
       throw new SectionMutationForbiddenException();
     }
   }

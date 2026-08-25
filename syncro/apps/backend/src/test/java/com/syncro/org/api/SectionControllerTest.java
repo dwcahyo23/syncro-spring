@@ -64,7 +64,7 @@ class SectionControllerTest {
   @Test
   @DisplayName("9.1-API-001 P1 create section returns 201")
   void createSectionReturnsCreated() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var plantId = UUID.randomUUID();
     var sectionId = UUID.randomUUID();
     when(sections.create(eq(user), any(CreateSectionCommand.class)))
@@ -113,7 +113,7 @@ class SectionControllerTest {
   @Test
   @DisplayName("9.1-API-004 P1 update section returns 200")
   void updateSectionReturnsOk() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var sectionId = UUID.randomUUID();
     when(sections.update(eq(user), eq(sectionId), any(UpdateSectionCommand.class)))
         .thenReturn(new SectionView(sectionId, UUID.randomUUID(), "GM1", "Plant GM1", "MACHINERY",
@@ -128,9 +128,9 @@ class SectionControllerTest {
   }
 
   @Test
-  @DisplayName("9.1-API-005 P0 VIEWER create is forbidden with FORBIDDEN")
+  @DisplayName("9.1-API-005 P0 AUDITOR create is forbidden with FORBIDDEN")
   void viewerCreateForbidden() throws Exception {
-    var user = user(ApplicationRole.VIEWER);
+    var user = user(ApplicationRole.AUDITOR);
     var plantId = UUID.randomUUID();
     doThrow(new SectionMutationForbiddenException()).when(sections).create(eq(user), any());
 
@@ -147,7 +147,7 @@ class SectionControllerTest {
   @Test
   @DisplayName("9.1-API-006 P0 out-of-scope plant is forbidden")
   void outOfScopePlantForbidden() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var plantId = UUID.randomUUID();
     doThrow(new PlantAccessDeniedException()).when(sections).create(eq(user), any());
 
@@ -189,7 +189,7 @@ class SectionControllerTest {
   @Test
   @DisplayName("9.1-API-009 P1 duplicate code maps to 400 DUPLICATE_SECTION_CODE")
   void duplicateCodeMapsToBadRequest() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var plantId = UUID.randomUUID();
     doThrow(new DuplicateSectionCodeException()).when(sections).create(eq(user), any());
 
@@ -204,7 +204,7 @@ class SectionControllerTest {
   @Test
   @DisplayName("9.1-API-010 P1 duplicate name maps to 400 DUPLICATE_SECTION_NAME")
   void duplicateNameMapsToBadRequest() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var plantId = UUID.randomUUID();
     doThrow(new DuplicateSectionNameException()).when(sections).create(eq(user), any());
 
@@ -219,7 +219,7 @@ class SectionControllerTest {
   @Test
   @DisplayName("9.1-API-011 P1 deactivation with active groups maps to 409 SECTION_HAS_ACTIVE_MACHINE_GROUPS")
   void deactivateWithActiveGroupsMapsToConflict() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var sectionId = UUID.randomUUID();
     doThrow(new SectionHasActiveMachineGroupsException()).when(sections).update(eq(user), eq(sectionId), any());
 
@@ -234,7 +234,7 @@ class SectionControllerTest {
   @Test
   @DisplayName("9.1-API-012 P1 invalid section request returns VALIDATION_ERROR")
   void invalidRequestReturnsValidationError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var plantId = UUID.randomUUID();
 
     mockMvc.perform(post("/api/v1/sections")
@@ -249,7 +249,7 @@ class SectionControllerTest {
   @Test
   @DisplayName("9.1-API-013 P1 malformed JSON returns MALFORMED_JSON")
   void malformedJsonReturnsSafeError() throws Exception {
-    var user = user(ApplicationRole.MANAGE);
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
 
     mockMvc.perform(post("/api/v1/sections")
         .with(auth(user))

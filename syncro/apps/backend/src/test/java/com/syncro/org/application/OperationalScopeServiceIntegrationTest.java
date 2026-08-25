@@ -148,7 +148,7 @@ class OperationalScopeServiceIntegrationTest extends AbstractPostgresIntegration
   }
 
   private AuthenticatedUser persistedUser(String loginIdentifier) {
-    return persistedUser(loginIdentifier, ApplicationRole.VIEWER);
+    return persistedUser(loginIdentifier, ApplicationRole.AUDITOR);
   }
 
   private AuthenticatedUser persistedUser(String loginIdentifier, ApplicationRole role) {

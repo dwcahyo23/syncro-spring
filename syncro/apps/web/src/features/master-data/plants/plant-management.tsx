@@ -79,7 +79,7 @@ export function PlantManagement() {
   const [formError, setFormError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<PlantView | null>(null);
 
-  const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGE";
+  const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGER_MAINTENANCE";
   const plantItems = plants.data?.data.items ?? [];
   const isSaving = createPlant.isPending || updatePlant.isPending;
 

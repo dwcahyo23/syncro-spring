@@ -146,7 +146,7 @@ class AuthzInterceptorTest {
   }
 
   private static AuthenticatedUser user() {
-    return new AuthenticatedUser(UUID.randomUUID().toString(), "tech@syncro.dev", ApplicationRole.MANAGE);
+    return new AuthenticatedUser(UUID.randomUUID().toString(), "tech@syncro.dev", ApplicationRole.MANAGER_MAINTENANCE);
   }
 
   private static UsernamePasswordAuthenticationToken auth(AuthenticatedUser user) {
