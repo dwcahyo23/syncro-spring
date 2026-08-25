@@ -47,12 +47,13 @@ class SparepartAlertCommandServiceTest {
   @Mock private AuditLogWriter auditLogWriter;
   @Mock private AuthUserPlantAssignmentRepository assignments;
   @Mock private NotificationJobRepository notificationJobRepository;
+  @Mock private com.syncro.org.application.OperationalScopeService operationalScopes;
 
   private final Clock clock = Clock.fixed(Instant.parse("2026-08-19T10:00:00Z"), ZoneOffset.UTC);
 
   private SparepartAlertCommandService service() {
     return new SparepartAlertCommandService(
-        alertRepository, auditLogWriter, assignments, notificationJobRepository, clock);
+        alertRepository, auditLogWriter, assignments, notificationJobRepository, operationalScopes, clock);
   }
 
   // --- helpers ---
@@ -178,9 +179,11 @@ class SparepartAlertCommandServiceTest {
     var inst = installation(UUID.randomUUID(), m, sp);
     var a = alert(alertId, inst, SparepartAlertStatus.OPEN);
 
+    when(operationalScopes.derive(any(com.syncro.auth.application.JwtTokenService.AuthenticatedUser.class)))
+        .thenReturn(new com.syncro.org.application.OperationalScope(java.util.Set.of(), java.util.Set.of(), java.util.Set.of()));
     when(assignments.findByAuthUserId(userId))
         .thenReturn(List.of(new AuthUserPlantAssignmentEntity(userId, plantId, Instant.now(clock))));
-    when(alertRepository.findByIdWithDetailsScopedToPlants(alertId, List.of(plantId), null))
+    when(alertRepository.findByIdWithDetailsScopedToPlants(alertId, List.of(plantId), null, null))
         .thenReturn(Optional.of(a));
     when(alertRepository.save(a)).thenReturn(a);
 
@@ -195,6 +198,8 @@ class SparepartAlertCommandServiceTest {
     var userId = UUID.randomUUID();
     var alertId = UUID.randomUUID();
 
+    when(operationalScopes.derive(any(com.syncro.auth.application.JwtTokenService.AuthenticatedUser.class)))
+        .thenReturn(new com.syncro.org.application.OperationalScope(java.util.Set.of(), java.util.Set.of(), java.util.Set.of()));
     when(assignments.findByAuthUserId(userId)).thenReturn(List.of());
 
     assertThatThrownBy(() -> service().acknowledge(manageUser(userId), alertId, null))
@@ -442,9 +447,11 @@ class SparepartAlertCommandServiceTest {
     var inst = installation(UUID.randomUUID(), m, sp);
     var a = alert(alertId, inst, SparepartAlertStatus.ACKNOWLEDGED);
 
+    when(operationalScopes.derive(any(com.syncro.auth.application.JwtTokenService.AuthenticatedUser.class)))
+        .thenReturn(new com.syncro.org.application.OperationalScope(java.util.Set.of(), java.util.Set.of(), java.util.Set.of()));
     when(assignments.findByAuthUserId(userId))
         .thenReturn(List.of(new AuthUserPlantAssignmentEntity(userId, plantId, Instant.now(clock))));
-    when(alertRepository.findByIdWithDetailsScopedToPlants(alertId, List.of(plantId), null))
+    when(alertRepository.findByIdWithDetailsScopedToPlants(alertId, List.of(plantId), null, null))
         .thenReturn(Optional.of(a));
     when(alertRepository.save(a)).thenReturn(a);
 
@@ -467,10 +474,12 @@ class SparepartAlertCommandServiceTest {
     var inst = installation(UUID.randomUUID(), m, sp);
 
     // user is assigned only to userPlantId, not alertPlantId
+    when(operationalScopes.derive(any(com.syncro.auth.application.JwtTokenService.AuthenticatedUser.class)))
+        .thenReturn(new com.syncro.org.application.OperationalScope(java.util.Set.of(), java.util.Set.of(), java.util.Set.of()));
     when(assignments.findByAuthUserId(userId))
         .thenReturn(List.of(new AuthUserPlantAssignmentEntity(userId, userPlantId, Instant.now(clock))));
     // scoped query returns empty — alert not in user's plant
-    when(alertRepository.findByIdWithDetailsScopedToPlants(alertId, List.of(userPlantId), null))
+    when(alertRepository.findByIdWithDetailsScopedToPlants(alertId, List.of(userPlantId), null, null))
         .thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service().resolve(manageUser(userId), alertId, null))
@@ -616,10 +625,12 @@ class SparepartAlertCommandServiceTest {
     var a = alert(alertId, inst, SparepartAlertStatus.OPEN);
 
     // user is assigned only to userPlantId, not alertPlantId
+    when(operationalScopes.derive(any(com.syncro.auth.application.JwtTokenService.AuthenticatedUser.class)))
+        .thenReturn(new com.syncro.org.application.OperationalScope(java.util.Set.of(), java.util.Set.of(), java.util.Set.of()));
     when(assignments.findByAuthUserId(userId))
         .thenReturn(List.of(new AuthUserPlantAssignmentEntity(userId, userPlantId, Instant.now(clock))));
     // scoped query returns empty — alert not in user's plant
-    when(alertRepository.findByIdWithDetailsScopedToPlants(alertId, List.of(userPlantId), null))
+    when(alertRepository.findByIdWithDetailsScopedToPlants(alertId, List.of(userPlantId), null, null))
         .thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service().acknowledge(manageUser(userId), alertId, null))
@@ -627,3 +638,4 @@ class SparepartAlertCommandServiceTest {
     verify(alertRepository, never()).save(any());
   }
 }
+

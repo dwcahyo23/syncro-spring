@@ -110,9 +110,11 @@ public class MachineService {
     }
     var normalizedSearch = normalizeSearch(search);
     var pageable = PageRequest.of(normalizedPage, normalizedSize, normalizedSort);
+    var groupParams = scopedGroupParams(user);
     var result = superAdmin
         ? machines.findAllUnscoped(plantId, machineGroupId, status, normalizedSearch, pageable)
-        : machines.findAllScoped(scopedPlantIds, plantId, machineGroupId, scopedMachineGroupIds(user), status, normalizedSearch, pageable);
+        : machines.findAllScoped(scopedPlantIds, groupParams.leaderGroupIds(), groupParams.teamGroupIds(),
+            plantId, machineGroupId, status, normalizedSearch, pageable);
     return new MachineListView(
         result.stream().map(this::toView).toList(), result.getTotalElements(), normalizedPage, normalizedSize, sortName(normalizedSort));
   }
@@ -127,12 +129,11 @@ public class MachineService {
     var normalized = normalizeCode(machineCode);
     var machine = machines.findByCodeIgnoreCase(normalized)
         .orElseThrow(MachineNotFoundException::new);
-    
-    // Check plant assignment for non-SUPER_ADMIN users
+
     if (user.applicationRole() != ApplicationRole.SUPER_ADMIN) {
-      plantScopes.requirePlantAccess(user, machine.getPlant().getId());
+      requireMachineAccess(user, machine);
     }
-    
+
     return toView(machine);
   }
 
@@ -224,19 +225,42 @@ public class MachineService {
   private MachineEntity findScoped(AuthenticatedUser user, UUID machineId) {
     var machine = machines.findByIdWithPlantAndGroup(machineId).orElseThrow(MachineNotFoundException::new);
     if (user.applicationRole() != ApplicationRole.SUPER_ADMIN) {
-      plantScopes.requirePlantAccess(user, machine.getPlant().getId());
+      requireMachineAccess(user, machine);
     }
     return machine;
   }
 
   /**
-   * Derived section-leader machineGroupIds (AD-2). Empty derived set = no group
-   * restriction — Phase 1 plant-scope behavior preserved for non-leaders; a leader
-   * sees only their own groups (sibling-group data in the same section excluded).
+   * A non-SUPER_ADMIN may access a machine detail when it is in an assigned plant
+   * OR when the machine's group is in the user's active team scope (additive
+   * cross-plant relaxation — the team-granted access bypasses the plant gate).
    */
-  private List<UUID> scopedMachineGroupIds(AuthenticatedUser user) {
-    var machineGroupIds = operationalScopes.derive(user).machineGroupIds();
-    return machineGroupIds.isEmpty() ? null : List.copyOf(machineGroupIds);
+  private void requireMachineAccess(AuthenticatedUser user, MachineEntity machine) {
+    if (!isInTeamScope(user, machine.getMachineGroup().getId())) {
+      plantScopes.requirePlantAccess(user, machine.getPlant().getId());
+    }
+  }
+
+  private boolean isInTeamScope(AuthenticatedUser user, UUID machineGroupId) {
+    return operationalScopes.derive(user).activeTeamIds().contains(machineGroupId);
+  }
+
+  /**
+   * Derived scope split for the additive OR-branch (AD-2, AD-13). leaderGroupIds
+   * = machine groups where the user is LEADER+ (9-1 unchanged); teamGroupIds =
+   * machine groups contributed by the user's active cross-plant teams. Empty
+   * derived set = null param (no restriction).
+   */
+  private ScopedGroupParams scopedGroupParams(AuthenticatedUser user) {
+    var scope = operationalScopes.derive(user);
+    var leaderGroupIds = scope.machineGroupIds();
+    var teamGroupIds = scope.activeTeamIds();
+    return new ScopedGroupParams(
+        leaderGroupIds.isEmpty() ? null : List.copyOf(leaderGroupIds),
+        teamGroupIds.isEmpty() ? null : List.copyOf(teamGroupIds));
+  }
+
+  private record ScopedGroupParams(List<UUID> leaderGroupIds, List<UUID> teamGroupIds) {
   }
 
   private void requireMutationRole(AuthenticatedUser user) {

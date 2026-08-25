@@ -44,16 +44,20 @@ public interface SparepartAlertRepository extends JpaRepository<SparepartAlertEn
       join fetch machine.plant plant
       join fetch machine.machineGroup machineGroup
       join fetch installation.sparepart sparepart
-      where plant.id in :plantIds
+      where (
+        (plant.id in :plantIds
+         and (:leaderGroupIds is null or machineGroup.id in :leaderGroupIds))
+        or (:teamGroupIds is not null and machineGroup.id in :teamGroupIds)
+      )
         and (:machineId is null or machine.id = :machineId)
         and (:plantId is null or plant.id = :plantId)
         and (:status is null or alert.status = :status)
-        and (:machineGroupIds is null or machineGroup.id in :machineGroupIds)
       order by alert.createdAt desc
       """)
   Page<SparepartAlertEntity> findAllScoped(
       @Param("plantIds") List<UUID> plantIds,
-      @Param("machineGroupIds") List<UUID> machineGroupIds,
+      @Param("leaderGroupIds") List<UUID> leaderGroupIds,
+      @Param("teamGroupIds") List<UUID> teamGroupIds,
       @Param("machineId") UUID machineId,
       @Param("plantId") UUID plantId,
       @Param("status") SparepartAlertStatus status,
@@ -78,12 +82,16 @@ public interface SparepartAlertRepository extends JpaRepository<SparepartAlertEn
       join fetch machine.machineGroup machineGroup
       join fetch installation.sparepart sparepart
       where alert.id = :id
-        and plant.id in :plantIds
-        and (:machineGroupIds is null or machineGroup.id in :machineGroupIds)
+        and (
+          (plant.id in :plantIds
+           and (:leaderGroupIds is null or machineGroup.id in :leaderGroupIds))
+          or (:teamGroupIds is not null and machineGroup.id in :teamGroupIds)
+        )
       """)
   Optional<SparepartAlertEntity> findByIdWithDetailsScopedToPlants(
       @Param("id") UUID id,
       @Param("plantIds") List<UUID> plantIds,
-      @Param("machineGroupIds") List<UUID> machineGroupIds);
+      @Param("leaderGroupIds") List<UUID> leaderGroupIds,
+      @Param("teamGroupIds") List<UUID> teamGroupIds);
 }
 

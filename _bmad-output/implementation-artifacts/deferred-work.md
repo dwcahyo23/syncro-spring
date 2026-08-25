@@ -953,3 +953,24 @@ status: open
   summary: TelemetryPersistenceService.persist evicts the per-machine projection cache before the 8-7 alert evaluation, but ProjectionRedisCache.evictMachine swallows Redis errors, so on eviction failure the subsequent cache.get returns the pre-message view and the alert is evaluated against stale telemetry with no staleness signal in the alert path.
   evidence: ProjectionRedisCache.evictMachine logs projection_cache_evict_failed and continues; 8-7's evaluateAndCreateProcurementRiskAlerts reads through the same cache with no freshness check; a successful stale read is not distinguishable from a fresh one.
   status: open
+
+### DW-125: Teams machine-link picker hard-capped at limit 200
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-2-cross-plant-teams.md`
+  summary: MachineManager fetches machines with `limit: 200` and derives both the linkable set and the plant filter from that single truncated page; fleets beyond 200 machines (or a plant whose machines fall outside page one) cannot be linked via UI and get no truncation indicator.
+  evidence: team-management.tsx machineParams `{ plantId: ..., limit: 200 }` with plant options derived by iterating only the fetched items; proper fix is a server-side search/paginated picker shared across master-data dialogs.
+  status: open
+
+### DW-126: Optimistic-lock conflicts on teams surface as raw 500
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-2-cross-plant-teams.md`
+  summary: TeamEntity carries `@Version`; concurrent PUT/DELETE of the same team raises ObjectOptimisticLockingFailureException which TeamExceptionHandler does not map, so lost-update races return 500 instead of 409/retry signal.
+  evidence: TeamExceptionHandler maps domain exceptions only; sections/machines handlers share the same systemic gap — fix globally in one pass rather than per-module.
+  status: open
+
+### DW-127: Combined Maven verification command flaky under Testcontainers context caching
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-2-cross-plant-teams.md`
+  summary: Running multiple AbstractPostgresIntegrationTest classes in one surefire JVM fails later classes with connection-refused because the shared static container restarts on a new mapped port while the cached Spring context keeps the first port; each class passes individually.
+  evidence: Story 9-2 Debug Log; pre-existing quirk also affects 9-1 integration suites. Fix belongs to test infra (reuse-friendly container lifecycle or per-class datasource), not to story code.
+  status: open

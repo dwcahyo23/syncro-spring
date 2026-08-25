@@ -168,7 +168,7 @@ class SparepartAlertQueryServiceTest {
         .thenReturn(List.of(new AuthUserPlantAssignmentEntity(userId, plantId, Instant.now(clock))));
     when(operationalScopes.derive(any(AuthenticatedUser.class)))
         .thenReturn(new OperationalScope(java.util.Set.of(), java.util.Set.of(), java.util.Set.of()));
-    when(alertRepository.findAllScoped(eq(List.of(plantId)), isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
+    when(alertRepository.findAllScoped(eq(List.of(plantId)), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
         .thenReturn(new PageImpl<>(List.of(a)));
 
     var result = service().list(manageUser(userId), null, null, null, 0, 50, "createdAt,desc");
@@ -181,6 +181,8 @@ class SparepartAlertQueryServiceTest {
   void list_managedUser_emptyPlantScope_returnsEmptyList() {
     var userId = UUID.randomUUID();
     when(assignments.findByAuthUserId(userId)).thenReturn(List.of());
+    when(operationalScopes.derive(any(AuthenticatedUser.class)))
+        .thenReturn(new OperationalScope(java.util.Set.of(), java.util.Set.of(), java.util.Set.of()));
 
     var result = service().list(manageUser(userId), null, null, null, 0, 50, "createdAt,desc");
 
@@ -264,7 +266,7 @@ class SparepartAlertQueryServiceTest {
         .thenReturn(List.of(new AuthUserPlantAssignmentEntity(userId, plantId, Instant.now(clock))));
     when(operationalScopes.derive(any(AuthenticatedUser.class)))
         .thenReturn(new OperationalScope(java.util.Set.of(), java.util.Set.of(), java.util.Set.of()));
-    when(alertRepository.findByIdWithDetailsScopedToPlants(eq(alertId), eq(List.of(plantId)), isNull()))
+    when(alertRepository.findByIdWithDetailsScopedToPlants(eq(alertId), eq(List.of(plantId)), isNull(), isNull()))
         .thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service().get(manageUser(userId), alertId))
@@ -292,7 +294,7 @@ class SparepartAlertQueryServiceTest {
         .thenReturn(List.of(new AuthUserPlantAssignmentEntity(userId, plantId, Instant.now(clock))));
     when(operationalScopes.derive(any(AuthenticatedUser.class)))
         .thenReturn(new OperationalScope(java.util.Set.of(plantId), java.util.Set.of(groupId), java.util.Set.of()));
-    when(alertRepository.findAllScoped(eq(List.of(plantId)), eq(List.of(groupId)), isNull(), isNull(), isNull(), any(Pageable.class)))
+    when(alertRepository.findAllScoped(eq(List.of(plantId)), eq(List.of(groupId)), isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
         .thenReturn(new PageImpl<>(List.of(a)));
 
     var result = service().list(manageUser(userId), null, null, null, 0, 50, "createdAt,desc");

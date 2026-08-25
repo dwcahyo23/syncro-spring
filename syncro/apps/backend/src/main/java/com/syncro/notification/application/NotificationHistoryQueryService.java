@@ -38,18 +38,21 @@ public class NotificationHistoryQueryService {
   private final NotificationAttemptRepository attemptRepository;
   private final AuthUserRepository authUserRepository;
   private final AuthUserPlantAssignmentRepository assignments;
+  private final com.syncro.org.application.OperationalScopeService operationalScopes;
 
   public NotificationHistoryQueryService(
       SparepartAlertRepository alertRepository,
       NotificationJobRepository jobRepository,
       NotificationAttemptRepository attemptRepository,
       AuthUserRepository authUserRepository,
-      AuthUserPlantAssignmentRepository assignments) {
+      AuthUserPlantAssignmentRepository assignments,
+      com.syncro.org.application.OperationalScopeService operationalScopes) {
     this.alertRepository = alertRepository;
     this.jobRepository = jobRepository;
     this.attemptRepository = attemptRepository;
     this.authUserRepository = authUserRepository;
     this.assignments = assignments;
+    this.operationalScopes = operationalScopes;
   }
 
   @Transactional(readOnly = true)
@@ -63,10 +66,13 @@ public class NotificationHistoryQueryService {
           .orElseThrow(AlertNotFoundException::new);
     } else {
       var scopedPlantIds = scopedPlantIds(user);
-      if (scopedPlantIds.isEmpty()) {
+      // Same widening as the alert command path: plant view plus the additive team branch.
+      var teamGroupIds = operationalScopes.derive(user).activeTeamIds();
+      var teamGroupParams = teamGroupIds.isEmpty() ? null : java.util.List.copyOf(teamGroupIds);
+      if (scopedPlantIds.isEmpty() && teamGroupParams == null) {
         throw new AlertNotFoundException();
       }
-      alertRepository.findByIdWithDetailsScopedToPlants(alertId, scopedPlantIds, null)
+      alertRepository.findByIdWithDetailsScopedToPlants(alertId, scopedPlantIds, null, teamGroupParams)
           .orElseThrow(AlertNotFoundException::new);
     }
 

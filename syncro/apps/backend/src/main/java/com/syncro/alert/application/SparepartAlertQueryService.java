@@ -58,13 +58,17 @@ public class SparepartAlertQueryService {
     }
 
     var scopedPlantIds = superAdmin ? List.<UUID>of() : scopedPlantIds(user);
-    if (!superAdmin && scopedPlantIds.isEmpty()) {
+    var groupParams = superAdmin ? null : scopedGroupParams(user);
+    // A user with no plant assignment but an active cross-plant team still gets the
+    // team branch — the team grant must not be silently dead on alert paths.
+    if (!superAdmin && scopedPlantIds.isEmpty() && groupParams.teamGroupIds() == null) {
       return new AlertListView(List.of(), 0L, page, size, sort);
     }
 
     var result = superAdmin
         ? alertRepository.findAllUnscoped(machineId, plantId, status, pageable)
-        : alertRepository.findAllScoped(scopedPlantIds, scopedMachineGroupIds(user), machineId, plantId, status, pageable);
+        : alertRepository.findAllScoped(scopedPlantIds, groupParams.leaderGroupIds(),
+            groupParams.teamGroupIds(), machineId, plantId, status, pageable);
 
     var alertIds = result.getContent().stream().map(SparepartAlertEntity::getId).toList();
     var summaryMap = buildNotificationSummaryMap(alertIds);
@@ -113,10 +117,12 @@ public class SparepartAlertQueryService {
           .orElseThrow(AlertNotFoundException::new);
     } else {
       var scopedPlantIds = scopedPlantIds(user);
-      if (scopedPlantIds.isEmpty()) {
+      var groupParams = scopedGroupParams(user);
+      if (scopedPlantIds.isEmpty() && groupParams.teamGroupIds() == null) {
         throw new AlertNotFoundException();
       }
-      alert = alertRepository.findByIdWithDetailsScopedToPlants(alertId, scopedPlantIds, scopedMachineGroupIds(user))
+      alert = alertRepository.findByIdWithDetailsScopedToPlants(alertId, scopedPlantIds,
+          groupParams.leaderGroupIds(), groupParams.teamGroupIds())
           .orElseThrow(AlertNotFoundException::new);
     }
     // Single-alert detail view: no notification summary (detail page loads it separately)
@@ -192,14 +198,22 @@ public class SparepartAlertQueryService {
   }
 
   /**
-   * Derived section-leader machineGroupIds (AD-2). Empty derived set = no group
-   * restriction — Phase 1 plant-scope behavior preserved for non-leaders. A leader
-   * sees only their own groups; sibling-group data within the same section is
-   * excluded (section is a container, never a scoping dimension).
+   * Derived scope split for the additive OR-branch (AD-2, AD-13). leaderGroupIds
+   * = machine groups where the user is LEADER+ (9-1 unchanged); teamGroupIds =
+   * machine groups contributed by the user's active cross-plant teams. Empty
+   * derived set = null param (no restriction). Non-leader without team → both null
+   * → Phase 1 plant-scope base view exactly as before teams.
    */
-  private List<UUID> scopedMachineGroupIds(AuthenticatedUser user) {
-    var machineGroupIds = operationalScopes.derive(user).machineGroupIds();
-    return machineGroupIds.isEmpty() ? null : List.copyOf(machineGroupIds);
+  private ScopedGroupParams scopedGroupParams(AuthenticatedUser user) {
+    var scope = operationalScopes.derive(user);
+    var leaderGroupIds = scope.machineGroupIds();
+    var teamGroupIds = scope.activeTeamIds();
+    return new ScopedGroupParams(
+        leaderGroupIds.isEmpty() ? null : List.copyOf(leaderGroupIds),
+        teamGroupIds.isEmpty() ? null : List.copyOf(teamGroupIds));
+  }
+
+  private record ScopedGroupParams(List<UUID> leaderGroupIds, List<UUID> teamGroupIds) {
   }
 
   // --- View records ---

@@ -10,5 +10,6 @@ public enum AuditEntityType {
   RESPONSIBILITY,
   ALERT,
   SPAREPART_PRICE_ENTRY,
-  SECTION
+  SECTION,
+  TEAM
 }

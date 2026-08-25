@@ -27,6 +27,7 @@ public class SparepartAlertCommandService {
   private final AuditLogWriter auditLogWriter;
   private final AuthUserPlantAssignmentRepository assignments;
   private final NotificationJobRepository notificationJobRepository;
+  private final com.syncro.org.application.OperationalScopeService operationalScopes;
   private final Clock clock;
 
   public SparepartAlertCommandService(
@@ -34,11 +35,13 @@ public class SparepartAlertCommandService {
       AuditLogWriter auditLogWriter,
       AuthUserPlantAssignmentRepository assignments,
       NotificationJobRepository notificationJobRepository,
+      com.syncro.org.application.OperationalScopeService operationalScopes,
       Clock clock) {
     this.alertRepository = alertRepository;
     this.auditLogWriter = auditLogWriter;
     this.assignments = assignments;
     this.notificationJobRepository = notificationJobRepository;
+    this.operationalScopes = operationalScopes;
     this.clock = clock;
   }
 
@@ -147,12 +150,14 @@ public class SparepartAlertCommandService {
     }
 
     var scopedPlantIds = scopedPlantIds(user);
-    if (scopedPlantIds.isEmpty()) {
+    // Commands keep the 9-1 unrestricted-within-plants semantics (no leader restriction),
+    // widened only by the additive cross-plant team branch so a visible alert is actable.
+    var teamGroupIds = operationalScopes.derive(user).activeTeamIds();
+    var teamGroupParams = teamGroupIds.isEmpty() ? null : java.util.List.copyOf(teamGroupIds);
+    if (scopedPlantIds.isEmpty() && teamGroupParams == null) {
       throw new SparepartAlertQueryService.AlertNotFoundException();
     }
-    // Alert transitions are not group-scoped in 9.1 (only list/detail reads are); a user who
-    // can see the alert via plant scope may transition it.
-    return alertRepository.findByIdWithDetailsScopedToPlants(alertId, scopedPlantIds, null)
+    return alertRepository.findByIdWithDetailsScopedToPlants(alertId, scopedPlantIds, null, teamGroupParams)
         .orElseThrow(SparepartAlertQueryService.AlertNotFoundException::new);
   }
 

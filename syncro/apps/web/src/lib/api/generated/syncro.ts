@@ -26,6 +26,7 @@ import type {
 
 import type {
   AcknowledgeRequest,
+  AddMemberRequest,
   AlertListResponse,
   AlertNotificationHistoryResponse,
   AlertView,
@@ -36,12 +37,14 @@ import type {
   CreateSectionRequest,
   CreateSparepartImageBody,
   CreateSparepartImageParams,
+  CreateTeamRequest,
   Health200,
   IngestWorkerStatus,
   InstallationListResponse,
   InstallationRequest,
   InstallationUpdateRequest,
   InstallationView,
+  LinkMachineRequest,
   ListAlertsParams,
   ListAuditLogEntriesParams,
   ListMachineGroupsParams,
@@ -89,10 +92,14 @@ import type {
   SparepartTaxonomyView,
   SparepartView,
   StaleMachineStatus,
+  TeamDetailResponse,
+  TeamListResponse,
+  TeamView,
   TelemetryDataQualityStatus,
   TelemetryFreshnessStatus,
   UpdateMachineResponsibilityRequest,
   UpdateSectionRequest,
+  UpdateTeamRequest,
   UpsertTemplateRequest,
   WahaTemplateView
 } from './model';
@@ -8527,5 +8534,1002 @@ export const useClearMachineGroupSection = <TError = unknown,
         TContext
       > => {
       return useMutation(getClearMachineGroupSectionMutationOptions(options), queryClient);
+    }
+
+export type listTeamsResponse200 = {
+  data: TeamListResponse
+  status: 200
+}
+
+export type listTeamsResponse401 = {
+  data: void
+  status: 401
+}
+
+export type listTeamsResponse403 = {
+  data: void
+  status: 403
+}
+
+export type listTeamsResponseSuccess = (listTeamsResponse200) & {
+  headers: Headers;
+};
+export type listTeamsResponseError = (listTeamsResponse401 | listTeamsResponse403) & {
+  headers: Headers;
+};
+
+export type listTeamsResponse = (listTeamsResponseSuccess | listTeamsResponseError)
+
+export const getListTeamsUrl = () => {
+
+
+
+
+  return `/api/v1/teams`
+}
+
+/**
+ * @summary List all cross-plant teams
+ */
+export const listTeams = async ( options?: Parameters<typeof syncroFetch>[1]): Promise<listTeamsResponse> => {
+
+  return syncroFetch<listTeamsResponse>(getListTeamsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTeamsQueryKey = () => {
+    return [
+    `/api/v1/teams`
+    ] as const;
+    }
+
+
+export const getListTeamsQueryOptions = <TData = Awaited<ReturnType<typeof listTeams>>, TError = void>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTeams>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTeamsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTeams>>> = ({ signal }) => listTeams({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTeams>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListTeamsQueryResult = NonNullable<Awaited<ReturnType<typeof listTeams>>>
+export type ListTeamsQueryError = void
+
+
+export function useListTeams<TData = Awaited<ReturnType<typeof listTeams>>, TError = void>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTeams>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listTeams>>,
+          TError,
+          Awaited<ReturnType<typeof listTeams>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListTeams<TData = Awaited<ReturnType<typeof listTeams>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTeams>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listTeams>>,
+          TError,
+          Awaited<ReturnType<typeof listTeams>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListTeams<TData = Awaited<ReturnType<typeof listTeams>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTeams>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List all cross-plant teams
+ */
+
+export function useListTeams<TData = Awaited<ReturnType<typeof listTeams>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTeams>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListTeamsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type createTeamResponse201 = {
+  data: TeamView
+  status: 201
+}
+
+export type createTeamResponse400 = {
+  data: void
+  status: 400
+}
+
+export type createTeamResponse401 = {
+  data: void
+  status: 401
+}
+
+export type createTeamResponse403 = {
+  data: void
+  status: 403
+}
+
+export type createTeamResponseSuccess = (createTeamResponse201) & {
+  headers: Headers;
+};
+export type createTeamResponseError = (createTeamResponse400 | createTeamResponse401 | createTeamResponse403) & {
+  headers: Headers;
+};
+
+export type createTeamResponse = (createTeamResponseSuccess | createTeamResponseError)
+
+export const getCreateTeamUrl = () => {
+
+
+
+
+  return `/api/v1/teams`
+}
+
+/**
+ * @summary Create a cross-plant team
+ */
+export const createTeam = async (createTeamRequest: CreateTeamRequest, options?: Parameters<typeof syncroFetch>[1]): Promise<createTeamResponse> => {
+
+  return syncroFetch<createTeamResponse>(getCreateTeamUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createTeamRequest)
+  }
+);}
+
+
+
+
+
+export const getCreateTeamMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTeam>>, TError,{data: CreateTeamRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createTeam>>, TError,{data: CreateTeamRequest}, TContext> => {
+
+const mutationKey = ['createTeam'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createTeam>>, {data: CreateTeamRequest}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createTeam(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateTeamMutationResult = NonNullable<Awaited<ReturnType<typeof createTeam>>>
+    export type CreateTeamMutationBody = CreateTeamRequest
+    export type CreateTeamMutationError = void
+
+    /**
+ * @summary Create a cross-plant team
+ */
+export const useCreateTeam = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTeam>>, TError,{data: CreateTeamRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createTeam>>,
+        TError,
+        {data: CreateTeamRequest},
+        TContext
+      > => {
+      return useMutation(getCreateTeamMutationOptions(options), queryClient);
+    }
+
+export type getTeamResponse200 = {
+  data: TeamDetailResponse
+  status: 200
+}
+
+export type getTeamResponse400 = {
+  data: void
+  status: 400
+}
+
+export type getTeamResponse401 = {
+  data: void
+  status: 401
+}
+
+export type getTeamResponse403 = {
+  data: void
+  status: 403
+}
+
+export type getTeamResponse404 = {
+  data: void
+  status: 404
+}
+
+export type getTeamResponseSuccess = (getTeamResponse200) & {
+  headers: Headers;
+};
+export type getTeamResponseError = (getTeamResponse400 | getTeamResponse401 | getTeamResponse403 | getTeamResponse404) & {
+  headers: Headers;
+};
+
+export type getTeamResponse = (getTeamResponseSuccess | getTeamResponseError)
+
+export const getGetTeamUrl = (teamId: string,) => {
+
+
+
+
+  return `/api/v1/teams/${teamId}`
+}
+
+/**
+ * @summary Get a team with members and machines
+ */
+export const getTeam = async (teamId: string, options?: Parameters<typeof syncroFetch>[1]): Promise<getTeamResponse> => {
+
+  return syncroFetch<getTeamResponse>(getGetTeamUrl(teamId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTeamQueryKey = (teamId: string,) => {
+    return [
+    `/api/v1/teams/${teamId}`
+    ] as const;
+    }
+
+
+export const getGetTeamQueryOptions = <TData = Awaited<ReturnType<typeof getTeam>>, TError = void>(teamId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTeam>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTeamQueryKey(teamId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTeam>>> = ({ signal }) => getTeam(teamId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: teamId !== null && teamId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTeam>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetTeamQueryResult = NonNullable<Awaited<ReturnType<typeof getTeam>>>
+export type GetTeamQueryError = void
+
+
+export function useGetTeam<TData = Awaited<ReturnType<typeof getTeam>>, TError = void>(
+ teamId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTeam>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTeam>>,
+          TError,
+          Awaited<ReturnType<typeof getTeam>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTeam<TData = Awaited<ReturnType<typeof getTeam>>, TError = void>(
+ teamId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTeam>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTeam>>,
+          TError,
+          Awaited<ReturnType<typeof getTeam>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTeam<TData = Awaited<ReturnType<typeof getTeam>>, TError = void>(
+ teamId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTeam>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get a team with members and machines
+ */
+
+export function useGetTeam<TData = Awaited<ReturnType<typeof getTeam>>, TError = void>(
+ teamId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTeam>>, TError, TData>>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetTeamQueryOptions(teamId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type updateTeamResponse200 = {
+  data: TeamView
+  status: 200
+}
+
+export type updateTeamResponse400 = {
+  data: void
+  status: 400
+}
+
+export type updateTeamResponse401 = {
+  data: void
+  status: 401
+}
+
+export type updateTeamResponse403 = {
+  data: void
+  status: 403
+}
+
+export type updateTeamResponse404 = {
+  data: void
+  status: 404
+}
+
+export type updateTeamResponseSuccess = (updateTeamResponse200) & {
+  headers: Headers;
+};
+export type updateTeamResponseError = (updateTeamResponse400 | updateTeamResponse401 | updateTeamResponse403 | updateTeamResponse404) & {
+  headers: Headers;
+};
+
+export type updateTeamResponse = (updateTeamResponseSuccess | updateTeamResponseError)
+
+export const getUpdateTeamUrl = (teamId: string,) => {
+
+
+
+
+  return `/api/v1/teams/${teamId}`
+}
+
+/**
+ * @summary Update a cross-plant team
+ */
+export const updateTeam = async (teamId: string,
+    updateTeamRequest: UpdateTeamRequest, options?: Parameters<typeof syncroFetch>[1]): Promise<updateTeamResponse> => {
+
+  return syncroFetch<updateTeamResponse>(getUpdateTeamUrl(teamId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateTeamRequest)
+  }
+);}
+
+
+
+
+
+export const getUpdateTeamMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTeam>>, TError,{teamId: string;data: UpdateTeamRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateTeam>>, TError,{teamId: string;data: UpdateTeamRequest}, TContext> => {
+
+const mutationKey = ['updateTeam'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateTeam>>, {teamId: string;data: UpdateTeamRequest}> = (props) => {
+          const {teamId,data} = props ?? {};
+
+          return  updateTeam(teamId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateTeamMutationResult = NonNullable<Awaited<ReturnType<typeof updateTeam>>>
+    export type UpdateTeamMutationBody = UpdateTeamRequest
+    export type UpdateTeamMutationError = void
+
+    /**
+ * @summary Update a cross-plant team
+ */
+export const useUpdateTeam = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTeam>>, TError,{teamId: string;data: UpdateTeamRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateTeam>>,
+        TError,
+        {teamId: string;data: UpdateTeamRequest},
+        TContext
+      > => {
+      return useMutation(getUpdateTeamMutationOptions(options), queryClient);
+    }
+
+export type deleteTeamResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteTeamResponse400 = {
+  data: void
+  status: 400
+}
+
+export type deleteTeamResponse401 = {
+  data: void
+  status: 401
+}
+
+export type deleteTeamResponse403 = {
+  data: void
+  status: 403
+}
+
+export type deleteTeamResponse404 = {
+  data: void
+  status: 404
+}
+
+export type deleteTeamResponseSuccess = (deleteTeamResponse204) & {
+  headers: Headers;
+};
+export type deleteTeamResponseError = (deleteTeamResponse400 | deleteTeamResponse401 | deleteTeamResponse403 | deleteTeamResponse404) & {
+  headers: Headers;
+};
+
+export type deleteTeamResponse = (deleteTeamResponseSuccess | deleteTeamResponseError)
+
+export const getDeleteTeamUrl = (teamId: string,) => {
+
+
+
+
+  return `/api/v1/teams/${teamId}`
+}
+
+/**
+ * @summary Delete a cross-plant team (cascades members and machines)
+ */
+export const deleteTeam = async (teamId: string, options?: Parameters<typeof syncroFetch>[1]): Promise<deleteTeamResponse> => {
+
+  return syncroFetch<deleteTeamResponse>(getDeleteTeamUrl(teamId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteTeamMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTeam>>, TError,{teamId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteTeam>>, TError,{teamId: string}, TContext> => {
+
+const mutationKey = ['deleteTeam'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteTeam>>, {teamId: string}> = (props) => {
+          const {teamId} = props ?? {};
+
+          return  deleteTeam(teamId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteTeamMutationResult = NonNullable<Awaited<ReturnType<typeof deleteTeam>>>
+
+    export type DeleteTeamMutationError = void
+
+    /**
+ * @summary Delete a cross-plant team (cascades members and machines)
+ */
+export const useDeleteTeam = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTeam>>, TError,{teamId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteTeam>>,
+        TError,
+        {teamId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteTeamMutationOptions(options), queryClient);
+    }
+
+export type addTeamMemberResponse204 = {
+  data: void
+  status: 204
+}
+
+export type addTeamMemberResponse400 = {
+  data: void
+  status: 400
+}
+
+export type addTeamMemberResponse401 = {
+  data: void
+  status: 401
+}
+
+export type addTeamMemberResponse403 = {
+  data: void
+  status: 403
+}
+
+export type addTeamMemberResponse404 = {
+  data: void
+  status: 404
+}
+
+export type addTeamMemberResponseSuccess = (addTeamMemberResponse204) & {
+  headers: Headers;
+};
+export type addTeamMemberResponseError = (addTeamMemberResponse400 | addTeamMemberResponse401 | addTeamMemberResponse403 | addTeamMemberResponse404) & {
+  headers: Headers;
+};
+
+export type addTeamMemberResponse = (addTeamMemberResponseSuccess | addTeamMemberResponseError)
+
+export const getAddTeamMemberUrl = (teamId: string,) => {
+
+
+
+
+  return `/api/v1/teams/${teamId}/members`
+}
+
+/**
+ * @summary Add a member to a team (idempotent)
+ */
+export const addTeamMember = async (teamId: string,
+    addMemberRequest: AddMemberRequest, options?: Parameters<typeof syncroFetch>[1]): Promise<addTeamMemberResponse> => {
+
+  return syncroFetch<addTeamMemberResponse>(getAddTeamMemberUrl(teamId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(addMemberRequest)
+  }
+);}
+
+
+
+
+
+export const getAddTeamMemberMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addTeamMember>>, TError,{teamId: string;data: AddMemberRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addTeamMember>>, TError,{teamId: string;data: AddMemberRequest}, TContext> => {
+
+const mutationKey = ['addTeamMember'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addTeamMember>>, {teamId: string;data: AddMemberRequest}> = (props) => {
+          const {teamId,data} = props ?? {};
+
+          return  addTeamMember(teamId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddTeamMemberMutationResult = NonNullable<Awaited<ReturnType<typeof addTeamMember>>>
+    export type AddTeamMemberMutationBody = AddMemberRequest
+    export type AddTeamMemberMutationError = void
+
+    /**
+ * @summary Add a member to a team (idempotent)
+ */
+export const useAddTeamMember = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addTeamMember>>, TError,{teamId: string;data: AddMemberRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof addTeamMember>>,
+        TError,
+        {teamId: string;data: AddMemberRequest},
+        TContext
+      > => {
+      return useMutation(getAddTeamMemberMutationOptions(options), queryClient);
+    }
+
+export type removeTeamMemberResponse204 = {
+  data: void
+  status: 204
+}
+
+export type removeTeamMemberResponse400 = {
+  data: void
+  status: 400
+}
+
+export type removeTeamMemberResponse401 = {
+  data: void
+  status: 401
+}
+
+export type removeTeamMemberResponse403 = {
+  data: void
+  status: 403
+}
+
+export type removeTeamMemberResponse404 = {
+  data: void
+  status: 404
+}
+
+export type removeTeamMemberResponseSuccess = (removeTeamMemberResponse204) & {
+  headers: Headers;
+};
+export type removeTeamMemberResponseError = (removeTeamMemberResponse400 | removeTeamMemberResponse401 | removeTeamMemberResponse403 | removeTeamMemberResponse404) & {
+  headers: Headers;
+};
+
+export type removeTeamMemberResponse = (removeTeamMemberResponseSuccess | removeTeamMemberResponseError)
+
+export const getRemoveTeamMemberUrl = (teamId: string,
+    userId: string,) => {
+
+
+
+
+  return `/api/v1/teams/${teamId}/members/${userId}`
+}
+
+/**
+ * @summary Remove a member from a team (idempotent)
+ */
+export const removeTeamMember = async (teamId: string,
+    userId: string, options?: Parameters<typeof syncroFetch>[1]): Promise<removeTeamMemberResponse> => {
+
+  return syncroFetch<removeTeamMemberResponse>(getRemoveTeamMemberUrl(teamId,userId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRemoveTeamMemberMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeTeamMember>>, TError,{teamId: string;userId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeTeamMember>>, TError,{teamId: string;userId: string}, TContext> => {
+
+const mutationKey = ['removeTeamMember'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeTeamMember>>, {teamId: string;userId: string}> = (props) => {
+          const {teamId,userId} = props ?? {};
+
+          return  removeTeamMember(teamId,userId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveTeamMemberMutationResult = NonNullable<Awaited<ReturnType<typeof removeTeamMember>>>
+
+    export type RemoveTeamMemberMutationError = void
+
+    /**
+ * @summary Remove a member from a team (idempotent)
+ */
+export const useRemoveTeamMember = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeTeamMember>>, TError,{teamId: string;userId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof removeTeamMember>>,
+        TError,
+        {teamId: string;userId: string},
+        TContext
+      > => {
+      return useMutation(getRemoveTeamMemberMutationOptions(options), queryClient);
+    }
+
+export type linkTeamMachineResponse204 = {
+  data: void
+  status: 204
+}
+
+export type linkTeamMachineResponse400 = {
+  data: void
+  status: 400
+}
+
+export type linkTeamMachineResponse401 = {
+  data: void
+  status: 401
+}
+
+export type linkTeamMachineResponse403 = {
+  data: void
+  status: 403
+}
+
+export type linkTeamMachineResponse404 = {
+  data: void
+  status: 404
+}
+
+export type linkTeamMachineResponseSuccess = (linkTeamMachineResponse204) & {
+  headers: Headers;
+};
+export type linkTeamMachineResponseError = (linkTeamMachineResponse400 | linkTeamMachineResponse401 | linkTeamMachineResponse403 | linkTeamMachineResponse404) & {
+  headers: Headers;
+};
+
+export type linkTeamMachineResponse = (linkTeamMachineResponseSuccess | linkTeamMachineResponseError)
+
+export const getLinkTeamMachineUrl = (teamId: string,) => {
+
+
+
+
+  return `/api/v1/teams/${teamId}/machines`
+}
+
+/**
+ * @summary Link a target machine to a team (idempotent)
+ */
+export const linkTeamMachine = async (teamId: string,
+    linkMachineRequest: LinkMachineRequest, options?: Parameters<typeof syncroFetch>[1]): Promise<linkTeamMachineResponse> => {
+
+  return syncroFetch<linkTeamMachineResponse>(getLinkTeamMachineUrl(teamId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(linkMachineRequest)
+  }
+);}
+
+
+
+
+
+export const getLinkTeamMachineMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkTeamMachine>>, TError,{teamId: string;data: LinkMachineRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof linkTeamMachine>>, TError,{teamId: string;data: LinkMachineRequest}, TContext> => {
+
+const mutationKey = ['linkTeamMachine'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof linkTeamMachine>>, {teamId: string;data: LinkMachineRequest}> = (props) => {
+          const {teamId,data} = props ?? {};
+
+          return  linkTeamMachine(teamId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LinkTeamMachineMutationResult = NonNullable<Awaited<ReturnType<typeof linkTeamMachine>>>
+    export type LinkTeamMachineMutationBody = LinkMachineRequest
+    export type LinkTeamMachineMutationError = void
+
+    /**
+ * @summary Link a target machine to a team (idempotent)
+ */
+export const useLinkTeamMachine = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkTeamMachine>>, TError,{teamId: string;data: LinkMachineRequest}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof linkTeamMachine>>,
+        TError,
+        {teamId: string;data: LinkMachineRequest},
+        TContext
+      > => {
+      return useMutation(getLinkTeamMachineMutationOptions(options), queryClient);
+    }
+
+export type unlinkTeamMachineResponse204 = {
+  data: void
+  status: 204
+}
+
+export type unlinkTeamMachineResponse400 = {
+  data: void
+  status: 400
+}
+
+export type unlinkTeamMachineResponse401 = {
+  data: void
+  status: 401
+}
+
+export type unlinkTeamMachineResponse403 = {
+  data: void
+  status: 403
+}
+
+export type unlinkTeamMachineResponse404 = {
+  data: void
+  status: 404
+}
+
+export type unlinkTeamMachineResponseSuccess = (unlinkTeamMachineResponse204) & {
+  headers: Headers;
+};
+export type unlinkTeamMachineResponseError = (unlinkTeamMachineResponse400 | unlinkTeamMachineResponse401 | unlinkTeamMachineResponse403 | unlinkTeamMachineResponse404) & {
+  headers: Headers;
+};
+
+export type unlinkTeamMachineResponse = (unlinkTeamMachineResponseSuccess | unlinkTeamMachineResponseError)
+
+export const getUnlinkTeamMachineUrl = (teamId: string,
+    machineId: string,) => {
+
+
+
+
+  return `/api/v1/teams/${teamId}/machines/${machineId}`
+}
+
+/**
+ * @summary Unlink a target machine from a team (idempotent)
+ */
+export const unlinkTeamMachine = async (teamId: string,
+    machineId: string, options?: Parameters<typeof syncroFetch>[1]): Promise<unlinkTeamMachineResponse> => {
+
+  return syncroFetch<unlinkTeamMachineResponse>(getUnlinkTeamMachineUrl(teamId,machineId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getUnlinkTeamMachineMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlinkTeamMachine>>, TError,{teamId: string;machineId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unlinkTeamMachine>>, TError,{teamId: string;machineId: string}, TContext> => {
+
+const mutationKey = ['unlinkTeamMachine'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unlinkTeamMachine>>, {teamId: string;machineId: string}> = (props) => {
+          const {teamId,machineId} = props ?? {};
+
+          return  unlinkTeamMachine(teamId,machineId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnlinkTeamMachineMutationResult = NonNullable<Awaited<ReturnType<typeof unlinkTeamMachine>>>
+
+    export type UnlinkTeamMachineMutationError = void
+
+    /**
+ * @summary Unlink a target machine from a team (idempotent)
+ */
+export const useUnlinkTeamMachine = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlinkTeamMachine>>, TError,{teamId: string;machineId: string}, TContext>, request?: SecondParameter<typeof syncroFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof unlinkTeamMachine>>,
+        TError,
+        {teamId: string;machineId: string},
+        TContext
+      > => {
+      return useMutation(getUnlinkTeamMachineMutationOptions(options), queryClient);
     }
 
