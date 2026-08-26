@@ -2,10 +2,11 @@
 title: 'Status Lifecycle & ON_PROCUREMENT'
 type: 'feature'
 created: '2026-08-26'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 baseline_revision: 41277fab
+final_revision: ad74eac
 context:
   - '{project-root}/_bmad-output/project-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-10-context.md'
@@ -145,8 +146,30 @@ warnings: ['oversized']
 
 | Step | Outcome | Notes |
 |------|---------|-------|
-| 01 route | pass | epic 10, story 3; epic-10-context valid; spec-10-2 (done) continuity loaded; clean tree on main |
-| 02 plan | pass | spec-10-3 written (state machine, transition endpoint, ON_PROCUREMENT derivation port, parent-close/override, rego) |
+| 01 route | pass | epic 10, story 3; spec-10-3 `ready-for-dev` resumed; clean tree on main |
+| 03 implement | pass | state machine, transition endpoint, derivation port + recompute, parent-close/override, rego; verified independently |
+| 04 review | pass | Blind Hunter (4 P1/P2-class) + Edge Case Hunter (4 findings); deduped to 6 patches (high 3, medium 2, low 1), 0 intent_gap, 0 bad_spec, 3 defers, 7 rejects |
+| commit | ad74eac | `feat(workorder): status lifecycle & ON_PROCUREMENT derivation (story 10-3)` |
+| finalize | ad74eac~1 | status done; followup_review_recommended: true |
 
-HALT after spec per user intent ("spec story 10-3"): spec status `ready-for-dev`, ready for step-03 implementation on a later run.
+**Summary:** Manual lifecycle transitions via `POST /api/v1/workorders/{id}/transition` behind an explicit AD-4 table-driven machine with executor-vs-leader gates; ON_PROCUREMENT derived from request readiness through `SparepartRequestReadinessPort` (no-op until Epic 12) under a row lock writing DERIVED/SYSTEM history; FR-120 parent-close with FOR UPDATE children lock and audited SUPER_ADMIN/MANAGER override; rego transition-path set with parity tests. No schema change.
+
+**Files changed:**
+- NEW `WorkOrderStateMachine.java` -- AD-4 valid-edge table + terminal set.
+- NEW `SparepartRequestReadinessPort.java` / `NoopSparepartRequestReadinessPort.java` -- readiness port + Epic-12 placeholder.
+- MOD `WorkOrderService.java` -- transition() (locked load, actor gates, procurement guard, parent close/override) + recomputeProcurementState().
+- MOD `WorkOrderEntity.java`, `WorkOrderRepository.java` -- generic transitionTo + PESSIMISTIC_WRITE finders.
+- MOD `WorkOrderController.java`, `WorkOrderDtos.java`, `WorkOrderExceptionHandler.java` -- POST /{id}/transition, request DTO, new error mappings incl. Jackson 3 classification.
+- MOD `authz.rego`, `authz_test.rego`, `.env.example` -- workorder_transition_paths + parity cases.
+- Tests: NEW `WorkOrderTransitionServiceTest` (32), MOD controller (10 new) + service constructor.
+
+**Review findings:** patches applied 6 (high 3: transition row lock vs lost update/double-close, recompute SYNCED guard, Jackson 3 exception classification; medium 2: reason persisted to audit, spec verification/test-map fix; low 1: derived-audit design note). Deferred 3 (DW-136 lock-finder DB test, DW-137 JWT-subject hardening, DW-138 real-port derivation coverage). Rejected 7 (by-design rego coarseness, .env redundancy, DONE-child strictness per FR-120 wording, optional-field semantics, cosmetic error-code shift on 10-2 endpoints, pre-existing traceId fallback).
+
+**Verification:**
+- `mvnd -o ... test "-Dtest=WorkOrderServiceTest,WorkOrderControllerTest,WorkOrderTransitionServiceTest"` -- BUILD SUCCESS, 80/80 (27 controller + 21 service + 32 transition).
+- `cd syncro/authz && ./run-opa-test.ps1` -- PASS 69/69 (incl. 10 new transition parity cases).
+- `cd syncro/apps/web && npx tsc --noEmit` -- green (no frontend changes).
+
+**Residual risks:** PRODUCTION_LEADER stays off the transition path by design; manual ON_PROCUREMENT placement dead-end while a live non-READY request exists is AD-5-sanctioned (derivation authoritative); wrong-typed JSON fields across all three workorder endpoints now return VALIDATION_ERROR instead of MALFORMED_JSON (same 400 family, unpinned by older tests); lock finders proven at mock level only (DW-136).
+
 

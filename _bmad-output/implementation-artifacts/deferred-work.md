@@ -1030,3 +1030,24 @@ status: open
   summary: nextId() throwing WorkorderIdExhaustedException surfaces as a generic Spring 500; no endpoint can trigger it yet (generator only exercised in tests).
   evidence: Edge Case Hunter on 10-1. Fix = add an @ExceptionHandler(WorkorderIdExhaustedException.class) returning 503 + code when 10-2 introduces the create-workorder endpoint.
   status: open
+
+### DW-136: New workorder lock finders are only exercised through Mockito stubs
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-10-3-status-lifecycle-and-on-procurement.md`
+  summary: WorkOrderRepository.findByParentIdForUpdate / findByIdForUpdate (@Lock PESSIMISTIC_WRITE) have no Testcontainers-level test asserting real FOR UPDATE SQL or lock behavior.
+  evidence: Blind Hunter on 10-3; 10-2 set the precedent of a migration test class, but DW-127 (multi-integration-class quirk) kept this story to mock-based tests. Fix = one integration test loading both finders against PostgreSQL when the DW-127 workaround is revisited.
+  status: open
+
+### DW-137: Malformed JWT subject can 500 executor-gated mutations instead of 401/403
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-10-3-status-lifecycle-and-on-procurement.md`
+  summary: WorkOrderService.isExecutor calls UUID.fromString(user.id()) which throws IllegalArgumentException on a non-UUID subject; transition() is the first executor-gated endpoint so the surface widened.
+  evidence: Blind Hunter on 10-3; same pattern exists in create/assign since 10-2. Fix = parse defensively once at the auth boundary (or map IllegalArgumentException to 401) across all three methods together.
+  status: open
+
+### DW-138: Derived ON_PROCUREMENT enter-branch has no coverage against the shipped port bean
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-10-3-status-lifecycle-and-on-procurement.md`
+  summary: recomputeProcurementState enter-to-ON_PROCUREMENT is unit-tested only via a fake SparepartRequestReadinessPort; the shipped NoopSparepartRequestReadinessPort makes derivation a structural no-op until Epic 12 swaps the bean.
+  evidence: Blind Hunter on 10-3. Fix = when Epic 12 implements the port, add an application test wiring the real adapter plus its first request-transition event into recomputeProcurementState.
+  status: open
