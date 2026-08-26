@@ -8,9 +8,10 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Schema-only JPA pass-through for the {@code work_order_status_history} table
- * (story 10-1). Status transitions are written by the 10.3 state machine; this
- * entity only keeps ddl-auto=validate aligned with the V47 DDL.
+ * Persisted {@code work_order_status_history} row (AD-4): one row per transition with
+ * the acting user (actor, UUID string), the transition source (MANUAL/DERIVED/SYNC)
+ * and a trace id for correlation. Grown out of the 10-1 schema-only pass-through into
+ * a real persisted aggregate with the create/assign flow.
  */
 @Entity
 @Table(name = "work_order_status_history")
@@ -41,5 +42,49 @@ public class WorkOrderStatusHistoryEntity {
   private Instant transitionedAt;
 
   protected WorkOrderStatusHistoryEntity() {
+  }
+
+  public WorkOrderStatusHistoryEntity(UUID id, String workOrderId, String fromStatus, String toStatus,
+      String source, String actor, String traceId, Instant transitionedAt) {
+    this.id = id;
+    this.workOrderId = workOrderId;
+    this.fromStatus = fromStatus;
+    this.toStatus = toStatus;
+    this.source = source;
+    this.actor = actor;
+    this.traceId = traceId;
+    this.transitionedAt = transitionedAt;
+  }
+
+  public UUID getId() {
+    return id;
+  }
+
+  public String getWorkOrderId() {
+    return workOrderId;
+  }
+
+  public String getFromStatus() {
+    return fromStatus;
+  }
+
+  public String getToStatus() {
+    return toStatus;
+  }
+
+  public String getSource() {
+    return source;
+  }
+
+  public String getActor() {
+    return actor;
+  }
+
+  public String getTraceId() {
+    return traceId;
+  }
+
+  public Instant getTransitionedAt() {
+    return transitionedAt;
   }
 }

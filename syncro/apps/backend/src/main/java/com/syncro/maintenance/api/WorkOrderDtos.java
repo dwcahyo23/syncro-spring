@@ -1,0 +1,37 @@
+package com.syncro.maintenance.api;
+
+import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import java.time.Instant;
+import java.util.Map;
+import java.util.UUID;
+
+public final class WorkOrderDtos {
+  private WorkOrderDtos() {
+  }
+
+  /** Category codes are stored uppercase and must be safe for OPA glob matching. */
+  private static final String CODE_PATTERN = "^[A-Za-z0-9._-]{1,16}$";
+
+  public record CreateWorkOrderRequest(
+      @NotBlank @Pattern(regexp = CODE_PATTERN) String categoryCode,
+      @NotNull UUID machineId,
+      @Size(max = 4000) String description,
+      @Size(max = 50) String parentId) {
+  }
+
+  public record AssignWorkOrderRequest(@NotNull UUID assigneeUserId) {
+  }
+
+  public record WorkOrderView(String id, String source, WorkOrderStatus status, UUID categoryId, UUID machineId,
+      String description, String parentId, UUID assignedTechnicianId, UUID createdBy, Instant createdAt,
+      Instant updatedAt) {
+  }
+
+  public record ErrorResponse(String code, String message, Map<String, String> fieldErrors, String timestamp,
+      String traceId) {
+  }
+}

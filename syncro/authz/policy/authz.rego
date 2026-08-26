@@ -72,6 +72,19 @@ alert_mutation_paths := {
   "/api/v1/alerts/*/resolve",
 }
 
+# Workorder create/assign (story 10-2): create is open to the five create roles;
+# assign only to the four leadership roles (STAFF_MAINTENANCE and PRODUCTION_LEADER
+# cannot assign — FR-113 parity with WorkOrderService.requireAssignRole). The
+# "01"-only and scope checks stay in-service (rego is coarser — it cannot see the
+# request body). Mirrors WorkOrderService gates exactly (9-5 parity pattern).
+workorder_create_paths := {
+  "/api/v1/workorders",
+}
+
+workorder_assign_paths := {
+  "/api/v1/workorders/*/assign",
+}
+
 # Telemetry + notification-worker endpoints are SUPER_ADMIN-only in service.
 admin_only_paths := {
   "/api/v1/telemetry/**",
@@ -100,6 +113,55 @@ mutation_allowed if {
   input.subject.roles[_] == "MANAGER_MAINTENANCE"
   is_mutation
   path_matches(category_mutation_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(workorder_create_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(workorder_create_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(workorder_create_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STAFF_MAINTENANCE"
+  is_mutation
+  path_matches(workorder_create_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "PRODUCTION_LEADER"
+  is_mutation
+  path_matches(workorder_create_paths)
+}
+
+# Assign: leadership roles only (STAFF_MAINTENANCE and PRODUCTION_LEADER excluded).
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(workorder_assign_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(workorder_assign_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(workorder_assign_paths)
 }
 
 mutation_allowed if {
