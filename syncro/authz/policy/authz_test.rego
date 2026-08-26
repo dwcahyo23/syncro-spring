@@ -410,6 +410,61 @@ test_production_leader_workorder_report_put_denied if {
   not authz.allow with input as {"subject": {"roles": ["PRODUCTION_LEADER"], "userId": "u8"}, "action": "PUT /api/v1/workorders/WO-2409-00001/report"}
 }
 
+# -- Workorder todos & kanban (story 10-7): same five-role allow set as reports;
+#    reads (list todos, kanban) any-authenticated ----------------------------------
+
+test_technician_workorder_todo_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/workorders/WO-2409-00001/todos"}
+}
+
+test_staff_workorder_todo_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/workorders/WO-2409-00001/todos"}
+}
+
+test_section_leader_workorder_todo_assign_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "PUT /api/v1/workorders/WO-2409-00001/todos/7b7c6d5e-1111-2222-3333-444455556666/assign"}
+}
+
+test_maintenance_leader_workorder_todo_complete_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "PUT /api/v1/workorders/WO-2409-00001/todos/7b7c6d5e-1111-2222-3333-444455556666/complete"}
+}
+
+test_manager_workorder_todo_reorder_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "PUT /api/v1/workorders/WO-2409-00001/todos/7b7c6d5e-1111-2222-3333-444455556666/reorder"}
+}
+
+test_super_admin_workorder_todo_delete_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "DELETE /api/v1/workorders/WO-2409-00001/todos/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_auditor_workorder_todo_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/workorders/WO-2409-00001/todos"}
+}
+
+test_auditor_workorder_todo_assign_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "PUT /api/v1/workorders/WO-2409-00001/todos/7b7c6d5e-1111-2222-3333-444455556666/assign"}
+}
+
+test_production_leader_workorder_todo_complete_denied if {
+  not authz.allow with input as {"subject": {"roles": ["PRODUCTION_LEADER"], "userId": "u8"}, "action": "PUT /api/v1/workorders/WO-2409-00001/todos/7b7c6d5e-1111-2222-3333-444455556666/complete"}
+}
+
+test_auditor_workorder_todo_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/workorders/WO-2409-00001/todos"}
+}
+
+test_auditor_workorder_todo_single_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/workorders/WO-2409-00001/todos/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_staff_workorder_kanban_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "GET /api/v1/workorders/kanban"}
+}
+
+test_anonymous_workorder_todo_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/workorders/WO-2409-00001/todos"}
+}
+
 # -- Anonymous (no userId): default deny everywhere ------------------------
 
 test_anonymous_admin_only_denied if {

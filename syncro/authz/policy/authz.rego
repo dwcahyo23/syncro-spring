@@ -123,6 +123,20 @@ workorder_report_paths := {
   "/api/v1/workorders/*/report/cpk",
 }
 
+# Workorder todos & kanban (story 10-7): the same executor + leadership role set as
+# sessions/evidence — todos are local operational fields created/assigned/completed/reordered
+# by the assigned executor or an in-scope leader; scope is service-side. Reads (GET) flow
+# through generic read_allowed (any authenticated user). The kanban endpoint (GET /kanban)
+# is a pure read that always flows through read_allowed. Each `*` matches one path segment,
+# so the action subpaths (/assign, /complete, /reorder) are listed explicitly.
+workorder_todo_paths := {
+  "/api/v1/workorders/*/todos",
+  "/api/v1/workorders/*/todos/*",
+  "/api/v1/workorders/*/todos/*/assign",
+  "/api/v1/workorders/*/todos/*/complete",
+  "/api/v1/workorders/*/todos/*/reorder",
+}
+
 # Telemetry + notification-worker endpoints are SUPER_ADMIN-only in service.
 admin_only_paths := {
   "/api/v1/telemetry/**",
@@ -325,6 +339,37 @@ mutation_allowed if {
   input.subject.roles[_] == "TECHNICIAN"
   is_mutation
   path_matches(workorder_report_paths)
+}
+
+# Todos & kanban: same five-role allow set as reports (10.6 parity).
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(workorder_todo_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(workorder_todo_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(workorder_todo_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STAFF_MAINTENANCE"
+  is_mutation
+  path_matches(workorder_todo_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "TECHNICIAN"
+  is_mutation
+  path_matches(workorder_todo_paths)
 }
 
 mutation_allowed if {

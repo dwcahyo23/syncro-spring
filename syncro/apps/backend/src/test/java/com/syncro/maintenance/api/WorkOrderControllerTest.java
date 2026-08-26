@@ -62,10 +62,21 @@ import com.syncro.maintenance.application.WorkOrderService.WorkOrderUserNotFound
 import com.syncro.maintenance.application.WorkOrderService.WorkorderForbiddenException;
 import com.syncro.maintenance.application.WorkOrderService.WorkorderNotInProgressException;
 import com.syncro.maintenance.application.WorkOrderService.StopTimeReasonRequiredException;
+import com.syncro.maintenance.application.WorkOrderTodoService;
+import com.syncro.maintenance.application.WorkOrderTodoService.CreateTodoCommand;
+import com.syncro.maintenance.application.WorkOrderTodoService.KanbanView;
+import com.syncro.maintenance.application.WorkOrderTodoService.TodoForbiddenException;
+import com.syncro.maintenance.application.WorkOrderTodoService.TodoNotFoundException;
+import com.syncro.maintenance.application.WorkOrderTodoService.TodoWorkOrderNotFoundException;
+import com.syncro.maintenance.application.WorkOrderTodoService.WorkOrderKanbanItem;
+import com.syncro.maintenance.application.WorkOrderTodoService.WorkOrderTerminalException;
+import com.syncro.maintenance.application.WorkOrderTodoService.WorkOrderTodoValidationException;
 import com.syncro.maintenance.domain.workorder.RepairSession;
+import com.syncro.maintenance.domain.workorder.TodoStatus;
 import com.syncro.maintenance.domain.workorder.WorkOrder;
 import com.syncro.maintenance.domain.workorder.WorkOrderIdGenerator.WorkorderIdExhaustedException;
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
+import com.syncro.maintenance.domain.workorder.WorkOrderTodo;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -102,6 +113,9 @@ class WorkOrderControllerTest {
 
   @MockitoBean
   private WorkOrderReportService report;
+
+  @MockitoBean
+  private WorkOrderTodoService todos;
 
   @MockitoBean
   private JwtTokenService jwtTokenService;
@@ -1044,10 +1058,205 @@ class WorkOrderControllerTest {
         .andExpect(jsonPath("$.fieldErrors.contentType").exists());
   }
 
+  // -------------------------------------------------------------------------
+  // Todos & kanban (10.7)
+  // -------------------------------------------------------------------------
+
+  private static final UUID TODO_ID = UUID.fromString("66666666-6666-6666-6666-666666666666");
+
+  @Test
+  @DisplayName("10.7-API-001 P0 create todo returns 201 with the todo view")
+  void createTodoReturnsOk() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    when(todos.create(eq(user), eq("WO-2409-00001"), any(CreateTodoCommand.class)))
+        .thenReturn(todoView());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/todos", "WO-2409-00001")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"title\":\"Fix bearing\"}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.id").value(TODO_ID.toString()))
+        .andExpect(jsonPath("$.title").value("Fix bearing"))
+        .andExpect(jsonPath("$.status").value("PENDING"));
+  }
+
+  @Test
+  @DisplayName("10.7-API-002 P0 create todo on a terminal workorder maps to 400 WORKORDER_TERMINAL")
+  void createTodoTerminal() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    doThrow(new WorkOrderTerminalException()).when(todos).create(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/todos", "WO-2409-00001")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"title\":\"Fix bearing\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("WORKORDER_TERMINAL"));
+  }
+
+  @Test
+  @DisplayName("10.7-API-003 P0 create todo with blank title maps to 400 VALIDATION_ERROR")
+  void createTodoBlankTitle() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    doThrow(new WorkOrderTodoValidationException(Map.of("title", "Title must not be blank.")))
+        .when(todos).create(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/todos", "WO-2409-00001")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"title\":\"\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.fieldErrors.title").exists());
+  }
+
+  @Test
+  @DisplayName("10.7-API-004 P0 list todos returns 200 for any authenticated user")
+  void listTodosReturnsOk() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    when(todos.list("WO-2409-00001")).thenReturn(List.of(todoDomain()));
+
+    mockMvc.perform(get("/api/v1/workorders/{id}/todos", "WO-2409-00001")
+            .with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].id").value(TODO_ID.toString()))
+        .andExpect(jsonPath("$[0].title").value("Fix bearing"));
+  }
+
+  @Test
+  @DisplayName("10.7-API-005 P0 list todos on an unknown workorder maps to 404 WORKORDER_NOT_FOUND")
+  void listTodosWorkOrderNotFound() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    when(todos.list("WO-2409-NADA")).thenThrow(new TodoWorkOrderNotFoundException());
+
+    mockMvc.perform(get("/api/v1/workorders/{id}/todos", "WO-2409-NADA")
+            .with(auth(user)))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("WORKORDER_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("10.7-API-006 P0 assign todo returns 200 with the updated view")
+  void assignTodoReturnsOk() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+    var techId = UUID.randomUUID();
+    when(todos.assign(eq(user), eq("WO-2409-00001"), eq(TODO_ID), eq(techId)))
+        .thenReturn(todoView());
+
+    mockMvc.perform(put("/api/v1/workorders/{id}/todos/{todoId}/assign", "WO-2409-00001", TODO_ID)
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"assignedTechnicianId\":\"" + techId + "\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(TODO_ID.toString()));
+  }
+
+  @Test
+  @DisplayName("10.7-API-007 P0 complete todo returns 200 with the COMPLETED view")
+  void completeTodoReturnsOk() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    when(todos.complete(eq(user), eq("WO-2409-00001"), eq(TODO_ID)))
+        .thenReturn(todoView());
+
+    mockMvc.perform(put("/api/v1/workorders/{id}/todos/{todoId}/complete", "WO-2409-00001", TODO_ID)
+            .with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(TODO_ID.toString()));
+  }
+
+  @Test
+  @DisplayName("10.7-API-008 P0 reorder todo returns 200 with the updated view")
+  void reorderTodoReturnsOk() throws Exception {
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
+    when(todos.reorder(eq(user), eq("WO-2409-00001"), eq(TODO_ID), eq(5)))
+        .thenReturn(todoView());
+
+    mockMvc.perform(put("/api/v1/workorders/{id}/todos/{todoId}/reorder", "WO-2409-00001", TODO_ID)
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"sortOrder\":5}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(TODO_ID.toString()));
+  }
+
+  @Test
+  @DisplayName("10.7-API-009 P0 delete todo returns 204")
+  void deleteTodoReturnsNoContent() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+
+    mockMvc.perform(delete("/api/v1/workorders/{id}/todos/{todoId}", "WO-2409-00001", TODO_ID)
+            .with(auth(user)))
+        .andExpect(status().isNoContent());
+  }
+
+  @Test
+  @DisplayName("10.7-API-010 P0 delete on an unknown todo maps to 404 TODO_NOT_FOUND")
+  void deleteTodoNotFound() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    doThrow(new TodoNotFoundException()).when(todos).delete(eq(user), eq("WO-2409-00001"), eq(TODO_ID));
+
+    mockMvc.perform(delete("/api/v1/workorders/{id}/todos/{todoId}", "WO-2409-00001", TODO_ID)
+            .with(auth(user)))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("TODO_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("10.7-API-011 P0 forbidden todo mutation maps to 403 FORBIDDEN")
+  void createTodoForbidden() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    doThrow(new TodoForbiddenException()).when(todos).create(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/todos", "WO-2409-00001")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"title\":\"Fix bearing\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  @DisplayName("10.7-API-012 P0 kanban returns 200 with status groups")
+  void kanbanReturnsOk() throws Exception {
+    var user = user(ApplicationRole.STAFF_MAINTENANCE);
+    var groups = new java.util.HashMap<WorkOrderStatus, List<WorkOrderKanbanItem>>();
+    groups.put(WorkOrderStatus.IN_PROGRESS, List.of());
+    when(todos.kanban(user)).thenReturn(new KanbanView(groups));
+
+    mockMvc.perform(get("/api/v1/workorders/kanban")
+            .with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.groups").isMap());
+  }
+
+  @Test
+  @DisplayName("10.7-API-013 P0 create todo with unknown workorder maps to 404 WORKORDER_NOT_FOUND")
+  void createTodoWorkOrderNotFound() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    doThrow(new TodoWorkOrderNotFoundException()).when(todos).create(eq(user), eq("WO-2409-NADA"), any());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/todos", "WO-2409-NADA")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"title\":\"Fix bearing\"}"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("WORKORDER_NOT_FOUND"));
+  }
+
   private static WorkOrderReportView reportView(String chronological, String analyze, String corrective,
       String preventive) {
     return new WorkOrderReportView("WO-2409-00001", chronological, analyze, corrective, preventive,
         null, null, null, "https://presigned/cpk.pdf", null, null, null);
+  }
+
+  private static WorkOrderTodo todoDomain() {
+    return new WorkOrderTodo(TODO_ID, "WO-2409-00001", "Fix bearing", null, null, TodoStatus.PENDING, 0,
+        UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"), Instant.parse("2026-08-26T00:00:00Z"), null);
+  }
+
+  private static WorkOrderTodo todoView() {
+    return todoDomain();
   }
 
   private static WorkorderAttachmentView attachmentView() {

@@ -2,8 +2,11 @@ package com.syncro.maintenance.api;
 
 import com.syncro.maintenance.domain.workorder.FmeaFailureType;
 import com.syncro.maintenance.domain.workorder.StopTimeReason;
+import com.syncro.maintenance.domain.workorder.TodoStatus;
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -80,6 +83,37 @@ public final class WorkOrderDtos {
   public record WorkOrderReportView(String workOrderId, String reportChronological, String reportAnalyze,
       String reportCorrective, String reportPreventive, BigDecimal cpCkLower, BigDecimal cpCkUpper, BigDecimal cpk,
       String cpkPdfPresignedUrl, String fmeaFailureType, String stopTimeReason, String stopTimeDetail) {
+  }
+
+  /**
+   * Todo create body (story 10-7). The title is {@code @NotBlank}/{@code @Size} guarded at
+   * the DTO boundary; the service re-validates after trimming so padding cannot defeat the
+   * 200-char column. {@code assignedTechnicianId} is optional — a todo may start unassigned.
+   */
+  public record CreateTodoRequest(
+      @NotBlank @Size(max = 200) String title,
+      @Size(max = 4000) String description,
+      UUID assignedTechnicianId) {
+  }
+
+  public record AssignTodoRequest(@NotNull UUID assignedTechnicianId) {
+  }
+
+  public record ReorderTodoRequest(@NotNull @Min(0) @Max(1_000_000) Integer sortOrder) {
+  }
+
+  public record TodoView(UUID id, String workorderId, String title, String description,
+      UUID assignedTechnicianId, TodoStatus status, int sortOrder, UUID createdBy, Instant createdAt,
+      Instant updatedAt, Instant completedAt) {
+  }
+
+  /** One kanban board item: a workorder with its embedded todos (FR-119). */
+  public record WorkOrderKanbanItem(String id, WorkOrderStatus status, String categoryCode, UUID machineId,
+      String description, UUID assignedTechnicianId, Instant createdAt, List<TodoView> todos) {
+  }
+
+  /** Kanban view: status → workorder items; every non-terminal status key is always present. */
+  public record KanbanView(Map<WorkOrderStatus, List<WorkOrderKanbanItem>> groups) {
   }
 
   public record ErrorResponse(String code, String message, Map<String, String> fieldErrors, String timestamp,

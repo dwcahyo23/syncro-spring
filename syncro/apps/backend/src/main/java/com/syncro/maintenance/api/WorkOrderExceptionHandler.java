@@ -29,6 +29,14 @@ import com.syncro.maintenance.application.WorkOrderReportService.ReportForbidden
 import com.syncro.maintenance.application.WorkOrderReportService.ReportWorkOrderMachineNotFoundException;
 import com.syncro.maintenance.application.WorkOrderReportService.ReportWorkOrderNotFoundException;
 import com.syncro.maintenance.application.WorkOrderReportService.WorkOrderReportValidationException;
+import com.syncro.maintenance.application.WorkOrderTodoService.TodoAlreadyCompletedException;
+import com.syncro.maintenance.application.WorkOrderTodoService.TodoForbiddenException;
+import com.syncro.maintenance.application.WorkOrderTodoService.TodoNotFoundException;
+import com.syncro.maintenance.application.WorkOrderTodoService.TodoTechnicianNotFoundException;
+import com.syncro.maintenance.application.WorkOrderTodoService.TodoWorkOrderMachineNotFoundException;
+import com.syncro.maintenance.application.WorkOrderTodoService.TodoWorkOrderNotFoundException;
+import com.syncro.maintenance.application.WorkOrderTodoService.WorkOrderTerminalException;
+import com.syncro.maintenance.application.WorkOrderTodoService.WorkOrderTodoValidationException;
 import com.syncro.maintenance.application.WorkOrderService.WorkorderForbiddenException;
 import com.syncro.maintenance.application.WorkOrderService.WorkorderNotInProgressException;
 import com.syncro.maintenance.domain.workorder.WorkOrderIdGenerator.WorkorderIdExhaustedException;
@@ -121,7 +129,7 @@ public class WorkOrderExceptionHandler {
   }
 
   @ExceptionHandler({WorkorderForbiddenException.class, EvidenceForbiddenException.class,
-      ReportForbiddenException.class, PlantAccessDeniedException.class})
+      ReportForbiddenException.class, TodoForbiddenException.class, PlantAccessDeniedException.class})
   ResponseEntity<ErrorResponse> forbidden() {
     return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "You do not have permission to access this resource.", Map.of());
   }
@@ -326,6 +334,48 @@ public class WorkOrderExceptionHandler {
   ResponseEntity<ErrorResponse> stopTimeReasonRequired() {
     return error(HttpStatus.BAD_REQUEST, "STOP_TIME_REASON_REQUIRED",
         "A breakdown workorder requires a stop-time reason to be completed.", Map.of());
+  }
+
+  // -------------------------------------------------------------------------
+  // Todos & kanban (10.7)
+  // -------------------------------------------------------------------------
+
+  @ExceptionHandler(TodoWorkOrderNotFoundException.class)
+  ResponseEntity<ErrorResponse> todoWorkOrderNotFound() {
+    return error(HttpStatus.NOT_FOUND, "WORKORDER_NOT_FOUND", "Workorder was not found.", Map.of());
+  }
+
+  @ExceptionHandler(TodoWorkOrderMachineNotFoundException.class)
+  ResponseEntity<ErrorResponse> todoMachineNotFound() {
+    return error(HttpStatus.NOT_FOUND, "MACHINE_NOT_FOUND", "Machine was not found.", Map.of());
+  }
+
+  @ExceptionHandler(TodoNotFoundException.class)
+  ResponseEntity<ErrorResponse> todoNotFound() {
+    return error(HttpStatus.NOT_FOUND, "TODO_NOT_FOUND", "Todo was not found.", Map.of());
+  }
+
+  @ExceptionHandler(TodoTechnicianNotFoundException.class)
+  ResponseEntity<ErrorResponse> todoTechnicianNotFound() {
+    return error(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "Assigned technician was not found.", Map.of());
+  }
+
+  @ExceptionHandler(WorkOrderTerminalException.class)
+  ResponseEntity<ErrorResponse> workOrderTerminal() {
+    return error(HttpStatus.BAD_REQUEST, "WORKORDER_TERMINAL",
+        "Workorder is in a terminal state. Todos cannot be mutated.", Map.of());
+  }
+
+  @ExceptionHandler(TodoAlreadyCompletedException.class)
+  ResponseEntity<ErrorResponse> todoAlreadyCompleted() {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Todo is already completed.",
+        Map.of("status", "Todo is already completed."));
+  }
+
+  @ExceptionHandler(WorkOrderTodoValidationException.class)
+  ResponseEntity<ErrorResponse> todoValidation(WorkOrderTodoValidationException exception) {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
+        exception.getFieldErrors());
   }
 
   /**

@@ -1,11 +1,16 @@
 package com.syncro.maintenance.api;
 
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
+import com.syncro.maintenance.api.WorkOrderDtos.AssignTodoRequest;
 import com.syncro.maintenance.api.WorkOrderDtos.AssignWorkOrderRequest;
+import com.syncro.maintenance.api.WorkOrderDtos.CreateTodoRequest;
 import com.syncro.maintenance.api.WorkOrderDtos.CreateWorkOrderRequest;
+import com.syncro.maintenance.api.WorkOrderDtos.KanbanView;
+import com.syncro.maintenance.api.WorkOrderDtos.ReorderTodoRequest;
 import com.syncro.maintenance.api.WorkOrderDtos.RepairSessionView;
 import com.syncro.maintenance.api.WorkOrderDtos.RepairSessionsView;
 import com.syncro.maintenance.api.WorkOrderDtos.StartSessionRequest;
+import com.syncro.maintenance.api.WorkOrderDtos.TodoView;
 import com.syncro.maintenance.api.WorkOrderDtos.TransitionWorkOrderRequest;
 import com.syncro.maintenance.api.WorkOrderDtos.WorkorderAttachmentView;
 import com.syncro.maintenance.api.WorkOrderDtos.WorkorderAttachmentsView;
@@ -24,8 +29,11 @@ import com.syncro.maintenance.application.WorkOrderService.CreateWorkOrderComman
 import com.syncro.maintenance.application.WorkOrderService.RepairSessionsResult;
 import com.syncro.maintenance.application.WorkOrderService.StartSessionCommand;
 import com.syncro.maintenance.application.WorkOrderService.TransitionWorkOrderCommand;
+import com.syncro.maintenance.application.WorkOrderTodoService;
+import com.syncro.maintenance.application.WorkOrderTodoService.CreateTodoCommand;
 import com.syncro.maintenance.domain.workorder.RepairSession;
 import com.syncro.maintenance.domain.workorder.WorkOrder;
+import com.syncro.maintenance.domain.workorder.WorkOrderTodo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -35,7 +43,9 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import java.io.IOException;
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -61,12 +71,14 @@ public class WorkOrderController {
   private final WorkOrderService workOrders;
   private final WorkOrderEvidenceService evidence;
   private final WorkOrderReportService report;
+  private final WorkOrderTodoService todos;
 
   public WorkOrderController(WorkOrderService workOrders, WorkOrderEvidenceService evidence,
-      WorkOrderReportService report) {
+      WorkOrderReportService report, WorkOrderTodoService todos) {
     this.workOrders = workOrders;
     this.evidence = evidence;
     this.report = report;
+    this.todos = todos;
   }
 
   @Operation(operationId = "createWorkOrder", summary = "Create an internal workorder")
@@ -319,6 +331,134 @@ public class WorkOrderController {
   @DeleteMapping("/{id}/report/cpk")
   public WorkOrderReportView deleteCpkPdf(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable String id) {
     return toReportDto(report.deleteCpkPdf(user, id));
+  }
+
+  // -------------------------------------------------------------------------
+  // Todos & kanban (10.7)
+  // -------------------------------------------------------------------------
+
+  /** Creates a todo on a workorder (gate: executor/leader; non-terminal workorder). */
+  @Operation(operationId = "createWorkorderTodo", summary = "Create a todo on a workorder")
+  @ApiResponses({
+      @ApiResponse(responseCode = "201", description = "Todo created",
+          content = @Content(schema = @Schema(implementation = TodoView.class))),
+      @ApiResponse(responseCode = "400", description = "Validation failed or workorder is terminal"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Workorder not found")
+  })
+  @PostMapping("/{id}/todos")
+  public ResponseEntity<TodoView> createTodo(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable String id,
+      @Valid @RequestBody CreateTodoRequest request) {
+    var todo = toTodoDto(todos.create(user, id,
+        new CreateTodoCommand(request.title(), request.description(), request.assignedTechnicianId())));
+    return ResponseEntity.status(HttpStatus.CREATED).body(todo);
+  }
+
+  /** Lists the workorder's todos ordered by sortOrder (any authenticated user). */
+  @Operation(operationId = "listWorkorderTodos", summary = "List a workorder's todos")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Todos returned",
+          content = @Content(schema = @Schema(implementation = TodoView.class))),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "404", description = "Workorder not found")
+  })
+  @GetMapping("/{id}/todos")
+  public List<TodoView> listTodos(@PathVariable String id) {
+    return todos.list(id).stream().map(WorkOrderController::toTodoDto).toList();
+  }
+
+  /** Assigns (or changes) a todo's technician (gate: executor/leader; non-terminal). */
+  @Operation(operationId = "assignWorkorderTodo", summary = "Assign a todo to a technician")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Todo assigned",
+          content = @Content(schema = @Schema(implementation = TodoView.class))),
+      @ApiResponse(responseCode = "400", description = "Workorder is terminal"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Workorder or todo not found")
+  })
+  @PutMapping("/{id}/todos/{todoId}/assign")
+  public TodoView assignTodo(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable String id,
+      @PathVariable UUID todoId, @Valid @RequestBody AssignTodoRequest request) {
+    return toTodoDto(todos.assign(user, id, todoId, request.assignedTechnicianId()));
+  }
+
+  /** Marks a todo complete (gate: executor/leader OR assigned technician; non-terminal). */
+  @Operation(operationId = "completeWorkorderTodo", summary = "Mark a todo complete")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Todo completed",
+          content = @Content(schema = @Schema(implementation = TodoView.class))),
+      @ApiResponse(responseCode = "400", description = "Workorder is terminal or todo already completed"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Workorder or todo not found")
+  })
+  @PutMapping("/{id}/todos/{todoId}/complete")
+  public TodoView completeTodo(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable String id,
+      @PathVariable UUID todoId) {
+    return toTodoDto(todos.complete(user, id, todoId));
+  }
+
+  /** Reorders a todo within its workorder (gate: executor/leader; non-terminal). */
+  @Operation(operationId = "reorderWorkorderTodo", summary = "Reorder a todo within its workorder")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Todo reordered",
+          content = @Content(schema = @Schema(implementation = TodoView.class))),
+      @ApiResponse(responseCode = "400", description = "Workorder is terminal"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Workorder or todo not found")
+  })
+  @PutMapping("/{id}/todos/{todoId}/reorder")
+  public TodoView reorderTodo(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable String id,
+      @PathVariable UUID todoId, @Valid @RequestBody ReorderTodoRequest request) {
+    return toTodoDto(todos.reorder(user, id, todoId, request.sortOrder()));
+  }
+
+  /** Deletes a todo (gate: executor/leader; non-terminal). */
+  @Operation(operationId = "deleteWorkorderTodo", summary = "Delete a todo")
+  @ApiResponses({
+      @ApiResponse(responseCode = "204", description = "Todo removed"),
+      @ApiResponse(responseCode = "400", description = "Workorder is terminal"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Workorder or todo not found")
+  })
+  @DeleteMapping("/{id}/todos/{todoId}")
+  public ResponseEntity<Void> deleteTodo(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable String id,
+      @PathVariable UUID todoId) {
+    todos.delete(user, id, todoId);
+    return ResponseEntity.noContent().build();
+  }
+
+  /** Kanban board (GET /kanban): scope-filtered workorders grouped by status with todos embedded. */
+  @Operation(operationId = "getWorkorderKanban", summary = "Kanban board grouped by workorder status")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Kanban view returned",
+          content = @Content(schema = @Schema(implementation = KanbanView.class))),
+      @ApiResponse(responseCode = "401", description = "Authentication required")
+  })
+  @GetMapping("/kanban")
+  public KanbanView kanban(@AuthenticationPrincipal AuthenticatedUser user) {
+    var view = todos.kanban(user);
+    return new KanbanView(view.groups().entrySet().stream()
+        .collect(java.util.stream.Collectors.toMap(
+            java.util.Map.Entry::getKey,
+            entry -> entry.getValue().stream().map(WorkOrderController::toKanbanItemDto).toList())));
+  }
+
+  private static TodoView toTodoDto(WorkOrderTodo todo) {
+    return new TodoView(todo.id(), todo.workorderId(), todo.title(), todo.description(),
+        todo.assignedTechnicianId(), todo.status(), todo.sortOrder(), todo.createdBy(), todo.createdAt(),
+        todo.updatedAt(), todo.completedAt());
+  }
+
+  private static WorkOrderDtos.WorkOrderKanbanItem toKanbanItemDto(
+      WorkOrderTodoService.WorkOrderKanbanItem item) {
+    return new WorkOrderDtos.WorkOrderKanbanItem(item.id(), item.status(), item.categoryCode(), item.machineId(),
+        item.description(), item.assignedTechnicianId(), item.createdAt(),
+        item.todos().stream().map(WorkOrderController::toTodoDto).toList());
   }
 
   private static WorkOrderReportView toReportDto(WorkOrderReportService.WorkOrderReportView view) {
