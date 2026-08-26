@@ -320,6 +320,49 @@ test_staff_workorder_session_read_allowed if {
   authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "GET /api/v1/workorders/WO-2409-00001/sessions"}
 }
 
+# -- Workorder evidence & technical drawings (story 10-5): same five-role allow set as
+#    sessions; reads any-authenticated --------------------------------------------
+
+test_technician_workorder_evidence_upload_allowed if {
+  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/workorders/WO-2409-00001/attachments"}
+}
+
+test_staff_workorder_evidence_upload_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/workorders/WO-2409-00001/attachments"}
+}
+
+test_section_leader_workorder_evidence_put_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "PUT /api/v1/workorders/WO-2409-00001/attachments/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_maintenance_leader_workorder_evidence_delete_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "DELETE /api/v1/workorders/WO-2409-00001/attachments/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_manager_workorder_evidence_upload_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/workorders/WO-2409-00001/attachments"}
+}
+
+test_super_admin_workorder_evidence_delete_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "DELETE /api/v1/workorders/WO-2409-00001/attachments/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_auditor_workorder_evidence_upload_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/workorders/WO-2409-00001/attachments"}
+}
+
+test_production_leader_workorder_evidence_delete_denied if {
+  not authz.allow with input as {"subject": {"roles": ["PRODUCTION_LEADER"], "userId": "u8"}, "action": "DELETE /api/v1/workorders/WO-2409-00001/attachments/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_auditor_workorder_evidence_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/workorders/WO-2409-00001/attachments"}
+}
+
+test_auditor_workorder_evidence_single_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/workorders/WO-2409-00001/attachments/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
 # -- Anonymous (no userId): default deny everywhere ------------------------
 
 test_anonymous_admin_only_denied if {

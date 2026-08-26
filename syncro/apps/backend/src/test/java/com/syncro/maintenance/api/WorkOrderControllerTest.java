@@ -5,7 +5,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -18,6 +20,15 @@ import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.auth.infrastructure.JwtAuthenticationFilter;
 import com.syncro.config.SecurityConfig;
 import com.syncro.config.TimeConfig;
+import com.syncro.maintenance.application.WorkOrderEvidenceService;
+import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceCommand;
+import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceAttachmentNotFoundException;
+import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceForbiddenException;
+import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceWorkOrderNotFoundException;
+import com.syncro.maintenance.application.WorkOrderEvidenceService.StorageException;
+import com.syncro.maintenance.application.WorkOrderEvidenceService.ValidationException;
+import com.syncro.maintenance.application.WorkOrderEvidenceService.WorkorderAttachmentView;
+import com.syncro.maintenance.application.WorkOrderEvidenceService.WorkorderAttachmentsView;
 import com.syncro.maintenance.application.WorkOrderService;
 import com.syncro.maintenance.application.WorkOrderService.AssignWorkOrderCommand;
 import com.syncro.maintenance.application.WorkOrderService.BreakdownCategoryRequiredException;
@@ -48,6 +59,7 @@ import com.syncro.maintenance.domain.workorder.WorkOrderIdGenerator.WorkorderIdE
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -61,6 +73,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 @WebMvcTest(WorkOrderController.class)
@@ -73,6 +86,9 @@ class WorkOrderControllerTest {
 
   @MockitoBean
   private WorkOrderService workOrders;
+
+  @MockitoBean
+  private WorkOrderEvidenceService evidence;
 
   @MockitoBean
   private JwtTokenService jwtTokenService;
@@ -623,6 +639,187 @@ class WorkOrderControllerTest {
         .content("{\"toStatus\":\"DONE\"}"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("DONE_WITHOUT_SESSION_REASON_REQUIRED"));
+  }
+
+  // -------------------------------------------------------------------------
+  // Evidence & technical drawings (10.5)
+  // -------------------------------------------------------------------------
+
+  private static final UUID ATTACHMENT_ID = UUID.fromString("44444444-4444-4444-4444-444444444444");
+  private static final UUID UPLOADER_ID = UUID.fromString("55555555-5555-5555-5555-555555555555");
+
+  @Test
+  @DisplayName("10.5-API-001 P0 technician uploads an attachment and receives 200 with view")
+  void uploadAttachmentReturnsOk() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    when(evidence.create(eq(user), eq("WO-2409-00001"), any(EvidenceCommand.class)))
+        .thenReturn(attachmentView());
+
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments", "WO-2409-00001")
+            .file(new MockMultipartFile("data", "photo.jpg", "image/jpeg", new byte[] {1}))
+            .param("filename", "photo.jpg")
+            .param("contentType", "image/jpeg")
+            .with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(ATTACHMENT_ID.toString()))
+        .andExpect(jsonPath("$.workOrderId").value("WO-2409-00001"))
+        .andExpect(jsonPath("$.filename").value("photo.jpg"))
+        .andExpect(jsonPath("$.contentType").value("image/jpeg"))
+        .andExpect(jsonPath("$.presignedUrl").value("https://presigned/key"));
+  }
+
+  @Test
+  @DisplayName("10.5-API-002 P0 replace maps the PUT multipart and returns 200")
+  void replaceAttachmentReturnsOk() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+    when(evidence.replace(eq(user), eq("WO-2409-00001"), eq(ATTACHMENT_ID), any(EvidenceCommand.class)))
+        .thenReturn(attachmentView());
+
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments/{attachmentId}", "WO-2409-00001", ATTACHMENT_ID)
+            .file(new MockMultipartFile("data", "new.pdf", "application/pdf", new byte[] {9}))
+            .param("filename", "new.pdf")
+            .param("contentType", "application/pdf")
+            .with(auth(user))
+            .with(request -> { request.setMethod("PUT"); return request; }))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(ATTACHMENT_ID.toString()));
+  }
+
+  @Test
+  @DisplayName("10.5-API-003 P0 list returns 200 with attachments for any authenticated user")
+  void listAttachmentsReturnsOk() throws Exception {
+    var user = user(ApplicationRole.STAFF_MAINTENANCE);
+    when(evidence.list("WO-2409-00001"))
+        .thenReturn(new WorkorderAttachmentsView("WO-2409-00001", List.of(attachmentView())));
+
+    mockMvc.perform(get("/api/v1/workorders/{id}/attachments", "WO-2409-00001")
+            .with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.workOrderId").value("WO-2409-00001"))
+        .andExpect(jsonPath("$.attachments[0].filename").value("photo.jpg"));
+  }
+
+  @Test
+  @DisplayName("10.5-API-004 P0 get single returns 200 with view")
+  void getAttachmentReturnsOk() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    when(evidence.get("WO-2409-00001", ATTACHMENT_ID)).thenReturn(attachmentView());
+
+    mockMvc.perform(get("/api/v1/workorders/{id}/attachments/{attachmentId}", "WO-2409-00001", ATTACHMENT_ID)
+            .with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(ATTACHMENT_ID.toString()))
+        .andExpect(jsonPath("$.presignedUrl").value("https://presigned/key"));
+  }
+
+  @Test
+  @DisplayName("10.5-API-005 P0 delete returns 204")
+  void deleteAttachmentReturnsNoContent() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+
+    mockMvc.perform(delete("/api/v1/workorders/{id}/attachments/{attachmentId}", "WO-2409-00001", ATTACHMENT_ID)
+            .with(auth(user)))
+        .andExpect(status().isNoContent());
+  }
+
+  @Test
+  @DisplayName("10.5-API-006 P0 forbidden upload maps to 403 FORBIDDEN")
+  void uploadForbidden() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    doThrow(new EvidenceForbiddenException()).when(evidence).create(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments", "WO-2409-00001")
+            .file(new MockMultipartFile("data", "photo.jpg", "image/jpeg", new byte[] {1}))
+            .param("filename", "photo.jpg")
+            .param("contentType", "image/jpeg")
+            .with(auth(user)))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  @DisplayName("10.5-API-007 P0 unknown workorder maps to 404 WORKORDER_NOT_FOUND")
+  void uploadWorkOrderNotFound() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    doThrow(new EvidenceWorkOrderNotFoundException()).when(evidence).create(eq(user), eq("WO-2409-NADA"), any());
+
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments", "WO-2409-NADA")
+            .file(new MockMultipartFile("data", "photo.jpg", "image/jpeg", new byte[] {1}))
+            .param("filename", "photo.jpg")
+            .param("contentType", "image/jpeg")
+            .with(auth(user)))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("WORKORDER_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("10.5-API-008 P0 unknown attachment maps to 404 ATTACHMENT_NOT_FOUND")
+  void replaceAttachmentNotFound() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    doThrow(new EvidenceAttachmentNotFoundException()).when(evidence)
+        .replace(eq(user), eq("WO-2409-00001"), eq(ATTACHMENT_ID), any());
+
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments/{attachmentId}", "WO-2409-00001", ATTACHMENT_ID)
+            .file(new MockMultipartFile("data", "new.pdf", "application/pdf", new byte[] {9}))
+            .param("filename", "new.pdf")
+            .param("contentType", "application/pdf")
+            .with(auth(user))
+            .with(request -> { request.setMethod("PUT"); return request; }))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("ATTACHMENT_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("10.5-API-009 P0 validation error maps to 400 VALIDATION_ERROR with fieldErrors")
+  void uploadValidationError() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    doThrow(new ValidationException(Map.of("data", "Attachment file exceeds the maximum allowed size.")))
+        .when(evidence).create(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments", "WO-2409-00001")
+            .file(new MockMultipartFile("data", "photo.jpg", "image/jpeg", new byte[] {1}))
+            .param("filename", "photo.jpg")
+            .param("contentType", "image/jpeg")
+            .with(auth(user)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.fieldErrors.data").exists());
+  }
+
+  @Test
+  @DisplayName("10.5-API-010 P0 object storage error maps to 502 OBJECT_STORAGE_ERROR")
+  void uploadStorageError() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    doThrow(new StorageException(new RuntimeException("s3 down"))).when(evidence)
+        .create(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments", "WO-2409-00001")
+            .file(new MockMultipartFile("data", "photo.jpg", "image/jpeg", new byte[] {1}))
+            .param("filename", "photo.jpg")
+            .param("contentType", "image/jpeg")
+            .with(auth(user)))
+        .andExpect(status().isBadGateway())
+        .andExpect(jsonPath("$.code").value("OBJECT_STORAGE_ERROR"));
+  }
+
+  @Test
+  @DisplayName("10.5-API-011 P0 missing multipart part maps to 400 VALIDATION_ERROR")
+  void uploadMissingPart() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments", "WO-2409-00001")
+            .file(new MockMultipartFile("data", "photo.jpg", "image/jpeg", new byte[] {1}))
+            .param("filename", "photo.jpg")
+            .with(auth(user)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.fieldErrors.contentType").exists());
+  }
+
+  private static WorkorderAttachmentView attachmentView() {
+    return new WorkorderAttachmentView(ATTACHMENT_ID, "WO-2409-00001", "photo.jpg", "image/jpeg",
+        "workorders/WO-2409-00001/photo.jpg", 3, UPLOADER_ID, Instant.parse("2026-08-26T00:00:00Z"), null,
+        "https://presigned/key");
   }
 
   private static WorkOrder inProgressView() {

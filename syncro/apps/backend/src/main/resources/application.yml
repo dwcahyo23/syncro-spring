@@ -17,9 +17,10 @@ spring:
     locations: classpath:db/migration
   servlet:
     multipart:
-      # Above the domain limit (5 MB) so SparepartImageService is the enforcement point.
-      max-file-size: 10MB
-      max-request-size: 10MB
+      # Above the domain limit (5 MB sparepart image, 10 MB workorder evidence) so the
+      # domain services are the enforcement point; the container only backstops.
+      max-file-size: 25MB
+      max-request-size: 25MB
   jpa:
     hibernate:
       ddl-auto: validate
@@ -77,6 +78,9 @@ syncro:
   sparepart:
     image:
       max-bytes: ${SYNCRO_SPAREPART_IMAGE_MAX_BYTES:5242880}
+  workorder:
+    evidence:
+      max-bytes: ${SYNCRO_WORKORDER_EVIDENCE_MAX_BYTES:10485760}
   waha:
     url: http://${WAHA_HOST}:${WAHA_PORT}
     api-key: ${WAHA_API_KEY}

@@ -1058,3 +1058,10 @@ status: open
   summary: V49 runs CREATE EXTENSION IF NOT EXISTS btree_gist (first extension install in the migration chain) for the gist EXCLUDE overlap constraint; local postgres:17-alpine applies it (migration test passes), but managed PostgreSQL (RDS/Cloud SQL/Supabase) requires a superuser pre-deployment grant before Flyway runs.
   evidence: Blind Hunter on 10-4. Fix = document the extension prerequisite in the deploy runbook, or split the extension creation into a manual pre-deployment step.
   status: open
+
+### DW-140: WorkOrderEvidenceService has no Garage integration test
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-10-5-evidence-and-technical-drawings.md`
+  summary: Evidence CRUD is covered by Mockito unit tests (WorkOrderEvidenceServiceTest) and a schema migration test, but no Spring slice/Testcontainers test exercises the real ObjectStorageService + PostgreSQL interaction (key format, content-type handling, FK behavior under rollback, store-succeeds-save-fails orphan window) — 8-4's SparepartImageServiceIntegrationTest is the precedent.
+  evidence: Blind Hunter on 10-5. Fix = add WorkOrderEvidenceServiceIntegrationTest mirroring SparepartImageServiceIntegrationTest when evidence flows are exercised end-to-end.
+  status: open

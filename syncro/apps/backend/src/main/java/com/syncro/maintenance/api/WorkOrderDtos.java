@@ -46,6 +46,14 @@ public final class WorkOrderDtos {
   public record RepairSessionsView(WorkOrderView workOrder, List<RepairSessionView> sessions) {
   }
 
+  public record WorkorderAttachmentView(UUID id, String workOrderId, String filename, String contentType,
+      String objectKey, long sizeBytes, UUID uploadedBy, Instant createdAt, Instant updatedAt,
+      String presignedUrl) {
+  }
+
+  public record WorkorderAttachmentsView(String workOrderId, List<WorkorderAttachmentView> attachments) {
+  }
+
   public record ErrorResponse(String code, String message, Map<String, String> fieldErrors, String timestamp,
       String traceId) {
   }

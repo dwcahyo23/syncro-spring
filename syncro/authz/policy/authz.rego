@@ -105,6 +105,15 @@ workorder_session_paths := {
   "/api/v1/workorders/*/sessions/stop",
 }
 
+# Workorder evidence & technical drawings (story 10-5): the same executor + leadership
+# role set as sessions/transitions — attachments are local operational fields uploaded
+# by the assigned executor or an in-scope leader; scope is service-side. Reads (GET)
+# flow through generic read_allowed (any authenticated user).
+workorder_evidence_paths := {
+  "/api/v1/workorders/*/attachments",
+  "/api/v1/workorders/*/attachments/*",
+}
+
 # Telemetry + notification-worker endpoints are SUPER_ADMIN-only in service.
 admin_only_paths := {
   "/api/v1/telemetry/**",
@@ -245,6 +254,37 @@ mutation_allowed if {
   input.subject.roles[_] == "TECHNICIAN"
   is_mutation
   path_matches(workorder_session_paths)
+}
+
+# Evidence & technical drawings: same five-role allow set as sessions (10.4 parity).
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(workorder_evidence_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(workorder_evidence_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(workorder_evidence_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STAFF_MAINTENANCE"
+  is_mutation
+  path_matches(workorder_evidence_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "TECHNICIAN"
+  is_mutation
+  path_matches(workorder_evidence_paths)
 }
 
 mutation_allowed if {

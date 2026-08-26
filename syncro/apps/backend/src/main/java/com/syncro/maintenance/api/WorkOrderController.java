@@ -7,7 +7,11 @@ import com.syncro.maintenance.api.WorkOrderDtos.RepairSessionView;
 import com.syncro.maintenance.api.WorkOrderDtos.RepairSessionsView;
 import com.syncro.maintenance.api.WorkOrderDtos.StartSessionRequest;
 import com.syncro.maintenance.api.WorkOrderDtos.TransitionWorkOrderRequest;
+import com.syncro.maintenance.api.WorkOrderDtos.WorkorderAttachmentView;
+import com.syncro.maintenance.api.WorkOrderDtos.WorkorderAttachmentsView;
 import com.syncro.maintenance.api.WorkOrderDtos.WorkOrderView;
+import com.syncro.maintenance.application.WorkOrderEvidenceService;
+import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceCommand;
 import com.syncro.maintenance.application.WorkOrderService;
 import com.syncro.maintenance.application.WorkOrderService.AssignWorkOrderCommand;
 import com.syncro.maintenance.application.WorkOrderService.CreateResult;
@@ -24,17 +28,25 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
+import java.io.IOException;
 import java.net.URI;
+import java.util.UUID;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @Validated
 @RestController
@@ -42,9 +54,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class WorkOrderController {
 
   private final WorkOrderService workOrders;
+  private final WorkOrderEvidenceService evidence;
 
-  public WorkOrderController(WorkOrderService workOrders) {
+  public WorkOrderController(WorkOrderService workOrders, WorkOrderEvidenceService evidence) {
     this.workOrders = workOrders;
+    this.evidence = evidence;
   }
 
   @Operation(operationId = "createWorkOrder", summary = "Create an internal workorder")
@@ -139,6 +153,106 @@ public class WorkOrderController {
   @GetMapping("/{id}/sessions")
   public RepairSessionsView listSessions(@PathVariable String id) {
     return toSessionsDto(workOrders.listSessions(id));
+  }
+
+  /**
+   * Multipart parts mirror the API contract names: {@code filename} and {@code contentType}
+   * are text parts, {@code data} carries the file bytes — same pattern as 8-4 sparepart images.
+   */
+  @Operation(operationId = "createWorkorderAttachment", summary = "Upload evidence or a technical drawing to a workorder")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Attachment stored; presigned URL returned",
+          content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+              schema = @Schema(implementation = WorkorderAttachmentView.class))),
+      @ApiResponse(responseCode = "400", description = "Validation or multipart error"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Workorder not found"),
+      @ApiResponse(responseCode = "502", description = "Object storage operation failed")
+  })
+  @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public WorkorderAttachmentView createAttachment(@AuthenticationPrincipal AuthenticatedUser user,
+      @PathVariable String id, @RequestParam("filename") @Size(max = 255) String filename,
+      @RequestParam("contentType") @Size(max = 100) String contentType,
+      @RequestPart("data") MultipartFile data) throws IOException {
+    return toAttachmentDto(evidence.create(user, id, command(filename, contentType, data)));
+  }
+
+  @Operation(operationId = "replaceWorkorderAttachment", summary = "Replace an attachment's file (deletes the old object)")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Attachment replaced; presigned URL returned",
+          content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+              schema = @Schema(implementation = WorkorderAttachmentView.class))),
+      @ApiResponse(responseCode = "400", description = "Validation or multipart error"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Workorder or attachment not found"),
+      @ApiResponse(responseCode = "502", description = "Object storage operation failed")
+  })
+  @PutMapping(value = "/{id}/attachments/{attachmentId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public WorkorderAttachmentView replaceAttachment(@AuthenticationPrincipal AuthenticatedUser user,
+      @PathVariable String id, @PathVariable UUID attachmentId,
+      @RequestParam("filename") @Size(max = 255) String filename,
+      @RequestParam("contentType") @Size(max = 100) String contentType,
+      @RequestPart("data") MultipartFile data) throws IOException {
+    return toAttachmentDto(evidence.replace(user, id, attachmentId, command(filename, contentType, data)));
+  }
+
+  @Operation(operationId = "listWorkorderAttachments", summary = "List a workorder's attachments ordered by createdAt")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Attachments returned",
+          content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+              schema = @Schema(implementation = WorkorderAttachmentsView.class))),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "404", description = "Workorder not found")
+  })
+  @GetMapping("/{id}/attachments")
+  public WorkorderAttachmentsView listAttachments(@PathVariable String id) {
+    return toAttachmentsDto(evidence.list(id));
+  }
+
+  @Operation(operationId = "getWorkorderAttachment", summary = "Get a single attachment with its presigned URL")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Attachment returned",
+          content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+              schema = @Schema(implementation = WorkorderAttachmentView.class))),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "404", description = "Workorder or attachment not found")
+  })
+  @GetMapping("/{id}/attachments/{attachmentId}")
+  public WorkorderAttachmentView getAttachment(@PathVariable String id, @PathVariable UUID attachmentId) {
+    return toAttachmentDto(evidence.get(id, attachmentId));
+  }
+
+  @Operation(operationId = "deleteWorkorderAttachment", summary = "Delete an attachment (Garage object and row)")
+  @ApiResponses({
+      @ApiResponse(responseCode = "204", description = "Attachment removed"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Workorder or attachment not found"),
+      @ApiResponse(responseCode = "502", description = "Object storage operation failed")
+  })
+  @DeleteMapping("/{id}/attachments/{attachmentId}")
+  public ResponseEntity<Void> deleteAttachment(@AuthenticationPrincipal AuthenticatedUser user,
+      @PathVariable String id, @PathVariable UUID attachmentId) {
+    evidence.delete(user, id, attachmentId);
+    return ResponseEntity.noContent().build();
+  }
+
+  private static EvidenceCommand command(String filename, String contentType, MultipartFile data)
+      throws IOException {
+    return new EvidenceCommand(filename, contentType, data.getBytes());
+  }
+
+  private WorkorderAttachmentsView toAttachmentsDto(WorkOrderEvidenceService.WorkorderAttachmentsView view) {
+    return new WorkorderAttachmentsView(view.workOrderId(),
+        view.attachments().stream().map(WorkOrderController::toAttachmentDto).toList());
+  }
+
+  private static WorkorderAttachmentView toAttachmentDto(WorkOrderEvidenceService.WorkorderAttachmentView view) {
+    return new WorkorderAttachmentView(view.id(), view.workOrderId(), view.filename(), view.contentType(),
+        view.objectKey(), view.sizeBytes(), view.uploadedBy(), view.createdAt(), view.updatedAt(),
+        view.presignedUrl());
   }
 
   private WorkOrderView toDto(WorkOrder workOrder) {

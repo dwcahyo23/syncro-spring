@@ -18,6 +18,12 @@ import com.syncro.maintenance.application.WorkOrderService.WorkOrderMachineNotFo
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderParentNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderUserNotFoundException;
+import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceAttachmentNotFoundException;
+import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceForbiddenException;
+import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceWorkOrderMachineNotFoundException;
+import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceWorkOrderNotFoundException;
+import com.syncro.maintenance.application.WorkOrderEvidenceService.StorageException;
+import com.syncro.maintenance.application.WorkOrderEvidenceService.ValidationException;
 import com.syncro.maintenance.application.WorkOrderService.WorkorderForbiddenException;
 import com.syncro.maintenance.application.WorkOrderService.WorkorderNotInProgressException;
 import com.syncro.maintenance.domain.workorder.WorkOrderIdGenerator.WorkorderIdExhaustedException;
@@ -33,9 +39,15 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import tools.jackson.databind.exc.InvalidFormatException;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -103,7 +115,8 @@ public class WorkOrderExceptionHandler {
         "Idempotency-Key header must not exceed 64 characters.", fieldErrors);
   }
 
-  @ExceptionHandler({WorkorderForbiddenException.class, PlantAccessDeniedException.class})
+  @ExceptionHandler({WorkorderForbiddenException.class, EvidenceForbiddenException.class,
+      PlantAccessDeniedException.class})
   ResponseEntity<ErrorResponse> forbidden() {
     return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "You do not have permission to access this resource.", Map.of());
   }
@@ -210,6 +223,77 @@ public class WorkOrderExceptionHandler {
   ResponseEntity<ErrorResponse> doneWithoutSessionReasonRequired() {
     return error(HttpStatus.BAD_REQUEST, "DONE_WITHOUT_SESSION_REASON_REQUIRED",
         "A workorder with no completed repair session requires a documented reason to be completed.", Map.of());
+  }
+
+  // -------------------------------------------------------------------------
+  // Evidence & technical drawings (10.5)
+  // -------------------------------------------------------------------------
+
+  @ExceptionHandler(EvidenceWorkOrderNotFoundException.class)
+  ResponseEntity<ErrorResponse> evidenceWorkOrderNotFound() {
+    return error(HttpStatus.NOT_FOUND, "WORKORDER_NOT_FOUND", "Workorder was not found.", Map.of());
+  }
+
+  @ExceptionHandler(EvidenceWorkOrderMachineNotFoundException.class)
+  ResponseEntity<ErrorResponse> evidenceMachineNotFound() {
+    return error(HttpStatus.NOT_FOUND, "MACHINE_NOT_FOUND", "Machine was not found.", Map.of());
+  }
+
+  @ExceptionHandler(EvidenceAttachmentNotFoundException.class)
+  ResponseEntity<ErrorResponse> attachmentNotFound() {
+    return error(HttpStatus.NOT_FOUND, "ATTACHMENT_NOT_FOUND", "Attachment was not found.", Map.of());
+  }
+
+  @ExceptionHandler(ValidationException.class)
+  ResponseEntity<ErrorResponse> evidenceValidation(ValidationException exception) {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
+        exception.getFieldErrors());
+  }
+
+  /** Mirrors the 8-4 sparepart-image handler: multipart failures are field errors. */
+  @ExceptionHandler(MissingServletRequestPartException.class)
+  ResponseEntity<ErrorResponse> missingPart(MissingServletRequestPartException exception) {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
+        Map.of(exception.getRequestPartName(), "This part is required."));
+  }
+
+  @ExceptionHandler(MissingServletRequestParameterException.class)
+  ResponseEntity<ErrorResponse> missingParam(MissingServletRequestParameterException exception) {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
+        Map.of(exception.getParameterName(), "This value is required."));
+  }
+
+  @ExceptionHandler(MaxUploadSizeExceededException.class)
+  ResponseEntity<ErrorResponse> oversizeUpload() {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
+        Map.of("data", "Attachment file exceeds the maximum allowed size."));
+  }
+
+  /** A multipart request that is not multipart, or a malformed/truncated body. */
+  @ExceptionHandler(MultipartException.class)
+  ResponseEntity<ErrorResponse> multipartError() {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
+        Map.of("data", "Request must be a well-formed multipart form-data upload."));
+  }
+
+  /** Request content-type is not multipart/form-data. */
+  @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+  ResponseEntity<ErrorResponse> mediaTypeNotSupported() {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
+        Map.of("data", "Request must be sent as multipart/form-data."));
+  }
+
+  /** Path variable not a UUID (e.g. /attachments/not-a-uuid). */
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  ResponseEntity<ErrorResponse> typeMismatch() {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
+        Map.of("attachmentId", "Attachment id must be a UUID."));
+  }
+
+  @ExceptionHandler(StorageException.class)
+  ResponseEntity<ErrorResponse> objectStorageError() {
+    return error(HttpStatus.BAD_GATEWAY, "OBJECT_STORAGE_ERROR",
+        "Object storage operation failed.", Map.of());
   }
 
   /**
