@@ -534,6 +534,46 @@ test_anonymous_workorder_rating_denied if {
   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/workorders/WO-2409-00001/ratings/technician"}
 }
 
+# -- Preventive programs & schedules (story 11-1): four-role mutation allow set
+#    (MANAGER_MAINTENANCE, SECTION_LEADER, MAINTENANCE_LEADER, STAFF_MAINTENANCE);
+#    TECHNICIAN/AUDITOR denied; schedule reads any-authenticated ------------------
+
+test_manager_preventive_program_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/preventive-programs"}
+}
+
+test_section_leader_preventive_program_update_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "PUT /api/v1/preventive-programs/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_maintenance_leader_preventive_program_generate_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/preventive-programs/7b7c6d5e-1111-2222-3333-444455556666/generate"}
+}
+
+test_staff_preventive_program_delete_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "DELETE /api/v1/preventive-programs/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_super_admin_preventive_program_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/preventive-programs"}
+}
+
+test_technician_preventive_program_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/preventive-programs"}
+}
+
+test_auditor_preventive_program_update_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "PUT /api/v1/preventive-programs/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_auditor_preventive_schedules_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/preventive-schedules"}
+}
+
+test_anonymous_preventive_program_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/preventive-programs"}
+}
+
 # -- Anonymous (no userId): default deny everywhere ------------------------
 
 test_anonymous_admin_only_denied if {

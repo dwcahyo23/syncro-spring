@@ -157,6 +157,17 @@ rating_dimension_paths := {
   "/api/v1/rating-dimensions/*",
 }
 
+# Preventive programs & schedules (story 11-1): program mutations are allowed for the
+# four-role set (MANAGER_MAINTENANCE, SECTION_LEADER, MAINTENANCE_LEADER,
+# STAFF_MAINTENANCE) — the service gate is authoritative for scope (section leader needs
+# the machine's group, staff needs plant access). Schedule reads (GET) flow through
+# generic read_allowed (any authenticated user).
+preventive_program_paths := {
+  "/api/v1/preventive-programs",
+  "/api/v1/preventive-programs/*",
+  "/api/v1/preventive-programs/*/generate",
+}
+
 # Telemetry + notification-worker endpoints are SUPER_ADMIN-only in service.
 admin_only_paths := {
   "/api/v1/telemetry/**",
@@ -423,6 +434,30 @@ mutation_allowed if {
   input.subject.roles[_] == "PRODUCTION_LEADER"
   is_mutation
   path_matches(workorder_rating_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(preventive_program_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(preventive_program_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(preventive_program_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STAFF_MAINTENANCE"
+  is_mutation
+  path_matches(preventive_program_paths)
 }
 
 mutation_allowed if {
