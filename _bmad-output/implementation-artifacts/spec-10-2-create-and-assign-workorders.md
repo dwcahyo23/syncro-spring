@@ -2,9 +2,10 @@
 title: 'Create & Assign Workorders'
 type: 'feature'
 created: '2026-08-26'
-status: 'in-review'
-review_loop_iteration: 0
-followup_review_recommended: false
+status: 'done'
+review_loop_iteration: 1
+followup_review_recommended: true
+final_revision: 41569ac
 baseline_revision: b4b63b1
 context:
   - '{project-root}/_bmad-output/project-context.md'
@@ -151,6 +152,21 @@ warnings: ['oversized']
 ## Verification
 
 **Commands:**
-- `mvn -o -f syncro/apps/backend/pom.xml test "-Dtest=WorkOrderServiceTest,WorkOrderControllerTest,WorkorderCreateAssignMigrationTest"` -- per-class JVM (DW-127). Expected: BUILD SUCCESS.
-- `cd syncro/authz && ./run-opa-test.ps1` -- PASS (46 + new workorder cases).
+- `mvn -o -f syncro/apps/backend/pom.xml test "-Dtest=WorkOrderServiceTest,WorkOrderControllerTest,WorkorderCreateAssignMigrationTest"` -- per-class JVM (DW-127): service 21/21, controller 17/17 (incl. replay-200 + key-too-long), migration 4/4. All BUILD SUCCESS.
+- `cd syncro/authz && ./run-opa-test.ps1` -- PASS 59/59 (57 + 2 assign-denial parity cases).
 - `cd syncro/apps/web && npx tsc --noEmit` -- green (no frontend changes).
+
+## Auto Run Result
+
+| Step | Outcome | Notes |
+|------|---------|-------|
+| 01 route | pass | epic 10, story 2; epic-10-context valid; spec-10-1 continuity loaded |
+| 02 plan | pass | spec-10-2 written (create/assign/idempotency/rego) |
+| 03 implement | pass | V48, WorkOrderService/Controller/handler, rego split, tests; verified independently |
+| 04 review | pass | Blind Hunter (1 P1/4 P2/4 P3) + Edge Case Hunter (1 P1/3 P2/2 P3); 9 patches applied (incl. idempotency race unique-index fix), 0 defers, 2 rejects |
+| commit | 41569ac | `feat(workorder): create & assign internal workorders (story 10-2)` |
+| finalize | 41569ac~1 | status done; followup_review_recommended: true |
+
+**Defers appended:** none.
+
+**Residual risks:** PRODUCTION_LEADER line-scope approximated by plant assignment (line binding is a later story per AD-15); idempotent replay uses first-write-wins semantics (body drift returns the original row); the multi-integration-class Testcontainers quirk (DW-127) persists.
