@@ -36,6 +36,7 @@
 
 generated: 2026-05-25
 last_updated: 2026-08-26
+# updated: 10-4 done (dev-auto: implemented + adversarial review, 4 patched / 1 deferred DW-139); epic 10 in-progress
 # updated: 9-2 done; 9-3 done (dev-auto: implemented + adversarial review, 8 patched / 3 deferred DW-128..130); epic 9 in-progress; epics 10-14 backlog
 project: Syncro
 project_key: NOKEY
@@ -156,7 +157,7 @@ development_status:
   10-1-workorder-schema-and-categories: done
   10-2-create-and-assign-workorders: done
   10-3-status-lifecycle-and-on-procurement: done
-  10-4-repair-sessions-and-mttr: backlog
+  10-4-repair-sessions-and-mttr: done
   10-5-evidence-and-technical-drawings: backlog
   10-6-reports-cp-cpk-fmea-and-stop-time: backlog
   10-7-todos-and-kanban: backlog

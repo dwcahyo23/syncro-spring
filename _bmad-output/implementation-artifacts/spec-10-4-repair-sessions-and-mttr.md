@@ -2,10 +2,11 @@
 title: 'Repair Sessions & MTTR'
 type: 'feature'
 created: '2026-08-26'
-status: 'in-review'
+status: 'done'
 baseline_revision: 3a2c9d5
+final_revision: 5ffdfb9
 review_loop_iteration: 1
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/project-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-10-context.md'
@@ -170,7 +171,7 @@ warnings: ['oversized']
 | 03 implement | pass | full backend impl + tests; 3 test defects fixed (transition DONE-gate stubs, session-list mock, migration FK test ordering); verified independently |
 | 04 review | pass | Blind Hunter (10 findings) + Edge Case Hunter (5 findings); deduped to 4 patches (high 1, medium 2, low 1), 1 defer (DW-139), 6 rejects |
 | commit | 94a0da1 | `feat(workorder): repair sessions & MTTR (story 10-4)` |
-| finalize | TBD | status done; followup_review_recommended: true |
+| finalize | 5ffdfb9 | status done; followup_review_recommended: true |
 
 **Summary:** Repair sessions for workorders with DB-enforced non-overlap (V49 gist EXCLUDE), start/stop/list endpoints gated on IN_PROGRESS + executor/leader access; MTTR (cumulative completed durations) and SLA response time (OPEN → first session start) backend-computed and persisted on the workorder; DONE requires a completed session or a documented reason; categories gain optional target_response_minutes; rego session paths + parity tests. Review fixed: count-based DONE gate (0-min sessions count), session-UUID audit entity_id, PATCH-style category target update, description in audit values.
 
