@@ -1081,3 +1081,8 @@ status: open
 - source_spec: \_bmad-output/implementation-artifacts/spec-10-6-reports-cp-cpk-fmea-and-stop-time.md\
   summary: validateCpkPdf trusts the client-declared application/pdf content type and does not sniff the magic bytes, so arbitrary content can be stored and served as a CP/CPK capability sheet.
   evidence: validateCpkPdf checks contentType equality and size only; PDF magic-byte check (%%PDF) is defense-in-depth not required by the spec contract. Add when untrusted uploads matter.
+
+### DW-126: enforceBreakdownStopTimeGate reads category via findById without lock
+- source_spec: `_bmad-output/implementation-artifacts/spec-10-6-reports-cp-cpk-fmea-and-stop-time.md`
+  summary: enforceBreakdownStopTimeGate uses categories.findById (plain, no lock) while the workorder entity is loaded with findByIdForUpdate. A concurrent category code change could produce a stale gate decision.
+  evidence: WorkOrderService.enforceBreakdownStopTimeGate calls categories.findById(categoryId) without row-level locking, while the workorder row at line 226 is locked with findByIdForUpdate. Category is master data (rarely changed), so risk is low.

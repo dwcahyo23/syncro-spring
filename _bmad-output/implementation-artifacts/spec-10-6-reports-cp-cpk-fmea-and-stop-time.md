@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-08-26'
 status: 'done'
 baseline_revision: ce846c8
-final_revision: ba91625
+final_revision: c7ecfc2
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -203,4 +203,15 @@ warnings: ['oversized']
 - `cd syncro/authz && ./run-opa-test.ps1` -- PASS 103/103.
 - `cd syncro/apps/web && npx tsc --noEmit` -- green (no frontend changes).
 
-**Residual risks:** no Garage integration test for CPK PDF (same gap as 10-5, DW-140); report full-row UPDATE race + CPK replace race (DW-123/124); PDF magic-byte check deferred (DW-125); stop-time gate is a hard behavior change for in-flight Breakdown workorders that were opened before this story and carry no reason — they must edit their report before DONE (deployment note).
+**Residual risks:** no Garage integration test for CPK PDF (same gap as 10-5, DW-140); report full-row UPDATE race + CPK replace race (DW-123/124); PDF magic-byte check deferred (DW-125); category read in stop-time gate without lock (DW-126); stop-time gate is a hard behavior change for in-flight Breakdown workorders that were opened before this story and carry no reason — they must edit their report before DONE (deployment note).
+
+## Review Triage Log
+
+### 2026-08-26 — Follow-up review pass
+- intent_gap: 0
+- bad_spec: 0
+- patch: 1 (low 1)
+- defer: 1 (low 1)
+- reject: 6
+- addressed_findings:
+  - `[low]` `[patch]` MaxUploadSizeExceededException handler message said "Attachment file" but the handler also serves CPK PDF uploads — changed to generic "Uploaded file exceeds the maximum allowed size."
