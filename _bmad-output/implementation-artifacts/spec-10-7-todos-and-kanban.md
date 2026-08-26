@@ -3,6 +3,7 @@ title: 'Todos & Kanban'
 type: 'feature'
 created: '2026-08-26'
 baseline_revision: 09db643
+final_revision: 92593c8
 status: 'done'
 review_loop_iteration: 1
 followup_review_recommended: false
