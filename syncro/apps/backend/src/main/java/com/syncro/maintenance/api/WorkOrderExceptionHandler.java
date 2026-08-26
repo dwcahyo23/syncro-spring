@@ -268,10 +268,11 @@ public class WorkOrderExceptionHandler {
         Map.of(exception.getParameterName(), "This value is required."));
   }
 
+  /** Mirrors the 8-4 sparepart-image handler: multipart failures are field errors. */
   @ExceptionHandler(MaxUploadSizeExceededException.class)
   ResponseEntity<ErrorResponse> oversizeUpload() {
     return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
-        Map.of("data", "Attachment file exceeds the maximum allowed size."));
+        Map.of("data", "Uploaded file exceeds the maximum allowed size."));
   }
 
   /** A multipart request that is not multipart, or a malformed/truncated body. */
