@@ -168,7 +168,7 @@ development_status:
 
   # Epic 11: Preventive Maintenance
   epic-11: backlog
-  11-1-preventive-programs-and-schedules: backlog
+  11-1-preventive-programs-and-schedules: done
   11-2-checklist-assessment-and-signature: backlog
   11-3-preventive-report-and-auto-workorder: backlog
   epic-11-retrospective: optional
