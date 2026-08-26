@@ -1,5 +1,5 @@
 # generated: 2026-05-25
-# last_updated: 2026-08-25
+# last_updated: 2026-08-26
 # project: Syncro
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-25
-last_updated: 2026-08-25
+last_updated: 2026-08-26
 # updated: 9-2 done; 9-3 done (dev-auto: implemented + adversarial review, 8 patched / 3 deferred DW-128..130); epic 9 in-progress; epics 10-14 backlog
 project: Syncro
 project_key: NOKEY
@@ -152,10 +152,10 @@ development_status:
   epic-9-retrospective: optional
 
   # Epic 10: Workorder Execution
-  epic-10: backlog
+  epic-10: in-progress
   10-1-workorder-schema-and-categories: done
   10-2-create-and-assign-workorders: done
-  10-3-status-lifecycle-and-on-procurement: backlog
+  10-3-status-lifecycle-and-on-procurement: done
   10-4-repair-sessions-and-mttr: backlog
   10-5-evidence-and-technical-drawings: backlog
   10-6-reports-cp-cpk-fmea-and-stop-time: backlog
