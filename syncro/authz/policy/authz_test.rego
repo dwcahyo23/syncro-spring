@@ -226,6 +226,50 @@ test_staff_workorder_read_allowed if {
   authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "GET /api/v1/workorders"}
 }
 
+# -- Workorder transition (story 10-3): the executor roles (TECHNICIAN, STAFF_MAINTENANCE)
+#    plus leadership are allowed; AUDITOR/PRODUCTION_LEADER/INVENTORY_MAINTENANCE/
+#    STOREKEEPER denied ---------------------------------------------------------
+
+test_staff_workorder_transition_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/workorders/WO-2409-00001/transition"}
+}
+
+test_technician_workorder_transition_allowed if {
+  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/workorders/WO-2409-00001/transition"}
+}
+
+test_section_leader_workorder_transition_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/workorders/WO-2409-00001/transition"}
+}
+
+test_maintenance_leader_workorder_transition_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/workorders/WO-2409-00001/transition"}
+}
+
+test_manager_workorder_transition_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/workorders/WO-2409-00001/transition"}
+}
+
+test_super_admin_workorder_transition_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/workorders/WO-2409-00001/transition"}
+}
+
+test_auditor_workorder_transition_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/workorders/WO-2409-00001/transition"}
+}
+
+test_production_leader_workorder_transition_denied if {
+  not authz.allow with input as {"subject": {"roles": ["PRODUCTION_LEADER"], "userId": "u8"}, "action": "POST /api/v1/workorders/WO-2409-00001/transition"}
+}
+
+test_inventory_workorder_transition_denied if {
+  not authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/workorders/WO-2409-00001/transition"}
+}
+
+test_storekeeper_workorder_transition_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "POST /api/v1/workorders/WO-2409-00001/transition"}
+}
+
 # -- Anonymous (no userId): default deny everywhere ------------------------
 
 test_anonymous_admin_only_denied if {

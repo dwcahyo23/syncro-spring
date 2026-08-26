@@ -79,6 +79,8 @@ class WorkOrderServiceTest {
   @Mock
   private PlantScopeService plantScopes;
   @Mock
+  private SparepartRequestReadinessPort sparepartReadiness;
+  @Mock
   private AuditLogWriter auditLog;
 
   private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
@@ -95,7 +97,7 @@ class WorkOrderServiceTest {
   @BeforeEach
   void setUp() {
     service = new WorkOrderService(idGenerator, workOrders, statusHistory, categories, machines, users, scopes,
-        plantScopes, auditLog, clock);
+        plantScopes, sparepartReadiness, auditLog, clock);
     machine = machineWithPlant(plantId, groupId, machineId);
     category = new WorkOrderCategoryEntity(categoryId, "01", "Breakdown", UUID.randomUUID(), NOW, NOW);
   }

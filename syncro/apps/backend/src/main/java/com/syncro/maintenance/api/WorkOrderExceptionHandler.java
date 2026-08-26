@@ -3,7 +3,10 @@ package com.syncro.maintenance.api;
 import com.syncro.auth.application.PlantScopeService.PlantAccessDeniedException;
 import com.syncro.maintenance.api.WorkOrderDtos.ErrorResponse;
 import com.syncro.maintenance.application.WorkOrderService.BreakdownCategoryRequiredException;
+import com.syncro.maintenance.application.WorkOrderService.ChildrenNotTerminalException;
 import com.syncro.maintenance.application.WorkOrderService.InvalidStateTransitionException;
+import com.syncro.maintenance.application.WorkOrderService.OverrideReasonRequiredException;
+import com.syncro.maintenance.application.WorkOrderService.ProcurementRequestConflictException;
 import com.syncro.maintenance.application.WorkOrderService.SelfAssignmentForbiddenException;
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderCategoryNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderMachineNotFoundException;
@@ -26,6 +29,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import tools.jackson.databind.exc.InvalidFormatException;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(assignableTypes = WorkOrderController.class)
@@ -46,9 +50,40 @@ public class WorkOrderExceptionHandler {
     return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", fieldErrors);
   }
 
+  /**
+   * Jackson wraps a type/enum mismatch (e.g. an unknown {@code toStatus}) inside
+   * {@link HttpMessageNotReadableException}: that is a field validation error, so it maps
+   * to 400 VALIDATION_ERROR with the offending field. Spring Boot 4 ships Jackson 3
+   * ({@code tools.jackson}), so the cause-chain check targets that package. A path-less
+   * invalid format or any other unreadable body stays MALFORMED_JSON.
+   */
   @ExceptionHandler(HttpMessageNotReadableException.class)
-  ResponseEntity<ErrorResponse> malformedJson() {
+  ResponseEntity<ErrorResponse> malformedJson(HttpMessageNotReadableException exception) {
+    var invalidFormat = findInvalidFormat(exception);
+    if (invalidFormat != null) {
+      var fieldErrors = new LinkedHashMap<String, String>();
+      for (var reference : invalidFormat.getPath()) {
+        var propertyName = reference.getPropertyName();
+        if (propertyName != null) {
+          fieldErrors.putIfAbsent(propertyName, "Invalid value.");
+        }
+      }
+      if (!fieldErrors.isEmpty()) {
+        return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", fieldErrors);
+      }
+    }
     return error(HttpStatus.BAD_REQUEST, "MALFORMED_JSON", "Request body is malformed.", Map.of());
+  }
+
+  private InvalidFormatException findInvalidFormat(Throwable throwable) {
+    var current = throwable;
+    while (current != null) {
+      if (current instanceof InvalidFormatException invalidFormat) {
+        return invalidFormat;
+      }
+      current = current.getCause();
+    }
+    return null;
   }
 
   @ExceptionHandler(ConstraintViolationException.class)
@@ -107,6 +142,24 @@ public class WorkOrderExceptionHandler {
   ResponseEntity<ErrorResponse> selfAssignment() {
     return error(HttpStatus.CONFLICT, "SELF_ASSIGNMENT_FORBIDDEN",
         "Section leaders cannot assign workorders to themselves.", Map.of());
+  }
+
+  @ExceptionHandler(ProcurementRequestConflictException.class)
+  ResponseEntity<ErrorResponse> procurementRequestConflict() {
+    return error(HttpStatus.CONFLICT, "PROCUREMENT_REQUEST_CONFLICT",
+        "A live non-ready sparepart request is in progress on this workorder.", Map.of());
+  }
+
+  @ExceptionHandler(ChildrenNotTerminalException.class)
+  ResponseEntity<ErrorResponse> childrenNotTerminal() {
+    return error(HttpStatus.CONFLICT, "CHILDREN_NOT_TERMINAL",
+        "All child workorders must be closed or cancelled before closing this workorder.", Map.of());
+  }
+
+  @ExceptionHandler(OverrideReasonRequiredException.class)
+  ResponseEntity<ErrorResponse> overrideReasonRequired() {
+    return error(HttpStatus.BAD_REQUEST, "OVERRIDE_REASON_REQUIRED",
+        "An override reason is required to close a workorder with non-terminal children.", Map.of());
   }
 
   /** DW-135: the id sequence is exhausted — 503 Service Unavailable, not a 500. */

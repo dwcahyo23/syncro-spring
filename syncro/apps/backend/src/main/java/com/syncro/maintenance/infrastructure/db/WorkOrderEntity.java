@@ -134,10 +134,17 @@ public class WorkOrderEntity {
     return updatedAt;
   }
 
-  /** OPEN → ASSIGNED (FR-113): records the executing technician and bumps the timestamp. */
+  /**
+   * OPEN → ASSIGNED (FR-113): records the executing technician and bumps the timestamp.
+   */
   public void assign(UUID assignedTechnicianId, Instant updatedAt) {
     this.assignedTechnicianId = assignedTechnicianId;
-    this.status = WorkOrderStatus.ASSIGNED;
+    transitionTo(WorkOrderStatus.ASSIGNED, updatedAt);
+  }
+
+  /** Applies a status transition (AD-4/10.3); validity is owned by the state machine. */
+  public void transitionTo(WorkOrderStatus status, Instant updatedAt) {
+    this.status = status;
     this.updatedAt = updatedAt;
   }
 }

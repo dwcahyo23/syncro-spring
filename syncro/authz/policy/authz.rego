@@ -85,6 +85,16 @@ workorder_assign_paths := {
   "/api/v1/workorders/*/assign",
 }
 
+# Workorder status transitions (story 10-3): the assigned executor (TECHNICIAN or
+# STAFF_MAINTENANCE) and the in-scope leadership may drive the lifecycle. Rego is
+# coarser than the service — it cannot see the body, the assignment or the scope — so
+# the five-role allow set is only the coarse gate; the service actor gate is
+# authoritative. AUDITOR/PRODUCTION_LEADER/INVENTORY_MAINTENANCE/STOREKEEPER stay
+# default-deny on the path.
+workorder_transition_paths := {
+  "/api/v1/workorders/*/transition",
+}
+
 # Telemetry + notification-worker endpoints are SUPER_ADMIN-only in service.
 admin_only_paths := {
   "/api/v1/telemetry/**",
@@ -162,6 +172,38 @@ mutation_allowed if {
   input.subject.roles[_] == "MAINTENANCE_LEADER"
   is_mutation
   path_matches(workorder_assign_paths)
+}
+
+# Transition: executor roles + leadership (10.3). STAFF_MAINTENANCE and TECHNICIAN are
+# allowed because the assigned executor may start/resume/complete; scope is service-side.
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(workorder_transition_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(workorder_transition_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(workorder_transition_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STAFF_MAINTENANCE"
+  is_mutation
+  path_matches(workorder_transition_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "TECHNICIAN"
+  is_mutation
+  path_matches(workorder_transition_paths)
 }
 
 mutation_allowed if {

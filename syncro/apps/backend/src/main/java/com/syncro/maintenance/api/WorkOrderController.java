@@ -3,11 +3,13 @@ package com.syncro.maintenance.api;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.maintenance.api.WorkOrderDtos.AssignWorkOrderRequest;
 import com.syncro.maintenance.api.WorkOrderDtos.CreateWorkOrderRequest;
+import com.syncro.maintenance.api.WorkOrderDtos.TransitionWorkOrderRequest;
 import com.syncro.maintenance.api.WorkOrderDtos.WorkOrderView;
 import com.syncro.maintenance.application.WorkOrderService;
 import com.syncro.maintenance.application.WorkOrderService.AssignWorkOrderCommand;
 import com.syncro.maintenance.application.WorkOrderService.CreateResult;
 import com.syncro.maintenance.application.WorkOrderService.CreateWorkOrderCommand;
+import com.syncro.maintenance.application.WorkOrderService.TransitionWorkOrderCommand;
 import com.syncro.maintenance.domain.workorder.WorkOrder;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -74,6 +76,22 @@ public class WorkOrderController {
   public WorkOrderView assign(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable String id,
       @Valid @RequestBody AssignWorkOrderRequest request) {
     return toDto(workOrders.assign(user, id, new AssignWorkOrderCommand(request.assigneeUserId())));
+  }
+
+  @Operation(operationId = "transitionWorkOrder", summary = "Transition a workorder through its lifecycle")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Workorder transitioned", content = @Content(schema = @Schema(implementation = WorkOrderView.class))),
+      @ApiResponse(responseCode = "400", description = "Validation, malformed JSON or missing override reason"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Workorder not found"),
+      @ApiResponse(responseCode = "409", description = "Invalid state transition, procurement conflict or non-terminal children")
+  })
+  @PostMapping("/{id}/transition")
+  public WorkOrderView transition(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable String id,
+      @Valid @RequestBody TransitionWorkOrderRequest request) {
+    return toDto(workOrders.transition(user, id,
+        new TransitionWorkOrderCommand(request.toStatus(), request.reason(), request.overrideReason())));
   }
 
   private WorkOrderView toDto(WorkOrder workOrder) {

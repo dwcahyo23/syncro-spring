@@ -20,10 +20,14 @@ import com.syncro.config.TimeConfig;
 import com.syncro.maintenance.application.WorkOrderService;
 import com.syncro.maintenance.application.WorkOrderService.AssignWorkOrderCommand;
 import com.syncro.maintenance.application.WorkOrderService.BreakdownCategoryRequiredException;
+import com.syncro.maintenance.application.WorkOrderService.ChildrenNotTerminalException;
 import com.syncro.maintenance.application.WorkOrderService.CreateResult;
 import com.syncro.maintenance.application.WorkOrderService.CreateWorkOrderCommand;
 import com.syncro.maintenance.application.WorkOrderService.InvalidStateTransitionException;
+import com.syncro.maintenance.application.WorkOrderService.OverrideReasonRequiredException;
+import com.syncro.maintenance.application.WorkOrderService.ProcurementRequestConflictException;
 import com.syncro.maintenance.application.WorkOrderService.SelfAssignmentForbiddenException;
+import com.syncro.maintenance.application.WorkOrderService.TransitionWorkOrderCommand;
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderCategoryNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderMachineNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderNotFoundException;
@@ -312,6 +316,169 @@ class WorkOrderControllerTest {
         .content("{\"categoryCode\":\"01\",\"machineId\":\"" + MACHINE_ID + "\"}"))
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
+  }
+
+  @Test
+  @DisplayName("10.3-API-001 P0 transition returns 200 with the new status")
+  void transitionReturnsOk() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+    when(workOrders.transition(eq(user), eq("WO-2409-00001"), any(TransitionWorkOrderCommand.class)))
+        .thenReturn(inProgressView());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"toStatus\":\"IN_PROGRESS\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value("WO-2409-00001"))
+        .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
+  }
+
+  @Test
+  @DisplayName("10.3-API-002 P0 invalid transition maps to 409 INVALID_STATE_TRANSITION")
+  void transitionInvalidState() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+    doThrow(new InvalidStateTransitionException()).when(workOrders)
+        .transition(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"toStatus\":\"IN_PROGRESS\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("INVALID_STATE_TRANSITION"));
+  }
+
+  @Test
+  @DisplayName("10.3-API-003 P0 forbidden transition maps to 403 FORBIDDEN")
+  void transitionForbidden() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    doThrow(new WorkorderForbiddenException()).when(workOrders)
+        .transition(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"toStatus\":\"ON_PROCUREMENT\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  @DisplayName("10.3-API-004 P0 unknown workorder maps to 404 WORKORDER_NOT_FOUND")
+  void transitionNotFound() throws Exception {
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
+    doThrow(new WorkOrderNotFoundException()).when(workOrders)
+        .transition(eq(user), eq("WO-2409-NADA"), any());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-NADA")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"toStatus\":\"CLOSED\"}"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("WORKORDER_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("10.3-API-005 P0 procurement conflict maps to 409 PROCUREMENT_REQUEST_CONFLICT")
+  void transitionProcurementConflict() throws Exception {
+    var user = user(ApplicationRole.MAINTENANCE_LEADER);
+    doThrow(new ProcurementRequestConflictException()).when(workOrders)
+        .transition(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"toStatus\":\"ON_PROCUREMENT\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("PROCUREMENT_REQUEST_CONFLICT"));
+  }
+
+  @Test
+  @DisplayName("10.3-API-006 P0 non-terminal children map to 409 CHILDREN_NOT_TERMINAL")
+  void transitionChildrenNotTerminal() throws Exception {
+    var user = user(ApplicationRole.MAINTENANCE_LEADER);
+    doThrow(new ChildrenNotTerminalException()).when(workOrders)
+        .transition(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"toStatus\":\"CLOSED\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("CHILDREN_NOT_TERMINAL"));
+  }
+
+  @Test
+  @DisplayName("10.3-API-007 P0 missing override reason maps to 400 OVERRIDE_REASON_REQUIRED")
+  void transitionOverrideReasonRequired() throws Exception {
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
+    doThrow(new OverrideReasonRequiredException()).when(workOrders)
+        .transition(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"toStatus\":\"CLOSED\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("OVERRIDE_REASON_REQUIRED"));
+  }
+
+  @Test
+  @DisplayName("10.3-API-008 P1 a missing toStatus maps to 400 VALIDATION_ERROR")
+  void transitionMissingToStatus() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.fieldErrors.toStatus").value("Invalid value."));
+  }
+
+  @Test
+  @DisplayName("10.3-API-009 P1 an unknown toStatus enum maps to 400 VALIDATION_ERROR")
+  void transitionUnknownStatus() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"toStatus\":\"NOT_A_STATUS\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+  }
+
+  @Test
+  @DisplayName("10.3-API-010 P1 the override reason is forwarded to the service")
+  void transitionForwardsOverrideReason() throws Exception {
+    var user = user(ApplicationRole.SUPER_ADMIN);
+    when(workOrders.transition(eq(user), eq("WO-2409-00001"), any(TransitionWorkOrderCommand.class)))
+        .thenReturn(closedView());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"toStatus\":\"CLOSED\",\"overrideReason\":\"expedite delivery\"}"));
+
+    var captor = ArgumentCaptor.forClass(TransitionWorkOrderCommand.class);
+    org.mockito.Mockito.verify(workOrders).transition(eq(user), eq("WO-2409-00001"), captor.capture());
+    assertThat(captor.getValue().toStatus()).isEqualTo(WorkOrderStatus.CLOSED);
+    assertThat(captor.getValue().overrideReason()).isEqualTo("expedite delivery");
+  }
+
+  private static WorkOrder inProgressView() {
+    return new WorkOrder("WO-2409-00001", "INTERNAL", WorkOrderStatus.IN_PROGRESS, CATEGORY_ID, MACHINE_ID,
+        "breakdown", null, ASSIGNEE_ID, UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"),
+        Instant.parse("2026-08-26T00:00:00Z"));
+  }
+
+  private static WorkOrder closedView() {
+    return new WorkOrder("WO-2409-00001", "INTERNAL", WorkOrderStatus.CLOSED, CATEGORY_ID, MACHINE_ID,
+        "breakdown", null, ASSIGNEE_ID, UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"),
+        Instant.parse("2026-08-26T00:00:00Z"));
   }
 
   private static WorkOrder view() {

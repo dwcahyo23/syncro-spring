@@ -26,6 +26,10 @@ public final class WorkOrderDtos {
   public record AssignWorkOrderRequest(@NotNull UUID assigneeUserId) {
   }
 
+  public record TransitionWorkOrderRequest(@NotNull WorkOrderStatus toStatus, @Size(max = 1000) String reason,
+      @Size(max = 2000) String overrideReason) {
+  }
+
   public record WorkOrderView(String id, String source, WorkOrderStatus status, UUID categoryId, UUID machineId,
       String description, String parentId, UUID assignedTechnicianId, UUID createdBy, Instant createdAt,
       Instant updatedAt) {
