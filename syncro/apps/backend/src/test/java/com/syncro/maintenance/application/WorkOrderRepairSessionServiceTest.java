@@ -301,7 +301,7 @@ class WorkOrderRepairSessionServiceTest {
     var entity = entity(WorkOrderStatus.IN_PROGRESS);
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
     when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull(WORKORDER_ID)).thenReturn(Optional.empty());
-    when(repairSessions.sumCompletedDuration(WORKORDER_ID)).thenReturn(0L);
+    when(repairSessions.countByWorkOrderIdAndEndedAtIsNotNull(WORKORDER_ID)).thenReturn(0L);
 
     assertThatThrownBy(() -> service.transition(user, WORKORDER_ID,
         new TransitionWorkOrderCommand(WorkOrderStatus.DONE, "   ", null)))
@@ -315,7 +315,7 @@ class WorkOrderRepairSessionServiceTest {
     var entity = entity(WorkOrderStatus.IN_PROGRESS);
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
     when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull(WORKORDER_ID)).thenReturn(Optional.empty());
-    when(repairSessions.sumCompletedDuration(WORKORDER_ID)).thenReturn(0L);
+    when(repairSessions.countByWorkOrderIdAndEndedAtIsNotNull(WORKORDER_ID)).thenReturn(0L);
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     var result = service.transition(user, WORKORDER_ID,

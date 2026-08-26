@@ -1051,3 +1051,10 @@ status: open
   summary: recomputeProcurementState enter-to-ON_PROCUREMENT is unit-tested only via a fake SparepartRequestReadinessPort; the shipped NoopSparepartRequestReadinessPort makes derivation a structural no-op until Epic 12 swaps the bean.
   evidence: Blind Hunter on 10-3. Fix = when Epic 12 implements the port, add an application test wiring the real adapter plus its first request-transition event into recomputeProcurementState.
   status: open
+
+### DW-139: V49 btree_gist extension needs superuser in managed PostgreSQL
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-10-4-repair-sessions-and-mttr.md`
+  summary: V49 runs CREATE EXTENSION IF NOT EXISTS btree_gist (first extension install in the migration chain) for the gist EXCLUDE overlap constraint; local postgres:17-alpine applies it (migration test passes), but managed PostgreSQL (RDS/Cloud SQL/Supabase) requires a superuser pre-deployment grant before Flyway runs.
+  evidence: Blind Hunter on 10-4. Fix = document the extension prerequisite in the deploy runbook, or split the extension creation into a manual pre-deployment step.
+  status: open

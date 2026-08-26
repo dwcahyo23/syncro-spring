@@ -309,14 +309,15 @@ public class WorkOrderService {
     if (entity.getResponseTimeMinutes() == null) {
       statusHistory.findFirstOpenTransitionedAt(workOrderId)
           .ifPresent(openedAt -> {
-            entity.setResponseTimeMinutes(Duration.between(openedAt, now).toMinutes());
+            // Clamp at 0: a reopened workorder or SYNCED skew could put the OPEN history
+            // row after the first session start, which would persist a negative SLA.
+            entity.setResponseTimeMinutes(Math.max(0, Duration.between(openedAt, now).toMinutes()));
             workOrders.saveAndFlush(entity);
           });
     }
 
     auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.REPAIR_SESSION,
-        auditEntityId("session-" + sessionId), workOrderId, machine.getPlant().getId(), null, sessionValues(session),
-        null));
+        sessionId, workOrderId, machine.getPlant().getId(), null, sessionValues(session), null));
     return toSessionResult(entity, workOrderId);
   }
 
@@ -344,8 +345,7 @@ public class WorkOrderService {
     workOrders.saveAndFlush(entity);
 
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.REPAIR_SESSION,
-        auditEntityId("session-" + session.getId()), workOrderId, machine.getPlant().getId(), previous,
-        sessionValues(session), null));
+        session.getId(), workOrderId, machine.getPlant().getId(), previous, sessionValues(session), null));
     return toSessionResult(entity, workOrderId);
   }
 
@@ -368,7 +368,7 @@ public class WorkOrderService {
     if (repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull(entity.getId()).isPresent()) {
       throw new SessionOpenConflictException();
     }
-    var hasCompletedSession = repairSessions.sumCompletedDuration(entity.getId()) > 0;
+    var hasCompletedSession = repairSessions.countByWorkOrderIdAndEndedAtIsNotNull(entity.getId()) > 0;
     if (!hasCompletedSession && (reason == null || reason.isBlank())) {
       throw new DoneWithoutSessionReasonRequiredException();
     }
@@ -407,6 +407,7 @@ public class WorkOrderService {
     values.put("id", session.getId());
     values.put("workOrderId", session.getWorkOrderId());
     values.put("technicianId", session.getTechnicianId());
+    values.put("description", session.getDescription());
     values.put("startedAt", session.getStartedAt());
     values.put("endedAt", session.getEndedAt());
     values.put("durationMinutes", session.getDurationMinutes());

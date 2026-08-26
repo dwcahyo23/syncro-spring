@@ -21,4 +21,6 @@ public interface RepairSessionRepository extends JpaRepository<RepairSessionEnti
   @Query("select coalesce(sum(r.durationMinutes), 0) from RepairSessionEntity r "
       + "where r.workOrderId = :workOrderId and r.endedAt is not null")
   Long sumCompletedDuration(@Param("workOrderId") String workOrderId);
+
+  long countByWorkOrderIdAndEndedAtIsNotNull(String workOrderId);
 }

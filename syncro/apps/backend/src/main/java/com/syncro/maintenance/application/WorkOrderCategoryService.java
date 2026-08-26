@@ -71,7 +71,13 @@ public class WorkOrderCategoryService {
     if (!newCode.equals(entity.getCode()) && categories.existsByCode(newCode)) {
       throw new DuplicateWorkOrderCategoryCodeException();
     }
-    entity.update(newCode, label, command.targetResponseMinutes(), Instant.now(clock));
+    // PATCH-style partial update: a client that omits targetResponseMinutes must not
+    // wipe the stored value (10.4 review — the field is optional on update).
+    if (command.targetResponseMinutes() != null) {
+      entity.update(newCode, label, command.targetResponseMinutes(), Instant.now(clock));
+    } else {
+      entity.update(newCode, label, Instant.now(clock));
+    }
     var saved = saveWithIntegrityCheck(entity);
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.WORK_ORDER_CATEGORY,
         saved.getId(), saved.getCode(), null, previous, auditValues(saved), null));

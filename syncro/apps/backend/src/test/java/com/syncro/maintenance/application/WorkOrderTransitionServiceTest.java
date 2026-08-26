@@ -100,7 +100,7 @@ class WorkOrderTransitionServiceTest {
     machine = machineWithPlant(plantId, groupId, machineId);
     lenient().when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
     lenient().when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull(any())).thenReturn(Optional.empty());
-    lenient().when(repairSessions.sumCompletedDuration(any())).thenReturn(1L);
+    lenient().when(repairSessions.countByWorkOrderIdAndEndedAtIsNotNull(any())).thenReturn(1L);
   }
 
   // -------------------------------------------------------------------------
@@ -248,7 +248,7 @@ class WorkOrderTransitionServiceTest {
     var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.IN_PROGRESS, null, technicianId);
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
     when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull(WORKORDER_ID)).thenReturn(Optional.empty());
-    when(repairSessions.sumCompletedDuration(WORKORDER_ID)).thenReturn(0L);
+    when(repairSessions.countByWorkOrderIdAndEndedAtIsNotNull(WORKORDER_ID)).thenReturn(0L);
 
     assertThatThrownBy(() -> service.transition(user, WORKORDER_ID,
         new TransitionWorkOrderCommand(WorkOrderStatus.DONE, "  ", null)))
@@ -262,7 +262,7 @@ class WorkOrderTransitionServiceTest {
     var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.IN_PROGRESS, null, technicianId);
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
     when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull(WORKORDER_ID)).thenReturn(Optional.empty());
-    when(repairSessions.sumCompletedDuration(WORKORDER_ID)).thenReturn(0L);
+    when(repairSessions.countByWorkOrderIdAndEndedAtIsNotNull(WORKORDER_ID)).thenReturn(0L);
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     var result = service.transition(user, WORKORDER_ID,
@@ -295,7 +295,7 @@ class WorkOrderTransitionServiceTest {
     var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.IN_PROGRESS, null, technicianId);
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
     when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull(WORKORDER_ID)).thenReturn(Optional.empty());
-    when(repairSessions.sumCompletedDuration(WORKORDER_ID)).thenReturn(45L);
+    when(repairSessions.countByWorkOrderIdAndEndedAtIsNotNull(WORKORDER_ID)).thenReturn(1L);
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.DONE));
