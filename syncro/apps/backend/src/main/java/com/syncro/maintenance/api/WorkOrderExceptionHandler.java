@@ -25,6 +25,16 @@ import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceWorkO
 import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceWorkOrderNotFoundException;
 import com.syncro.maintenance.application.WorkOrderEvidenceService.StorageException;
 import com.syncro.maintenance.application.WorkOrderEvidenceService.ValidationException;
+import com.syncro.maintenance.application.WorkOrderRatingService.DimensionInUseException;
+import com.syncro.maintenance.application.WorkOrderRatingService.DimensionNotFoundException;
+import com.syncro.maintenance.application.WorkOrderRatingService.RatedUserNotFoundException;
+import com.syncro.maintenance.application.WorkOrderRatingService.RatingAlreadyExistsException;
+import com.syncro.maintenance.application.WorkOrderRatingService.RatingForbiddenException;
+import com.syncro.maintenance.application.WorkOrderRatingService.RatingMachineNotFoundException;
+import com.syncro.maintenance.application.WorkOrderRatingService.RatingValidationException;
+import com.syncro.maintenance.application.WorkOrderRatingService.RatingWorkOrderNotFoundException;
+import com.syncro.maintenance.application.WorkOrderRatingService.UserNotExecutorException;
+import com.syncro.maintenance.application.WorkOrderRatingService.WorkorderNotClosedException;
 import com.syncro.maintenance.application.WorkOrderReportService.ReportForbiddenException;
 import com.syncro.maintenance.application.WorkOrderReportService.ReportWorkOrderMachineNotFoundException;
 import com.syncro.maintenance.application.WorkOrderReportService.ReportWorkOrderNotFoundException;
@@ -129,7 +139,8 @@ public class WorkOrderExceptionHandler {
   }
 
   @ExceptionHandler({WorkorderForbiddenException.class, EvidenceForbiddenException.class,
-      ReportForbiddenException.class, TodoForbiddenException.class, PlantAccessDeniedException.class})
+      ReportForbiddenException.class, TodoForbiddenException.class, PlantAccessDeniedException.class,
+      RatingForbiddenException.class})
   ResponseEntity<ErrorResponse> forbidden() {
     return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "You do not have permission to access this resource.", Map.of());
   }
@@ -376,6 +387,60 @@ public class WorkOrderExceptionHandler {
   ResponseEntity<ErrorResponse> todoValidation(WorkOrderTodoValidationException exception) {
     return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
         exception.getFieldErrors());
+  }
+
+  // -------------------------------------------------------------------------
+  // Ratings & rating dimensions (10.8, FR-121/FR-124)
+  // -------------------------------------------------------------------------
+
+  @ExceptionHandler(RatingWorkOrderNotFoundException.class)
+  ResponseEntity<ErrorResponse> ratingWorkOrderNotFound() {
+    return error(HttpStatus.NOT_FOUND, "WORKORDER_NOT_FOUND", "Workorder was not found.", Map.of());
+  }
+
+  @ExceptionHandler(RatingMachineNotFoundException.class)
+  ResponseEntity<ErrorResponse> ratingMachineNotFound() {
+    return error(HttpStatus.NOT_FOUND, "MACHINE_NOT_FOUND", "Machine was not found.", Map.of());
+  }
+
+  @ExceptionHandler(RatedUserNotFoundException.class)
+  ResponseEntity<ErrorResponse> ratedUserNotFound() {
+    return error(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "Rated user was not found.", Map.of());
+  }
+
+  @ExceptionHandler(WorkorderNotClosedException.class)
+  ResponseEntity<ErrorResponse> workorderNotClosed() {
+    return error(HttpStatus.BAD_REQUEST, "RATING_WORKORDER_NOT_CLOSED",
+        "Only closed workorders can be rated.", Map.of());
+  }
+
+  @ExceptionHandler(UserNotExecutorException.class)
+  ResponseEntity<ErrorResponse> userNotExecutor() {
+    return error(HttpStatus.BAD_REQUEST, "RATING_USER_NOT_EXECUTOR",
+        "The rated user must have executed the workorder.", Map.of());
+  }
+
+  @ExceptionHandler(RatingAlreadyExistsException.class)
+  ResponseEntity<ErrorResponse> ratingAlreadyExists() {
+    return error(HttpStatus.CONFLICT, "RATING_ALREADY_EXISTS",
+        "This workorder has already been rated by the same rater for this target.", Map.of());
+  }
+
+  @ExceptionHandler(RatingValidationException.class)
+  ResponseEntity<ErrorResponse> ratingValidation(RatingValidationException exception) {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
+        exception.getFieldErrors());
+  }
+
+  @ExceptionHandler(DimensionNotFoundException.class)
+  ResponseEntity<ErrorResponse> dimensionNotFound() {
+    return error(HttpStatus.NOT_FOUND, "RATING_DIMENSION_NOT_FOUND", "Rating dimension was not found.", Map.of());
+  }
+
+  @ExceptionHandler(DimensionInUseException.class)
+  ResponseEntity<ErrorResponse> dimensionInUse() {
+    return error(HttpStatus.BAD_REQUEST, "RATING_DIMENSION_IN_USE",
+        "A rating dimension referenced by existing scores cannot be deleted.", Map.of());
   }
 
   /**

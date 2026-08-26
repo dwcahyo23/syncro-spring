@@ -71,12 +71,22 @@ import com.syncro.maintenance.application.WorkOrderTodoService.TodoWorkOrderNotF
 import com.syncro.maintenance.application.WorkOrderTodoService.WorkOrderKanbanItem;
 import com.syncro.maintenance.application.WorkOrderTodoService.WorkOrderTerminalException;
 import com.syncro.maintenance.application.WorkOrderTodoService.WorkOrderTodoValidationException;
+import com.syncro.maintenance.application.WorkOrderRatingService;
+import com.syncro.maintenance.application.WorkOrderRatingService.RatingForbiddenException;
+import com.syncro.maintenance.application.WorkOrderRatingService.RatingWorkOrderNotFoundException;
+import com.syncro.maintenance.application.WorkOrderRatingService.RatingAlreadyExistsException;
+import com.syncro.maintenance.application.WorkOrderRatingService.WorkorderNotClosedException;
+import com.syncro.maintenance.application.WorkOrderRatingService.RatedUserNotFoundException;
+import com.syncro.maintenance.application.WorkOrderRatingService.UserNotExecutorException;
+import com.syncro.maintenance.application.WorkOrderRatingService.RatingValidationException;
 import com.syncro.maintenance.domain.workorder.RepairSession;
 import com.syncro.maintenance.domain.workorder.TodoStatus;
 import com.syncro.maintenance.domain.workorder.WorkOrder;
 import com.syncro.maintenance.domain.workorder.WorkOrderIdGenerator.WorkorderIdExhaustedException;
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
 import com.syncro.maintenance.domain.workorder.WorkOrderTodo;
+import com.syncro.maintenance.domain.workorder.WorkorderRating;
+import com.syncro.maintenance.domain.workorder.RatingType;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -116,6 +126,9 @@ class WorkOrderControllerTest {
 
   @MockitoBean
   private WorkOrderTodoService todos;
+
+  @MockitoBean
+  private WorkOrderRatingService ratings;
 
   @MockitoBean
   private JwtTokenService jwtTokenService;
@@ -1242,6 +1255,191 @@ class WorkOrderControllerTest {
             .content("{\"title\":\"Fix bearing\"}"))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("WORKORDER_NOT_FOUND"));
+  }
+
+  // -------------------------------------------------------------------------
+  // Ratings (10.8, FR-121/FR-124)
+  // -------------------------------------------------------------------------
+
+  private static final UUID RATED_USER_ID = UUID.fromString("77777777-7777-7777-7777-777777777777");
+
+  @Test
+  @DisplayName("10.8-API-001 P0 rate technician returns 201 with the rating view")
+  void rateTechnicianReturnsCreated() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+    var rating = ratingView(RatingType.TECHNICIAN, RATED_USER_ID);
+    when(ratings.rateTechnician(eq(user), eq("WO-2409-00001"), any(UUID.class), any(Map.class)))
+        .thenReturn(rating);
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/technician", "WO-2409-00001")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"ratedUserId\":\"" + RATED_USER_ID + "\",\"scores\":{\"SPEED\":4,\"WORK_QUALITY\":5}}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.ratingType").value("TECHNICIAN"))
+        .andExpect(jsonPath("$.scores[0].dimensionCode").value("SPEED"))
+        .andExpect(jsonPath("$.scores[0].score").value(4));
+  }
+
+  @Test
+  @DisplayName("10.8-API-002 P0 rate technician on a non-closed workorder maps to 400 RATING_WORKORDER_NOT_CLOSED")
+  void rateTechnicianNotClosed() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+    doThrow(new WorkorderNotClosedException()).when(ratings)
+        .rateTechnician(eq(user), eq("WO-2409-00001"), any(UUID.class), any(Map.class));
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/technician", "WO-2409-00001")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"ratedUserId\":\"" + RATED_USER_ID + "\",\"scores\":{\"SPEED\":4}}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("RATING_WORKORDER_NOT_CLOSED"));
+  }
+
+  @Test
+  @DisplayName("10.8-API-003 P0 rate technician forbidden maps to 403 FORBIDDEN")
+  void rateTechnicianForbidden() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    doThrow(new RatingForbiddenException()).when(ratings)
+        .rateTechnician(eq(user), eq("WO-2409-00001"), any(UUID.class), any(Map.class));
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/technician", "WO-2409-00001")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"ratedUserId\":\"" + RATED_USER_ID + "\",\"scores\":{\"SPEED\":4}}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  @DisplayName("10.8-API-004 P0 rate technician unknown rated user maps to 404 USER_NOT_FOUND")
+  void rateTechnicianUserNotFound() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+    doThrow(new RatedUserNotFoundException()).when(ratings)
+        .rateTechnician(eq(user), eq("WO-2409-00001"), any(UUID.class), any(Map.class));
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/technician", "WO-2409-00001")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"ratedUserId\":\"" + RATED_USER_ID + "\",\"scores\":{\"SPEED\":4}}"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("10.8-API-005 P0 rate technician not executor maps to 400 RATING_USER_NOT_EXECUTOR")
+  void rateTechnicianNotExecutor() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+    doThrow(new UserNotExecutorException()).when(ratings)
+        .rateTechnician(eq(user), eq("WO-2409-00001"), any(UUID.class), any(Map.class));
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/technician", "WO-2409-00001")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"ratedUserId\":\"" + RATED_USER_ID + "\",\"scores\":{\"SPEED\":4}}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("RATING_USER_NOT_EXECUTOR"));
+  }
+
+  @Test
+  @DisplayName("10.8-API-006 P0 duplicate rating maps to 409 RATING_ALREADY_EXISTS")
+  void rateTechnicianDuplicate() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+    doThrow(new RatingAlreadyExistsException()).when(ratings)
+        .rateTechnician(eq(user), eq("WO-2409-00001"), any(UUID.class), any(Map.class));
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/technician", "WO-2409-00001")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"ratedUserId\":\"" + RATED_USER_ID + "\",\"scores\":{\"SPEED\":4}}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("RATING_ALREADY_EXISTS"));
+  }
+
+  @Test
+  @DisplayName("10.8-API-007 P0 rating validation maps to 400 VALIDATION_ERROR with fieldErrors")
+  void rateTechnicianValidationError() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+    doThrow(new RatingValidationException(Map.of("scores.SPEED", "Score must be an integer between 1 and 5.")))
+        .when(ratings).rateTechnician(eq(user), eq("WO-2409-00001"), any(UUID.class), any(Map.class));
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/technician", "WO-2409-00001")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"ratedUserId\":\"" + RATED_USER_ID + "\",\"scores\":{\"SPEED\":6}}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.fieldErrors['scores.SPEED']").exists());
+  }
+
+  @Test
+  @DisplayName("10.8-API-008 P0 rate workorder returns 201 with the rating view")
+  void rateWorkorderReturnsCreated() throws Exception {
+    var user = user(ApplicationRole.PRODUCTION_LEADER);
+    var rating = ratingView(RatingType.WORKORDER, null);
+    when(ratings.rateWorkorder(eq(user), eq("WO-2409-00001"), any(Map.class)))
+        .thenReturn(rating);
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/workorder", "WO-2409-00001")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"scores\":{\"SPEED\":3}}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.ratingType").value("WORKORDER"))
+        .andExpect(jsonPath("$.ratedUserId").doesNotExist());
+  }
+
+  @Test
+  @DisplayName("10.8-API-009 P0 rate workorder on unknown workorder maps to 404 WORKORDER_NOT_FOUND")
+  void rateWorkorderNotFound() throws Exception {
+    var user = user(ApplicationRole.PRODUCTION_LEADER);
+    doThrow(new RatingWorkOrderNotFoundException()).when(ratings)
+        .rateWorkorder(eq(user), eq("WO-2409-NADA"), any(Map.class));
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/workorder", "WO-2409-NADA")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"scores\":{\"SPEED\":3}}"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("WORKORDER_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("10.8-API-010 P0 list ratings returns 200 with the ratings")
+  void listRatingsReturnsOk() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    when(ratings.listRatings("WO-2409-00001")).thenReturn(List.of(ratingDomain(RatingType.TECHNICIAN, RATED_USER_ID)));
+
+    mockMvc.perform(get("/api/v1/workorders/{id}/ratings", "WO-2409-00001")
+            .with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].ratingType").value("TECHNICIAN"))
+        .andExpect(jsonPath("$[0].scores[0].dimensionCode").value("SPEED"));
+  }
+
+  @Test
+  @DisplayName("10.8-API-011 P0 ratings page returns 200 with rateable workorders")
+  void ratingsPageReturnsOk() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+    var item = new WorkOrderRatingService.RateableWorkorder("WO-2409-00001", "INTERNAL", WorkOrderStatus.CLOSED,
+        "01", MACHINE_ID, "breakdown", ASSIGNEE_ID, Instant.parse("2026-08-26T00:00:00Z"),
+        List.of(ASSIGNEE_ID));
+    when(ratings.listRateableClosed(user)).thenReturn(List.of(item));
+
+    mockMvc.perform(get("/api/v1/workorders/ratings")
+            .with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].id").value("WO-2409-00001"))
+        .andExpect(jsonPath("$[0].executorPool[0]").value(ASSIGNEE_ID.toString()));
+  }
+
+  private static WorkorderRating ratingDomain(RatingType ratingType, UUID ratedUserId) {
+    return new WorkorderRating(UUID.randomUUID(), "WO-2409-00001", ratingType, ratedUserId,
+        UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"), Map.of("SPEED", 4));
+  }
+
+  private static WorkorderRating ratingView(RatingType ratingType, UUID ratedUserId) {
+    return ratingDomain(ratingType, ratedUserId);
   }
 
   private static WorkOrderReportView reportView(String chronological, String analyze, String corrective,

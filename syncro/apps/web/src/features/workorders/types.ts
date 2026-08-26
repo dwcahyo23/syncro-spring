@@ -48,3 +48,63 @@ export interface AssignTodoRequest {
 export interface ReorderTodoRequest {
   sortOrder: number;
 }
+
+// ---------------------------------------------------------------------------
+// Ratings (10.8, FR-121/FR-124)
+// ---------------------------------------------------------------------------
+
+export type RatingType = "TECHNICIAN" | "WORKORDER";
+
+export interface RatingScoreView {
+  dimensionCode: string;
+  score: number;
+}
+
+export interface RatingView {
+  id: string;
+  workorderId: string;
+  ratingType: RatingType;
+  ratedUserId: string | null;
+  raterUserId: string;
+  createdAt: string;
+  scores: RatingScoreView[];
+}
+
+export interface RatingDimensionView {
+  id: string;
+  code: string;
+  label: string;
+  sortOrder: number;
+}
+
+export interface RateTechnicianRequest {
+  ratedUserId: string;
+  scores: Record<string, number>;
+}
+
+export interface RateWorkorderRequest {
+  scores: Record<string, number>;
+}
+
+export interface CreateRatingDimensionRequest {
+  code: string;
+  label: string;
+  sortOrder?: number;
+}
+
+export interface UpdateRatingDimensionRequest {
+  label: string;
+  sortOrder?: number;
+}
+
+export interface RateableWorkorderView {
+  id: string;
+  source: string;
+  status: string;
+  categoryCode: string | null;
+  machineId: string;
+  description: string | null;
+  assignedTechnicianId: string | null;
+  createdAt: string;
+  executorPool: string[];
+}

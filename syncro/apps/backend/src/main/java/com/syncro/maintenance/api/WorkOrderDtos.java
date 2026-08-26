@@ -119,4 +119,46 @@ public final class WorkOrderDtos {
   public record ErrorResponse(String code, String message, Map<String, String> fieldErrors, String timestamp,
       String traceId) {
   }
+
+  // -------------------------------------------------------------------------
+  // Ratings (10.8, FR-121/FR-124)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Technician rating body (FR-121). {@code scores} maps dimension code → 1..5; the
+   * service validates codes and ranges (missing dimensions allowed). Unknown codes and
+   * out-of-range values → 400 VALIDATION_ERROR.
+   */
+  public record RateTechnicianRequest(
+      @NotNull UUID ratedUserId,
+      @NotNull Map<String, Integer> scores) {
+  }
+
+  /** Workorder rating body (FR-124): scores only — bound to the workorder, no rated user. */
+  public record RateWorkorderRequest(@NotNull Map<String, Integer> scores) {
+  }
+
+  public record RatingScoreView(String dimensionCode, int score) {
+  }
+
+  /** Read model for a submitted rating with its per-dimension scores. */
+  public record RatingView(UUID id, String workorderId, String ratingType, UUID ratedUserId, UUID raterUserId,
+      Instant createdAt, List<RatingScoreView> scores) {
+  }
+
+  public record CreateRatingDimensionRequest(
+      @NotBlank @Size(max = 40) @Pattern(regexp = "^[A-Z0-9_]{1,40}$") String code,
+      @NotBlank @Size(max = 100) String label,
+      @Min(0) @Max(100_000) Integer sortOrder) {
+  }
+
+  public record UpdateRatingDimensionRequest(
+      @NotBlank @Size(max = 100) String label,
+      @NotNull @Min(0) @Max(100_000) Integer sortOrder) {
+  }
+
+  /** One rateable CLOSED workorder on the ratings page (FR-121/FR-124 list surface). */
+  public record RateableWorkorderView(String id, String source, WorkOrderStatus status, String categoryCode,
+      UUID machineId, String description, UUID assignedTechnicianId, Instant createdAt, List<UUID> executorPool) {
+  }
 }

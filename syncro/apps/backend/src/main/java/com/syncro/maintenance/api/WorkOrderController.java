@@ -29,11 +29,13 @@ import com.syncro.maintenance.application.WorkOrderService.CreateWorkOrderComman
 import com.syncro.maintenance.application.WorkOrderService.RepairSessionsResult;
 import com.syncro.maintenance.application.WorkOrderService.StartSessionCommand;
 import com.syncro.maintenance.application.WorkOrderService.TransitionWorkOrderCommand;
+import com.syncro.maintenance.application.WorkOrderRatingService;
 import com.syncro.maintenance.application.WorkOrderTodoService;
 import com.syncro.maintenance.application.WorkOrderTodoService.CreateTodoCommand;
 import com.syncro.maintenance.domain.workorder.RepairSession;
 import com.syncro.maintenance.domain.workorder.WorkOrder;
 import com.syncro.maintenance.domain.workorder.WorkOrderTodo;
+import com.syncro.maintenance.domain.workorder.WorkorderRating;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -72,13 +74,15 @@ public class WorkOrderController {
   private final WorkOrderEvidenceService evidence;
   private final WorkOrderReportService report;
   private final WorkOrderTodoService todos;
+  private final WorkOrderRatingService ratings;
 
   public WorkOrderController(WorkOrderService workOrders, WorkOrderEvidenceService evidence,
-      WorkOrderReportService report, WorkOrderTodoService todos) {
+      WorkOrderReportService report, WorkOrderTodoService todos, WorkOrderRatingService ratings) {
     this.workOrders = workOrders;
     this.evidence = evidence;
     this.report = report;
     this.todos = todos;
+    this.ratings = ratings;
   }
 
   @Operation(operationId = "createWorkOrder", summary = "Create an internal workorder")
@@ -446,6 +450,84 @@ public class WorkOrderController {
         .collect(java.util.stream.Collectors.toMap(
             java.util.Map.Entry::getKey,
             entry -> entry.getValue().stream().map(WorkOrderController::toKanbanItemDto).toList())));
+  }
+
+  // -------------------------------------------------------------------------
+  // Ratings (10.8, FR-121/FR-124)
+  // -------------------------------------------------------------------------
+
+  /** Rates an executing technician on a CLOSED workorder (in-scope section leader, FR-121). */
+  @Operation(operationId = "rateWorkorderTechnician", summary = "Rate a technician who executed a closed workorder")
+  @ApiResponses({
+      @ApiResponse(responseCode = "201", description = "Rating created",
+          content = @Content(schema = @Schema(implementation = WorkOrderDtos.RatingView.class))),
+      @ApiResponse(responseCode = "400", description = "Workorder not closed, validation failed, or rated user not an executor"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Workorder or rated user not found"),
+      @ApiResponse(responseCode = "409", description = "Rating already exists")
+  })
+  @PostMapping("/{id}/ratings/technician")
+  public ResponseEntity<WorkOrderDtos.RatingView> rateTechnician(@AuthenticationPrincipal AuthenticatedUser user,
+      @PathVariable String id, @Valid @RequestBody WorkOrderDtos.RateTechnicianRequest request) {
+    var rating = ratings.rateTechnician(user, id, request.ratedUserId(), request.scores());
+    return ResponseEntity.status(HttpStatus.CREATED).body(toRatingDto(rating));
+  }
+
+  /** Rates a CLOSED workorder itself (PRODUCTION_LEADER with plant access, FR-124). */
+  @Operation(operationId = "rateWorkorder", summary = "Rate a closed maintenance workorder")
+  @ApiResponses({
+      @ApiResponse(responseCode = "201", description = "Rating created",
+          content = @Content(schema = @Schema(implementation = WorkOrderDtos.RatingView.class))),
+      @ApiResponse(responseCode = "400", description = "Workorder not closed or validation failed"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Workorder not found"),
+      @ApiResponse(responseCode = "409", description = "Rating already exists")
+  })
+  @PostMapping("/{id}/ratings/workorder")
+  public ResponseEntity<WorkOrderDtos.RatingView> rateWorkorder(@AuthenticationPrincipal AuthenticatedUser user,
+      @PathVariable String id, @Valid @RequestBody WorkOrderDtos.RateWorkorderRequest request) {
+    var rating = ratings.rateWorkorder(user, id, request.scores());
+    return ResponseEntity.status(HttpStatus.CREATED).body(toRatingDto(rating));
+  }
+
+  /** Lists a workorder's ratings with their per-dimension scores (any authenticated user). */
+  @Operation(operationId = "listWorkorderRatings", summary = "List a workorder's ratings")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Ratings returned",
+          content = @Content(schema = @Schema(implementation = WorkOrderDtos.RatingView.class))),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "404", description = "Workorder not found")
+  })
+  @GetMapping("/{id}/ratings")
+  public List<WorkOrderDtos.RatingView> listRatings(@PathVariable String id) {
+    return ratings.listRatings(id).stream().map(WorkOrderController::toRatingDto).toList();
+  }
+
+  /** Ratings page (GET /ratings): CLOSED workorders the user can rate (FR-121/FR-124). */
+  @Operation(operationId = "listRateableWorkorders", summary = "CLOSED workorders the user can rate")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Rateable workorders returned",
+          content = @Content(schema = @Schema(implementation = WorkOrderDtos.RateableWorkorderView.class))),
+      @ApiResponse(responseCode = "401", description = "Authentication required")
+  })
+  @GetMapping("/ratings")
+  public List<WorkOrderDtos.RateableWorkorderView> listRateable(@AuthenticationPrincipal AuthenticatedUser user) {
+    return ratings.listRateableClosed(user).stream().map(WorkOrderController::toRateableDto).toList();
+  }
+
+  private static WorkOrderDtos.RatingView toRatingDto(WorkorderRating rating) {
+    return new WorkOrderDtos.RatingView(rating.id(), rating.workorderId(), rating.ratingType().name(),
+        rating.ratedUserId(), rating.raterUserId(), rating.createdAt(),
+        rating.scores().entrySet().stream()
+            .map(entry -> new WorkOrderDtos.RatingScoreView(entry.getKey(), entry.getValue()))
+            .toList());
+  }
+
+  private static WorkOrderDtos.RateableWorkorderView toRateableDto(WorkOrderRatingService.RateableWorkorder item) {
+    return new WorkOrderDtos.RateableWorkorderView(item.id(), item.source(), item.status(), item.categoryCode(),
+        item.machineId(), item.description(), item.assignedTechnicianId(), item.createdAt(), item.executorPool());
   }
 
   private static TodoView toTodoDto(WorkOrderTodo todo) {

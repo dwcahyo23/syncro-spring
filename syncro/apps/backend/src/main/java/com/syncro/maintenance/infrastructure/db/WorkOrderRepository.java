@@ -62,4 +62,37 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrderEntity, Stri
       @Param("unrestricted") boolean unrestricted,
       @Param("plantIds") Collection<UUID> plantIds,
       @Param("groupIds") Collection<UUID> groupIds);
+
+  /**
+   * Story 10-8 single-query ratings-page read (FR-121/FR-124): every CLOSED workorder
+   * visible in the derived scope (plant OR machine-group), LEFT JOINed with its category.
+   * Mirrors {@link #findKanbanRows} (10.7) but filters on {@code status = CLOSED} — the
+   * ratings page reuses the closed-workorder query, not a full list view (10-6 deferral).
+   * {@code unrestricted} (SUPER_ADMIN) bypasses the scope filter.
+   */
+  @Query("""
+      select new com.syncro.maintenance.infrastructure.db.WorkOrderRatingRow(w, c)
+      from WorkOrderEntity w
+      left join WorkOrderCategoryEntity c on c.id = w.categoryId
+      join MachineEntity m on m.id = w.machineId
+      where w.status = com.syncro.maintenance.domain.workorder.WorkOrderStatus.CLOSED
+        and (:unrestricted = true or m.plant.id in :plantIds or m.machineGroup.id in :groupIds)
+      order by w.id
+      """)
+  List<WorkOrderRatingRow> findClosedForRating(
+      @Param("unrestricted") boolean unrestricted,
+      @Param("plantIds") Collection<UUID> plantIds,
+      @Param("groupIds") Collection<UUID> groupIds);
+
+  /**
+   * Story 10-8 executor-pool read (FR-121): the users who can be rated as technicians on
+   * a workorder — the workorder's assigned technician plus every user who logged a repair
+   * session on it. One query, no N+1 (design note).
+   */
+  @Query("""
+      select distinct r.technicianId
+      from RepairSessionEntity r
+      where r.workOrderId = :workOrderId and r.technicianId is not null
+      """)
+  List<UUID> findSessionTechnicianIds(@Param("workOrderId") String workOrderId);
 }

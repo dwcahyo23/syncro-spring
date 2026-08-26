@@ -465,6 +465,75 @@ test_anonymous_workorder_todo_denied if {
   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/workorders/WO-2409-00001/todos"}
 }
 
+# -- Workorder ratings (story 10-8): five-role allow set (MANAGER_MAINTENANCE,
+#    SECTION_LEADER, MAINTENANCE_LEADER, STAFF_MAINTENANCE, PRODUCTION_LEADER) on the
+#    mutation paths; TECHNICIAN/AUDITOR denied; reads any-authenticated; rating-dimension
+#    mutations SUPER_ADMIN-only ------------------------------------------------
+
+test_section_leader_workorder_rating_technician_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/workorders/WO-2409-00001/ratings/technician"}
+}
+
+test_manager_workorder_rating_technician_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/workorders/WO-2409-00001/ratings/technician"}
+}
+
+test_maintenance_leader_workorder_rating_technician_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/workorders/WO-2409-00001/ratings/technician"}
+}
+
+test_staff_workorder_rating_workorder_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/workorders/WO-2409-00001/ratings/workorder"}
+}
+
+test_production_leader_workorder_rating_workorder_allowed if {
+  authz.allow with input as {"subject": {"roles": ["PRODUCTION_LEADER"], "userId": "u8"}, "action": "POST /api/v1/workorders/WO-2409-00001/ratings/workorder"}
+}
+
+test_super_admin_workorder_rating_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/workorders/WO-2409-00001/ratings/technician"}
+}
+
+test_technician_workorder_rating_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/workorders/WO-2409-00001/ratings/technician"}
+}
+
+test_auditor_workorder_rating_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/workorders/WO-2409-00001/ratings/workorder"}
+}
+
+test_auditor_workorder_rating_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/workorders/WO-2409-00001/ratings"}
+}
+
+test_auditor_workorder_ratings_page_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/workorders/ratings"}
+}
+
+test_super_admin_rating_dimension_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/rating-dimensions"}
+}
+
+test_manager_rating_dimension_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/rating-dimensions"}
+}
+
+test_section_leader_rating_dimension_put_denied if {
+  not authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "PUT /api/v1/rating-dimensions/SPEED"}
+}
+
+test_technician_rating_dimension_delete_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "DELETE /api/v1/rating-dimensions/SPEED"}
+}
+
+test_auditor_rating_dimension_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/rating-dimensions"}
+}
+
+test_anonymous_workorder_rating_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/workorders/WO-2409-00001/ratings/technician"}
+}
+
 # -- Anonymous (no userId): default deny everywhere ------------------------
 
 test_anonymous_admin_only_denied if {

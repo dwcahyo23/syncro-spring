@@ -137,6 +137,26 @@ workorder_todo_paths := {
   "/api/v1/workorders/*/todos/*/reorder",
 }
 
+# Workorder ratings (story 10-8): a single five-role allow set
+# (MANAGER_MAINTENANCE, SECTION_LEADER, MAINTENANCE_LEADER, STAFF_MAINTENANCE,
+# PRODUCTION_LEADER) — the service gate is authoritative for who-can-rate-whom
+# (section leader for technician, PRODUCTION_LEADER for workorder). TECHNICIAN is the
+# ratee, not a rater, and stays default-deny on these paths. Reads (GET) flow through
+# generic read_allowed. The ratings page (GET /ratings) is a pure read at the list level.
+workorder_rating_paths := {
+  "/api/v1/workorders/*/ratings",
+  "/api/v1/workorders/*/ratings/technician",
+  "/api/v1/workorders/*/ratings/workorder",
+}
+
+# Rating dimension paths (story 10-8): mutations are SUPER_ADMIN-only; reads generic.
+# Listed separately from core_mutation_paths because they are not "core" — they are
+# workorder config but not in the Epic 9 core set.
+rating_dimension_paths := {
+  "/api/v1/rating-dimensions",
+  "/api/v1/rating-dimensions/*",
+}
+
 # Telemetry + notification-worker endpoints are SUPER_ADMIN-only in service.
 admin_only_paths := {
   "/api/v1/telemetry/**",
@@ -370,6 +390,39 @@ mutation_allowed if {
   input.subject.roles[_] == "TECHNICIAN"
   is_mutation
   path_matches(workorder_todo_paths)
+}
+
+# Ratings & rating dimensions (10.8): five-role allow set for workorder rating paths;
+# dimension mutations are SUPER_ADMIN-only (the super_admin top-level bypass handles it,
+# so no non-admin role matches rating_dimension_paths — default-deny for everyone else).
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(workorder_rating_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(workorder_rating_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(workorder_rating_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STAFF_MAINTENANCE"
+  is_mutation
+  path_matches(workorder_rating_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "PRODUCTION_LEADER"
+  is_mutation
+  path_matches(workorder_rating_paths)
 }
 
 mutation_allowed if {
