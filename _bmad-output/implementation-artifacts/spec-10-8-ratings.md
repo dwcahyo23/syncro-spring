@@ -3,6 +3,7 @@ title: 'Ratings'
 type: 'feature'
 created: '2026-08-26'
 baseline_revision: 27e8dc8
+final_revision: 042ed2a
 status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
