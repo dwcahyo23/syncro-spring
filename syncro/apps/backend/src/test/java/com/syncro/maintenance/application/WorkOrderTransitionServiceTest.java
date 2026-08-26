@@ -26,6 +26,7 @@ import com.syncro.maintenance.application.WorkOrderService.InvalidStateTransitio
 import com.syncro.maintenance.application.WorkOrderService.OverrideReasonRequiredException;
 import com.syncro.maintenance.application.WorkOrderService.ProcurementRequestConflictException;
 import com.syncro.maintenance.application.WorkOrderService.SessionOpenConflictException;
+import com.syncro.maintenance.application.WorkOrderService.StopTimeReasonRequiredException;
 import com.syncro.maintenance.application.WorkOrderService.TransitionWorkOrderCommand;
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.WorkorderForbiddenException;
@@ -302,6 +303,88 @@ class WorkOrderTransitionServiceTest {
 
     assertThat(result.status()).isEqualTo(WorkOrderStatus.DONE);
     verify(workOrders).saveAndFlush(entity);
+  }
+
+  // -------------------------------------------------------------------------
+  // Breakdown stop-time DONE gate (10.6 / FR-122)
+  // -------------------------------------------------------------------------
+
+  @Test
+  @DisplayName("10.6-SVC-100 P0 breakdown (category 01) DONE without stop-time reason is blocked")
+  void breakdownDoneWithoutStopTimeReason() {
+    var user = assignedTechnician();
+    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.IN_PROGRESS, null, technicianId);
+    var breakdownCategory = new com.syncro.maintenance.infrastructure.db.WorkOrderCategoryEntity(
+        categoryId, "01", "Breakdown", UUID.randomUUID(), NOW, NOW);
+    when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
+    when(categories.findById(categoryId)).thenReturn(Optional.of(breakdownCategory));
+
+    assertThatThrownBy(() -> service.transition(user, WORKORDER_ID, command(WorkOrderStatus.DONE)))
+        .isInstanceOf(StopTimeReasonRequiredException.class);
+    verify(workOrders, never()).saveAndFlush(any());
+  }
+
+  @Test
+  @DisplayName("10.6-SVC-101 P0 breakdown DONE with a stop-time reason proceeds and the reason rides the audit")
+  void breakdownDoneWithStopTimeReason() {
+    var user = assignedTechnician();
+    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.IN_PROGRESS, null, technicianId);
+    entity.applyReport(null, null, null, null, null, null, null, null, "ELECTRIC", "Bearing worn");
+    when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
+    // No categories stub needed — the gate returns early when stopTimeReason is already set.
+    when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.DONE));
+
+    assertThat(result.status()).isEqualTo(WorkOrderStatus.DONE);
+    verify(auditLog).record(eq(user), argThat(r -> r.newValue() != null
+        && "ELECTRIC".equals(r.newValue().get("stopTimeReason"))));
+  }
+
+  @Test
+  @DisplayName("10.6-SVC-102 P0 non-breakdown DONE without stop-time reason proceeds (reason optional)")
+  void nonBreakdownDoneWithoutStopTimeReason() {
+    var user = assignedTechnician();
+    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.IN_PROGRESS, null, technicianId);
+    var preventiveCategory = new com.syncro.maintenance.infrastructure.db.WorkOrderCategoryEntity(
+        categoryId, "02", "Preventive", UUID.randomUUID(), NOW, NOW);
+    when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
+    when(categories.findById(categoryId)).thenReturn(Optional.of(preventiveCategory));
+    when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.DONE));
+
+    assertThat(result.status()).isEqualTo(WorkOrderStatus.DONE);
+  }
+
+  @Test
+  @DisplayName("10.6-SVC-103 P0 a workorder with no category is treated as non-breakdown and DONE proceeds")
+  void noCategoryDoneWithoutStopTimeReason() {
+    var user = assignedTechnician();
+    var entity = new WorkOrderEntity(WORKORDER_ID, "INTERNAL", null, WorkOrderStatus.IN_PROGRESS, null,
+        machineId, "desc", 0, null, technicianId, UUID.fromString(assignedTechnician().id()), NOW, NOW);
+    when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
+    when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.DONE));
+
+    assertThat(result.status()).isEqualTo(WorkOrderStatus.DONE);
+  }
+
+  @Test
+  @DisplayName("10.6-SVC-104 P0 CP/CPK is never mandatory — breakdown DONE without CP/CPK values proceeds")
+  void breakdownDoneWithoutCpkValues() {
+    var user = assignedTechnician();
+    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.IN_PROGRESS, null, technicianId);
+    entity.applyReport(null, null, null, null, null, null, null, null, "MECHANICAL", null);
+    when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
+    // No categories stub needed — the gate returns early when stopTimeReason is already set,
+    // proving CP/CPK absence is irrelevant.
+    when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.DONE));
+
+    assertThat(result.status()).isEqualTo(WorkOrderStatus.DONE);
   }
 
   // -------------------------------------------------------------------------

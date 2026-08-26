@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -30,6 +31,7 @@ import com.syncro.maintenance.application.WorkOrderService.WorkOrderCategoryNotF
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderMachineNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderParentNotFoundException;
+import com.syncro.maintenance.application.WorkOrderService.StopTimeReasonRequiredException;
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderUserNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.WorkorderForbiddenException;
 import com.syncro.maintenance.domain.workorder.WorkOrderIdGenerator;
@@ -102,6 +104,7 @@ class WorkOrderServiceTest {
     service = new WorkOrderService(idGenerator, workOrders, statusHistory, categories, machines, users, scopes,
         plantScopes, sparepartReadiness, auditLog, repairSessions, clock);
     machine = machineWithPlant(plantId, groupId, machineId);
+    lenient().when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
     category = new WorkOrderCategoryEntity(categoryId, "01", "Breakdown", UUID.randomUUID(), NOW, NOW);
   }
 
@@ -419,6 +422,64 @@ class WorkOrderServiceTest {
 
     assertThatThrownBy(() -> service.create(user, new CreateWorkOrderCommand("01", machineId, "desc", null, null)))
         .isInstanceOf(PlantScopeService.PlantAccessDeniedException.class);
+  }
+
+  // -------------------------------------------------------------------------
+  // Breakdown stop-time DONE gate (10.6 / FR-122)
+  // -------------------------------------------------------------------------
+
+  @Test
+  @DisplayName("10.6-SVC-100 P0 breakdown DONE without a stop-time reason is blocked")
+  void breakdownDoneWithoutStopTimeReason() {
+    var user = user(ApplicationRole.SUPER_ADMIN);
+    var entity = new WorkOrderEntity("WO-2409-00001", "INTERNAL", null, WorkOrderStatus.IN_PROGRESS, categoryId,
+        machineId, "desc", 0, null, null, UUID.randomUUID(), NOW, NOW);
+    when(workOrders.findByIdForUpdate("WO-2409-00001")).thenReturn(Optional.of(entity));
+    when(categories.findById(categoryId)).thenReturn(Optional.of(category));
+    when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull("WO-2409-00001")).thenReturn(Optional.empty());
+    when(repairSessions.countByWorkOrderIdAndEndedAtIsNotNull("WO-2409-00001")).thenReturn(1L);
+
+    assertThatThrownBy(() -> service.transition(user, "WO-2409-00001",
+        new WorkOrderService.TransitionWorkOrderCommand(WorkOrderStatus.DONE, null, null)))
+        .isInstanceOf(StopTimeReasonRequiredException.class);
+  }
+
+  @Test
+  @DisplayName("10.6-SVC-101 P0 breakdown DONE with a stop-time reason proceeds")
+  void breakdownDoneWithStopTimeReason() {
+    var user = user(ApplicationRole.SUPER_ADMIN);
+    var entity = new WorkOrderEntity("WO-2409-00001", "INTERNAL", null, WorkOrderStatus.IN_PROGRESS, categoryId,
+        machineId, "desc", 0, null, null, UUID.randomUUID(), NOW, NOW);
+    entity.applyReport(null, null, null, null, null, null, null, null, "ELECTRIC", "Bearing worn");
+    when(workOrders.findByIdForUpdate("WO-2409-00001")).thenReturn(Optional.of(entity));
+    when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull("WO-2409-00001")).thenReturn(Optional.empty());
+    when(repairSessions.countByWorkOrderIdAndEndedAtIsNotNull("WO-2409-00001")).thenReturn(1L);
+    when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    var result = service.transition(user, "WO-2409-00001",
+        new WorkOrderService.TransitionWorkOrderCommand(WorkOrderStatus.DONE, null, null));
+
+    assertThat(result.status()).isEqualTo(WorkOrderStatus.DONE);
+  }
+
+  @Test
+  @DisplayName("10.6-SVC-102 P0 non-breakdown DONE without a stop-time reason proceeds")
+  void nonBreakdownDoneWithoutStopTimeReason() {
+    var user = user(ApplicationRole.SUPER_ADMIN);
+    var preventiveCategoryId = UUID.randomUUID();
+    var entity = new WorkOrderEntity("WO-2409-00001", "INTERNAL", null, WorkOrderStatus.IN_PROGRESS,
+        preventiveCategoryId, machineId, "desc", 0, null, null, UUID.randomUUID(), NOW, NOW);
+    var preventive = new WorkOrderCategoryEntity(preventiveCategoryId, "02", "Preventive", UUID.randomUUID(), NOW, NOW);
+    when(workOrders.findByIdForUpdate("WO-2409-00001")).thenReturn(Optional.of(entity));
+    when(categories.findById(preventiveCategoryId)).thenReturn(Optional.of(preventive));
+    when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull("WO-2409-00001")).thenReturn(Optional.empty());
+    when(repairSessions.countByWorkOrderIdAndEndedAtIsNotNull("WO-2409-00001")).thenReturn(1L);
+    when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    var result = service.transition(user, "WO-2409-00001",
+        new WorkOrderService.TransitionWorkOrderCommand(WorkOrderStatus.DONE, null, null));
+
+    assertThat(result.status()).isEqualTo(WorkOrderStatus.DONE);
   }
 
   // -------------------------------------------------------------------------

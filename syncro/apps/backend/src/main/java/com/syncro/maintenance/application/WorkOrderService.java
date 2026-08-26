@@ -215,6 +215,7 @@ public class WorkOrderService {
       throw new ProcurementRequestConflictException();
     }
     enforceDoneGate(entity, toStatus, command.reason());
+    enforceBreakdownStopTimeGate(entity, toStatus);
 
     var previous = auditValues(entity);
     var now = Instant.now(clock);
@@ -230,6 +231,10 @@ public class WorkOrderService {
     }
     if (entity.getDoneReason() != null) {
       newValue.put("doneReason", entity.getDoneReason());
+    }
+    if (entity.getStopTimeReason() != null) {
+      newValue.put("stopTimeReason", entity.getStopTimeReason());
+      newValue.put("stopTimeDetail", entity.getStopTimeDetail());
     }
     if (overrideReason != null) {
       newValue.put("overrideReason", overrideReason);
@@ -374,6 +379,27 @@ public class WorkOrderService {
     }
     if (reason != null && !reason.isBlank()) {
       entity.setDoneReason(reason.trim());
+    }
+  }
+
+  /**
+   * FR-122 DONE gate (additive on 10.4): completing a Breakdown (01) workorder requires
+   * a stop-time reason — the downtime cause is source data for future MTBF/FMEA analysis.
+   * The category is resolved by code (codes are stored uppercase); a workorder with no
+   * category is treated as non-breakdown so the gate never blocks. Runs alongside
+   * {@code enforceDoneGate} at the same point — after the state-machine edge check,
+   * before the transition is persisted. CP/CPK is deliberately NOT gated here (FR-117:
+   * never mandatory on any category).
+   */
+  private void enforceBreakdownStopTimeGate(WorkOrderEntity entity, WorkOrderStatus toStatus) {
+    if (toStatus != WorkOrderStatus.DONE || entity.getStopTimeReason() != null) {
+      return;
+    }
+    var category = entity.getCategoryId() != null
+        ? categories.findById(entity.getCategoryId())
+        : Optional.<WorkOrderCategoryEntity>empty();
+    if (category.map(c -> BREAKDOWN_CATEGORY_CODE.equals(c.getCode())).orElse(false)) {
+      throw new StopTimeReasonRequiredException();
     }
   }
 
@@ -739,5 +765,9 @@ public class WorkOrderService {
   }
 
   public static class DoneWithoutSessionReasonRequiredException extends RuntimeException {
+  }
+
+  /** FR-122: completing a Breakdown (01) workorder requires a stop-time reason. */
+  public static class StopTimeReasonRequiredException extends RuntimeException {
   }
 }

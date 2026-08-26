@@ -1,10 +1,14 @@
 package com.syncro.maintenance.api;
 
+import com.syncro.maintenance.domain.workorder.FmeaFailureType;
+import com.syncro.maintenance.domain.workorder.StopTimeReason;
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +56,30 @@ public final class WorkOrderDtos {
   }
 
   public record WorkorderAttachmentsView(String workOrderId, List<WorkorderAttachmentView> attachments) {
+  }
+
+  /**
+   * Report save body (story 10-6). Narratives are trimmed/normalized in the service
+   * (blank → null); {@code @DecimalMin} guards negative capability indices at the DTO
+   * boundary, the service re-validates for NUMERIC(8,4) safety. Enum fields reject
+   * unknown values via Jackson → 400 VALIDATION_ERROR (same as toStatus).
+   */
+  public record SaveWorkOrderReportRequest(
+      @Size(max = 4000) String reportChronological,
+      @Size(max = 4000) String reportAnalyze,
+      @Size(max = 4000) String reportCorrective,
+      @Size(max = 4000) String reportPreventive,
+      @DecimalMin("0") BigDecimal cpCkLower,
+      @DecimalMin("0") BigDecimal cpCkUpper,
+      @DecimalMin("0") BigDecimal cpk,
+      FmeaFailureType fmeaFailureType,
+      StopTimeReason stopTimeReason,
+      @Size(max = 500) String stopTimeDetail) {
+  }
+
+  public record WorkOrderReportView(String workOrderId, String reportChronological, String reportAnalyze,
+      String reportCorrective, String reportPreventive, BigDecimal cpCkLower, BigDecimal cpCkUpper, BigDecimal cpk,
+      String cpkPdfPresignedUrl, String fmeaFailureType, String stopTimeReason, String stopTimeDetail) {
   }
 
   public record ErrorResponse(String code, String message, Map<String, String> fieldErrors, String timestamp,

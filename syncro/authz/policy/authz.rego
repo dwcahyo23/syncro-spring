@@ -114,6 +114,15 @@ workorder_evidence_paths := {
   "/api/v1/workorders/*/attachments/*",
 }
 
+# Workorder reports, CP/CPK & FMEA (story 10-6): the same executor + leadership role set
+# as sessions/evidence — the report is a local operational field written by the assigned
+# executor or an in-scope leader; scope is service-side. Reads (GET) flow through generic
+# read_allowed (any authenticated user).
+workorder_report_paths := {
+  "/api/v1/workorders/*/report",
+  "/api/v1/workorders/*/report/cpk",
+}
+
 # Telemetry + notification-worker endpoints are SUPER_ADMIN-only in service.
 admin_only_paths := {
   "/api/v1/telemetry/**",
@@ -285,6 +294,37 @@ mutation_allowed if {
   input.subject.roles[_] == "TECHNICIAN"
   is_mutation
   path_matches(workorder_evidence_paths)
+}
+
+# Reports & CP/CPK: same five-role allow set as evidence (10.5 parity).
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(workorder_report_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(workorder_report_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(workorder_report_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STAFF_MAINTENANCE"
+  is_mutation
+  path_matches(workorder_report_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "TECHNICIAN"
+  is_mutation
+  path_matches(workorder_report_paths)
 }
 
 mutation_allowed if {

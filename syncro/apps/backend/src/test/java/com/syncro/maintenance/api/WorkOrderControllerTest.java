@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -29,6 +30,13 @@ import com.syncro.maintenance.application.WorkOrderEvidenceService.StorageExcept
 import com.syncro.maintenance.application.WorkOrderEvidenceService.ValidationException;
 import com.syncro.maintenance.application.WorkOrderEvidenceService.WorkorderAttachmentView;
 import com.syncro.maintenance.application.WorkOrderEvidenceService.WorkorderAttachmentsView;
+import com.syncro.maintenance.application.WorkOrderReportService;
+import com.syncro.maintenance.application.WorkOrderReportService.CpkPdfCommand;
+import com.syncro.maintenance.application.WorkOrderReportService.ReportForbiddenException;
+import com.syncro.maintenance.application.WorkOrderReportService.ReportWorkOrderNotFoundException;
+import com.syncro.maintenance.application.WorkOrderReportService.SaveReportCommand;
+import com.syncro.maintenance.application.WorkOrderReportService.WorkOrderReportValidationException;
+import com.syncro.maintenance.application.WorkOrderReportService.WorkOrderReportView;
 import com.syncro.maintenance.application.WorkOrderService;
 import com.syncro.maintenance.application.WorkOrderService.AssignWorkOrderCommand;
 import com.syncro.maintenance.application.WorkOrderService.BreakdownCategoryRequiredException;
@@ -53,10 +61,12 @@ import com.syncro.maintenance.application.WorkOrderService.WorkOrderParentNotFou
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderUserNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.WorkorderForbiddenException;
 import com.syncro.maintenance.application.WorkOrderService.WorkorderNotInProgressException;
+import com.syncro.maintenance.application.WorkOrderService.StopTimeReasonRequiredException;
 import com.syncro.maintenance.domain.workorder.RepairSession;
 import com.syncro.maintenance.domain.workorder.WorkOrder;
 import com.syncro.maintenance.domain.workorder.WorkOrderIdGenerator.WorkorderIdExhaustedException;
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -89,6 +99,9 @@ class WorkOrderControllerTest {
 
   @MockitoBean
   private WorkOrderEvidenceService evidence;
+
+  @MockitoBean
+  private WorkOrderReportService report;
 
   @MockitoBean
   private JwtTokenService jwtTokenService;
@@ -816,6 +829,227 @@ class WorkOrderControllerTest {
         .andExpect(jsonPath("$.fieldErrors.contentType").exists());
   }
 
+  // -------------------------------------------------------------------------
+  // Report, CP/CPK, FMEA & stop-time (10.6)
+  // -------------------------------------------------------------------------
+
+  @Test
+  @DisplayName("10.6-API-001 P0 report save returns 200 with the report view")
+  void saveReportReturnsOk() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    when(report.saveReport(eq(user), eq("WO-2409-00001"), any(SaveReportCommand.class)))
+        .thenReturn(new WorkOrderReportView("WO-2409-00001", "Repair log", "Diagnosis", "Fixed", "Preventive",
+            null, null, new BigDecimal("1.5"), "https://presigned/cpk.pdf", "MECHANICAL", "MECHANICAL", null));
+
+    mockMvc.perform(put("/api/v1/workorders/{id}/report", "WO-2409-00001")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"reportChronological\":\"Repair log\",\"reportAnalyze\":\"Diagnosis\","
+                + "\"reportCorrective\":\"Fixed\",\"reportPreventive\":\"Preventive\","
+                + "\"cpk\":1.5,\"fmeaFailureType\":\"MECHANICAL\",\"stopTimeReason\":\"MECHANICAL\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.workOrderId").value("WO-2409-00001"))
+        .andExpect(jsonPath("$.reportChronological").value("Repair log"))
+        .andExpect(jsonPath("$.reportAnalyze").value("Diagnosis"))
+        .andExpect(jsonPath("$.reportCorrective").value("Fixed"))
+        .andExpect(jsonPath("$.reportPreventive").value("Preventive"))
+        .andExpect(jsonPath("$.cpk").value(1.5))
+        .andExpect(jsonPath("$.fmeaFailureType").value("MECHANICAL"))
+        .andExpect(jsonPath("$.stopTimeReason").value("MECHANICAL"));
+  }
+
+  @Test
+  @DisplayName("10.6-API-002 P0 report save by an out-of-scope user maps to 403 FORBIDDEN")
+  void saveReportForbidden() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    doThrow(new ReportForbiddenException()).when(report)
+        .saveReport(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(put("/api/v1/workorders/{id}/report", "WO-2409-00001")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"reportChronological\":\"Repair log\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  @DisplayName("10.6-API-003 P0 report save on an unknown workorder maps to 404 WORKORDER_NOT_FOUND")
+  void saveReportNotFound() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    doThrow(new ReportWorkOrderNotFoundException()).when(report)
+        .saveReport(eq(user), eq("WO-2409-NADA"), any());
+
+    mockMvc.perform(put("/api/v1/workorders/{id}/report", "WO-2409-NADA")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"reportChronological\":\"Repair log\"}"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("WORKORDER_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("10.6-API-004 P0 report validation maps to 400 VALIDATION_ERROR with fieldErrors")
+  void saveReportValidationError() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    doThrow(new WorkOrderReportValidationException(Map.of("cpk", "Capability index must not be negative.")))
+        .when(report).saveReport(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(put("/api/v1/workorders/{id}/report", "WO-2409-00001")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"cpk\":-1.0}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.fieldErrors.cpk").exists());
+  }
+
+  @Test
+  @DisplayName("10.6-API-005 P0 report read returns 200 for any authenticated user")
+  void getReportReturnsOk() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    when(report.getReport("WO-2409-00001"))
+        .thenReturn(reportView("Repair log", "Diagnosis", "Fixed", "Preventive"));
+
+    mockMvc.perform(get("/api/v1/workorders/{id}/report", "WO-2409-00001")
+            .with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.workOrderId").value("WO-2409-00001"))
+        .andExpect(jsonPath("$.cpkPdfPresignedUrl").value("https://presigned/cpk.pdf"));
+  }
+
+  @Test
+  @DisplayName("10.6-API-005b P0 report read on an unknown workorder maps to 404 WORKORDER_NOT_FOUND")
+  void getReportNotFound() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    when(report.getReport("WO-2409-NADA"))
+        .thenThrow(new ReportWorkOrderNotFoundException());
+
+    mockMvc.perform(get("/api/v1/workorders/{id}/report", "WO-2409-NADA")
+            .with(auth(user)))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("WORKORDER_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("10.6-API-006 P0 CPK PDF upload returns 200 with the report view")
+  void uploadCpkPdfReturnsOk() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+    when(report.uploadCpkPdf(eq(user), eq("WO-2409-00001"), any(CpkPdfCommand.class)))
+        .thenReturn(reportView("Repair log", "Diagnosis", "Fixed", "Preventive"));
+
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/report/cpk", "WO-2409-00001")
+            .file(new MockMultipartFile("data", "capability.pdf", "application/pdf", new byte[] {1}))
+            .param("filename", "capability.pdf")
+            .param("contentType", "application/pdf")
+            .with(auth(user))
+            .with(request -> { request.setMethod("PUT"); return request; }))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.workOrderId").value("WO-2409-00001"));
+  }
+
+  @Test
+  @DisplayName("10.6-API-007 P0 CPK PDF delete returns 200 with the cleared view")
+  void deleteCpkPdfReturnsOk() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    when(report.deleteCpkPdf(eq(user), eq("WO-2409-00001")))
+        .thenReturn(new WorkOrderReportView("WO-2409-00001", null, null, null, null,
+            null, null, null, null, null, null, null));
+
+    mockMvc.perform(delete("/api/v1/workorders/{id}/report/cpk", "WO-2409-00001")
+            .with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.cpkPdfPresignedUrl").doesNotExist());
+  }
+
+  @Test
+  @DisplayName("10.6-API-008 P0 CPK upload by a forbidden user maps to 403 FORBIDDEN")
+  void uploadCpkForbidden() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    doThrow(new ReportForbiddenException()).when(report)
+        .uploadCpkPdf(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/report/cpk", "WO-2409-00001")
+            .file(new MockMultipartFile("data", "capability.pdf", "application/pdf", new byte[] {1}))
+            .param("filename", "capability.pdf")
+            .param("contentType", "application/pdf")
+            .with(auth(user))
+            .with(request -> { request.setMethod("PUT"); return request; }))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  @DisplayName("10.6-API-009 P0 CPK upload validation error maps to 400 VALIDATION_ERROR")
+  void uploadCpkValidationError() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    doThrow(new WorkOrderReportValidationException(Map.of("contentType", "Content type must be application/pdf.")))
+        .when(report).uploadCpkPdf(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/report/cpk", "WO-2409-00001")
+            .file(new MockMultipartFile("data", "capability.png", "image/png", new byte[] {1}))
+            .param("filename", "capability.png")
+            .param("contentType", "image/png")
+            .with(auth(user))
+            .with(request -> { request.setMethod("PUT"); return request; }))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.fieldErrors.contentType").exists());
+  }
+
+  @Test
+  @DisplayName("10.6-API-010 P0 breakdown DONE without stop-time reason maps to 400 STOP_TIME_REASON_REQUIRED")
+  void doneWithoutStopTimeReason() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    doThrow(new StopTimeReasonRequiredException()).when(workOrders)
+        .transition(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"toStatus\":\"DONE\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("STOP_TIME_REASON_REQUIRED"));
+  }
+
+  @Test
+  @DisplayName("10.6-API-011 P1 CPK upload storage failure maps to 502 OBJECT_STORAGE_ERROR")
+  void uploadCpkStorageError() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    doThrow(new WorkOrderReportService.StorageException(new RuntimeException("s3 down"))).when(report)
+        .uploadCpkPdf(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/report/cpk", "WO-2409-00001")
+            .file(new MockMultipartFile("data", "capability.pdf", "application/pdf", new byte[] {1}))
+            .param("filename", "capability.pdf")
+            .param("contentType", "application/pdf")
+            .with(auth(user))
+            .with(request -> { request.setMethod("PUT"); return request; }))
+        .andExpect(status().isBadGateway())
+        .andExpect(jsonPath("$.code").value("OBJECT_STORAGE_ERROR"));
+  }
+
+  @Test
+  @DisplayName("10.6-API-012 P1 missing CPK multipart part maps to 400 VALIDATION_ERROR")
+  void uploadCpkMissingPart() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/report/cpk", "WO-2409-00001")
+            .file(new MockMultipartFile("data", "capability.pdf", "application/pdf", new byte[] {1}))
+            .param("filename", "capability.pdf")
+            .with(auth(user))
+            .with(request -> { request.setMethod("PUT"); return request; }))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.fieldErrors.contentType").exists());
+  }
+
+  private static WorkOrderReportView reportView(String chronological, String analyze, String corrective,
+      String preventive) {
+    return new WorkOrderReportView("WO-2409-00001", chronological, analyze, corrective, preventive,
+        null, null, null, "https://presigned/cpk.pdf", null, null, null);
+  }
+
   private static WorkorderAttachmentView attachmentView() {
     return new WorkorderAttachmentView(ATTACHMENT_ID, "WO-2409-00001", "photo.jpg", "image/jpeg",
         "workorders/WO-2409-00001/photo.jpg", 3, UPLOADER_ID, Instant.parse("2026-08-26T00:00:00Z"), null,
@@ -825,25 +1059,27 @@ class WorkOrderControllerTest {
   private static WorkOrder inProgressView() {
     return new WorkOrder("WO-2409-00001", "INTERNAL", WorkOrderStatus.IN_PROGRESS, CATEGORY_ID, MACHINE_ID,
         "breakdown", null, ASSIGNEE_ID, UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"),
-        Instant.parse("2026-08-26T00:00:00Z"), null, null, null);
+        Instant.parse("2026-08-26T00:00:00Z"), null, null, null, null, null, null, null, null, null, null, null,
+        null, null, null);
   }
 
   private static WorkOrder closedView() {
     return new WorkOrder("WO-2409-00001", "INTERNAL", WorkOrderStatus.CLOSED, CATEGORY_ID, MACHINE_ID,
         "breakdown", null, ASSIGNEE_ID, UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"),
-        Instant.parse("2026-08-26T00:00:00Z"), null, null, null);
+        Instant.parse("2026-08-26T00:00:00Z"), null, null, null, null, null, null, null, null, null, null, null,
+        null, null, null);
   }
 
   private static WorkOrder view() {
     return new WorkOrder("WO-2409-00001", "INTERNAL", WorkOrderStatus.OPEN, CATEGORY_ID, MACHINE_ID, "breakdown",
         null, null, UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"), Instant.parse("2026-08-26T00:00:00Z"),
-        null, null, null);
+        null, null, null, null, null, null, null, null, null, null, null, null, null, null);
   }
 
   private static WorkOrder assignedView() {
     return new WorkOrder("WO-2409-00001", "INTERNAL", WorkOrderStatus.ASSIGNED, CATEGORY_ID, MACHINE_ID, "breakdown",
         null, ASSIGNEE_ID, UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"), Instant.parse("2026-08-26T00:00:00Z"),
-        null, null, null);
+        null, null, null, null, null, null, null, null, null, null, null, null, null, null);
   }
 
   private static RepairSessionsResult sessionsResult(WorkOrder workOrder) {

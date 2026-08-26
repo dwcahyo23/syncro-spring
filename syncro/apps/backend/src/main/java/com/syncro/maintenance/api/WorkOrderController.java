@@ -9,9 +9,14 @@ import com.syncro.maintenance.api.WorkOrderDtos.StartSessionRequest;
 import com.syncro.maintenance.api.WorkOrderDtos.TransitionWorkOrderRequest;
 import com.syncro.maintenance.api.WorkOrderDtos.WorkorderAttachmentView;
 import com.syncro.maintenance.api.WorkOrderDtos.WorkorderAttachmentsView;
+import com.syncro.maintenance.api.WorkOrderDtos.SaveWorkOrderReportRequest;
+import com.syncro.maintenance.api.WorkOrderDtos.WorkOrderReportView;
 import com.syncro.maintenance.api.WorkOrderDtos.WorkOrderView;
 import com.syncro.maintenance.application.WorkOrderEvidenceService;
 import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceCommand;
+import com.syncro.maintenance.application.WorkOrderReportService;
+import com.syncro.maintenance.application.WorkOrderReportService.CpkPdfCommand;
+import com.syncro.maintenance.application.WorkOrderReportService.SaveReportCommand;
 import com.syncro.maintenance.application.WorkOrderService;
 import com.syncro.maintenance.application.WorkOrderService.AssignWorkOrderCommand;
 import com.syncro.maintenance.application.WorkOrderService.CreateResult;
@@ -55,10 +60,13 @@ public class WorkOrderController {
 
   private final WorkOrderService workOrders;
   private final WorkOrderEvidenceService evidence;
+  private final WorkOrderReportService report;
 
-  public WorkOrderController(WorkOrderService workOrders, WorkOrderEvidenceService evidence) {
+  public WorkOrderController(WorkOrderService workOrders, WorkOrderEvidenceService evidence,
+      WorkOrderReportService report) {
     this.workOrders = workOrders;
     this.evidence = evidence;
+    this.report = report;
   }
 
   @Operation(operationId = "createWorkOrder", summary = "Create an internal workorder")
@@ -237,6 +245,86 @@ public class WorkOrderController {
       @PathVariable String id, @PathVariable UUID attachmentId) {
     evidence.delete(user, id, attachmentId);
     return ResponseEntity.noContent().build();
+  }
+
+  /**
+   * Report write (FR-117/FR-118/FR-122): four-section narrative + optional CP/CPK
+   * values, FMEA failure tag and stop-time reason/detail. Gate: executor/leader.
+   */
+  @Operation(operationId = "saveWorkOrderReport", summary = "Save the workorder report narrative and capability data")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Report saved",
+          content = @Content(schema = @Schema(implementation = WorkOrderReportView.class))),
+      @ApiResponse(responseCode = "400", description = "Validation failed (narrative length, CPK range, enum)"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Workorder not found")
+  })
+  @PutMapping("/{id}/report")
+  public WorkOrderReportView saveReport(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable String id,
+      @Valid @RequestBody SaveWorkOrderReportRequest request) {
+    var command = new SaveReportCommand(request.reportChronological(), request.reportAnalyze(),
+        request.reportCorrective(), request.reportPreventive(), request.cpCkLower(), request.cpCkUpper(),
+        request.cpk(), request.fmeaFailureType(), request.stopTimeReason(), request.stopTimeDetail());
+    return toReportDto(report.saveReport(user, id, command));
+  }
+
+  /** Report read (GET /{id}/report): any authenticated user; fresh short-TTL presigned URL. */
+  @Operation(operationId = "getWorkOrderReport", summary = "Read the workorder report and capability data")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Report returned",
+          content = @Content(schema = @Schema(implementation = WorkOrderReportView.class))),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "404", description = "Workorder not found")
+  })
+  @GetMapping("/{id}/report")
+  public WorkOrderReportView getReport(@PathVariable String id) {
+    return toReportDto(report.getReport(id));
+  }
+
+  /**
+   * CP/CPK capability PDF upload (PUT /{id}/report/cpk). PDF-only, size-capped by
+   * {@code syncro.workorder.evidence.max-bytes}. Multipart parts mirror the evidence
+   * contract: {@code filename}/{@code contentType} text parts, {@code data} file bytes.
+   */
+  @Operation(operationId = "uploadWorkOrderCpkPdf", summary = "Upload or replace the CP/CPK capability PDF")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "CP/CPK PDF stored; presigned URL returned",
+          content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+              schema = @Schema(implementation = WorkOrderReportView.class))),
+      @ApiResponse(responseCode = "400", description = "Validation or multipart error (PDF-only, size cap)"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Workorder not found"),
+      @ApiResponse(responseCode = "502", description = "Object storage operation failed")
+  })
+  @PutMapping(value = "/{id}/report/cpk", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public WorkOrderReportView uploadCpkPdf(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable String id,
+      @RequestParam("filename") @Size(max = 255) String filename,
+      @RequestParam("contentType") @Size(max = 100) String contentType,
+      @RequestPart("data") MultipartFile data) throws IOException {
+    return toReportDto(report.uploadCpkPdf(user, id, new CpkPdfCommand(filename, contentType, data.getBytes())));
+  }
+
+  /** CP/CPK PDF delete (DELETE /{id}/report/cpk): removes object + clears key, idempotent. */
+  @Operation(operationId = "deleteWorkOrderCpkPdf", summary = "Delete the CP/CPK capability PDF")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "CP/CPK PDF removed",
+          content = @Content(schema = @Schema(implementation = WorkOrderReportView.class))),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Workorder not found"),
+      @ApiResponse(responseCode = "502", description = "Object storage operation failed")
+  })
+  @DeleteMapping("/{id}/report/cpk")
+  public WorkOrderReportView deleteCpkPdf(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable String id) {
+    return toReportDto(report.deleteCpkPdf(user, id));
+  }
+
+  private static WorkOrderReportView toReportDto(WorkOrderReportService.WorkOrderReportView view) {
+    return new WorkOrderReportView(view.workOrderId(), view.reportChronological(), view.reportAnalyze(),
+        view.reportCorrective(), view.reportPreventive(), view.cpCkLower(), view.cpCkUpper(), view.cpk(),
+        view.cpkPdfPresignedUrl(), view.fmeaFailureType(), view.stopTimeReason(), view.stopTimeDetail());
   }
 
   private static EvidenceCommand command(String filename, String contentType, MultipartFile data)

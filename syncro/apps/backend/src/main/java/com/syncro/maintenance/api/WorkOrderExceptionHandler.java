@@ -13,6 +13,7 @@ import com.syncro.maintenance.application.WorkOrderService.SelfAssignmentForbidd
 import com.syncro.maintenance.application.WorkOrderService.SessionAlreadyOpenException;
 import com.syncro.maintenance.application.WorkOrderService.SessionOpenConflictException;
 import com.syncro.maintenance.application.WorkOrderService.SessionOverlapException;
+import com.syncro.maintenance.application.WorkOrderService.StopTimeReasonRequiredException;
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderCategoryNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderMachineNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderNotFoundException;
@@ -24,6 +25,10 @@ import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceWorkO
 import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceWorkOrderNotFoundException;
 import com.syncro.maintenance.application.WorkOrderEvidenceService.StorageException;
 import com.syncro.maintenance.application.WorkOrderEvidenceService.ValidationException;
+import com.syncro.maintenance.application.WorkOrderReportService.ReportForbiddenException;
+import com.syncro.maintenance.application.WorkOrderReportService.ReportWorkOrderMachineNotFoundException;
+import com.syncro.maintenance.application.WorkOrderReportService.ReportWorkOrderNotFoundException;
+import com.syncro.maintenance.application.WorkOrderReportService.WorkOrderReportValidationException;
 import com.syncro.maintenance.application.WorkOrderService.WorkorderForbiddenException;
 import com.syncro.maintenance.application.WorkOrderService.WorkorderNotInProgressException;
 import com.syncro.maintenance.domain.workorder.WorkOrderIdGenerator.WorkorderIdExhaustedException;
@@ -116,7 +121,7 @@ public class WorkOrderExceptionHandler {
   }
 
   @ExceptionHandler({WorkorderForbiddenException.class, EvidenceForbiddenException.class,
-      PlantAccessDeniedException.class})
+      ReportForbiddenException.class, PlantAccessDeniedException.class})
   ResponseEntity<ErrorResponse> forbidden() {
     return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "You do not have permission to access this resource.", Map.of());
   }
@@ -290,10 +295,36 @@ public class WorkOrderExceptionHandler {
         Map.of("attachmentId", "Attachment id must be a UUID."));
   }
 
-  @ExceptionHandler(StorageException.class)
+  @ExceptionHandler({StorageException.class, com.syncro.maintenance.application.WorkOrderReportService.StorageException.class})
   ResponseEntity<ErrorResponse> objectStorageError() {
     return error(HttpStatus.BAD_GATEWAY, "OBJECT_STORAGE_ERROR",
         "Object storage operation failed.", Map.of());
+  }
+
+  // -------------------------------------------------------------------------
+  // Report, CP/CPK, FMEA & stop-time (10.6)
+  // -------------------------------------------------------------------------
+
+  @ExceptionHandler(ReportWorkOrderNotFoundException.class)
+  ResponseEntity<ErrorResponse> reportWorkOrderNotFound() {
+    return error(HttpStatus.NOT_FOUND, "WORKORDER_NOT_FOUND", "Workorder was not found.", Map.of());
+  }
+
+  @ExceptionHandler(ReportWorkOrderMachineNotFoundException.class)
+  ResponseEntity<ErrorResponse> reportMachineNotFound() {
+    return error(HttpStatus.NOT_FOUND, "MACHINE_NOT_FOUND", "Machine was not found.", Map.of());
+  }
+
+  @ExceptionHandler(WorkOrderReportValidationException.class)
+  ResponseEntity<ErrorResponse> reportValidation(WorkOrderReportValidationException exception) {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
+        exception.getFieldErrors());
+  }
+
+  @ExceptionHandler(StopTimeReasonRequiredException.class)
+  ResponseEntity<ErrorResponse> stopTimeReasonRequired() {
+    return error(HttpStatus.BAD_REQUEST, "STOP_TIME_REASON_REQUIRED",
+        "A breakdown workorder requires a stop-time reason to be completed.", Map.of());
   }
 
   /**

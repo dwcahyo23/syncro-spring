@@ -1065,3 +1065,19 @@ status: open
   summary: Evidence CRUD is covered by Mockito unit tests (WorkOrderEvidenceServiceTest) and a schema migration test, but no Spring slice/Testcontainers test exercises the real ObjectStorageService + PostgreSQL interaction (key format, content-type handling, FK behavior under rollback, store-succeeds-save-fails orphan window) — 8-4's SparepartImageServiceIntegrationTest is the precedent.
   evidence: Blind Hunter on 10-5. Fix = add WorkOrderEvidenceServiceIntegrationTest mirroring SparepartImageServiceIntegrationTest when evidence flows are exercised end-to-end.
   status: open
+
+
+### DW-123: Report save full-row UPDATE can clobber concurrent status transition fields
+- source_spec: \_bmad-output/implementation-artifacts/spec-10-6-reports-cp-cpk-fmea-and-stop-time.md\
+  summary: WorkOrderReportService.saveReport uses findById (no lock) + saveAndFlush; a concurrent transition or report save can produce a stale full-row UPDATE that regresses status or clobbers report fields.
+  evidence: WorkOrderService.transition takes findByIdForUpdate while the report service reads without a lock and writes the whole row; the same pattern exists in 10-5 evidence (attachments), so this is inherited, not new.
+
+### DW-124: Concurrent CPK PDF replace can orphan the earlier object
+- source_spec: \_bmad-output/implementation-artifacts/spec-10-6-reports-cp-cpk-fmea-and-stop-time.md\
+  summary: Two concurrent CPK uploads both read a null/old key, each stores a distinct object, and the last writer wins while the earlier object stays orphaned in Garage.
+  evidence: uploadCpkPdf reads previousKey before the delete/store without a row lock; identical to the 10-5 evidence replace race. Add findByIdForUpdate or an application-level per-workorder serialization if throughput matters.
+
+### DW-125: CP/CPK PDF content-type-only validation accepts non-PDF bytes
+- source_spec: \_bmad-output/implementation-artifacts/spec-10-6-reports-cp-cpk-fmea-and-stop-time.md\
+  summary: validateCpkPdf trusts the client-declared application/pdf content type and does not sniff the magic bytes, so arbitrary content can be stored and served as a CP/CPK capability sheet.
+  evidence: validateCpkPdf checks contentType equality and size only; PDF magic-byte check (%%PDF) is defense-in-depth not required by the spec contract. Add when untrusted uploads matter.

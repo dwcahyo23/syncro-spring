@@ -7,6 +7,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -69,6 +70,43 @@ public class WorkOrderEntity {
 
   @Column(name = "done_reason", length = 1000)
   private String doneReason;
+
+  // -------------------------------------------------------------------------
+  // Report fields (10-6, FR-117/FR-118/FR-122)
+  // -------------------------------------------------------------------------
+
+  @Column(name = "report_chronological", columnDefinition = "text")
+  private String reportChronological;
+
+  @Column(name = "report_analyze", columnDefinition = "text")
+  private String reportAnalyze;
+
+  @Column(name = "report_corrective", columnDefinition = "text")
+  private String reportCorrective;
+
+  @Column(name = "report_preventive", columnDefinition = "text")
+  private String reportPreventive;
+
+  @Column(name = "cp_cp_lower", precision = 8, scale = 4)
+  private BigDecimal cpCkLower;
+
+  @Column(name = "cp_cp_upper", precision = 8, scale = 4)
+  private BigDecimal cpCkUpper;
+
+  @Column(name = "cpk", precision = 8, scale = 4)
+  private BigDecimal cpk;
+
+  @Column(name = "cpk_pdf_object_key", length = 255)
+  private String cpkPdfObjectKey;
+
+  @Column(name = "fmea_failure_type", length = 30)
+  private String fmeaFailureType;
+
+  @Column(name = "stop_time_reason", length = 30)
+  private String stopTimeReason;
+
+  @Column(name = "stop_time_detail", length = 500)
+  private String stopTimeDetail;
 
   protected WorkOrderEntity() {
   }
@@ -190,5 +228,69 @@ public class WorkOrderEntity {
 
   public void setDoneReason(String doneReason) {
     this.doneReason = doneReason;
+  }
+
+  public String getReportChronological() {
+    return reportChronological;
+  }
+
+  public String getReportAnalyze() {
+    return reportAnalyze;
+  }
+
+  public String getReportCorrective() {
+    return reportCorrective;
+  }
+
+  public String getReportPreventive() {
+    return reportPreventive;
+  }
+
+  public BigDecimal getCpCkLower() {
+    return cpCkLower;
+  }
+
+  public BigDecimal getCpCkUpper() {
+    return cpCkUpper;
+  }
+
+  public BigDecimal getCpk() {
+    return cpk;
+  }
+
+  public String getCpkPdfObjectKey() {
+    return cpkPdfObjectKey;
+  }
+
+  public String getFmeaFailureType() {
+    return fmeaFailureType;
+  }
+
+  public String getStopTimeReason() {
+    return stopTimeReason;
+  }
+
+  public String getStopTimeDetail() {
+    return stopTimeDetail;
+  }
+
+  /** Applies the four-section report narrative + optional CP/CPK/FMEA/stop-time fields. */
+  public void applyReport(String reportChronological, String reportAnalyze, String reportCorrective,
+      String reportPreventive, BigDecimal cpCkLower, BigDecimal cpCkUpper, BigDecimal cpk,
+      String fmeaFailureType, String stopTimeReason, String stopTimeDetail) {
+    this.reportChronological = reportChronological;
+    this.reportAnalyze = reportAnalyze;
+    this.reportCorrective = reportCorrective;
+    this.reportPreventive = reportPreventive;
+    this.cpCkLower = cpCkLower;
+    this.cpCkUpper = cpCkUpper;
+    this.cpk = cpk;
+    this.fmeaFailureType = fmeaFailureType;
+    this.stopTimeReason = stopTimeReason;
+    this.stopTimeDetail = stopTimeDetail;
+  }
+
+  public void setCpkPdfObjectKey(String cpkPdfObjectKey) {
+    this.cpkPdfObjectKey = cpkPdfObjectKey;
   }
 }
