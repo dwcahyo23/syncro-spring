@@ -36,6 +36,7 @@
 
 generated: 2026-05-25
 last_updated: 2026-08-26
+# updated: 10-7 done (dev-auto: implemented + adversarial review, 8 patched / 4 deferred)
 # updated: 10-5 done; 10-6 done (spec files already finalized; sprint status was stale)
 # updated: 10-4 done (dev-auto: implemented + adversarial review, 4 patched / 1 deferred DW-139); epic 10 in-progress
 # updated: 9-2 done; 9-3 done (dev-auto: implemented + adversarial review, 8 patched / 3 deferred DW-128..130); epic 9 in-progress; epics 10-14 backlog
@@ -161,7 +162,7 @@ development_status:
   10-4-repair-sessions-and-mttr: done
   10-5-evidence-and-technical-drawings: done
   10-6-reports-cp-cpk-fmea-and-stop-time: done
-  10-7-todos-and-kanban: backlog
+  10-7-todos-and-kanban: done
   10-8-ratings: backlog
   epic-10-retrospective: optional
 
