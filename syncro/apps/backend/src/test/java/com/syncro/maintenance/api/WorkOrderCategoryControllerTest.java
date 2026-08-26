@@ -56,7 +56,7 @@ class WorkOrderCategoryControllerTest {
   @DisplayName("10.1-API-001 P0 list categories returns 200 for any authenticated user")
   void listReturnsOk() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
-    when(categories.list()).thenReturn(List.of(new WorkOrderCategory("01", "Breakdown")));
+    when(categories.list()).thenReturn(List.of(new WorkOrderCategory("01", "Breakdown", 120)));
 
     mockMvc.perform(get("/api/v1/work-order-categories").with(auth(user)))
         .andExpect(status().isOk())
@@ -69,15 +69,16 @@ class WorkOrderCategoryControllerTest {
   void createReturnsCreated() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
     when(categories.create(eq(user), any(CreateWorkOrderCategoryCommand.class)))
-        .thenReturn(new WorkOrderCategory("01", "Breakdown"));
+        .thenReturn(new WorkOrderCategory("01", "Breakdown", 60));
 
     mockMvc.perform(post("/api/v1/work-order-categories")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
-        .content("{\"code\":\"01\",\"label\":\"Breakdown\"}"))
+        .content("{\"code\":\"01\",\"label\":\"Breakdown\",\"targetResponseMinutes\":60}"))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.code").value("01"))
-        .andExpect(jsonPath("$.label").value("Breakdown"));
+        .andExpect(jsonPath("$.label").value("Breakdown"))
+        .andExpect(jsonPath("$.targetResponseMinutes").value(60));
   }
 
   @Test
@@ -116,7 +117,7 @@ class WorkOrderCategoryControllerTest {
   void updateReturnsOk() throws Exception {
     var user = user(ApplicationRole.MAINTENANCE_LEADER);
     when(categories.update(eq(user), eq("01"), any(UpdateWorkOrderCategoryCommand.class)))
-        .thenReturn(new WorkOrderCategory("02", "Preventive"));
+        .thenReturn(new WorkOrderCategory("02", "Preventive", null));
 
     mockMvc.perform(put("/api/v1/work-order-categories/{code}", "01")
         .with(auth(user))

@@ -3,13 +3,19 @@ package com.syncro.maintenance.api;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.maintenance.api.WorkOrderDtos.AssignWorkOrderRequest;
 import com.syncro.maintenance.api.WorkOrderDtos.CreateWorkOrderRequest;
+import com.syncro.maintenance.api.WorkOrderDtos.RepairSessionView;
+import com.syncro.maintenance.api.WorkOrderDtos.RepairSessionsView;
+import com.syncro.maintenance.api.WorkOrderDtos.StartSessionRequest;
 import com.syncro.maintenance.api.WorkOrderDtos.TransitionWorkOrderRequest;
 import com.syncro.maintenance.api.WorkOrderDtos.WorkOrderView;
 import com.syncro.maintenance.application.WorkOrderService;
 import com.syncro.maintenance.application.WorkOrderService.AssignWorkOrderCommand;
 import com.syncro.maintenance.application.WorkOrderService.CreateResult;
 import com.syncro.maintenance.application.WorkOrderService.CreateWorkOrderCommand;
+import com.syncro.maintenance.application.WorkOrderService.RepairSessionsResult;
+import com.syncro.maintenance.application.WorkOrderService.StartSessionCommand;
 import com.syncro.maintenance.application.WorkOrderService.TransitionWorkOrderCommand;
+import com.syncro.maintenance.domain.workorder.RepairSession;
 import com.syncro.maintenance.domain.workorder.WorkOrder;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -22,6 +28,7 @@ import java.net.URI;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -94,9 +101,60 @@ public class WorkOrderController {
         new TransitionWorkOrderCommand(request.toStatus(), request.reason(), request.overrideReason())));
   }
 
+  @Operation(operationId = "startRepairSession", summary = "Start a repair session on an IN_PROGRESS workorder")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Session started", content = @Content(schema = @Schema(implementation = RepairSessionsView.class))),
+      @ApiResponse(responseCode = "400", description = "Validation or malformed JSON"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Workorder not found"),
+      @ApiResponse(responseCode = "409", description = "Session already open, overlap, or workorder not in progress")
+  })
+  @PostMapping("/{id}/sessions")
+  public RepairSessionsView startSession(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable String id,
+      @Valid @RequestBody(required = false) StartSessionRequest request) {
+    var command = new StartSessionCommand(request != null ? request.description() : null);
+    return toSessionsDto(workOrders.startSession(user, id, command));
+  }
+
+  @Operation(operationId = "stopRepairSession", summary = "Stop the open repair session and recompute MTTR")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Session stopped", content = @Content(schema = @Schema(implementation = RepairSessionsView.class))),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Workorder not found"),
+      @ApiResponse(responseCode = "409", description = "No open session")
+  })
+  @PostMapping("/{id}/sessions/stop")
+  public RepairSessionsView stopSession(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable String id) {
+    return toSessionsDto(workOrders.stopSession(user, id));
+  }
+
+  @Operation(operationId = "listRepairSessions", summary = "List the workorder's repair sessions")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Sessions returned", content = @Content(schema = @Schema(implementation = RepairSessionsView.class))),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "404", description = "Workorder not found")
+  })
+  @GetMapping("/{id}/sessions")
+  public RepairSessionsView listSessions(@PathVariable String id) {
+    return toSessionsDto(workOrders.listSessions(id));
+  }
+
   private WorkOrderView toDto(WorkOrder workOrder) {
     return new WorkOrderView(workOrder.id(), workOrder.source(), workOrder.status(), workOrder.categoryId(),
         workOrder.machineId(), workOrder.description(), workOrder.parentId(), workOrder.assignedTechnicianId(),
-        workOrder.createdBy(), workOrder.createdAt(), workOrder.updatedAt());
+        workOrder.createdBy(), workOrder.createdAt(), workOrder.updatedAt(), workOrder.mttrMinutes(),
+        workOrder.responseTimeMinutes(), workOrder.doneReason());
+  }
+
+  private RepairSessionsView toSessionsDto(RepairSessionsResult result) {
+    return new RepairSessionsView(toDto(result.workOrder()),
+        result.sessions().stream().map(WorkOrderController::toSessionDto).toList());
+  }
+
+  private static RepairSessionView toSessionDto(RepairSession session) {
+    return new RepairSessionView(session.id(), session.workOrderId(), session.technicianId(), session.description(),
+        session.startedAt(), session.endedAt(), session.durationMinutes());
   }
 }

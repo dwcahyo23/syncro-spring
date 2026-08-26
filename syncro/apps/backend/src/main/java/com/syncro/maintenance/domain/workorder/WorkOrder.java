@@ -20,5 +20,8 @@ public record WorkOrder(
     UUID assignedTechnicianId,
     UUID createdBy,
     Instant createdAt,
-    Instant updatedAt) {
+    Instant updatedAt,
+    Long mttrMinutes,
+    Long responseTimeMinutes,
+    String doneReason) {
 }

@@ -57,7 +57,7 @@ public class WorkOrderCategoryController {
   public ResponseEntity<WorkOrderCategoryView> create(@AuthenticationPrincipal AuthenticatedUser user,
       @Valid @RequestBody CreateWorkOrderCategoryRequest request) {
     var created = toDto(categories.create(user,
-        new CreateWorkOrderCategoryCommand(request.code(), request.label())));
+        new CreateWorkOrderCategoryCommand(request.code(), request.label(), request.targetResponseMinutes())));
     return ResponseEntity.created(URI.create("/api/v1/work-order-categories/" + created.code())).body(created);
   }
 
@@ -74,10 +74,10 @@ public class WorkOrderCategoryController {
   public WorkOrderCategoryView update(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable String code,
       @Valid @RequestBody UpdateWorkOrderCategoryRequest request) {
     return toDto(categories.update(user, code,
-        new UpdateWorkOrderCategoryCommand(request.code(), request.label())));
+        new UpdateWorkOrderCategoryCommand(request.code(), request.label(), request.targetResponseMinutes())));
   }
 
   private WorkOrderCategoryView toDto(com.syncro.maintenance.domain.workorder.WorkOrderCategory category) {
-    return new WorkOrderCategoryView(category.code(), category.label());
+    return new WorkOrderCategoryView(category.code(), category.label(), category.targetResponseMinutes());
   }
 }

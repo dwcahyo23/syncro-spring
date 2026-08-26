@@ -11,6 +11,7 @@ public final class WorkOrderMapper {
   public static WorkOrder toDomain(WorkOrderEntity entity) {
     return new WorkOrder(entity.getId(), entity.getSource(), entity.getStatus(), entity.getCategoryId(),
         entity.getMachineId(), entity.getDescription(), entity.getParentId(), entity.getAssignedTechnicianId(),
-        entity.getCreatedBy(), entity.getCreatedAt(), entity.getUpdatedAt());
+        entity.getCreatedBy(), entity.getCreatedAt(), entity.getUpdatedAt(), entity.getMttrMinutes(),
+        entity.getResponseTimeMinutes(), entity.getDoneReason());
   }
 }

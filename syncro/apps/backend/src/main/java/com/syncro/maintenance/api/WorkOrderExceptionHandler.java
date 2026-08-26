@@ -4,16 +4,22 @@ import com.syncro.auth.application.PlantScopeService.PlantAccessDeniedException;
 import com.syncro.maintenance.api.WorkOrderDtos.ErrorResponse;
 import com.syncro.maintenance.application.WorkOrderService.BreakdownCategoryRequiredException;
 import com.syncro.maintenance.application.WorkOrderService.ChildrenNotTerminalException;
+import com.syncro.maintenance.application.WorkOrderService.DoneWithoutSessionReasonRequiredException;
 import com.syncro.maintenance.application.WorkOrderService.InvalidStateTransitionException;
+import com.syncro.maintenance.application.WorkOrderService.NoOpenSessionException;
 import com.syncro.maintenance.application.WorkOrderService.OverrideReasonRequiredException;
 import com.syncro.maintenance.application.WorkOrderService.ProcurementRequestConflictException;
 import com.syncro.maintenance.application.WorkOrderService.SelfAssignmentForbiddenException;
+import com.syncro.maintenance.application.WorkOrderService.SessionAlreadyOpenException;
+import com.syncro.maintenance.application.WorkOrderService.SessionOpenConflictException;
+import com.syncro.maintenance.application.WorkOrderService.SessionOverlapException;
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderCategoryNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderMachineNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderParentNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderUserNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.WorkorderForbiddenException;
+import com.syncro.maintenance.application.WorkOrderService.WorkorderNotInProgressException;
 import com.syncro.maintenance.domain.workorder.WorkOrderIdGenerator.WorkorderIdExhaustedException;
 import jakarta.validation.ConstraintViolationException;
 import java.time.Clock;
@@ -23,6 +29,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -167,6 +174,62 @@ public class WorkOrderExceptionHandler {
   ResponseEntity<ErrorResponse> idExhausted() {
     return error(HttpStatus.SERVICE_UNAVAILABLE, "WORKORDER_ID_EXHAUSTED",
         "The monthly workorder id sequence is exhausted.", Map.of());
+  }
+
+  @ExceptionHandler(WorkorderNotInProgressException.class)
+  ResponseEntity<ErrorResponse> workorderNotInProgress() {
+    return error(HttpStatus.CONFLICT, "WORKORDER_NOT_IN_PROGRESS",
+        "Repair sessions can only be started on an IN_PROGRESS workorder.", Map.of());
+  }
+
+  @ExceptionHandler(SessionAlreadyOpenException.class)
+  ResponseEntity<ErrorResponse> sessionAlreadyOpen() {
+    return error(HttpStatus.CONFLICT, "SESSION_ALREADY_OPEN",
+        "A repair session is already open on this workorder.", Map.of());
+  }
+
+  @ExceptionHandler(SessionOverlapException.class)
+  ResponseEntity<ErrorResponse> sessionOverlap() {
+    return error(HttpStatus.CONFLICT, "SESSION_OVERLAP",
+        "The new repair session would overlap an existing one.", Map.of());
+  }
+
+  @ExceptionHandler(NoOpenSessionException.class)
+  ResponseEntity<ErrorResponse> noOpenSession() {
+    return error(HttpStatus.CONFLICT, "NO_OPEN_SESSION",
+        "There is no open repair session on this workorder.", Map.of());
+  }
+
+  @ExceptionHandler(SessionOpenConflictException.class)
+  ResponseEntity<ErrorResponse> sessionOpenConflict() {
+    return error(HttpStatus.CONFLICT, "SESSION_OPEN_CONFLICT",
+        "The open repair session must be stopped before completing this workorder.", Map.of());
+  }
+
+  @ExceptionHandler(DoneWithoutSessionReasonRequiredException.class)
+  ResponseEntity<ErrorResponse> doneWithoutSessionReasonRequired() {
+    return error(HttpStatus.BAD_REQUEST, "DONE_WITHOUT_SESSION_REASON_REQUIRED",
+        "A workorder with no completed repair session requires a documented reason to be completed.", Map.of());
+  }
+
+  /**
+   * 10.4 DB-constraint backstop: a concurrent session insert that slips past the service
+   * overlap pre-check hits the {@code excl_repair_sessions_no_overlap} gist EXCLUDE
+   * constraint (and any OTHER insert integrity error becomes a generic 500 — never
+   * mislabeled). Same cause-chain walk as {@code WorkOrderService.isIdempotencyKeyViolation}.
+   */
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  ResponseEntity<ErrorResponse> sessionOverlapConstraint(DataIntegrityViolationException exception) {
+    var cause = exception.getCause();
+    while (cause != null) {
+      if (cause instanceof org.hibernate.exception.ConstraintViolationException constraint
+          && "excl_repair_sessions_no_overlap".equalsIgnoreCase(constraint.getConstraintName())) {
+        return error(HttpStatus.CONFLICT, "SESSION_OVERLAP",
+            "The new repair session would overlap an existing one.", Map.of());
+      }
+      cause = cause.getCause();
+    }
+    throw exception;
   }
 
   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message,

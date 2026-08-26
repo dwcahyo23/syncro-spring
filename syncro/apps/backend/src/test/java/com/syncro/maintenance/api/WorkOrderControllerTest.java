@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -23,10 +24,16 @@ import com.syncro.maintenance.application.WorkOrderService.BreakdownCategoryRequ
 import com.syncro.maintenance.application.WorkOrderService.ChildrenNotTerminalException;
 import com.syncro.maintenance.application.WorkOrderService.CreateResult;
 import com.syncro.maintenance.application.WorkOrderService.CreateWorkOrderCommand;
+import com.syncro.maintenance.application.WorkOrderService.DoneWithoutSessionReasonRequiredException;
 import com.syncro.maintenance.application.WorkOrderService.InvalidStateTransitionException;
+import com.syncro.maintenance.application.WorkOrderService.NoOpenSessionException;
 import com.syncro.maintenance.application.WorkOrderService.OverrideReasonRequiredException;
 import com.syncro.maintenance.application.WorkOrderService.ProcurementRequestConflictException;
+import com.syncro.maintenance.application.WorkOrderService.RepairSessionsResult;
 import com.syncro.maintenance.application.WorkOrderService.SelfAssignmentForbiddenException;
+import com.syncro.maintenance.application.WorkOrderService.SessionAlreadyOpenException;
+import com.syncro.maintenance.application.WorkOrderService.SessionOverlapException;
+import com.syncro.maintenance.application.WorkOrderService.StartSessionCommand;
 import com.syncro.maintenance.application.WorkOrderService.TransitionWorkOrderCommand;
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderCategoryNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderMachineNotFoundException;
@@ -34,6 +41,8 @@ import com.syncro.maintenance.application.WorkOrderService.WorkOrderNotFoundExce
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderParentNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderUserNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.WorkorderForbiddenException;
+import com.syncro.maintenance.application.WorkOrderService.WorkorderNotInProgressException;
+import com.syncro.maintenance.domain.workorder.RepairSession;
 import com.syncro.maintenance.domain.workorder.WorkOrder;
 import com.syncro.maintenance.domain.workorder.WorkOrderIdGenerator.WorkorderIdExhaustedException;
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
@@ -469,26 +478,181 @@ class WorkOrderControllerTest {
     assertThat(captor.getValue().overrideReason()).isEqualTo("expedite delivery");
   }
 
+  @Test
+  @DisplayName("10.4-API-001 P0 start session returns 200 with the workorder and sessions")
+  void startSessionReturnsOk() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    when(workOrders.startSession(eq(user), eq("WO-2409-00001"), any(StartSessionCommand.class)))
+        .thenReturn(sessionsResult(inProgressView()));
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/sessions", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"description\":\"diagnosis\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.workOrder.id").value("WO-2409-00001"))
+        .andExpect(jsonPath("$.workOrder.status").value("IN_PROGRESS"))
+        .andExpect(jsonPath("$.sessions[0].description").value("diagnosis"));
+  }
+
+  @Test
+  @DisplayName("10.4-API-002 P0 start session with a blank body still works (description optional)")
+  void startSessionWithoutBody() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    when(workOrders.startSession(eq(user), eq("WO-2409-00001"), any(StartSessionCommand.class)))
+        .thenReturn(sessionsResult(inProgressView()));
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/sessions", "WO-2409-00001")
+        .with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.workOrder.id").value("WO-2409-00001"));
+  }
+
+  @Test
+  @DisplayName("10.4-API-003 P0 forbidden session start maps to 403 FORBIDDEN")
+  void startSessionForbidden() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    doThrow(new WorkorderForbiddenException()).when(workOrders)
+        .startSession(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/sessions", "WO-2409-00001")
+        .with(auth(user)))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  @DisplayName("10.4-API-004 P0 already-open session maps to 409 SESSION_ALREADY_OPEN")
+  void startSessionAlreadyOpen() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    doThrow(new SessionAlreadyOpenException()).when(workOrders)
+        .startSession(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/sessions", "WO-2409-00001")
+        .with(auth(user)))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("SESSION_ALREADY_OPEN"));
+  }
+
+  @Test
+  @DisplayName("10.4-API-005 P0 session overlap maps to 409 SESSION_OVERLAP")
+  void startSessionOverlap() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    doThrow(new SessionOverlapException()).when(workOrders)
+        .startSession(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/sessions", "WO-2409-00001")
+        .with(auth(user)))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("SESSION_OVERLAP"));
+  }
+
+  @Test
+  @DisplayName("10.4-API-006 P0 not-in-progress workorder maps to 409 WORKORDER_NOT_IN_PROGRESS")
+  void startSessionNotInProgress() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    doThrow(new WorkorderNotInProgressException()).when(workOrders)
+        .startSession(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/sessions", "WO-2409-00001")
+        .with(auth(user)))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("WORKORDER_NOT_IN_PROGRESS"));
+  }
+
+  @Test
+  @DisplayName("10.4-API-007 P0 unknown workorder maps to 404 WORKORDER_NOT_FOUND")
+  void startSessionNotFound() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    doThrow(new WorkOrderNotFoundException()).when(workOrders)
+        .startSession(eq(user), eq("WO-2409-NADA"), any());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/sessions", "WO-2409-NADA")
+        .with(auth(user)))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("WORKORDER_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("10.4-API-008 P0 stop session returns 200 with recomputed MTTR")
+  void stopSessionReturnsOk() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    when(workOrders.stopSession(eq(user), eq("WO-2409-00001")))
+        .thenReturn(sessionsResult(inProgressView()));
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/sessions/stop", "WO-2409-00001")
+        .with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.workOrder.id").value("WO-2409-00001"));
+  }
+
+  @Test
+  @DisplayName("10.4-API-009 P0 no open session maps to 409 NO_OPEN_SESSION")
+  void stopSessionNoOpen() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    doThrow(new NoOpenSessionException()).when(workOrders).stopSession(eq(user), eq("WO-2409-00001"));
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/sessions/stop", "WO-2409-00001")
+        .with(auth(user)))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("NO_OPEN_SESSION"));
+  }
+
+  @Test
+  @DisplayName("10.4-API-010 P0 list sessions returns 200 for any authenticated user")
+  void listSessionsReturnsOk() throws Exception {
+    var user = user(ApplicationRole.STAFF_MAINTENANCE);
+    when(workOrders.listSessions("WO-2409-00001")).thenReturn(sessionsResult(inProgressView()));
+
+    mockMvc.perform(get("/api/v1/workorders/{id}/sessions", "WO-2409-00001")
+        .with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.sessions[0].workOrderId").value("WO-2409-00001"));
+  }
+
+  @Test
+  @DisplayName("10.4-API-011 P0 DONE without session reason maps to 400 DONE_WITHOUT_SESSION_REASON_REQUIRED")
+  void doneWithoutSessionReasonRequired() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    doThrow(new DoneWithoutSessionReasonRequiredException()).when(workOrders)
+        .transition(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"toStatus\":\"DONE\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("DONE_WITHOUT_SESSION_REASON_REQUIRED"));
+  }
+
   private static WorkOrder inProgressView() {
     return new WorkOrder("WO-2409-00001", "INTERNAL", WorkOrderStatus.IN_PROGRESS, CATEGORY_ID, MACHINE_ID,
         "breakdown", null, ASSIGNEE_ID, UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"),
-        Instant.parse("2026-08-26T00:00:00Z"));
+        Instant.parse("2026-08-26T00:00:00Z"), null, null, null);
   }
 
   private static WorkOrder closedView() {
     return new WorkOrder("WO-2409-00001", "INTERNAL", WorkOrderStatus.CLOSED, CATEGORY_ID, MACHINE_ID,
         "breakdown", null, ASSIGNEE_ID, UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"),
-        Instant.parse("2026-08-26T00:00:00Z"));
+        Instant.parse("2026-08-26T00:00:00Z"), null, null, null);
   }
 
   private static WorkOrder view() {
     return new WorkOrder("WO-2409-00001", "INTERNAL", WorkOrderStatus.OPEN, CATEGORY_ID, MACHINE_ID, "breakdown",
-        null, null, UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"), Instant.parse("2026-08-26T00:00:00Z"));
+        null, null, UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"), Instant.parse("2026-08-26T00:00:00Z"),
+        null, null, null);
   }
 
   private static WorkOrder assignedView() {
     return new WorkOrder("WO-2409-00001", "INTERNAL", WorkOrderStatus.ASSIGNED, CATEGORY_ID, MACHINE_ID, "breakdown",
-        null, ASSIGNEE_ID, UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"), Instant.parse("2026-08-26T00:00:00Z"));
+        null, ASSIGNEE_ID, UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"), Instant.parse("2026-08-26T00:00:00Z"),
+        null, null, null);
+  }
+
+  private static RepairSessionsResult sessionsResult(WorkOrder workOrder) {
+    return new RepairSessionsResult(workOrder, List.of(new RepairSession(
+        UUID.randomUUID(), "WO-2409-00001", ASSIGNEE_ID, "diagnosis",
+        Instant.parse("2026-08-26T00:00:00Z"), null, null)));
   }
 
   private static AuthenticatedUser user(ApplicationRole role) {

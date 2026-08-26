@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -32,7 +33,17 @@ public final class WorkOrderDtos {
 
   public record WorkOrderView(String id, String source, WorkOrderStatus status, UUID categoryId, UUID machineId,
       String description, String parentId, UUID assignedTechnicianId, UUID createdBy, Instant createdAt,
-      Instant updatedAt) {
+      Instant updatedAt, Long mttrMinutes, Long responseTimeMinutes, String doneReason) {
+  }
+
+  public record StartSessionRequest(@Size(max = 2000) String description) {
+  }
+
+  public record RepairSessionView(UUID id, String workOrderId, UUID technicianId, String description,
+      Instant startedAt, Instant endedAt, Long durationMinutes) {
+  }
+
+  public record RepairSessionsView(WorkOrderView workOrder, List<RepairSessionView> sessions) {
   }
 
   public record ErrorResponse(String code, String message, Map<String, String> fieldErrors, String timestamp,

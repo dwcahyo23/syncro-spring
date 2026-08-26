@@ -13,5 +13,6 @@ public enum AuditEntityType {
   SECTION,
   TEAM,
   WORK_ORDER_CATEGORY,
-  WORK_ORDER
+  WORK_ORDER,
+  REPAIR_SESSION
 }

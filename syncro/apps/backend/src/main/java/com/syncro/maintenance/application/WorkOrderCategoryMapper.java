@@ -9,6 +9,6 @@ public final class WorkOrderCategoryMapper {
   }
 
   public static WorkOrderCategory toDomain(WorkOrderCategoryEntity entity) {
-    return new WorkOrderCategory(entity.getCode(), entity.getLabel());
+    return new WorkOrderCategory(entity.getCode(), entity.getLabel(), entity.getTargetResponseMinutes());
   }
 }

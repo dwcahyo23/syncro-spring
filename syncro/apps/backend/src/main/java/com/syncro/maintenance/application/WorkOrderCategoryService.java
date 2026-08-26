@@ -55,7 +55,7 @@ public class WorkOrderCategoryService {
     }
     var now = Instant.now(clock);
     var saved = saveWithIntegrityCheck(new WorkOrderCategoryEntity(
-        UUID.randomUUID(), code, label, UUID.fromString(user.id()), now, now));
+        UUID.randomUUID(), code, label, UUID.fromString(user.id()), now, now, command.targetResponseMinutes()));
     auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.WORK_ORDER_CATEGORY,
         saved.getId(), saved.getCode(), null, null, auditValues(saved), null));
     return WorkOrderCategoryMapper.toDomain(saved);
@@ -71,7 +71,7 @@ public class WorkOrderCategoryService {
     if (!newCode.equals(entity.getCode()) && categories.existsByCode(newCode)) {
       throw new DuplicateWorkOrderCategoryCodeException();
     }
-    entity.update(newCode, label, Instant.now(clock));
+    entity.update(newCode, label, command.targetResponseMinutes(), Instant.now(clock));
     var saved = saveWithIntegrityCheck(entity);
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.WORK_ORDER_CATEGORY,
         saved.getId(), saved.getCode(), null, previous, auditValues(saved), null));
@@ -122,13 +122,14 @@ public class WorkOrderCategoryService {
     var values = new HashMap<String, Object>();
     values.put("code", entity.getCode());
     values.put("label", entity.getLabel());
+    values.put("targetResponseMinutes", entity.getTargetResponseMinutes());
     return values;
   }
 
-  public record CreateWorkOrderCategoryCommand(String code, String label) {
+  public record CreateWorkOrderCategoryCommand(String code, String label, Integer targetResponseMinutes) {
   }
 
-  public record UpdateWorkOrderCategoryCommand(String code, String label) {
+  public record UpdateWorkOrderCategoryCommand(String code, String label, Integer targetResponseMinutes) {
   }
 
   public static class WorkOrderCategoryMutationForbiddenException extends RuntimeException {

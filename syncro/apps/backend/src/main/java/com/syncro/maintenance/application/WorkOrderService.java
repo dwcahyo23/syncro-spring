@@ -11,10 +11,13 @@ import com.syncro.auth.infrastructure.AuthUserRepository;
 import com.syncro.authz.application.PolicyDecisionPoint;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
+import com.syncro.maintenance.domain.workorder.RepairSession;
 import com.syncro.maintenance.domain.workorder.WorkOrder;
 import com.syncro.maintenance.domain.workorder.WorkOrderIdGenerator;
 import com.syncro.maintenance.domain.workorder.WorkOrderStateMachine;
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
+import com.syncro.maintenance.infrastructure.db.RepairSessionEntity;
+import com.syncro.maintenance.infrastructure.db.RepairSessionRepository;
 import com.syncro.maintenance.infrastructure.db.WorkOrderCategoryEntity;
 import com.syncro.maintenance.infrastructure.db.WorkOrderCategoryRepository;
 import com.syncro.maintenance.infrastructure.db.WorkOrderEntity;
@@ -28,6 +31,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -73,13 +77,14 @@ public class WorkOrderService {
   private final PlantScopeService plantScopes;
   private final SparepartRequestReadinessPort sparepartReadiness;
   private final AuditLogWriter auditLog;
+  private final RepairSessionRepository repairSessions;
   private final Clock clock;
 
   public WorkOrderService(WorkOrderIdGenerator idGenerator, WorkOrderRepository workOrders,
       WorkOrderStatusHistoryRepository statusHistory, WorkOrderCategoryRepository categories,
       MachineRepository machines, AuthUserRepository users, OperationalScopeService scopes,
       PlantScopeService plantScopes, SparepartRequestReadinessPort sparepartReadiness, AuditLogWriter auditLog,
-      Clock clock) {
+      RepairSessionRepository repairSessions, Clock clock) {
     this.idGenerator = idGenerator;
     this.workOrders = workOrders;
     this.statusHistory = statusHistory;
@@ -90,6 +95,7 @@ public class WorkOrderService {
     this.plantScopes = plantScopes;
     this.sparepartReadiness = sparepartReadiness;
     this.auditLog = auditLog;
+    this.repairSessions = repairSessions;
     this.clock = clock;
   }
 
@@ -208,6 +214,7 @@ public class WorkOrderService {
     if (isProcurementSensitive(fromStatus, toStatus) && sparepartReadiness.hasLiveNonReadyRequest(workOrderId)) {
       throw new ProcurementRequestConflictException();
     }
+    enforceDoneGate(entity, toStatus, command.reason());
 
     var previous = auditValues(entity);
     var now = Instant.now(clock);
@@ -220,6 +227,9 @@ public class WorkOrderService {
     var newValue = auditValues(saved);
     if (command.reason() != null) {
       newValue.put("reason", command.reason());
+    }
+    if (entity.getDoneReason() != null) {
+      newValue.put("doneReason", entity.getDoneReason());
     }
     if (overrideReason != null) {
       newValue.put("overrideReason", overrideReason);
@@ -259,6 +269,160 @@ public class WorkOrderService {
     entity.transitionTo(target, now);
     workOrders.saveAndFlush(entity);
     statusHistory.saveAndFlush(derivedHistoryRow(workOrderId, status, target, now));
+  }
+
+  // -------------------------------------------------------------------------
+  // Repair sessions & MTTR (10.4)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Starts a repair session (FR-115/AD-6, story 10.4). Sessions are local operational
+   * fields — never touching status or sync_version — so they are allowed on SYNCED
+   * workorders (AD-3 "preserved"), but the status gate (IN_PROGRESS) and the
+   * executor/leader access gate still apply. The DB EXCLUDE constraint is the
+   * authoritative backstop; the overlap pre-check gives a friendly 409 first. On the
+   * first-ever session start the SLA response time (OPEN → first session start) is
+   * computed from status history and persisted on the workorder (source-agnostic).
+   */
+  @Transactional
+  public RepairSessionsResult startSession(AuthenticatedUser user, String workOrderId,
+      StartSessionCommand command) {
+    var entity = workOrders.findByIdForUpdate(workOrderId).orElseThrow(WorkOrderNotFoundException::new);
+    if (entity.getStatus() != WorkOrderStatus.IN_PROGRESS) {
+      throw new WorkorderNotInProgressException();
+    }
+    var machine = machines.findByIdWithPlantAndGroup(entity.getMachineId())
+        .orElseThrow(WorkOrderMachineNotFoundException::new);
+    requireSessionAccess(user, entity, machine);
+
+    if (repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull(workOrderId).isPresent()) {
+      throw new SessionAlreadyOpenException();
+    }
+    var now = Instant.now(clock);
+    checkNoOverlappingSession(workOrderId, now);
+
+    var sessionId = UUID.randomUUID();
+    var session = new RepairSessionEntity(sessionId, workOrderId, UUID.fromString(user.id()),
+        command.description(), now, null, null, now, now);
+    repairSessions.saveAndFlush(session);
+
+    if (entity.getResponseTimeMinutes() == null) {
+      statusHistory.findFirstOpenTransitionedAt(workOrderId)
+          .ifPresent(openedAt -> {
+            entity.setResponseTimeMinutes(Duration.between(openedAt, now).toMinutes());
+            workOrders.saveAndFlush(entity);
+          });
+    }
+
+    auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.REPAIR_SESSION,
+        auditEntityId("session-" + sessionId), workOrderId, machine.getPlant().getId(), null, sessionValues(session),
+        null));
+    return toSessionResult(entity, workOrderId);
+  }
+
+  /**
+   * Stops the open repair session (FR-115/AD-6). Closing a time interval is always safe,
+   * so stop is allowed in any status; the executor/leader access gate still applies.
+   * MTTR is recomputed (SUM of completed durations) and persisted on the workorder so
+   * dashboards can query it without recomputing.
+   */
+  @Transactional
+  public RepairSessionsResult stopSession(AuthenticatedUser user, String workOrderId) {
+    var entity = workOrders.findByIdForUpdate(workOrderId).orElseThrow(WorkOrderNotFoundException::new);
+    var machine = machines.findByIdWithPlantAndGroup(entity.getMachineId())
+        .orElseThrow(WorkOrderMachineNotFoundException::new);
+    requireSessionAccess(user, entity, machine);
+
+    var session = repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull(workOrderId)
+        .orElseThrow(NoOpenSessionException::new);
+    var now = Instant.now(clock);
+    var previous = sessionValues(session);
+    session.close(now, Duration.between(session.getStartedAt(), now).toMinutes(), now);
+    repairSessions.saveAndFlush(session);
+
+    entity.setMttrMinutes(repairSessions.sumCompletedDuration(workOrderId));
+    workOrders.saveAndFlush(entity);
+
+    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.REPAIR_SESSION,
+        auditEntityId("session-" + session.getId()), workOrderId, machine.getPlant().getId(), previous,
+        sessionValues(session), null));
+    return toSessionResult(entity, workOrderId);
+  }
+
+  /** Lists the workorder's repair sessions ordered by startedAt asc (any authenticated user). */
+  @Transactional(readOnly = true)
+  public RepairSessionsResult listSessions(String workOrderId) {
+    var entity = workOrders.findById(workOrderId).orElseThrow(WorkOrderNotFoundException::new);
+    return toSessionResult(entity, workOrderId);
+  }
+
+  /**
+   * FR-115 DONE gate (additive on 10.3): an open session blocks DONE; with no completed
+   * session at all a non-blank documented reason is required. Non-blank reasons are
+   * persisted on the workorder and ride the audit {@code new_value} JSON.
+   */
+  private void enforceDoneGate(WorkOrderEntity entity, WorkOrderStatus toStatus, String reason) {
+    if (toStatus != WorkOrderStatus.DONE) {
+      return;
+    }
+    if (repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull(entity.getId()).isPresent()) {
+      throw new SessionOpenConflictException();
+    }
+    var hasCompletedSession = repairSessions.sumCompletedDuration(entity.getId()) > 0;
+    if (!hasCompletedSession && (reason == null || reason.isBlank())) {
+      throw new DoneWithoutSessionReasonRequiredException();
+    }
+    if (reason != null && !reason.isBlank()) {
+      entity.setDoneReason(reason.trim());
+    }
+  }
+
+  /** Friendly pre-check that the latest session does not overlap the new open interval. */
+  private void checkNoOverlappingSession(String workOrderId, Instant startedAt) {
+    var latest = repairSessions.findByWorkOrderIdOrderByStartedAtAsc(workOrderId);
+    if (latest.isEmpty()) {
+      return;
+    }
+    var newest = latest.get(latest.size() - 1);
+    if (newest.getEndedAt() != null && newest.getEndedAt().isAfter(startedAt)) {
+      // The new open range would overlap the latest completed session; the DB EXCLUDE
+      // constraint is the authoritative backstop for anything this check misses.
+      throw new SessionOverlapException();
+    }
+  }
+
+  /** Executor (assigned TECHNICIAN/STAFF_MAINTENANCE) OR in-scope leader, same as transitions. */
+  private void requireSessionAccess(AuthenticatedUser user, WorkOrderEntity entity, MachineEntity machine) {
+    if (isInScopeLeader(user, machine)) {
+      return;
+    }
+    if (isExecutor(user, entity)) {
+      return;
+    }
+    throw new WorkorderForbiddenException();
+  }
+
+  private Map<String, Object> sessionValues(RepairSessionEntity session) {
+    var values = new HashMap<String, Object>();
+    values.put("id", session.getId());
+    values.put("workOrderId", session.getWorkOrderId());
+    values.put("technicianId", session.getTechnicianId());
+    values.put("startedAt", session.getStartedAt());
+    values.put("endedAt", session.getEndedAt());
+    values.put("durationMinutes", session.getDurationMinutes());
+    return values;
+  }
+
+  private RepairSession toSession(RepairSessionEntity entity) {
+    return new RepairSession(entity.getId(), entity.getWorkOrderId(), entity.getTechnicianId(),
+        entity.getDescription(), entity.getStartedAt(), entity.getEndedAt(), entity.getDurationMinutes());
+  }
+
+  private RepairSessionsResult toSessionResult(WorkOrderEntity workOrder, String workOrderId) {
+    var sessions = repairSessions.findByWorkOrderIdOrderByStartedAtAsc(workOrderId).stream()
+        .map(this::toSession)
+        .toList();
+    return new RepairSessionsResult(WorkOrderMapper.toDomain(workOrder), sessions);
   }
 
   // -------------------------------------------------------------------------
@@ -512,8 +676,14 @@ public class WorkOrderService {
   public record TransitionWorkOrderCommand(WorkOrderStatus toStatus, String reason, String overrideReason) {
   }
 
+  public record StartSessionCommand(String description) {
+  }
+
   /** Create outcome; {@code replay} is true when the request was deduped against a prior key. */
   public record CreateResult(WorkOrder workorder, boolean replay) {
+  }
+
+  public record RepairSessionsResult(WorkOrder workOrder, List<RepairSession> sessions) {
   }
 
   public static class WorkorderForbiddenException extends RuntimeException {
@@ -550,5 +720,23 @@ public class WorkOrderService {
   }
 
   public static class OverrideReasonRequiredException extends RuntimeException {
+  }
+
+  public static class WorkorderNotInProgressException extends RuntimeException {
+  }
+
+  public static class SessionAlreadyOpenException extends RuntimeException {
+  }
+
+  public static class SessionOverlapException extends RuntimeException {
+  }
+
+  public static class NoOpenSessionException extends RuntimeException {
+  }
+
+  public static class SessionOpenConflictException extends RuntimeException {
+  }
+
+  public static class DoneWithoutSessionReasonRequiredException extends RuntimeException {
   }
 }

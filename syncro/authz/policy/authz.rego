@@ -95,6 +95,16 @@ workorder_transition_paths := {
   "/api/v1/workorders/*/transition",
 }
 
+# Workorder repair sessions (story 10-4): the same executor + leadership role set as
+# transitions — sessions are local operational fields the assigned executor or in-scope
+# leader logs against an IN_PROGRESS workorder; scope/status are service-side. A single
+# `*` matches one path segment, so start (/sessions) and stop (/sessions/stop) need
+# separate entries. Session reads (GET) flow through generic read_allowed.
+workorder_session_paths := {
+  "/api/v1/workorders/*/sessions",
+  "/api/v1/workorders/*/sessions/stop",
+}
+
 # Telemetry + notification-worker endpoints are SUPER_ADMIN-only in service.
 admin_only_paths := {
   "/api/v1/telemetry/**",
@@ -204,6 +214,37 @@ mutation_allowed if {
   input.subject.roles[_] == "TECHNICIAN"
   is_mutation
   path_matches(workorder_transition_paths)
+}
+
+# Repair sessions: same five-role allow set as transitions (10.3 parity).
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(workorder_session_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(workorder_session_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(workorder_session_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STAFF_MAINTENANCE"
+  is_mutation
+  path_matches(workorder_session_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "TECHNICIAN"
+  is_mutation
+  path_matches(workorder_session_paths)
 }
 
 mutation_allowed if {

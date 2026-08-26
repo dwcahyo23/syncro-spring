@@ -21,15 +21,19 @@ import com.syncro.machine.domain.MachineStatus;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.maintenance.application.WorkOrderService.ChildrenNotTerminalException;
+import com.syncro.maintenance.application.WorkOrderService.DoneWithoutSessionReasonRequiredException;
 import com.syncro.maintenance.application.WorkOrderService.InvalidStateTransitionException;
 import com.syncro.maintenance.application.WorkOrderService.OverrideReasonRequiredException;
 import com.syncro.maintenance.application.WorkOrderService.ProcurementRequestConflictException;
+import com.syncro.maintenance.application.WorkOrderService.SessionOpenConflictException;
 import com.syncro.maintenance.application.WorkOrderService.TransitionWorkOrderCommand;
 import com.syncro.maintenance.application.WorkOrderService.WorkOrderNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.WorkorderForbiddenException;
 import com.syncro.maintenance.domain.workorder.WorkOrderIdGenerator;
 import com.syncro.maintenance.domain.workorder.WorkOrderStateMachine;
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
+import com.syncro.maintenance.infrastructure.db.RepairSessionEntity;
+import com.syncro.maintenance.infrastructure.db.RepairSessionRepository;
 import com.syncro.maintenance.infrastructure.db.WorkOrderCategoryRepository;
 import com.syncro.maintenance.infrastructure.db.WorkOrderEntity;
 import com.syncro.maintenance.infrastructure.db.WorkOrderRepository;
@@ -76,6 +80,8 @@ class WorkOrderTransitionServiceTest {
   private SparepartRequestReadinessPort sparepartReadiness;
   @Mock
   private AuditLogWriter auditLog;
+  @Mock
+  private RepairSessionRepository repairSessions;
 
   private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
   private final UUID plantId = UUID.randomUUID();
@@ -90,9 +96,11 @@ class WorkOrderTransitionServiceTest {
   @BeforeEach
   void setUp() {
     service = new WorkOrderService(idGenerator, workOrders, statusHistory, categories, machines, users, scopes,
-        plantScopes, sparepartReadiness, auditLog, clock);
+        plantScopes, sparepartReadiness, auditLog, repairSessions, clock);
     machine = machineWithPlant(plantId, groupId, machineId);
     lenient().when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
+    lenient().when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull(any())).thenReturn(Optional.empty());
+    lenient().when(repairSessions.sumCompletedDuration(any())).thenReturn(1L);
   }
 
   // -------------------------------------------------------------------------
@@ -227,6 +235,73 @@ class WorkOrderTransitionServiceTest {
     var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.IN_PROGRESS));
 
     assertThat(result.status()).isEqualTo(WorkOrderStatus.IN_PROGRESS);
+  }
+
+  // -------------------------------------------------------------------------
+  // DONE gate (10.4 / FR-115)
+  // -------------------------------------------------------------------------
+
+  @Test
+  @DisplayName("10.4-SVC-100 P0 IN_PROGRESS→DONE with no completed session and a blank reason is blocked")
+  void doneWithoutSessionReasonRequired() {
+    var user = assignedTechnician();
+    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.IN_PROGRESS, null, technicianId);
+    when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
+    when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull(WORKORDER_ID)).thenReturn(Optional.empty());
+    when(repairSessions.sumCompletedDuration(WORKORDER_ID)).thenReturn(0L);
+
+    assertThatThrownBy(() -> service.transition(user, WORKORDER_ID,
+        new TransitionWorkOrderCommand(WorkOrderStatus.DONE, "  ", null)))
+        .isInstanceOf(DoneWithoutSessionReasonRequiredException.class);
+  }
+
+  @Test
+  @DisplayName("10.4-SVC-101 P0 IN_PROGRESS→DONE with no sessions and a non-blank reason persists done_reason")
+  void doneWithReasonPersists() {
+    var user = assignedTechnician();
+    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.IN_PROGRESS, null, technicianId);
+    when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
+    when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull(WORKORDER_ID)).thenReturn(Optional.empty());
+    when(repairSessions.sumCompletedDuration(WORKORDER_ID)).thenReturn(0L);
+    when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    var result = service.transition(user, WORKORDER_ID,
+        new TransitionWorkOrderCommand(WorkOrderStatus.DONE, "  no technician available  ", null));
+
+    assertThat(result.status()).isEqualTo(WorkOrderStatus.DONE);
+    assertThat(result.doneReason()).isEqualTo("no technician available");
+    verify(auditLog).record(eq(user), argThat(r -> r.newValue() != null
+        && "no technician available".equals(r.newValue().get("doneReason"))));
+  }
+
+  @Test
+  @DisplayName("10.4-SVC-102 P0 IN_PROGRESS→DONE with an open session is blocked as SESSION_OPEN_CONFLICT")
+  void doneWithOpenSessionConflict() {
+    var user = assignedTechnician();
+    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.IN_PROGRESS, null, technicianId);
+    var open = new RepairSessionEntity(UUID.randomUUID(), WORKORDER_ID, technicianId, "desc", NOW, null, null, NOW, NOW);
+    when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
+    when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull(WORKORDER_ID)).thenReturn(Optional.of(open));
+
+    assertThatThrownBy(() -> service.transition(user, WORKORDER_ID,
+        new TransitionWorkOrderCommand(WorkOrderStatus.DONE, "spare", null)))
+        .isInstanceOf(SessionOpenConflictException.class);
+  }
+
+  @Test
+  @DisplayName("10.4-SVC-103 P0 IN_PROGRESS→DONE with a completed session succeeds and MTTR is untouched by the gate")
+  void doneWithCompletedSession() {
+    var user = assignedTechnician();
+    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.IN_PROGRESS, null, technicianId);
+    when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
+    when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull(WORKORDER_ID)).thenReturn(Optional.empty());
+    when(repairSessions.sumCompletedDuration(WORKORDER_ID)).thenReturn(45L);
+    when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.DONE));
+
+    assertThat(result.status()).isEqualTo(WorkOrderStatus.DONE);
+    verify(workOrders).saveAndFlush(entity);
   }
 
   // -------------------------------------------------------------------------

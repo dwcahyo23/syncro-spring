@@ -61,12 +61,29 @@ public class WorkOrderEntity {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
+  @Column(name = "mttr_minutes")
+  private Long mttrMinutes;
+
+  @Column(name = "response_time_minutes")
+  private Long responseTimeMinutes;
+
+  @Column(name = "done_reason", length = 1000)
+  private String doneReason;
+
   protected WorkOrderEntity() {
   }
 
   public WorkOrderEntity(String id, String source, String parentId, WorkOrderStatus status, UUID categoryId,
       UUID machineId, String description, long syncVersion, String idempotencyKey, UUID assignedTechnicianId,
       UUID createdBy, Instant createdAt, Instant updatedAt) {
+    this(id, source, parentId, status, categoryId, machineId, description, syncVersion, idempotencyKey,
+        assignedTechnicianId, createdBy, createdAt, updatedAt, null, null, null);
+  }
+
+  public WorkOrderEntity(String id, String source, String parentId, WorkOrderStatus status, UUID categoryId,
+      UUID machineId, String description, long syncVersion, String idempotencyKey, UUID assignedTechnicianId,
+      UUID createdBy, Instant createdAt, Instant updatedAt, Long mttrMinutes, Long responseTimeMinutes,
+      String doneReason) {
     this.id = id;
     this.source = source;
     this.parentId = parentId;
@@ -80,6 +97,9 @@ public class WorkOrderEntity {
     this.createdBy = createdBy;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
+    this.mttrMinutes = mttrMinutes;
+    this.responseTimeMinutes = responseTimeMinutes;
+    this.doneReason = doneReason;
   }
 
   public String getId() {
@@ -146,5 +166,29 @@ public class WorkOrderEntity {
   public void transitionTo(WorkOrderStatus status, Instant updatedAt) {
     this.status = status;
     this.updatedAt = updatedAt;
+  }
+
+  public Long getMttrMinutes() {
+    return mttrMinutes;
+  }
+
+  public void setMttrMinutes(Long mttrMinutes) {
+    this.mttrMinutes = mttrMinutes;
+  }
+
+  public Long getResponseTimeMinutes() {
+    return responseTimeMinutes;
+  }
+
+  public void setResponseTimeMinutes(Long responseTimeMinutes) {
+    this.responseTimeMinutes = responseTimeMinutes;
+  }
+
+  public String getDoneReason() {
+    return doneReason;
+  }
+
+  public void setDoneReason(String doneReason) {
+    this.doneReason = doneReason;
   }
 }

@@ -55,9 +55,9 @@ class WorkOrderCategoryServiceTest {
   void gateDeniesBelowSectionLeader() {
     for (var role : List.of(ApplicationRole.STAFF_MAINTENANCE, ApplicationRole.TECHNICIAN, ApplicationRole.AUDITOR)) {
       var user = user(role);
-      assertThatThrownBy(() -> service.create(user, new CreateWorkOrderCategoryCommand("01", "Breakdown")))
+      assertThatThrownBy(() -> service.create(user, new CreateWorkOrderCategoryCommand("01", "Breakdown", null)))
           .isInstanceOf(WorkOrderCategoryMutationForbiddenException.class);
-      assertThatThrownBy(() -> service.update(user, "01", new UpdateWorkOrderCategoryCommand("01", "Breakdown")))
+      assertThatThrownBy(() -> service.update(user, "01", new UpdateWorkOrderCategoryCommand("01", "Breakdown", null)))
           .isInstanceOf(WorkOrderCategoryMutationForbiddenException.class);
     }
   }
@@ -71,9 +71,9 @@ class WorkOrderCategoryServiceTest {
       when(categories.existsByCode("01")).thenReturn(false);
       when(categories.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-      var created = service.create(user, new CreateWorkOrderCategoryCommand(" 01 ", " Breakdown "));
+      var created = service.create(user, new CreateWorkOrderCategoryCommand(" 01 ", " Breakdown ", null));
 
-      assertThat(created).isEqualTo(new WorkOrderCategory("01", "Breakdown"));
+      assertThat(created).isEqualTo(new WorkOrderCategory("01", "Breakdown", null));
     }
   }
 
@@ -84,7 +84,7 @@ class WorkOrderCategoryServiceTest {
     when(categories.existsByCode("01")).thenReturn(false);
     when(categories.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    var created = service.create(user, new CreateWorkOrderCategoryCommand("01", "Breakdown"));
+    var created = service.create(user, new CreateWorkOrderCategoryCommand("01", "Breakdown", null));
 
     assertThat(created.code()).isEqualTo("01");
     verify(categories).saveAndFlush(any(WorkOrderCategoryEntity.class));
@@ -101,7 +101,7 @@ class WorkOrderCategoryServiceTest {
     var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     when(categories.existsByCode("01")).thenReturn(true);
 
-    assertThatThrownBy(() -> service.create(user, new CreateWorkOrderCategoryCommand("01", "Breakdown")))
+    assertThatThrownBy(() -> service.create(user, new CreateWorkOrderCategoryCommand("01", "Breakdown", null)))
         .isInstanceOf(DuplicateWorkOrderCategoryCodeException.class);
   }
 
@@ -115,9 +115,9 @@ class WorkOrderCategoryServiceTest {
     when(categories.existsByCode("02")).thenReturn(false);
     when(categories.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    var updated = service.update(user, "01", new UpdateWorkOrderCategoryCommand("02", "Preventive"));
+    var updated = service.update(user, "01", new UpdateWorkOrderCategoryCommand("02", "Preventive", null));
 
-    assertThat(updated).isEqualTo(new WorkOrderCategory("02", "Preventive"));
+    assertThat(updated).isEqualTo(new WorkOrderCategory("02", "Preventive", null));
     verify(auditLog).record(eq(user),
         org.mockito.ArgumentMatchers.argThat(record -> record.action() == AuditAction.UPDATE
             && record.entityType() == AuditEntityType.WORK_ORDER_CATEGORY
@@ -135,7 +135,7 @@ class WorkOrderCategoryServiceTest {
     when(categories.findByCode("01")).thenReturn(Optional.of(entity));
     when(categories.existsByCode("02")).thenReturn(true);
 
-    assertThatThrownBy(() -> service.update(user, "01", new UpdateWorkOrderCategoryCommand("02", "Preventive")))
+    assertThatThrownBy(() -> service.update(user, "01", new UpdateWorkOrderCategoryCommand("02", "Preventive", null)))
         .isInstanceOf(DuplicateWorkOrderCategoryCodeException.class);
   }
 
@@ -145,7 +145,7 @@ class WorkOrderCategoryServiceTest {
     var user = user(ApplicationRole.SUPER_ADMIN);
     when(categories.findByCode("99")).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.update(user, "99", new UpdateWorkOrderCategoryCommand("99", "Nope")))
+    assertThatThrownBy(() -> service.update(user, "99", new UpdateWorkOrderCategoryCommand("99", "Nope", null)))
         .isInstanceOf(WorkOrderCategoryService.WorkOrderCategoryNotFoundException.class);
   }
 

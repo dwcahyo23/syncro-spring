@@ -33,17 +33,26 @@ public class WorkOrderCategoryEntity {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
+  @Column(name = "target_response_minutes")
+  private Integer targetResponseMinutes;
+
   protected WorkOrderCategoryEntity() {
   }
 
   public WorkOrderCategoryEntity(UUID id, String code, String label, UUID createdBy,
       Instant createdAt, Instant updatedAt) {
+    this(id, code, label, createdBy, createdAt, updatedAt, null);
+  }
+
+  public WorkOrderCategoryEntity(UUID id, String code, String label, UUID createdBy,
+      Instant createdAt, Instant updatedAt, Integer targetResponseMinutes) {
     this.id = id;
     this.code = code;
     this.label = label;
     this.createdBy = createdBy;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
+    this.targetResponseMinutes = targetResponseMinutes;
   }
 
   public UUID getId() {
@@ -70,9 +79,20 @@ public class WorkOrderCategoryEntity {
     return updatedAt;
   }
 
+  public Integer getTargetResponseMinutes() {
+    return targetResponseMinutes;
+  }
+
   public void update(String code, String label, Instant updatedAt) {
     this.code = code;
     this.label = label;
+    this.updatedAt = updatedAt;
+  }
+
+  public void update(String code, String label, Integer targetResponseMinutes, Instant updatedAt) {
+    this.code = code;
+    this.label = label;
+    this.targetResponseMinutes = targetResponseMinutes;
     this.updatedAt = updatedAt;
   }
 }
