@@ -15,6 +15,7 @@ import com.syncro.org.application.OperationalScopeService;
 import com.syncro.sparepart.infrastructure.SparepartEntity;
 import com.syncro.sparepart.infrastructure.SparepartPriceEntryRepository;
 import com.syncro.sparepart.infrastructure.SparepartRepository;
+import com.syncro.sparepart.infrastructure.SparepartTaxonomyEntity;
 import com.syncro.sparepart.request.domain.SparepartRequest;
 import com.syncro.sparepart.request.domain.SparepartRequestStatus;
 import com.syncro.sparepart.request.domain.SparepartRequestType;
@@ -27,6 +28,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +45,10 @@ public class SparepartRequestService {
 
   private static final int MAX_URL_LENGTH = 2048;
   private static final int MAX_MATERIAL_CODE_LENGTH = 64;
+  private static final int MAX_QUANTITY = Short.MAX_VALUE;
+  private static final int MAX_EST_PRICE_SCALE = 2;
+  private static final int MAX_EST_PRICE_PRECISION = 18;
+  private static final Set<String> SPAREPART_CATEGORY_CODES = Set.of("ELECTRIC", "MECHANIC");
 
   private final SparepartRequestRepository requests;
   private final WorkOrderRepository workOrders;
@@ -73,11 +79,12 @@ public class SparepartRequestService {
     requireCreateAccess(user, resolved);
 
     var now = Instant.now(clock);
-    var status = resolveStatus(command.requestType(), command.materialCode());
     var materialCode = normalizeMaterialCode(command.materialCode());
-    var sparepartId = resolveSparepartId(materialCode, command.sparepartId());
+    var sparepart = resolveSparepart(materialCode, command.sparepartId(), command.requestType(), resolved.machineId());
+    var status = resolveStatus(command.requestType(), materialCode);
+    validatePriceEntry(command.estPriceId());
     var entity = new SparepartRequestEntity(UUID.randomUUID(), command.requestType(), resolved.workOrderId(),
-        resolved.machineId(), sparepartId, materialCode, command.quantity().shortValue(),
+        resolved.machineId(), sparepart == null ? null : sparepart.getId(), materialCode, command.quantity().shortValue(),
         command.estPriceId(), command.estUnitPrice(), normalizeUrl(command.purchaseReferenceUrl()),
         status, UUID.fromString(user.id()), now, normalize(command.notes()), now, now);
     var saved = requests.saveAndFlush(entity);
@@ -98,6 +105,8 @@ public class SparepartRequestService {
     }
     if (command.quantity() == null || command.quantity() <= 0) {
       fieldErrors.put("quantity", "Quantity must be greater than zero.");
+    } else if (command.quantity() > MAX_QUANTITY) {
+      fieldErrors.put("quantity", "Quantity must be at most " + MAX_QUANTITY + ".");
     }
     var url = normalizeUrl(command.purchaseReferenceUrl());
     if (url != null && url.length() > MAX_URL_LENGTH) {
@@ -107,8 +116,14 @@ public class SparepartRequestService {
     if (materialCode != null && materialCode.length() > MAX_MATERIAL_CODE_LENGTH) {
       fieldErrors.put("materialCode", "Material code must be at most 64 characters.");
     }
-    if (command.estUnitPrice() != null && command.estUnitPrice().signum() < 0) {
-      fieldErrors.put("estUnitPrice", "Estimated unit price must be non-negative.");
+    if (command.estUnitPrice() != null) {
+      if (command.estUnitPrice().signum() < 0) {
+        fieldErrors.put("estUnitPrice", "Estimated unit price must be non-negative.");
+      } else if (command.estUnitPrice().scale() > MAX_EST_PRICE_SCALE
+          || command.estUnitPrice().precision() > MAX_EST_PRICE_PRECISION) {
+        fieldErrors.put("estUnitPrice",
+            "Estimated unit price must have at most 2 decimal places and 18 digits.");
+      }
     }
     if (!fieldErrors.isEmpty()) {
       throw new RequestValidationException(fieldErrors);
@@ -122,6 +137,9 @@ public class SparepartRequestService {
   private ResolvedTarget resolveTarget(AuthenticatedUser user, CreateRequestCommand command) {
     switch (command.requestType()) {
       case SERVICE_EXTERNAL -> {
+        if (command.workOrderId() == null) {
+          throw new RequestValidationException(Map.of("requestType", "SERVICE_EXTERNAL requires a workorder."));
+        }
         var workOrder = loadWorkOrder(command.workOrderId());
         return new ResolvedTarget(workOrder.getId(), workOrder.getMachineId(), machine(workOrder.getMachineId()).getPlant().getId());
       }
@@ -144,8 +162,12 @@ public class SparepartRequestService {
   }
 
   /**
-   * Access gate: SUPER_ADMIN exempt; in-scope leader (group/team in scope) OR assigned
-   * executor on the bound workorder OR plant access (staff/leader) to the target machine.
+   * Access gate (spec): SUPER_ADMIN exempt; in-scope leader (group/team in scope) OR the
+   * workorder's assigned executor/technician OR STAFF_MAINTENANCE with plant access to the
+   * target machine (or the workorder's machine when bound). TECHNICIAN may only act as the
+   * assigned executor on a bound workorder — a standalone SPAREPART targets a machine and
+   * technicians are not plant-scoped for request creation. SECTION_LEADER is group-in-scope
+   * only (FR-103).
    */
   private void requireCreateAccess(AuthenticatedUser user, ResolvedTarget resolved) {
     if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
@@ -160,13 +182,41 @@ public class SparepartRequestService {
       if (isInScopeLeader(user, machine)) {
         return;
       }
+      // Bound workorder: STAFF_MAINTENANCE with plant access to the workorder's machine is
+      // in scope (spec gate); other non-leader roles must be the assigned executor.
+      if (user.applicationRole() == ApplicationRole.STAFF_MAINTENANCE
+          && plantInScope(scopes.derive(user), machine)) {
+        return;
+      }
+      throw new RequestForbiddenException();
     }
     if (resolved.machineId() != null) {
       var machine = machine(resolved.machineId());
       var scope = scopes.derive(user);
-      if (scope.plantIds() != null && scope.plantIds().contains(machine.getPlant().getId())) {
-        return;
+      switch (user.applicationRole()) {
+        case SECTION_LEADER -> {
+          if (groupInScope(scope, machine)) {
+            return;
+          }
+        }
+        case MAINTENANCE_LEADER, MANAGER_MAINTENANCE -> {
+          if (plantInScope(scope, machine) || groupInScope(scope, machine)) {
+            return;
+          }
+        }
+        case STAFF_MAINTENANCE -> {
+          if (plantInScope(scope, machine)) {
+            return;
+          }
+        }
+        case TECHNICIAN, INVENTORY_MAINTENANCE, STOREKEEPER, PRODUCTION_LEADER, AUDITOR -> {
+          // Not plant-scoped for request creation (spec gate); must go through a bound
+          // workorder as the assigned executor.
+        }
+        default -> {
+        }
       }
+      throw new RequestForbiddenException();
     }
     // Standalone CONSUMABLE (no workorder, no machine): allow any user with a non-empty
     // plant scope — there is no bound target to scope against (FR-140, no machine binding).
@@ -210,6 +260,16 @@ public class SparepartRequestService {
         || scope.activeTeamIds().contains(machine.getMachineGroup().getId());
   }
 
+  private boolean plantInScope(OperationalScope scope, MachineEntity machine) {
+    return scope.plantIds() != null && scope.plantIds().contains(machine.getPlant().getId());
+  }
+
+  private void validatePriceEntry(UUID estPriceId) {
+    if (estPriceId != null && !priceEntries.existsById(estPriceId)) {
+      throw new PriceEntryNotFoundException();
+    }
+  }
+
   /** FR-144: an unknown/absent material code starts the request in PENDING_COMPLETION. */
   private SparepartRequestStatus resolveStatus(SparepartRequestType requestType, String materialCode) {
     if (requestType == SparepartRequestType.SERVICE_EXTERNAL) {
@@ -225,20 +285,48 @@ public class SparepartRequestService {
         : SparepartRequestStatus.PENDING_COMPLETION;
   }
 
-  /** Auto-resolve sparepart_id from material code when it matches; otherwise use the explicit one. */
-  private UUID resolveSparepartId(String materialCode, UUID explicitSparepartId) {
+  /**
+   * Resolve the sparepart the request refers to (FR-140): a material-code match wins over
+   * an explicit sparepart id. SPAREPART requests must reference an ELECTRIC/MECHANIC
+   * category sparepart on the target machine — a sparepart from another machine (material
+   * codes are global) is a cross-machine mismatch.
+   */
+  private SparepartEntity resolveSparepart(String materialCode, UUID explicitSparepartId,
+      SparepartRequestType requestType, UUID machineId) {
+    SparepartEntity resolved = null;
     var code = normalizeMaterialCode(materialCode);
     if (code != null) {
       var match = spareparts.findByMaterialCodeIgnoreCase(code);
       if (match.isPresent()) {
-        return match.get().getId();
+        resolved = match.get();
       }
     }
     if (explicitSparepartId != null) {
-      var sparepart = spareparts.findById(explicitSparepartId).orElseThrow(SparepartNotFoundException::new);
-      return sparepart.getId();
+      var explicit = spareparts.findById(explicitSparepartId).orElseThrow(SparepartNotFoundException::new);
+      if (resolved != null && !resolved.getId().equals(explicit.getId())) {
+        throw new RequestValidationException(
+            Map.of("sparepartId", "sparepartId does not match the material code."));
+      }
+      resolved = explicit;
     }
-    return null;
+    if (resolved == null) {
+      return null;
+    }
+    if (requestType == SparepartRequestType.SPAREPART) {
+      if (!isElectricOrMechanic(resolved.getCategory())) {
+        throw new RequestValidationException(
+            Map.of("requestType", "SPAREPART requires an ELECTRIC or MECHANIC sparepart."));
+      }
+      if (machineId != null && !machineId.equals(resolved.getMachine().getId())) {
+        throw new RequestValidationException(
+            Map.of("sparepartId", "The sparepart does not belong to the selected machine."));
+      }
+    }
+    return resolved;
+  }
+
+  private boolean isElectricOrMechanic(SparepartTaxonomyEntity category) {
+    return category != null && SPAREPART_CATEGORY_CODES.contains(category.getCode());
   }
 
   private WorkOrderEntity loadWorkOrder(String workOrderId) {
@@ -320,6 +408,9 @@ public class SparepartRequestService {
   }
 
   public static class SparepartNotFoundException extends RuntimeException {
+  }
+
+  public static class PriceEntryNotFoundException extends RuntimeException {
   }
 
   public static class RequestValidationException extends RuntimeException {

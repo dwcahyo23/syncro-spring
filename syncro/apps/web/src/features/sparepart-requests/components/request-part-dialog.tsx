@@ -25,7 +25,7 @@ import type { SparepartRequestType } from "@/features/sparepart-requests/types";
  * Select for the request type per project rule.
  */
 export function RequestPartDialog({ workOrderId }: { workOrderId?: string | null }) {
-  const createRequest = useCreateSparepartRequest(workOrderId);
+  const createRequest = useCreateSparepartRequest();
   const [open, setOpen] = useState(false);
   const [requestType, setRequestType] = useState<SparepartRequestType>("SPAREPART");
   const [machineId, setMachineId] = useState("");
@@ -46,6 +46,7 @@ export function RequestPartDialog({ workOrderId }: { workOrderId?: string | null
   };
 
   const handleCreate = () => {
+    const parsedPrice = estUnitPrice === "" ? null : Number(estUnitPrice);
     createRequest.mutate(
       {
         requestType,
@@ -53,7 +54,7 @@ export function RequestPartDialog({ workOrderId }: { workOrderId?: string | null
         machineId: machineId || null,
         materialCode: materialCode || null,
         quantity,
-        estUnitPrice: estUnitPrice || null,
+        estUnitPrice: parsedPrice,
         purchaseReferenceUrl: purchaseUrl || null,
         notes: notes || null,
       },
@@ -67,7 +68,15 @@ export function RequestPartDialog({ workOrderId }: { workOrderId?: string | null
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) {
+          reset();
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button type="button" variant="outline" size="sm">
           Request part
@@ -88,7 +97,7 @@ export function RequestPartDialog({ workOrderId }: { workOrderId?: string | null
               <SelectContent>
                 <SelectItem value="SPAREPART">Sparepart (electric/mechanic)</SelectItem>
                 <SelectItem value="CONSUMABLE">Consumable</SelectItem>
-                <SelectItem value="SERVICE_EXTERNAL">External service</SelectItem>
+                {workOrderId && <SelectItem value="SERVICE_EXTERNAL">External service</SelectItem>}
               </SelectContent>
             </Select>
           </div>
@@ -136,7 +145,11 @@ export function RequestPartDialog({ workOrderId }: { workOrderId?: string | null
             <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button size="sm" onClick={handleCreate} disabled={createRequest.isPending || quantity < 1}>
+            <Button
+              size="sm"
+              onClick={handleCreate}
+              disabled={createRequest.isPending || Number.isNaN(quantity) || quantity < 1}
+            >
               {createRequest.isPending ? "Creating…" : "Create request"}
             </Button>
           </div>

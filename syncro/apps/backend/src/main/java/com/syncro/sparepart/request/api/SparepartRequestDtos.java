@@ -2,6 +2,8 @@ package com.syncro.sparepart.request.api;
 
 import com.syncro.sparepart.request.domain.SparepartRequestStatus;
 import com.syncro.sparepart.request.domain.SparepartRequestType;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -20,9 +22,9 @@ public final class SparepartRequestDtos {
       UUID machineId,
       UUID sparepartId,
       @Size(max = 64) String materialCode,
-      @NotNull @Min(1) Integer quantity,
+      @NotNull @Min(1) @Max(32767) Integer quantity,
       UUID estPriceId,
-      BigDecimal estUnitPrice,
+      @Digits(integer = 16, fraction = 2) BigDecimal estUnitPrice,
       @Size(max = 2048) String purchaseReferenceUrl,
       @Size(max = 4000) String notes) {
   }

@@ -30,7 +30,7 @@ export interface CreateSparepartRequestRequest {
   materialCode?: string | null;
   quantity: number;
   estPriceId?: string | null;
-  estUnitPrice?: string | null;
+  estUnitPrice?: number | null;
   purchaseReferenceUrl?: string | null;
   notes?: string | null;
 }

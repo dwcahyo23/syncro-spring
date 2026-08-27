@@ -24,6 +24,7 @@ import com.syncro.org.application.OperationalScopeService;
 import com.syncro.sparepart.infrastructure.SparepartEntity;
 import com.syncro.sparepart.infrastructure.SparepartPriceEntryRepository;
 import com.syncro.sparepart.infrastructure.SparepartRepository;
+import com.syncro.sparepart.infrastructure.SparepartTaxonomyEntity;
 import com.syncro.sparepart.request.application.SparepartRequestService.CreateRequestCommand;
 import com.syncro.sparepart.request.application.SparepartRequestService.RequestForbiddenException;
 import com.syncro.sparepart.request.application.SparepartRequestService.RequestValidationException;
@@ -150,14 +151,14 @@ class SparepartRequestServiceTest {
   }
 
   @Test
-  @DisplayName("12.1-SVC-005 P0 SERVICE_EXTERNAL requires a workorder")
+  @DisplayName("12.1-SVC-005 P0 SERVICE_EXTERNAL without a workorder is a validation error")
   void createServiceExternalRequiresWorkOrder() {
     var user = staffUser();
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
 
     assertThatThrownBy(() -> service.create(user, new CreateRequestCommand(SparepartRequestType.SERVICE_EXTERNAL,
         null, null, null, null, 1, null, null, null, null)))
-        .isInstanceOf(com.syncro.sparepart.request.application.SparepartRequestService.WorkOrderNotFoundException.class);
+        .isInstanceOf(RequestValidationException.class);
   }
 
   @Test
@@ -210,6 +211,112 @@ class SparepartRequestServiceTest {
   }
 
   @Test
+  @DisplayName("12.1-SVC-011 P0 technician without a bound workorder cannot create a standalone SPAREPART")
+  void createTechnicianStandaloneForbidden() {
+    var user = new AuthenticatedUser(UUID.randomUUID().toString(), "tech@test", ApplicationRole.TECHNICIAN);
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
+
+    assertThatThrownBy(() -> service.create(user, new CreateRequestCommand(SparepartRequestType.SPAREPART, null,
+        machineId, null, "MC-1", 1, null, null, null, null)))
+        .isInstanceOf(RequestForbiddenException.class);
+  }
+
+  @Test
+  @DisplayName("12.1-SVC-012 P0 section leader cannot create a standalone SPAREPART outside their group")
+  void createSectionLeaderOutsideGroupForbidden() {
+    var user = new AuthenticatedUser(UUID.randomUUID().toString(), "leader@test", ApplicationRole.SECTION_LEADER);
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
+
+    assertThatThrownBy(() -> service.create(user, new CreateRequestCommand(SparepartRequestType.SPAREPART, null,
+        machineId, null, "MC-1", 1, null, null, null, null)))
+        .isInstanceOf(RequestForbiddenException.class);
+  }
+
+  @Test
+  @DisplayName("12.1-SVC-013 P0 unknown price entry is rejected (PRICE_ENTRY_NOT_FOUND)")
+  void createUnknownPriceEntry() {
+    var user = staffUser();
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
+    var priceEntryId = UUID.randomUUID();
+    when(priceEntries.existsById(priceEntryId)).thenReturn(false);
+
+    assertThatThrownBy(() -> service.create(user, new CreateRequestCommand(SparepartRequestType.CONSUMABLE, null,
+        null, null, "CONS-1", 1, priceEntryId, null, null, null)))
+        .isInstanceOf(SparepartRequestService.PriceEntryNotFoundException.class);
+  }
+
+  @Test
+  @DisplayName("12.1-SVC-014 P0 CONSUMABLE with a workorder binds and resolves the workorder machine's plant")
+  void createConsumableWithWorkOrder() {
+    var user = staffUser();
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
+    var workOrder = new WorkOrderEntity("WO-2609-00002", "INTERNAL", null, WorkOrderStatus.OPEN, null, machineId,
+        "consumable", 0L, null, null, null, NOW, NOW);
+    when(workOrders.findById("WO-2609-00002")).thenReturn(Optional.of(workOrder));
+    when(spareparts.findByMaterialCodeIgnoreCase("CONS-1"))
+        .thenReturn(Optional.of(sparepartEntity("CONS-1")));
+
+    var created = service.create(user, new CreateRequestCommand(SparepartRequestType.CONSUMABLE,
+        "WO-2609-00002", null, null, "CONS-1", 1, null, null, null, null));
+
+    assertThat(created.workOrderId()).isEqualTo("WO-2609-00002");
+    assertThat(created.status()).isEqualTo(SparepartRequestStatus.REQUESTED);
+  }
+
+  @Test
+  @DisplayName("12.1-SVC-015 P0 SPAREPART with non-electric/mechanic category is rejected")
+  void createSparepartWrongCategory() {
+    var user = staffUser();
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
+    var hydraulic = new SparepartTaxonomyEntity(UUID.randomUUID(), null, "HYDRAULIC", "Hydraulic", NOW, NOW);
+    var sparepart = new SparepartEntity(sparepartId, "BOM-002", "Part", machine,
+        hydraulic, null, null, null, NOW, NOW);
+    when(spareparts.findByMaterialCodeIgnoreCase("HYD-1")).thenReturn(Optional.of(sparepart));
+
+    assertThatThrownBy(() -> service.create(user, new CreateRequestCommand(SparepartRequestType.SPAREPART, null,
+        machineId, null, "HYD-1", 1, null, null, null, null)))
+        .isInstanceOf(RequestValidationException.class);
+  }
+
+  @Test
+  @DisplayName("12.1-SVC-016 P0 SPAREPART from a different machine is rejected")
+  void createSparepartCrossMachine() {
+    var user = staffUser();
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
+    var otherMachine = machineWithPlant(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
+    var category = new SparepartTaxonomyEntity(UUID.randomUUID(), null, "ELECTRIC", "Electric", NOW, NOW);
+    var sparepart = new SparepartEntity(UUID.randomUUID(), "BOM-003", "Part", otherMachine,
+        category, null, null, null, NOW, NOW);
+    when(spareparts.findByMaterialCodeIgnoreCase("MC-0099")).thenReturn(Optional.of(sparepart));
+
+    assertThatThrownBy(() -> service.create(user, new CreateRequestCommand(SparepartRequestType.SPAREPART, null,
+        machineId, null, "MC-0099", 1, null, null, null, null)))
+        .isInstanceOf(RequestValidationException.class);
+  }
+
+  @Test
+  @DisplayName("12.1-SVC-017 P0 quantity above short range is a validation error")
+  void createQuantityOverflow() {
+    var user = staffUser();
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
+
+    assertThatThrownBy(() -> service.create(user, new CreateRequestCommand(SparepartRequestType.CONSUMABLE, null,
+        null, null, null, 40000, null, null, null, null)))
+        .isInstanceOf(RequestValidationException.class);
+  }
+
+  @Test
+  @DisplayName("12.1-SVC-018 P0 estUnitPrice with scale above 2 is a validation error")
+  void createEstUnitPriceScaleOverflow() {
+    var user = staffUser();
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
+
+    assertThatThrownBy(() -> service.create(user, new CreateRequestCommand(SparepartRequestType.CONSUMABLE, null,
+        null, null, null, 1, null, new BigDecimal("0.005"), null, null)))
+        .isInstanceOf(RequestValidationException.class);
+  }
+
+  @Test
   @DisplayName("12.1-SVC-010 P0 purchase reference URL is stored for the storekeeper (FR-143)")
   void createStoresUrl() {
     var user = staffUser();
@@ -225,8 +332,9 @@ class SparepartRequestServiceTest {
   }
 
   private SparepartEntity sparepartEntity(String materialCode) {
+    var category = new SparepartTaxonomyEntity(UUID.randomUUID(), null, "ELECTRIC", "Electric", NOW, NOW);
     var entity = new SparepartEntity(sparepartId, "BOM-001", "Part", machine,
-        null, null, null, null, NOW, NOW);
+        category, null, null, null, NOW, NOW);
     entity.updateProcurement(materialCode, null, NOW);
     return entity;
   }

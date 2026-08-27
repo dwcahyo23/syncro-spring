@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.syncro.AbstractPostgresIntegrationTest;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.DisplayName;
@@ -77,6 +78,23 @@ class SparepartRequestMigrationTest extends AbstractPostgresIntegrationTest {
 
     assertThat(jdbc.queryForObject(
         "SELECT count(*) FROM audit_log WHERE entity_type = 'SPAREPART_REQUEST'", Long.class)).isEqualTo(1L);
+  }
+
+  @Test
+  @DisplayName("12.1-DB-007 P0 audit_log CHECK preserves pre-existing types through the drop/re-add")
+  void auditEntityTypePreservesExistingTypes() {
+    // V57 drops and re-adds ck_audit_log_entity_type — a regression that drops a prior type
+    // (e.g. PREVENTIVE_ATTACHMENT or WORK_ORDER) must be caught here, not just SPAREPART_REQUEST.
+    for (var type : List.of("WORK_ORDER", "PREVENTIVE_ATTACHMENT", "SPAREPART")) {
+      jdbc.update("""
+          INSERT INTO audit_log (id, actor_id, actor_name, action, entity_type, entity_id, entity_label, created_at)
+          VALUES (?,?,?,?,?,?,?,?)
+          """, UUID.randomUUID(), UUID.randomUUID(), "audit-actor", "CREATE", type,
+          UUID.randomUUID(), "existing-" + type, TS);
+    }
+    assertThat(jdbc.queryForObject(
+        "SELECT count(*) FROM audit_log WHERE entity_type IN ('WORK_ORDER','PREVENTIVE_ATTACHMENT','SPAREPART')",
+        Long.class)).isEqualTo(3L);
   }
 
   @Test

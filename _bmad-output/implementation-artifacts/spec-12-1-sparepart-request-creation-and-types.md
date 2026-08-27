@@ -3,8 +3,8 @@ title: 'Sparepart Request Creation & Types'
 type: 'feature'
 created: '2026-08-27'
 baseline_commit: 404fd83fd4738367f2f5c008baa3916d244ad717
-status: 'review'
-review_loop_iteration: 0
+status: 'done'
+review_loop_iteration: 1
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/project-context.md'
@@ -125,6 +125,24 @@ warnings: []
 - Given a new-item request without a material code (or with an unmatched code), when created, then it starts in PENDING_COMPLETION. [FR-144]
 - Given an out-of-scope user, when they create a request, then they are rejected server-side (403). [FR-160]
 - Given OPA enforcement, then sparepart-request mutations are default-deny with the five-role allow set and reads are any-authenticated, with parity tests. [FR-160]
+
+### Review Findings
+
+- [x] [Review][Patch] Access gate over-permissive — TECHNICIAN/SECTION_LEADER bypass on standalone SPAREPART [SparepartRequestService.java:164-169]
+- [x] [Review][Patch] Missing SPAREPART taxonomy category validation (ELECTRIC/MECHANIC) [SparepartRequestService.java:229]
+- [x] [Review][Patch] Missing price-entry existence validation — estPriceId never checked (PRICE_ENTRY_NOT_FOUND missing) [SparepartRequestService.java:51]
+- [x] [Review][Patch] SERVICE_EXTERNAL without workOrderId returns 404 instead of 400 VALIDATION_ERROR [SparepartRequestService.java:125]
+- [x] [Review][Patch] CONSUMABLE-with-workorder bypasses workorder scope via standalone fall-through [SparepartRequestService.java:173]
+- [x] [Review][Patch] quantity shortValue() overflow → 500 (missing @Max(32767)) [SparepartRequestDtos.java:23]
+- [x] [Review][Patch] estUnitPrice scale/precision overflow → 500 (missing @Digits) [SparepartRequestDtos.java:25]
+- [x] [Review][Patch] Material-code resolution can bind sparepart from a different machine [SparepartRequestService.java:229]
+- [x] [Review][Patch] V57 audit CHECK drop/re-add not tested for preservation of existing types [SparepartRequestMigrationTest.java]
+- [x] [Review][Patch] Frontend estUnitPrice sent as string → 400 MALFORMED_JSON [request-part-dialog.tsx:56]
+- [x] [Review][Patch] MACHINE_NOT_FOUND / SPAREPART_NOT_FOUND 404s not pinned in controller tests [SparepartRequestControllerTest.java]
+- [x] [Review][Patch] CONSUMABLE-with-workorder branch has no service test [SparepartRequestServiceTest.java]
+- [x] [Review][Patch] Location header points to non-existent GET endpoint [SparepartRequestController.java:41]
+- [x] [Review][Patch] Dead query invalidation on ["requests", workOrderId] [use-sparepart-requests.ts:20]
+- [x] [Review][Patch] Duplicate workorder/machine loads in create flow [SparepartRequestService.java:125-126,155-159]
 
 ## Design Notes
 

@@ -17,8 +17,11 @@ import com.syncro.config.SecurityConfig;
 import com.syncro.config.TimeConfig;
 import com.syncro.sparepart.request.application.SparepartRequestService;
 import com.syncro.sparepart.request.application.SparepartRequestService.CreateRequestCommand;
+import com.syncro.sparepart.request.application.SparepartRequestService.MachineNotFoundException;
+import com.syncro.sparepart.request.application.SparepartRequestService.PriceEntryNotFoundException;
 import com.syncro.sparepart.request.application.SparepartRequestService.RequestForbiddenException;
 import com.syncro.sparepart.request.application.SparepartRequestService.RequestValidationException;
+import com.syncro.sparepart.request.application.SparepartRequestService.SparepartNotFoundException;
 import com.syncro.sparepart.request.application.SparepartRequestService.WorkOrderNotFoundException;
 import com.syncro.sparepart.request.domain.SparepartRequest;
 import com.syncro.sparepart.request.domain.SparepartRequestStatus;
@@ -129,6 +132,51 @@ class SparepartRequestControllerTest {
             .content("{\"requestType\":\"CONSUMABLE\",\"quantity\":1}"))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  @DisplayName("12.1-API-006 P0 unknown machine maps to 404 MACHINE_NOT_FOUND")
+  void createUnknownMachine() throws Exception {
+    var user = user(ApplicationRole.STAFF_MAINTENANCE);
+    doThrow(new MachineNotFoundException())
+        .when(service).create(eq(user), any(CreateRequestCommand.class));
+
+    mockMvc.perform(post("/api/v1/sparepart-requests")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"requestType\":\"SPAREPART\",\"machineId\":\"99999999-9999-9999-9999-999999999999\",\"quantity\":1}"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("MACHINE_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("12.1-API-007 P0 unknown sparepart maps to 404 SPAREPART_NOT_FOUND")
+  void createUnknownSparepart() throws Exception {
+    var user = user(ApplicationRole.STAFF_MAINTENANCE);
+    doThrow(new SparepartNotFoundException())
+        .when(service).create(eq(user), any(CreateRequestCommand.class));
+
+    mockMvc.perform(post("/api/v1/sparepart-requests")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"requestType\":\"SPAREPART\",\"machineId\":\"99999999-9999-9999-9999-999999999999\",\"sparepartId\":\"99999999-9999-9999-9999-999999999998\",\"quantity\":1}"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("SPAREPART_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("12.1-API-008 P0 unknown price entry maps to 404 PRICE_ENTRY_NOT_FOUND")
+  void createUnknownPriceEntry() throws Exception {
+    var user = user(ApplicationRole.STAFF_MAINTENANCE);
+    doThrow(new PriceEntryNotFoundException())
+        .when(service).create(eq(user), any(CreateRequestCommand.class));
+
+    mockMvc.perform(post("/api/v1/sparepart-requests")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"requestType\":\"CONSUMABLE\",\"estPriceId\":\"99999999-9999-9999-9999-999999999997\",\"quantity\":1}"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("PRICE_ENTRY_NOT_FOUND"));
   }
 
   private static SparepartRequest requestDomain() {

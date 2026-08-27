@@ -2,6 +2,7 @@ package com.syncro.sparepart.request.api;
 
 import com.syncro.sparepart.request.api.SparepartRequestDtos.ErrorResponse;
 import com.syncro.sparepart.request.application.SparepartRequestService.MachineNotFoundException;
+import com.syncro.sparepart.request.application.SparepartRequestService.PriceEntryNotFoundException;
 import com.syncro.sparepart.request.application.SparepartRequestService.RequestForbiddenException;
 import com.syncro.sparepart.request.application.SparepartRequestService.RequestValidationException;
 import com.syncro.sparepart.request.application.SparepartRequestService.SparepartNotFoundException;
@@ -13,6 +14,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -92,6 +94,21 @@ public class SparepartRequestExceptionHandler {
   @ExceptionHandler(SparepartNotFoundException.class)
   ResponseEntity<ErrorResponse> sparepartNotFound() {
     return error(HttpStatus.NOT_FOUND, "SPAREPART_NOT_FOUND", "Sparepart was not found.", Map.of());
+  }
+
+  @ExceptionHandler(PriceEntryNotFoundException.class)
+  ResponseEntity<ErrorResponse> priceEntryNotFound() {
+    return error(HttpStatus.NOT_FOUND, "PRICE_ENTRY_NOT_FOUND", "Price entry was not found.", Map.of());
+  }
+
+  /**
+   * FK race backstop: a referenced row deleted between the service load and insert surfaces
+   * as a constraint violation. A client error — not a 500.
+   */
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  ResponseEntity<ErrorResponse> dataIntegrity() {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
+        Map.of("data", "A referenced resource no longer exists."));
   }
 
   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message,
