@@ -174,8 +174,8 @@ development_status:
   epic-11-retrospective: optional
 
   # Epic 12: Sparepart Request & Inventory
-  epic-12: backlog
-  12-1-request-creation-and-types: backlog
+  epic-12: in-progress
+  12-1-request-creation-and-types: ready-for-dev
   12-2-request-state-machine: backlog
   12-3-approval-separation-of-duty-and-escalation: backlog
   12-4-stock-op-oq-and-new-item-completion: backlog
