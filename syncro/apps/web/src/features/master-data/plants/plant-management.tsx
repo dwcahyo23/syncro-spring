@@ -220,7 +220,7 @@ export function PlantManagement() {
       </Card>
 
       <Dialog open={dialogMode !== null} onOpenChange={(open) => !open && setDialogMode(null)}>
-        <DialogContent>
+        <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
           <form onSubmit={submitPlant} className="space-y-4">
             <DialogHeader>
               <DialogTitle>{dialogMode?.type === "edit" ? "Edit plant" : "Create plant"}</DialogTitle>

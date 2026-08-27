@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -235,14 +236,14 @@ export function DepartmentManagement() {
           ) : null}
           {items.length > 0 ? (
             <>
-              <label className="mb-2 flex items-center gap-2 text-muted-foreground text-xs">
-                <input
-                  type="checkbox"
+              <div className="mb-2 flex items-center gap-2 text-muted-foreground text-xs">
+                <Checkbox
+                  id="show-inactive-departments"
                   checked={includeInactive}
-                  onChange={(event) => setIncludeInactive(event.target.checked)}
+                  onCheckedChange={(checked) => setIncludeInactive(checked === true)}
                 />
-                Show inactive
-              </label>
+                <label htmlFor="show-inactive-departments">Show inactive</label>
+              </div>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -310,7 +311,7 @@ export function DepartmentManagement() {
 
       {/* Create / edit dialog */}
       <Dialog open={dialogMode !== null} onOpenChange={(open) => !open && setDialogMode(null)}>
-        <DialogContent>
+        <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
           <form onSubmit={submitDepartment} className="space-y-4">
             <DialogHeader>
               <DialogTitle>{dialogMode?.type === "edit" ? "Edit department" : "Create department"}</DialogTitle>
@@ -405,7 +406,7 @@ export function DepartmentManagement() {
 
       {/* Member binding dialog */}
       <Dialog open={memberDialog !== null} onOpenChange={(open) => !open && setMemberDialog(null)}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
+        <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Manage members — {memberDialog?.name}</DialogTitle>
             <DialogDescription>
@@ -422,15 +423,16 @@ export function DepartmentManagement() {
                 return (
                   <label
                     key={u.id}
+                    htmlFor={`dept-member-${u.id}`}
                     className={`flex cursor-pointer items-center gap-3 rounded-md border p-2 transition-colors hover:bg-muted/50 ${
                       isSelected ? "border-primary/50 bg-primary/5" : ""
                     }`}
                   >
-                    <input
-                      type="checkbox"
+                    <Checkbox
+                      id={`dept-member-${u.id}`}
                       className="mr-3"
                       checked={isSelected}
-                      onChange={() => toggleUserSelection(u.id)}
+                      onCheckedChange={() => toggleUserSelection(u.id)}
                     />
                     <span className="text-sm">
                       <span className="block font-medium">{u.displayName ?? u.loginIdentifier}</span>

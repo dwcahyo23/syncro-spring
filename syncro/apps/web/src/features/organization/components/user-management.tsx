@@ -176,7 +176,7 @@ export function UserManagement() {
       </Card>
 
       <Dialog open={editingUser !== null} onOpenChange={(open) => !open && setEditingUser(null)}>
-        <DialogContent>
+        <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
           <form onSubmit={submitUser} className="space-y-4">
             <DialogHeader>
               <DialogTitle>Edit user</DialogTitle>

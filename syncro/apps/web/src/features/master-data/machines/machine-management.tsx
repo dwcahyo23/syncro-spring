@@ -402,7 +402,7 @@ export function MachineManagement() {
       </Card>
 
       <Dialog open={dialogMode !== null} onOpenChange={(open) => !open && setDialogMode(null)}>
-        <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
           <form onSubmit={submitMachine} className="space-y-4">
             <DialogHeader>
               <DialogTitle>{dialogMode?.type === "edit" ? "Edit machine" : "Create machine"}</DialogTitle>

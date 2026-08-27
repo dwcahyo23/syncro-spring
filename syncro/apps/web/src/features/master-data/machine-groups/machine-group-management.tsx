@@ -422,7 +422,7 @@ export function MachineGroupManagement() {
       </Card>
 
       <Dialog open={dialogMode !== null} onOpenChange={(open) => !open && setDialogMode(null)}>
-        <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
           <form onSubmit={submitMachineGroup} className="space-y-4">
             <DialogHeader>
               <DialogTitle>{dialogMode?.type === "edit" ? "Edit machine group" : "Create machine group"}</DialogTitle>

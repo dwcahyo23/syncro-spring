@@ -248,7 +248,7 @@ export function PreventiveScheduleDetail({
                   Upload Evidence
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>Upload Evidence</DialogTitle>
                 </DialogHeader>

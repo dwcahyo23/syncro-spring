@@ -7,6 +7,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -91,7 +92,7 @@ export function RequestPartDialog({ workOrderId }: { workOrderId?: string | null
           Request part
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Request part</DialogTitle>
           <DialogDescription>Request a sparepart, consumable, or external service.</DialogDescription>
@@ -161,8 +162,8 @@ export function RequestPartDialog({ workOrderId }: { workOrderId?: string | null
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
 
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
+          <DialogFooter className="flex flex-row justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
               Cancel
             </Button>
             <Button
@@ -172,7 +173,7 @@ export function RequestPartDialog({ workOrderId }: { workOrderId?: string | null
             >
               {createRequest.isPending ? "Creating…" : "Create request"}
             </Button>
-          </div>
+          </DialogFooter>
         </div>
       </DialogContent>
     </Dialog>

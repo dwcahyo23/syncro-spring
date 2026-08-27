@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -214,14 +215,14 @@ export function SectionManagement() {
           ) : null}
           {items.length > 0 ? (
             <>
-              <label className="mb-2 flex items-center gap-2 text-muted-foreground text-xs">
-                <input
-                  type="checkbox"
+              <div className="mb-2 flex items-center gap-2 text-muted-foreground text-xs">
+                <Checkbox
+                  id="show-inactive-sections"
                   checked={includeInactive}
-                  onChange={(event) => setIncludeInactive(event.target.checked)}
+                  onCheckedChange={(checked) => setIncludeInactive(checked === true)}
                 />
-                Show inactive
-              </label>
+                <label htmlFor="show-inactive-sections">Show inactive</label>
+              </div>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -283,7 +284,7 @@ export function SectionManagement() {
       </Card>
 
       <Dialog open={dialogMode !== null} onOpenChange={(open) => !open && setDialogMode(null)}>
-        <DialogContent>
+        <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
           <form onSubmit={submitSection} className="space-y-4">
             <DialogHeader>
               <DialogTitle>{dialogMode?.type === "edit" ? "Edit section" : "Create section"}</DialogTitle>

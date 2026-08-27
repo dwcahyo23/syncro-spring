@@ -272,7 +272,7 @@ export function TeamManagement() {
       </Card>
 
       <Dialog open={dialogMode !== null} onOpenChange={(open) => !open && setDialogMode(null)}>
-        <DialogContent>
+        <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
           <form onSubmit={submitTeam} className="space-y-4">
             <DialogHeader>
               <DialogTitle>{dialogMode?.type === "edit" ? "Edit team" : "Create team"}</DialogTitle>
@@ -385,7 +385,7 @@ function ManageDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
             {type === "members" ? "Team members" : "Target machines"} — {team.name}
