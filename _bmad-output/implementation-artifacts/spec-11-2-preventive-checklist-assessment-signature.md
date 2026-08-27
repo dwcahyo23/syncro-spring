@@ -5,6 +5,7 @@ created: '2026-08-27'
 baseline_revision: dca5416edf337d75e4e7fe5abb18f80e2ad18580
 final_revision: dca5416edf337d75e4e7fe5abb18f80e2ad18580
 status: 'done'
+review_loop_iteration: 1
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
