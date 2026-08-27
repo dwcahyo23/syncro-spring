@@ -35,6 +35,46 @@ export interface KanbanView {
   groups: Record<string, WorkOrderKanbanItem[]>;
 }
 
+// ---------------------------------------------------------------------------
+// Workorder list table (workorder-table story)
+// ---------------------------------------------------------------------------
+
+/** One server-paginated list row (workorder-table story). Raw UUIDs exist for keys/actions but are never rendered. */
+export interface WorkOrderListRow {
+  id: string;
+  status: string;
+  categoryCode: string | null;
+  categoryLabel: string | null;
+  machineCode: string | null;
+  machineName: string | null;
+  plantCode: string | null;
+  assignedTechnicianId: string | null;
+  assignedTechnicianName: string | null;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+  doneReason: string | null;
+}
+
+/** Server-paginated list envelope: current page items + matching count + page/size echo. */
+export interface WorkOrderPage {
+  items: WorkOrderListRow[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+/** Query params for GET /api/v1/workorders. */
+export interface WorkOrderListParams {
+  from?: string;
+  to?: string;
+  status?: string;
+  machineId?: string;
+  search?: string;
+  page: number;
+  size: number;
+}
+
 export interface CreateTodoRequest {
   title: string;
   description?: string | null;

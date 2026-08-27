@@ -19,6 +19,9 @@ import com.syncro.maintenance.api.WorkOrderDtos.WorkOrderReportView;
 import com.syncro.maintenance.api.WorkOrderDtos.WorkOrderView;
 import com.syncro.maintenance.application.WorkOrderEvidenceService;
 import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceCommand;
+import com.syncro.maintenance.application.WorkOrderListService;
+import com.syncro.maintenance.application.WorkOrderListService.Page;
+import com.syncro.maintenance.application.WorkOrderListService.WorkOrderListView;
 import com.syncro.maintenance.application.WorkOrderReportService;
 import com.syncro.maintenance.application.WorkOrderReportService.CpkPdfCommand;
 import com.syncro.maintenance.application.WorkOrderReportService.SaveReportCommand;
@@ -34,6 +37,7 @@ import com.syncro.maintenance.application.WorkOrderTodoService;
 import com.syncro.maintenance.application.WorkOrderTodoService.CreateTodoCommand;
 import com.syncro.maintenance.domain.workorder.RepairSession;
 import com.syncro.maintenance.domain.workorder.WorkOrder;
+import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
 import com.syncro.maintenance.domain.workorder.WorkOrderTodo;
 import com.syncro.maintenance.domain.workorder.WorkorderRating;
 import io.swagger.v3.oas.annotations.Operation;
@@ -75,14 +79,52 @@ public class WorkOrderController {
   private final WorkOrderReportService report;
   private final WorkOrderTodoService todos;
   private final WorkOrderRatingService ratings;
+  private final WorkOrderListService lists;
 
   public WorkOrderController(WorkOrderService workOrders, WorkOrderEvidenceService evidence,
-      WorkOrderReportService report, WorkOrderTodoService todos, WorkOrderRatingService ratings) {
+      WorkOrderReportService report, WorkOrderTodoService todos, WorkOrderRatingService ratings,
+      WorkOrderListService lists) {
     this.workOrders = workOrders;
     this.evidence = evidence;
     this.report = report;
     this.todos = todos;
     this.ratings = ratings;
+    this.lists = lists;
+  }
+
+  /**
+   * Server-paginated workorder list (workorder-table story). Declared before every
+   * {@code /{id}...} mapping so Spring never routes {@code GET /api/v1/workorders} into
+   * a path-variable handler. Filters: {@code from}/{@code to} ISO dates (inclusive),
+   * {@code status}, {@code machineId}, {@code search} (id / machine code-name / category
+   * label, case-insensitive); {@code page} 0-based, {@code size} 1..200 (default 20).
+   */
+  @Operation(operationId = "listWorkorders", summary = "Server-paginated workorder list")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Paginated workorder list returned",
+          content = @Content(schema = @Schema(implementation = WorkOrderDtos.WorkOrderPageView.class))),
+      @ApiResponse(responseCode = "400", description = "Invalid page, size, or date parameter"),
+      @ApiResponse(responseCode = "401", description = "Authentication required")
+  })
+  @GetMapping
+  public WorkOrderDtos.WorkOrderPageView list(@AuthenticationPrincipal AuthenticatedUser user,
+      @RequestParam(name = "from", required = false) String from,
+      @RequestParam(name = "to", required = false) String to,
+      @RequestParam(name = "status", required = false) WorkOrderStatus status,
+      @RequestParam(name = "machineId", required = false) UUID machineId,
+      @RequestParam(name = "search", required = false) String search,
+      @RequestParam(name = "page", defaultValue = "0") int page,
+      @RequestParam(name = "size", defaultValue = "20") int size) {
+    Page<WorkOrderListView> result = lists.list(user, from, to, status, machineId, search, page, size);
+    return new WorkOrderDtos.WorkOrderPageView(
+        result.items().stream().map(WorkOrderController::toListRowDto).toList(),
+        result.total(), result.page(), result.size());
+  }
+
+  private static WorkOrderDtos.WorkOrderListRowView toListRowDto(WorkOrderListView view) {
+    return new WorkOrderDtos.WorkOrderListRowView(view.id(), view.status(), view.categoryCode(), view.categoryLabel(),
+        view.machineCode(), view.machineName(), view.plantCode(), view.assignedTechnicianId(),
+        view.assignedTechnicianName(), view.description(), view.createdAt(), view.updatedAt(), view.doneReason());
   }
 
   @Operation(operationId = "createWorkOrder", summary = "Create an internal workorder")

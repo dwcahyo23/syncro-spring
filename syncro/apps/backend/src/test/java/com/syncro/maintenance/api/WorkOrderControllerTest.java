@@ -3,6 +3,7 @@ package com.syncro.maintenance.api;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -24,6 +25,9 @@ import com.syncro.config.TimeConfig;
 import com.syncro.maintenance.application.WorkOrderEvidenceService;
 import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceCommand;
 import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceAttachmentNotFoundException;
+import com.syncro.maintenance.application.WorkOrderListService;
+import com.syncro.maintenance.application.WorkOrderListService.Page;
+import com.syncro.maintenance.application.WorkOrderListService.WorkOrderListView;
 import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceForbiddenException;
 import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceWorkOrderNotFoundException;
 import com.syncro.maintenance.application.WorkOrderEvidenceService.StorageException;
@@ -129,6 +133,9 @@ class WorkOrderControllerTest {
 
   @MockitoBean
   private WorkOrderRatingService ratings;
+
+  @MockitoBean
+  private WorkOrderListService lists;
 
   @MockitoBean
   private JwtTokenService jwtTokenService;
@@ -241,6 +248,120 @@ class WorkOrderControllerTest {
         .content("{\"categoryCode\":\"01\",\"machineId\":\"" + MACHINE_ID + "\",\"parentId\":\"WO-2409-NADA\"}"))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("PARENT_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("LIST-API-001 P0 GET /api/v1/workorders returns the paginated envelope")
+  void listReturnsPage() throws Exception {
+    var user = user(ApplicationRole.STAFF_MAINTENANCE);
+    var item = new WorkOrderListView("WO-2608-00001", WorkOrderStatus.OPEN, "01", "Breakdown",
+        "M-001", "Machine", "P01", ASSIGNEE_ID, "Tech User", "breakdown",
+        Instant.parse("2026-08-26T00:00:00Z"), Instant.parse("2026-08-26T00:00:00Z"), null);
+    when(lists.list(eq(user), isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(20)))
+        .thenReturn(new Page<>(List.of(item), 42L, 0, 20));
+
+    mockMvc.perform(get("/api/v1/workorders")
+            .param("page", "0")
+            .param("size", "20")
+            .with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items[0].id").value("WO-2608-00001"))
+        .andExpect(jsonPath("$.items[0].status").value("OPEN"))
+        .andExpect(jsonPath("$.items[0].categoryCode").value("01"))
+        .andExpect(jsonPath("$.items[0].categoryLabel").value("Breakdown"))
+        .andExpect(jsonPath("$.items[0].machineCode").value("M-001"))
+        .andExpect(jsonPath("$.items[0].plantCode").value("P01"))
+        .andExpect(jsonPath("$.items[0].assignedTechnicianName").value("Tech User"))
+        .andExpect(jsonPath("$.total").value(42))
+        .andExpect(jsonPath("$.page").value(0))
+        .andExpect(jsonPath("$.size").value(20));
+  }
+
+  @Test
+  @DisplayName("LIST-API-002 P0 filters are forwarded to the service")
+  void listForwardsFilters() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+    when(lists.list(eq(user), eq("2026-08-01"), eq("2026-08-31"), eq(WorkOrderStatus.OPEN),
+        eq(MACHINE_ID), eq("WO-2608"), eq(1), eq(20)))
+        .thenReturn(new Page<>(List.of(), 0L, 1, 20));
+
+    mockMvc.perform(get("/api/v1/workorders")
+            .param("from", "2026-08-01")
+            .param("to", "2026-08-31")
+            .param("status", "OPEN")
+            .param("machineId", MACHINE_ID.toString())
+            .param("search", "WO-2608")
+            .param("page", "1")
+            .param("size", "20")
+            .with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.total").value(0));
+  }
+
+  @Test
+  @DisplayName("LIST-API-003 P0 an empty result returns items [] total 0")
+  void listEmpty() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    when(lists.list(eq(user), isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(20)))
+        .thenReturn(new Page<>(List.of(), 0L, 0, 20));
+
+    mockMvc.perform(get("/api/v1/workorders")
+            .with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items").isEmpty())
+        .andExpect(jsonPath("$.total").value(0));
+  }
+
+  @Test
+  @DisplayName("LIST-API-004 P0 a bad date maps to 400 VALIDATION_ERROR with a from fieldError")
+  void listBadDate() throws Exception {
+    var user = user(ApplicationRole.STAFF_MAINTENANCE);
+    when(lists.list(eq(user), eq("not-a-date"), isNull(), isNull(), isNull(), isNull(), eq(0), eq(20)))
+        .thenThrow(new WorkOrderListService.WorkOrderListValidationException(Map.of("from",
+            "Date must be in yyyy-MM-dd format.")));
+
+    mockMvc.perform(get("/api/v1/workorders")
+            .param("from", "not-a-date")
+            .with(auth(user)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.fieldErrors.from").exists());
+  }
+
+  @Test
+  @DisplayName("LIST-API-005 P0 a bad status enum maps to 400 VALIDATION_ERROR")
+  void listBadStatus() throws Exception {
+    var user = user(ApplicationRole.STAFF_MAINTENANCE);
+
+    mockMvc.perform(get("/api/v1/workorders")
+            .param("status", "NOT_A_STATUS")
+            .with(auth(user)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+  }
+
+  @Test
+  @DisplayName("LIST-API-006 P0 a bad machineId maps to 400 VALIDATION_ERROR on machineId")
+  void listBadMachineId() throws Exception {
+    var user = user(ApplicationRole.STAFF_MAINTENANCE);
+
+    mockMvc.perform(get("/api/v1/workorders")
+            .param("machineId", "not-a-uuid")
+            .with(auth(user)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+  }
+
+  @Test
+  @DisplayName("LIST-API-007 P0 any authenticated user may read the list (read posture)")
+  void listReadAllowedForAuditor() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    when(lists.list(eq(user), isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(20)))
+        .thenReturn(new Page<>(List.of(), 0L, 0, 20));
+
+    mockMvc.perform(get("/api/v1/workorders")
+            .with(auth(user)))
+        .andExpect(status().isOk());
   }
 
   @Test

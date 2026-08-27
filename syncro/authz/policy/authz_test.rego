@@ -226,6 +226,14 @@ test_staff_workorder_read_allowed if {
   authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "GET /api/v1/workorders"}
 }
 
+test_auditor_workorder_list_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/workorders"}
+}
+
+test_technician_workorder_list_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "GET /api/v1/workorders"}
+}
+
 # -- Workorder transition (story 10-3): the executor roles (TECHNICIAN, STAFF_MAINTENANCE)
 #    plus leadership are allowed; AUDITOR/PRODUCTION_LEADER/INVENTORY_MAINTENANCE/
 #    STOREKEEPER denied ---------------------------------------------------------

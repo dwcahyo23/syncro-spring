@@ -25,6 +25,7 @@ import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceWorkO
 import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceWorkOrderNotFoundException;
 import com.syncro.maintenance.application.WorkOrderEvidenceService.StorageException;
 import com.syncro.maintenance.application.WorkOrderEvidenceService.ValidationException;
+import com.syncro.maintenance.application.WorkOrderListService.WorkOrderListValidationException;
 import com.syncro.maintenance.application.WorkOrderRatingService.DimensionInUseException;
 import com.syncro.maintenance.application.WorkOrderRatingService.DimensionNotFoundException;
 import com.syncro.maintenance.application.WorkOrderRatingService.RatedUserNotFoundException;
@@ -308,11 +309,16 @@ public class WorkOrderExceptionHandler {
         Map.of("data", "Request must be sent as multipart/form-data."));
   }
 
-  /** Path variable not a UUID (e.g. /attachments/not-a-uuid). */
+  /**
+   * A path/query parameter that cannot be converted to its target type (e.g.
+   * /attachments/not-a-uuid, or a list query {@code status=NOT_A_STATUS} or
+   * {@code machineId=not-a-uuid}). Field errors carry the actual parameter name so the
+   * frontend can surface the offending filter.
+   */
   @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-  ResponseEntity<ErrorResponse> typeMismatch() {
+  ResponseEntity<ErrorResponse> typeMismatch(MethodArgumentTypeMismatchException exception) {
     return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
-        Map.of("attachmentId", "Attachment id must be a UUID."));
+        Map.of(exception.getName(), "Invalid value for this parameter."));
   }
 
   @ExceptionHandler({StorageException.class, com.syncro.maintenance.application.WorkOrderReportService.StorageException.class})
@@ -385,6 +391,17 @@ public class WorkOrderExceptionHandler {
 
   @ExceptionHandler(WorkOrderTodoValidationException.class)
   ResponseEntity<ErrorResponse> todoValidation(WorkOrderTodoValidationException exception) {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
+        exception.getFieldErrors());
+  }
+
+  // -------------------------------------------------------------------------
+  // Workorder list table (workorder-table story)
+  // -------------------------------------------------------------------------
+
+  /** Invalid list query (bad date format, page/size out of range) → 400 with fieldErrors. */
+  @ExceptionHandler(WorkOrderListValidationException.class)
+  ResponseEntity<ErrorResponse> listValidation(WorkOrderListValidationException exception) {
     return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
         exception.getFieldErrors());
   }

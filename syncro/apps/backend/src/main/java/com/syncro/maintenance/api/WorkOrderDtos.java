@@ -116,6 +116,25 @@ public final class WorkOrderDtos {
   public record KanbanView(Map<WorkOrderStatus, List<WorkOrderKanbanItem>> groups) {
   }
 
+  // -------------------------------------------------------------------------
+  // Workorder list table (workorder-table story)
+  // -------------------------------------------------------------------------
+
+  /**
+   * One list row (workorder-table story). The API exposes {@code id} (WO-YYMM-XXXXX /
+   * sheet_no), machine {@code code · name}, plant {@code code}, category code/label and
+   * the resolved technician name. Raw UUIDs ({@code assignedTechnicianId}) exist for
+   * keys/actions but are never rendered by the UI (spec: no raw UUIDs leaked in cells).
+   */
+  public record WorkOrderListRowView(String id, WorkOrderStatus status, String categoryCode, String categoryLabel,
+      String machineCode, String machineName, String plantCode, UUID assignedTechnicianId,
+      String assignedTechnicianName, String description, Instant createdAt, Instant updatedAt, String doneReason) {
+  }
+
+  /** Server-paginated list envelope: current page items + matching count + page/size echo. */
+  public record WorkOrderPageView(List<WorkOrderListRowView> items, long total, int page, int size) {
+  }
+
   public record ErrorResponse(String code, String message, Map<String, String> fieldErrors, String timestamp,
       String traceId) {
   }

@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -99,4 +100,75 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrderEntity, Stri
       where r.workOrderId = :workOrderId and r.technicianId is not null
       """)
   List<UUID> findSessionTechnicianIds(@Param("workOrderId") String workOrderId);
+
+  /**
+   * Story workorder-table server-paginated list read: every workorder visible in the
+   * derived scope (plant OR machine-group) LEFT JOINed with its category, machine and
+   * plant — no todos, so no cartesian blowup on hundreds of rows. Optional filters:
+   * {@code from}/{@code to} are inclusive ISO dates matched against {@code createdAt}
+   * (server clock UTC — boundary = start-of-day/end-of-day), {@code status} is a single
+   * status, {@code machineId} narrows to one machine, and {@code search} matches the
+   * workorder id, machine code/name or category label (case-insensitive, {@code %term%}
+   * escaped). Rows are ordered by {@code createdAt desc}, then workorder id for a stable
+   * page order. {@code unrestricted} (SUPER_ADMIN — derived scope plantIds is null)
+   * bypasses the scope filter; the plant/group lists are ignored when true.
+   */
+  @Query("""
+      select new com.syncro.maintenance.infrastructure.db.WorkOrderListRow(
+        w, c, m.code, m.name, m.plant.code)
+      from WorkOrderEntity w
+      left join WorkOrderCategoryEntity c on c.id = w.categoryId
+      join MachineEntity m on m.id = w.machineId
+      where (:unrestricted = true or m.plant.id in :plantIds or m.machineGroup.id in :groupIds)
+        and (:from is null or w.createdAt >= :from)
+        and (:to is null or w.createdAt < :to)
+        and (:status is null or w.status = :status)
+        and (:machineId is null or w.machineId = :machineId)
+        and (:search is null
+             or lower(w.id) like :search escape '\\'
+             or lower(m.code) like :search escape '\\'
+             or lower(m.name) like :search escape '\\'
+             or lower(c.label) like :search escape '\\')
+      order by w.createdAt desc, w.id
+      """)
+  List<WorkOrderListRow> findScopedPage(
+      @Param("unrestricted") boolean unrestricted,
+      @Param("plantIds") Collection<UUID> plantIds,
+      @Param("groupIds") Collection<UUID> groupIds,
+      @Param("from") Instant from,
+      @Param("to") Instant to,
+      @Param("status") WorkOrderStatus status,
+      @Param("machineId") UUID machineId,
+      @Param("search") String search,
+      Pageable pageable);
+
+  /**
+   * Matching-count twin of {@link #findScopedPage}: identical predicates (without the
+   * page order/limit) so {@code total} reflects the same filtered set.
+   */
+  @Query("""
+      select count(w)
+      from WorkOrderEntity w
+      left join WorkOrderCategoryEntity c on c.id = w.categoryId
+      join MachineEntity m on m.id = w.machineId
+      where (:unrestricted = true or m.plant.id in :plantIds or m.machineGroup.id in :groupIds)
+        and (:from is null or w.createdAt >= :from)
+        and (:to is null or w.createdAt < :to)
+        and (:status is null or w.status = :status)
+        and (:machineId is null or w.machineId = :machineId)
+        and (:search is null
+             or lower(w.id) like :search escape '\\'
+             or lower(m.code) like :search escape '\\'
+             or lower(m.name) like :search escape '\\'
+             or lower(c.label) like :search escape '\\')
+      """)
+  long countScoped(
+      @Param("unrestricted") boolean unrestricted,
+      @Param("plantIds") Collection<UUID> plantIds,
+      @Param("groupIds") Collection<UUID> groupIds,
+      @Param("from") Instant from,
+      @Param("to") Instant to,
+      @Param("status") WorkOrderStatus status,
+      @Param("machineId") UUID machineId,
+      @Param("search") String search);
 }
