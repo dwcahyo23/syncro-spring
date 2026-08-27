@@ -45,6 +45,8 @@ public class WorkOrderListService {
     this.scopes = scopes;
   }
 
+  private static final UUID NO_MACHINE = new UUID(0L, 0L);
+
   @Transactional(readOnly = true)
   public Page<WorkOrderListView> list(AuthenticatedUser user, String from, String to, WorkOrderStatus status,
       UUID machineId, String search, int page, int size) {
@@ -55,8 +57,12 @@ public class WorkOrderListService {
     groupIds.addAll(scope.machineGroupIds());
     groupIds.addAll(scope.activeTeamIds());
 
-    var fromInstant = parseDate(from, "from");
-    var toInstant = parseDateExclusive(to, "to");
+    // Non-null sentinels: Postgres 42P18 when nullable params appear in `? is null or col = ?`.
+    // MIN/MAX for date bounds, "" for status/search, zero-UUID for machine filter.
+    var fromInstant = parseDate(from, "from", Instant.MIN);
+    var toInstant = parseDateExclusive(to, "to", Instant.MAX);
+    var statusFilter = status == null ? "" : status.name();
+    var machineFilter = machineId == null ? NO_MACHINE : machineId;
     var searchPattern = like(search);
 
     var rows = workOrders.findScopedPage(
@@ -65,8 +71,9 @@ public class WorkOrderListService {
         groupIds,
         fromInstant,
         toInstant,
-        status,
-        machineId,
+        statusFilter,
+        machineFilter,
+        NO_MACHINE,
         searchPattern,
         PageRequest.of(page, size));
     var total = workOrders.countScoped(
@@ -75,8 +82,9 @@ public class WorkOrderListService {
         groupIds,
         fromInstant,
         toInstant,
-        status,
-        machineId,
+        statusFilter,
+        machineFilter,
+        NO_MACHINE,
         searchPattern);
 
     var technicianNames = resolveTechnicianNames(rows);
@@ -145,10 +153,10 @@ public class WorkOrderListService {
     }
   }
 
-  /** ISO date ({@code yyyy-MM-dd}) → UTC start-of-day; invalid → 400 VALIDATION_ERROR on the field. */
-  private static Instant parseDate(String value, String field) {
+  /** ISO date ({@code yyyy-MM-dd}) → UTC start-of-day; blank → {@code absent}; invalid → 400 VALIDATION_ERROR. */
+  private static Instant parseDate(String value, String field, Instant absent) {
     if (value == null || value.isBlank()) {
-      return null;
+      return absent;
     }
     try {
       return LocalDate.parse(value.trim()).atStartOfDay().toInstant(ZoneOffset.UTC);
@@ -158,15 +166,15 @@ public class WorkOrderListService {
   }
 
   /** {@code to} is inclusive → the query uses an exclusive upper bound of {@code to+1 day}. */
-  private static Instant parseDateExclusive(String value, String field) {
-    var instant = parseDate(value, field);
-    return instant != null ? instant.plusSeconds(86_400) : null;
+  private static Instant parseDateExclusive(String value, String field, Instant absent) {
+    var instant = parseDate(value, field, absent);
+    return instant == Instant.MAX ? Instant.MAX : instant.plusSeconds(86_400);
   }
 
-  /** {@code %term%} with {@code _}, {@code %} and {@code \} escaped (same rule as machine search). */
+  /** {@code %term%} with {@code _}, {@code %} and {@code \} escaped; blank → {@code ""} (non-null sentinel). */
   private static String like(String term) {
     if (term == null || term.isBlank()) {
-      return null;
+      return "";
     }
     var escaped = term.trim()
         .replace("\\", "\\\\")

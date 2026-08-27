@@ -65,9 +65,9 @@ class WorkOrderListServiceTest {
     var scope = new OperationalScope(Set.of(plantId), Set.of(groupId), Set.of());
     when(scopes.derive(user)).thenReturn(scope);
     var row = listRow(technicianId, WorkOrderStatus.OPEN);
-    when(workOrders.findScopedPage(eq(false), any(), any(), any(), any(), any(), any(), any(), any()))
+    when(workOrders.findScopedPage(eq(false), any(), any(), any(), any(), any(), any(), any(), any(), any()))
         .thenReturn(List.of(row));
-    when(workOrders.countScoped(eq(false), any(), any(), any(), any(), any(), any(), any()))
+    when(workOrders.countScoped(eq(false), any(), any(), any(), any(), any(), any(), any(), any()))
         .thenReturn(42L);
     when(users.findAllById(Set.of(technicianId))).thenReturn(List.of(techUser(technicianId)));
 
@@ -89,9 +89,9 @@ class WorkOrderListServiceTest {
     var user = scopedUser(ApplicationRole.SUPER_ADMIN);
     var scope = new OperationalScope(null, Set.of(), Set.of());
     when(scopes.derive(user)).thenReturn(scope);
-    when(workOrders.findScopedPage(eq(true), any(), any(), any(), any(), any(), any(), any(), any()))
+    when(workOrders.findScopedPage(eq(true), any(), any(), any(), any(), any(), any(), any(), any(), any()))
         .thenReturn(List.of());
-    when(workOrders.countScoped(eq(true), any(), any(), any(), any(), any(), any(), any())).thenReturn(0L);
+    when(workOrders.countScoped(eq(true), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(0L);
 
     var result = service.list(user, null, null, null, null, null, 0, 20);
 
@@ -106,16 +106,16 @@ class WorkOrderListServiceTest {
     var teamGroupId = UUID.randomUUID();
     var scope = new OperationalScope(Set.of(plantId), Set.of(groupId), Set.of(teamGroupId));
     when(scopes.derive(user)).thenReturn(scope);
-    when(workOrders.findScopedPage(eq(false), any(), any(), any(), any(), any(), any(), any(), any()))
+    when(workOrders.findScopedPage(eq(false), any(), any(), any(), any(), any(), any(), any(), any(), any()))
         .thenReturn(List.of());
-    when(workOrders.countScoped(eq(false), any(), any(), any(), any(), any(), any(), any())).thenReturn(0L);
+    when(workOrders.countScoped(eq(false), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(0L);
 
     service.list(user, null, null, null, null, null, 0, 20);
 
     org.mockito.Mockito.verify(workOrders).findScopedPage(
         eq(false), any(), org.mockito.ArgumentMatchers.argThat(
             ids -> ids.contains(teamGroupId) && ids.contains(groupId)),
-        any(), any(), any(), any(), any(), any());
+        any(), any(), any(), any(), any(), any(), any());
   }
 
   // -------------------------------------------------------------------------
@@ -127,9 +127,9 @@ class WorkOrderListServiceTest {
   void listMonthFilterBounds() {
     var user = scopedUser(ApplicationRole.TECHNICIAN);
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
-    when(workOrders.findScopedPage(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any()))
+    when(workOrders.findScopedPage(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
         .thenReturn(List.of());
-    when(workOrders.countScoped(anyBoolean(), any(), any(), any(), any(), any(), any(), any())).thenReturn(0L);
+    when(workOrders.countScoped(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(0L);
 
     service.list(user, "2026-08-01", "2026-08-31", null, null, null, 0, 20);
 
@@ -137,7 +137,7 @@ class WorkOrderListServiceTest {
         anyBoolean(), any(), any(),
         org.mockito.ArgumentMatchers.eq(Instant.parse("2026-08-01T00:00:00Z")),
         org.mockito.ArgumentMatchers.eq(Instant.parse("2026-09-01T00:00:00Z")),
-        any(), any(), any(), any());
+        any(), any(), any(), any(), any());
   }
 
   @Test
@@ -145,16 +145,17 @@ class WorkOrderListServiceTest {
   void listForwardsFilters() {
     var user = scopedUser(ApplicationRole.TECHNICIAN);
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
-    when(workOrders.findScopedPage(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any()))
+    when(workOrders.findScopedPage(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
         .thenReturn(List.of());
-    when(workOrders.countScoped(anyBoolean(), any(), any(), any(), any(), any(), any(), any())).thenReturn(0L);
+    when(workOrders.countScoped(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(0L);
 
     service.list(user, null, null, WorkOrderStatus.OPEN, machineId, "WO-2608", 0, 20);
 
     org.mockito.Mockito.verify(workOrders).findScopedPage(
         anyBoolean(), any(), any(), any(), any(),
-        org.mockito.ArgumentMatchers.eq(WorkOrderStatus.OPEN),
+        org.mockito.ArgumentMatchers.eq("OPEN"),
         org.mockito.ArgumentMatchers.eq(machineId),
+        org.mockito.ArgumentMatchers.eq(new UUID(0L, 0L)),
         org.mockito.ArgumentMatchers.eq("%wo-2608%"),
         any());
   }
@@ -164,14 +165,14 @@ class WorkOrderListServiceTest {
   void listEscapesSearchWildcards() {
     var user = scopedUser(ApplicationRole.TECHNICIAN);
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
-    when(workOrders.findScopedPage(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any()))
+    when(workOrders.findScopedPage(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
         .thenReturn(List.of());
-    when(workOrders.countScoped(anyBoolean(), any(), any(), any(), any(), any(), any(), any())).thenReturn(0L);
+    when(workOrders.countScoped(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(0L);
 
     service.list(user, null, null, null, null, "50%_x\\y", 0, 20);
 
     org.mockito.Mockito.verify(workOrders).findScopedPage(
-        anyBoolean(), any(), any(), any(), any(), any(), any(),
+        anyBoolean(), any(), any(), any(), any(), any(), any(), any(),
         org.mockito.ArgumentMatchers.eq("%50\\%\\_x\\\\y%"),
         any());
   }
@@ -230,9 +231,9 @@ class WorkOrderListServiceTest {
   void listEmpty() {
     var user = scopedUser(ApplicationRole.TECHNICIAN);
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
-    when(workOrders.findScopedPage(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any()))
+    when(workOrders.findScopedPage(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
         .thenReturn(List.of());
-    when(workOrders.countScoped(anyBoolean(), any(), any(), any(), any(), any(), any(), any())).thenReturn(0L);
+    when(workOrders.countScoped(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(0L);
 
     var result = service.list(user, null, null, null, null, null, 0, 20);
 
@@ -248,9 +249,9 @@ class WorkOrderListServiceTest {
     var workOrder = new WorkOrderEntity("WO-2608-00001", "INTERNAL", null, WorkOrderStatus.OPEN, UUID.randomUUID(),
         machineId, "  messy description  ", 0, null, technicianId, UUID.randomUUID(), NOW, NOW);
     var row = new WorkOrderListRow(workOrder, null, "M-001", "Machine", "P01");
-    when(workOrders.findScopedPage(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any()))
+    when(workOrders.findScopedPage(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
         .thenReturn(List.of(row));
-    when(workOrders.countScoped(anyBoolean(), any(), any(), any(), any(), any(), any(), any())).thenReturn(1L);
+    when(workOrders.countScoped(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(1L);
     when(users.findAllById(Set.of(technicianId))).thenReturn(List.of(techUser(technicianId)));
 
     var result = service.list(user, null, null, null, null, null, 0, 20);

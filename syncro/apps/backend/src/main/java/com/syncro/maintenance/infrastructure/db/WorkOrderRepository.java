@@ -120,11 +120,11 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrderEntity, Stri
       left join WorkOrderCategoryEntity c on c.id = w.categoryId
       join MachineEntity m on m.id = w.machineId
       where (:unrestricted = true or m.plant.id in :plantIds or m.machineGroup.id in :groupIds)
-        and (:from is null or w.createdAt >= :from)
-        and (:to is null or w.createdAt < :to)
-        and (:status is null or w.status = :status)
-        and (:machineId is null or w.machineId = :machineId)
-        and (:search is null
+        and w.createdAt >= :from
+        and w.createdAt < :to
+        and (:status = '' or w.status = cast(:status as string))
+        and (:machineId = :noMachine or w.machineId = :machineId)
+        and (:search = ''
              or lower(w.id) like :search escape '\\'
              or lower(m.code) like :search escape '\\'
              or lower(m.name) like :search escape '\\'
@@ -137,8 +137,9 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrderEntity, Stri
       @Param("groupIds") Collection<UUID> groupIds,
       @Param("from") Instant from,
       @Param("to") Instant to,
-      @Param("status") WorkOrderStatus status,
+      @Param("status") String status,
       @Param("machineId") UUID machineId,
+      @Param("noMachine") UUID noMachine,
       @Param("search") String search,
       Pageable pageable);
 
@@ -152,11 +153,11 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrderEntity, Stri
       left join WorkOrderCategoryEntity c on c.id = w.categoryId
       join MachineEntity m on m.id = w.machineId
       where (:unrestricted = true or m.plant.id in :plantIds or m.machineGroup.id in :groupIds)
-        and (:from is null or w.createdAt >= :from)
-        and (:to is null or w.createdAt < :to)
-        and (:status is null or w.status = :status)
-        and (:machineId is null or w.machineId = :machineId)
-        and (:search is null
+        and w.createdAt >= :from
+        and w.createdAt < :to
+        and (:status = '' or w.status = cast(:status as string))
+        and (:machineId = :noMachine or w.machineId = :machineId)
+        and (:search = ''
              or lower(w.id) like :search escape '\\'
              or lower(m.code) like :search escape '\\'
              or lower(m.name) like :search escape '\\'
@@ -168,7 +169,8 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrderEntity, Stri
       @Param("groupIds") Collection<UUID> groupIds,
       @Param("from") Instant from,
       @Param("to") Instant to,
-      @Param("status") WorkOrderStatus status,
+      @Param("status") String status,
       @Param("machineId") UUID machineId,
+      @Param("noMachine") UUID noMachine,
       @Param("search") String search);
 }
