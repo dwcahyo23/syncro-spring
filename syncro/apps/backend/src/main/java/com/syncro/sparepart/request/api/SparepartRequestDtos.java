@@ -9,6 +9,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -33,6 +34,9 @@ public final class SparepartRequestDtos {
       UUID sparepartId, String materialCode, int quantity, UUID estPriceId, BigDecimal estUnitPrice,
       String purchaseReferenceUrl, SparepartRequestStatus status, UUID requestedBy, Instant requestedAt,
       String notes, Instant createdAt, Instant updatedAt) {
+  }
+
+  public record SparepartRequestListView(List<SparepartRequestView> items, long total, int page, int size) {
   }
 
   public record ErrorResponse(String code, String message, Map<String, String> fieldErrors, String timestamp,

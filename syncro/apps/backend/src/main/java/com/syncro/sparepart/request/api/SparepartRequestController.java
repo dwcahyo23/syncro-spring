@@ -2,6 +2,7 @@ package com.syncro.sparepart.request.api;
 
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.sparepart.request.api.SparepartRequestDtos.CreateSparepartRequestRequest;
+import com.syncro.sparepart.request.api.SparepartRequestDtos.SparepartRequestListView;
 import com.syncro.sparepart.request.api.SparepartRequestDtos.SparepartRequestView;
 import com.syncro.sparepart.request.application.SparepartRequestService;
 import com.syncro.sparepart.request.application.SparepartRequestService.CreateRequestCommand;
@@ -15,9 +16,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Validated
@@ -29,6 +32,21 @@ public class SparepartRequestController {
 
   public SparepartRequestController(SparepartRequestService service) {
     this.service = service;
+  }
+
+  @Operation(operationId = "listSparepartRequests", summary = "List sparepart requests (scoped, paginated)")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Requests returned"),
+      @ApiResponse(responseCode = "401", description = "Authentication required")
+  })
+  @GetMapping
+  public SparepartRequestListView list(@AuthenticationPrincipal AuthenticatedUser user,
+      @RequestParam(name = "page", defaultValue = "0") int page,
+      @RequestParam(name = "size", defaultValue = "20") int size) {
+    var result = service.list(user, page, size);
+    return new SparepartRequestListView(
+        result.items().stream().map(SparepartRequestController::toView).toList(),
+        result.total(), result.page(), result.size());
   }
 
   @Operation(operationId = "createSparepartRequest", summary = "Create a sparepart request with type rules (FR-140/FR-143/FR-144)")

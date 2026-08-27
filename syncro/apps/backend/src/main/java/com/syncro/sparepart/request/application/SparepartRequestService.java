@@ -27,9 +27,11 @@ import java.net.URISyntaxException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -70,6 +72,41 @@ public class SparepartRequestService {
     this.auditLog = auditLog;
     this.scopes = scopes;
     this.clock = clock;
+  }
+
+  @Transactional(readOnly = true)
+  public RequestPage list(AuthenticatedUser user, int page, int size) {
+    validatePageAndSize(page, size);
+    var scope = scopes.derive(user);
+    var unrestricted = scope.plantIds() == null;
+    var groupIds = new java.util.HashSet<UUID>();
+    groupIds.addAll(scope.machineGroupIds());
+    groupIds.addAll(scope.activeTeamIds());
+
+    var rows = requests.findScopedPage(
+        unrestricted,
+        scope.plantIds() == null ? List.of() : scope.plantIds(),
+        groupIds,
+        PageRequest.of(page, size));
+    var total = requests.countScoped(
+        unrestricted,
+        scope.plantIds() == null ? List.of() : scope.plantIds(),
+        groupIds);
+    var items = rows.stream().map(SparepartRequestMapper::toDomain).toList();
+    return new RequestPage(items, total, page, size);
+  }
+
+  private static void validatePageAndSize(int page, int size) {
+    var fieldErrors = new LinkedHashMap<String, String>();
+    if (page < 0) {
+      fieldErrors.put("page", "Page must be 0 or greater.");
+    }
+    if (size < 1 || size > 200) {
+      fieldErrors.put("size", "Size must be between 1 and 200.");
+    }
+    if (!fieldErrors.isEmpty()) {
+      throw new RequestValidationException(fieldErrors);
+    }
   }
 
   @Transactional
@@ -392,6 +429,9 @@ public class SparepartRequestService {
   // -------------------------------------------------------------------------
   // Command & exceptions
   // -------------------------------------------------------------------------
+
+  public record RequestPage(List<SparepartRequest> items, long total, int page, int size) {
+  }
 
   public record CreateRequestCommand(SparepartRequestType requestType, String workOrderId, UUID machineId,
       UUID sparepartId, String materialCode, Integer quantity, UUID estPriceId, BigDecimal estUnitPrice,
