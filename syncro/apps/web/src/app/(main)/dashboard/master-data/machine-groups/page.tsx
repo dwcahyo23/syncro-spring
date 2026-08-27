@@ -1,10 +1,6 @@
-import { RoleGuard } from "@/components/syncro/role-guard";
-import { MachineGroupManagement } from "@/features/master-data/machine-groups/machine-group-management";
+import { redirect } from "next/navigation";
 
-export default function Page() {
-  return (
-    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGER_MAINTENANCE", "AUDITOR"]} title="Machine Groups">
-      <MachineGroupManagement />
-    </RoleGuard>
-  );
+/** Superseded by the consolidated Master Data → Machines tab page (Machine Groups tab). */
+export default function OldMachineGroupsPage() {
+  redirect("/master-data/machines");
 }

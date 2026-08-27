@@ -1,10 +1,6 @@
-import { RoleGuard } from "@/components/syncro/role-guard";
-import { TeamManagement } from "@/features/master-data/teams/team-management";
+import { redirect } from "next/navigation";
 
-export default function Page() {
-  return (
-    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGER_MAINTENANCE"]} title="Cross-Plant Teams">
-      <TeamManagement />
-    </RoleGuard>
-  );
+/** Superseded by the consolidated Master Data → Organization tab page (Teams tab). */
+export default function OldTeamsPage() {
+  redirect("/master-data/organization?tab=teams");
 }

@@ -1,10 +1,6 @@
-import { RoleGuard } from "@/components/syncro/role-guard";
-import { InstallationManagement } from "@/features/master-data/installations/installation-management";
+import { redirect } from "next/navigation";
 
-export default function Page() {
-  return (
-    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGER_MAINTENANCE", "AUDITOR"]} title="Installations">
-      <InstallationManagement />
-    </RoleGuard>
-  );
+/** Superseded by the consolidated Master Data → Machines tab page (Installations tab). */
+export default function OldInstallationsPage() {
+  redirect("/master-data/machines?tab=installations");
 }

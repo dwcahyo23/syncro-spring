@@ -1,10 +1,6 @@
-import { RoleGuard } from "@/components/syncro/role-guard";
-import { SetupCompletenessPage } from "@/features/setup/setup-completeness-page";
+import { redirect } from "next/navigation";
 
-export default function Page() {
-  return (
-    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGER_MAINTENANCE", "AUDITOR"]} title="Setup">
-      <SetupCompletenessPage />
-    </RoleGuard>
-  );
+/** Superseded by the consolidated Master Data → Plants tab page (Setup tab). */
+export default function OldSetupPage() {
+  redirect("/master-data/plants?tab=setup");
 }

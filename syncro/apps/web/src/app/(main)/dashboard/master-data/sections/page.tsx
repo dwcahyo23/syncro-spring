@@ -1,10 +1,6 @@
-import { RoleGuard } from "@/components/syncro/role-guard";
-import { SectionManagement } from "@/features/master-data/sections/section-management";
+import { redirect } from "next/navigation";
 
-export default function Page() {
-  return (
-    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGER_MAINTENANCE", "AUDITOR"]} title="Sections">
-      <SectionManagement />
-    </RoleGuard>
-  );
+/** Superseded by the consolidated Master Data → Organization tab page (Sections tab). */
+export default function OldSectionsPage() {
+  redirect("/master-data/organization?tab=sections");
 }
