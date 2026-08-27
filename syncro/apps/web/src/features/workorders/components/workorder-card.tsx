@@ -4,6 +4,7 @@ import { CheckCircle2, Circle } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RequestPartDialog } from "@/features/sparepart-requests/components/request-part-dialog";
 import type { WorkOrderKanbanItem } from "@/features/workorders/types";
 
 export interface WorkOrderCardProps {
@@ -48,6 +49,9 @@ export function WorkOrderCard({ item }: WorkOrderCardProps) {
           {doneTodos}/{totalTodos} done
           {cancelledTodos > 0 ? ` · ${cancelledTodos} cancelled` : ""}
         </p>
+        <div className="mt-2">
+          <RequestPartDialog workOrderId={item.id} />
+        </div>
       </CardContent>
     </Card>
   );

@@ -2,7 +2,8 @@
 title: 'Sparepart Request Creation & Types'
 type: 'feature'
 created: '2026-08-27'
-status: 'ready-for-dev'
+baseline_commit: 404fd83fd4738367f2f5c008baa3916d244ad717
+status: 'review'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -109,14 +110,14 @@ warnings: []
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `resources/db/migration/V57__sparepart_requests.sql` -- table + audit extension.
-- [ ] Domain enums + records + `AuditEntityType` -- sparepart request types.
-- [ ] Entity + repository.
-- [ ] `SparepartRequestService` -- create + type rules + material resolution + gate + audit.
-- [ ] Controller + DTOs + exception handler.
-- [ ] `authz.rego` + `authz_test.rego` + `.env.example` -- sparepart_request_paths + parity.
-- [ ] Frontend: request-part dialog + workorder card action + hooks + types.
-- [ ] Tests (service + controller + migration).
+- [x] `resources/db/migration/V57__sparepart_requests.sql` -- table + audit extension.
+- [x] Domain enums + records + `AuditEntityType` -- sparepart request types.
+- [x] Entity + repository.
+- [x] `SparepartRequestService` -- create + type rules + material resolution + gate + audit.
+- [x] Controller + DTOs + exception handler.
+- [x] `authz.rego` + `authz_test.rego` + `.env.example` -- sparepart_request_paths + parity.
+- [x] Frontend: request-part dialog + workorder card action + hooks + types.
+- [x] Tests (service + controller + migration).
 
 **Acceptance Criteria:**
 - Given an authorized user creates a request on a workorder, when submitted, then type rules are enforced (SERVICE_EXTERNAL requires a workorder; CONSUMABLE does not require a machine; SPAREPART uses the electric/mechanic taxonomy) and creation is audit-logged. [FR-140]

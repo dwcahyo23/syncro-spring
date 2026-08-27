@@ -12,6 +12,8 @@ import org.springframework.data.repository.query.Param;
 public interface SparepartRepository extends JpaRepository<SparepartEntity, UUID> {
   Optional<SparepartEntity> findByCodeIgnoreCase(String code);
 
+  Optional<SparepartEntity> findByMaterialCodeIgnoreCase(String materialCode);
+
   boolean existsByCodeIgnoreCase(String code);
 
   boolean existsByMaterialCodeIgnoreCaseAndIdNot(String materialCode, UUID id);

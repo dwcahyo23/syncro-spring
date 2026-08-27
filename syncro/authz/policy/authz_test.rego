@@ -600,6 +600,36 @@ test_auditor_preventive_schedule_approve_denied if {
   not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/preventive-schedules/7b7c6d5e-1111-2222-3333-444455556666/approve"}
 }
 
+# -- Sparepart requests (story 12-1): five-role mutation allow set -----------------
+
+test_manager_sparepart_request_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/sparepart-requests"}
+}
+
+test_section_leader_sparepart_request_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/sparepart-requests"}
+}
+
+test_maintenance_leader_sparepart_request_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/sparepart-requests"}
+}
+
+test_staff_sparepart_request_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/sparepart-requests"}
+}
+
+test_technician_sparepart_request_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/sparepart-requests"}
+}
+
+test_auditor_sparepart_request_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/sparepart-requests"}
+}
+
+test_anonymous_sparepart_request_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/sparepart-requests"}
+}
+
 # -- Anonymous (no userId): default deny everywhere ------------------------
 
 test_anonymous_admin_only_denied if {

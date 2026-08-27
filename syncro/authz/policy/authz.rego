@@ -81,6 +81,13 @@ workorder_create_paths := {
   "/api/v1/workorders",
 }
 
+# Sparepart request creation (story 12-1): five-role allow set mirroring workorder-create
+# parity (MANAGER_MAINTENANCE, SECTION_LEADER, MAINTENANCE_LEADER, STAFF_MAINTENANCE,
+# TECHNICIAN). Service gate is authoritative for scope/executor assignment.
+sparepart_request_paths := {
+  "/api/v1/sparepart-requests",
+}
+
 workorder_assign_paths := {
   "/api/v1/workorders/*/assign",
 }
@@ -237,6 +244,37 @@ mutation_allowed if {
   input.subject.roles[_] == "PRODUCTION_LEADER"
   is_mutation
   path_matches(workorder_create_paths)
+}
+
+# Sparepart request creation (story 12-1): five-role allow set, coarse gate only.
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(sparepart_request_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(sparepart_request_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(sparepart_request_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STAFF_MAINTENANCE"
+  is_mutation
+  path_matches(sparepart_request_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "TECHNICIAN"
+  is_mutation
+  path_matches(sparepart_request_paths)
 }
 
 # Assign: leadership roles only (STAFF_MAINTENANCE and PRODUCTION_LEADER excluded).
