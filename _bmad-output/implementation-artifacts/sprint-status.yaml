@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-25
-last_updated: 2026-08-26
+last_updated: 2026-08-27
 # updated: 10-7 done (dev-auto: implemented + adversarial review, 8 patched / 4 deferred)
 # updated: 10-5 done; 10-6 done (spec files already finalized; sprint status was stale)
 # updated: 10-4 done (dev-auto: implemented + adversarial review, 4 patched / 1 deferred DW-139); epic 10 in-progress
@@ -167,10 +167,10 @@ development_status:
   epic-10-retrospective: optional
 
   # Epic 11: Preventive Maintenance
-  epic-11: backlog
+  epic-11: in-progress
   11-1-preventive-programs-and-schedules: done
-  11-2-checklist-assessment-and-signature: backlog
-  11-3-preventive-report-and-auto-workorder: backlog
+  11-2-checklist-assessment-and-signature: done
+  11-3-preventive-report-and-auto-workorder: ready-for-dev
   epic-11-retrospective: optional
 
   # Epic 12: Sparepart Request & Inventory
