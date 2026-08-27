@@ -26,6 +26,7 @@ import com.syncro.maintenance.preventive.application.PreventiveProgramService.Ma
 import com.syncro.maintenance.preventive.application.PreventiveProgramService.PreventiveForbiddenException;
 import com.syncro.maintenance.preventive.application.PreventiveProgramService.PreventiveValidationException;
 import com.syncro.maintenance.preventive.application.PreventiveProgramService.ProgramNotFoundException;
+import com.syncro.maintenance.preventive.application.PreventiveReportService;
 import com.syncro.maintenance.preventive.application.PreventiveScheduleService;
 import com.syncro.maintenance.preventive.application.PreventiveScheduleService.ScheduleView;
 import com.syncro.maintenance.preventive.domain.PreventiveCategory;
@@ -68,6 +69,9 @@ class PreventiveControllerTest {
 
   @MockitoBean
   private PreventiveEvidenceService evidence;
+
+  @MockitoBean
+  private PreventiveReportService reportService;
 
   @MockitoBean
   private JwtTokenService jwtTokenService;
@@ -226,7 +230,7 @@ class PreventiveControllerTest {
 
   private static PreventiveProgram programDomain() {
     return new PreventiveProgram(PROGRAM_ID, MACHINE_ID, PreventiveCategory.MECHANICAL, ScheduleType.MONTHLY,
-        15, null, "Monthly lube", null, true, UUID.randomUUID(), Instant.parse("2026-08-27T00:00:00Z"),
+        15, null, "Monthly lube", null, true, false, UUID.randomUUID(), Instant.parse("2026-08-27T00:00:00Z"),
         Instant.parse("2026-08-27T00:00:00Z"));
   }
 

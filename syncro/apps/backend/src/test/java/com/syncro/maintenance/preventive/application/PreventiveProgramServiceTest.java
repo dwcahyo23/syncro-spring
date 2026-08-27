@@ -91,7 +91,7 @@ class PreventiveProgramServiceTest {
     when(schedules.existsByProgramIdAndDueDate(any(), any())).thenReturn(false);
 
     var created = service.create(user, new CreateProgramCommand(machineId, PreventiveCategory.MECHANICAL,
-        ScheduleType.MONTHLY, 15, null, "Monthly lube", null));
+        ScheduleType.MONTHLY, 15, null, "Monthly lube", null, false));
 
     assertThat(created.title()).isEqualTo("Monthly lube");
     assertThat(created.category()).isEqualTo(PreventiveCategory.MECHANICAL);
@@ -112,7 +112,7 @@ class PreventiveProgramServiceTest {
     when(scopes.derive(user)).thenReturn(scope);
 
     assertThatThrownBy(() -> service.create(user, new CreateProgramCommand(machineId, PreventiveCategory.MECHANICAL,
-        ScheduleType.MONTHLY, 15, 3, "Bad", null)))
+        ScheduleType.MONTHLY, 15, 3, "Bad", null, false)))
         .isInstanceOf(PreventiveValidationException.class);
   }
 
@@ -124,7 +124,7 @@ class PreventiveProgramServiceTest {
     when(scopes.derive(user)).thenReturn(scope);
 
     assertThatThrownBy(() -> service.create(user, new CreateProgramCommand(machineId, PreventiveCategory.ELECTRICAL,
-        ScheduleType.ANNUAL, 15, null, "Bad", null)))
+        ScheduleType.ANNUAL, 15, null, "Bad", null, false)))
         .isInstanceOf(PreventiveValidationException.class);
   }
 
@@ -136,7 +136,7 @@ class PreventiveProgramServiceTest {
     when(scopes.derive(user)).thenReturn(scope);
 
     assertThatThrownBy(() -> service.create(user, new CreateProgramCommand(machineId, PreventiveCategory.MECHANICAL,
-        ScheduleType.MONTHLY, 15, null, "Nope", null)))
+        ScheduleType.MONTHLY, 15, null, "Nope", null, false)))
         .isInstanceOf(PreventiveForbiddenException.class);
   }
 
@@ -149,7 +149,7 @@ class PreventiveProgramServiceTest {
     when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.create(user, new CreateProgramCommand(machineId, PreventiveCategory.MECHANICAL,
-        ScheduleType.MONTHLY, 15, null, "Nope", null)))
+        ScheduleType.MONTHLY, 15, null, "Nope", null, false)))
         .isInstanceOf(PreventiveProgramService.MachineNotFoundException.class);
   }
 
@@ -157,7 +157,7 @@ class PreventiveProgramServiceTest {
   @DisplayName("11.1-SVC-006 P0 nextAnchor clamps Feb 30 for a MONTHLY program")
   void nextAnchorClampsShortMonth() {
     var program = new PreventiveProgramEntity(UUID.randomUUID(), machineId, PreventiveCategory.MECHANICAL,
-        ScheduleType.MONTHLY, (short) 30, null, "P", null, true, staffId, NOW, NOW);
+        ScheduleType.MONTHLY, (short) 30, null, "P", null, true, false, staffId, NOW, NOW);
 
     var anchor = PreventiveProgramService.nextAnchor(program, LocalDate.of(2026, 2, 1));
 
@@ -168,7 +168,7 @@ class PreventiveProgramServiceTest {
   @DisplayName("11.1-SVC-007 P0 nextAnchor for MONTHLY advances month by month")
   void nextAnchorMonthlyAdvances() {
     var program = new PreventiveProgramEntity(UUID.randomUUID(), machineId, PreventiveCategory.MECHANICAL,
-        ScheduleType.MONTHLY, (short) 15, null, "P", null, true, staffId, NOW, NOW);
+        ScheduleType.MONTHLY, (short) 15, null, "P", null, true, false, staffId, NOW, NOW);
 
     var anchor = PreventiveProgramService.nextAnchor(program, LocalDate.of(2026, 1, 16));
 
@@ -179,7 +179,7 @@ class PreventiveProgramServiceTest {
   @DisplayName("11.1-SVC-008 P0 nextAnchor for ANNUAL advances year by year")
   void nextAnchorAnnualAdvances() {
     var program = new PreventiveProgramEntity(UUID.randomUUID(), machineId, PreventiveCategory.ELECTRICAL,
-        ScheduleType.ANNUAL, (short) 10, (short) 3, "P", null, true, staffId, NOW, NOW);
+        ScheduleType.ANNUAL, (short) 10, (short) 3, "P", null, true, false, staffId, NOW, NOW);
 
     var anchor = PreventiveProgramService.nextAnchor(program, LocalDate.of(2026, 4, 1));
 
@@ -191,7 +191,7 @@ class PreventiveProgramServiceTest {
   void rollForwardNextOk() {
     var programId = UUID.randomUUID();
     var program = new PreventiveProgramEntity(programId, machineId, PreventiveCategory.MECHANICAL,
-        ScheduleType.MONTHLY, (short) 15, null, "P", null, true, staffId, NOW, NOW);
+        ScheduleType.MONTHLY, (short) 15, null, "P", null, true, false, staffId, NOW, NOW);
     when(programs.findById(programId)).thenReturn(Optional.of(program));
     when(schedules.existsByProgramIdAndDueDate(programId, LocalDate.of(2026, 9, 15))).thenReturn(false);
     when(schedules.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -207,7 +207,7 @@ class PreventiveProgramServiceTest {
   void rollForwardNextDuplicate() {
     var programId = UUID.randomUUID();
     var program = new PreventiveProgramEntity(programId, machineId, PreventiveCategory.MECHANICAL,
-        ScheduleType.MONTHLY, (short) 15, null, "P", null, true, staffId, NOW, NOW);
+        ScheduleType.MONTHLY, (short) 15, null, "P", null, true, false, staffId, NOW, NOW);
     when(programs.findById(programId)).thenReturn(Optional.of(program));
     when(schedules.existsByProgramIdAndDueDate(programId, LocalDate.of(2026, 9, 15))).thenReturn(true);
     var existing = new PreventiveScheduleEntity(UUID.randomUUID(), programId, machineId, LocalDate.of(2026, 9, 15),

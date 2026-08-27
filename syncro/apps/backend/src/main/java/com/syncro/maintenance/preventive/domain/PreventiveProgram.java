@@ -19,6 +19,7 @@ public record PreventiveProgram(
     String title,
     String description,
     boolean active,
+    boolean autoWorkorder,
     UUID createdBy,
     Instant createdAt,
     Instant updatedAt) {

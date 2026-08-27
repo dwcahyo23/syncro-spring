@@ -26,6 +26,10 @@ import jakarta.persistence.LockModeType;
  */
 public interface WorkOrderRepository extends JpaRepository<WorkOrderEntity, String> {
 
+  boolean existsByPreventiveScheduleId(java.util.UUID preventiveScheduleId);
+
+  Optional<WorkOrderEntity> findByPreventiveScheduleId(java.util.UUID preventiveScheduleId);
+
   Optional<WorkOrderEntity> findByIdempotencyKeyAndCreatedByAndCreatedAtAfter(
       String idempotencyKey, UUID createdBy, Instant createdAt);
 

@@ -14,6 +14,7 @@ import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.machine.domain.MachineStatus;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
+import com.syncro.maintenance.application.WorkOrderService;
 import com.syncro.maintenance.preventive.application.PreventiveChecklistService.ApproveCommand;
 import com.syncro.maintenance.preventive.application.PreventiveChecklistService.ChecklistCommand;
 import com.syncro.maintenance.preventive.application.PreventiveChecklistService.ChecklistForbiddenException;
@@ -73,6 +74,8 @@ class PreventiveChecklistServiceTest {
   private AuditLogWriter auditLog;
   @Mock
   private OperationalScopeService scopes;
+  @Mock
+  private WorkOrderService workOrders;
 
   private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
   private final UUID plantId = UUID.randomUUID();
@@ -91,11 +94,11 @@ class PreventiveChecklistServiceTest {
   @BeforeEach
   void setUp() {
     service = new PreventiveChecklistService(schedules, programs, machines, results, items, programService, auditLog,
-        scopes, clock);
+        scopes, workOrders, clock);
     machine = machineWithPlant(plantId, groupId, machineId);
     lenient().when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
     program = new PreventiveProgramEntity(programId, machineId, PreventiveCategory.MECHANICAL, ScheduleType.MONTHLY,
-        (short) 15, null, "Monthly lube", null, true, staffId, NOW, NOW);
+        (short) 15, null, "Monthly lube", null, true, true, staffId, NOW, NOW);
     lenient().when(programs.findById(programId)).thenReturn(Optional.of(program));
     schedule = new PreventiveScheduleEntity(scheduleId, programId, machineId, LocalDate.of(2026, 9, 15),
         ScheduleStatus.SCHEDULED, null, null, NOW, NOW);
@@ -221,6 +224,85 @@ class PreventiveChecklistServiceTest {
 
     assertThatThrownBy(() -> service.submit(user, scheduleId.toString(), bad))
         .isInstanceOf(com.syncro.maintenance.preventive.application.PreventiveChecklistService.ChecklistValidationException.class);
+  }
+
+  @Test
+  @DisplayName("11.3-SVC-001 P0 approve with autoWorkorder creates an internal preventive workorder")
+  void approveAutoWorkorder() {
+    var user = leaderUser();
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
+    schedule.transition(ScheduleStatus.IN_PROGRESS, NOW, staffId);
+    var result = new PreventiveChecklistResultEntity(UUID.randomUUID(), scheduleId, staffId, NOW, "notes",
+        null, null, null, null, null, NOW, NOW);
+    when(results.findByScheduleId(scheduleId)).thenReturn(Optional.of(result));
+    when(results.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(items.findByResultIdOrderByPositionAsc(any())).thenReturn(List.of());
+    when(workOrders.existsByPreventiveScheduleId(scheduleId)).thenReturn(false);
+    when(workOrders.createSystem(eq(machineId), eq(WorkOrderService.PREVENTIVE_CATEGORY_CODE), any(), eq(scheduleId)))
+        .thenReturn("WO-2609-00001");
+
+    service.approve(user, scheduleId.toString(), new ApproveCommand("preventive/sig.png", "Leader", "ok"));
+
+    verify(workOrders).createSystem(eq(machineId), eq(WorkOrderService.PREVENTIVE_CATEGORY_CODE), any(), eq(scheduleId));
+  }
+
+  @Test
+  @DisplayName("11.3-SVC-002 P0 approve is idempotent when a workorder already exists for the schedule")
+  void approveAutoWorkorderIdempotent() {
+    var user = leaderUser();
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
+    schedule.transition(ScheduleStatus.IN_PROGRESS, NOW, staffId);
+    var result = new PreventiveChecklistResultEntity(UUID.randomUUID(), scheduleId, staffId, NOW, "notes",
+        null, null, null, null, null, NOW, NOW);
+    when(results.findByScheduleId(scheduleId)).thenReturn(Optional.of(result));
+    when(results.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(items.findByResultIdOrderByPositionAsc(any())).thenReturn(List.of());
+    when(workOrders.existsByPreventiveScheduleId(scheduleId)).thenReturn(true);
+
+    service.approve(user, scheduleId.toString(), new ApproveCommand("preventive/sig.png", "Leader", "ok"));
+
+    verify(workOrders, org.mockito.Mockito.never()).createSystem(any(), any(), any(), any());
+  }
+
+  @Test
+  @DisplayName("11.3-SVC-003 P0 approve with autoWorkorder=false does not create a workorder")
+  void approveNoAutoWorkorder() {
+    var user = leaderUser();
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
+    schedule.transition(ScheduleStatus.IN_PROGRESS, NOW, staffId);
+    var noAutoProgram = new PreventiveProgramEntity(programId, machineId, PreventiveCategory.MECHANICAL,
+        ScheduleType.MONTHLY, (short) 15, null, "Monthly lube", null, true, false, staffId, NOW, NOW);
+    when(programs.findById(programId)).thenReturn(Optional.of(noAutoProgram));
+    var result = new PreventiveChecklistResultEntity(UUID.randomUUID(), scheduleId, staffId, NOW, "notes",
+        null, null, null, null, null, NOW, NOW);
+    when(results.findByScheduleId(scheduleId)).thenReturn(Optional.of(result));
+    when(results.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(items.findByResultIdOrderByPositionAsc(any())).thenReturn(List.of());
+
+    service.approve(user, scheduleId.toString(), new ApproveCommand("preventive/sig.png", "Leader", "ok"));
+
+    verify(workOrders, org.mockito.Mockito.never()).createSystem(any(), any(), any(), any());
+  }
+
+  @Test
+  @DisplayName("11.3-SVC-004 P0 workorder creation failure does not roll back PERFORMED")
+  void approveAutoWorkorderFailureNonFatal() {
+    var user = leaderUser();
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
+    schedule.transition(ScheduleStatus.IN_PROGRESS, NOW, staffId);
+    var result = new PreventiveChecklistResultEntity(UUID.randomUUID(), scheduleId, staffId, NOW, "notes",
+        null, null, null, null, null, NOW, NOW);
+    when(results.findByScheduleId(scheduleId)).thenReturn(Optional.of(result));
+    when(results.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(items.findByResultIdOrderByPositionAsc(any())).thenReturn(List.of());
+    when(workOrders.existsByPreventiveScheduleId(scheduleId)).thenReturn(false);
+    when(workOrders.createSystem(any(), any(), any(), any()))
+        .thenThrow(new com.syncro.maintenance.application.WorkOrderService.WorkOrderCategoryNotFoundException());
+
+    var view = service.approve(user, scheduleId.toString(), new ApproveCommand("preventive/sig.png", "Leader", "ok"));
+
+    assertThat(schedule.getStatus()).isEqualTo(ScheduleStatus.PERFORMED);
+    assertThat(view.scheduleId()).isEqualTo(scheduleId);
   }
 
   private ChecklistCommand command() {

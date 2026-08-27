@@ -24,7 +24,8 @@ public final class PreventiveDtos {
       @NotNull @Min(1) @Max(31) Integer dayOfMonth,
       @Min(1) @Max(12) Integer monthOfYear,
       @NotBlank @Size(max = 200) String title,
-      @Size(max = 4000) String description) {
+      @Size(max = 4000) String description,
+      Boolean autoWorkorder) {
   }
 
   public record UpdatePreventiveProgramRequest(
@@ -32,12 +33,27 @@ public final class PreventiveDtos {
       @Min(1) @Max(12) Integer monthOfYear,
       @NotBlank @Size(max = 200) String title,
       @Size(max = 4000) String description,
-      @NotNull Boolean active) {
+      @NotNull Boolean active,
+      Boolean autoWorkorder) {
   }
 
   public record PreventiveProgramView(UUID id, UUID machineId, PreventiveCategory category, ScheduleType scheduleType,
-      int dayOfMonth, Integer monthOfYear, String title, String description, boolean active, UUID createdBy,
-      Instant createdAt, Instant updatedAt) {
+      int dayOfMonth, Integer monthOfYear, String title, String description, boolean active, boolean autoWorkorder,
+      UUID createdBy, Instant createdAt, Instant updatedAt) {
+  }
+
+  public record PreventiveReportItemView(int position, String label, String value, java.math.BigDecimal lsl,
+      java.math.BigDecimal usl, String note) {
+  }
+
+  public record PreventiveReportEvidenceView(UUID id, String filename, String contentType, String presignedUrl) {
+  }
+
+  public record PreventiveReportView(UUID scheduleId, String programTitle, String category, String scheduleType,
+      boolean autoWorkorder, UUID machineId, LocalDate dueDate, String scheduleStatus, Instant completedAt,
+      UUID performedBy, String notes, String assessment, String signerIdentity, Instant approvedAt,
+      List<PreventiveReportItemView> items, List<PreventiveReportEvidenceView> evidence,
+      String signaturePresignedUrl, String workOrderId) {
   }
 
   public record ShiftWindowView(int shiftNumber, String startTime, String endTime) {

@@ -71,6 +71,9 @@ public class WorkOrderEntity {
   @Column(name = "done_reason", length = 1000)
   private String doneReason;
 
+  @Column(name = "preventive_schedule_id")
+  private UUID preventiveScheduleId;
+
   // -------------------------------------------------------------------------
   // Report fields (10-6, FR-117/FR-118/FR-122)
   // -------------------------------------------------------------------------
@@ -228,6 +231,14 @@ public class WorkOrderEntity {
 
   public void setDoneReason(String doneReason) {
     this.doneReason = doneReason;
+  }
+
+  public UUID getPreventiveScheduleId() {
+    return preventiveScheduleId;
+  }
+
+  public void setPreventiveScheduleId(UUID preventiveScheduleId) {
+    this.preventiveScheduleId = preventiveScheduleId;
   }
 
   public String getReportChronological() {

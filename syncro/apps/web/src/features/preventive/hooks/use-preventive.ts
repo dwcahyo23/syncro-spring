@@ -10,6 +10,7 @@ import type {
   CreatePreventiveProgramRequest,
   PreventiveAttachmentView,
   PreventiveProgramView,
+  PreventiveReportView,
   PreventiveScheduleView,
   SubmitChecklistRequest,
 } from "@/features/preventive/types";
@@ -224,5 +225,20 @@ export function useDeleteEvidence() {
     onError: () => {
       toast.error("Failed to delete evidence");
     },
+  });
+}
+
+/** Reads the preventive report for a schedule (browser-print data). */
+export function usePreventiveReport(scheduleId: string | null) {
+  return useQuery<PreventiveReportView>({
+    queryKey: [SCHEDULES_KEY, scheduleId, "report"],
+    queryFn: async () => {
+      const response = await syncroFetch<{ data: PreventiveReportView }>(`${SCHEDULES_KEY}/${scheduleId}/report`, {
+        method: "GET",
+      });
+      return response.data;
+    },
+    enabled: !!scheduleId,
+    retry: false,
   });
 }

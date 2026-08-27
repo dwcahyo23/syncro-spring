@@ -44,6 +44,9 @@ public class PreventiveProgramEntity {
   @Column(nullable = false)
   private boolean active;
 
+  @Column(name = "auto_workorder", nullable = false)
+  private boolean autoWorkorder;
+
   @Column(name = "created_by", nullable = false)
   private UUID createdBy;
 
@@ -57,8 +60,8 @@ public class PreventiveProgramEntity {
   }
 
   public PreventiveProgramEntity(UUID id, UUID machineId, PreventiveCategory category, ScheduleType scheduleType,
-      short dayOfMonth, Short monthOfYear, String title, String description, boolean active, UUID createdBy,
-      Instant createdAt, Instant updatedAt) {
+      short dayOfMonth, Short monthOfYear, String title, String description, boolean active, boolean autoWorkorder,
+      UUID createdBy, Instant createdAt, Instant updatedAt) {
     this.id = id;
     this.machineId = machineId;
     this.category = category;
@@ -68,6 +71,7 @@ public class PreventiveProgramEntity {
     this.title = title;
     this.description = description;
     this.active = active;
+    this.autoWorkorder = autoWorkorder;
     this.createdBy = createdBy;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
@@ -82,15 +86,17 @@ public class PreventiveProgramEntity {
   public String getTitle() { return title; }
   public String getDescription() { return description; }
   public boolean isActive() { return active; }
+  public boolean isAutoWorkorder() { return autoWorkorder; }
   public UUID getCreatedBy() { return createdBy; }
   public Instant getCreatedAt() { return createdAt; }
   public Instant getUpdatedAt() { return updatedAt; }
 
-  public void update(String title, String description, boolean active, short dayOfMonth, Short monthOfYear,
-      Instant updatedAt) {
+  public void update(String title, String description, boolean active, boolean autoWorkorder, short dayOfMonth,
+      Short monthOfYear, Instant updatedAt) {
     this.title = title;
     this.description = description;
     this.active = active;
+    this.autoWorkorder = autoWorkorder;
     this.dayOfMonth = dayOfMonth;
     this.monthOfYear = monthOfYear;
     this.updatedAt = updatedAt;

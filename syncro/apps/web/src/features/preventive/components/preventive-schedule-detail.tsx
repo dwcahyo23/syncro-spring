@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { Trash2, Upload } from "lucide-react";
+import { Printer, Trash2, Upload } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { PreventiveReportPage } from "@/features/preventive/components/preventive-report";
 import {
   useApproveSchedule,
   useChecklist,
@@ -58,6 +59,7 @@ export function PreventiveScheduleDetail({
   const canAmend = isSubmitted && !isTerminal; // IN_PROGRESS, submitted but not approved
   const canApprove = isSubmitted && !isApproved && !isTerminal;
   const canSkip = !isTerminal && !isApproved;
+  const [showReport, setShowReport] = useState(false);
 
   if (checklistLoading) {
     return (
@@ -85,6 +87,10 @@ export function PreventiveScheduleDetail({
     );
   }
 
+  if (showReport) {
+    return <PreventiveReportPage scheduleId={schedule.id} onClose={() => setShowReport(false)} />;
+  }
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -98,6 +104,10 @@ export function PreventiveScheduleDetail({
             <Badge variant="outline">{schedule.derivedStatus}</Badge>
           )}
           <Badge variant="secondary">{schedule.checklistStatus}</Badge>
+          <Button variant="outline" size="sm" onClick={() => setShowReport(true)}>
+            <Printer className="mr-1 h-3 w-3" />
+            Report
+          </Button>
           <Button variant="ghost" size="sm" onClick={onClose}>
             Close
           </Button>

@@ -61,6 +61,8 @@ public class WorkOrderService {
 
   /** Category code constant for breakdown workorders (FR-110); codes are stored uppercase. */
   static final String BREAKDOWN_CATEGORY_CODE = "01";
+  /** Category code constant for preventive workorders (FR-134, story 11-3); seeded in V56. */
+  public static final String PREVENTIVE_CATEGORY_CODE = "02";
   static final String SOURCE_INTERNAL = "INTERNAL";
   static final String HISTORY_SOURCE_MANUAL = "MANUAL";
   static final String HISTORY_SOURCE_DERIVED = "DERIVED";
@@ -143,6 +145,39 @@ public class WorkOrderService {
           .orElseThrow(() -> exception);
       return new CreateResult(WorkOrderMapper.toDomain(winner), true);
     }
+  }
+
+  /**
+   * System-driven workorder creation (FR-134, story 11-3): called by the preventive
+   * module when an approved schedule has {@code autoWorkorder}. The schedule's PERFORMED
+   * state is the authorization — no user/role/scope gate, actor is SYSTEM, audit goes
+   * through {@code recordSystem}, and the workorder is linked back to the schedule via
+   * {@code preventive_schedule_id} (unique index backstops one-workorder-per-period).
+   */
+  @Transactional
+  public String createSystem(UUID machineId, String categoryCode, String description, UUID preventiveScheduleId) {
+    var now = Instant.now(clock);
+    var category = categories.findByCode(normalizeCategoryCode(categoryCode))
+        .orElseThrow(WorkOrderCategoryNotFoundException::new);
+    var machine = machines.findByIdWithPlantAndGroup(machineId)
+        .orElseThrow(WorkOrderMachineNotFoundException::new);
+
+    var id = idGenerator.nextId();
+    var entity = new WorkOrderEntity(id, SOURCE_INTERNAL, null, WorkOrderStatus.OPEN, category.getId(), machineId,
+        description, 0L, null, null, null, now, now);
+    entity.setPreventiveScheduleId(preventiveScheduleId);
+    var saved = workOrders.saveAndFlush(entity);
+    statusHistory.saveAndFlush(new WorkOrderStatusHistoryEntity(UUID.randomUUID(), id, null,
+        WorkOrderStatus.OPEN.name(), HISTORY_SOURCE_DERIVED, SYSTEM_ACTOR, traceId(), now));
+    auditLog.recordSystem(new AuditRecord(AuditAction.CREATE, AuditEntityType.WORK_ORDER,
+        auditEntityId(id), id, machine.getPlant().getId(), null, auditValues(saved), null));
+    return id;
+  }
+
+  /** Checks whether a workorder already exists for a preventive schedule (FR-134, story 11-3). */
+  @Transactional(readOnly = true)
+  public boolean existsByPreventiveScheduleId(UUID preventiveScheduleId) {
+    return workOrders.existsByPreventiveScheduleId(preventiveScheduleId);
   }
 
   @Transactional

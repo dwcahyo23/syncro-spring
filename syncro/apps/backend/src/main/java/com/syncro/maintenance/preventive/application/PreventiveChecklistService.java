@@ -8,6 +8,7 @@ import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
+import com.syncro.maintenance.application.WorkOrderService;
 import com.syncro.maintenance.preventive.domain.ChecklistStatus;
 import com.syncro.maintenance.preventive.domain.PreventiveChecklistItem;
 import com.syncro.maintenance.preventive.domain.PreventiveChecklistResult;
@@ -53,12 +54,13 @@ public class PreventiveChecklistService {
   private final PreventiveProgramService programService;
   private final AuditLogWriter auditLog;
   private final OperationalScopeService scopes;
+  private final WorkOrderService workOrders;
   private final Clock clock;
 
   public PreventiveChecklistService(PreventiveScheduleRepository schedules, PreventiveProgramRepository programs,
       MachineRepository machines, PreventiveChecklistResultRepository results,
       PreventiveChecklistItemRepository items, PreventiveProgramService programService, AuditLogWriter auditLog,
-      OperationalScopeService scopes, Clock clock) {
+      OperationalScopeService scopes, WorkOrderService workOrders, Clock clock) {
     this.schedules = schedules;
     this.programs = programs;
     this.machines = machines;
@@ -67,6 +69,7 @@ public class PreventiveChecklistService {
     this.programService = programService;
     this.auditLog = auditLog;
     this.scopes = scopes;
+    this.workOrders = workOrders;
     this.clock = clock;
   }
 
@@ -163,11 +166,37 @@ public class PreventiveChecklistService {
     schedule.transition(ScheduleStatus.PERFORMED, now, UUID.fromString(user.id()));
     schedules.saveAndFlush(schedule);
     programService.rollForwardNext(schedule.getProgramId(), now);
+    autoCreateWorkorder(schedule);
 
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PREVENTIVE_SCHEDULE,
         schedule.getId(), entityLabel(schedule), machine(schedule).getPlant().getId(),
         Map.<String, Object>of("status", "IN_PROGRESS"), Map.<String, Object>of("status", "PERFORMED"), null));
     return toView(saved, loadItems(saved.getId()));
+  }
+
+  /**
+   * Auto-workorder trigger (FR-134, story 11-3): when the schedule's program has
+   * autoWorkorder and no workorder exists yet for this schedule period, create the
+   * internal preventive workorder via the system path. Idempotent (unique
+   * preventive_schedule_id backstop); a failure must NOT roll back PERFORMED — the
+   * schedule is already complete, the workorder is a follow-up convenience.
+   */
+  private void autoCreateWorkorder(PreventiveScheduleEntity schedule) {
+    var program = programs.findById(schedule.getProgramId()).orElse(null);
+    if (program == null || !program.isAutoWorkorder()) {
+      return;
+    }
+    if (workOrders.existsByPreventiveScheduleId(schedule.getId())) {
+      return;
+    }
+    try {
+      workOrders.createSystem(schedule.getMachineId(), WorkOrderService.PREVENTIVE_CATEGORY_CODE,
+          "Preventive: " + program.getTitle() + " due " + schedule.getDueDate(), schedule.getId());
+    } catch (RuntimeException exception) {
+      auditLog.recordSystem(new AuditRecord(AuditAction.UPDATE, AuditEntityType.PREVENTIVE_SCHEDULE,
+          schedule.getId(), entityLabel(schedule), null,
+          Map.<String, Object>of("autoWorkorder", "failed"), null, null));
+    }
   }
 
   /** Leader skip: SCHEDULED/IN_PROGRESS → SKIPPED, no roll-forward. */

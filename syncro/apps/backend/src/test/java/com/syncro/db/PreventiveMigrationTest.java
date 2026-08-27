@@ -221,6 +221,56 @@ class PreventiveMigrationTest extends AbstractPostgresIntegrationTest {
         .contains("idx_preventive_schedule_attachments_schedule");
   }
 
+  @Test
+  @DisplayName("11.3-DB-001 P0 V56 adds auto_workorder to preventive_programs and preventive_schedule_id to work_orders")
+  void v56Columns() {
+    assertThat(columnNames("preventive_programs")).contains("auto_workorder");
+    assertThat(columnNames("work_orders")).contains("preventive_schedule_id");
+    assertThat(jdbc.queryForList("SELECT indexname FROM pg_indexes WHERE tablename = 'work_orders'"))
+        .extracting(row -> row.get("indexname"))
+        .contains("uq_work_orders_preventive_schedule", "idx_work_orders_preventive_schedule");
+  }
+
+  @Test
+  @DisplayName("11.3-DB-002 P0 V56 seeds category 02 Preventive idempotently")
+  void v56Category02Seeded() {
+    var count = jdbc.queryForObject(
+        "SELECT count(*) FROM work_order_categories WHERE code = '02'", Long.class);
+    assertThat(count).isEqualTo(1L);
+
+    // Idempotent: re-running the ON CONFLICT DO NOTHING insert must not duplicate.
+    jdbc.update("""
+        INSERT INTO work_order_categories (id, code, label, created_by, created_at, updated_at)
+        VALUES (gen_random_uuid(), '02', 'Preventive', NULL, ?, ?)
+        ON CONFLICT (code) DO NOTHING
+        """, TS, TS);
+    assertThat(jdbc.queryForObject(
+        "SELECT count(*) FROM work_order_categories WHERE code = '02'", Long.class)).isEqualTo(1L);
+  }
+
+  @Test
+  @DisplayName("11.3-DB-003 P0 V56 unique preventive_schedule_id rejects a second workorder for the same schedule")
+  void v56UniquePreventiveSchedule() {
+    var machineId = seedMachine();
+    var programId = seedProgram(machineId);
+    var scheduleId = UUID.randomUUID();
+    jdbc.update("""
+        INSERT INTO preventive_schedules (id, program_id, machine_id, due_date, status, created_at, updated_at)
+        VALUES (?, ?, ?, DATE '2026-09-15', 'PERFORMED', ?, ?)
+        """, scheduleId, programId, machineId, TS, TS);
+
+    jdbc.update("""
+        INSERT INTO work_orders (id, source, status, machine_id, sync_version, preventive_schedule_id, created_at, updated_at)
+        VALUES ('WO-2609-00001', 'INTERNAL', 'OPEN', ?, 0, ?, ?, ?)
+        """, machineId, scheduleId, TS, TS);
+
+    assertThatThrownBy(() -> jdbc.update("""
+        INSERT INTO work_orders (id, source, status, machine_id, sync_version, preventive_schedule_id, created_at, updated_at)
+        VALUES ('WO-2609-00002', 'INTERNAL', 'OPEN', ?, 0, ?, ?, ?)
+        """, machineId, scheduleId, TS, TS))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
   private java.util.List<String> columnNames(String table) {
     return jdbc.queryForList(
         "SELECT column_name FROM information_schema.columns "

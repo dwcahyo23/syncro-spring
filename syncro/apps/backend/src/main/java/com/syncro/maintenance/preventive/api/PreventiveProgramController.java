@@ -53,7 +53,8 @@ public class PreventiveProgramController {
   public ResponseEntity<PreventiveProgramView> create(@AuthenticationPrincipal AuthenticatedUser user,
       @Valid @RequestBody CreatePreventiveProgramRequest request) {
     var program = programs.create(user, new CreateProgramCommand(request.machineId(), request.category(),
-        request.scheduleType(), request.dayOfMonth(), request.monthOfYear(), request.title(), request.description()));
+        request.scheduleType(), request.dayOfMonth(), request.monthOfYear(), request.title(), request.description(),
+        Boolean.TRUE.equals(request.autoWorkorder())));
     return ResponseEntity.status(HttpStatus.CREATED)
         .location(URI.create("/api/v1/preventive-programs/" + program.id()))
         .body(toView(program));
@@ -95,7 +96,8 @@ public class PreventiveProgramController {
   public PreventiveProgramView update(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID id,
       @Valid @RequestBody UpdatePreventiveProgramRequest request) {
     var program = programs.update(user, id.toString(), new UpdateProgramCommand(request.dayOfMonth(),
-        request.monthOfYear(), request.title(), request.description(), request.active()));
+        request.monthOfYear(), request.title(), request.description(), request.active(),
+        Boolean.TRUE.equals(request.autoWorkorder())));
     return toView(program);
   }
 
@@ -128,6 +130,7 @@ public class PreventiveProgramController {
 
   private static PreventiveProgramView toView(com.syncro.maintenance.preventive.domain.PreventiveProgram p) {
     return new PreventiveProgramView(p.id(), p.machineId(), p.category(), p.scheduleType(), p.dayOfMonth(),
-        p.monthOfYear(), p.title(), p.description(), p.active(), p.createdBy(), p.createdAt(), p.updatedAt());
+        p.monthOfYear(), p.title(), p.description(), p.active(), p.autoWorkorder(), p.createdBy(), p.createdAt(),
+        p.updatedAt());
   }
 }

@@ -29,6 +29,7 @@ import com.syncro.maintenance.preventive.application.PreventiveEvidenceService;
 import com.syncro.maintenance.preventive.application.PreventiveEvidenceService.AttachmentView;
 import com.syncro.maintenance.preventive.application.PreventiveEvidenceService.EvidenceCommand;
 import com.syncro.maintenance.preventive.application.PreventiveProgramService;
+import com.syncro.maintenance.preventive.application.PreventiveReportService;
 import com.syncro.maintenance.preventive.application.PreventiveScheduleService;
 import com.syncro.maintenance.preventive.domain.ChecklistStatus;
 import com.syncro.maintenance.preventive.domain.PreventiveChecklistItem;
@@ -69,6 +70,9 @@ class PreventiveChecklistControllerTest {
 
   @MockitoBean
   private PreventiveEvidenceService evidence;
+
+  @MockitoBean
+  private PreventiveReportService reportService;
 
   @MockitoBean
   private JwtTokenService jwtTokenService;
@@ -235,6 +239,36 @@ class PreventiveChecklistControllerTest {
     mockMvc.perform(get("/api/v1/preventive-schedules/{id}/evidence", SCHEDULE_ID).with(auth(user)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].filename").value("photo.jpg"));
+  }
+
+  @Test
+  @DisplayName("11.3-API-001 P0 report endpoint returns 200 with checklist and signature")
+  void reportReturnsOk() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    var report = new com.syncro.maintenance.preventive.domain.PreventiveReport(SCHEDULE_ID, "Monthly lube",
+        com.syncro.maintenance.preventive.domain.PreventiveCategory.MECHANICAL,
+        com.syncro.maintenance.preventive.domain.ScheduleType.MONTHLY, true, MACHINE_ID,
+        java.time.LocalDate.of(2026, 9, 15), com.syncro.maintenance.preventive.domain.ScheduleStatus.PERFORMED,
+        java.time.Instant.parse("2026-08-27T00:00:00Z"), UUID.randomUUID(), null, List.of(), List.of(),
+        "https://garage/sig", "Leader", java.time.Instant.parse("2026-08-27T01:00:00Z"), null);
+    when(reportService.get(SCHEDULE_ID.toString())).thenReturn(report);
+
+    mockMvc.perform(get("/api/v1/preventive-schedules/{id}/report", SCHEDULE_ID).with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.programTitle").value("Monthly lube"))
+        .andExpect(jsonPath("$.signerIdentity").value("Leader"));
+  }
+
+  @Test
+  @DisplayName("11.3-API-002 P0 report on unknown schedule maps to 404 SCHEDULE_NOT_FOUND")
+  void reportNotFound() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    when(reportService.get(SCHEDULE_ID.toString()))
+        .thenThrow(new com.syncro.maintenance.preventive.application.PreventiveReportService.ScheduleNotFoundException());
+
+    mockMvc.perform(get("/api/v1/preventive-schedules/{id}/report", SCHEDULE_ID).with(auth(user)))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("SCHEDULE_NOT_FOUND"));
   }
 
   private static ChecklistResultView resultView() {

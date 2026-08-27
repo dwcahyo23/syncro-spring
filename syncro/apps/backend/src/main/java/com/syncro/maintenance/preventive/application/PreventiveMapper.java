@@ -14,8 +14,8 @@ public final class PreventiveMapper {
     return new PreventiveProgram(entity.getId(), entity.getMachineId(), entity.getCategory(),
         entity.getScheduleType(), entity.getDayOfMonth(),
         entity.getMonthOfYear() != null ? entity.getMonthOfYear().intValue() : null, entity.getTitle(),
-        entity.getDescription(), entity.isActive(), entity.getCreatedBy(), entity.getCreatedAt(),
-        entity.getUpdatedAt());
+        entity.getDescription(), entity.isActive(), entity.isAutoWorkorder(), entity.getCreatedBy(),
+        entity.getCreatedAt(), entity.getUpdatedAt());
   }
 
   public static PreventiveSchedule toDomain(PreventiveScheduleEntity entity) {

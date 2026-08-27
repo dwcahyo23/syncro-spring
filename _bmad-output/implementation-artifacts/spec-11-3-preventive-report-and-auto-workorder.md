@@ -2,7 +2,8 @@
 title: 'Preventive Report & Auto-Workorder'
 type: 'feature'
 created: '2026-08-27'
-status: 'ready-for-dev'
+baseline_commit: a5926d7fd4738367f2f5c008baa3916d244ad717
+status: 'review'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -108,14 +109,14 @@ warnings: []
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `resources/db/migration/V56__preventive_auto_workorder.sql` -- program flag + WO FK/unique + 02 category seed.
-- [ ] Domain + entity changes -- autoWorkorder on program, preventiveScheduleId on work_orders, report record.
-- [ ] `WorkOrderService.createSystem` + category constant + `existsByPreventiveScheduleId`.
-- [ ] `PreventiveChecklistService.approve` -- auto-workorder trigger (idempotent, non-fatal).
-- [ ] `PreventiveReportService` -- assemble report view.
-- [ ] Controller + DTOs -- `GET /{id}/report` + autoWorkorder wiring.
-- [ ] Frontend -- report print page + Print button + autoWorkorder toggle.
-- [ ] Tests (report + checklist trigger + controller + migration).
+- [x] `resources/db/migration/V56__preventive_auto_workorder.sql` -- program flag + WO FK/unique + 02 category seed.
+- [x] Domain + entity changes -- autoWorkorder on program, preventiveScheduleId on work_orders, report record.
+- [x] `WorkOrderService.createSystem` + category constant + `existsByPreventiveScheduleId`.
+- [x] `PreventiveChecklistService.approve` -- auto-workorder trigger (idempotent, non-fatal).
+- [x] `PreventiveReportService` -- assemble report view.
+- [x] Controller + DTOs -- `GET /{id}/report` + autoWorkorder wiring.
+- [x] Frontend -- report print page + Print button + autoWorkorder toggle.
+- [x] Tests (report + checklist trigger + controller + migration).
 
 **Acceptance Criteria:**
 - Given a completed preventive schedule, when the report is read, then a `PreventiveReportView` renders checklist results, assessment, evidence (presigned), and the signature block (image + signer identity + timestamp); printing is browser-print of the data page. [FR-133]
@@ -142,6 +143,25 @@ warnings: []
 - `cd syncro/authz && ./run-opa-test.ps1` -- expected PASS (no rego change; report read is generic).
 - `cd syncro/apps/web && npx tsc --noEmit` -- expected green.
 - `cd syncro/apps/web && npx biome check src/features/preventive src/app/preventive` -- expected clean.
+
+## Dev Agent Record
+
+**Implementation notes:**
+- V56 migration: `auto_workorder` flag on preventive_programs, `preventive_schedule_id` (nullable FK, ON DELETE SET NULL) + unique partial index on work_orders, and idempotent seed of category 02 (Preventive).
+- `WorkOrderService.createSystem` — system-actor internal workorder creation (no user/role/scope gate; audit via `recordSystem`; history source DERIVED, actor SYSTEM); `PREVENTIVE_CATEGORY_CODE="02"` constant; `existsByPreventiveScheduleId` wrapper.
+- `PreventiveChecklistService.approve` fires the auto-workorder after PERFORMED + rollForwardNext; idempotent via `existsByPreventiveScheduleId` (unique index backstop); failure is logged (audit note) and does not roll back PERFORMED.
+- `PreventiveReportService` — assembles program/machine/schedule/checklist/items/evidence (fresh presigned URLs)/signature/linked-workorder into `PreventiveReport`; any-authenticated read.
+- Controller: `GET /preventive-schedules/{id}/report`; `autoWorkorder` wired through program create/update request + view.
+- Frontend: `preventive-report.tsx` print page (tabular checklist, evidence links, signature block, `window.print()`), Report button in schedule detail, autoWorkorder toggle in programs panel.
+- No rego change needed (report read flows through generic read_allowed).
+
+**AC mapping:**
+- AC1 (FR-133 report): PreventiveReportServiceTest.reportOk + reportNoChecklist + PreventiveChecklistControllerTest.reportReturnsOk.
+- AC2 (FR-133 no-checklist): PreventiveReportServiceTest.reportNoChecklist.
+- AC3 (FR-134 auto-workorder): PreventiveChecklistServiceTest.approveAutoWorkorder.
+- AC4 (FR-134 idempotent): PreventiveChecklistServiceTest.approveAutoWorkorderIdempotent + PreventiveMigrationTest.v56UniquePreventiveSchedule.
+- AC5 (FR-134 disabled/skipped): PreventiveChecklistServiceTest.approveNoAutoWorkorder (skip never reaches approve).
+- AC6 (FR-134 failure non-fatal): PreventiveChecklistServiceTest.approveAutoWorkorderFailureNonFatal.
 
 ## Spec Change Log
 

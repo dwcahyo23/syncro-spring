@@ -74,7 +74,7 @@ public class PreventiveProgramService {
     var now = Instant.now(clock);
     var entity = new PreventiveProgramEntity(UUID.randomUUID(), machine.getId(), command.category(),
         command.scheduleType(), (short) command.dayOfMonth(), command.monthOfYear() != null ? command.monthOfYear().shortValue() : null, command.title().trim(),
-        normalize(command.description()), true, UUID.fromString(user.id()), now, now);
+        normalize(command.description()), true, command.autoWorkorder(), UUID.fromString(user.id()), now, now);
     var saved = programs.saveAndFlush(entity);
     generateWindow(saved);
 
@@ -114,8 +114,8 @@ public class PreventiveProgramService {
         command.title());
 
     entity.update(command.title().trim(), normalize(command.description()), command.active(),
-        (short) command.dayOfMonth(), command.monthOfYear() != null ? command.monthOfYear().shortValue() : null,
-        Instant.now(clock));
+        command.autoWorkorder(), (short) command.dayOfMonth(),
+        command.monthOfYear() != null ? command.monthOfYear().shortValue() : null, Instant.now(clock));
     var saved = programs.saveAndFlush(entity);
     generateWindow(saved);
 
@@ -317,6 +317,7 @@ public class PreventiveProgramService {
     values.put("monthOfYear", program.getMonthOfYear());
     values.put("title", program.getTitle());
     values.put("active", program.isActive());
+    values.put("autoWorkorder", program.isAutoWorkorder());
     return values;
   }
 
@@ -335,11 +336,11 @@ public class PreventiveProgramService {
   // -------------------------------------------------------------------------
 
   public record CreateProgramCommand(UUID machineId, PreventiveCategory category, ScheduleType scheduleType,
-      int dayOfMonth, Integer monthOfYear, String title, String description) {
+      int dayOfMonth, Integer monthOfYear, String title, String description, boolean autoWorkorder) {
   }
 
   public record UpdateProgramCommand(int dayOfMonth, Integer monthOfYear, String title, String description,
-      boolean active) {
+      boolean active, boolean autoWorkorder) {
   }
 
   public static class MachineNotFoundException extends RuntimeException {

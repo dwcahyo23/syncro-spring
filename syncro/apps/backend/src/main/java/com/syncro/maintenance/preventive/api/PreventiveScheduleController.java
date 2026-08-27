@@ -15,6 +15,7 @@ import com.syncro.maintenance.preventive.application.PreventiveChecklistService.
 import com.syncro.maintenance.preventive.application.PreventiveChecklistService.ItemCommand;
 import com.syncro.maintenance.preventive.application.PreventiveEvidenceService;
 import com.syncro.maintenance.preventive.application.PreventiveEvidenceService.EvidenceCommand;
+import com.syncro.maintenance.preventive.application.PreventiveReportService;
 import com.syncro.maintenance.preventive.application.PreventiveScheduleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -46,12 +47,14 @@ public class PreventiveScheduleController {
   private final PreventiveScheduleService schedules;
   private final PreventiveChecklistService checklists;
   private final PreventiveEvidenceService evidence;
+  private final PreventiveReportService reportService;
 
   public PreventiveScheduleController(PreventiveScheduleService schedules, PreventiveChecklistService checklists,
-      PreventiveEvidenceService evidence) {
+      PreventiveEvidenceService evidence, PreventiveReportService reportService) {
     this.schedules = schedules;
     this.checklists = checklists;
     this.evidence = evidence;
+    this.reportService = reportService;
   }
 
   @Operation(operationId = "listPreventiveSchedules", summary = "Scope-filtered preventive schedules with derived status and shift context")
@@ -148,6 +151,35 @@ public class PreventiveScheduleController {
   @GetMapping("/{id}/evidence")
   public List<PreventiveAttachmentView> listEvidence(@PathVariable UUID id) {
     return evidence.list(id).stream().map(PreventiveScheduleController::toAttachmentView).toList();
+  }
+
+  @Operation(operationId = "getPreventiveReport", summary = "Preventive report data for browser print (checklist, evidence, signature)")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Report returned",
+          content = @Content(schema = @Schema(implementation = com.syncro.maintenance.preventive.api.PreventiveDtos.PreventiveReportView.class))),
+      @ApiResponse(responseCode = "404", description = "Schedule not found")
+  })
+  @GetMapping("/{id}/report")
+  public com.syncro.maintenance.preventive.api.PreventiveDtos.PreventiveReportView report(@PathVariable String id) {
+    return toReportView(reportService.get(id));
+  }
+
+  private static com.syncro.maintenance.preventive.api.PreventiveDtos.PreventiveReportView toReportView(
+      com.syncro.maintenance.preventive.domain.PreventiveReport r) {
+    var itemViews = r.items().stream()
+        .map(i -> new com.syncro.maintenance.preventive.api.PreventiveDtos.PreventiveReportItemView(
+            i.position(), i.label(), i.value(), i.lsl(), i.usl(), i.note()))
+        .toList();
+    var evidenceViews = r.evidence().stream()
+        .map(e -> new com.syncro.maintenance.preventive.api.PreventiveDtos.PreventiveReportEvidenceView(
+            e.id(), e.filename(), e.contentType(), e.presignedUrl()))
+        .toList();
+    return new com.syncro.maintenance.preventive.api.PreventiveDtos.PreventiveReportView(
+        r.scheduleId(), r.programTitle(), r.category().name(), r.scheduleType().name(), r.autoWorkorder(),
+        r.machineId(), r.dueDate(), r.scheduleStatus().name(), r.completedAt(), r.performedBy(),
+        r.checklist() != null ? r.checklist().notes() : null,
+        r.checklist() != null ? r.checklist().assessment() : null,
+        r.signerIdentity(), r.approvedAt(), itemViews, evidenceViews, r.signaturePresignedUrl(), r.workOrderId());
   }
 
   // -------------------------------------------------------------------------

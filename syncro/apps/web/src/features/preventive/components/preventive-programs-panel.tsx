@@ -28,6 +28,7 @@ export function PreventiveProgramsPanel() {
   const [monthOfYear, setMonthOfYear] = useState(1);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [autoWorkorder, setAutoWorkorder] = useState(false);
 
   const handleCreate = () => {
     createProgram.mutate({
@@ -38,6 +39,7 @@ export function PreventiveProgramsPanel() {
       monthOfYear: scheduleType === "ANNUAL" ? monthOfYear : null,
       title,
       description: description || null,
+      autoWorkorder,
     });
   };
 
@@ -106,6 +108,15 @@ export function PreventiveProgramsPanel() {
             aria-label="Description"
             className="h-9 rounded-md border bg-transparent px-3 text-sm sm:col-span-2"
           />
+          <label className="flex items-center gap-2 text-sm sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={autoWorkorder}
+              onChange={(event) => setAutoWorkorder(event.target.checked)}
+              aria-label="Auto-create workorder on approval"
+            />
+            Auto-create workorder on approval
+          </label>
         </div>
         <Button
           type="button"
@@ -153,7 +164,7 @@ function ProgramRow({ program, onDelete }: { program: PreventiveProgramView; onD
         <p className="text-muted-foreground text-xs">
           {program.category} · {program.scheduleType} · day {program.dayOfMonth}
           {program.monthOfYear != null ? ` / month ${program.monthOfYear}` : ""} ·{" "}
-          {program.active ? "active" : "inactive"}
+          {program.active ? "active" : "inactive"} · {program.autoWorkorder ? "auto-workorder" : "no auto-workorder"}
         </p>
       </div>
       <Button type="button" variant="ghost" size="sm" onClick={onDelete}>

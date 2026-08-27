@@ -13,6 +13,7 @@ import com.syncro.maintenance.preventive.application.PreventiveEvidenceService.E
 import com.syncro.maintenance.preventive.application.PreventiveEvidenceService.EvidenceScheduleNotFoundException;
 import com.syncro.maintenance.preventive.application.PreventiveEvidenceService.EvidenceStorageException;
 import com.syncro.maintenance.preventive.application.PreventiveEvidenceService.EvidenceValidationException;
+import com.syncro.maintenance.preventive.application.PreventiveReportService.ReportStorageException;
 import com.syncro.maintenance.preventive.application.PreventiveProgramService.MachineNotFoundException;
 import com.syncro.maintenance.preventive.application.PreventiveProgramService.PreventiveForbiddenException;
 import com.syncro.maintenance.preventive.application.PreventiveProgramService.PreventiveValidationException;
@@ -160,6 +161,22 @@ public class PreventiveExceptionHandler {
 
   @ExceptionHandler(EvidenceStorageException.class)
   ResponseEntity<ErrorResponse> evidenceStorageError() {
+    return error(HttpStatus.INTERNAL_SERVER_ERROR, "STORAGE_ERROR",
+        "File storage operation failed. Please try again.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PreventiveReportService.ScheduleNotFoundException.class)
+  ResponseEntity<ErrorResponse> reportScheduleNotFound() {
+    return error(HttpStatus.NOT_FOUND, "SCHEDULE_NOT_FOUND", "Preventive schedule was not found.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PreventiveReportService.ProgramNotFoundException.class)
+  ResponseEntity<ErrorResponse> reportProgramNotFound() {
+    return error(HttpStatus.NOT_FOUND, "PROGRAM_NOT_FOUND", "Preventive program was not found.", Map.of());
+  }
+
+  @ExceptionHandler(ReportStorageException.class)
+  ResponseEntity<ErrorResponse> reportStorageError() {
     return error(HttpStatus.INTERNAL_SERVER_ERROR, "STORAGE_ERROR",
         "File storage operation failed. Please try again.", Map.of());
   }

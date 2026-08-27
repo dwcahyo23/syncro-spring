@@ -15,6 +15,7 @@ export interface PreventiveProgramView {
   title: string;
   description: string | null;
   active: boolean;
+  autoWorkorder: boolean;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -108,4 +109,42 @@ export interface CreatePreventiveProgramRequest {
   monthOfYear?: number | null;
   title: string;
   description?: string | null;
+  autoWorkorder?: boolean;
+}
+
+export interface PreventiveReportItemView {
+  position: number;
+  label: string;
+  value: string | null;
+  lsl: string | null;
+  usl: string | null;
+  note: string | null;
+}
+
+export interface PreventiveReportEvidenceView {
+  id: string;
+  filename: string;
+  contentType: string;
+  presignedUrl: string;
+}
+
+export interface PreventiveReportView {
+  scheduleId: string;
+  programTitle: string;
+  category: string;
+  scheduleType: string;
+  autoWorkorder: boolean;
+  machineId: string;
+  dueDate: string;
+  scheduleStatus: string;
+  completedAt: string | null;
+  performedBy: string | null;
+  notes: string | null;
+  assessment: string | null;
+  signerIdentity: string | null;
+  approvedAt: string | null;
+  items: PreventiveReportItemView[];
+  evidence: PreventiveReportEvidenceView[];
+  signaturePresignedUrl: string | null;
+  workOrderId: string | null;
 }
