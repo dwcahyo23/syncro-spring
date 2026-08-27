@@ -603,21 +603,9 @@ So that alerts can route to the correct escalation recipients later.
 **And** responsibility request DTOs enforce required machine/user UUIDs, allowed responsibility level enum values, and safe validation/malformed JSON errors
 **And** UI explains `MANAGE` app role is different from `MANAGER` job scope where relevant
 
-### Story 2.8: Show Setup Completeness
+### Story 2.8: Show Setup Completeness (RETIRED 2026-08-27)
 
-As a SUPER_ADMIN or MANAGE user,
-I want to see whether core setup is complete,
-So that I know if Syncro is ready to receive telemetry and alerts for a machine.
-
-**Acceptance Criteria:**
-
-**Given** user opens setup or machine context page
-**When** setup data is partially or fully configured
-**Then** checklist shows plant, machine group, machine, sparepart, installation, and responsibility completion states
-**And** incomplete items show clear next action
-**And** checklist uses non-color-only status communication
-**And** checklist supports loading, empty, error, read-only, and forbidden states
-**And** setup completeness does not infer machine active state from telemetry
+> Status note: RETIRED on 2026-08-27 by user decision — the Setup tab/menu was removed and Plants was consolidated into Master Data → Organization. The `features/setup` module and `setup-completeness-checklist` component are no longer referenced by any route (files remain on disk, unreferenced). Do NOT reintroduce a Setup menu or tab; setup-state concerns that survive live under Organization/Plants. If setup completeness is ever needed again, re-scope it as an Organization sub-tab, not a standalone menu.
 
 ## Epic 3: Telemetry Ingestion & Latest Machine Visibility
 
@@ -1875,6 +1863,12 @@ So that operational scope can be derived from the org structure instead of manua
 **And** demoting/removing the responsibility immediately removes the scope server-side
 **And** list/detail endpoints for workorders and sparepart lifetime filter rows by derived scope (machineGroupId), excluding sibling-group data within the same section
 
+**Given** (2026-08-27 org consolidation) a user opens Master Data → Organization
+**When** they need plant master data
+**Then** Plants is a tab inside Organization (tab value `plants`, renders PlantManagement)
+**And** the legacy `/master-data/plants` and `/master-data/setup` routes redirect to `/master-data/organization?tab=plants`
+**And** the sidebar shows no standalone Plants sub-item
+
 **FRs covered:** FR-100, FR-101, FR-102, FR-103, FR-104
 **NFRs covered:** NFR-P2-3, NFR-P2-4
 
@@ -2182,6 +2176,51 @@ So that KPI dashboards reflect team performance and maintenance quality.
 **FRs covered:** FR-121, FR-124
 **NFRs covered:** NFR-P2-2
 
+### Story 10.9: Workorder List Table, Month Picker & Quick Actions (IMPLEMENTED 2026-08-27)
+
+As a maintenance leader or technician,
+I want a server-paginated workorder table as the default Work Orders tab with a month quick picker, category/status/machine/search filters, and per-row quick actions,
+So that daily triage of workorders happens in one list without calendar date clicking or opening the kanban.
+
+> Status note: this story was implemented directly by user request on 2026-08-27 (commit 86b5b97). It is recorded here as the authoritative contract so future planning does not revert it.
+
+**Acceptance Criteria:**
+
+**Given** the user opens Work Orders
+**When** the page loads
+**Then** the Table tab is the default (kanban/ratings/categories remain secondary tabs)
+**And** the table is server-paginated (TanStack Table, page size 20) from `GET /api/v1/workorders`
+
+**Given** the user filters by period
+**When** they use the month control
+**Then** the control is a month quick picker with prev/next arrows and a month-year label — no calendar date clicking, no 7d/30d/90d/This-month presets
+**And** the selected month maps to `from`=start-of-month and `to`=end-of-month UTC bounds sent to the list endpoint
+
+**Given** the user filters the list
+**When** they select status, category, machine, or type a search term
+**Then** status/category/machine are non-native shadcn Selects; search is 300ms-debounced
+**And** category options come from `GET /api/v1/work-order-categories` (master data), rendered `code · label`
+**And** the list endpoint accepts `categoryCode` (added to controller, service and both scoped JPQL queries)
+
+**Given** a row is visible
+**When** the user uses the Actions column
+**Then** each row offers quick actions that open dialogs without leaving the table: Request part (reuses the sparepart-request dialog) and Report (GET/PUT `/{id}/report` with the four narrative fields)
+**And** actions never render raw UUIDs
+
+**FRs covered:** FR-110, FR-112, FR-171
+**NFRs covered:** NFR-P2-10 (TanStack Table)
+
+### Story 10.10: Work Order Category Master Data UI (IMPLEMENTED 2026-08-27)
+
+As a section leader or above,
+I want a Categories tab on Work Orders to view and create work-order categories,
+So that category reference data is manageable in the UI, not only via API.
+
+> Status note: implemented 2026-08-27 (commit 86b5b97). Backend CRUD (`GET/POST /api/v1/work-order-categories`, `PUT /{code}`) predates this story (FR-112, Story 10.1). The UI lists code/label/target-response and creates categories with a dialog; only the four leader+ roles may mutate (gate mirrors OPA `category_mutation_paths`).
+
+**FRs covered:** FR-112
+**NFRs covered:** NFR-P2-10
+
 ---
 
 ## Epic 11: Preventive Maintenance
@@ -2200,6 +2239,7 @@ So that routine maintenance runs on the calendar without requiring telemetry.
 **When** the program is submitted
 **Then** it stores category (mechanical/electrical) and schedule type limited to MONTHLY or ANNUAL (FR-130)
 **And** the program is scoped to the machine's section/group
+**And** (2026-08-27) preventive categories are surfaced as a read-only Categories tab on the Preventive page (PreventiveCategoryManagement); the backend enum MECHANICAL/ELECTRICAL remains the source of truth — convert to a CRUD master table only when preventive categories need to be configurable
 
 **Given** a program is active
 **When** schedules are due

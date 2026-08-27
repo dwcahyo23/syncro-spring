@@ -1421,6 +1421,19 @@ verify WAHA notification job queued
 - EMQX can be replaced by another MQTT broker in production if it preserves the MQTT contract.
 - Structure remains container-friendly for later cloud/Kubernetes work.
 
+## UI Navigation & Workorder Table Contract (2026-08-27)
+
+User-confirmed navigation and workorder-table rules — treat as stable contract for future stories (do not revert).
+
+- **1 menu = 1 page with tabs.** Work Orders = Table (default) | Kanban | Ratings | Categories. Preventive = Programs | Schedules | Categories. Master Data = Machines (groups/machines/installations), Organization (departments/users/sections/teams/responsibility/plants), Spareparts.
+- **Plants lives inside Organization** (tab `plants`). No standalone Plants sidebar sub-item. Legacy `/master-data/plants` and `/master-data/setup` redirect to `/master-data/organization?tab=plants`.
+- **Setup tab/menu removed** (2026-08-27). `features/setup` module is unreferenced; do not reintroduce a Setup menu.
+- **Workorder list filter is a month quick picker** (prev/next arrows + month-year label), mapped to month-boundary `from`/`to`. No calendar date clicking; no 7d/30d/90d/This-month presets.
+- **Workorder list filters:** status, category (`code · label` from work-order category master data), machine, debounced search. `GET /api/v1/workorders` accepts `categoryCode`.
+- **Workorder table rows carry an Actions column** — quick actions open dialogs without leaving the table (Request part, Report with four narrative fields). Raw UUIDs are never rendered.
+- **Category master data:** Work Order Categories are CRUD via `GET/POST /api/v1/work-order-categories`, `PUT /{code}` (leader+ gate). Preventive Categories are a fixed backend enum (MECHANICAL/ELECTRICAL) surfaced read-only until configurable master data is required.
+- UI dropdowns/pickers are non-native shadcn/Radix controls (project rule).
+
 ## Architecture Validation Results
 
 ### Coherence Validation
