@@ -27,13 +27,15 @@ public class PreventiveScheduleService {
   private final ShiftConfigService shiftConfig;
   private final OperationalScopeService scopes;
   private final Clock clock;
+  private final PreventiveChecklistService checklists;
 
   public PreventiveScheduleService(PreventiveScheduleRepository schedules, ShiftConfigService shiftConfig,
-      OperationalScopeService scopes, Clock clock) {
+      OperationalScopeService scopes, Clock clock, PreventiveChecklistService checklists) {
     this.schedules = schedules;
     this.shiftConfig = shiftConfig;
     this.scopes = scopes;
     this.clock = clock;
+    this.checklists = checklists;
   }
 
   @Transactional(readOnly = true)
@@ -52,10 +54,11 @@ public class PreventiveScheduleService {
       var schedule = row.schedule();
       var derived = schedule.getStatus() == ScheduleStatus.SCHEDULED && schedule.getDueDate().isBefore(today)
           ? "OVERDUE" : schedule.getStatus().name();
+      var checklistStatus = checklists.statusFor(schedule.getId()).name();
       result.add(new ScheduleView(schedule.getId(), schedule.getProgramId(), schedule.getMachineId(),
           schedule.getDueDate(), schedule.getStatus().name(), derived, schedule.getCompletedAt(),
           schedule.getPerformedBy(), row.category().name(), row.scheduleType().name(),
-          shiftConfig.resolveByMachineId(row.machineId()), today));
+          shiftConfig.resolveByMachineId(row.machineId()), today, checklistStatus));
     }
     return result;
   }
@@ -63,6 +66,7 @@ public class PreventiveScheduleService {
   /** Schedule read view: stored status + server-derived status + shift calendar context. */
   public record ScheduleView(UUID id, UUID programId, UUID machineId, LocalDate dueDate, String status,
       String derivedStatus, java.time.Instant completedAt, UUID performedBy, String category, String scheduleType,
-      com.syncro.shiftconfig.application.ShiftConfigService.MachineShiftConfigView shiftConfig, LocalDate today) {
+      com.syncro.shiftconfig.application.ShiftConfigService.MachineShiftConfigView shiftConfig, LocalDate today,
+      String checklistStatus) {
   }
 }

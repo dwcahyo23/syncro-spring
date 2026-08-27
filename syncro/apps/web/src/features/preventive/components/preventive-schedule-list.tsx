@@ -1,18 +1,23 @@
 "use client";
 
+import { useState } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PreventiveScheduleDetail } from "@/features/preventive/components/preventive-schedule-detail";
 import { usePreventiveSchedules } from "@/features/preventive/hooks/use-preventive";
 import type { PreventiveScheduleView } from "@/features/preventive/types";
 
 /**
- * Due/overdue preventive schedule list (story 11-1, FR-131). Status is server-derived
- * (OVERDUE when SCHEDULED and past due). Overdue is shown as badge + text, never color
- * alone. Shift context is surfaced for the calendar basis (AD-12).
+ * Due/overdue preventive schedule list (story 11-1, FR-131 + story 11-2, FR-132).
+ * Status is server-derived (OVERDUE when SCHEDULED and past due); overdue is shown as
+ * badge + text, never color alone. Rows open the checklist/evidence/approval detail.
  */
 export function PreventiveScheduleList() {
   const { data, isLoading, isError, refetch } = usePreventiveSchedules();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = selectedId ? (data ?? []).find((s) => s.id === selectedId) : null;
 
   if (isLoading) {
     return (
@@ -44,18 +49,28 @@ export function PreventiveScheduleList() {
   }
 
   return (
-    <div className="space-y-2">
-      {schedules.map((schedule) => (
-        <ScheduleRow key={schedule.id} schedule={schedule} />
-      ))}
+    <div className="space-y-3">
+      {selected ? (
+        <PreventiveScheduleDetail schedule={selected} onClose={() => setSelectedId(null)} />
+      ) : (
+        <div className="space-y-2">
+          {schedules.map((schedule) => (
+            <ScheduleRow key={schedule.id} schedule={schedule} onOpen={() => setSelectedId(schedule.id)} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function ScheduleRow({ schedule }: { schedule: PreventiveScheduleView }) {
+function ScheduleRow({ schedule, onOpen }: { schedule: PreventiveScheduleView; onOpen: () => void }) {
   const overdue = schedule.derivedStatus === "OVERDUE";
   return (
-    <div className="flex items-center justify-between gap-2 rounded-lg border p-3">
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex w-full items-center justify-between gap-2 rounded-lg border p-3 text-left hover:bg-muted"
+    >
       <div className="min-w-0">
         <p className="font-medium text-sm">
           {schedule.dueDate} · {schedule.category} · {schedule.scheduleType}
@@ -65,11 +80,14 @@ function ScheduleRow({ schedule }: { schedule: PreventiveScheduleView }) {
           {schedule.shiftConfig ? ` · shift: ${schedule.shiftConfig.source}` : " · shift: none"}
         </p>
       </div>
-      {overdue ? (
-        <Badge variant="destructive">Overdue</Badge>
-      ) : (
-        <Badge variant="outline">{schedule.derivedStatus}</Badge>
-      )}
-    </div>
+      <div className="flex items-center gap-2">
+        <Badge variant="secondary">{schedule.checklistStatus}</Badge>
+        {overdue ? (
+          <Badge variant="destructive">Overdue</Badge>
+        ) : (
+          <Badge variant="outline">{schedule.derivedStatus}</Badge>
+        )}
+      </div>
+    </button>
   );
 }

@@ -168,6 +168,17 @@ preventive_program_paths := {
   "/api/v1/preventive-programs/*/generate",
 }
 
+# Preventive schedule mutations (story 11-2): checklist submit/amend, evidence upload/
+# delete, approve, skip. Same four-role allow set as preventive_program_paths. GET paths
+# flow through generic read_allowed.
+preventive_schedule_mutation_paths := {
+  "/api/v1/preventive-schedules/*/checklist",
+  "/api/v1/preventive-schedules/*/evidence",
+  "/api/v1/preventive-schedules/*/evidence/*",
+  "/api/v1/preventive-schedules/*/approve",
+  "/api/v1/preventive-schedules/*/skip",
+}
+
 # Telemetry + notification-worker endpoints are SUPER_ADMIN-only in service.
 admin_only_paths := {
   "/api/v1/telemetry/**",
@@ -458,6 +469,30 @@ mutation_allowed if {
   input.subject.roles[_] == "STAFF_MAINTENANCE"
   is_mutation
   path_matches(preventive_program_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(preventive_schedule_mutation_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(preventive_schedule_mutation_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(preventive_schedule_mutation_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STAFF_MAINTENANCE"
+  is_mutation
+  path_matches(preventive_schedule_mutation_paths)
 }
 
 mutation_allowed if {

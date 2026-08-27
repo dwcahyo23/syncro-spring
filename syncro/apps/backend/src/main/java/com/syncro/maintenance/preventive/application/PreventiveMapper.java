@@ -23,4 +23,12 @@ public final class PreventiveMapper {
         entity.getDueDate(), entity.getStatus(), entity.getCompletedAt(), entity.getPerformedBy(),
         entity.getCreatedAt(), entity.getUpdatedAt());
   }
+
+  public static com.syncro.maintenance.preventive.domain.PreventiveChecklistResult checklistToDomain(
+      com.syncro.maintenance.preventive.infrastructure.db.PreventiveChecklistResultEntity entity) {
+    return new com.syncro.maintenance.preventive.domain.PreventiveChecklistResult(entity.getId(),
+        entity.getScheduleId(), entity.getPerformedBy(), entity.getCompletedAt(), entity.getNotes(),
+        entity.getLeaderId(), entity.getAssessment(), entity.getApprovedAt(), entity.getSignatureObjectKey(),
+        entity.getSignerIdentity(), entity.getCreatedAt(), entity.getUpdatedAt());
+  }
 }

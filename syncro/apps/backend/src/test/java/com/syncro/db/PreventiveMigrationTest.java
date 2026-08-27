@@ -39,6 +39,19 @@ class PreventiveMigrationTest extends AbstractPostgresIntegrationTest {
   }
 
   @Test
+  @DisplayName("11.1-DB-001b P0 V55 preventive checklist tables exist with expected columns")
+  void v55TablesExist() {
+    assertThat(columnNames("preventive_checklist_results"))
+        .contains("id", "schedule_id", "performed_by", "completed_at", "notes", "leader_id", "assessment",
+            "approved_at", "signature_object_key", "signer_identity", "created_at", "updated_at");
+    assertThat(columnNames("preventive_checklist_items"))
+        .contains("id", "result_id", "position", "label", "value", "lsl", "usl", "note", "created_at");
+    assertThat(columnNames("preventive_schedule_attachments"))
+        .contains("id", "schedule_id", "filename", "content_type", "object_key", "size_bytes", "uploaded_by",
+            "created_at", "updated_at");
+  }
+
+  @Test
   @DisplayName("11.1-DB-002 P0 preventive_programs category CHECK rejects unknown values")
   void categoryCheck() {
     var machineId = seedMachine();
@@ -133,6 +146,79 @@ class PreventiveMigrationTest extends AbstractPostgresIntegrationTest {
     assertThat(jdbc.queryForObject(
         "SELECT count(*) FROM audit_log WHERE entity_type IN ('PREVENTIVE_PROGRAM','PREVENTIVE_SCHEDULE')",
         Long.class)).isEqualTo(2L);
+  }
+
+  @Test
+  @DisplayName("11.2-DB-001 P0 V55 checklist_results unique constraint per schedule")
+  void checklistResultUniquePerSchedule() {
+    var machineId = seedMachine();
+    var programId = seedProgram(machineId);
+    var scheduleId = UUID.randomUUID();
+    jdbc.update("""
+        INSERT INTO preventive_schedules (id, program_id, machine_id, due_date, status, created_at, updated_at)
+        VALUES (?, ?, ?, DATE '2026-09-15', 'SCHEDULED', ?, ?)
+        """, scheduleId, programId, machineId, TS, TS);
+    jdbc.update("""
+        INSERT INTO preventive_checklist_results (id, schedule_id, performed_by, completed_at, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """, UUID.randomUUID(), scheduleId, UUID.randomUUID(), TS, TS, TS);
+
+    assertThatThrownBy(() -> jdbc.update("""
+        INSERT INTO preventive_checklist_results (id, schedule_id, performed_by, completed_at, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """, UUID.randomUUID(), scheduleId, UUID.randomUUID(), TS, TS, TS))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  @Test
+  @DisplayName("11.2-DB-002 P0 V55 audit_log entity_type accepts PREVENTIVE_CHECKLIST and PREVENTIVE_ATTACHMENT")
+  void auditEntityTypeAcceptsNewTypes() {
+    jdbc.update("""
+        INSERT INTO audit_log (id, actor_id, actor_name, action, entity_type, entity_id, entity_label, created_at)
+        VALUES (?,?,?,?,?,?,?,?)
+        """, UUID.randomUUID(), UUID.randomUUID(), "audit-actor", "CREATE", "PREVENTIVE_CHECKLIST",
+        UUID.randomUUID(), "P due 2026-09-15", TS);
+    jdbc.update("""
+        INSERT INTO audit_log (id, actor_id, actor_name, action, entity_type, entity_id, entity_label, created_at)
+        VALUES (?,?,?,?,?,?,?,?)
+        """, UUID.randomUUID(), UUID.randomUUID(), "audit-actor", "CREATE", "PREVENTIVE_ATTACHMENT",
+        UUID.randomUUID(), "schedule abc", TS);
+
+    assertThat(jdbc.queryForObject(
+        "SELECT count(*) FROM audit_log WHERE entity_type IN ('PREVENTIVE_CHECKLIST','PREVENTIVE_ATTACHMENT')",
+        Long.class)).isEqualTo(2L);
+  }
+
+  @Test
+  @DisplayName("11.2-DB-003 P0 V55 attachments size_bytes non-negative CHECK")
+  void attachmentSizeNonNegative() {
+    var machineId = seedMachine();
+    var programId = seedProgram(machineId);
+    var scheduleId = UUID.randomUUID();
+    jdbc.update("""
+        INSERT INTO preventive_schedules (id, program_id, machine_id, due_date, status, created_at, updated_at)
+        VALUES (?, ?, ?, DATE '2026-09-15', 'SCHEDULED', ?, ?)
+        """, scheduleId, programId, machineId, TS, TS);
+
+    assertThatThrownBy(() -> jdbc.update("""
+        INSERT INTO preventive_schedule_attachments (id, schedule_id, filename, content_type, object_key, size_bytes, uploaded_by, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, UUID.randomUUID(), scheduleId, "f.jpg", "image/jpeg", "k", -1, UUID.randomUUID(), TS))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  @Test
+  @DisplayName("11.2-DB-004 P0 V55 tables have expected indexes")
+  void v55IndexesExist() {
+    assertThat(jdbc.queryForList("SELECT indexname FROM pg_indexes WHERE tablename = 'preventive_checklist_results'"))
+        .extracting(row -> row.get("indexname"))
+        .contains("idx_preventive_checklist_schedule");
+    assertThat(jdbc.queryForList("SELECT indexname FROM pg_indexes WHERE tablename = 'preventive_checklist_items'"))
+        .extracting(row -> row.get("indexname"))
+        .contains("idx_preventive_checklist_items_result");
+    assertThat(jdbc.queryForList("SELECT indexname FROM pg_indexes WHERE tablename = 'preventive_schedule_attachments'"))
+        .extracting(row -> row.get("indexname"))
+        .contains("idx_preventive_schedule_attachments_schedule");
   }
 
   private java.util.List<String> columnNames(String table) {

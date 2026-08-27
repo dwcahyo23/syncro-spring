@@ -1,6 +1,14 @@
 package com.syncro.maintenance.preventive.api;
 
 import com.syncro.maintenance.preventive.api.PreventiveDtos.ErrorResponse;
+import com.syncro.maintenance.preventive.application.PreventiveChecklistService.ChecklistAlreadySubmittedException;
+import com.syncro.maintenance.preventive.application.PreventiveChecklistService.ChecklistForbiddenException;
+import com.syncro.maintenance.preventive.application.PreventiveChecklistService.ChecklistValidationException;
+import com.syncro.maintenance.preventive.application.PreventiveChecklistService.InvalidStateTransitionException;
+import com.syncro.maintenance.preventive.application.PreventiveChecklistService.MissingSignatureException;
+import com.syncro.maintenance.preventive.application.PreventiveChecklistService.ScheduleNotFoundException;
+import com.syncro.maintenance.preventive.application.PreventiveEvidenceService.EvidenceForbiddenException;
+import com.syncro.maintenance.preventive.application.PreventiveEvidenceService.EvidenceValidationException;
 import com.syncro.maintenance.preventive.application.PreventiveProgramService.MachineNotFoundException;
 import com.syncro.maintenance.preventive.application.PreventiveProgramService.PreventiveForbiddenException;
 import com.syncro.maintenance.preventive.application.PreventiveProgramService.PreventiveValidationException;
@@ -91,6 +99,38 @@ public class PreventiveExceptionHandler {
   @ExceptionHandler(ProgramNotFoundException.class)
   ResponseEntity<ErrorResponse> programNotFound() {
     return error(HttpStatus.NOT_FOUND, "PROGRAM_NOT_FOUND", "Preventive program was not found.", Map.of());
+  }
+
+  @ExceptionHandler(ScheduleNotFoundException.class)
+  ResponseEntity<ErrorResponse> scheduleNotFound() {
+    return error(HttpStatus.NOT_FOUND, "SCHEDULE_NOT_FOUND", "Preventive schedule was not found.", Map.of());
+  }
+
+  @ExceptionHandler({InvalidStateTransitionException.class, ChecklistAlreadySubmittedException.class})
+  ResponseEntity<ErrorResponse> invalidState(InvalidStateTransitionException exception) {
+    return error(HttpStatus.CONFLICT, "INVALID_STATE_TRANSITION", "The schedule is not in the expected state for this action.", Map.of());
+  }
+
+  @ExceptionHandler(MissingSignatureException.class)
+  ResponseEntity<ErrorResponse> missingSignature() {
+    var fieldErrors = new LinkedHashMap<String, String>();
+    fieldErrors.put("signatureObjectKey", "Signature object key is required for approval.");
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", fieldErrors);
+  }
+
+  @ExceptionHandler(ChecklistValidationException.class)
+  ResponseEntity<ErrorResponse> checklistValidation(ChecklistValidationException exception) {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", exception.getFieldErrors());
+  }
+
+  @ExceptionHandler(EvidenceValidationException.class)
+  ResponseEntity<ErrorResponse> evidenceValidation(EvidenceValidationException exception) {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", exception.getFieldErrors());
+  }
+
+  @ExceptionHandler({ChecklistForbiddenException.class, EvidenceForbiddenException.class})
+  ResponseEntity<ErrorResponse> checklistForbidden() {
+    return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "You do not have permission to access this resource.", Map.of());
   }
 
   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message,

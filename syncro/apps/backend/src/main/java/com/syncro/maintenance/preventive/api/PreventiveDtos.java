@@ -48,7 +48,32 @@ public final class PreventiveDtos {
 
   public record PreventiveScheduleView(UUID id, UUID programId, UUID machineId, LocalDate dueDate, String status,
       String derivedStatus, Instant completedAt, UUID performedBy, String category, String scheduleType,
-      MachineShiftConfigView shiftConfig, LocalDate today) {
+      MachineShiftConfigView shiftConfig, LocalDate today, String checklistStatus) {
+  }
+
+  public record ChecklistItemRequest(@NotBlank @Size(max = 200) String label, String value,
+      java.math.BigDecimal lsl, java.math.BigDecimal usl, @Size(max = 4000) String note) {
+  }
+
+  public record SubmitChecklistRequest(@Size(max = 4000) String notes,
+      @NotNull @Size(min = 1) List<ChecklistItemRequest> items) {
+  }
+
+  public record ApproveScheduleRequest(@NotBlank @Size(max = 512) String signatureObjectKey,
+      @Size(max = 200) String signerIdentity, @Size(max = 4000) String assessment) {
+  }
+
+  public record ChecklistResultView(UUID id, UUID scheduleId, UUID performedBy, Instant completedAt, String notes,
+      UUID leaderId, String assessment, Instant approvedAt, String signatureObjectKey, String signerIdentity,
+      List<ChecklistItemRequest> items) {
+  }
+
+  public record ChecklistView(String status, ChecklistResultView result) {
+  }
+
+  public record PreventiveAttachmentView(UUID id, UUID scheduleId, String filename, String contentType,
+      String objectKey, long sizeBytes, UUID uploadedBy, Instant createdAt, Instant updatedAt,
+      String presignedUrl) {
   }
 
   public record ErrorResponse(String code, String message, Map<String, String> fieldErrors, String timestamp,

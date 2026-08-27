@@ -18,6 +18,8 @@ import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.auth.infrastructure.JwtAuthenticationFilter;
 import com.syncro.config.SecurityConfig;
 import com.syncro.config.TimeConfig;
+import com.syncro.maintenance.preventive.application.PreventiveChecklistService;
+import com.syncro.maintenance.preventive.application.PreventiveEvidenceService;
 import com.syncro.maintenance.preventive.application.PreventiveProgramService;
 import com.syncro.maintenance.preventive.application.PreventiveProgramService.CreateProgramCommand;
 import com.syncro.maintenance.preventive.application.PreventiveProgramService.MachineNotFoundException;
@@ -60,6 +62,12 @@ class PreventiveControllerTest {
 
   @MockitoBean
   private PreventiveScheduleService schedules;
+
+  @MockitoBean
+  private PreventiveChecklistService checklists;
+
+  @MockitoBean
+  private PreventiveEvidenceService evidence;
 
   @MockitoBean
   private JwtTokenService jwtTokenService;
@@ -189,7 +197,8 @@ class PreventiveControllerTest {
   void listSchedulesReturnsOk() throws Exception {
     var user = user(ApplicationRole.AUDITOR);
     var view = new ScheduleView(UUID.randomUUID(), PROGRAM_ID, MACHINE_ID, LocalDate.of(2026, 9, 15),
-        "SCHEDULED", "SCHEDULED", null, null, "MECHANICAL", "MONTHLY", null, LocalDate.of(2026, 8, 27));
+        "SCHEDULED", "SCHEDULED", null, null, "MECHANICAL", "MONTHLY", null, LocalDate.of(2026, 8, 27),
+        "NONE");
     when(schedules.list(user)).thenReturn(List.of(view));
 
     mockMvc.perform(get("/api/v1/preventive-schedules").with(auth(user)))

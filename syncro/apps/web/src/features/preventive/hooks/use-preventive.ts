@@ -4,9 +4,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import type {
+  ApproveScheduleRequest,
+  ChecklistResultView,
+  ChecklistView,
   CreatePreventiveProgramRequest,
+  PreventiveAttachmentView,
   PreventiveProgramView,
   PreventiveScheduleView,
+  SubmitChecklistRequest,
 } from "@/features/preventive/types";
 import { syncroFetch } from "@/lib/api/orval-mutator";
 
@@ -74,6 +79,150 @@ export function useDeletePreventiveProgram() {
     },
     onError: () => {
       toast.error("Failed to delete preventive program");
+    },
+  });
+}
+
+/** Reads checklist result + items + status for a schedule. */
+export function useChecklist(scheduleId: string | null) {
+  return useQuery<ChecklistView>({
+    queryKey: [SCHEDULES_KEY, scheduleId, "checklist"],
+    queryFn: async () => {
+      const response = await syncroFetch<{ data: ChecklistView }>(`${SCHEDULES_KEY}/${scheduleId}/checklist`, {
+        method: "GET",
+      });
+      return response.data;
+    },
+    enabled: !!scheduleId,
+    retry: false,
+  });
+}
+
+/** Submits or amends a checklist. */
+export function useSubmitChecklist() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      scheduleId,
+      data,
+      isAmend,
+    }: {
+      scheduleId: string;
+      data: SubmitChecklistRequest;
+      isAmend: boolean;
+    }) => {
+      const response = await syncroFetch<{ data: ChecklistResultView }>(`${SCHEDULES_KEY}/${scheduleId}/checklist`, {
+        method: isAmend ? "PUT" : "POST",
+        body: JSON.stringify(data),
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [SCHEDULES_KEY] });
+      toast.success("Checklist submitted");
+    },
+    onError: () => {
+      toast.error("Failed to submit checklist");
+    },
+  });
+}
+
+/** Approves a checklist (leader only). */
+export function useApproveSchedule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ scheduleId, data }: { scheduleId: string; data: ApproveScheduleRequest }) => {
+      const response = await syncroFetch<{ data: ChecklistResultView }>(`${SCHEDULES_KEY}/${scheduleId}/approve`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [SCHEDULES_KEY] });
+      toast.success("Schedule approved");
+    },
+    onError: () => {
+      toast.error("Failed to approve schedule");
+    },
+  });
+}
+
+/** Skips a schedule (leader only). */
+export function useSkipSchedule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (scheduleId: string) => {
+      await syncroFetch(`${SCHEDULES_KEY}/${scheduleId}/skip`, { method: "POST" });
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [SCHEDULES_KEY] });
+      toast.success("Schedule skipped");
+    },
+    onError: () => {
+      toast.error("Failed to skip schedule");
+    },
+  });
+}
+
+/** Lists evidence for a schedule. */
+export function useEvidenceList(scheduleId: string | null) {
+  return useQuery<PreventiveAttachmentView[]>({
+    queryKey: [SCHEDULES_KEY, scheduleId, "evidence"],
+    queryFn: async () => {
+      const response = await syncroFetch<{ data: PreventiveAttachmentView[] }>(
+        `${SCHEDULES_KEY}/${scheduleId}/evidence`,
+        { method: "GET" },
+      );
+      return response.data;
+    },
+    enabled: !!scheduleId,
+    retry: false,
+  });
+}
+
+/** Uploads evidence for a schedule. */
+export function useUploadEvidence() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ scheduleId, file }: { scheduleId: string; file: File }) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await syncroFetch<{ data: PreventiveAttachmentView }>(
+        `${SCHEDULES_KEY}/${scheduleId}/evidence`,
+        {
+          method: "POST",
+          body: formData,
+          headers: {},
+        },
+      );
+      return response.data;
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: [SCHEDULES_KEY, variables.scheduleId, "evidence"] });
+      void queryClient.invalidateQueries({ queryKey: [SCHEDULES_KEY] });
+      toast.success("Evidence uploaded");
+    },
+    onError: () => {
+      toast.error("Failed to upload evidence");
+    },
+  });
+}
+
+/** Deletes evidence. */
+export function useDeleteEvidence() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ scheduleId, attachmentId }: { scheduleId: string; attachmentId: string }) => {
+      await syncroFetch(`${SCHEDULES_KEY}/${scheduleId}/evidence/${attachmentId}`, { method: "DELETE" });
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: [SCHEDULES_KEY, variables.scheduleId, "evidence"] });
+      void queryClient.invalidateQueries({ queryKey: [SCHEDULES_KEY] });
+      toast.success("Evidence deleted");
+    },
+    onError: () => {
+      toast.error("Failed to delete evidence");
     },
   });
 }

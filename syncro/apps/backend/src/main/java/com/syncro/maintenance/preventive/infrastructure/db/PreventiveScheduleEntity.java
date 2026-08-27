@@ -59,6 +59,19 @@ public class PreventiveScheduleEntity {
     this.updatedAt = updatedAt;
   }
 
+  /**
+   * Story 11-2 status transition (SCHEDULED → IN_PROGRESS → PERFORMED, or SKIPPED from
+   * SCHEDULED/IN_PROGRESS). Marks completion on PERFORMED only. Server clock values.
+   */
+  public void transition(ScheduleStatus newStatus, Instant now, UUID actor) {
+    this.status = newStatus;
+    this.updatedAt = now;
+    if (newStatus == ScheduleStatus.PERFORMED) {
+      this.completedAt = now;
+      this.performedBy = actor;
+    }
+  }
+
   public UUID getId() { return id; }
   public UUID getProgramId() { return programId; }
   public UUID getMachineId() { return machineId; }
