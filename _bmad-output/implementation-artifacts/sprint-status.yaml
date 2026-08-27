@@ -170,7 +170,7 @@ development_status:
   epic-11: in-progress
   11-1-preventive-programs-and-schedules: done
   11-2-checklist-assessment-and-signature: done
-  11-3-preventive-report-and-auto-workorder: review
+  11-3-preventive-report-and-auto-workorder: done
   epic-11-retrospective: optional
 
   # Epic 12: Sparepart Request & Inventory

@@ -3,7 +3,8 @@ title: 'Preventive Report & Auto-Workorder'
 type: 'feature'
 created: '2026-08-27'
 baseline_commit: a5926d7fd4738367f2f5c008baa3916d244ad717
-status: 'review'
+status: 'done'
+review_loop_iteration: 1
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
