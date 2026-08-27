@@ -175,6 +175,11 @@ public class PreventiveExceptionHandler {
     return error(HttpStatus.NOT_FOUND, "PROGRAM_NOT_FOUND", "Preventive program was not found.", Map.of());
   }
 
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PreventiveReportService.MachineNotFoundException.class)
+  ResponseEntity<ErrorResponse> reportMachineNotFound() {
+    return error(HttpStatus.NOT_FOUND, "MACHINE_NOT_FOUND", "Machine was not found.", Map.of());
+  }
+
   @ExceptionHandler(ReportStorageException.class)
   ResponseEntity<ErrorResponse> reportStorageError() {
     return error(HttpStatus.INTERNAL_SERVER_ERROR, "STORAGE_ERROR",

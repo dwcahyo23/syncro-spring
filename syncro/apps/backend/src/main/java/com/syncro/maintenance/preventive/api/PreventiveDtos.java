@@ -50,10 +50,10 @@ public final class PreventiveDtos {
   }
 
   public record PreventiveReportView(UUID scheduleId, String programTitle, String category, String scheduleType,
-      boolean autoWorkorder, UUID machineId, LocalDate dueDate, String scheduleStatus, Instant completedAt,
-      UUID performedBy, String notes, String assessment, String signerIdentity, Instant approvedAt,
-      List<PreventiveReportItemView> items, List<PreventiveReportEvidenceView> evidence,
-      String signaturePresignedUrl, String workOrderId) {
+      boolean autoWorkorder, UUID machineId, UUID plantId, UUID machineGroupId, LocalDate dueDate,
+      String scheduleStatus, Instant completedAt, UUID performedBy, String notes, String assessment,
+      String signerIdentity, Instant approvedAt, List<PreventiveReportItemView> items,
+      List<PreventiveReportEvidenceView> evidence, String signaturePresignedUrl, String workOrderId) {
   }
 
   public record ShiftWindowView(int shiftNumber, String startTime, String endTime) {

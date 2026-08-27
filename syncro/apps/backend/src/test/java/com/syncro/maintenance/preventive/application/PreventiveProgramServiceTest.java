@@ -19,6 +19,7 @@ import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.maintenance.preventive.application.PreventiveProgramService.CreateProgramCommand;
 import com.syncro.maintenance.preventive.application.PreventiveProgramService.PreventiveForbiddenException;
 import com.syncro.maintenance.preventive.application.PreventiveProgramService.PreventiveValidationException;
+import com.syncro.maintenance.preventive.application.PreventiveProgramService.UpdateProgramCommand;
 import com.syncro.maintenance.preventive.domain.PreventiveCategory;
 import com.syncro.maintenance.preventive.domain.ScheduleType;
 import com.syncro.maintenance.preventive.domain.ScheduleStatus;
@@ -222,6 +223,28 @@ class PreventiveProgramServiceTest {
 
   private AuthenticatedUser staffUser() {
     return new AuthenticatedUser(staffId.toString(), "staff@test", ApplicationRole.STAFF_MAINTENANCE);
+  }
+
+  @Test
+  @DisplayName("11.3-SVC-012 P0 update persists autoWorkorder flag round-trip")
+  void updateAutoWorkorderPersists() {
+    var user = staffUser();
+    var scope = new OperationalScope(Set.of(plantId), Set.of(), Set.of());
+    when(scopes.derive(user)).thenReturn(scope);
+    var programId = UUID.randomUUID();
+    var program = new PreventiveProgramEntity(programId, machineId, PreventiveCategory.MECHANICAL, ScheduleType.MONTHLY,
+        (short) 15, null, "P", null, true, false, staffId, NOW, NOW);
+    when(programs.findById(programId)).thenReturn(Optional.of(program));
+    when(programs.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(schedules.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(schedules.existsByProgramIdAndDueDate(any(), any())).thenReturn(false);
+    when(schedules.findByProgramIdOrderByDueDateAsc(any())).thenReturn(List.of());
+    when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
+
+    var updated = service.update(user, programId.toString(),
+        new UpdateProgramCommand(15, null, "P", null, true, true));
+
+    assertThat(updated.autoWorkorder()).isTrue();
   }
 
   private static MachineEntity machineWithPlant(UUID plantId, UUID groupId, UUID machineId) {

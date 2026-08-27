@@ -238,12 +238,14 @@ class PreventiveChecklistServiceTest {
     when(results.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
     when(items.findByResultIdOrderByPositionAsc(any())).thenReturn(List.of());
     when(workOrders.existsByPreventiveScheduleId(scheduleId)).thenReturn(false);
-    when(workOrders.createSystem(eq(machineId), eq(WorkOrderService.PREVENTIVE_CATEGORY_CODE), any(), eq(scheduleId)))
+    when(workOrders.createSystem(eq(machineId), eq(WorkOrderService.PREVENTIVE_CATEGORY_CODE),
+        eq("Preventive: Monthly lube due 2026-09-15"), eq(scheduleId)))
         .thenReturn("WO-2609-00001");
 
     service.approve(user, scheduleId.toString(), new ApproveCommand("preventive/sig.png", "Leader", "ok"));
 
-    verify(workOrders).createSystem(eq(machineId), eq(WorkOrderService.PREVENTIVE_CATEGORY_CODE), any(), eq(scheduleId));
+    verify(workOrders).createSystem(eq(machineId), eq(WorkOrderService.PREVENTIVE_CATEGORY_CODE),
+        eq("Preventive: Monthly lube due 2026-09-15"), eq(scheduleId));
   }
 
   @Test

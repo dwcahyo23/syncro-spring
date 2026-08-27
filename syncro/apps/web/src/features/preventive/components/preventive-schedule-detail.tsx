@@ -104,10 +104,12 @@ export function PreventiveScheduleDetail({
             <Badge variant="outline">{schedule.derivedStatus}</Badge>
           )}
           <Badge variant="secondary">{schedule.checklistStatus}</Badge>
-          <Button variant="outline" size="sm" onClick={() => setShowReport(true)}>
-            <Printer className="mr-1 h-3 w-3" />
-            Report
-          </Button>
+          {isApproved && (
+            <Button variant="outline" size="sm" onClick={() => setShowReport(true)}>
+              <Printer className="mr-1 h-3 w-3" />
+              Report
+            </Button>
+          )}
           <Button variant="ghost" size="sm" onClick={onClose}>
             Close
           </Button>

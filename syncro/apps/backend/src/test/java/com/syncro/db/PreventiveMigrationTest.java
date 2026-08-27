@@ -271,6 +271,27 @@ class PreventiveMigrationTest extends AbstractPostgresIntegrationTest {
         .isInstanceOf(DataIntegrityViolationException.class);
   }
 
+  @Test
+  @DisplayName("11.3-DB-004 P0 V56 FK ON DELETE SET NULL nulls preventive_schedule_id on schedule delete")
+  void v56FkOnDeleteSetNull() {
+    var machineId = seedMachine();
+    var programId = seedProgram(machineId);
+    var scheduleId = UUID.randomUUID();
+    jdbc.update("""
+        INSERT INTO preventive_schedules (id, program_id, machine_id, due_date, status, created_at, updated_at)
+        VALUES (?, ?, ?, DATE '2026-09-15', 'PERFORMED', ?, ?)
+        """, scheduleId, programId, machineId, TS, TS);
+    jdbc.update("""
+        INSERT INTO work_orders (id, source, status, machine_id, sync_version, preventive_schedule_id, created_at, updated_at)
+        VALUES ('WO-2609-00010', 'INTERNAL', 'OPEN', ?, 0, ?, ?, ?)
+        """, machineId, scheduleId, TS, TS);
+
+    jdbc.update("DELETE FROM preventive_schedules WHERE id = ?", scheduleId);
+
+    assertThat(jdbc.queryForObject(
+        "SELECT preventive_schedule_id FROM work_orders WHERE id = 'WO-2609-00010'", Object.class)).isNull();
+  }
+
   private java.util.List<String> columnNames(String table) {
     return jdbc.queryForList(
         "SELECT column_name FROM information_schema.columns "

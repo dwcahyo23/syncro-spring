@@ -39,11 +39,12 @@ public class PreventiveReportService {
   private final PreventiveScheduleAttachmentRepository attachments;
   private final WorkOrderRepository workOrders;
   private final ObjectStorageService objectStorage;
+  private final com.syncro.machine.infrastructure.MachineRepository machines;
 
   public PreventiveReportService(PreventiveScheduleRepository schedules, PreventiveProgramRepository programs,
       PreventiveChecklistResultRepository results, PreventiveChecklistItemRepository items,
       PreventiveScheduleAttachmentRepository attachments, WorkOrderRepository workOrders,
-      ObjectStorageService objectStorage) {
+      ObjectStorageService objectStorage, com.syncro.machine.infrastructure.MachineRepository machines) {
     this.schedules = schedules;
     this.programs = programs;
     this.results = results;
@@ -51,11 +52,18 @@ public class PreventiveReportService {
     this.attachments = attachments;
     this.workOrders = workOrders;
     this.objectStorage = objectStorage;
+    this.machines = machines;
   }
 
   @Transactional(readOnly = true)
   public PreventiveReport get(String scheduleId) {
-    var schedule = schedules.findById(UUID.fromString(scheduleId))
+    UUID id;
+    try {
+      id = UUID.fromString(scheduleId);
+    } catch (IllegalArgumentException exception) {
+      throw new ScheduleNotFoundException();
+    }
+    var schedule = schedules.findById(id)
         .orElseThrow(ScheduleNotFoundException::new);
     var program = programs.findById(schedule.getProgramId())
         .orElseThrow(ProgramNotFoundException::new);
@@ -81,10 +89,15 @@ public class PreventiveReportService {
     var workOrderId = workOrders.findByPreventiveScheduleId(schedule.getId())
         .map(e -> e.getId()).orElse(null);
 
+    var machine = machines.findByIdWithPlantAndGroup(schedule.getMachineId())
+        .orElseThrow(MachineNotFoundException::new);
+    var plantId = machine.getPlant().getId();
+    var machineGroupId = machine.getMachineGroup().getId();
+
     return new PreventiveReport(schedule.getId(), program.getTitle(), program.getCategory(),
-        program.getScheduleType(), program.isAutoWorkorder(), schedule.getMachineId(), schedule.getDueDate(),
-        schedule.getStatus(), schedule.getCompletedAt(), schedule.getPerformedBy(), checklist, itemValues,
-        evidence, signatureUrl,
+        program.getScheduleType(), program.isAutoWorkorder(), schedule.getMachineId(), plantId, machineGroupId,
+        schedule.getDueDate(), schedule.getStatus(), schedule.getCompletedAt(), schedule.getPerformedBy(),
+        checklist, itemValues, evidence, signatureUrl,
         resultEntity != null ? resultEntity.getSignerIdentity() : null,
         resultEntity != null ? resultEntity.getApprovedAt() : null,
         workOrderId);
@@ -114,6 +127,9 @@ public class PreventiveReportService {
   }
 
   public static class ProgramNotFoundException extends RuntimeException {
+  }
+
+  public static class MachineNotFoundException extends RuntimeException {
   }
 
   public static class ReportStorageException extends RuntimeException {

@@ -97,7 +97,7 @@ public class PreventiveProgramController {
       @Valid @RequestBody UpdatePreventiveProgramRequest request) {
     var program = programs.update(user, id.toString(), new UpdateProgramCommand(request.dayOfMonth(),
         request.monthOfYear(), request.title(), request.description(), request.active(),
-        Boolean.TRUE.equals(request.autoWorkorder())));
+        request.autoWorkorder()));
     return toView(program);
   }
 

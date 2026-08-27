@@ -183,7 +183,15 @@ public class PreventiveChecklistService {
    */
   private void autoCreateWorkorder(PreventiveScheduleEntity schedule) {
     var program = programs.findById(schedule.getProgramId()).orElse(null);
-    if (program == null || !program.isAutoWorkorder()) {
+    if (program == null) {
+      // Program deleted between schedule creation and approval: record the skip so it is
+      // not silently lost, then let the approval complete.
+      auditLog.recordSystem(new AuditRecord(AuditAction.UPDATE, AuditEntityType.PREVENTIVE_SCHEDULE,
+          schedule.getId(), entityLabel(schedule), machine(schedule).getPlant().getId(),
+          Map.<String, Object>of("autoWorkorder", "skipped-program-missing"), null, null));
+      return;
+    }
+    if (!program.isAutoWorkorder()) {
       return;
     }
     if (workOrders.existsByPreventiveScheduleId(schedule.getId())) {
@@ -194,7 +202,7 @@ public class PreventiveChecklistService {
           "Preventive: " + program.getTitle() + " due " + schedule.getDueDate(), schedule.getId());
     } catch (RuntimeException exception) {
       auditLog.recordSystem(new AuditRecord(AuditAction.UPDATE, AuditEntityType.PREVENTIVE_SCHEDULE,
-          schedule.getId(), entityLabel(schedule), null,
+          schedule.getId(), entityLabel(schedule), machine(schedule).getPlant().getId(),
           Map.<String, Object>of("autoWorkorder", "failed"), null, null));
     }
   }

@@ -18,6 +18,8 @@ public record PreventiveReport(
     ScheduleType scheduleType,
     boolean autoWorkorder,
     UUID machineId,
+    UUID plantId,
+    UUID machineGroupId,
     LocalDate dueDate,
     ScheduleStatus scheduleStatus,
     Instant completedAt,

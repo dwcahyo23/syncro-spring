@@ -176,8 +176,8 @@ public class PreventiveScheduleController {
         .toList();
     return new com.syncro.maintenance.preventive.api.PreventiveDtos.PreventiveReportView(
         r.scheduleId(), r.programTitle(), r.category().name(), r.scheduleType().name(), r.autoWorkorder(),
-        r.machineId(), r.dueDate(), r.scheduleStatus().name(), r.completedAt(), r.performedBy(),
-        r.checklist() != null ? r.checklist().notes() : null,
+        r.machineId(), r.plantId(), r.machineGroupId(), r.dueDate(), r.scheduleStatus().name(), r.completedAt(),
+        r.performedBy(), r.checklist() != null ? r.checklist().notes() : null,
         r.checklist() != null ? r.checklist().assessment() : null,
         r.signerIdentity(), r.approvedAt(), itemViews, evidenceViews, r.signaturePresignedUrl(), r.workOrderId());
   }

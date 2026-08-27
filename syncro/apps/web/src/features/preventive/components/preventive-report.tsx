@@ -15,11 +15,14 @@ import { usePreventiveReport } from "@/features/preventive/hooks/use-preventive"
  * data-driven print page.
  */
 export function PreventiveReportPage({ scheduleId, onClose }: { scheduleId: string; onClose: () => void }) {
-  const { data, isLoading, isError } = usePreventiveReport(scheduleId);
+  const { data, isLoading, isError, refetch } = usePreventiveReport(scheduleId);
 
   useEffect(() => {
     if (data && !isLoading) {
-      const timer = setTimeout(() => window.print(), 500);
+      const images = Array.from(document.images);
+      const ready =
+        images.length === 0 ? Promise.resolve() : Promise.all(images.map((img) => img.decode().catch(() => undefined)));
+      const timer = setTimeout(() => void ready.then(() => window.print()), 500);
       return () => clearTimeout(timer);
     }
   }, [data, isLoading]);
@@ -45,9 +48,14 @@ export function PreventiveReportPage({ scheduleId, onClose }: { scheduleId: stri
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground text-sm">Failed to load report.</p>
-          <Button variant="outline" size="sm" onClick={onClose}>
-            Close
-          </Button>
+          <div className="flex gap-2 mt-2">
+            <Button variant="outline" size="sm" onClick={() => void refetch()}>
+              Retry
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              Close
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );

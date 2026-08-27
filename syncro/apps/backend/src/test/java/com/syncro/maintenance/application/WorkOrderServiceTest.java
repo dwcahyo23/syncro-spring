@@ -57,6 +57,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -498,5 +499,42 @@ class WorkOrderServiceTest {
     var plant = new com.syncro.auth.infrastructure.PlantEntity(plantId, "P01", "Plant", NOW, NOW);
     var group = new com.syncro.masterdata.infrastructure.MachineGroupEntity(groupId, plant, "Group", NOW, NOW);
     return new MachineEntity(machineId, plant, group, "M-001", "Machine", MachineStatus.ACTIVE, null, null, null, List.of(), NOW, NOW);
+  }
+
+  @Test
+  @DisplayName("11.3-SVC-010 P0 createSystem creates an INTERNAL workorder linked to the preventive schedule with SYSTEM actor")
+  void createSystemOk() {
+    var preventiveCategory = new WorkOrderCategoryEntity(UUID.randomUUID(), "02", "Preventive", null, NOW, NOW);
+    var scheduleId = UUID.randomUUID();
+    when(categories.findByCode("02")).thenReturn(Optional.of(preventiveCategory));
+    when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
+    when(idGenerator.nextId()).thenReturn("WO-2609-00001");
+    when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    var id = service.createSystem(machineId, "02", "Preventive: Monthly lube due 2026-09-15", scheduleId);
+
+    assertThat(id).isEqualTo("WO-2609-00001");
+    var captor = ArgumentCaptor.forClass(WorkOrderEntity.class);
+    verify(workOrders).saveAndFlush(captor.capture());
+    assertThat(captor.getValue().getSource()).isEqualTo("INTERNAL");
+    assertThat(captor.getValue().getPreventiveScheduleId()).isEqualTo(scheduleId);
+    assertThat(captor.getValue().getStatus()).isEqualTo(WorkOrderStatus.OPEN);
+    // SYSTEM history row: source DERIVED, actor SYSTEM.
+    verify(statusHistory).saveAndFlush(argThat(row ->
+        "SYSTEM".equals(row.getActor()) && "DERIVED".equals(row.getSource())
+            && "WO-2609-00001".equals(row.getWorkOrderId())));
+    // SYSTEM audit via recordSystem.
+    verify(auditLog).recordSystem(argThat(r ->
+        r.action() == AuditAction.CREATE && r.entityType() == AuditEntityType.WORK_ORDER));
+  }
+
+  @Test
+  @DisplayName("11.3-SVC-011 P0 createSystem with missing category throws category-not-found")
+  void createSystemMissingCategory() {
+    when(categories.findByCode("02")).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.createSystem(machineId, "02", "Preventive x", UUID.randomUUID()))
+        .isInstanceOf(WorkOrderService.WorkOrderCategoryNotFoundException.class);
+    verify(workOrders, org.mockito.Mockito.never()).saveAndFlush(any());
   }
 }

@@ -163,6 +163,23 @@ warnings: []
 - AC5 (FR-134 disabled/skipped): PreventiveChecklistServiceTest.approveNoAutoWorkorder (skip never reaches approve).
 - AC6 (FR-134 failure non-fatal): PreventiveChecklistServiceTest.approveAutoWorkorderFailureNonFatal.
 
+## Review Findings
+
+**patch:**
+- [x] [Review][Patch] Rollback-only transaction on auto-workorder failure — `createSystem` now `@Transactional(propagation = REQUIRES_NEW)`, isolating the side-effect work from the leader's approve tx. [WorkOrderService.java:157]
+- [x] [Review][Patch] `createSystem` has no real execution coverage — added `WorkOrderServiceTest.createSystemOk` (asserts saved `preventiveScheduleId`, INTERNAL source, OPEN status, DERIVED/SYSTEM history, recordSystem audit) + `createSystemMissingCategory`. [WorkOrderServiceTest]
+- [x] [Review][Patch] Report endpoint no scope check — dismissed: global security config `requestMatchers("/api/v1/**").authenticated()` already enforces any-authenticated (same as checklist/evidence GETs which also have no per-route annotation). Consistent read posture.
+- [x] [Review][Patch] `PreventiveReportView` missing machine plant/group — injected `MachineRepository`, added `plantId`/`machineGroupId` to `PreventiveReport` + view + `MACHINE_NOT_FOUND` handler. [PreventiveReportService, PreventiveDtos, PreventiveExceptionHandler]
+- [x] [Review][Patch] Auto-workorder failure audit has null plantId — failure + program-missing audit now resolve `machine(schedule).getPlant().getId()`. [PreventiveChecklistService]
+- [x] [Review][Patch] Update DTO `autoWorkorder` nullable → omitted field silently disables flag — `UpdateProgramCommand.autoWorkorder` is now `Boolean`; service preserves existing when null; added `updateAutoWorkorderPersists` test. [PreventiveProgramService, PreventiveProgramController]
+- [x] [Review][Patch] `autoCreateWorkorder` silently skips when program deleted — now audits `skipped-program-missing` note with plantId. [PreventiveChecklistService]
+- [x] [Review][Patch] Report button shown to all users — gated on `isApproved`. [preventive-schedule-detail.tsx]
+- [x] [Review][Patch] Report endpoint 500 on non-UUID id — `UUID.fromString` wrapped; throws `ScheduleNotFoundException` → 404. [PreventiveReportService]
+- [x] [Review][Patch] `window.print()` fires before images load — waits for `img.decode()` before printing. [preventive-report.tsx]
+- [x] [Review][Patch] Report error state has no retry — added `refetch` Retry button. [preventive-report.tsx]
+- [x] [Review][Patch] V56 FK `ON DELETE SET NULL` untested — added `v56FkOnDeleteSetNull` migration test. [PreventiveMigrationTest]
+- [x] [Review][Patch] `createSystem` description contract untested — trigger test now asserts exact `"Preventive: Monthly lube due 2026-09-15"` description. [PreventiveChecklistServiceTest]
+
 ## Spec Change Log
 
 <!-- Empty until review loop. -->

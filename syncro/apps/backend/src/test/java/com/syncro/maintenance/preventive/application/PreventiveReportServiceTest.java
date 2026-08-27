@@ -57,6 +57,8 @@ class PreventiveReportServiceTest {
   private WorkOrderRepository workOrders;
   @Mock
   private ObjectStorageService objectStorage;
+  @Mock
+  private com.syncro.machine.infrastructure.MachineRepository machines;
 
   private final UUID machineId = UUID.randomUUID();
   private final UUID scheduleId = UUID.randomUUID();
@@ -70,7 +72,13 @@ class PreventiveReportServiceTest {
 
   @BeforeEach
   void setUp() {
-    service = new PreventiveReportService(schedules, programs, results, items, attachments, workOrders, objectStorage);
+    service = new PreventiveReportService(schedules, programs, results, items, attachments, workOrders, objectStorage,
+        machines);
+    var plant = new com.syncro.auth.infrastructure.PlantEntity(UUID.randomUUID(), "P01", "Plant", NOW, NOW);
+    var group = new com.syncro.masterdata.infrastructure.MachineGroupEntity(UUID.randomUUID(), plant, "Group", NOW, NOW);
+    var machine = new com.syncro.machine.infrastructure.MachineEntity(machineId, plant, group, "M-001", "Machine",
+        com.syncro.machine.domain.MachineStatus.ACTIVE, null, null, null, List.of(), NOW, NOW);
+    lenient().when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
     program = new PreventiveProgramEntity(programId, machineId, PreventiveCategory.MECHANICAL, ScheduleType.MONTHLY,
         (short) 15, null, "Monthly lube", null, true, true, staffId, NOW, NOW);
     lenient().when(programs.findById(programId)).thenReturn(Optional.of(program));

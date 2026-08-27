@@ -247,8 +247,9 @@ class PreventiveChecklistControllerTest {
     var user = user(ApplicationRole.AUDITOR);
     var report = new com.syncro.maintenance.preventive.domain.PreventiveReport(SCHEDULE_ID, "Monthly lube",
         com.syncro.maintenance.preventive.domain.PreventiveCategory.MECHANICAL,
-        com.syncro.maintenance.preventive.domain.ScheduleType.MONTHLY, true, MACHINE_ID,
-        java.time.LocalDate.of(2026, 9, 15), com.syncro.maintenance.preventive.domain.ScheduleStatus.PERFORMED,
+        com.syncro.maintenance.preventive.domain.ScheduleType.MONTHLY, true, MACHINE_ID, UUID.randomUUID(),
+        UUID.randomUUID(), java.time.LocalDate.of(2026, 9, 15),
+        com.syncro.maintenance.preventive.domain.ScheduleStatus.PERFORMED,
         java.time.Instant.parse("2026-08-27T00:00:00Z"), UUID.randomUUID(), null, List.of(), List.of(),
         "https://garage/sig", "Leader", java.time.Instant.parse("2026-08-27T01:00:00Z"), null);
     when(reportService.get(SCHEDULE_ID.toString())).thenReturn(report);

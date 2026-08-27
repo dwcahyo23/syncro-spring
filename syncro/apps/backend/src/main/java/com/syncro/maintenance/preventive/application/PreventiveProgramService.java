@@ -113,8 +113,9 @@ public class PreventiveProgramService {
     validate(entity.getCategory(), entity.getScheduleType(), command.dayOfMonth(), command.monthOfYear(),
         command.title());
 
-    entity.update(command.title().trim(), normalize(command.description()), command.active(),
-        command.autoWorkorder(), (short) command.dayOfMonth(),
+    var autoWorkorder = command.autoWorkorder() != null ? command.autoWorkorder() : entity.isAutoWorkorder();
+    entity.update(command.title().trim(), normalize(command.description()), command.active(), autoWorkorder,
+        (short) command.dayOfMonth(),
         command.monthOfYear() != null ? command.monthOfYear().shortValue() : null, Instant.now(clock));
     var saved = programs.saveAndFlush(entity);
     generateWindow(saved);
@@ -340,7 +341,7 @@ public class PreventiveProgramService {
   }
 
   public record UpdateProgramCommand(int dayOfMonth, Integer monthOfYear, String title, String description,
-      boolean active, boolean autoWorkorder) {
+      boolean active, Boolean autoWorkorder) {
   }
 
   public static class MachineNotFoundException extends RuntimeException {

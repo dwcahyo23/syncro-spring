@@ -37,6 +37,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -153,8 +154,11 @@ public class WorkOrderService {
    * state is the authorization — no user/role/scope gate, actor is SYSTEM, audit goes
    * through {@code recordSystem}, and the workorder is linked back to the schedule via
    * {@code preventive_schedule_id} (unique index backstops one-workorder-per-period).
+   * {@code REQUIRES_NEW} isolates this side-effect work from the caller's transaction:
+   * if it fails, the caller's schedule-PERFORMED commit must not roll back (story 11-3,
+   * "failure must not roll back the completed schedule").
    */
-  @Transactional
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public String createSystem(UUID machineId, String categoryCode, String description, UUID preventiveScheduleId) {
     var now = Instant.now(clock);
     var category = categories.findByCode(normalizeCategoryCode(categoryCode))
