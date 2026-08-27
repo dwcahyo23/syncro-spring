@@ -1,11 +1,12 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PreventiveCategoryManagement } from "@/features/preventive/components/preventive-category-management";
 import { PreventiveProgramsPanel } from "@/features/preventive/components/preventive-programs-panel";
 import { PreventiveScheduleList } from "@/features/preventive/components/preventive-schedule-list";
 
 /**
  * Preventive maintenance route (story 11-1..11-3, FR-130..FR-134). Lives inside the
- * dashboard shell so it shares sidebar/header. Programs and schedules are two tabs of
- * the same menu, not separate nav items.
+ * dashboard shell so it shares sidebar/header. Programs, schedules and category master
+ * data are tabs of the same menu, not separate nav items.
  */
 export default function PreventivePage() {
   return (
@@ -18,6 +19,7 @@ export default function PreventivePage() {
         <TabsList>
           <TabsTrigger value="programs">Programs</TabsTrigger>
           <TabsTrigger value="schedules">Schedules</TabsTrigger>
+          <TabsTrigger value="categories">Categories</TabsTrigger>
         </TabsList>
       </div>
       <div className="p-6">
@@ -26,6 +28,9 @@ export default function PreventivePage() {
         </TabsContent>
         <TabsContent value="schedules">
           <PreventiveScheduleList />
+        </TabsContent>
+        <TabsContent value="categories">
+          <PreventiveCategoryManagement />
         </TabsContent>
       </div>
     </Tabs>

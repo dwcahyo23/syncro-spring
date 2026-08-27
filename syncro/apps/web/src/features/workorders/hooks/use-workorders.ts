@@ -21,6 +21,7 @@ export function useWorkorders(params: WorkOrderListParams) {
   if (params.to) searchParams.set("to", params.to);
   if (params.status) searchParams.set("status", params.status);
   if (params.machineId) searchParams.set("machineId", params.machineId);
+  if (params.categoryCode) searchParams.set("categoryCode", params.categoryCode);
   if (params.search) searchParams.set("search", params.search);
   const qs = searchParams.toString();
 

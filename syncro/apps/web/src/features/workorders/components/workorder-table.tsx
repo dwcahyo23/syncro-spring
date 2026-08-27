@@ -2,11 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { useQuery } from "@tanstack/react-query";
 import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { RefreshCwIcon, SearchIcon, TriangleAlertIcon } from "lucide-react";
 
-import { DateRangePicker } from "@/components/date-range-picker";
+import { MonthPicker } from "@/components/month-picker";
+import { WorkorderActionsCell } from "@/features/workorders/components/workorder-actions-cell";
+import { syncroFetch } from "@/lib/api/orval-mutator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
@@ -29,27 +32,12 @@ const WORKORDER_STATUSES = [
   "CANCELLED",
 ] as const;
 
-const PAGE_SIZE = 20;
+interface CategoryOption {
+  code: string;
+  label: string;
+}
 
-/** Date-range quick presets (7d/30d/90d/This month) — each computes a from-date. */
-const PRESETS: { label: string; from: (now: Date) => Date }[] = [
-  {
-    label: "7d",
-    from: (now) => new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6),
-  },
-  {
-    label: "30d",
-    from: (now) => new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29),
-  },
-  {
-    label: "90d",
-    from: (now) => new Date(now.getFullYear(), now.getMonth(), now.getDate() - 89),
-  },
-  {
-    label: "This month",
-    from: (now) => new Date(now.getFullYear(), now.getMonth(), 1),
-  },
-];
+const PAGE_SIZE = 20;
 
 /** Local-date ISO string (yyyy-MM-dd) — never shifts the day across timezones. */
 function isoDate(d: Date): string {
@@ -59,24 +47,44 @@ function isoDate(d: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+/** First day of the month containing {@code d}. */
+function startOfMonth(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+/** Last day of the month containing {@code d}. */
+function endOfMonth(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+}
+
 /**
  * Workorder table tab (workorder-table story): a server-paginated TanStack Table with a
- * month/date-range picker (This month default), status/machine/search filters and
- * prev/next pagination. Uses the existing {@link DateRangePicker} for the date range, a
- * shadcn Select for status, a shadcn Select for machine (reusing {@code useListMachines}),
- * and a 300ms debounced search box. Loading/empty/error states are handled to spec.
+ * month quick picker (prev/next arrows, no calendar date clicking), status/machine/search
+ * filters and prev/next pagination. The month defaults to the current month and maps to
+ * {@code from}/{@code to} month boundaries. Loading/empty/error states are handled to spec.
  */
 export function WorkorderTable() {
-  const [dateFrom, setDateFrom] = useState(() => {
+  const [month, setMonth] = useState(() => {
     const d = new Date();
-    return isoDate(new Date(d.getFullYear(), d.getMonth(), 1));
+    return { month: d.getMonth(), year: d.getFullYear() };
   });
-  const [dateTo, setDateTo] = useState(() => isoDate(new Date()));
+  const [dateFrom, setDateFrom] = useState(() => isoDate(startOfMonth(new Date())));
+  const [dateTo, setDateTo] = useState(() => isoDate(endOfMonth(new Date())));
   const [status, setStatus] = useState("");
   const [machineId, setMachineId] = useState("");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(0);
+  const [categoryCode, setCategoryCode] = useState("");
+
+  const { data: categoriesRes } = useQuery<CategoryOption[]>({
+    queryKey: ["/api/v1/work-order-categories"],
+    queryFn: async () => {
+      const res = await syncroFetch<{ data: CategoryOption[] }>("/api/v1/work-order-categories", { method: "GET" });
+      return res.data;
+    },
+    staleTime: 60_000,
+  });
 
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleSearchChange = useCallback((value: string) => {
@@ -95,9 +103,10 @@ export function WorkorderTable() {
   }, []);
 
   // Reset page on any non-search filter change.
-  const handleDateChange = useCallback((nextFrom: string, nextTo: string) => {
-    setDateFrom(nextFrom);
-    setDateTo(nextTo);
+  const handleMonthChange = useCallback((next: { month: number; year: number }) => {
+    setMonth(next);
+    setDateFrom(isoDate(startOfMonth(new Date(next.year, next.month, 1))));
+    setDateTo(isoDate(endOfMonth(new Date(next.year, next.month, 1))));
     setPage(0);
   }, []);
   const handleStatusChange = useCallback((value: string) => {
@@ -108,12 +117,17 @@ export function WorkorderTable() {
     setMachineId(value === "all-machines" ? "" : value);
     setPage(0);
   }, []);
+  const handleCategoryChange = useCallback((value: string) => {
+    setCategoryCode(value === "all-categories" ? "" : value);
+    setPage(0);
+  }, []);
 
   const params: WorkOrderListParams = {
     from: dateFrom || undefined,
     to: dateTo || undefined,
     status: status || undefined,
     machineId: machineId || undefined,
+    categoryCode: categoryCode || undefined,
     search: debouncedSearch || undefined,
     page,
     size: PAGE_SIZE,
@@ -147,6 +161,15 @@ export function WorkorderTable() {
         },
       },
       {
+        id: "category",
+        header: "Category",
+        cell: ({ row }) => (
+          <span className="text-xs">
+            {row.original.categoryCode ? `${row.original.categoryCode} · ${row.original.categoryLabel ?? ""}` : "-"}
+          </span>
+        ),
+      },
+      {
         accessorKey: "description",
         header: "Problem",
         cell: ({ row }) => <span className="line-clamp-2 max-w-56 text-xs">{row.original.description || "-"}</span>,
@@ -165,6 +188,11 @@ export function WorkorderTable() {
         accessorKey: "createdAt",
         header: "Created",
         cell: ({ row }) => <span className="text-muted-foreground text-xs">{formatDate(row.original.createdAt)}</span>,
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => <WorkorderActionsCell workOrderId={row.original.id} />,
       },
     ],
     [],
@@ -188,35 +216,8 @@ export function WorkorderTable() {
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1">
-          <span className="font-medium text-muted-foreground text-xs">Date range</span>
-          <div className="flex flex-wrap items-center gap-2">
-            <DateRangePicker
-              value={{
-                from: dateFrom ? new Date(`${dateFrom}T00:00:00`) : undefined,
-                to: dateTo ? new Date(`${dateTo}T00:00:00`) : undefined,
-              }}
-              onChange={(range) => {
-                if (!range?.from || !range?.to) {
-                  return;
-                }
-                handleDateChange(isoDate(range.from), isoDate(range.to));
-              }}
-            />
-            <div className="flex items-center gap-1">
-              {PRESETS.map((preset) => (
-                <Button
-                  key={preset.label}
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs"
-                  onClick={() => handleDateChange(isoDate(preset.from(new Date())), isoDate(new Date()))}
-                >
-                  {preset.label}
-                </Button>
-              ))}
-            </div>
-          </div>
+          <span className="font-medium text-muted-foreground text-xs">Month</span>
+          <MonthPicker value={month} onChange={handleMonthChange} />
         </div>
 
         <div className="space-y-1">
@@ -230,6 +231,23 @@ export function WorkorderTable() {
               {WORKORDER_STATUSES.map((s) => (
                 <SelectItem key={s} value={s}>
                   {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1">
+          <span className="font-medium text-muted-foreground text-xs">Category</span>
+          <Select value={categoryCode || "all-categories"} onValueChange={handleCategoryChange}>
+            <SelectTrigger className="w-44" aria-label="Category">
+              <SelectValue placeholder="All categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all-categories">All categories</SelectItem>
+              {(categoriesRes ?? []).map((category) => (
+                <SelectItem key={category.code} value={category.code}>
+                  {category.code} · {category.label}
                 </SelectItem>
               ))}
             </SelectContent>

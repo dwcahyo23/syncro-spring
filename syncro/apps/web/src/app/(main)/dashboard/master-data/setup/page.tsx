@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** Superseded by the consolidated Master Data → Plants tab page (Setup tab). */
+/** Superseded by the consolidated Master Data → Organization tab page (Plants tab). */
 export default function OldSetupPage() {
-  redirect("/master-data/plants?tab=setup");
+  redirect("/master-data/organization?tab=plants");
 }

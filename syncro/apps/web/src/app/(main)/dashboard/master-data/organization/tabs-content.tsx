@@ -3,19 +3,21 @@
 import { useSearchParams } from "next/navigation";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PlantManagement } from "@/features/master-data/plants/plant-management";
 import { ResponsibilityManagement } from "@/features/master-data/responsibilities/responsibility-management";
 import { SectionManagement } from "@/features/master-data/sections/section-management";
 import { TeamManagement } from "@/features/master-data/teams/team-management";
 import { DepartmentManagement } from "@/features/organization/components/department-management";
 import { UserManagement } from "@/features/organization/components/user-management";
 
-const TABS = ["departments", "users", "sections", "teams", "responsibility"] as const;
+const TABS = ["departments", "users", "sections", "teams", "responsibility", "plants"] as const;
 const TAB_LABELS: Record<(typeof TABS)[number], string> = {
   departments: "Departments",
   users: "Users",
   sections: "Sections",
   teams: "Teams",
   responsibility: "Responsibility",
+  plants: "Plants",
 };
 
 export function OrganizationTabsContent() {
@@ -46,6 +48,9 @@ export function OrganizationTabsContent() {
       </TabsContent>
       <TabsContent value="responsibility">
         <ResponsibilityManagement />
+      </TabsContent>
+      <TabsContent value="plants">
+        <PlantManagement />
       </TabsContent>
     </Tabs>
   );

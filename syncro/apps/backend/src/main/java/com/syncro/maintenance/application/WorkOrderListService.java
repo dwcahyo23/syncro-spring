@@ -49,7 +49,7 @@ public class WorkOrderListService {
 
   @Transactional(readOnly = true)
   public Page<WorkOrderListView> list(AuthenticatedUser user, String from, String to, WorkOrderStatus status,
-      UUID machineId, String search, int page, int size) {
+      UUID machineId, String categoryCode, String search, int page, int size) {
     validatePageAndSize(page, size);
     var scope = scopes.derive(user);
     var unrestricted = scope.plantIds() == null;
@@ -58,11 +58,12 @@ public class WorkOrderListService {
     groupIds.addAll(scope.activeTeamIds());
 
     // Non-null sentinels: Postgres 42P18 when nullable params appear in `? is null or col = ?`.
-    // MIN/MAX for date bounds, "" for status/search, zero-UUID for machine filter.
+    // MIN/MAX for date bounds, "" for status/search/categoryCode, zero-UUID for machine filter.
     var fromInstant = parseDate(from, "from", Instant.MIN);
     var toInstant = parseDateExclusive(to, "to", Instant.MAX);
     var statusFilter = status == null ? "" : status.name();
     var machineFilter = machineId == null ? NO_MACHINE : machineId;
+    var categoryFilter = categoryCode == null ? "" : categoryCode.trim();
     var searchPattern = like(search);
 
     var rows = workOrders.findScopedPage(
@@ -74,6 +75,7 @@ public class WorkOrderListService {
         statusFilter,
         machineFilter,
         NO_MACHINE,
+        categoryFilter,
         searchPattern,
         PageRequest.of(page, size));
     var total = workOrders.countScoped(
@@ -85,6 +87,7 @@ public class WorkOrderListService {
         statusFilter,
         machineFilter,
         NO_MACHINE,
+        categoryFilter,
         searchPattern);
 
     var technicianNames = resolveTechnicianNames(rows);

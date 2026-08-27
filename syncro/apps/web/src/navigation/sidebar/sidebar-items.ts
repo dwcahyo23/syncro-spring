@@ -118,7 +118,6 @@ export const sidebarItems: NavGroup[] = [
           { title: "Machines", url: "/master-data/machines" },
           { title: "Organization", url: "/master-data/organization" },
           { title: "Spareparts", url: "/master-data/spareparts" },
-          { title: "Plants", url: "/master-data/plants" },
         ],
       },
       {

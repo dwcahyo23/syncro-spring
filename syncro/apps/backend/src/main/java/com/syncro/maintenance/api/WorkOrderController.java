@@ -112,10 +112,11 @@ public class WorkOrderController {
       @RequestParam(name = "to", required = false) String to,
       @RequestParam(name = "status", required = false) WorkOrderStatus status,
       @RequestParam(name = "machineId", required = false) UUID machineId,
+      @RequestParam(name = "categoryCode", required = false) String categoryCode,
       @RequestParam(name = "search", required = false) String search,
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "20") int size) {
-    Page<WorkOrderListView> result = lists.list(user, from, to, status, machineId, search, page, size);
+    Page<WorkOrderListView> result = lists.list(user, from, to, status, machineId, categoryCode, search, page, size);
     return new WorkOrderDtos.WorkOrderPageView(
         result.items().stream().map(WorkOrderController::toListRowDto).toList(),
         result.total(), result.page(), result.size());

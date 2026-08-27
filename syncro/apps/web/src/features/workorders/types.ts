@@ -70,6 +70,7 @@ export interface WorkOrderListParams {
   to?: string;
   status?: string;
   machineId?: string;
+  categoryCode?: string;
   search?: string;
   page: number;
   size: number;

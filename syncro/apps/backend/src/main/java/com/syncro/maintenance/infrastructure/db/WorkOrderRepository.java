@@ -124,6 +124,7 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrderEntity, Stri
         and w.createdAt < :to
         and (:status = '' or w.status = cast(:status as string))
         and (:machineId = :noMachine or w.machineId = :machineId)
+        and (:categoryCode = '' or c.code = :categoryCode)
         and (:search = ''
              or lower(w.id) like :search escape '\\'
              or lower(m.code) like :search escape '\\'
@@ -140,6 +141,7 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrderEntity, Stri
       @Param("status") String status,
       @Param("machineId") UUID machineId,
       @Param("noMachine") UUID noMachine,
+      @Param("categoryCode") String categoryCode,
       @Param("search") String search,
       Pageable pageable);
 
@@ -157,6 +159,7 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrderEntity, Stri
         and w.createdAt < :to
         and (:status = '' or w.status = cast(:status as string))
         and (:machineId = :noMachine or w.machineId = :machineId)
+        and (:categoryCode = '' or c.code = :categoryCode)
         and (:search = ''
              or lower(w.id) like :search escape '\\'
              or lower(m.code) like :search escape '\\'
@@ -172,5 +175,6 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrderEntity, Stri
       @Param("status") String status,
       @Param("machineId") UUID machineId,
       @Param("noMachine") UUID noMachine,
+      @Param("categoryCode") String categoryCode,
       @Param("search") String search);
 }

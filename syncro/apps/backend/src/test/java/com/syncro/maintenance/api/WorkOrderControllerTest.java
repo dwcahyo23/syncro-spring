@@ -257,7 +257,7 @@ class WorkOrderControllerTest {
     var item = new WorkOrderListView("WO-2608-00001", WorkOrderStatus.OPEN, "01", "Breakdown",
         "M-001", "Machine", "P01", ASSIGNEE_ID, "Tech User", "breakdown",
         Instant.parse("2026-08-26T00:00:00Z"), Instant.parse("2026-08-26T00:00:00Z"), null);
-    when(lists.list(eq(user), isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(20)))
+    when(lists.list(eq(user), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(20)))
         .thenReturn(new Page<>(List.of(item), 42L, 0, 20));
 
     mockMvc.perform(get("/api/v1/workorders")
@@ -282,7 +282,7 @@ class WorkOrderControllerTest {
   void listForwardsFilters() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
     when(lists.list(eq(user), eq("2026-08-01"), eq("2026-08-31"), eq(WorkOrderStatus.OPEN),
-        eq(MACHINE_ID), eq("WO-2608"), eq(1), eq(20)))
+        eq(MACHINE_ID), isNull(), eq("WO-2608"), eq(1), eq(20)))
         .thenReturn(new Page<>(List.of(), 0L, 1, 20));
 
     mockMvc.perform(get("/api/v1/workorders")
@@ -302,7 +302,7 @@ class WorkOrderControllerTest {
   @DisplayName("LIST-API-003 P0 an empty result returns items [] total 0")
   void listEmpty() throws Exception {
     var user = user(ApplicationRole.AUDITOR);
-    when(lists.list(eq(user), isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(20)))
+    when(lists.list(eq(user), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(20)))
         .thenReturn(new Page<>(List.of(), 0L, 0, 20));
 
     mockMvc.perform(get("/api/v1/workorders")
@@ -316,7 +316,7 @@ class WorkOrderControllerTest {
   @DisplayName("LIST-API-004 P0 a bad date maps to 400 VALIDATION_ERROR with a from fieldError")
   void listBadDate() throws Exception {
     var user = user(ApplicationRole.STAFF_MAINTENANCE);
-    when(lists.list(eq(user), eq("not-a-date"), isNull(), isNull(), isNull(), isNull(), eq(0), eq(20)))
+    when(lists.list(eq(user), eq("not-a-date"), isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(20)))
         .thenThrow(new WorkOrderListService.WorkOrderListValidationException(Map.of("from",
             "Date must be in yyyy-MM-dd format.")));
 
@@ -356,7 +356,7 @@ class WorkOrderControllerTest {
   @DisplayName("LIST-API-007 P0 any authenticated user may read the list (read posture)")
   void listReadAllowedForAuditor() throws Exception {
     var user = user(ApplicationRole.AUDITOR);
-    when(lists.list(eq(user), isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(20)))
+    when(lists.list(eq(user), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(20)))
         .thenReturn(new Page<>(List.of(), 0L, 0, 20));
 
     mockMvc.perform(get("/api/v1/workorders")
