@@ -90,17 +90,17 @@ export const sidebarItems: NavGroup[] = [
     items: [
       {
         title: "Work Orders",
-        url: "/workorders",
+        url: "/dashboard/workorders",
         icon: Wrench,
       },
       {
         title: "Preventive",
-        url: "/preventive",
+        url: "/dashboard/preventive",
         icon: CalendarCheck,
       },
       {
         title: "Sparepart Requests",
-        url: "/sparepart-requests",
+        url: "/dashboard/sparepart-requests",
         icon: Package,
       },
     ],
