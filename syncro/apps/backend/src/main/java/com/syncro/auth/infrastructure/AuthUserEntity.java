@@ -33,6 +33,21 @@ public class AuthUserEntity {
   @Column(name = "whatsapp_number", length = 32)
   private String whatsappNumber;
 
+  @Column(name = "display_name", length = 200)
+  private String displayName;
+
+  @Column(name = "nik", length = 50)
+  private String nik;
+
+  @Column(name = "phone_number", length = 32)
+  private String phoneNumber;
+
+  @Column(name = "job_title_id")
+  private UUID jobTitleId;
+
+  @Column(name = "department_id")
+  private UUID departmentId;
+
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
@@ -50,6 +65,16 @@ public class AuthUserEntity {
     this.applicationRole = applicationRole;
     this.enabled = enabled;
     this.createdAt = createdAt;
+    this.updatedAt = updatedAt;
+  }
+
+  public void updateMasterFields(String displayName, String nik, String phoneNumber, UUID jobTitleId,
+      UUID departmentId, Instant updatedAt) {
+    this.displayName = displayName;
+    this.nik = nik;
+    this.phoneNumber = phoneNumber;
+    this.jobTitleId = jobTitleId;
+    this.departmentId = departmentId;
     this.updatedAt = updatedAt;
   }
 
@@ -75,5 +100,33 @@ public class AuthUserEntity {
 
   public String getWhatsappNumber() {
     return whatsappNumber;
+  }
+
+  public String getDisplayName() {
+    return displayName;
+  }
+
+  public String getNik() {
+    return nik;
+  }
+
+  public String getPhoneNumber() {
+    return phoneNumber;
+  }
+
+  public UUID getJobTitleId() {
+    return jobTitleId;
+  }
+
+  public UUID getDepartmentId() {
+    return departmentId;
+  }
+
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
+
+  public Instant getUpdatedAt() {
+    return updatedAt;
   }
 }

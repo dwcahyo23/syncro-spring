@@ -44,6 +44,9 @@ public class SectionEntity {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
+  @Column(name = "leader_user_id")
+  private UUID leaderUserId;
+
   protected SectionEntity() {
   }
 
@@ -95,5 +98,23 @@ public class SectionEntity {
 
   public Instant getUpdatedAt() {
     return updatedAt;
+  }
+
+  public UUID getLeaderUserId() {
+    return leaderUserId;
+  }
+
+  public void setLeaderUserId(UUID leaderUserId) {
+    this.leaderUserId = leaderUserId;
+  }
+
+  public void assignLeader(UUID leaderUserId, Instant updatedAt) {
+    this.leaderUserId = leaderUserId;
+    this.updatedAt = updatedAt;
+  }
+
+  public void clearLeader(Instant updatedAt) {
+    this.leaderUserId = null;
+    this.updatedAt = updatedAt;
   }
 }

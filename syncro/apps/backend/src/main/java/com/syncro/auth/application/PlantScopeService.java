@@ -56,6 +56,19 @@ public class PlantScopeService {
         .anyMatch(assignment -> assignment.getPlantId().equals(plantId));
   }
 
+  /**
+   * Whether the given user id (not the acting principal) has access to a plant.
+   * Used for cross-checking leader assignments (SPV/MG must be in the same plant).
+   */
+  @Transactional(readOnly = true)
+  public boolean canAccessPlant(UUID userId, UUID plantId) {
+    if (!plants.existsById(plantId)) {
+      return false;
+    }
+    return assignments.findByAuthUserId(userId).stream()
+        .anyMatch(assignment -> assignment.getPlantId().equals(plantId));
+  }
+
   @Transactional(readOnly = true)
   public void requirePlantAccess(AuthenticatedUser user, UUID plantId) {
     if (!canAccessPlant(user, plantId)) {

@@ -88,6 +88,12 @@ public interface MachineRepository extends JpaRepository<MachineEntity, UUID> {
   Set<UUID> findDistinctMachineGroupIdsByMachineIdIn(@Param("machineIds") Collection<UUID> machineIds);
 
   @Query("""
+      select m.id from MachineEntity m
+      where m.machineGroup.id in :groupIds
+      """)
+  List<UUID> findIdsByMachineGroupIdIn(@Param("groupIds") Collection<UUID> groupIds);
+
+  @Query("""
       select count(distinct m) from MachineEntity m
       join MachineSparepartInstallationEntity i on i.machine = m
       join MachineResponsibilityEntity r on r.machineId = m.id

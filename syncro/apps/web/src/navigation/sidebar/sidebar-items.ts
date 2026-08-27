@@ -116,6 +116,8 @@ export const sidebarItems: NavGroup[] = [
         roles: ["SUPER_ADMIN", "MANAGER_MAINTENANCE"],
         subItems: [
           { title: "Plants", url: "/master-data/plants" },
+          { title: "Departments", url: "/master-data/departments", isNew: true },
+          { title: "Users", url: "/master-data/users", isNew: true },
           { title: "Sections", url: "/master-data/sections" },
           { title: "Teams", url: "/master-data/teams" },
           { title: "Machine Groups", url: "/master-data/machine-groups" },

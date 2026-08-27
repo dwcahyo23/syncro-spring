@@ -21,6 +21,11 @@ vi.mock("@/lib/api/generated/syncro", () => ({
   useListSections: vi.fn(() => mockListSections),
   useCreateSection: vi.fn(() => mockCreateSection),
   useUpdateSection: vi.fn(() => mockUpdateSection),
+  useListUsers: vi.fn(() => ({
+    data: { data: [{ id: "u-1", loginIdentifier: "technician@syncro.dev", displayName: "Technician", nik: "NIK-1" }] },
+    isLoading: false,
+    isError: false,
+  })),
   useListPlants: vi.fn(() => ({
     data: {
       data: {
@@ -31,6 +36,11 @@ vi.mock("@/lib/api/generated/syncro", () => ({
     isError: false,
     refetch: vi.fn(),
   })),
+}));
+
+vi.mock("@/features/organization/hooks/use-section-leader", () => ({
+  useAssignSectionLeader: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
+  useClearSectionLeader: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
 }));
 
 vi.mock("@/features/plant-scope/plant-scope-store", () => ({

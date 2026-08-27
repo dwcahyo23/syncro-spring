@@ -2,6 +2,10 @@ package com.syncro.auth.api;
 
 import com.syncro.auth.api.AuthDtos.ErrorResponse;
 import com.syncro.auth.application.AuthService.BadCredentialsException;
+import com.syncro.auth.application.AuthService.DuplicateUserIdentifierException;
+import com.syncro.auth.application.AuthService.UserDataIntegrityException;
+import com.syncro.auth.application.AuthService.UserMasterForbiddenException;
+import com.syncro.auth.application.AuthService.UserNotFoundException;
 import com.syncro.auth.application.PlantScopeService.PlantAccessDeniedException;
 import java.time.Clock;
 import java.time.Instant;
@@ -33,6 +37,28 @@ public class AuthExceptionHandler {
   @ExceptionHandler(PlantAccessDeniedException.class)
   ResponseEntity<ErrorResponse> plantAccessDenied() {
     return error(HttpStatus.FORBIDDEN, "PLANT_ACCESS_DENIED", "You don't have access to this plant's data.");
+  }
+
+  @ExceptionHandler(UserNotFoundException.class)
+  ResponseEntity<ErrorResponse> userNotFound() {
+    return error(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "User was not found.");
+  }
+
+  @ExceptionHandler(DuplicateUserIdentifierException.class)
+  ResponseEntity<ErrorResponse> duplicateUserIdentifier() {
+    return error(HttpStatus.CONFLICT, "DUPLICATE_IDENTIFIER",
+        "The NIK or phone number is already in use by another user.");
+  }
+
+  @ExceptionHandler(UserMasterForbiddenException.class)
+  ResponseEntity<ErrorResponse> userMasterForbidden() {
+    return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "You do not have permission to access this resource.");
+  }
+
+  @ExceptionHandler(UserDataIntegrityException.class)
+  ResponseEntity<ErrorResponse> userDataIntegrity() {
+    return error(HttpStatus.CONFLICT, "DUPLICATE_IDENTIFIER",
+        "The NIK or phone number is already in use by another user.");
   }
 
   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message) {

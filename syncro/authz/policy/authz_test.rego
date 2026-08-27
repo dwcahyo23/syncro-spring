@@ -630,6 +630,81 @@ test_anonymous_sparepart_request_denied if {
   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/sparepart-requests"}
 }
 
+# -- Org maintenance (spec-org-maintenance-model): departments, section leader,
+#    user master — MANAGER_MAINTENANCE + SUPER_ADMIN mutate; others denied -------
+
+test_manager_department_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/departments"}
+}
+
+test_manager_department_members_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "PUT /api/v1/departments/7b7c6d5e-1111-2222-3333-444455556666/members"}
+}
+
+test_manager_department_delete_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "DELETE /api/v1/departments/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_super_admin_department_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/departments"}
+}
+
+test_staff_department_mutation_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/departments"}
+}
+
+test_technician_department_members_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "PUT /api/v1/departments/7b7c6d5e-1111-2222-3333-444455556666/members"}
+}
+
+test_auditor_department_delete_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "DELETE /api/v1/departments/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_auditor_department_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/departments"}
+}
+
+test_manager_section_leader_assign_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "PUT /api/v1/sections/7b7c6d5e-1111-2222-3333-444455556666/leader"}
+}
+
+test_super_admin_section_leader_clear_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "DELETE /api/v1/sections/7b7c6d5e-1111-2222-3333-444455556666/leader"}
+}
+
+test_technician_section_leader_assign_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "PUT /api/v1/sections/7b7c6d5e-1111-2222-3333-444455556666/leader"}
+}
+
+test_auditor_section_leader_clear_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "DELETE /api/v1/sections/7b7c6d5e-1111-2222-3333-444455556666/leader"}
+}
+
+test_manager_user_master_update_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "PUT /api/v1/auth/users/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_super_admin_user_master_update_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "PUT /api/v1/auth/users/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_technician_user_master_update_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "PUT /api/v1/auth/users/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_auditor_user_master_update_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "PUT /api/v1/auth/users/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_auditor_user_master_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/auth/users"}
+}
+
+test_anonymous_department_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/departments"}
+}
+
 # -- Anonymous (no userId): default deny everywhere ------------------------
 
 test_anonymous_admin_only_denied if {

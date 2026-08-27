@@ -39,4 +39,17 @@ public interface MachineResponsibilityRepository extends JpaRepository<MachineRe
         """)
     Set<UUID> findDistinctMachineGroupIdsByUserIdAndLevelIn(
         @Param("userId") UUID userId, @Param("levels") Collection<ResponsibilityLevel> levels);
+
+    @Query("""
+        select mr from MachineResponsibilityEntity mr
+        where mr.machineId in :machineIds
+          and mr.userId = :userId
+          and mr.responsibilityLevel = :level
+        """)
+    List<MachineResponsibilityEntity> findAssignments(
+        @Param("machineIds") Collection<UUID> machineIds,
+        @Param("userId") UUID userId,
+        @Param("level") ResponsibilityLevel level);
+
+    void deleteByMachineIdInAndUserId(Collection<UUID> machineIds, UUID userId);
 }

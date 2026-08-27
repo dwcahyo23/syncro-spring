@@ -7,7 +7,13 @@ import com.syncro.audit.domain.AuditEntityType;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.application.PlantScopeService;
 import com.syncro.auth.domain.ApplicationRole;
+import com.syncro.auth.infrastructure.AuthUserRepository;
 import com.syncro.auth.infrastructure.PlantRepository;
+import com.syncro.machine.domain.ResponsibilityLevel;
+import com.syncro.machine.infrastructure.MachineRepository;
+import com.syncro.machine.infrastructure.MachineResponsibilityEntity;
+import com.syncro.machine.infrastructure.MachineResponsibilityRepository;
+import com.syncro.masterdata.infrastructure.MachineGroupRepository;
 import com.syncro.org.domain.SectionType;
 import com.syncro.org.infrastructure.SectionEntity;
 import com.syncro.org.infrastructure.SectionRepository;
@@ -36,6 +42,10 @@ public class SectionService {
   private final PlantRepository plants;
   private final PlantScopeService plantScopes;
   private final SectionActiveMachineGroupReader activeMachineGroupReader;
+  private final AuthUserRepository users;
+  private final MachineGroupRepository machineGroups;
+  private final MachineRepository machines;
+  private final MachineResponsibilityRepository responsibilities;
   private final AuditLogWriter auditLog;
   private final Clock clock;
 
@@ -44,12 +54,20 @@ public class SectionService {
       PlantRepository plants,
       PlantScopeService plantScopes,
       SectionActiveMachineGroupReader activeMachineGroupReader,
+      AuthUserRepository users,
+      MachineGroupRepository machineGroups,
+      MachineRepository machines,
+      MachineResponsibilityRepository responsibilities,
       AuditLogWriter auditLog,
       Clock clock) {
     this.sections = sections;
     this.plants = plants;
     this.plantScopes = plantScopes;
     this.activeMachineGroupReader = activeMachineGroupReader;
+    this.users = users;
+    this.machineGroups = machineGroups;
+    this.machines = machines;
+    this.responsibilities = responsibilities;
     this.auditLog = auditLog;
     this.clock = clock;
   }
@@ -118,6 +136,97 @@ public class SectionService {
     return toView(saved);
   }
 
+  /**
+   * Assign an explicit section leader (D2a). Stores {@code sections.leader_user_id}
+   * AND auto-creates/updates a LEADER {@code machine_responsibilities} row for that
+   * user on every machine in the section's machine groups — the side-effect that
+   * keeps the derived section-leader scope ({@link SectionLeaderMachineGroupReader})
+   * consistent with the stored leader. Clearing removes both.
+   */
+  @Transactional
+  public SectionLeaderView assignLeader(AuthenticatedUser user, UUID sectionId, UUID leaderUserId) {
+    requireMutationRole(user);
+    var section = findScopedForUpdate(user, sectionId);
+    var leader = users.findById(leaderUserId).orElseThrow(SectionLeaderUserNotFoundException::new);
+    if (!leader.isEnabled()) {
+      throw new SectionLeaderUserInactiveException();
+    }
+    var plantId = section.getPlant().getId();
+    var entityLabel = section.getCode();
+    var previous = SectionAuditValues.of(section);
+    section.assignLeader(leaderUserId, Instant.now(clock));
+    var saved = sections.saveAndFlush(section);
+    upsertLeaderResponsibilities(section.getId(), leaderUserId);
+    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.SECTION, sectionId, entityLabel,
+        plantId, previous, SectionAuditValues.of(saved), null));
+    return new SectionLeaderView(sectionId, leaderUserId);
+  }
+
+  @Transactional
+  public void clearLeader(AuthenticatedUser user, UUID sectionId) {
+    requireMutationRole(user);
+    var section = findScopedForUpdate(user, sectionId);
+    if (section.getLeaderUserId() == null) {
+      return;
+    }
+    var leaderUserId = section.getLeaderUserId();
+    var plantId = section.getPlant().getId();
+    var entityLabel = section.getCode();
+    var previous = SectionAuditValues.of(section);
+    section.clearLeader(Instant.now(clock));
+    var saved = sections.saveAndFlush(section);
+    removeLeaderResponsibilities(section.getId(), leaderUserId);
+    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.SECTION, sectionId, entityLabel,
+        plantId, previous, SectionAuditValues.of(saved), null));
+  }
+
+  /** LEADER responsibilities across every machine in the section's machine groups. */
+  private void upsertLeaderResponsibilities(UUID sectionId, UUID leaderUserId) {
+    var groupIds = machineGroups.findIdsBySectionId(sectionId);
+    if (groupIds.isEmpty()) {
+      return;
+    }
+    var machineIds = machines.findIdsByMachineGroupIdIn(groupIds);
+    if (machineIds.isEmpty()) {
+      return;
+    }
+    var existing = responsibilities.findAssignments(machineIds, leaderUserId, ResponsibilityLevel.LEADER);
+    var existingByMachineId = existing.stream()
+        .collect(java.util.stream.Collectors.toMap(MachineResponsibilityEntity::getMachineId, r -> r));
+    var now = Instant.now(clock);
+    for (var machineId : machineIds) {
+      var row = existingByMachineId.get(machineId);
+      if (row == null) {
+        responsibilities.save(new MachineResponsibilityEntity(
+            UUID.randomUUID(), machineId, leaderUserId, ResponsibilityLevel.LEADER, now, now));
+      } else {
+        row.update(ResponsibilityLevel.LEADER, now);
+        responsibilities.save(row);
+      }
+    }
+  }
+
+  /** Removes the LEADER responsibilities for the section's machines (clear side-effect). */
+  private void removeLeaderResponsibilities(UUID sectionId, UUID leaderUserId) {
+    var groupIds = machineGroups.findIdsBySectionId(sectionId);
+    if (groupIds.isEmpty()) {
+      return;
+    }
+    var machineIds = machines.findIdsByMachineGroupIdIn(groupIds);
+    if (machineIds.isEmpty()) {
+      return;
+    }
+    responsibilities.deleteByMachineIdInAndUserId(machineIds, leaderUserId);
+  }
+
+  private SectionEntity findScopedForUpdate(AuthenticatedUser user, UUID sectionId) {
+    var section = sections.findByIdForUpdate(sectionId).orElseThrow(SectionNotFoundException::new);
+    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN) {
+      plantScopes.requirePlantAccess(user, section.getPlant().getId());
+    }
+    return section;
+  }
+
   private SectionEntity findScoped(AuthenticatedUser user, UUID sectionId) {
     var section = sections.findByIdWithPlant(sectionId).orElseThrow(SectionNotFoundException::new);
     if (user.applicationRole() != ApplicationRole.SUPER_ADMIN) {
@@ -177,6 +286,7 @@ public class SectionService {
         section.getCode(),
         section.getName(),
         section.isActive(),
+        section.getLeaderUserId(),
         section.getCreatedAt(),
         section.getUpdatedAt());
   }
@@ -195,11 +305,21 @@ public class SectionService {
       String code,
       String name,
       boolean active,
+      UUID leaderUserId,
       Instant createdAt,
       Instant updatedAt) {
   }
 
   public record SectionListView(List<SectionView> items) {
+  }
+
+  public record SectionLeaderView(UUID sectionId, UUID leaderUserId) {
+  }
+
+  public static class SectionLeaderUserNotFoundException extends RuntimeException {
+  }
+
+  public static class SectionLeaderUserInactiveException extends RuntimeException {
   }
 
   public static class DuplicateSectionCodeException extends RuntimeException {

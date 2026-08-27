@@ -1,7 +1,9 @@
 package com.syncro.org.api;
 
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
+import com.syncro.org.api.SectionDtos.AssignLeaderRequest;
 import com.syncro.org.api.SectionDtos.CreateSectionRequest;
+import com.syncro.org.api.SectionDtos.SectionLeaderView;
 import com.syncro.org.api.SectionDtos.SectionListResponse;
 import com.syncro.org.api.SectionDtos.SectionView;
 import com.syncro.org.api.SectionDtos.UpdateSectionRequest;
@@ -18,6 +20,7 @@ import java.net.URI;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -96,6 +99,22 @@ public class SectionController {
     return toDto(sections.update(user, sectionId, new UpdateSectionCommand(request.name(), request.active())));
   }
 
+  @Operation(operationId = "assignSectionLeader", summary = "Assign section leader")
+  @PutMapping("/{sectionId}/leader")
+  public SectionLeaderView assignLeader(@AuthenticationPrincipal AuthenticatedUser user,
+      @PathVariable UUID sectionId, @Valid @RequestBody AssignLeaderRequest request) {
+    var result = sections.assignLeader(user, sectionId, request.userId());
+    return new SectionLeaderView(result.sectionId(), result.leaderUserId());
+  }
+
+  @Operation(operationId = "clearSectionLeader", summary = "Clear section leader")
+  @DeleteMapping("/{sectionId}/leader")
+  public ResponseEntity<Void> clearLeader(@AuthenticationPrincipal AuthenticatedUser user,
+      @PathVariable UUID sectionId) {
+    sections.clearLeader(user, sectionId);
+    return ResponseEntity.noContent().build();
+  }
+
   private SectionView toDto(SectionService.SectionView section) {
     return new SectionView(
         section.id(),
@@ -105,6 +124,7 @@ public class SectionController {
         section.code(),
         section.name(),
         section.active(),
+        section.leaderUserId(),
         section.createdAt(),
         section.updatedAt());
   }

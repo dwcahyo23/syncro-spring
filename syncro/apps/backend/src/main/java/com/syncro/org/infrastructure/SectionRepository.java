@@ -1,10 +1,12 @@
 package com.syncro.org.infrastructure;
 
 import com.syncro.auth.infrastructure.PlantEntity;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -31,4 +33,12 @@ public interface SectionRepository extends JpaRepository<SectionEntity, UUID> {
       where section.id = :id
       """)
   Optional<SectionEntity> findByIdWithPlant(@Param("id") UUID id);
+
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("""
+      select section from SectionEntity section
+      join fetch section.plant plant
+      where section.id = :id
+      """)
+  Optional<SectionEntity> findByIdForUpdate(@Param("id") UUID id);
 }

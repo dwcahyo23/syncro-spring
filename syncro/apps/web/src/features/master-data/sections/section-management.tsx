@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useAssignSectionLeader, useClearSectionLeader } from "@/features/organization/hooks/use-section-leader";
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
 import type { CreateSectionRequest, SectionView } from "@/lib/api/generated/model";
 import {
@@ -29,6 +30,7 @@ import {
   useCreateSection,
   useListPlants,
   useListSections,
+  useListUsers,
   useUpdateSection,
 } from "@/lib/api/generated/syncro";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
@@ -72,13 +74,18 @@ export function SectionManagement() {
   const invalidateSections = () => queryClient.invalidateQueries({ queryKey: getListSectionsQueryKey() });
   const createSection = useCreateSection({ mutation: { onSuccess: invalidateSections } });
   const updateSection = useUpdateSection({ mutation: { onSuccess: invalidateSections } });
+  const assignLeader = useAssignSectionLeader({ mutation: { onSuccess: invalidateSections } });
+  const clearLeader = useClearSectionLeader({ mutation: { onSuccess: invalidateSections } });
 
   const plants = useListPlants({ query: { enabled: Boolean(scope) && !isAssignedEmpty } });
+  const { data: usersRes } = useListUsers();
+  const users = usersRes?.data ?? [];
 
   const [dialogMode, setDialogMode] = useState<DialogMode | null>(null);
   const [form, setForm] = useState<SectionFormState>(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [leaderFor, setLeaderFor] = useState<SectionView | null>(null);
 
   const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGER_MAINTENANCE";
   const items = sectionsQuery.data?.data.items ?? [];
@@ -220,6 +227,7 @@ export function SectionManagement() {
                   <TableRow>
                     <TableHead>Code</TableHead>
                     <TableHead>Name</TableHead>
+                    <TableHead>Leader</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -229,6 +237,7 @@ export function SectionManagement() {
                     <TableRow key={section.id}>
                       <TableCell className="font-medium">{section.code}</TableCell>
                       <TableCell>{section.name}</TableCell>
+                      <TableCell>{leaderLabel(users, section.leaderUserId)}</TableCell>
                       <TableCell>
                         {section.active ? (
                           <Badge variant="outline">Active</Badge>
@@ -239,6 +248,14 @@ export function SectionManagement() {
                       <TableCell className="text-right">
                         {canMutate ? (
                           <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setLeaderFor(section)}
+                              disabled={!section.active}
+                            >
+                              Leader
+                            </Button>
                             <Button variant="outline" size="sm" onClick={() => openEditDialog(section)}>
                               Edit
                             </Button>
@@ -336,8 +353,84 @@ export function SectionManagement() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Section leader picker */}
+      <Dialog open={leaderFor !== null} onOpenChange={(open) => !open && setLeaderFor(null)}>
+        <DialogContent>
+          <div className="space-y-4">
+            <DialogHeader>
+              <DialogTitle>Assign leader — {leaderFor?.name}</DialogTitle>
+              <DialogDescription>
+                Assigning a leader stores the section leader and auto-links the LEADER machine responsibility for every
+                machine in the section's groups. Clearing removes both.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-2">
+              <Label htmlFor="section-leader-user">Leader</Label>
+              <Select
+                value={leaderFor?.leaderUserId ?? ""}
+                onValueChange={(value) => {
+                  if (!leaderFor?.id || value === "") {
+                    return;
+                  }
+                  void assignLeader.mutateAsync({ sectionId: leaderFor.id, userId: value }).then(() => {
+                    toast.success("Section leader assigned.");
+                    setLeaderFor(null);
+                  });
+                }}
+              >
+                <SelectTrigger id="section-leader-user">
+                  <SelectValue placeholder="Select leader by NIK or name" />
+                </SelectTrigger>
+                <SelectContent>
+                  {users.map((u) => (
+                    <SelectItem key={u.id} value={u.id ?? ""}>
+                      {u.displayName ?? u.loginIdentifier} ({u.nik ?? u.loginIdentifier})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {leaderFor?.leaderUserId ? (
+              <Button
+                variant="outline"
+                className="w-full"
+                disabled={clearLeader.isPending}
+                onClick={() => {
+                  if (!leaderFor?.id) {
+                    return;
+                  }
+                  void clearLeader.mutateAsync(leaderFor.id).then(() => {
+                    toast.success("Section leader cleared.");
+                    setLeaderFor(null);
+                  });
+                }}
+              >
+                {clearLeader.isPending ? <Loader2Icon className="animate-spin" /> : null}
+                Clear leader
+              </Button>
+            ) : null}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setLeaderFor(null)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
+}
+
+function leaderLabel(
+  users: Array<{ id?: string; loginIdentifier?: string; displayName?: string | null; nik?: string | null }>,
+  leaderUserId: string | null | undefined,
+): React.ReactNode {
+  if (!leaderUserId) {
+    return <span className="text-muted-foreground text-xs italic">Unassigned</span>;
+  }
+  const found = users.find((u) => u.id === leaderUserId);
+  return found ? (found.displayName ?? found.loginIdentifier ?? leaderUserId) : leaderUserId;
 }
 
 function SectionState({

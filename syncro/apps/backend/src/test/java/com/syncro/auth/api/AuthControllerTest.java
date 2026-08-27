@@ -55,7 +55,7 @@ class AuthControllerTest {
             "Bearer",
             "token-value",
             1800,
-            new AuthUserView("user-1", "admin@syncro.dev", ApplicationRole.SUPER_ADMIN)));
+            userView("user-1", ApplicationRole.SUPER_ADMIN)));
 
     mockMvc.perform(post("/api/v1/auth/login")
         .contentType(MediaType.APPLICATION_JSON)
@@ -90,7 +90,7 @@ class AuthControllerTest {
   @Test
   void currentUserReturnsAuthenticatedPrincipal() throws Exception {
     var user = new AuthenticatedUser("user-1", "admin@syncro.dev", ApplicationRole.SUPER_ADMIN);
-    when(authService.currentUser(user)).thenReturn(new AuthUserView("user-1", "admin@syncro.dev", ApplicationRole.SUPER_ADMIN));
+    when(authService.currentUser(user)).thenReturn(userView("user-1", ApplicationRole.SUPER_ADMIN));
 
     mockMvc.perform(get("/api/v1/auth/me")
         .with(SecurityMockMvcRequestPostProcessors.authentication(authenticationFor(user))))
@@ -156,6 +156,10 @@ class AuthControllerTest {
         user,
         null,
         List.of(new SimpleGrantedAuthority("ROLE_" + user.applicationRole().name())));
+  }
+
+  private static AuthUserView userView(String id, ApplicationRole role) {
+    return new AuthUserView(id, "admin@syncro.dev", null, null, null, role, true, null, null);
   }
 }
 

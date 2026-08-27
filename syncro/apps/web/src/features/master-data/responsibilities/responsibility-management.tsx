@@ -109,8 +109,8 @@ export function ResponsibilityManagement() {
         <CardHeader>
           <CardTitle>Assign Responsibility</CardTitle>
           <CardDescription>
-            Assign a user responsibility for a specific machine. Note: The MANAGER_MAINTENANCE application role is distinct from the
-            MANAGER machine responsibility level.
+            Assign a user responsibility for a specific machine. Note: The MANAGER_MAINTENANCE application role is
+            distinct from the MANAGER machine responsibility level.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -145,7 +145,7 @@ export function ResponsibilityManagement() {
                   <SelectContent>
                     {usersRes?.data?.map((u) => (
                       <SelectItem key={u.id} value={u.id ?? ""}>
-                        {u.loginIdentifier}
+                        {u.displayName ?? u.loginIdentifier} ({u.nik ?? u.loginIdentifier})
                       </SelectItem>
                     ))}
                   </SelectContent>

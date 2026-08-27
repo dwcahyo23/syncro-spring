@@ -1091,3 +1091,15 @@ status: open
 
 - Evidence content-type allowlist (JPEG/PNG/WebP/PDF) not enforced server-side in PreventiveEvidenceService.validate — mirrors the existing WorkOrderEvidenceService pattern (also no allowlist). Pre-existing project pattern; revisit if spec requires strict server-side enforcement.
 - GET /checklist keeps evidence on a separate /evidence endpoint (resolved 2026-08-27: A1, keep separate; spec amended). Evidence content-type allowlist not enforced server-side (resolved 2026-08-27: B2, mirror workorder evidence; spec amended).
+
+## Deferred from: bmad-build intent (2026-08-27) — UI/maintenance correction split
+
+- source_spec: none
+  summary: Workorder table list with month filter + pagination (kanban as secondary tab), plus backend GET /workorders list endpoint.
+  evidence: Split from a 4-goal UI correction intent; independent of the org-maintenance model.
+- source_spec: none
+  summary: Master-data menu consolidation into related tabs (machines+groups, organization: sections+teams+responsibility+users+departments, spareparts).
+  evidence: Split from the same intent; frontend-only, independent deliverable.
+- source_spec: none
+  summary: Dialog consistency (standardize create/category/master-data dialog positioning/styling) + beautify all remaining menus.
+  evidence: Split from the same intent; polish pass, independent deliverable.

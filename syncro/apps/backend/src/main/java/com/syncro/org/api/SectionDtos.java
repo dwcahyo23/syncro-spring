@@ -32,11 +32,18 @@ public final class SectionDtos {
       String code,
       String name,
       boolean active,
+      UUID leaderUserId,
       Instant createdAt,
       Instant updatedAt) {
   }
 
   public record SectionListResponse(List<SectionView> items) {
+  }
+
+  public record AssignLeaderRequest(@NotNull UUID userId) {
+  }
+
+  public record SectionLeaderView(UUID sectionId, UUID leaderUserId) {
   }
 
   public record ErrorResponse(String code, String message, Map<String, String> fieldErrors, String timestamp,

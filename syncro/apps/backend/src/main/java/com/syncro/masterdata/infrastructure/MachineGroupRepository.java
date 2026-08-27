@@ -8,6 +8,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 
 public interface MachineGroupRepository extends JpaRepository<MachineGroupEntity, UUID> {
   @Query("""
@@ -36,4 +38,10 @@ public interface MachineGroupRepository extends JpaRepository<MachineGroupEntity
         )
       """)
   boolean existsGroupInSectionWithActiveMachine(@Param("sectionId") UUID sectionId);
+
+  @Query("""
+      select mg.id from MachineGroupEntity mg
+      where mg.sectionId = :sectionId
+      """)
+  List<UUID> findIdsBySectionId(@Param("sectionId") UUID sectionId);
 }

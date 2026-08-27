@@ -186,6 +186,24 @@ preventive_schedule_mutation_paths := {
   "/api/v1/preventive-schedules/*/skip",
 }
 
+# Org-maintenance departments (spec-org-maintenance-model): mutations are the
+# Phase 1 gate (SUPER_ADMIN|MANAGER_MAINTENANCE). Reads flow through generic
+# read_allowed. Members replace + section leader assignment + user-master updates
+# are in the same allow set.
+department_paths := {
+  "/api/v1/departments",
+  "/api/v1/departments/*",
+  "/api/v1/departments/*/members",
+}
+
+section_leader_paths := {
+  "/api/v1/sections/*/leader",
+}
+
+user_management_paths := {
+  "/api/v1/auth/users/*",
+}
+
 # Telemetry + notification-worker endpoints are SUPER_ADMIN-only in service.
 admin_only_paths := {
   "/api/v1/telemetry/**",
@@ -531,6 +549,24 @@ mutation_allowed if {
   input.subject.roles[_] == "STAFF_MAINTENANCE"
   is_mutation
   path_matches(preventive_schedule_mutation_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(department_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(section_leader_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(user_management_paths)
 }
 
 mutation_allowed if {

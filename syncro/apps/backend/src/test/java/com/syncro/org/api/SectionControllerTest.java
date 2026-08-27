@@ -69,7 +69,7 @@ class SectionControllerTest {
     var sectionId = UUID.randomUUID();
     when(sections.create(eq(user), any(CreateSectionCommand.class)))
         .thenReturn(new SectionView(sectionId, plantId, "GM1", "Plant GM1", "MACHINERY",
-            "Machinery", true, NOW, NOW));
+            "Machinery", true, null, NOW, NOW));
 
     mockMvc.perform(post("/api/v1/sections")
         .with(auth(user))
@@ -88,7 +88,7 @@ class SectionControllerTest {
     var plantId = UUID.randomUUID();
     when(sections.list(user, plantId, false)).thenReturn(new SectionListView(List.of(
         new SectionView(UUID.randomUUID(), plantId, "GM1", "Plant GM1", "MACHINERY",
-            "Machinery", true, NOW, NOW))));
+            "Machinery", true, null, NOW, NOW))));
 
     mockMvc.perform(get("/api/v1/sections").param("plantId", plantId.toString()).with(auth(user)))
         .andExpect(status().isOk())
@@ -103,7 +103,7 @@ class SectionControllerTest {
     var sectionId = UUID.randomUUID();
     when(sections.get(user, sectionId))
         .thenReturn(new SectionView(sectionId, UUID.randomUUID(), "GM1", "Plant GM1", "UTILITY",
-            "Utility", true, NOW, NOW));
+            "Utility", true, null, NOW, NOW));
 
     mockMvc.perform(get("/api/v1/sections/{sectionId}", sectionId).with(auth(user)))
         .andExpect(status().isOk())
@@ -117,7 +117,7 @@ class SectionControllerTest {
     var sectionId = UUID.randomUUID();
     when(sections.update(eq(user), eq(sectionId), any(UpdateSectionCommand.class)))
         .thenReturn(new SectionView(sectionId, UUID.randomUUID(), "GM1", "Plant GM1", "MACHINERY",
-            "Machine Section", true, NOW, NOW));
+            "Machine Section", true, null, NOW, NOW));
 
     mockMvc.perform(put("/api/v1/sections/{sectionId}", sectionId)
         .with(auth(user))

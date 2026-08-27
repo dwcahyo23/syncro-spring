@@ -6,6 +6,8 @@ import com.syncro.org.application.SectionService.DuplicateSectionCodeException;
 import com.syncro.org.application.SectionService.DuplicateSectionNameException;
 import com.syncro.org.application.SectionService.InvalidSectionCodeException;
 import com.syncro.org.application.SectionService.SectionHasActiveMachineGroupsException;
+import com.syncro.org.application.SectionService.SectionLeaderUserInactiveException;
+import com.syncro.org.application.SectionService.SectionLeaderUserNotFoundException;
 import com.syncro.org.application.SectionService.SectionMutationForbiddenException;
 import com.syncro.org.application.SectionService.SectionNotFoundException;
 import com.syncro.org.application.SectionService.PlantNotFoundForSectionException;
@@ -89,6 +91,17 @@ public class SectionExceptionHandler {
   @ExceptionHandler(SectionNotFoundException.class)
   ResponseEntity<ErrorResponse> sectionNotFound() {
     return error(HttpStatus.NOT_FOUND, "SECTION_NOT_FOUND", "Section was not found.", Map.of());
+  }
+
+  @ExceptionHandler(SectionLeaderUserNotFoundException.class)
+  ResponseEntity<ErrorResponse> sectionLeaderUserNotFound() {
+    return error(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "User was not found.", Map.of());
+  }
+
+  @ExceptionHandler(SectionLeaderUserInactiveException.class)
+  ResponseEntity<ErrorResponse> sectionLeaderUserInactive() {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
+        "The selected leader must be an enabled user in the section's plant.", Map.of("userId", "Invalid value."));
   }
 
   @ExceptionHandler(PlantNotFoundForSectionException.class)

@@ -10,5 +10,11 @@ import type { AuthUserViewApplicationRole } from './authUserViewApplicationRole'
 export interface AuthUserView {
   id?: string;
   loginIdentifier?: string;
+  displayName?: string;
+  nik?: string;
+  phoneNumber?: string;
   applicationRole?: AuthUserViewApplicationRole;
+  enabled?: boolean;
+  jobTitleId?: string;
+  departmentId?: string;
 }
