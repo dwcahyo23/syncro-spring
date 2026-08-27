@@ -2320,6 +2320,13 @@ So that needed parts are requested precisely even when the material code is unkn
 **FRs covered:** FR-140, FR-143, FR-144
 **NFRs covered:** NFR-P2-3
 
+> **2026-08-28 update:** The request-part dialog was upgraded with BOM search
+> (`useListSpareparts`), a local draft cart (add/remove items without submitting),
+> and a single "Send to warehouse" submission. A server-paginated list page
+> (`GET /api/v1/sparepart-requests`) was added as the Sparepart Requests route,
+> replacing the earlier placeholder. Backend scope filter mirrors the workorder
+> list pattern (plant/machine-group). All changes in commit `f6ac419`.
+
 ### Story 12.2: Request State Machine
 
 As inventory/storekeeper and leaders,
