@@ -1086,3 +1086,8 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-10-6-reports-cp-cpk-fmea-and-stop-time.md`
   summary: enforceBreakdownStopTimeGate uses categories.findById (plain, no lock) while the workorder entity is loaded with findByIdForUpdate. A concurrent category code change could produce a stale gate decision.
   evidence: WorkOrderService.enforceBreakdownStopTimeGate calls categories.findById(categoryId) without row-level locking, while the workorder row at line 226 is locked with findByIdForUpdate. Category is master data (rarely changed), so risk is low.
+
+## Deferred from: code review of spec-11-2-preventive-checklist-assessment-signature (2026-08-27)
+
+- Evidence content-type allowlist (JPEG/PNG/WebP/PDF) not enforced server-side in PreventiveEvidenceService.validate — mirrors the existing WorkOrderEvidenceService pattern (also no allowlist). Pre-existing project pattern; revisit if spec requires strict server-side enforcement.
+- GET /checklist keeps evidence on a separate /evidence endpoint (resolved 2026-08-27: A1, keep separate; spec amended). Evidence content-type allowlist not enforced server-side (resolved 2026-08-27: B2, mirror workorder evidence; spec amended).

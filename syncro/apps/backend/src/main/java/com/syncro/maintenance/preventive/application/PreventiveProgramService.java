@@ -134,6 +134,9 @@ public class PreventiveProgramService {
     auditLog.record(user, new AuditRecord(AuditAction.DELETE, AuditEntityType.PREVENTIVE_PROGRAM,
         entity.getId(), entity.getTitle(), machine.getPlant().getId(), programValues(entity), null, null));
   }
+  // ponytail: Garage objects (attachments + signature) orphaned on program/schedule
+  // cascade delete — same gap as the workorder module (story 10-5). Revisit with a
+  // bucket-lifecycle policy or a scheduled cleanup job if storage cost matters.
 
   // -------------------------------------------------------------------------
   // Schedule generation (FR-131, AD-12)

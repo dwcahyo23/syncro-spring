@@ -36,7 +36,7 @@ export function PreventiveScheduleDetail({
   onClose: () => void;
 }) {
   const { data: checklist, isLoading: checklistLoading, isError: checklistError } = useChecklist(schedule.id);
-  const { data: evidence, isLoading: evidenceLoading } = useEvidenceList(schedule.id);
+  const { data: evidence, isLoading: evidenceLoading, isError: evidenceError } = useEvidenceList(schedule.id);
   const submitChecklist = useSubmitChecklist();
   const approveSchedule = useApproveSchedule();
   const skipSchedule = useSkipSchedule();
@@ -51,12 +51,13 @@ export function PreventiveScheduleDetail({
   const [signerIdentity, setSignerIdentity] = useState("");
   const [assessment, setAssessment] = useState("");
 
-  const isSubmitted = schedule.checklistStatus === "SUBMITTED" || schedule.checklistStatus === "APPROVED";
+  const isSubmitted = schedule.checklistStatus === "SUBMITTED"; // submitted but not yet approved
   const isApproved = schedule.checklistStatus === "APPROVED";
   const isTerminal = schedule.status === "PERFORMED" || schedule.status === "SKIPPED";
-  const canSubmit = !isSubmitted && !isTerminal;
+  const canSubmit = !isSubmitted && !isApproved && !isTerminal; // SCHEDULED or IN_PROGRESS
+  const canAmend = isSubmitted && !isTerminal; // IN_PROGRESS, submitted but not approved
   const canApprove = isSubmitted && !isApproved && !isTerminal;
-  const canSkip = !isTerminal;
+  const canSkip = !isTerminal && !isApproved;
 
   if (checklistLoading) {
     return (
@@ -103,8 +104,8 @@ export function PreventiveScheduleDetail({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Checklist items */}
-        {canSubmit && (
+        {/* Checklist items — editable when not submitted yet OR when amending a submitted checklist */}
+        {(canSubmit || canAmend) && (
           <div className="space-y-2">
             <Label>Checklist Items</Label>
             {items.map((item, i) => (
@@ -164,7 +165,7 @@ export function PreventiveScheduleDetail({
           </div>
         )}
 
-        {canSubmit && (
+        {(canSubmit || canAmend) && (
           <div className="space-y-2">
             <Label htmlFor="notes">Notes</Label>
             <Textarea
@@ -176,27 +177,27 @@ export function PreventiveScheduleDetail({
           </div>
         )}
 
-        {canSubmit && (
+        {(canSubmit || canAmend) && (
           <Button
             onClick={() => {
+              const filledItems = items.filter((i) => i.label.trim());
+              if (filledItems.length === 0) return;
               submitChecklist.mutate({
                 scheduleId: schedule.id,
                 data: {
                   notes: notes || null,
-                  items: items
-                    .filter((i) => i.label.trim())
-                    .map((i) => ({
-                      label: i.label,
-                      value: i.value || null,
-                      lsl: i.lsl || null,
-                      usl: i.usl || null,
-                      note: i.note || null,
-                    })),
+                  items: filledItems.map((i) => ({
+                    label: i.label,
+                    value: i.value || null,
+                    lsl: i.lsl || null,
+                    usl: i.usl || null,
+                    note: i.note || null,
+                  })),
                 },
                 isAmend: isSubmitted,
               });
             }}
-            disabled={submitChecklist.isPending}
+            disabled={submitChecklist.isPending || items.filter((i) => i.label.trim()).length === 0}
           >
             {isSubmitted ? "Amend Checklist" : "Submit Checklist"}
           </Button>
@@ -207,6 +208,8 @@ export function PreventiveScheduleDetail({
           <Label>Evidence</Label>
           {evidenceLoading ? (
             <Skeleton className="h-10 w-full" />
+          ) : evidenceError ? (
+            <p className="text-muted-foreground text-xs">Failed to load evidence.</p>
           ) : (
             <div className="space-y-1">
               {(evidence ?? []).map((att) => (
@@ -256,8 +259,29 @@ export function PreventiveScheduleDetail({
         {canApprove && (
           <div className="space-y-2 rounded border p-3">
             <Label className="font-semibold">Leader Approval</Label>
+            <Label htmlFor="signature-file" className="text-xs">
+              Signature image (uploaded as evidence, key auto-filled)
+            </Label>
             <Input
-              placeholder="Signature object key (Garage)"
+              id="signature-file"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  const sig = { scheduleId: schedule.id, file };
+                  uploadEvidence.mutate(sig, {
+                    onSuccess: (att) => setSignatureKey(att.objectKey),
+                  });
+                }
+              }}
+            />
+            <Label htmlFor="signature-key" className="text-xs">
+              Signature object key (from Garage)
+            </Label>
+            <Input
+              id="signature-key"
+              placeholder="Signature object key (auto-filled on upload)"
               value={signatureKey}
               onChange={(e) => setSignatureKey(e.target.value)}
             />

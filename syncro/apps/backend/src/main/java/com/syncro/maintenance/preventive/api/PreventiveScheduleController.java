@@ -127,6 +127,15 @@ public class PreventiveScheduleController {
     return toAttachmentView(evidence.create(user, id, command));
   }
 
+  @Operation(operationId = "replaceEvidence", summary = "Replace evidence file (new Garage object, old removed)")
+  @PutMapping(value = "/{id}/evidence/{attachmentId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public PreventiveAttachmentView replaceEvidence(@AuthenticationPrincipal AuthenticatedUser user,
+      @PathVariable UUID id, @PathVariable UUID attachmentId,
+      @RequestParam("file") MultipartFile file) throws Exception {
+    var command = new EvidenceCommand(file.getOriginalFilename(), file.getContentType(), file.getBytes());
+    return toAttachmentView(evidence.replace(user, id, attachmentId, command));
+  }
+
   @Operation(operationId = "deleteEvidence", summary = "Delete evidence (Garage object + row)")
   @DeleteMapping("/{id}/evidence/{attachmentId}")
   @ResponseStatus(HttpStatus.NO_CONTENT)

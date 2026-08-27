@@ -79,12 +79,42 @@ public class PreventiveEvidenceService {
   }
 
   @Transactional
+  public AttachmentView replace(AuthenticatedUser user, UUID scheduleId, UUID attachmentId,
+      EvidenceCommand command) {
+    var schedule = loadSchedule(scheduleId);
+    requireAccess(user, schedule);
+
+    var attachment = attachments.findByIdAndScheduleId(attachmentId, scheduleId)
+        .orElseThrow(EvidenceAttachmentNotFoundException::new);
+    if (!canDeleteEvidence(user, schedule, attachment)) {
+      throw new EvidenceForbiddenException();
+    }
+    validate(command);
+
+    var previousKey = attachment.getObjectKey();
+    var newKey = buildKey(scheduleId, attachmentId, command.contentType());
+    deleteObject(previousKey);
+    storeObject(newKey, command.data(), command.contentType());
+    attachment.replace(command.filename().trim(), command.contentType().trim(), newKey,
+        command.data().length, Instant.now(clock));
+    var saved = attachments.saveAndFlush(attachment);
+
+    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PREVENTIVE_ATTACHMENT,
+        saved.getId(), "schedule " + scheduleId, null,
+        Map.<String, Object>of("objectKey", previousKey), attachmentValues(saved), null));
+    return toView(saved);
+  }
+
+  @Transactional
   public void delete(AuthenticatedUser user, UUID scheduleId, UUID attachmentId) {
     var schedule = loadSchedule(scheduleId);
     requireAccess(user, schedule);
 
     var attachment = attachments.findByIdAndScheduleId(attachmentId, scheduleId)
         .orElseThrow(EvidenceAttachmentNotFoundException::new);
+    if (!canDeleteEvidence(user, schedule, attachment)) {
+      throw new EvidenceForbiddenException();
+    }
     var previousKey = attachment.getObjectKey();
     deleteObject(previousKey);
     attachments.delete(attachment);
@@ -92,6 +122,30 @@ public class PreventiveEvidenceService {
     auditLog.record(user, new AuditRecord(AuditAction.DELETE, AuditEntityType.PREVENTIVE_ATTACHMENT,
         attachmentId, "schedule " + scheduleId, null,
         Map.<String, Object>of("objectKey", previousKey), null, null));
+  }
+
+  /** Evidence delete gate: the uploader, an in-scope leader, or SUPER_ADMIN (I/O matrix). */
+  private boolean canDeleteEvidence(AuthenticatedUser user, PreventiveScheduleEntity schedule,
+      PreventiveScheduleAttachmentEntity attachment) {
+    if (user.applicationRole() == com.syncro.auth.domain.ApplicationRole.SUPER_ADMIN) {
+      return true;
+    }
+    if (UUID.fromString(user.id()).equals(attachment.getUploadedBy())) {
+      return true;
+    }
+    var machine = machines.findByIdWithPlantAndGroup(schedule.getMachineId())
+        .orElseThrow(EvidenceScheduleNotFoundException::new);
+    var scope = scopes.derive(user);
+    return switch (user.applicationRole()) {
+      case SECTION_LEADER -> scope.machineGroupIds().contains(machine.getMachineGroup().getId())
+          || scope.activeTeamIds().contains(machine.getMachineGroup().getId());
+      case MAINTENANCE_LEADER, MANAGER_MAINTENANCE -> {
+        var plantInScope = scope.plantIds() != null && scope.plantIds().contains(machine.getPlant().getId());
+        yield scope.machineGroupIds().contains(machine.getMachineGroup().getId())
+            || scope.activeTeamIds().contains(machine.getMachineGroup().getId()) || plantInScope;
+      }
+      default -> false;
+    };
   }
 
   @Transactional(readOnly = true)

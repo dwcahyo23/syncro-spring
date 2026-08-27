@@ -27,15 +27,16 @@ public class PreventiveScheduleService {
   private final ShiftConfigService shiftConfig;
   private final OperationalScopeService scopes;
   private final Clock clock;
-  private final PreventiveChecklistService checklists;
+  private final com.syncro.maintenance.preventive.infrastructure.db.PreventiveChecklistResultRepository checklistResults;
 
   public PreventiveScheduleService(PreventiveScheduleRepository schedules, ShiftConfigService shiftConfig,
-      OperationalScopeService scopes, Clock clock, PreventiveChecklistService checklists) {
+      OperationalScopeService scopes, Clock clock,
+      com.syncro.maintenance.preventive.infrastructure.db.PreventiveChecklistResultRepository checklistResults) {
     this.schedules = schedules;
     this.shiftConfig = shiftConfig;
     this.scopes = scopes;
     this.clock = clock;
-    this.checklists = checklists;
+    this.checklistResults = checklistResults;
   }
 
   @Transactional(readOnly = true)
@@ -49,12 +50,17 @@ public class PreventiveScheduleService {
     var rows = schedules.findScopedSchedules(
         unrestricted, scope.plantIds() == null ? List.of() : scope.plantIds(), groupIds);
     var today = LocalDate.now(clock);
+    // Batch checklist status in one query each for submitted + approved (story 11-2), no N+1.
+    var scheduleIds = rows.stream().map(r -> r.schedule().getId()).toList();
+    var withResult = new HashSet<>(checklistResults.findScheduleIdsWithResult(scheduleIds));
+    var approved = new HashSet<>(checklistResults.findApprovedScheduleIds(scheduleIds));
     var result = new ArrayList<ScheduleView>();
     for (var row : rows) {
       var schedule = row.schedule();
       var derived = schedule.getStatus() == ScheduleStatus.SCHEDULED && schedule.getDueDate().isBefore(today)
           ? "OVERDUE" : schedule.getStatus().name();
-      var checklistStatus = checklists.statusFor(schedule.getId()).name();
+      var checklistStatus = !withResult.contains(schedule.getId()) ? "NONE"
+          : approved.contains(schedule.getId()) ? "APPROVED" : "SUBMITTED";
       result.add(new ScheduleView(schedule.getId(), schedule.getProgramId(), schedule.getMachineId(),
           schedule.getDueDate(), schedule.getStatus().name(), derived, schedule.getCompletedAt(),
           schedule.getPerformedBy(), row.category().name(), row.scheduleType().name(),

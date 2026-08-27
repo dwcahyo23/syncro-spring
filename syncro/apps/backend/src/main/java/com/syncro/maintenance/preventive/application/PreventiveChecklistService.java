@@ -77,7 +77,7 @@ public class PreventiveChecklistService {
   /** Submits the checklist for a schedule (SCHEDULED → IN_PROGRESS). One result per schedule. */
   @Transactional
   public ChecklistResultView submit(AuthenticatedUser user, String scheduleId, ChecklistCommand command) {
-    var schedule = loadSchedule(scheduleId);
+    var schedule = loadScheduleForUpdate(scheduleId);
     requireCompletionAccess(user, schedule);
     if (schedule.getStatus() == ScheduleStatus.PERFORMED || schedule.getStatus() == ScheduleStatus.SKIPPED) {
       throw new InvalidStateTransitionException();
@@ -97,13 +97,13 @@ public class PreventiveChecklistService {
     auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.PREVENTIVE_CHECKLIST,
         saved.getId(), entityLabel(schedule), machine(schedule).getPlant().getId(), null,
         resultValues(saved, command.items()), null));
-    return toView(saved, toDomainItems(saved.getId(), command.items()));
+    return toView(saved, loadItems(saved.getId()));
   }
 
   /** Amends the checklist before approval (PUT): replaces items, keeps the result row. */
   @Transactional
   public ChecklistResultView amend(AuthenticatedUser user, String scheduleId, ChecklistCommand command) {
-    var schedule = loadSchedule(scheduleId);
+    var schedule = loadScheduleForUpdate(scheduleId);
     requireCompletionAccess(user, schedule);
     if (schedule.getStatus() == ScheduleStatus.PERFORMED || schedule.getStatus() == ScheduleStatus.SKIPPED) {
       throw new InvalidStateTransitionException();
@@ -119,7 +119,7 @@ public class PreventiveChecklistService {
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PREVENTIVE_CHECKLIST,
         saved.getId(), entityLabel(schedule), machine(schedule).getPlant().getId(), null,
         resultValues(saved, command.items()), null));
-    return toView(saved, toDomainItems(saved.getId(), command.items()));
+    return toView(saved, loadItems(saved.getId()));
   }
 
   /** Reads the checklist result + items + derived status (any authenticated user). */
@@ -142,7 +142,7 @@ public class PreventiveChecklistService {
   /** Leader approval: IN_PROGRESS → PERFORMED + roll forward the floating interval. */
   @Transactional
   public ChecklistResultView approve(AuthenticatedUser user, String scheduleId, ApproveCommand command) {
-    var schedule = loadSchedule(scheduleId);
+    var schedule = loadScheduleForUpdate(scheduleId);
     requireLeaderAccess(user, schedule);
     if (schedule.getStatus() != ScheduleStatus.IN_PROGRESS) {
       throw new InvalidStateTransitionException();
@@ -173,18 +173,19 @@ public class PreventiveChecklistService {
   /** Leader skip: SCHEDULED/IN_PROGRESS → SKIPPED, no roll-forward. */
   @Transactional
   public void skip(AuthenticatedUser user, String scheduleId) {
-    var schedule = loadSchedule(scheduleId);
+    var schedule = loadScheduleForUpdate(scheduleId);
     requireLeaderAccess(user, schedule);
     if (schedule.getStatus() == ScheduleStatus.PERFORMED || schedule.getStatus() == ScheduleStatus.SKIPPED) {
       throw new InvalidStateTransitionException();
     }
+    var previousStatus = schedule.getStatus().name();
     var now = Instant.now(clock);
     schedule.transition(ScheduleStatus.SKIPPED, now, UUID.fromString(user.id()));
     schedules.saveAndFlush(schedule);
 
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PREVENTIVE_SCHEDULE,
         schedule.getId(), entityLabel(schedule), machine(schedule).getPlant().getId(),
-        Map.<String, Object>of("status", schedule.getStatus().name()), Map.<String, Object>of("status", "SKIPPED"),
+        Map.<String, Object>of("status", previousStatus), Map.<String, Object>of("status", "SKIPPED"),
         null));
   }
 
@@ -201,17 +202,6 @@ public class PreventiveChecklistService {
   // -------------------------------------------------------------------------
   // Helpers
   // -------------------------------------------------------------------------
-
-  private static List<PreventiveChecklistItem> toDomainItems(UUID resultId, List<ItemCommand> commandItems) {
-    var position = 0;
-    var domain = new ArrayList<PreventiveChecklistItem>();
-    for (var item : commandItems) {
-      position += 1;
-      domain.add(new PreventiveChecklistItem(UUID.randomUUID(), resultId, (short) position, item.label().trim(),
-          normalize(item.value()), item.lsl(), item.usl(), normalize(item.note())));
-    }
-    return domain;
-  }
 
   private void replaceItems(UUID resultId, List<ItemCommand> commandItems) {
     items.deleteByResultId(resultId);
@@ -313,6 +303,11 @@ public class PreventiveChecklistService {
 
   private PreventiveScheduleEntity loadSchedule(String id) {
     return schedules.findById(UUID.fromString(id)).orElseThrow(ScheduleNotFoundException::new);
+  }
+
+  /** Row-locked load for transitions (story 11-2): prevents concurrent check-then-act races. */
+  private PreventiveScheduleEntity loadScheduleForUpdate(String id) {
+    return schedules.findByIdForUpdate(UUID.fromString(id)).orElseThrow(ScheduleNotFoundException::new);
   }
 
   private static String normalize(String value) {

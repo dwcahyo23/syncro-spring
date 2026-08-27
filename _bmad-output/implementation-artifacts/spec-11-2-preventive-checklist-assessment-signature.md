@@ -31,7 +31,7 @@ warnings: []
   - `preventive_schedule_attachments` — mirror `workorder_attachments`: `id UUID PK DEFAULT gen_random_uuid()`, `schedule_id UUID NOT NULL REFERENCES preventive_schedules(id) ON DELETE CASCADE`, `filename VARCHAR(255)`, `content_type VARCHAR(100)`, `object_key VARCHAR(512) NOT NULL`, `size_bytes BIGINT`, `uploaded_by UUID NOT NULL`, `created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`. Index `idx_preventive_schedule_attachments_schedule` on `schedule_id`.
   - Audit: drop/re-add `ck_audit_log_entity_type` adding `'PREVENTIVE_CHECKLIST'` and `'PREVENTIVE_ATTACHMENT'` (read `AuditEntityType.java` for the full current enumerated set; preserve all existing types).
 - **Completion flow:** `POST /api/v1/preventive-schedules/{id}/checklist` (technician/staff with scope over the schedule's machine) creates the result + items, uploads evidence via `POST .../evidence`, and sets `schedule.status` SCHEDULED → IN_PROGRESS. One checklist per schedule: re-submit before approval = `PUT .../checklist` amend (replace items). `GET .../checklist` returns result + items + evidence (presigned URLs) + signature.
-- **Evidence (AD-10):** `PreventiveEvidenceService` mirrors `WorkOrderEvidenceService` over `ObjectStorageService`: key `preventive/{scheduleId}/{attachmentId}/{uuid}.{ext}`, accepted JPEG/PNG/WebP/PDF ≤10 MB (configurable), PostgreSQL stores only `object_key`; replace/delete removes the previous Garage object.
+- **Evidence (AD-10):** `PreventiveEvidenceService` mirrors `WorkOrderEvidenceService` over `ObjectStorageService`: key `preventive/{scheduleId}/{attachmentId}/{uuid}.{ext}`, ≤10 MB (configurable) with no server-side content-type allowlist (mirrors the workorder evidence service), PostgreSQL stores only `object_key`; replace/delete removes the previous Garage object.
 - **Approval flow (leader only):** `POST /api/v1/preventive-schedules/{id}/approve` requires role SECTION_LEADER / MAINTENANCE_LEADER / MANAGER_MAINTENANCE in scope; body = `{signatureObjectKey, signerIdentity?, assessment?}`. Server stamps `leader_id` (auth), `approved_at` (server clock), `signer_identity` (default leader display name), and sets `signature_object_key`. On success: `schedule.status` IN_PROGRESS → PERFORMED, then call 11.1 `PreventiveProgramService.rollForwardNext(programId, approvedAt)`. `POST .../skip` (leader) sets SKIPPED from SCHEDULED/IN_PROGRESS (no roll-forward).
 - **Scope gate:** inject `OperationalScopeService`; replicate the 11.1 `isInScopeLeader(AuthenticatedUser, MachineEntity)` logic (SUPER_ADMIN exempt; SECTION_LEADER needs group/team in scope; MAINTENANCE_LEADER/MANAGER_MAINTENANCE need group/team OR plant in scope). Completion/evidence gate = in-scope leader OR any role with plant access to the schedule's machine plant; approval/skip gate = leader role in scope (authoritative; rego is coarse default-deny only).
 - **OPA:** add `preventive_schedule_mutation_paths := {"/api/v1/preventive-schedules/*/checklist", "/api/v1/preventive-schedules/*/evidence", "/api/v1/preventive-schedules/*/evidence/*", "/api/v1/preventive-schedules/*/approve", "/api/v1/preventive-schedules/*/skip"}` with the same four-role allow set as `preventive_program_paths` (MANAGER_MAINTENANCE, SECTION_LEADER, MAINTENANCE_LEADER, STAFF_MAINTENANCE); add the paths to `SYNCRO_AUTHZ_ENFORCED_PATHS` in `.env.example`; add parity tests in `authz_test.rego`. `GET .../checklist` stays in generic `read_allowed`.
@@ -150,6 +150,34 @@ warnings: []
 - `cd syncro/authz && ./run-opa-test.ps1` -- expected PASS incl. new preventive-schedule parity cases.
 - `cd syncro/apps/web && npx tsc --noEmit` -- expected green.
 - `cd syncro/apps/web && npx biome check src/features/preventive src/app/preventive` -- expected clean.
+
+## Review Findings
+
+**decision-needed:**
+- [x] [Review][Decision] GET checklist/evidence combined vs separate — **Resolved (2026-08-27): A1 keep separate endpoints.** `GET /{id}/checklist` returns result+items+signature; evidence stays on `GET /{id}/evidence` (design-notes intent + frontend calls it independently). Spec `Always` bullet amended to match.
+- [x] [Review][Decision] Evidence content-type allowlist — **Resolved (2026-08-27): B2 keep mirroring workorder.** `PreventiveEvidenceService.validate` checks presence/length/size but not the allowlist, consistent with `WorkOrderEvidenceService`. Spec `Always` bullet amended to "size-limited, no server-side allowlist (mirrors workorder evidence)".
+
+**patch:**
+- [x] [Review][Patch] Check-then-act race on checklist submit + approve — `SELECT ... FOR UPDATE` via `loadScheduleForUpdate` on all transition paths. [PreventiveChecklistService.java:80,145,175]
+- [x] [Review][Patch] Skip audit loses previous status — captured prior status before transition. [PreventiveChecklistService.java:182]
+- [x] [Review][Patch] Unmapped exceptions return 500 — added handlers for `EvidenceScheduleNotFoundException` (404), `EvidenceAttachmentNotFoundException` (404), `ChecklistNotSubmittedException` (409), `EvidenceStorageException` (500). Split `ChecklistAlreadySubmittedException` into its own handler (was incorrectly bound to `InvalidStateTransitionException` parameter). [PreventiveExceptionHandler.java]
+- [x] [Review][Patch] Evidence delete restricted to uploader/leader — `canDeleteEvidence` gate checks uploader identity or in-scope leadership. [PreventiveEvidenceService.java:82]
+- [x] [Review][Patch] Garage objects orphaned on cascade delete — documented with `ponytail:` comment (same gap as workorder module). [PreventiveProgramService.java]
+- [x] [Review][Patch] N+1 in calendar read — batch-loaded checklist status with two queries (`findScheduleIdsWithResult` + `findApprovedScheduleIds`). [PreventiveScheduleService.java:57]
+- [x] [Review][Patch] Evidence replace (PUT) implemented — `PreventiveEvidenceService.replace` + PUT route in controller. [PreventiveEvidenceService.java, PreventiveScheduleController.java]
+- [x] [Review][Patch] Frontend amend reachable — `canAmend` state added, editor shown when `canSubmit || canAmend`. [preventive-schedule-detail.tsx]
+- [x] [Review][Patch] Evidence fetch error state rendered — `isError` destructured, error message shown. [preventive-schedule-detail.tsx]
+- [x] [Review][Patch] Signature upload flow — file input added that uploads evidence then auto-fills `signatureObjectKey`. [preventive-schedule-detail.tsx]
+- [x] [Review][Patch] Blank-only form guarded — `disabled` when no filled label, `return` guard in handler. [preventive-schedule-detail.tsx]
+- [x] [Review][Patch] Response item IDs match persisted — `toView` now calls `loadItems` (reads actual DB rows) instead of `toDomainItems` (created phantom IDs). [PreventiveChecklistService.java:100,122]
+- [x] [Review][Patch] `biome-out.txt` removed from git + `.gitignore` updated. [syncro/apps/web/.gitignore]
+
+**defer:**
+- [x] [Review][Defer] Evidence `validate` content-type allowlist mirrors `WorkOrderEvidenceService` — deferred, pre-existing project pattern (the same non-allowlist behavior exists in the workorder evidence service).
+- [x] [Review][Defer] Garage object lifecycle on rollback — store-before-insert + object-before-row-delete ordering mirrors `WorkOrderEvidenceService` exactly; external side effect not covered by the DB transaction either way. Dismissed (consistent with the sanctioned workorder pattern).
+- [x] [Review][Defer] getChecklist/listEvidence not scope-checked — spec explicitly blesses any-authenticated reads for schedules; presigned URLs are short-TTL. Dismissed (per spec contract).
+- [x] [Review][Defer] signerIdentity defaults to login identifier — `AuthenticatedUser` carries no display-name field; `loginIdentifier` is the only available default. Dismissed (auth-model limitation, not fixable in this story).
+- [x] [Review][Defer] Leader actions shown to all roles — backend is authoritative; frontend 403 toast handles the forbidden case (architecture: "visibility never counts as enforcement"). Dismissed.
 
 ## Auto Run Result
 

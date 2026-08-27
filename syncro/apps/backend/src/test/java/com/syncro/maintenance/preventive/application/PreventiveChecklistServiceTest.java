@@ -100,6 +100,7 @@ class PreventiveChecklistServiceTest {
     schedule = new PreventiveScheduleEntity(scheduleId, programId, machineId, LocalDate.of(2026, 9, 15),
         ScheduleStatus.SCHEDULED, null, null, NOW, NOW);
     lenient().when(schedules.findById(scheduleId)).thenReturn(Optional.of(schedule));
+    lenient().when(schedules.findByIdForUpdate(scheduleId)).thenReturn(Optional.of(schedule));
   }
 
   @Test
@@ -132,7 +133,7 @@ class PreventiveChecklistServiceTest {
   @DisplayName("11.2-SVC-003 P0 unknown schedule is SCHEDULE_NOT_FOUND")
   void submitUnknownSchedule() {
     var user = staffUser();
-    when(schedules.findById(scheduleId)).thenReturn(Optional.empty());
+    when(schedules.findByIdForUpdate(scheduleId)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.submit(user, scheduleId.toString(), command()))
         .isInstanceOf(ScheduleNotFoundException.class);

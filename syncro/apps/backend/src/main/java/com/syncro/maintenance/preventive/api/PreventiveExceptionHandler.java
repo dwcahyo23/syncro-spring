@@ -3,11 +3,15 @@ package com.syncro.maintenance.preventive.api;
 import com.syncro.maintenance.preventive.api.PreventiveDtos.ErrorResponse;
 import com.syncro.maintenance.preventive.application.PreventiveChecklistService.ChecklistAlreadySubmittedException;
 import com.syncro.maintenance.preventive.application.PreventiveChecklistService.ChecklistForbiddenException;
+import com.syncro.maintenance.preventive.application.PreventiveChecklistService.ChecklistNotSubmittedException;
 import com.syncro.maintenance.preventive.application.PreventiveChecklistService.ChecklistValidationException;
 import com.syncro.maintenance.preventive.application.PreventiveChecklistService.InvalidStateTransitionException;
 import com.syncro.maintenance.preventive.application.PreventiveChecklistService.MissingSignatureException;
 import com.syncro.maintenance.preventive.application.PreventiveChecklistService.ScheduleNotFoundException;
+import com.syncro.maintenance.preventive.application.PreventiveEvidenceService.EvidenceAttachmentNotFoundException;
 import com.syncro.maintenance.preventive.application.PreventiveEvidenceService.EvidenceForbiddenException;
+import com.syncro.maintenance.preventive.application.PreventiveEvidenceService.EvidenceScheduleNotFoundException;
+import com.syncro.maintenance.preventive.application.PreventiveEvidenceService.EvidenceStorageException;
 import com.syncro.maintenance.preventive.application.PreventiveEvidenceService.EvidenceValidationException;
 import com.syncro.maintenance.preventive.application.PreventiveProgramService.MachineNotFoundException;
 import com.syncro.maintenance.preventive.application.PreventiveProgramService.PreventiveForbiddenException;
@@ -106,9 +110,14 @@ public class PreventiveExceptionHandler {
     return error(HttpStatus.NOT_FOUND, "SCHEDULE_NOT_FOUND", "Preventive schedule was not found.", Map.of());
   }
 
-  @ExceptionHandler({InvalidStateTransitionException.class, ChecklistAlreadySubmittedException.class})
+  @ExceptionHandler(InvalidStateTransitionException.class)
   ResponseEntity<ErrorResponse> invalidState(InvalidStateTransitionException exception) {
     return error(HttpStatus.CONFLICT, "INVALID_STATE_TRANSITION", "The schedule is not in the expected state for this action.", Map.of());
+  }
+
+  @ExceptionHandler(ChecklistAlreadySubmittedException.class)
+  ResponseEntity<ErrorResponse> checklistAlreadySubmitted() {
+    return error(HttpStatus.CONFLICT, "INVALID_STATE_TRANSITION", "A checklist has already been submitted for this schedule.", Map.of());
   }
 
   @ExceptionHandler(MissingSignatureException.class)
@@ -131,6 +140,28 @@ public class PreventiveExceptionHandler {
   @ExceptionHandler({ChecklistForbiddenException.class, EvidenceForbiddenException.class})
   ResponseEntity<ErrorResponse> checklistForbidden() {
     return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "You do not have permission to access this resource.", Map.of());
+  }
+
+  @ExceptionHandler(EvidenceScheduleNotFoundException.class)
+  ResponseEntity<ErrorResponse> evidenceScheduleNotFound() {
+    return error(HttpStatus.NOT_FOUND, "SCHEDULE_NOT_FOUND", "Preventive schedule was not found.", Map.of());
+  }
+
+  @ExceptionHandler(EvidenceAttachmentNotFoundException.class)
+  ResponseEntity<ErrorResponse> evidenceAttachmentNotFound() {
+    return error(HttpStatus.NOT_FOUND, "ATTACHMENT_NOT_FOUND", "Evidence attachment was not found.", Map.of());
+  }
+
+  @ExceptionHandler(ChecklistNotSubmittedException.class)
+  ResponseEntity<ErrorResponse> checklistNotSubmitted() {
+    return error(HttpStatus.CONFLICT, "INVALID_STATE_TRANSITION",
+        "No checklist has been submitted for this schedule.", Map.of());
+  }
+
+  @ExceptionHandler(EvidenceStorageException.class)
+  ResponseEntity<ErrorResponse> evidenceStorageError() {
+    return error(HttpStatus.INTERNAL_SERVER_ERROR, "STORAGE_ERROR",
+        "File storage operation failed. Please try again.", Map.of());
   }
 
   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message,
