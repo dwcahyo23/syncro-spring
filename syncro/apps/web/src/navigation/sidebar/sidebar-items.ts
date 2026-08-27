@@ -1,13 +1,16 @@
 import {
   Activity,
   Bell,
+  CalendarCheck,
   Database,
   FileText,
   HeartPulse,
   type LucideIcon,
   MessageSquare,
+  Package,
   Radio,
   Settings,
+  Wrench,
 } from "lucide-react";
 
 export interface NavSubItem {
@@ -62,6 +65,7 @@ export interface NavGroup {
 export const sidebarItems: NavGroup[] = [
   {
     id: 1,
+    label: "Operational",
     items: [
       {
         title: "Operations Overview",
@@ -78,6 +82,33 @@ export const sidebarItems: NavGroup[] = [
         url: "/alerts",
         icon: Bell,
       },
+    ],
+  },
+  {
+    id: 2,
+    label: "Maintenance",
+    items: [
+      {
+        title: "Work Orders",
+        url: "/workorders",
+        icon: Wrench,
+      },
+      {
+        title: "Preventive",
+        url: "/preventive",
+        icon: CalendarCheck,
+      },
+      {
+        title: "Sparepart Requests",
+        url: "/sparepart-requests",
+        icon: Package,
+      },
+    ],
+  },
+  {
+    id: 3,
+    label: "Configuration",
+    items: [
       {
         title: "Master Data",
         url: "/master-data",

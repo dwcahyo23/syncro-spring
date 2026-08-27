@@ -15,8 +15,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
 import { useCreateSparepartRequest } from "@/features/sparepart-requests/hooks/use-sparepart-requests";
 import type { SparepartRequestType } from "@/features/sparepart-requests/types";
+import { useListMachines } from "@/lib/api/generated/syncro";
 
 /**
  * "Request part" dialog (story 12-1, FR-140/FR-143/FR-144). Creates a sparepart request
@@ -26,6 +28,13 @@ import type { SparepartRequestType } from "@/features/sparepart-requests/types";
  */
 export function RequestPartDialog({ workOrderId }: { workOrderId?: string | null }) {
   const createRequest = useCreateSparepartRequest();
+  const plantScope = usePlantScope();
+  const plantId = plantScope.activePlantId === "all" ? undefined : plantScope.activePlantId;
+  const { data: machinesRes, isLoading: isLoadingMachines } = useListMachines({
+    plantId,
+    page: 0,
+    size: 100,
+  });
   const [open, setOpen] = useState(false);
   const [requestType, setRequestType] = useState<SparepartRequestType>("SPAREPART");
   const [machineId, setMachineId] = useState("");
@@ -104,8 +113,19 @@ export function RequestPartDialog({ workOrderId }: { workOrderId?: string | null
 
           {requestType === "SPAREPART" && (
             <div className="space-y-1">
-              <Label>Machine id</Label>
-              <Input placeholder="Machine UUID" value={machineId} onChange={(e) => setMachineId(e.target.value)} />
+              <Label>Machine</Label>
+              <Select value={machineId || undefined} onValueChange={setMachineId}>
+                <SelectTrigger className="w-full" disabled={isLoadingMachines}>
+                  <SelectValue placeholder={isLoadingMachines ? "Loading machines..." : "Select machine"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {machinesRes?.data?.items?.map((m) => (
+                    <SelectItem key={m.id} value={m.id ?? ""}>
+                      {m.code} · {m.name} · {m.plantCode}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 

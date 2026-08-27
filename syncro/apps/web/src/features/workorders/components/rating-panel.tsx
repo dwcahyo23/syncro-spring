@@ -3,6 +3,7 @@
 import { type ReactNode, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StarRating } from "@/features/workorders/components/star-rating";
 import {
@@ -12,6 +13,7 @@ import {
   useWorkorderRatings,
 } from "@/features/workorders/hooks/use-ratings";
 import type { RatingDimensionView, RatingView } from "@/features/workorders/types";
+import { useListUsers } from "@/lib/api/generated/syncro";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
 
 export interface RatingPanelProps {
@@ -31,6 +33,7 @@ export function RatingPanel({ workorderId, executorPool }: RatingPanelProps) {
   const rateTechnician = useRateTechnician(workorderId);
   const rateWorkorder = useRateWorkorder(workorderId);
   const user = useAuthUser();
+  const { data: usersRes, isLoading: isLoadingUsers } = useListUsers();
 
   // UI-only gate (security is server-side): SECTION_LEADER rates technicians, SUPER_ADMIN
   // is exempt; PRODUCTION_LEADER rates workorders. Machine-group/plant scope is enforced
@@ -67,6 +70,8 @@ export function RatingPanel({ workorderId, executorPool }: RatingPanelProps) {
             canRateTechnician,
             submittedTechnician,
             executorPool,
+            usersRes,
+            isLoadingUsers,
             technicianId,
             setTechnicianId,
             technicianScores,
@@ -115,6 +120,8 @@ function technicianSection(
   canRate: boolean,
   submitted: RatingView | undefined,
   executorPool: string[],
+  usersRes: { data?: Array<{ id?: string | null; loginIdentifier?: string | null }> } | undefined,
+  isLoadingUsers: boolean,
   technicianId: string,
   setTechnicianId: (value: string) => void,
   scores: Record<string, number>,
@@ -133,18 +140,18 @@ function technicianSection(
       <h4 className="font-medium text-sm">Rate a technician</h4>
       {executorPool.length > 0 ? (
         <>
-          <select
-            value={technicianId}
-            onChange={(event) => setTechnicianId(event.target.value)}
-            aria-label="Technician to rate"
-            className="h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm"
-          >
-            {executorPool.map((id) => (
-              <option key={id} value={id}>
-                {id}
-              </option>
-            ))}
-          </select>
+          <Select value={technicianId} onValueChange={setTechnicianId}>
+            <SelectTrigger aria-label="Technician to rate" disabled={isLoadingUsers}>
+              <SelectValue placeholder={isLoadingUsers ? "Loading…" : "Select technician"} />
+            </SelectTrigger>
+            <SelectContent>
+              {executorPool.map((id) => (
+                <SelectItem key={id} value={id}>
+                  {usersRes?.data?.find((u) => u.id === id)?.loginIdentifier ?? id.slice(0, 8)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <div className="space-y-2">
             {dimensionList.map((dimension) => (
               <div key={dimension.id} className="flex items-center justify-between gap-2">
