@@ -114,7 +114,7 @@ public class SyncWorker {
         if (batch.isEmpty()) {
           break;
         }
-        totalUpserted += batchProcessor.importBatch(batch);
+        totalUpserted += batchProcessor.importBatch(batch).upserted();
         totalRead += batch.size();
         lastSheetNo = lastRowOf(batch);
         if (batch.size() < properties.batchSize()) {

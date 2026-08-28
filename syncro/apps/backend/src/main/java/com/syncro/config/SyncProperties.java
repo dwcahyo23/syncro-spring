@@ -19,7 +19,8 @@ public record SyncProperties(
     @DefaultValue Datasource datasource,
     @DefaultValue("100") int batchSize,
     @DefaultValue("60000") long pollIntervalMs,
-    @DefaultValue("900000") long lockTtlMs) {
+    @DefaultValue("900000") long lockTtlMs,
+    @DefaultValue("") String fallbackCategoryCode) {
 
   /**
    * Connection for the external PostgreSQL (the reference system's DB). Read-only

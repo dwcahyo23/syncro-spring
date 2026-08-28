@@ -175,3 +175,6 @@ syncro:
     poll-interval-ms: ${SYNCRO_SYNC_POLL_INTERVAL_MS:60000}
     # Redis distributed lock TTL in milliseconds (default 15 minutes — auto-expires on crash)
     lock-ttl-ms: ${SYNCRO_SYNC_LOCK_TTL_MS:900000}
+    # Fallback category code used when an external category code is unmapped (story 13-2,
+    # OQ-4). Empty = skip unmapped categories as before.
+    fallback-category-code: ${SYNCRO_SYNC_FALLBACK_CATEGORY_CODE:}

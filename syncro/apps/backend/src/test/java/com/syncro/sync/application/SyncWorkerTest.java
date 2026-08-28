@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.syncro.config.SyncProperties;
+import com.syncro.sync.domain.BatchResult;
 import com.syncro.sync.domain.SyncSourceRow;
 import com.syncro.sync.infrastructure.SyncRunEntity;
 import com.syncro.sync.infrastructure.SyncRunRepository;
@@ -114,7 +115,8 @@ class SyncWorkerTest {
     when(valueOps.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(true);
     var row = new SyncSourceRow("EXT-00001", "MC-001", "01", "OPEN", "desc", NOW, NOW, null);
     when(sourceReader.readBatch("", 100)).thenReturn(List.of(row));
-    when(batchProcessor.importBatch(List.of(row))).thenReturn(1);
+    when(batchProcessor.importBatch(List.of(row)))
+        .thenReturn(new BatchResult(1, 0, java.util.List.of()));
 
     worker.poll();
 

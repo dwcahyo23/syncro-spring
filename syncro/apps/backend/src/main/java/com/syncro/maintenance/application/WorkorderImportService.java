@@ -4,12 +4,14 @@ import com.syncro.audit.application.AuditLogWriter;
 import com.syncro.audit.application.AuditRecord;
 import com.syncro.audit.domain.AuditAction;
 import com.syncro.audit.domain.AuditEntityType;
+import com.syncro.authz.application.PolicyDecisionPoint;
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
 import com.syncro.maintenance.infrastructure.db.WorkOrderEntity;
 import com.syncro.maintenance.infrastructure.db.WorkOrderRepository;
 import com.syncro.maintenance.infrastructure.db.WorkOrderStatusHistoryEntity;
 import com.syncro.maintenance.infrastructure.db.WorkOrderStatusHistoryRepository;
-import com.syncro.authz.application.PolicyDecisionPoint;
+import com.syncro.sync.application.FieldClassificationService;
+import com.syncro.sync.domain.UpsertResult;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
@@ -20,7 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Single upsert entry point for SYNCED workorders (AD-7/FR-150/FR-151, story 13-1).
+ * Single upsert entry point for SYNCED workorders (AD-7/FR-150/FR-151, story 13-1/13-2).
  *
  * <p>The sync module never writes {@code work_orders} via JPA — every external row
  * passes through {@link #upsert}. The maintenance module owns the workorder aggregate:
@@ -28,8 +30,17 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code sheet_no} as id (no WO- prefix), writes a {@code SYNC}/{@code SYSTEM} status
  * history row, and records audit via {@link AuditLogWriter#recordSystem}. A re-sync of
  * an existing sheet_no updates fields and bumps {@code sync_version} — idempotent per
- * FR-151. Unresolvable machines/categories never auto-create workorders (13.3 adds
- * quarantine); callers resolve and skip such rows before invoking this service.
+ * FR-151.
+ *
+ * <p>Conflict resolution (story 13-2, AD-8/FR-152/NFR-P2-9): on the update path only
+ * MASTER-classified fields take the external value (via {@link FieldClassificationService});
+ * OPERATIONAL fields are never touched — the local report/evidence/ratings stay intact.
+ * The freshness gate (13-1) runs first, so a stale external row is a no-op; only a
+ * genuinely newer row can hit the protection gates: a DONE/CLOSED workorder is never
+ * regressed ({@code TERMINAL_STATE_PROTECTED}) and the derived ON_PROCUREMENT state is
+ * never overridden by an external status ({@code ON_PROCUREMENT_PROTECTED}). Rejections
+ * are returned as {@link UpsertResult#REJECTED} — the sync batch processor persists them
+ * to {@code sync_quarantine}; this service never writes quarantine itself.
  */
 @Service
 public class WorkorderImportService {
@@ -41,13 +52,16 @@ public class WorkorderImportService {
   private final WorkOrderRepository workOrders;
   private final WorkOrderStatusHistoryRepository statusHistory;
   private final AuditLogWriter auditLog;
+  private final FieldClassificationService fieldClassification;
   private final Clock clock;
 
   public WorkorderImportService(WorkOrderRepository workOrders,
-      WorkOrderStatusHistoryRepository statusHistory, AuditLogWriter auditLog, Clock clock) {
+      WorkOrderStatusHistoryRepository statusHistory, AuditLogWriter auditLog,
+      FieldClassificationService fieldClassification, Clock clock) {
     this.workOrders = workOrders;
     this.statusHistory = statusHistory;
     this.auditLog = auditLog;
+    this.fieldClassification = fieldClassification;
     this.clock = clock;
   }
 
@@ -62,10 +76,11 @@ public class WorkorderImportService {
    * @param parentId     external parent sheet_no, or null
    * @param externalCreatedAt external row's created_at (UTC), used for the create path
    * @param externalUpdatedAt external row's updated_at (UTC), used for the freshness check
-   * @return the workorder id (the sheet_no)
+   * @return the upsert outcome ({@link UpsertResult}) — CREATED/UPDATED on success,
+   *         REJECTED with the protection reason when a gate fires
    */
   @Transactional
-  public String upsert(String sheetNo, UUID machineId, UUID categoryId, WorkOrderStatus status,
+  public UpsertResult upsert(String sheetNo, UUID machineId, UUID categoryId, WorkOrderStatus status,
       String description, String parentId, Instant externalCreatedAt, Instant externalUpdatedAt) {
     var now = Instant.now(clock);
     var existing = workOrders.findById(sheetNo);
@@ -73,23 +88,51 @@ public class WorkorderImportService {
     if (existing.isPresent()) {
       var entity = existing.get();
       var fromStatus = entity.getStatus();
-      // External master fields (status/machine/category/description/parent) take the external
-      // value only when the external row is newer than the last local touch; local operational
-      // fields (report, evidence, ratings, sessions) are always preserved (13.2 adds field
-      // classification). sync_version bumps with every applied update. A no-op re-sync (stale
-      // or equal external row) writes nothing — no history, no audit — so unchanged workorders
-      // do not grow the audit/status-history tables on every 60s poll.
+
+      // Freshness gate (13-1): a stale or equal external row is a no-op — nothing is
+      // persisted, no history, no audit. Guarding this first means a stale row never
+      // triggers the protection gates either (no unbounded quarantine growth on every
+      // 60s poll for terminal rows still present in the external feed).
       if (externalUpdatedAt == null || !externalUpdatedAt.isAfter(entity.getUpdatedAt())) {
-        return sheetNo;
+        return UpsertResult.updated();
       }
+
+      // Terminal-state protection (NFR-P2-9): a DONE/CLOSED workorder is never regressed
+      // by sync. Any newer external touch of a terminal workorder is quarantined.
+      if (fromStatus == WorkOrderStatus.DONE || fromStatus == WorkOrderStatus.CLOSED) {
+        return UpsertResult.rejected(UpsertResult.TERMINAL_STATE_PROTECTED);
+      }
+
+      // ON_PROCUREMENT is derived locally from live sparepart requests (AD-5); an
+      // external status never overrides it.
+      if (fromStatus == WorkOrderStatus.ON_PROCUREMENT && status != WorkOrderStatus.ON_PROCUREMENT) {
+        return UpsertResult.rejected(UpsertResult.ON_PROCUREMENT_PROTECTED);
+      }
+
+      // Field classification (AD-8): only MASTER fields take the external value. The
+      // classification lives at the service layer — WorkOrderEntity.applySync remains a
+      // plain bulk setter, and the service passes the effective (classified) values.
+      var toStatus = fieldClassification.isMaster("status") ? status : fromStatus;
+      var toCategoryId = fieldClassification.isMaster("category_id")
+          ? categoryId : entity.getCategoryId();
+      var toMachineId = fieldClassification.isMaster("machine_id")
+          ? machineId : entity.getMachineId();
+      var toDescription = fieldClassification.isMaster("description")
+          ? description : entity.getDescription();
+      // parent_id only changes when the external row provides one (13-1 fix) and the
+      // field is MASTER-classified.
+      var toParentId = parentId != null && fieldClassification.isMaster("parent_id")
+          ? parentId : entity.getParentId();
+
       var previous = auditValues(entity);
-      entity.applySync(status, categoryId, machineId, description, parentId, externalUpdatedAt);
+      entity.applySync(toStatus, toCategoryId, toMachineId, toDescription, toParentId,
+          externalUpdatedAt);
       entity.bumpSyncVersion();
       var saved = workOrders.saveAndFlush(entity);
-      statusHistory.saveAndFlush(historyRow(sheetNo, fromStatus, status, now));
+      statusHistory.saveAndFlush(historyRow(sheetNo, fromStatus, toStatus, now));
       auditLog.recordSystem(new AuditRecord(AuditAction.UPDATE, AuditEntityType.WORK_ORDER,
           auditEntityId(sheetNo), sheetNo, null, previous, auditValues(saved), null));
-      return saved.getId();
+      return UpsertResult.updated();
     }
 
     var created = new WorkOrderEntity(sheetNo, SOURCE_SYNCED, parentId, status, categoryId, machineId,
@@ -100,7 +143,7 @@ public class WorkorderImportService {
     statusHistory.saveAndFlush(historyRow(sheetNo, null, status, now));
     auditLog.recordSystem(new AuditRecord(AuditAction.CREATE, AuditEntityType.WORK_ORDER,
         auditEntityId(sheetNo), sheetNo, null, null, auditValues(saved), null));
-    return saved.getId();
+    return UpsertResult.created();
   }
 
   /** Status-history row for sync transitions (source SYNC, actor SYSTEM). */
