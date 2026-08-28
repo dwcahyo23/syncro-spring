@@ -36,9 +36,9 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
 /**
- * Story 13-1 unit tests for {@link SyncWorker} — lock, watermark, retry, and
- * pipeline orchestration (FR-150). The upsert logic is delegated to
- * {@link SyncBatchProcessor} and tested separately.
+ * Story 13-1/13-3 unit tests for {@link SyncWorker} — lock, watermark, retry, and
+ * pipeline orchestration (FR-150). Story 13-3 extends the assertions to verify
+ * {@code rowsRejected} is persisted via {@link BatchResult#rejected()}.
  */
 @ExtendWith(MockitoExtension.class)
 class SyncWorkerTest {
@@ -71,7 +71,7 @@ class SyncWorkerTest {
     lenient().when(runs.saveAndFlush(any(SyncRunEntity.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
     lenient().when(runs.findById(any())).thenAnswer(invocation -> {
-      var run = new SyncRunEntity(invocation.getArgument(0), NOW, "RUNNING", 0, 0, null);
+      var run = new SyncRunEntity(invocation.getArgument(0), NOW, "RUNNING", 0, 0, 0, null);
       return Optional.of(run);
     });
     // Lenient to avoid UnnecessaryStubbing on the lock-held test.
@@ -110,7 +110,7 @@ class SyncWorkerTest {
   }
 
   @Test
-  @DisplayName("13.1-SW-003 P0 successful batch: rows read, rows upserted, watermark advanced")
+  @DisplayName("13.3-SW-003 P0 successful batch: rows read, rows upserted, rows rejected, watermark advanced")
   void successfulBatch() {
     when(valueOps.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(true);
     var row = new SyncSourceRow("EXT-00001", "MC-001", "01", "OPEN", "desc", NOW, NOW, null);
@@ -127,10 +127,32 @@ class SyncWorkerTest {
     assertThat(completed.getStatus()).isEqualTo("SUCCESS");
     assertThat(completed.getRowsRead()).isEqualTo(1);
     assertThat(completed.getRowsUpserted()).isEqualTo(1);
+    assertThat(completed.getRowsRejected()).isZero();
   }
 
   @Test
-  @DisplayName("13.1-SW-004 P0 external DB down: retries 3×, then cycle FAILED, schedule survives")
+  @DisplayName("13.3-SW-003b P0 successful batch with rejections: rowsRejected persisted")
+  void successfulBatchWithRejections() {
+    when(valueOps.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(true);
+    var row1 = new SyncSourceRow("EXT-00001", "MC-001", "01", "OPEN", "desc", NOW, NOW, null);
+    var row2 = new SyncSourceRow("EXT-00002", "MC-001", "01", "DONE", "desc", NOW, NOW, null);
+    when(sourceReader.readBatch("", 100)).thenReturn(List.of(row1, row2));
+    when(batchProcessor.importBatch(List.of(row1, row2)))
+        .thenReturn(new BatchResult(1, 1, java.util.List.of()));
+
+    worker.poll();
+
+    var runCaptor = ArgumentCaptor.forClass(SyncRunEntity.class);
+    verify(runs, times(2)).saveAndFlush(runCaptor.capture());
+    var completed = runCaptor.getAllValues().get(1);
+    assertThat(completed.getStatus()).isEqualTo("SUCCESS");
+    assertThat(completed.getRowsRead()).isEqualTo(2);
+    assertThat(completed.getRowsUpserted()).isEqualTo(1);
+    assertThat(completed.getRowsRejected()).isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName("13.1-SW-004 P0 external DB down: retries 3x, then cycle FAILED, schedule survives")
   void externalDbDownRetriesThenFails() {
     AtomicReference<String> lockValue = new AtomicReference<>();
     when(valueOps.setIfAbsent(eq(SyncWorker.LOCK_KEY), anyString(), eq(LOCK_TTL)))
@@ -151,6 +173,7 @@ class SyncWorkerTest {
     var failed = runCaptor.getAllValues().get(1);
     assertThat(failed.getStatus()).isEqualTo("FAILED");
     assertThat(failed.getRowsRead()).isZero();
+    assertThat(failed.getRowsRejected()).isZero();
     assertThat(failed.getErrorMessage()).isNotNull();
     // Lock released after failure (finally block).
     verify(redis).delete(SyncWorker.LOCK_KEY);
@@ -180,6 +203,7 @@ class SyncWorkerTest {
     // contributes 0 (consistent with the reader-failure path).
     assertThat(failed.getRowsRead()).isZero();
     assertThat(failed.getRowsUpserted()).isZero();
+    assertThat(failed.getRowsRejected()).isZero();
     assertThat(failed.getErrorMessage()).isNotNull();
     // Lock released after failure (finally block).
     verify(redis).delete(SyncWorker.LOCK_KEY);

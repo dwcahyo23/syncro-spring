@@ -236,10 +236,12 @@ user_management_paths := {
   "/api/v1/auth/users/*",
 }
 
-# Telemetry + notification-worker endpoints are SUPER_ADMIN-only in service.
+# Telemetry + notification-worker + sync-observability endpoints are SUPER_ADMIN-only
+# in service (health dashboard, story 13-3/FR-153).
 admin_only_paths := {
   "/api/v1/telemetry/**",
   "/api/v1/notification/worker/**",
+  "/api/v1/sync/**",
 }
 
 mutation_allowed if {

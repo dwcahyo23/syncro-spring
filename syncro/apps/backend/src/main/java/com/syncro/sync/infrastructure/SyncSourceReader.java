@@ -4,6 +4,7 @@ import com.syncro.sync.domain.SyncSourceRow;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -64,8 +65,19 @@ public class SyncSourceReader {
       );
     }
 
+    /**
+     * Converts a raw DB timestamp to UTC by interpreting the stored value as
+     * Asia/Jakarta local time (FR-154). The external {@code sch_ot.mow_mtn_appm}
+     * schema uses {@code TIMESTAMP} (no timezone) columns storing Asia/Jakarta
+     * local time, but the JDBC driver returns them as {@code java.sql.Timestamp}
+     * which {@code toInstant()} would interpret as UTC. This method corrects the
+     * interpretation.
+     */
     private static Instant toInstant(java.sql.Timestamp timestamp) {
-      return timestamp != null ? timestamp.toInstant() : null;
+      if (timestamp == null) {
+        return null;
+      }
+      return timestamp.toLocalDateTime().atZone(ZoneId.of("Asia/Jakarta")).toInstant();
     }
   }
 }

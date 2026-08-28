@@ -35,7 +35,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-25
-last_updated: 2026-08-28
+last_updated: 2026-08-29
+# updated: 13-3 done (quarantine & observability); epic-13 in-progress
 # updated: 13-2 done (conflict resolution & field mapping); 13-1 done
 # updated: 13-1 done (sync pipeline foundation); epic-13 in-progress
 # updated: 12-4 done (stock OP/OQ & new-item completion); epic-12 done
@@ -189,7 +190,7 @@ development_status:
   epic-13: in-progress
   13-1-sync-pipeline-foundation: done
   13-2-conflict-resolution-and-field-mapping: done
-  13-3-quarantine-and-observability: backlog
+  13-3-quarantine-and-observability: done
   epic-13-retrospective: optional
 
   # Epic 14: Dashboards, Reports & Notifications

@@ -9,7 +9,7 @@ import java.util.UUID;
 
 /**
  * Persisted {@code sync_runs} row (AD-7/FR-150). One row per sync cycle recording
- * status, rows read, rows upserted, and error detail.
+ * status, rows read, rows upserted, rows rejected, and error detail.
  */
 @Entity
 @Table(name = "sync_runs")
@@ -33,6 +33,9 @@ public class SyncRunEntity {
   @Column(name = "rows_upserted", nullable = false)
   private int rowsUpserted;
 
+  @Column(name = "rows_rejected", nullable = false)
+  private int rowsRejected;
+
   @Column(name = "error_message", columnDefinition = "text")
   private String errorMessage;
 
@@ -41,11 +44,17 @@ public class SyncRunEntity {
 
   public SyncRunEntity(UUID id, Instant startedAt, String status, int rowsRead, int rowsUpserted,
       String errorMessage) {
+    this(id, startedAt, status, rowsRead, rowsUpserted, 0, errorMessage);
+  }
+
+  public SyncRunEntity(UUID id, Instant startedAt, String status, int rowsRead, int rowsUpserted,
+      int rowsRejected, String errorMessage) {
     this.id = id;
     this.startedAt = startedAt;
     this.status = status;
     this.rowsRead = rowsRead;
     this.rowsUpserted = rowsUpserted;
+    this.rowsRejected = rowsRejected;
     this.errorMessage = errorMessage;
   }
 
@@ -73,15 +82,20 @@ public class SyncRunEntity {
     return rowsUpserted;
   }
 
+  public int getRowsRejected() {
+    return rowsRejected;
+  }
+
   public String getErrorMessage() {
     return errorMessage;
   }
 
-  public void complete(String status, int rowsRead, int rowsUpserted, String errorMessage,
-      Instant completedAt) {
+  public void complete(String status, int rowsRead, int rowsUpserted, int rowsRejected,
+      String errorMessage, Instant completedAt) {
     this.status = status;
     this.rowsRead = rowsRead;
     this.rowsUpserted = rowsUpserted;
+    this.rowsRejected = rowsRejected;
     this.errorMessage = errorMessage;
     this.completedAt = completedAt;
   }

@@ -106,6 +106,7 @@ public class SyncWorker {
 
     int totalRead = 0;
     int totalUpserted = 0;
+    int totalRejected = 0;
     String lastSheetNo = watermarks.findLastSheetNo().orElse(null);
 
     try {
@@ -114,7 +115,9 @@ public class SyncWorker {
         if (batch.isEmpty()) {
           break;
         }
-        totalUpserted += batchProcessor.importBatch(batch).upserted();
+        var result = batchProcessor.importBatch(batch);
+        totalUpserted += result.upserted();
+        totalRejected += result.rejected();
         totalRead += batch.size();
         lastSheetNo = lastRowOf(batch);
         if (batch.size() < properties.batchSize()) {
@@ -123,16 +126,16 @@ public class SyncWorker {
       }
 
       var completed = runs.findById(runId).orElseThrow();
-      completed.complete(SUCCESS, totalRead, totalUpserted, null, Instant.now(clock));
+      completed.complete(SUCCESS, totalRead, totalUpserted, totalRejected, null, Instant.now(clock));
       runs.saveAndFlush(completed);
-      log.info("[SyncWorker] run={} success rowsRead={} rowsUpserted={} watermark={}",
-          runId, totalRead, totalUpserted, lastSheetNo);
+      log.info("[SyncWorker] run={} success rowsRead={} rowsUpserted={} rowsRejected={} watermark={}",
+          runId, totalRead, totalUpserted, totalRejected, lastSheetNo);
     } catch (Exception e) {
       var failed = runs.findById(runId).orElseThrow();
-      failed.complete(FAILED, totalRead, totalUpserted, safeMessage(e), Instant.now(clock));
+      failed.complete(FAILED, totalRead, totalUpserted, totalRejected, safeMessage(e), Instant.now(clock));
       runs.saveAndFlush(failed);
-      log.error("[SyncWorker] run={} failed rowsRead={} watermark={}: {}",
-          runId, totalRead, lastSheetNo, e.getMessage(), e);
+      log.error("[SyncWorker] run={} failed rowsRead={} rowsRejected={} watermark={}: {}",
+          runId, totalRead, totalRejected, lastSheetNo, e.getMessage(), e);
     }
   }
 
