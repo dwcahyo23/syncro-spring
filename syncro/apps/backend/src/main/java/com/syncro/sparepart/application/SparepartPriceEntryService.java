@@ -66,8 +66,23 @@ public class SparepartPriceEntryService {
    */
   @Transactional
   public SparepartPriceEntryView create(AuthenticatedUser user, UUID sparepartId, PriceEntryCommand command) {
-    requireMutationRole(user);
-    jobScopes.requireLevelOrAbove(user, JOB_SCOPE_LEVEL);
+    return create(user, sparepartId, command, false);
+  }
+
+  /**
+   * Story 12-4 completion-path overload of {@link #create}: when {@code completingRequest}
+   * is true the MANAGER-only app-role gate is relaxed to admit INVENTORY_MAINTENANCE/
+   * STOREKEEPER and the LEADER job-scope requirement is skipped (inventory/stores users
+   * typically hold no machine responsibility). Plant access still applies via
+   * {@link #findScopedSparepart}. The completion endpoint itself is the OPA-enforced surface.
+   */
+  @Transactional
+  public SparepartPriceEntryView create(AuthenticatedUser user, UUID sparepartId, PriceEntryCommand command,
+      boolean completingRequest) {
+    requireMutationRole(user, completingRequest);
+    if (!completingRequest) {
+      jobScopes.requireLevelOrAbove(user, JOB_SCOPE_LEVEL);
+    }
     var sparepart = findScopedSparepart(user, sparepartId);
     var normalized = normalize(command);
     var idrAmount = normalized.amount().multiply(normalized.kursToIdr()).setScale(2, RoundingMode.HALF_UP);
@@ -95,9 +110,20 @@ public class SparepartPriceEntryService {
   }
 
   private void requireMutationRole(AuthenticatedUser user) {
-    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN && user.applicationRole() != ApplicationRole.MANAGER_MAINTENANCE) {
-      throw new MutationForbiddenException();
+    requireMutationRole(user, false);
+  }
+
+  /** Story 12-4 gate relaxation: the completion path (FR-144) also admits inventory/stores. */
+  private void requireMutationRole(AuthenticatedUser user, boolean completingRequest) {
+    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN
+        || user.applicationRole() == ApplicationRole.MANAGER_MAINTENANCE) {
+      return;
     }
+    if (completingRequest && (user.applicationRole() == ApplicationRole.INVENTORY_MAINTENANCE
+        || user.applicationRole() == ApplicationRole.STOREKEEPER)) {
+      return;
+    }
+    throw new MutationForbiddenException();
   }
 
   private SparepartEntity findScopedSparepart(AuthenticatedUser user, UUID sparepartId) {

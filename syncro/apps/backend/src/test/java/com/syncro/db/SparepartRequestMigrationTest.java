@@ -258,6 +258,34 @@ class SparepartRequestMigrationTest extends AbstractPostgresIntegrationTest {
         WHERE table_schema = 'public' AND table_name = 'notification_jobs' AND column_name = 'message_body'
         """, String.class);
     assertThat(nullable).isEqualTo("YES");
+    // A job row can carry a pre-composed body (escalation jobs) — actually insert one.
+    // alert_id is NULL (escalation-job shape; V62 made it nullable).
+    jdbc.update("""
+        INSERT INTO notification_jobs (id, alert_id, escalation_level, status, idempotency_key, message_body)
+        VALUES (?, NULL, 'ACK_WAITING', 'PENDING', ?, ?)
+        """, UUID.randomUUID(), "KEY:" + UUID.randomUUID(), "body text");
+    assertThat(jdbc.queryForObject(
+        "SELECT count(*) FROM notification_jobs WHERE message_body = 'body text'", Long.class))
+        .isEqualTo(1L);
+  }
+
+  @Test
+  @DisplayName("12.3-DB-010 P0 V62 makes alert_id nullable for escalation jobs")
+  void notificationJobsAlertIdNullable() {
+    var nullable = jdbc.queryForObject("""
+        SELECT is_nullable FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'notification_jobs' AND column_name = 'alert_id'
+        """, String.class);
+    assertThat(nullable).isEqualTo("YES");
+    // An escalation job (no alert) can be inserted with a NULL alert_id — the FK is
+    // satisfied vacuously by PostgreSQL. This is the runtime path that was broken before V62.
+    jdbc.update("""
+        INSERT INTO notification_jobs (id, alert_id, escalation_level, status, idempotency_key, message_body)
+        VALUES (?, NULL, 'ACK_WAITING', 'PENDING', ?, 'body')
+        """, UUID.randomUUID(), "SPAREPART_REQUEST:" + UUID.randomUUID());
+    assertThat(jdbc.queryForObject(
+        "SELECT count(*) FROM notification_jobs WHERE alert_id IS NULL AND escalation_level = 'ACK_WAITING'",
+        Long.class)).isEqualTo(1L);
   }
 
   @Test
@@ -288,6 +316,136 @@ class SparepartRequestMigrationTest extends AbstractPostgresIntegrationTest {
     assertThat(durations.get(0).get("duration_minutes")).isEqualTo(480);
     assertThat(durations.get(1).get("duration_minutes")).isEqualTo(1440);
     assertThat(durations.get(2).get("duration_minutes")).isEqualTo(2880);
+  }
+
+  // -------------------------------------------------------------------------
+  // Story 12-4 (V61): sparepart_stock + audit entity-type extension
+  // -------------------------------------------------------------------------
+
+  @Test
+  @DisplayName("12.4-DB-001 P0 sparepart_stock table exists with expected columns")
+  void stockTableExists() {
+    assertThat(columnNames("sparepart_stock"))
+        .contains("material_code", "plant_id", "stock_on_hand", "order_point", "order_qty",
+            "version", "created_at", "updated_at");
+  }
+
+  private record StockFixture(UUID plantId, UUID machineId) {
+  }
+
+  /** Creates a plant + machine group + machine + sparepart with a material code. */
+  private StockFixture stockFixture(String codeSuffix, String materialCode) {
+    var plantId = UUID.randomUUID();
+    jdbc.update("INSERT INTO plants (id, code, name, created_at, updated_at) VALUES (?,?,?,?,?)",
+        plantId, "PLANT-" + codeSuffix, "Plant " + codeSuffix, TS, TS);
+    var groupId = UUID.randomUUID();
+    jdbc.update("INSERT INTO machine_groups (id, plant_id, name, created_at, updated_at) VALUES (?,?,?,?,?)",
+        groupId, plantId, "Group " + codeSuffix, TS, TS);
+    var machineId = UUID.randomUUID();
+    jdbc.update("""
+        INSERT INTO machines (id, plant_id, machine_group_id, code, name, status, created_at, updated_at)
+        VALUES (?,?,?,?,?, 'ACTIVE', ?, ?)
+        """, machineId, plantId, groupId, "M-" + codeSuffix, "Machine " + codeSuffix, TS, TS);
+    // ELECTRIC category is seeded by V13; reuse it (unique per dimension+code).
+    var categoryId = jdbc.queryForObject(
+        "SELECT id FROM sparepart_taxonomy WHERE dimension = 'CATEGORY' AND code = 'ELECTRIC'", UUID.class);
+    var brandId = UUID.randomUUID();
+    jdbc.update("""
+        INSERT INTO sparepart_taxonomy (id, dimension, code, name, category_id, created_at, updated_at)
+        VALUES (?, 'BRAND', ?, 'Brand', ?, ?, ?)
+        """, brandId, "BRAND-" + codeSuffix, categoryId, TS, TS);
+    var kindId = UUID.randomUUID();
+    jdbc.update("""
+        INSERT INTO sparepart_taxonomy (id, dimension, code, name, category_id, created_at, updated_at)
+        VALUES (?, 'KIND', ?, 'Kind', ?, ?, ?)
+        """, kindId, "KIND-" + codeSuffix, categoryId, TS, TS);
+    var typeId = UUID.randomUUID();
+    jdbc.update("""
+        INSERT INTO sparepart_taxonomy (id, dimension, code, name, category_id, created_at, updated_at)
+        VALUES (?, 'TYPE', ?, 'Type', ?, ?, ?)
+        """, typeId, "TYPE-" + codeSuffix, categoryId, TS, TS);
+    jdbc.update("""
+        INSERT INTO spareparts (id, code, name, machine_id, category_id, brand_id, kind_id, type_id, material_code, created_at, updated_at)
+        VALUES (?, 'BOM-' || ?, 'Stock Part', ?, ?, ?, ?, ?, ?, ?, ?)
+        """, UUID.randomUUID(), codeSuffix, machineId, categoryId, brandId, kindId, typeId, materialCode, TS, TS);
+    return new StockFixture(plantId, machineId);
+  }
+
+  @Test
+  @DisplayName("12.4-DB-002 P0 sparepart_stock unique per (material_code, plant_id)")
+  void stockUniquePerMaterialPlant() {
+    var fixture = stockFixture("A", "MC-STK-001");
+    jdbc.update("""
+        INSERT INTO sparepart_stock (material_code, plant_id, stock_on_hand, order_point, order_qty, version)
+        VALUES ('MC-STK-001', ?, 10, 5, 20, 0)
+        """, fixture.plantId());
+    assertThatThrownBy(() -> jdbc.update("""
+        INSERT INTO sparepart_stock (material_code, plant_id, stock_on_hand, order_point, order_qty, version)
+        VALUES ('MC-STK-001', ?, 10, 5, 20, 0)
+        """, fixture.plantId()))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  @Test
+  @DisplayName("12.4-DB-003 P0 sparepart_stock FK to spareparts.material_code rejects unknown codes")
+  void stockMaterialCodeFk() {
+    var fixture = stockFixture("B", "MC-STK-003");
+    assertThatThrownBy(() -> jdbc.update("""
+        INSERT INTO sparepart_stock (material_code, plant_id, stock_on_hand, order_point, order_qty, version)
+        VALUES ('UNKNOWN-MC-001', ?, 10, 5, 20, 0)
+        """, fixture.plantId()))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  @Test
+  @DisplayName("12.4-DB-004 P0 sparepart_stock defaults: on-hand 0, OP 0, OQ 0, version 0")
+  void stockDefaults() {
+    var fixture = stockFixture("C", "MC-STK-004");
+    jdbc.update("""
+        INSERT INTO sparepart_stock (material_code, plant_id)
+        VALUES ('MC-STK-004', ?)
+        """, fixture.plantId());
+    var row = jdbc.queryForMap(
+        "SELECT stock_on_hand, order_point, order_qty, version FROM sparepart_stock WHERE material_code = 'MC-STK-004'");
+    assertThat(((Number) row.get("stock_on_hand")).doubleValue()).isEqualTo(0.0);
+    assertThat(((Number) row.get("order_point")).doubleValue()).isEqualTo(0.0);
+    assertThat(((Number) row.get("order_qty")).doubleValue()).isEqualTo(0.0);
+    assertThat(((Number) row.get("version")).longValue()).isZero();
+  }
+
+  @Test
+  @DisplayName("12.4-DB-005 P0 audit_log entity_type accepts SPAREPART_STOCK")
+  void stockAuditEntityTypeAccepts() {
+    jdbc.update("""
+        INSERT INTO audit_log (id, actor_id, actor_name, action, entity_type, entity_id, entity_label, created_at)
+        VALUES (?,?,?,?,?,?,?,?)
+        """, UUID.randomUUID(), UUID.randomUUID(), "audit-actor", "CREATE", "SPAREPART_STOCK",
+        UUID.randomUUID(), "MC-STK-001 @plant", TS);
+    assertThat(jdbc.queryForObject(
+        "SELECT count(*) FROM audit_log WHERE entity_type = 'SPAREPART_STOCK'", Long.class)).isEqualTo(1L);
+  }
+
+  @Test
+  @DisplayName("12.4-DB-006 P0 sparepart_stock has expected index")
+  void stockIndexesExist() {
+    assertThat(jdbc.queryForList("SELECT indexname FROM pg_indexes WHERE tablename = 'sparepart_stock'"))
+        .extracting(row -> row.get("indexname"))
+        .contains("pk_sparepart_stock", "idx_sparepart_stock_plant");
+  }
+
+  @Test
+  @DisplayName("12.4-DB-007 P0 audit_log CHECK still accepts all prior entity types after V61 re-add")
+  void stockAuditPreservesExistingTypes() {
+    for (var type : List.of("WORK_ORDER", "PREVENTIVE_ATTACHMENT", "SPAREPART_REQUEST", "SPAREPART_STOCK")) {
+      jdbc.update("""
+          INSERT INTO audit_log (id, actor_id, actor_name, action, entity_type, entity_id, entity_label, created_at)
+          VALUES (?,?,?,?,?,?,?,?)
+          """, UUID.randomUUID(), UUID.randomUUID(), "audit-actor", "CREATE", type,
+          UUID.randomUUID(), "existing-" + type, TS);
+    }
+    assertThat(jdbc.queryForObject(
+        "SELECT count(*) FROM audit_log WHERE entity_type IN ('WORK_ORDER','PREVENTIVE_ATTACHMENT','SPAREPART_REQUEST','SPAREPART_STOCK')",
+        Long.class)).isEqualTo(4L);
   }
 
   private java.util.List<String> columnNames(String table) {

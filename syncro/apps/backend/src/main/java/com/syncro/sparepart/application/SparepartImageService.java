@@ -96,6 +96,37 @@ public class SparepartImageService {
     return new SparepartImageView(saved.getId(), newKey, presignedGetUrl(newKey));
   }
 
+  /**
+   * Story 12-4: attaches an already-stored Garage object key to the sparepart's
+   * {@code image_object_key} without re-uploading bytes. Used by the request-completion
+   * flow (FR-144) where the frontend has already placed the object in Garage and the
+   * completion endpoint only persists the reference. The same gate relaxation as the
+   * other completion-path methods applies (INVENTORY_MAINTENANCE/STOREKEEPER admitted).
+   * If the sparepart already has an image, the previous object is deleted (replace
+   * semantics, no orphans).
+   */
+  @Transactional
+  public SparepartImageView attachObjectKey(AuthenticatedUser user, UUID sparepartId, String objectKey,
+      boolean completingRequest) {
+    requireMutationRole(user, completingRequest);
+    var sparepart = findScopedSparepart(user, sparepartId);
+    if (objectKey == null || objectKey.isBlank()) {
+      throw new ValidationException(Map.of("imageObjectKey", "Object key must not be blank."));
+    }
+    var previousKey = sparepart.getImageObjectKey();
+    if (previousKey != null && !previousKey.equals(objectKey)) {
+      deleteObject(previousKey);
+    }
+    sparepart.updateImageObjectKey(objectKey, Instant.now(clock));
+    var saved = spareparts.saveAndFlush(sparepart);
+    var action = previousKey == null ? AuditAction.CREATE : AuditAction.UPDATE;
+    var previous = previousKey == null ? null : Map.<String, Object>of("imageObjectKey", previousKey);
+    auditLog.record(user, new AuditRecord(action, AuditEntityType.SPAREPART, sparepartId,
+        saved.getCode(), saved.getMachine().getPlant().getId(), previous,
+        Map.<String, Object>of("imageObjectKey", objectKey), null));
+    return new SparepartImageView(saved.getId(), objectKey, presignedGetUrl(objectKey));
+  }
+
   /** Removes the sparepart image; a missing image is an idempotent no-op with no audit. */
   @Transactional
   public void delete(AuthenticatedUser user, UUID sparepartId) {
@@ -139,10 +170,20 @@ public class SparepartImageService {
   }
 
   private void requireMutationRole(AuthenticatedUser user) {
-    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN
-        && user.applicationRole() != ApplicationRole.MANAGER_MAINTENANCE) {
-      throw new MutationForbiddenException();
+    requireMutationRole(user, false);
+  }
+
+  /** Story 12-4 gate relaxation: the completion path (FR-144) also admits inventory/stores. */
+  private void requireMutationRole(AuthenticatedUser user, boolean completingRequest) {
+    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN
+        || user.applicationRole() == ApplicationRole.MANAGER_MAINTENANCE) {
+      return;
     }
+    if (completingRequest && (user.applicationRole() == ApplicationRole.INVENTORY_MAINTENANCE
+        || user.applicationRole() == ApplicationRole.STOREKEEPER)) {
+      return;
+    }
+    throw new MutationForbiddenException();
   }
 
   private SparepartEntity findScopedSparepart(AuthenticatedUser user, UUID sparepartId) {

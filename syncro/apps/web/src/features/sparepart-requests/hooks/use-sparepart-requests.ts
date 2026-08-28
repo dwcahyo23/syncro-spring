@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import type {
   ApproveRequest,
+  CompleteRequest,
   CreateSparepartRequestRequest,
   MreRequest,
   SparepartRequestView,
@@ -110,6 +111,34 @@ export function useRecordMre() {
         toast.error("MRE can only be recorded for a purchase-requested part.");
       } else {
         toast.error("Failed to record MRE code");
+      }
+    },
+  });
+}
+
+/** Completes a new-item request (story 12-4, FR-144). */
+export function useCompleteRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: CompleteRequest }) => {
+      const response = await syncroFetch<{ data: SparepartRequestView }>(`${REQUESTS_KEY}/${id}/complete`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [REQUESTS_KEY] });
+      toast.success("Request completed");
+    },
+    onError: (error: unknown) => {
+      const err = error as { code?: string };
+      if (err.code === "INVALID_STATE_TRANSITION") {
+        toast.error("This request is no longer pending completion.");
+      } else if (err.code === "DUPLICATE_MATERIAL_CODE") {
+        toast.error("That material code already belongs to another part.");
+      } else {
+        toast.error("Failed to complete request");
       }
     },
   });

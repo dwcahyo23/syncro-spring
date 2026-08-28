@@ -35,6 +35,8 @@ public class SparepartService {
   private static final String DUPLICATE_CODE_CONSTRAINT = "uq_spareparts_lower_code";
   private static final String DUPLICATE_IDENTITY_CONSTRAINT = "uq_spareparts_machine_taxonomy_identity";
   private static final String DUPLICATE_MATERIAL_CODE_CONSTRAINT = "uq_spareparts_material_code";
+  /** V61 (story 12-4) adds a case-sensitive UNIQUE backing the stock FK; duplicate codes can surface under either name. */
+  private static final String DUPLICATE_MATERIAL_CODE_KEY_CONSTRAINT = "uq_spareparts_material_code_key";
   private static final String PROCUREMENT_JOB_SCOPE_LEVEL = "LEADER";
   private static final int MAX_MATERIAL_CODE_LENGTH = 64;
 
@@ -147,8 +149,24 @@ public class SparepartService {
    */
   @Transactional
   public SparepartView patchProcurement(AuthenticatedUser user, UUID sparepartId, SparepartProcurementCommand command) {
-    requireMutationRole(user);
-    jobScopes.requireLevelOrAbove(user, PROCUREMENT_JOB_SCOPE_LEVEL);
+    return patchProcurement(user, sparepartId, command, false);
+  }
+
+  /**
+   * Story 12-4: completion-path overload of {@link #patchProcurement}. When
+   * {@code completingRequest} is true the MANAGER-only app-role gate is relaxed to
+   * accept INVENTORY_MAINTENANCE/STOREKEEPER (FR-144 requires inventory/stores to
+   * complete a new-item request); the LEADER job-scope check is skipped for the same
+   * reason (inventory/stores users typically hold no machine responsibility). Plant
+   * access still applies. The completion endpoint itself is the OPA-enforced surface.
+   */
+  @Transactional
+  public SparepartView patchProcurement(AuthenticatedUser user, UUID sparepartId,
+      SparepartProcurementCommand command, boolean completingRequest) {
+    requireMutationRole(user, completingRequest);
+    if (!completingRequest) {
+      jobScopes.requireLevelOrAbove(user, PROCUREMENT_JOB_SCOPE_LEVEL);
+    }
     var sparepart = find(sparepartId);
     requireSparepartPlantAccess(user, sparepart);
     var materialCode = normalizeMaterialCode(command.materialCode());
@@ -170,14 +188,71 @@ public class SparepartService {
     return toView(saved);
   }
 
+  /**
+   * Story 12-4: creates a bare (minimal) sparepart record for the PENDING_COMPLETION
+   * completion flow when no sparepart yet exists with the given material code.
+   * Uses the ELECTRIC category and creates placeholder brand/kind/type taxonomy entries
+   * if they do not yet exist — the full taxonomy is out of scope for this story;
+   * a later masterdata story can enrich it.
+   */
+  @Transactional
+  public SparepartView createForCompletion(AuthenticatedUser user, UUID machineId, String materialCode) {
+    var machine = resolveMachine(user, machineId);
+    var electricCat = taxonomy.findByDimensionAndCodeIgnoreCase(SparepartTaxonomyDimension.CATEGORY, "ELECTRIC")
+        .orElseThrow(() -> new SparepartTaxonomyReferenceNotFoundException());
+    var brand = ensureTaxonomy(SparepartTaxonomyDimension.BRAND, "GENERIC", "Generic", electricCat);
+    var kind = ensureTaxonomy(SparepartTaxonomyDimension.KIND, "GENERIC", "Generic", electricCat);
+    var type = ensureTaxonomy(SparepartTaxonomyDimension.TYPE, "GENERIC", "Generic", electricCat);
+
+    var now = Instant.now(clock);
+    var name = "Part " + materialCode;
+    var generatedCode = nextBomCode(machine, new TaxonomyRefs(electricCat, brand, kind, type));
+    var saved = save(new SparepartEntity(UUID.randomUUID(), generatedCode, name, machine,
+        electricCat, brand, kind, type, now, now));
+    // Set the material code on the freshly created sparepart
+    saved.updateProcurement(materialCode, null, now);
+    saved = spareparts.saveAndFlush(saved);
+
+    auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.SPAREPART,
+        saved.getId(), saved.getCode(), machine.getPlant().getId(), null,
+        SparepartAuditValues.of(saved), null));
+    return toView(saved);
+  }
+
+  /** Finds a taxonomy entry by dimension and code, or creates it if missing. */
+  private SparepartTaxonomyEntity ensureTaxonomy(SparepartTaxonomyDimension dimension, String code,
+      String name, SparepartTaxonomyEntity category) {
+    return taxonomy.findByDimensionAndCodeIgnoreCase(dimension, code)
+        .orElseGet(() -> {
+          var now = Instant.now(clock);
+          var entity = new SparepartTaxonomyEntity(UUID.randomUUID(), dimension, code, name, category, now, now);
+          return taxonomy.saveAndFlush(entity);
+        });
+  }
+
   private SparepartEntity find(UUID sparepartId) {
     return spareparts.findById(sparepartId).orElseThrow(SparepartNotFoundException::new);
   }
 
   private void requireMutationRole(AuthenticatedUser user) {
-    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN && user.applicationRole() != ApplicationRole.MANAGER_MAINTENANCE) {
-      throw new SparepartMutationForbiddenException();
+    requireMutationRole(user, false);
+  }
+
+  /**
+   * Story 12-4 gate relaxation: the completion path (FR-144) also admits
+   * INVENTORY_MAINTENANCE/STOREKEEPER. All other mutations stay
+   * SUPER_ADMIN/MANAGER_MAINTENANCE-only.
+   */
+  private void requireMutationRole(AuthenticatedUser user, boolean completingRequest) {
+    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN
+        || user.applicationRole() == ApplicationRole.MANAGER_MAINTENANCE) {
+      return;
     }
+    if (completingRequest && (user.applicationRole() == ApplicationRole.INVENTORY_MAINTENANCE
+        || user.applicationRole() == ApplicationRole.STOREKEEPER)) {
+      return;
+    }
+    throw new SparepartMutationForbiddenException();
   }
 
   private SparepartCommand normalize(SparepartCommand command) {
@@ -365,7 +440,8 @@ public class SparepartService {
       if (isConstraintViolation(exception, DUPLICATE_CODE_CONSTRAINT, DUPLICATE_IDENTITY_CONSTRAINT)) {
         throw new DuplicateSparepartException();
       }
-      if (isConstraintViolation(exception, DUPLICATE_MATERIAL_CODE_CONSTRAINT)) {
+      if (isConstraintViolation(exception, DUPLICATE_MATERIAL_CODE_CONSTRAINT,
+          DUPLICATE_MATERIAL_CODE_KEY_CONSTRAINT)) {
         throw new DuplicateMaterialCodeException();
       }
       throw new SparepartDataIntegrityException();

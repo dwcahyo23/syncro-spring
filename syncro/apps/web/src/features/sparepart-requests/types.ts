@@ -64,3 +64,10 @@ export interface MreRequest {
 export interface ApproveRequest {
   note?: string | null;
 }
+
+/** Story 12-4: new-item completion request body (FR-144). */
+export interface CompleteRequest {
+  materialCode: string;
+  imageObjectKey?: string | null;
+  estPriceId?: string | null;
+}

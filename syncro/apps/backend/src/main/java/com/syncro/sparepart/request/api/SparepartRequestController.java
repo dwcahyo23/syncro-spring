@@ -2,6 +2,7 @@ package com.syncro.sparepart.request.api;
 
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.sparepart.request.api.SparepartRequestDtos.ApproveRequest;
+import com.syncro.sparepart.request.api.SparepartRequestDtos.CompleteRequest;
 import com.syncro.sparepart.request.api.SparepartRequestDtos.CreateSparepartRequestRequest;
 import com.syncro.sparepart.request.api.SparepartRequestDtos.MreRequest;
 import com.syncro.sparepart.request.api.SparepartRequestDtos.SparepartRequestListView;
@@ -9,6 +10,7 @@ import com.syncro.sparepart.request.api.SparepartRequestDtos.SparepartRequestVie
 import com.syncro.sparepart.request.api.SparepartRequestDtos.TransitionRequest;
 import com.syncro.sparepart.request.application.SparepartRequestService;
 import com.syncro.sparepart.request.application.SparepartRequestService.ApproveCommand;
+import com.syncro.sparepart.request.application.SparepartRequestService.CompleteCommand;
 import com.syncro.sparepart.request.application.SparepartRequestService.CreateRequestCommand;
 import com.syncro.sparepart.request.application.SparepartRequestService.MreCommand;
 import com.syncro.sparepart.request.application.SparepartRequestService.TransitionCommand;
@@ -126,6 +128,24 @@ public class SparepartRequestController {
       @PathVariable UUID id, @Valid @RequestBody(required = false) ApproveRequest request) {
     var command = new ApproveCommand(request == null ? null : request.note());
     return toView(service.approve(user, id, command), user);
+  }
+
+  @Operation(operationId = "completeSparepartRequest",
+      summary = "Complete a new-item request (FR-144): register material code, image and est price, then ACK")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Request completed (ACKED)",
+          content = @Content(schema = @Schema(implementation = SparepartRequestView.class))),
+      @ApiResponse(responseCode = "400", description = "Validation failed"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Request or price entry not found"),
+      @ApiResponse(responseCode = "409", description = "INVALID_STATE_TRANSITION or DUPLICATE_MATERIAL_CODE")
+  })
+  @PostMapping("/{id}/complete")
+  public SparepartRequestView complete(@AuthenticationPrincipal AuthenticatedUser user,
+      @PathVariable UUID id, @Valid @RequestBody CompleteRequest request) {
+    var command = new CompleteCommand(request.materialCode(), request.imageObjectKey(), request.estPriceId());
+    return toView(service.complete(user, id, command), user);
   }
 
   private SparepartRequestView toView(com.syncro.sparepart.request.domain.SparepartRequest r,

@@ -103,6 +103,11 @@ export const sidebarItems: NavGroup[] = [
         url: "/dashboard/sparepart-requests",
         icon: Package,
       },
+      {
+        title: "Stock",
+        url: "/dashboard/stock",
+        icon: Package,
+      },
     ],
   },
   {

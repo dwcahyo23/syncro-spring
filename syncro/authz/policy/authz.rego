@@ -105,6 +105,21 @@ sparepart_request_approval_paths := {
   "/api/v1/sparepart-requests/*/approve",
 }
 
+# Sparepart request completion (story 12-4, FR-144): coarse three-role allow set
+# (INVENTORY_MAINTENANCE, STOREKEEPER; SUPER_ADMIN via the generic rule). Scope and
+# state checks stay service-side (rego cannot see the body or the request state).
+sparepart_request_completion_paths := {
+  "/api/v1/sparepart-requests/*/complete",
+}
+
+# Sparepart stock (story 12-4, FR-146): mutations for INVENTORY_MAINTENANCE/STOREKEEPER
+# (SUPER_ADMIN via the generic rule). Reads (GET) flow through generic read_allowed.
+sparepart_stock_paths := {
+  "/api/v1/sparepart-stock",
+  "/api/v1/sparepart-stock/*",
+  "/api/v1/sparepart-stock/*/adjust",
+}
+
 workorder_assign_paths := {
   "/api/v1/workorders/*/assign",
 }
@@ -374,6 +389,33 @@ mutation_allowed if {
   input.subject.roles[_] == "SECTION_LEADER"
   is_mutation
   path_matches(sparepart_request_approval_paths)
+}
+
+# Sparepart request completion (story 12-4): INVENTORY_MAINTENANCE/STOREKEEPER
+# (SUPER_ADMIN via the generic rule).
+mutation_allowed if {
+  input.subject.roles[_] == "INVENTORY_MAINTENANCE"
+  is_mutation
+  path_matches(sparepart_request_completion_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STOREKEEPER"
+  is_mutation
+  path_matches(sparepart_request_completion_paths)
+}
+
+# Sparepart stock mutations (story 12-4, FR-146): INVENTORY_MAINTENANCE/STOREKEEPER.
+mutation_allowed if {
+  input.subject.roles[_] == "INVENTORY_MAINTENANCE"
+  is_mutation
+  path_matches(sparepart_stock_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STOREKEEPER"
+  is_mutation
+  path_matches(sparepart_stock_paths)
 }
 
 # Assign: leadership roles only (STAFF_MAINTENANCE and PRODUCTION_LEADER excluded).

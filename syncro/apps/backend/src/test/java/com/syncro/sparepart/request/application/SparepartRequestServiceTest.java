@@ -89,6 +89,14 @@ class SparepartRequestServiceTest {
   private AuditLogWriter auditLog;
   @Mock
   private OperationalScopeService scopes;
+  @Mock
+  private com.syncro.sparepart.stock.application.SparepartStockService stocks;
+  @Mock
+  private com.syncro.sparepart.application.SparepartService sparepartService;
+  @Mock
+  private com.syncro.sparepart.application.SparepartPriceEntryService priceEntryService;
+  @Mock
+  private com.syncro.sparepart.application.SparepartImageService sparepartImages;
 
   private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
   private final UUID plantId = UUID.randomUUID();
@@ -103,7 +111,8 @@ class SparepartRequestServiceTest {
   @BeforeEach
   void setUp() {
     service = new SparepartRequestService(requests, timelines, workOrders, workOrderService, machines, spareparts,
-        priceEntries, escalationConfigs, notificationJobs, auditLog, scopes, clock);
+        priceEntries, escalationConfigs, notificationJobs, auditLog, scopes, clock,
+        stocks, sparepartService, priceEntryService, sparepartImages);
     machine = machineWithPlant(plantId, groupId, machineId);
     lenient().when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
     when(requests.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -763,6 +772,85 @@ class SparepartRequestServiceTest {
   }
 
   @Test
+  @DisplayName("12.3-SVC-010 P0 allowedActions — in-scope SECTION_LEADER on a low-tier request gets approve + requiredApprovalRole")
+  void allowedActionsApproveForSectionLeader() {
+    var user = sectionLeaderUser();
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
+    var entity = requestEntity(SparepartRequestStatus.REQUESTED);
+    stubScopedMachine(machineId, user);
+    when(escalationConfigs.requiredApprovalRole(any(), anyBoolean())).thenReturn("SECTION_LEADER");
+    var request = SparepartRequestMapper.toDomain(entity);
+
+    var allowed = service.allowedActionsFor(user, request);
+
+    assertThat(allowed.allowedActions()).contains("approve");
+    assertThat(allowed.requiredApprovalRole()).isEqualTo("SECTION_LEADER");
+  }
+
+  @Test
+  @DisplayName("12.3-SVC-011 P0 allowedActions — the requester never gets approve (SoD)")
+  void allowedActionsNoApproveForRequester() {
+    var user = new AuthenticatedUser(staffId.toString(), "staff@test", ApplicationRole.SECTION_LEADER);
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
+    var entity = requestEntity(SparepartRequestStatus.REQUESTED); // requestedBy = staffId
+    stubScopedMachine(machineId, user);
+    var request = SparepartRequestMapper.toDomain(entity);
+
+    var allowed = service.allowedActionsFor(user, request);
+
+    assertThat(allowed.allowedActions()).doesNotContain("approve");
+    assertThat(allowed.requiredApprovalRole()).isNull();
+  }
+
+  @Test
+  @DisplayName("12.3-SVC-012 P0 allowedActions — out-of-scope leader gets no approve action")
+  void allowedActionsNoApproveOutOfScope() {
+    var user = sectionLeaderUser();
+    // Scope does not include the request's group — not an in-scope leader.
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(), Set.of()));
+    var entity = requestEntity(SparepartRequestStatus.REQUESTED);
+    stubScopedMachine(machineId, user);
+    when(escalationConfigs.requiredApprovalRole(any(), anyBoolean())).thenReturn("SECTION_LEADER");
+    var request = SparepartRequestMapper.toDomain(entity);
+
+    var allowed = service.allowedActionsFor(user, request);
+
+    assertThat(allowed.allowedActions()).doesNotContain("approve");
+  }
+
+  @Test
+  @DisplayName("12.3-SVC-013 P0 allowedActions — SUPER_ADMIN gets approve regardless of role/scope")
+  void allowedActionsApproveForSuperAdmin() {
+    var user = new AuthenticatedUser(UUID.randomUUID().toString(), "sa@test", ApplicationRole.SUPER_ADMIN);
+    var entity = requestEntity(SparepartRequestStatus.REQUESTED);
+    stubScopedMachine(machineId, user);
+    when(escalationConfigs.requiredApprovalRole(any(), anyBoolean())).thenReturn("MANAGER_MAINTENANCE");
+    var request = SparepartRequestMapper.toDomain(entity);
+
+    var allowed = service.allowedActionsFor(user, request);
+
+    assertThat(allowed.allowedActions()).contains("approve");
+    assertThat(allowed.requiredApprovalRole()).isEqualTo("MANAGER_MAINTENANCE");
+  }
+
+  @Test
+  @DisplayName("12.3-SVC-014 P0 allowedActions — a broken request (missing machine) does not 500 the list")
+  void allowedActionsBrokenRequestNoThrow() {
+    var user = sectionLeaderUser();
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
+    // Unbound CONSUMABLE with a workorder whose machine is missing → machineForRequest throws.
+    var entity = new SparepartRequestEntity(UUID.randomUUID(), SparepartRequestType.CONSUMABLE, "WO-MISSING", null,
+        null, null, (short) 1, null, null, null, SparepartRequestStatus.REQUESTED, staffId, NOW, null, NOW, NOW);
+    when(workOrders.findById("WO-MISSING")).thenReturn(Optional.empty());
+    var request = SparepartRequestMapper.toDomain(entity);
+
+    var allowed = service.allowedActionsFor(user, request);
+
+    assertThat(allowed.allowedActions()).doesNotContain("approve");
+    assertThat(allowed.requiredApprovalRole()).isNull();
+  }
+
+  @Test
   @DisplayName("12.2-SVC-016 P0 unknown request id → 404 REQUEST_NOT_FOUND")
   void notFound() {
     var user = inventoryUser();
@@ -771,6 +859,240 @@ class SparepartRequestServiceTest {
 
     assertThatThrownBy(() -> service.transition(user, id, new TransitionCommand(SparepartRequestStatus.ACKED, null)))
         .isInstanceOf(RequestNotFoundException.class);
+  }
+
+  // -------------------------------------------------------------------------
+  // Story 12-4: PICKED_UP decrement hook + completion (FR-144/FR-146/AD-11)
+  // -------------------------------------------------------------------------
+
+  @Test
+  @DisplayName("12.4-SVC-001 P0 PICKUP_DECREMENT — READY→PICKED_UP decrements stock by quantity in the same transaction")
+  void pickUpDecrementsStock() {
+    var user = sectionLeaderUser();
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
+    var entity = requestEntity(SparepartRequestStatus.READY);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+    when(spareparts.findByMaterialCodeIgnoreCase("MC-0001"))
+        .thenReturn(Optional.of(sparepartEntity("MC-0001")));
+
+    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PICKED_UP, null));
+
+    assertThat(result.status()).isEqualTo(SparepartRequestStatus.PICKED_UP);
+    verify(stocks).decrementOnPickup(eq("MC-0001"), eq(plantId), any(java.math.BigDecimal.class));
+  }
+
+  @Test
+  @DisplayName("12.4-SVC-002 P0 PICKUP_NO_STOCK — PICKED_UP with no stock row is a silent skip")
+  void pickUpNoStockRow() {
+    var user = sectionLeaderUser();
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
+    var entity = requestEntity(SparepartRequestStatus.READY);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+    when(spareparts.findByMaterialCodeIgnoreCase("MC-0001"))
+        .thenReturn(Optional.of(sparepartEntity("MC-0001")));
+    when(stocks.decrementOnPickup(any(), any(), any())).thenReturn(null);
+
+    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PICKED_UP, null));
+
+    assertThat(result.status()).isEqualTo(SparepartRequestStatus.PICKED_UP);
+  }
+
+  @Test
+  @DisplayName("12.4-SVC-003 P0 PICKUP_UNKNOWN_CODE — no material code on the request → no decrement")
+  void pickUpNoMaterialCode() {
+    var user = sectionLeaderUser();
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
+    var entity = new SparepartRequestEntity(UUID.randomUUID(), SparepartRequestType.SPAREPART, null, machineId,
+        null, null, (short) 1, null, null, null, SparepartRequestStatus.READY, staffId, NOW, null, NOW, NOW);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+
+    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PICKED_UP, null));
+
+    assertThat(result.status()).isEqualTo(SparepartRequestStatus.PICKED_UP);
+    verify(stocks, never()).decrementOnPickup(any(), any(), any());
+  }
+
+  @Test
+  @DisplayName("12.4-SVC-004 P0 CONSUMABLE pickup does not touch stock (no stock flow)")
+  void consumablePickUpNoStock() {
+    var user = new AuthenticatedUser(UUID.randomUUID().toString(), "leader2@test", ApplicationRole.SECTION_LEADER);
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
+    // CONSUMABLE bound to a workorder resolves the workorder's machine (so pickup is
+    // allowed), but the hook skips because the request type is not SPAREPART.
+    var entity = new SparepartRequestEntity(UUID.randomUUID(), SparepartRequestType.CONSUMABLE, "WO-2609-00001",
+        null, null, "CONS-1", (short) 1, null, null, null, SparepartRequestStatus.READY, staffId, NOW, null, NOW, NOW);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubBoundWorkOrder("WO-2609-00001");
+    stubScopedMachine(machineId, user);
+
+    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PICKED_UP, null));
+
+    assertThat(result.status()).isEqualTo(SparepartRequestStatus.PICKED_UP);
+    verify(stocks, never()).decrementOnPickup(any(), any(), any());
+  }
+
+  @Test
+  @DisplayName("12.4-SVC-005 P0 COMPLETE_OK — PENDING_COMPLETION with new material code creates sparepart + ACKED")
+  void completeOk() {
+    var user = inventoryUser();
+    var entity = requestEntity(SparepartRequestStatus.PENDING_COMPLETION);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+    when(spareparts.findByMaterialCodeIgnoreCase("MC-NEW-001")).thenReturn(Optional.empty());
+    when(sparepartService.createForCompletion(user, machineId, "MC-NEW-001"))
+        .thenReturn(new com.syncro.sparepart.application.SparepartService.SparepartView(
+            sparepartId, "BOM-0099", machineRef(), catRef(), catRef(), catRef(), catRef(),
+            "MC-NEW-001", null, NOW, NOW));
+
+    var result = service.complete(user, id,
+        new com.syncro.sparepart.request.application.SparepartRequestService.CompleteCommand(
+            "MC-NEW-001", null, null));
+
+    assertThat(result.status()).isEqualTo(SparepartRequestStatus.ACKED);
+    assertThat(result.sparepartId()).isEqualTo(sparepartId);
+    verify(auditLog).record(eq(user), org.mockito.ArgumentMatchers.argThat(r ->
+        r.action() == AuditAction.UPDATE && r.entityType() == AuditEntityType.SPAREPART_REQUEST));
+    verify(stocks, never()).decrementOnPickup(any(), any(), any());
+  }
+
+  @Test
+  @DisplayName("12.4-SVC-006 P0 COMPLETE_EXISTING — material code exists → patchProcurement + bind + ACKED")
+  void completeExisting() {
+    var user = inventoryUser();
+    var entity = requestEntity(SparepartRequestStatus.PENDING_COMPLETION);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+    when(spareparts.findByMaterialCodeIgnoreCase("MC-0001"))
+        .thenReturn(Optional.of(sparepartEntity("MC-0001")));
+
+    var result = service.complete(user, id,
+        new com.syncro.sparepart.request.application.SparepartRequestService.CompleteCommand(
+            "MC-0001", null, null));
+
+    assertThat(result.status()).isEqualTo(SparepartRequestStatus.ACKED);
+    assertThat(result.sparepartId()).isEqualTo(sparepartId);
+    verify(sparepartService).patchProcurement(eq(user), eq(sparepartId),
+        any(com.syncro.sparepart.application.SparepartService.SparepartProcurementCommand.class), eq(true));
+  }
+
+  @Test
+  @DisplayName("12.4-SVC-007 P0 COMPLETE_DUPLICATE — material code belongs to a different sparepart → 409")
+  void completeDuplicate() {
+    var user = inventoryUser();
+    // The request is already bound to a different sparepart than the code's owner.
+    var otherSparepartId = UUID.randomUUID();
+    var entity = new SparepartRequestEntity(UUID.randomUUID(), SparepartRequestType.SPAREPART, null, machineId,
+        otherSparepartId, "OTHER-CODE", (short) 1, null, null, null,
+        SparepartRequestStatus.PENDING_COMPLETION, staffId, NOW, null, NOW, NOW);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+    when(spareparts.findByMaterialCodeIgnoreCase("MC-0001"))
+        .thenReturn(Optional.of(sparepartEntity("MC-0001")));
+
+    assertThatThrownBy(() -> service.complete(user, id,
+        new com.syncro.sparepart.request.application.SparepartRequestService.CompleteCommand(
+            "MC-0001", null, null)))
+        .isInstanceOf(SparepartRequestService.DuplicateMaterialCodeException.class);
+  }
+
+  @Test
+  @DisplayName("12.4-SVC-008 P0 COMPLETE_WRONG_STATE — ACKED (not PENDING_COMPLETION) → 409 INVALID_STATE_TRANSITION")
+  void completeWrongState() {
+    var user = inventoryUser();
+    var entity = requestEntity(SparepartRequestStatus.ACKED);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+
+    assertThatThrownBy(() -> service.complete(user, id,
+        new com.syncro.sparepart.request.application.SparepartRequestService.CompleteCommand(
+            "MC-0001", null, null)))
+        .isInstanceOf(InvalidRequestStateTransitionException.class);
+  }
+
+  @Test
+  @DisplayName("12.4-SVC-009 P0 COMPLETE_FORBIDDEN — TECHNICIAN cannot complete → 403")
+  void completeForbidden() {
+    var user = technicianUser();
+    var entity = requestEntity(SparepartRequestStatus.PENDING_COMPLETION);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+
+    assertThatThrownBy(() -> service.complete(user, id,
+        new com.syncro.sparepart.request.application.SparepartRequestService.CompleteCommand(
+            "MC-0001", null, null)))
+        .isInstanceOf(RequestForbiddenException.class);
+  }
+
+  @Test
+  @DisplayName("12.4-SVC-010 P0 COMPLETE_NO_PRICE — completes to ACKED with no price entry when none provided")
+  void completeNoPrice() {
+    var user = inventoryUser();
+    var entity = requestEntity(SparepartRequestStatus.PENDING_COMPLETION);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+    when(spareparts.findByMaterialCodeIgnoreCase("MC-NEW-001")).thenReturn(Optional.empty());
+    when(sparepartService.createForCompletion(user, machineId, "MC-NEW-001"))
+        .thenReturn(new com.syncro.sparepart.application.SparepartService.SparepartView(
+            sparepartId, "BOM-0100", machineRef(), catRef(), catRef(), catRef(), catRef(),
+            "MC-NEW-001", null, NOW, NOW));
+
+    var result = service.complete(user, id,
+        new com.syncro.sparepart.request.application.SparepartRequestService.CompleteCommand(
+            "MC-NEW-001", null, null));
+
+    assertThat(result.status()).isEqualTo(SparepartRequestStatus.ACKED);
+    verify(priceEntryService, never()).create(any(), any(), any());
+  }
+
+  @Test
+  @DisplayName("12.4-SVC-011 P0 COMPLETE_IMAGE_AND_PRICE — image key attached + estPriceId referenced")
+  void completeWithImageAndPrice() {
+    var user = inventoryUser();
+    var entity = requestEntity(SparepartRequestStatus.PENDING_COMPLETION);
+    var id = entity.getId();
+    var priceEntryId = UUID.randomUUID();
+    var priceEntry = new com.syncro.sparepart.infrastructure.SparepartPriceEntryEntity(
+        priceEntryId, sparepartEntity("MC-NEW-002"), new java.math.BigDecimal("50000"), "IDR",
+        java.math.BigDecimal.ONE, new java.math.BigDecimal("50000"), null, NOW);
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+    when(spareparts.findByMaterialCodeIgnoreCase("MC-NEW-002")).thenReturn(Optional.empty());
+    when(sparepartService.createForCompletion(user, machineId, "MC-NEW-002"))
+        .thenReturn(new com.syncro.sparepart.application.SparepartService.SparepartView(
+            sparepartId, "BOM-0101", machineRef(), catRef(), catRef(), catRef(), catRef(),
+            "MC-NEW-002", null, NOW, NOW));
+    when(priceEntries.findById(priceEntryId)).thenReturn(Optional.of(priceEntry));
+
+    var result = service.complete(user, id,
+        new com.syncro.sparepart.request.application.SparepartRequestService.CompleteCommand(
+            "MC-NEW-002", "spareparts/abc/image.jpg", priceEntryId));
+
+    assertThat(result.status()).isEqualTo(SparepartRequestStatus.ACKED);
+    verify(sparepartImages).attachObjectKey(eq(user), eq(sparepartId),
+        eq("spareparts/abc/image.jpg"), eq(true));
+  }
+
+  private com.syncro.sparepart.application.SparepartService.SparepartMachineRefView machineRef() {
+    return new com.syncro.sparepart.application.SparepartService.SparepartMachineRefView(
+        machineId, "M-001", "Machine", plantId, "P01", "Plant");
+  }
+
+  private com.syncro.sparepart.application.SparepartService.SparepartTaxonomyRefView catRef() {
+    return new com.syncro.sparepart.application.SparepartService.SparepartTaxonomyRefView(
+        UUID.randomUUID(), "ELECTRIC", "Electric");
   }
 
   private AuthenticatedUser staffUser() {

@@ -122,4 +122,20 @@ public class SparepartRequestEntity {
     this.status = status;
     this.updatedAt = updatedAt;
   }
+
+  /**
+   * Story 12-4: binds the resolved sparepart id (and material code snapshot) after the
+   * completion flow has created/patched the sparepart via masterdata services (FR-144).
+   */
+  public void bindSparepart(UUID sparepartId, String materialCode, Instant updatedAt) {
+    this.sparepartId = sparepartId;
+    this.materialCode = materialCode;
+    this.updatedAt = updatedAt;
+  }
+
+  /** Story 12-4: references the estimated price entry chosen during completion (FR-144). */
+  public void bindEstPrice(UUID estPriceId, Instant updatedAt) {
+    this.estPriceId = estPriceId;
+    this.updatedAt = updatedAt;
+  }
 }

@@ -16,10 +16,14 @@ import com.syncro.notification.domain.NotificationJobStatus;
 import com.syncro.notification.infrastructure.NotificationJobRepository;
 import com.syncro.org.application.OperationalScope;
 import com.syncro.org.application.OperationalScopeService;
+import com.syncro.sparepart.application.SparepartImageService;
+import com.syncro.sparepart.application.SparepartPriceEntryService;
+import com.syncro.sparepart.application.SparepartService;
 import com.syncro.sparepart.infrastructure.SparepartEntity;
 import com.syncro.sparepart.infrastructure.SparepartPriceEntryRepository;
 import com.syncro.sparepart.infrastructure.SparepartRepository;
 import com.syncro.sparepart.infrastructure.SparepartTaxonomyEntity;
+import com.syncro.sparepart.stock.application.SparepartStockService;
 import com.syncro.sparepart.request.domain.SparepartRequest;
 import com.syncro.sparepart.request.domain.SparepartRequestStateMachine;
 import com.syncro.sparepart.request.domain.SparepartRequestStatus;
@@ -38,6 +42,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,6 +55,8 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class SparepartRequestService {
+
+  private static final Logger log = LoggerFactory.getLogger(SparepartRequestService.class);
 
   private static final int MAX_URL_LENGTH = 2048;
   private static final int MAX_MATERIAL_CODE_LENGTH = 64;
@@ -73,13 +81,19 @@ public class SparepartRequestService {
   private final AuditLogWriter auditLog;
   private final OperationalScopeService scopes;
   private final Clock clock;
+  private final SparepartStockService stocks;
+  private final SparepartService sparepartService;
+  private final SparepartPriceEntryService priceEntryService;
+  private final SparepartImageService sparepartImages;
 
   public SparepartRequestService(SparepartRequestRepository requests,
       SparepartRequestTimelineRepository timelines, WorkOrderRepository workOrders,
       WorkOrderService workOrderService, MachineRepository machines,
       SparepartRepository spareparts, SparepartPriceEntryRepository priceEntries,
       EscalationConfigService escalationConfigs, NotificationJobRepository notificationJobs,
-      AuditLogWriter auditLog, OperationalScopeService scopes, Clock clock) {
+      AuditLogWriter auditLog, OperationalScopeService scopes, Clock clock,
+      SparepartStockService stocks, SparepartService sparepartService,
+      SparepartPriceEntryService priceEntryService, SparepartImageService sparepartImages) {
     this.requests = requests;
     this.timelines = timelines;
     this.workOrders = workOrders;
@@ -92,6 +106,10 @@ public class SparepartRequestService {
     this.auditLog = auditLog;
     this.scopes = scopes;
     this.clock = clock;
+    this.stocks = stocks;
+    this.sparepartService = sparepartService;
+    this.priceEntryService = priceEntryService;
+    this.sparepartImages = sparepartImages;
   }
 
   @Transactional(readOnly = true)
@@ -201,6 +219,22 @@ public class SparepartRequestService {
         toStatus, UUID.fromString(user.id()), TIMELINE_ACTION_TRANSITION, null,
         normalizeNote(command.note()), traceId, now));
 
+    // Stock decrement on PICKED_UP (FR-146/AD-11, story 12-4): SPAREPART requests with a
+    // resolvable material code decrement the plant's stock in the same transaction. An
+    // unbound machine (CONSUMABLE) is skipped silently; a missing stock row is skipped
+    // silently (stock is optional per plant). A decrement that would go negative throws,
+    // rolling back the whole transition — no partial pickup.
+    if (toStatus == SparepartRequestStatus.PICKED_UP
+        && entity.getRequestType() == SparepartRequestType.SPAREPART) {
+      var materialCode = entity.getMaterialCode();
+      var machineForStock = machine;
+      var plantId = plantIdOf(machineForStock);
+      if (materialCode != null && plantId != null && spareparts.findByMaterialCodeIgnoreCase(materialCode).isPresent()) {
+        stocks.decrementOnPickup(materialCode, plantId,
+            java.math.BigDecimal.valueOf(entity.getQuantity()));
+      }
+    }
+
     var newValue = requestValues(saved);
     if (command.note() != null && !command.note().isBlank()) {
       newValue.put("note", command.note().trim());
@@ -245,6 +279,133 @@ public class SparepartRequestService {
         entity.getId(), entityLabel(entity), plantIdOf(machine),
         requestValues(entity), newValue, null));
     return SparepartRequestMapper.toDomain(entity);
+  }
+
+  /**
+   * Complete a new-item request (FR-144, story 12-4): valid only when status is
+   * PENDING_COMPLETION. Roles: INVENTORY_MAINTENANCE/STOREKEEPER/SUPER_ADMIN.
+   *
+   * <p>Flow (AD-11 — never direct cross-module writes):
+   * <ol>
+   *   <li>Resolve the request's machine/plant.
+   *   <li>If no sparepart exists with the given material code, create one via
+   *       {@link SparepartService#createForCompletion} (machine-bound, minimal taxonomy).
+   *   <li>If a sparepart exists, {@code patchProcurement} to set the material code
+   *       (completingRequest=true so the INVENTORY/STOREKEEPER gate passes).
+   *   <li>Attach image via {@link SparepartImageService#attachObjectKey} when
+   *       {@code imageObjectKey} is provided.
+   *   <li>Create the price entry via {@link SparepartPriceEntryService#create} when
+   *       {@code estPriceId} is absent and a price is provided (or use the given estPriceId
+   *       when it already exists).
+   *   <li>Transition PENDING_COMPLETION → ACKED (state machine already allows this edge).
+   *   <li>Audit + timeline.
+   * </ol>
+   */
+  @Transactional
+  public SparepartRequest complete(AuthenticatedUser user, UUID requestId, CompleteCommand command) {
+    var entity = requests.findByIdForUpdate(requestId).orElseThrow(RequestNotFoundException::new);
+    if (entity.getStatus() != SparepartRequestStatus.PENDING_COMPLETION) {
+      throw new InvalidRequestStateTransitionException();
+    }
+    var machine = machineForRequest(entity);
+    requireCompletionAccess(user, machine);
+
+    var materialCode = normalizeMaterialCode(command.materialCode());
+    if (materialCode == null) {
+      throw new RequestValidationException(Map.of("materialCode", "Material code is required for completion."));
+    }
+
+    // 1. Resolve the sparepart. If the material code already belongs to a sparepart
+    //    that is NOT the one bound to this request, reject (409 DUPLICATE_MATERIAL_CODE).
+    var existingSparepart = spareparts.findByMaterialCodeIgnoreCase(materialCode).orElse(null);
+    if (existingSparepart != null && entity.getSparepartId() != null
+        && !existingSparepart.getId().equals(entity.getSparepartId())) {
+      throw new DuplicateMaterialCodeException();
+    }
+    UUID sparepartId;
+    if (existingSparepart != null) {
+      // The material code already exists — "existing sparepart" path (COMPLETE_EXISTING).
+      // patchProcurement sets the material code + lead time via the masterdata service
+      // (completingRequest=true so the INVENTORY/STOREKEEPER gate passes).
+      sparepartId = existingSparepart.getId();
+      sparepartService.patchProcurement(user, sparepartId,
+          new SparepartService.SparepartProcurementCommand(materialCode, null), true);
+    } else {
+      // 2. Create a new bare sparepart via the masterdata service (COMPLETE_OK).
+      if (machine == null) {
+        throw new RequestValidationException(Map.of("machineId", "Request must have a machine for new-part creation."));
+      }
+      var created = sparepartService.createForCompletion(user, machine.getId(), materialCode);
+      sparepartId = created.id();
+    }
+
+    var now = Instant.now(clock);
+    // Capture the before-state for audit before any binding/transition mutates the entity.
+    var previous = requestValues(entity);
+
+    // 3. Attach image if provided (the frontend has already stored the object in Garage;
+    // we only persist the reference via the masterdata service). A failure is non-fatal
+    // for the completion itself but must not be silent — the request still completes and
+    // the image reference is skipped, with a logged warning for follow-up.
+    String imageObjectKey = command.imageObjectKey();
+    if (imageObjectKey != null && !imageObjectKey.isBlank()) {
+      try {
+        sparepartImages.attachObjectKey(user, sparepartId, imageObjectKey, true);
+      } catch (RuntimeException e) {
+        log.warn("[SparepartRequestService] Image attach skipped for request {} sparepart {}: {}",
+            requestId, sparepartId, e.getMessage());
+      }
+    }
+
+    // 4. Reference the estimated price entry when provided (FR-144 "when they provide").
+    // The price is optional; a provided estPriceId must exist and must belong to the
+    // resolved sparepart. No price → the request completes without one.
+    UUID estPriceId = command.estPriceId();
+    if (estPriceId != null) {
+      var entry = priceEntries.findById(estPriceId)
+          .orElseThrow(PriceEntryNotFoundException::new);
+      if (!entry.getSparepart().getId().equals(sparepartId)) {
+        throw new RequestValidationException(Map.of("estPriceId",
+            "The price entry does not belong to the completed sparepart."));
+      }
+      entity.bindEstPrice(estPriceId, now);
+    }
+
+    // 5. Bind the resolved sparepart and transition PENDING_COMPLETION → ACKED
+    entity.bindSparepart(sparepartId, materialCode, now);
+    entity.transitionTo(SparepartRequestStatus.ACKED, now);
+    var saved = requests.saveAndFlush(entity);
+
+    // 6. Timeline + audit
+    timelines.saveAndFlush(new SparepartRequestTimelineEntity(UUID.randomUUID(), saved.getId(),
+        SparepartRequestStatus.PENDING_COMPLETION, SparepartRequestStatus.ACKED,
+        UUID.fromString(user.id()), TIMELINE_ACTION_TRANSITION, null,
+        "Completed with material code " + materialCode,
+        PolicyDecisionPoint.currentTraceId(), now));
+
+    var newValue = requestValues(saved);
+    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.SPAREPART_REQUEST,
+        saved.getId(), entityLabel(saved), plantIdOf(machine), previous, newValue, null));
+
+    recomputeProcurement(entity);
+    return SparepartRequestMapper.toDomain(saved);
+  }
+
+  /**
+   * Completion gate (FR-144, story 12-4): INVENTORY_MAINTENANCE/STOREKEEPER/SUPER_ADMIN.
+   * Only the coarse role gate — plant scoping is via the request's own scope (the request
+   * is already scoped to the user's plant/group and the completion never crosses a plant).
+   * OPA enforces the same role set (coarse gate); the service is authoritative for scope.
+   */
+  private void requireCompletionAccess(AuthenticatedUser user, MachineEntity machine) {
+    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
+      return;
+    }
+    if (user.applicationRole() == ApplicationRole.INVENTORY_MAINTENANCE
+        || user.applicationRole() == ApplicationRole.STOREKEEPER) {
+      return;
+    }
+    throw new RequestForbiddenException();
   }
 
   /**
@@ -294,9 +455,12 @@ public class SparepartRequestService {
   private String requiredApprovalRole(SparepartRequestEntity entity, MachineEntity machine) {
     BigDecimal unitPrice = entity.getEstUnitPrice();
     if (unitPrice == null && entity.getEstPriceId() != null) {
+      // A price entry referenced but missing is a data-integrity error, not a silent
+      // downgrade to the SECTION_LEADER tier — fail loudly (404) instead of letting a
+      // broken reference bypass manager-level approval (AD-16 fail closed).
       unitPrice = priceEntries.findById(entity.getEstPriceId())
           .map(entry -> entry.getIdrAmount())
-          .orElse(null);
+          .orElseThrow(PriceEntryNotFoundException::new);
     }
     boolean hasPrice = unitPrice != null;
     BigDecimal estimatedCost = hasPrice
@@ -329,7 +493,10 @@ public class SparepartRequestService {
   private static boolean hasApprovalAuthority(String actorRole, String requiredRole) {
     int actorRank = approvalRank(actorRole);
     int requiredRank = approvalRank(requiredRole);
-    return actorRank >= requiredRank && actorRank > 0;
+    // Fail closed: an unknown required role (rank 0) must never be approvable — a
+    // misconfigured escalation_configs row must not downgrade the gate to the weakest
+    // leader. Unknown actor roles also get no authority.
+    return requiredRank > 0 && actorRank >= requiredRank;
   }
 
   private static int approvalRank(String role) {
@@ -357,16 +524,36 @@ public class SparepartRequestService {
       var isRequester = request.requestedBy() != null
           && request.requestedBy().equals(UUID.fromString(user.id()));
       if (!isRequester) {
-        var entity = SparepartRequestMapper.toEntity(request);
-        var machine = machineForRequest(entity);
-        var required = requiredApprovalRole(entity, machine);
-        if (canApprove(user, machine, required)) {
-          allowed.add("approve");
-          requiredRole = required;
+        try {
+          var entity = SparepartRequestMapper.toEntity(request);
+          var machine = machineForRequest(entity);
+          var required = requiredApprovalRole(entity, machine);
+          if (canApprove(user, machine, required)) {
+            allowed.add("approve");
+            requiredRole = required;
+          }
+        } catch (RuntimeException e) {
+          // A broken request (missing machine/workorder or price entry) must not 500 the
+          // whole list — hide the approve action for it; the approve endpoint still fails
+          // loudly with the same cause (data-integrity errors surface there, not here).
+          log.warn("[SparepartRequestService] allowedActionsFor skipped for request {}: {}",
+              request.id(), e.getMessage());
         }
       }
     }
+
+    // Story 12-4: PENDING_COMPLETION rows may be completed by inventory/stores — FR-144.
+    if (status == SparepartRequestStatus.PENDING_COMPLETION && canComplete(user)) {
+      allowed.add("complete");
+    }
     return new RequestAllowedActions(allowed, requiredRole);
+  }
+
+  /** Completion gate (FR-144): SUPER_ADMIN, INVENTORY_MAINTENANCE, STOREKEEPER. */
+  private boolean canComplete(AuthenticatedUser user) {
+    return user.applicationRole() == ApplicationRole.SUPER_ADMIN
+        || user.applicationRole() == ApplicationRole.INVENTORY_MAINTENANCE
+        || user.applicationRole() == ApplicationRole.STOREKEEPER;
   }
 
   private boolean canApprove(AuthenticatedUser user, MachineEntity machine, String requiredRole) {
@@ -821,6 +1008,10 @@ public class SparepartRequestService {
   public record ApproveCommand(String note) {
   }
 
+  /** Story 12-4 completion command (FR-144): material code, optional image key, optional est-price id. */
+  public record CompleteCommand(String materialCode, String imageObjectKey, UUID estPriceId) {
+  }
+
   public static class RequestForbiddenException extends RuntimeException {
   }
 
@@ -830,6 +1021,10 @@ public class SparepartRequestService {
 
   /** Story 12-2: invalid/terminal state transition or MRE in the wrong state → 409 (FR-141). */
   public static class InvalidRequestStateTransitionException extends RuntimeException {
+  }
+
+  /** Story 12-4: the completion material code already belongs to another sparepart → 409. */
+  public static class DuplicateMaterialCodeException extends RuntimeException {
   }
 
   /** Story 12-2: unknown request id → 404 (mirrors WorkOrderExceptionHandler codes). */

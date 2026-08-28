@@ -10,6 +10,8 @@ import com.syncro.sparepart.request.application.SparepartRequestService.Sparepar
 import com.syncro.sparepart.request.application.SparepartRequestService.WorkOrderNotFoundException;
 import com.syncro.sparepart.request.application.SparepartRequestService.InvalidRequestStateTransitionException;
 import com.syncro.sparepart.request.application.SparepartRequestService.SelfApprovalForbiddenException;
+import com.syncro.sparepart.request.application.SparepartRequestService.DuplicateMaterialCodeException;
+import com.syncro.sparepart.stock.application.SparepartStockService.NegativeStockRejectedException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -18,6 +20,7 @@ import java.util.UUID;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -107,6 +110,30 @@ public class SparepartRequestExceptionHandler {
   ResponseEntity<ErrorResponse> selfApprovalForbidden() {
     return error(HttpStatus.FORBIDDEN, "SELF_APPROVAL_FORBIDDEN",
         "You cannot approve your own request.", Map.of());
+  }
+
+  /** Story 12-4: completion material code already belongs to another sparepart → 409 (FR-144). */
+  @ExceptionHandler(DuplicateMaterialCodeException.class)
+  ResponseEntity<ErrorResponse> duplicateMaterialCode() {
+    return error(HttpStatus.CONFLICT, "DUPLICATE_MATERIAL_CODE",
+        "The material code already belongs to another sparepart.", Map.of());
+  }
+
+  /**
+   * Story 12-4: the PICKED_UP stock decrement would drive stock negative → 409. The
+   * transition rolls back (no partial pickup) and the client sees the stock gate, not a 500.
+   */
+  @ExceptionHandler(NegativeStockRejectedException.class)
+  ResponseEntity<ErrorResponse> negativeStockRejected() {
+    return error(HttpStatus.CONFLICT, "NEGATIVE_STOCK_REJECTED",
+        "The pickup would make stock negative.", Map.of());
+  }
+
+  /** Story 12-4: concurrent stock/request version conflict → 409. */
+  @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+  ResponseEntity<ErrorResponse> optimisticLockConflict() {
+    return error(HttpStatus.CONFLICT, "VERSION_CONFLICT",
+        "Concurrent update detected; reload and retry.", Map.of());
   }
 
   @ExceptionHandler(MachineNotFoundException.class)

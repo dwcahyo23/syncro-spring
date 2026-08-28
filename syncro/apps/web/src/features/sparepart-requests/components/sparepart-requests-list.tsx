@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ApproveDialog } from "@/features/sparepart-requests/components/approve-dialog";
+import { CompleteDialog } from "@/features/sparepart-requests/components/complete-dialog";
 import { useRecordMre, useTransitionRequest } from "@/features/sparepart-requests/hooks/use-sparepart-requests";
 import type { SparepartRequestStatus } from "@/features/sparepart-requests/types";
 import { syncroFetch } from "@/lib/api/orval-mutator";
@@ -275,6 +276,7 @@ export function SparepartRequestsPageContent() {
                           </Button>
                         ))}
                         {request.allowedActions.includes("approve") ? <ApproveDialog requestId={request.id} /> : null}
+                        {request.allowedActions.includes("complete") ? <CompleteDialog requestId={request.id} /> : null}
                         {request.status === "PURCHASE_REQUESTED" ? <MreDialog requestId={request.id} /> : null}
                       </div>
                     </TableCell>

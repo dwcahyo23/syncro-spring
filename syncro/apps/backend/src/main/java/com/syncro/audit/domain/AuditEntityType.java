@@ -26,5 +26,6 @@ public enum AuditEntityType {
   SPAREPART_REQUEST,
   DEPARTMENT,
   DEPARTMENT_MEMBER,
-  USER
+  USER,
+  SPAREPART_STOCK
 }

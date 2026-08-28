@@ -381,6 +381,102 @@ class SparepartRequestControllerTest {
         .andExpect(jsonPath("$.code").value("REQUEST_NOT_FOUND"));
   }
 
+  @Test
+  @DisplayName("12.4-API-001 P0 complete endpoint returns 200 view with ACKED status")
+  void completeReturnsView() throws Exception {
+    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
+    var id = UUID.randomUUID();
+    when(service.complete(eq(user), eq(id), any(SparepartRequestService.CompleteCommand.class)))
+        .thenReturn(requestDomain(SparepartRequestStatus.ACKED));
+    stubAllowedActions(user);
+
+    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/complete")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"materialCode\":\"MC-NEW-001\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("ACKED"));
+  }
+
+  @Test
+  @DisplayName("12.4-API-002 P0 blank material code maps to 400 VALIDATION_ERROR")
+  void completeBlankMaterialCode() throws Exception {
+    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
+    var id = UUID.randomUUID();
+
+    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/complete")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"materialCode\":\"\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.fieldErrors.materialCode").exists());
+  }
+
+  @Test
+  @DisplayName("12.4-API-003 P0 duplicate material code maps to 409 DUPLICATE_MATERIAL_CODE")
+  void completeDuplicateMaterialCode() throws Exception {
+    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
+    var id = UUID.randomUUID();
+    doThrow(new SparepartRequestService.DuplicateMaterialCodeException())
+        .when(service).complete(eq(user), eq(id), any(SparepartRequestService.CompleteCommand.class));
+
+    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/complete")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"materialCode\":\"MC-0001\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("DUPLICATE_MATERIAL_CODE"));
+  }
+
+  @Test
+  @DisplayName("12.4-API-004 P0 wrong state maps to 409 INVALID_STATE_TRANSITION")
+  void completeWrongState() throws Exception {
+    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
+    var id = UUID.randomUUID();
+    doThrow(new InvalidRequestStateTransitionException())
+        .when(service).complete(eq(user), eq(id), any(SparepartRequestService.CompleteCommand.class));
+
+    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/complete")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"materialCode\":\"MC-0001\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("INVALID_STATE_TRANSITION"));
+  }
+
+  @Test
+  @DisplayName("12.4-API-005 P0 forbidden completion maps to 403 FORBIDDEN")
+  void completeForbidden() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    var id = UUID.randomUUID();
+    doThrow(new RequestForbiddenException())
+        .when(service).complete(eq(user), eq(id), any(SparepartRequestService.CompleteCommand.class));
+
+    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/complete")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"materialCode\":\"MC-0001\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  @DisplayName("12.4-API-006 P0 unknown request maps to 404 REQUEST_NOT_FOUND")
+  void completeNotFound() throws Exception {
+    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
+    var id = UUID.randomUUID();
+    doThrow(new RequestNotFoundException())
+        .when(service).complete(eq(user), eq(id), any(SparepartRequestService.CompleteCommand.class));
+
+    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/complete")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"materialCode\":\"MC-0001\"}"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("REQUEST_NOT_FOUND"));
+  }
+
   private static SparepartRequest requestDomain() {
     return requestDomain(SparepartRequestStatus.REQUESTED);
   }

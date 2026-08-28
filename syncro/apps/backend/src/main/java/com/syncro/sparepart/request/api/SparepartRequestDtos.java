@@ -45,6 +45,13 @@ public final class SparepartRequestDtos {
       @Size(max = 500) @Schema(description = "Optional note attached to the approval", nullable = true) String note) {
   }
 
+  /** Story 12-4 completion request body (FR-144): material code + optional image/est-price. */
+  public record CompleteRequest(
+      @NotBlank @Size(max = 64) @Schema(description = "Material code registered for the new part", nullable = false, maxLength = 64) String materialCode,
+      @Size(max = 255) @Schema(description = "Garage object key of the already-uploaded part image", nullable = true) String imageObjectKey,
+      @Schema(description = "Existing price-entry id to reference as the estimated price", nullable = true) UUID estPriceId) {
+  }
+
   /** Story 12-2 status transition request body (FR-141). */
   public record TransitionRequest(
       @NotNull @Schema(description = "Target status for the transition", nullable = false) SparepartRequestStatus toStatus,
