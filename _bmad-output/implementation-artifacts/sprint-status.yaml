@@ -35,9 +35,10 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-25
-last_updated: 2026-08-27
-# updated: 10-7 done (dev-auto: implemented + adversarial review, 8 patched / 4 deferred)
-# updated: 10-5 done; 10-6 done (spec files already finalized; sprint status was stale)
+last_updated: 2026-08-28
+# updated: 12-2 done (state machine, MRE, AD-5 readiness port, V59, frontend)
+# updated: 12-1 frontend upgraded (BOM-search cart + list page)
+# updated: 10-9/10-10 implemented (month picker, category filter, actions column, org consolidation)
 # updated: 10-4 done (dev-auto: implemented + adversarial review, 4 patched / 1 deferred DW-139); epic 10 in-progress
 # updated: 9-2 done; 9-3 done (dev-auto: implemented + adversarial review, 8 patched / 3 deferred DW-128..130); epic 9 in-progress; epics 10-14 backlog
 project: Syncro
@@ -176,7 +177,7 @@ development_status:
   # Epic 12: Sparepart Request & Inventory
   epic-12: in-progress
   12-1-request-creation-and-types: done
-  12-2-request-state-machine: backlog
+  12-2-request-state-machine: done
   12-3-approval-separation-of-duty-and-escalation: backlog
   12-4-stock-op-oq-and-new-item-completion: backlog
   epic-12-retrospective: optional
