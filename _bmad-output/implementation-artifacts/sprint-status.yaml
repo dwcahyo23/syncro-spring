@@ -36,6 +36,7 @@
 
 generated: 2026-05-25
 last_updated: 2026-08-28
+# updated: 12-4 done (stock OP/OQ & new-item completion); epic-12 done
 # updated: 12-2 done (state machine, MRE, AD-5 readiness port, V59, frontend)
 # updated: 12-1 frontend upgraded (BOM-search cart + list page)
 # updated: 10-9/10-10 implemented (month picker, category filter, actions column, org consolidation)
@@ -175,11 +176,11 @@ development_status:
   epic-11-retrospective: optional
 
   # Epic 12: Sparepart Request & Inventory
-  epic-12: in-progress
+  epic-12: done
   12-1-request-creation-and-types: done
   12-2-request-state-machine: done
   12-3-approval-separation-of-duty-and-escalation: done
-  12-4-stock-op-oq-and-new-item-completion: backlog
+  12-4-stock-op-oq-and-new-item-completion: done
   epic-12-retrospective: optional
 
   # Epic 13: External Sync & Hardening
