@@ -1,0 +1,111 @@
+warning: in the working copy of 'syncro/.env.example', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderEntity.java', LF will be replaced by CRLF the next time Git touches it
+diff --git a/_bmad-output/implementation-artifacts/sprint-status.yaml b/_bmad-output/implementation-artifacts/sprint-status.yaml
+index 30c3cc0..74e862c 100644
+--- a/_bmad-output/implementation-artifacts/sprint-status.yaml
++++ b/_bmad-output/implementation-artifacts/sprint-status.yaml
+@@ -36,6 +36,7 @@
+ 
+ generated: 2026-05-25
+ last_updated: 2026-08-28
++# updated: 13-1 in-progress (sync pipeline foundation)
+ # updated: 12-4 done (stock OP/OQ & new-item completion); epic-12 done
+ # updated: 12-2 done (state machine, MRE, AD-5 readiness port, V59, frontend)
+ # updated: 12-1 frontend upgraded (BOM-search cart + list page)
+@@ -184,8 +185,8 @@ development_status:
+   epic-12-retrospective: optional
+ 
+   # Epic 13: External Sync & Hardening
+-  epic-13: backlog
+-  13-1-sync-pipeline-foundation: backlog
++  epic-13: in-progress
++  13-1-sync-pipeline-foundation: done
+   13-2-conflict-resolution-and-field-mapping: backlog
+   13-3-quarantine-and-observability: backlog
+   epic-13-retrospective: optional
+diff --git a/syncro/.env.example b/syncro/.env.example
+index 47442dd..6387e0f 100644
+--- a/syncro/.env.example
++++ b/syncro/.env.example
+@@ -84,3 +84,13 @@ SYNCRO_AUTHZ_POLICY_FILE=file:syncro/authz/policy/authz.rego
+ 
+ # Sparepart request escalation worker poll interval (story 12-3, FR-147)
+ SYNCRO_SPAREPART_ESCALATION_POLL_INTERVAL_MS=60000
++
++# External Sync Pipeline (story 13-1, AD-7/FR-150/FR-151)
++# Disabled by default — enable to connect the external PostgreSQL.
++# SYNCRO_SYNC_ENABLED=true
++# SYNCRO_SYNC_DATASOURCE_URL=jdbc:postgresql://external-host:5432/external_db
++# SYNCRO_SYNC_DATASOURCE_USERNAME=external_user
++# SYNCRO_SYNC_DATASOURCE_PASSWORD=CHANGE_ME_strong_password
++# SYNCRO_SYNC_BATCH_SIZE=100
++# SYNCRO_SYNC_POLL_INTERVAL_MS=60000
++# SYNCRO_SYNC_LOCK_TTL_MS=900000
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java b/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
+index 5c0e197..cb206c5 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
+@@ -27,5 +27,6 @@ public enum AuditEntityType {
+   DEPARTMENT,
+   DEPARTMENT_MEMBER,
+   USER,
+-  SPAREPART_STOCK
++  SPAREPART_STOCK,
++  SYNC_RUN
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderEntity.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderEntity.java
+index f949bea..cfbd2b8 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderEntity.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderEntity.java
+@@ -301,6 +301,28 @@ public class WorkOrderEntity {
+     this.stopTimeDetail = stopTimeDetail;
+   }
+ 
++  /**
++   * Applies external master fields on re-sync (AD-7/FR-151, story 13-1): status,
++   * machine/category binding, parent link and description take the external values;
++   * the external {@code updated_at} becomes the local {@code updated_at} so
++   * {@code sync_version} semantics stay consistent with the external row's freshness.
++   * Local operational fields (report, evidence, ratings, sessions) are never touched —
++   * field classification is story 13.2 (AD-8).
++   */
++  public void applySync(WorkOrderStatus status, UUID categoryId, String description, String parentId,
++      Instant updatedAt) {
++    this.status = status;
++    this.categoryId = categoryId;
++    this.description = description;
++    this.parentId = parentId;
++    this.updatedAt = updatedAt;
++  }
++
++  /** Bumps the sync version counter on every external touch (story 13-1). */
++  public void bumpSyncVersion() {
++    this.syncVersion = this.syncVersion + 1L;
++  }
++
+   public void setCpkPdfObjectKey(String cpkPdfObjectKey) {
+     this.cpkPdfObjectKey = cpkPdfObjectKey;
+   }
+diff --git a/syncro/apps/backend/src/main/resources/application.yml b/syncro/apps/backend/src/main/resources/application.yml
+index 82ba119..daaf18d 100644
+--- a/syncro/apps/backend/src/main/resources/application.yml
++++ b/syncro/apps/backend/src/main/resources/application.yml
+@@ -160,3 +160,18 @@ syncro:
+     telemetry:
+       ttl-minutes: 5
+       max-size: 1000
++  sync:
++    # External workorder sync pipeline (story 13-1, AD-7/FR-150). Disabled by default:
++    # the app boots without an external DB. Flip to true and supply syncro.sync.datasource.*
++    # (via env) to activate the scheduled worker.
++    enabled: ${SYNCRO_SYNC_ENABLED:false}
++    datasource:
++      url: ${SYNCRO_SYNC_DATASOURCE_URL:}
++      username: ${SYNCRO_SYNC_DATASOURCE_USERNAME:}
++      password: ${SYNCRO_SYNC_DATASOURCE_PASSWORD:}
++    # Rows per batch (default 100)
++    batch-size: ${SYNCRO_SYNC_BATCH_SIZE:100}
++    # Poll interval in milliseconds (default 60 seconds)
++    poll-interval-ms: ${SYNCRO_SYNC_POLL_INTERVAL_MS:60000}
++    # Redis distributed lock TTL in milliseconds (default 15 minutes — auto-expires on crash)
++    lock-ttl-ms: ${SYNCRO_SYNC_LOCK_TTL_MS:900000}

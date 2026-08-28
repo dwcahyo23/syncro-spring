@@ -1,0 +1,2122 @@
+warning: in the working copy of 'syncro/.env.example', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'syncro/apps/backend/src/main/java/com/syncro/auth/infrastructure/AuthUserRepository.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestController.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestDtos.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestExceptionHandler.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestMapper.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestService.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/SparepartRequestRepository.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'syncro/apps/backend/src/test/java/com/syncro/db/SparepartRequestMigrationTest.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'syncro/apps/backend/src/test/java/com/syncro/sparepart/request/api/SparepartRequestControllerTest.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'syncro/apps/backend/src/test/java/com/syncro/sparepart/request/application/SparepartRequestServiceTest.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'syncro/apps/web/src/features/sparepart-requests/components/sparepart-requests-list.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'syncro/apps/web/src/features/sparepart-requests/hooks/use-sparepart-requests.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'syncro/apps/web/src/features/sparepart-requests/types.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'syncro/authz/.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'syncro/authz/policy/authz.rego', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'syncro/authz/policy/authz_test.rego', LF will be replaced by CRLF the next time Git touches it
+diff --git a/syncro/.env.example b/syncro/.env.example
+index 539b3fa..d9840d3 100644
+--- a/syncro/.env.example
++++ b/syncro/.env.example
+@@ -75,9 +75,12 @@ NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+ 
+ # Authz coarse gate (9.5 rolls out enforcement on the org/maintenance/sync surface;
+ # health/actuator stay public and are deliberately excluded)
+-SYNCRO_AUTHZ_ENFORCED_PATHS=/api/v1/plants/**,/api/v1/machine-groups/**,/api/v1/sections/**,/api/v1/teams/**,/api/v1/machine-responsibilities/**,/api/v1/machines/**,/api/v1/machine-sparepart-installations/**,/api/v1/spareparts/**,/api/v1/sparepart-taxonomies/**,/api/v1/alerts/**,/api/v1/audit-log/**,/api/v1/setup-completeness/**,/api/v1/telemetry/**,/api/v1/notification/templates/**,/api/v1/notification/worker/**,/api/v1/work-order-categories/**,/api/v1/workorders/**,/api/v1/workorders/*/transition,/api/v1/workorders/*/sessions,/api/v1/workorders/*/sessions/stop,/api/v1/workorders/*/attachments,/api/v1/workorders/*/attachments/*,/api/v1/workorders/*/report,/api/v1/workorders/*/report/cpk,/api/v1/workorders/*/todos,/api/v1/workorders/*/todos/*,/api/v1/workorders/*/todos/*/assign,/api/v1/workorders/*/todos/*/complete,/api/v1/workorders/*/todos/*/reorder,/api/v1/workorders/*/ratings,/api/v1/workorders/*/ratings/technician,/api/v1/workorders/*/ratings/workorder,/api/v1/rating-dimensions,/api/v1/rating-dimensions/*,/api/v1/preventive-programs,/api/v1/preventive-programs/*,/api/v1/preventive-programs/*/generate,/api/v1/preventive-schedules,/api/v1/preventive-schedules/*/checklist,/api/v1/preventive-schedules/*/evidence,/api/v1/preventive-schedules/*/evidence/*,/api/v1/preventive-schedules/*/approve,/api/v1/preventive-schedules/*/skip,/api/v1/sparepart-requests,/api/v1/sparepart-requests/*/transition,/api/v1/sparepart-requests/*/mre,/api/v1/departments,/api/v1/departments/*,/api/v1/departments/*/members,/api/v1/sections/*/leader,/api/v1/auth/users/*
++SYNCRO_AUTHZ_ENFORCED_PATHS=/api/v1/plants/**,/api/v1/machine-groups/**,/api/v1/sections/**,/api/v1/teams/**,/api/v1/machine-responsibilities/**,/api/v1/machines/**,/api/v1/machine-sparepart-installations/**,/api/v1/spareparts/**,/api/v1/sparepart-taxonomies/**,/api/v1/alerts/**,/api/v1/audit-log/**,/api/v1/setup-completeness/**,/api/v1/telemetry/**,/api/v1/notification/templates/**,/api/v1/notification/worker/**,/api/v1/work-order-categories/**,/api/v1/workorders/**,/api/v1/workorders/*/transition,/api/v1/workorders/*/sessions,/api/v1/workorders/*/sessions/stop,/api/v1/workorders/*/attachments,/api/v1/workorders/*/attachments/*,/api/v1/workorders/*/report,/api/v1/workorders/*/report/cpk,/api/v1/workorders/*/todos,/api/v1/workorders/*/todos/*,/api/v1/workorders/*/todos/*/assign,/api/v1/workorders/*/todos/*/complete,/api/v1/workorders/*/todos/*/reorder,/api/v1/workorders/*/ratings,/api/v1/workorders/*/ratings/technician,/api/v1/workorders/*/ratings/workorder,/api/v1/rating-dimensions,/api/v1/rating-dimensions/*,/api/v1/preventive-programs,/api/v1/preventive-programs/*,/api/v1/preventive-programs/*/generate,/api/v1/preventive-schedules,/api/v1/preventive-schedules/*/checklist,/api/v1/preventive-schedules/*/evidence,/api/v1/preventive-schedules/*/evidence/*,/api/v1/preventive-schedules/*/approve,/api/v1/preventive-schedules/*/skip,/api/v1/sparepart-requests,/api/v1/sparepart-requests/*/transition,/api/v1/sparepart-requests/*/mre,/api/v1/sparepart-requests/*/approve,/api/v1/departments,/api/v1/departments/*,/api/v1/departments/*/members,/api/v1/sections/*/leader,/api/v1/auth/users/*
+ SYNCRO_AUTHZ_DEGRADED_ALLOWLIST=/api/v1/health,/actuator/**
+ 
+ # Authz decision-log retention (days) for the authz_decisions purge job
+ SYNCRO_AUTHZ_DECISION_LOG_RETENTION_DAYS=30
+ SYNCRO_AUTHZ_POLICY_FILE=file:syncro/authz/policy/authz.rego
++
++# Sparepart request escalation worker poll interval (story 12-3, FR-147)
++SYNCRO_SPAREPART_ESCALATION_POLL_INTERVAL_MS=60000
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/auth/infrastructure/AuthUserRepository.java b/syncro/apps/backend/src/main/java/com/syncro/auth/infrastructure/AuthUserRepository.java
+index 27989c9..aad8fc7 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/auth/infrastructure/AuthUserRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/auth/infrastructure/AuthUserRepository.java
+@@ -1,5 +1,7 @@
+ package com.syncro.auth.infrastructure;
+ 
++import com.syncro.auth.domain.ApplicationRole;
++import java.util.Collection;
+ import java.util.List;
+ import java.util.Optional;
+ import java.util.UUID;
+@@ -23,4 +25,17 @@ public interface AuthUserRepository extends JpaRepository<AuthUserEntity, UUID>
+   Optional<AuthUserEntity> findByPhoneNumber(@Param("phoneNumber") String phoneNumber);
+ 
+   List<AuthUserEntity> findAllByOrderByLoginIdentifierAsc();
++
++  /**
++   * Story 12-3 escalation recipients: users holding one of the given application roles
++   * (INVENTORY_MAINTENANCE/STOREKEEPER) with a non-blank whatsapp number.
++   */
++  @Query("""
++      select u from AuthUserEntity u
++      where u.applicationRole in :roles
++        and u.whatsappNumber is not null
++        and trim(u.whatsappNumber) <> ''
++      """)
++  List<AuthUserEntity> findAllByApplicationRoleInWithWhatsapp(
++      @Param("roles") Collection<ApplicationRole> roles);
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/notification/application/NotificationDispatchService.java b/syncro/apps/backend/src/main/java/com/syncro/notification/application/NotificationDispatchService.java
+index f52f1da..dbe36a6 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/notification/application/NotificationDispatchService.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/notification/application/NotificationDispatchService.java
+@@ -67,11 +67,15 @@ public class NotificationDispatchService {
+       return;
+     }
+ 
+-    // Render template
++    // Render message text: a pre-composed body (sparepart-request escalation jobs, story
++    // 12-3) is sent verbatim; alert jobs fall back to the WAHA template renderer.
+     String messageText;
+-    try {
+-      messageText = templateRenderer.render(job.getAlertId());
+-    } catch (WahaTemplateRenderException e) {
++    if (job.getMessageBody() != null && !job.getMessageBody().isBlank()) {
++      messageText = job.getMessageBody();
++    } else {
++      try {
++        messageText = templateRenderer.render(job.getAlertId());
++      } catch (WahaTemplateRenderException e) {
+       log.error("[traceId={}] Template render failed for job {}: {}", job.getTraceId(), job.getId(),
+           e.getMessage());
+       transactionTemplate.executeWithoutResult(status -> {
+@@ -83,6 +87,7 @@ public class NotificationDispatchService {
+         jobRepository.save(job);
+       });
+       return;
++      }
+     }
+ 
+     // Send via WAHA (WahaClient handles timeout + circuit breaker internally)
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/notification/infrastructure/NotificationJobEntity.java b/syncro/apps/backend/src/main/java/com/syncro/notification/infrastructure/NotificationJobEntity.java
+index 39cd712..46b52cd 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/notification/infrastructure/NotificationJobEntity.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/notification/infrastructure/NotificationJobEntity.java
+@@ -48,6 +48,14 @@ public class NotificationJobEntity {
+   @Column(name = "error_detail", length = 512)
+   private String errorDetail;
+ 
++  /**
++   * Optional pre-composed message body (story 12-3). When present, the dispatch service
++   * sends it directly instead of rendering an alert template — used by sparepart-request
++   * escalation jobs which have no alert to render. Null for all alert jobs.
++   */
++  @Column(name = "message_body")
++  private String messageBody;
++
+   @Column(name = "sent_at")
+   private Instant sentAt;
+ 
+@@ -76,6 +84,14 @@ public class NotificationJobEntity {
+   public NotificationJobEntity(UUID alertId, String escalationLevel, NotificationJobStatus status,
+       UUID recipientUserId, String recipientPhone, String idempotencyKey, String traceId,
+       String errorDetail) {
++    this(alertId, escalationLevel, status, recipientUserId, recipientPhone, idempotencyKey, traceId,
++        errorDetail, null);
++  }
++
++  /** Story 12-3: overload carrying a pre-composed message body (null for alert jobs). */
++  public NotificationJobEntity(UUID alertId, String escalationLevel, NotificationJobStatus status,
++      UUID recipientUserId, String recipientPhone, String idempotencyKey, String traceId,
++      String errorDetail, String messageBody) {
+     this.alertId = alertId;
+     this.escalationLevel = escalationLevel;
+     this.status = status;
+@@ -84,6 +100,7 @@ public class NotificationJobEntity {
+     this.idempotencyKey = idempotencyKey;
+     this.traceId = traceId;
+     this.errorDetail = errorDetail;
++    this.messageBody = messageBody;
+   }
+ 
+   public void markSent(Instant now) {
+@@ -183,6 +200,10 @@ public class NotificationJobEntity {
+     return errorDetail;
+   }
+ 
++  public String getMessageBody() {
++    return messageBody;
++  }
++
+   public Instant getSentAt() {
+     return sentAt;
+   }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/notification/infrastructure/NotificationJobRepository.java b/syncro/apps/backend/src/main/java/com/syncro/notification/infrastructure/NotificationJobRepository.java
+index 6d3ab79..484cda4 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/notification/infrastructure/NotificationJobRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/notification/infrastructure/NotificationJobRepository.java
+@@ -93,6 +93,33 @@ public interface NotificationJobRepository extends JpaRepository<NotificationJob
+       @Param("cancelled") NotificationJobStatus cancelled,
+       @Param("now") Instant now);
+ 
++  /**
++   * Cancel all non-terminal notification jobs for a sparepart request in one statement
++   * (story 12-3, FR-147 ack-stop). Matches the request's escalation jobs by the
++   * idempotency-key prefix {@code SPAREPART_REQUEST:{requestId}:%} — the idempotency
++   * key is the request handle (AD-9 polymorphic target columns are deliberately NOT
++   * introduced here). Called from {@code SparepartRequestService.transition()} when a
++   * request transitions to ACKED or CLOSED.
++   *
++   * <p>Same {@code @Version}-bypass tradeoff as {@link #cancelActiveForAlert}: the bulk
++   * update must not race a dispatch into SENT; the idempotency-key unique constraint
++   * prevents duplicate logical sends.
++   *
++   * @return the number of rows cancelled
++   */
++  @Modifying
++  @Query("""
++      update NotificationJobEntity j
++      set j.status = :cancelled, j.nextAttemptAt = null, j.updatedAt = :now
++      where j.idempotencyKey like :requestKeyPrefix
++        and j.status in :activeStatuses
++      """)
++  int cancelActiveForRequest(
++      @Param("requestKeyPrefix") String requestKeyPrefix,
++      @Param("activeStatuses") Collection<NotificationJobStatus> activeStatuses,
++      @Param("cancelled") NotificationJobStatus cancelled,
++      @Param("now") Instant now);
++
+   /**
+    * Returns the most recently updated non-CANCELLED job for each alertId in the
+    * given collection. Uses a subquery on MAX(updatedAt) per alertId to select
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestController.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestController.java
+index 96bf43e..fb3e387 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestController.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestController.java
+@@ -1,12 +1,14 @@
+ package com.syncro.sparepart.request.api;
+ 
+ import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.sparepart.request.api.SparepartRequestDtos.ApproveRequest;
+ import com.syncro.sparepart.request.api.SparepartRequestDtos.CreateSparepartRequestRequest;
+ import com.syncro.sparepart.request.api.SparepartRequestDtos.MreRequest;
+ import com.syncro.sparepart.request.api.SparepartRequestDtos.SparepartRequestListView;
+ import com.syncro.sparepart.request.api.SparepartRequestDtos.SparepartRequestView;
+ import com.syncro.sparepart.request.api.SparepartRequestDtos.TransitionRequest;
+ import com.syncro.sparepart.request.application.SparepartRequestService;
++import com.syncro.sparepart.request.application.SparepartRequestService.ApproveCommand;
+ import com.syncro.sparepart.request.application.SparepartRequestService.CreateRequestCommand;
+ import com.syncro.sparepart.request.application.SparepartRequestService.MreCommand;
+ import com.syncro.sparepart.request.application.SparepartRequestService.TransitionCommand;
+@@ -51,7 +53,7 @@ public class SparepartRequestController {
+       @RequestParam(name = "size", defaultValue = "20") int size) {
+     var result = service.list(user, page, size);
+     return new SparepartRequestListView(
+-        result.items().stream().map(SparepartRequestController::toView).toList(),
++        result.items().stream().map(r -> toView(r, user)).toList(),
+         result.total(), result.page(), result.size());
+   }
+ 
+@@ -72,7 +74,7 @@ public class SparepartRequestController {
+         request.estUnitPrice(), request.purchaseReferenceUrl(), request.notes());
+     var created = service.create(user, command);
+     return ResponseEntity.status(HttpStatus.CREATED)
+-        .body(toView(created));
++        .body(toView(created, user));
+   }
+ 
+   @Operation(operationId = "transitionSparepartRequest", summary = "Transition a sparepart request (FR-141)")
+@@ -89,7 +91,7 @@ public class SparepartRequestController {
+   public SparepartRequestView transition(@AuthenticationPrincipal AuthenticatedUser user,
+       @PathVariable UUID id, @Valid @RequestBody TransitionRequest request) {
+     var command = new TransitionCommand(request.toStatus(), request.note());
+-    return toView(service.transition(user, id, command));
++    return toView(service.transition(user, id, command), user);
+   }
+ 
+   @Operation(operationId = "recordSparepartRequestMre", summary = "Record a manual MRE code (FR-145)")
+@@ -106,12 +108,32 @@ public class SparepartRequestController {
+   public SparepartRequestView recordMre(@AuthenticationPrincipal AuthenticatedUser user,
+       @PathVariable UUID id, @Valid @RequestBody MreRequest request) {
+     var command = new MreCommand(request.mreCode(), request.note());
+-    return toView(service.recordMre(user, id, command));
++    return toView(service.recordMre(user, id, command), user);
+   }
+ 
+-  private static SparepartRequestView toView(com.syncro.sparepart.request.domain.SparepartRequest r) {
++  @Operation(operationId = "approveSparepartRequest", summary = "Approve a sparepart request (FR-142, AD-16)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Request approved (ACKED)",
++          content = @Content(schema = @Schema(implementation = SparepartRequestView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden (incl. SELF_APPROVAL_FORBIDDEN)"),
++      @ApiResponse(responseCode = "404", description = "Request not found"),
++      @ApiResponse(responseCode = "409", description = "Invalid state transition")
++  })
++  @PostMapping("/{id}/approve")
++  public SparepartRequestView approve(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id, @RequestBody(required = false) ApproveRequest request) {
++    var command = new ApproveCommand(request == null ? null : request.note());
++    return toView(service.approve(user, id, command), user);
++  }
++
++  private SparepartRequestView toView(com.syncro.sparepart.request.domain.SparepartRequest r,
++      AuthenticatedUser user) {
++    var allowed = service.allowedActionsFor(user, r);
+     return new SparepartRequestView(r.id(), r.requestType(), r.workOrderId(), r.machineId(), r.sparepartId(),
+         r.materialCode(), r.quantity(), r.estPriceId(), r.estUnitPrice(), r.purchaseReferenceUrl(), r.status(),
+-        r.requestedBy(), r.requestedAt(), r.notes(), r.createdAt(), r.updatedAt());
+warning: in the working copy of 'syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/EscalationConfigService.java', LF will be replaced by CRLF the next time Git touches it
++        r.requestedBy(), r.requestedAt(), r.notes(), r.createdAt(), r.updatedAt(),
++        allowed.allowedActions(), allowed.requiredApprovalRole());
+   }
+ }
+\ No newline at end of file
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestDtos.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestDtos.java
+index eaaff8e..3363b67 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestDtos.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestDtos.java
+@@ -13,6 +13,7 @@ import java.math.BigDecimal;
+ import java.time.Instant;
+ import java.util.List;
+ import java.util.Map;
++import java.util.Set;
+ import java.util.UUID;
+ 
+ public final class SparepartRequestDtos {
+@@ -35,7 +36,13 @@ public final class SparepartRequestDtos {
+   public record SparepartRequestView(UUID id, SparepartRequestType requestType, String workOrderId, UUID machineId,
+       UUID sparepartId, String materialCode, int quantity, UUID estPriceId, BigDecimal estUnitPrice,
+       String purchaseReferenceUrl, SparepartRequestStatus status, UUID requestedBy, Instant requestedAt,
+-      String notes, Instant createdAt, Instant updatedAt) {
++      String notes, Instant createdAt, Instant updatedAt,
++      Set<String> allowedActions, String requiredApprovalRole) {
++  }
++
++  /** Story 12-3 approval request body (FR-142): optional note. */
++  public record ApproveRequest(
++      @Size(max = 500) @Schema(description = "Optional note attached to the approval", nullable = true) String note) {
+   }
+ 
+   /** Story 12-2 status transition request body (FR-141). */
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestExceptionHandler.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestExceptionHandler.java
+index 1a9d6b9..027d36c 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestExceptionHandler.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestExceptionHandler.java
+@@ -9,6 +9,7 @@ import com.syncro.sparepart.request.application.SparepartRequestService.RequestV
+ import com.syncro.sparepart.request.application.SparepartRequestService.SparepartNotFoundException;
+ import com.syncro.sparepart.request.application.SparepartRequestService.WorkOrderNotFoundException;
+ import com.syncro.sparepart.request.application.SparepartRequestService.InvalidRequestStateTransitionException;
++import com.syncro.sparepart.request.application.SparepartRequestService.SelfApprovalForbiddenException;
+ import java.time.Clock;
+ import java.time.Instant;
+ import java.util.LinkedHashMap;
+@@ -101,6 +102,13 @@ public class SparepartRequestExceptionHandler {
+     return error(HttpStatus.NOT_FOUND, "REQUEST_NOT_FOUND", "Sparepart request was not found.", Map.of());
+   }
+ 
++  /** Story 12-3: requester approving their own request → 403 SELF_APPROVAL_FORBIDDEN (AD-16). */
++  @ExceptionHandler(SelfApprovalForbiddenException.class)
++  ResponseEntity<ErrorResponse> selfApprovalForbidden() {
++    return error(HttpStatus.FORBIDDEN, "SELF_APPROVAL_FORBIDDEN",
++        "You cannot approve your own request.", Map.of());
++  }
++
+   @ExceptionHandler(MachineNotFoundException.class)
+   ResponseEntity<ErrorResponse> machineNotFound() {
+     return error(HttpStatus.NOT_FOUND, "MACHINE_NOT_FOUND", "Machine was not found.", Map.of());
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/EscalationConfigService.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/EscalationConfigService.java
+new file mode 100644
+index 0000000..0128dc2
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/EscalationConfigService.java
+@@ -0,0 +1,87 @@
++package com.syncro.sparepart.request.application;
++
++import com.syncro.sparepart.request.domain.EscalationConfig;
++import com.syncro.sparepart.request.infrastructure.db.EscalationConfigEntity;
+warning: in the working copy of 'syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestEscalationService.java', LF will be replaced by CRLF the next time Git touches it
++import com.syncro.sparepart.request.infrastructure.db.EscalationConfigRepository;
++import java.math.BigDecimal;
++import java.util.List;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++import org.springframework.stereotype.Service;
++
++/**
++ * Resolves approval tiers and escalation durations from the escalation_configs table
++ * (story 12-3, FR-142/FR-147). The config is read from the database, not hardcoded.
++ */
++@Service
++public class EscalationConfigService {
++
++  private static final Logger log = LoggerFactory.getLogger(EscalationConfigService.class);
++
++  private static final String SPAREPART_REQUEST_SCOPE = "SPAREPART_REQUEST";
++
++  private final EscalationConfigRepository repository;
++
++  public EscalationConfigService(EscalationConfigRepository repository) {
++    this.repository = repository;
++  }
++
++  /**
++   * Resolves the required approval role for a given estimated cost.
++   * Tiers are matched by [minCost, maxCost) — null min = unbounded below, null max = unbounded above.
++   * When the request has no price (hasPrice = false), returns SECTION_LEADER regardless of quantity.
++   */
++  public String requiredApprovalRole(BigDecimal estimatedCost, boolean hasPrice) {
++    if (!hasPrice) {
++      return "SECTION_LEADER";
++    }
++    var configs = repository.findByScope(SPAREPART_REQUEST_SCOPE);
++    // Only approval tiers have a non-null approval_role
++    var tiers = configs.stream()
++        .filter(c -> c.getApprovalRole() != null)
++        .toList();
++
++    for (var tier : tiers) {
++      var min = tier.getMinCost();
++      var max = tier.getMaxCost();
++      boolean inRange = true;
++      if (min != null && estimatedCost.compareTo(min) < 0) {
++        inRange = false;
++      }
++      if (max != null && estimatedCost.compareTo(max) >= 0) {
++        inRange = false;
++      }
++      if (inRange) {
++        return tier.getApprovalRole();
++      }
++    }
++    // Fallback to the highest tier (last one with non-null min or null max)
++    if (!tiers.isEmpty()) {
++      return tiers.getLast().getApprovalRole();
++    }
++    // No config rows — safe default
++    return "SECTION_LEADER";
++  }
++
++  /**
++   * Returns the duration in minutes for a given escalation step, or 0 if not found.
++   */
++  public int durationMinutes(String step) {
++    var configs = repository.findByScope(SPAREPART_REQUEST_SCOPE);
++    return configs.stream()
++        .filter(c -> step.equals(c.getStep()))
++        .findFirst()
++        .map(EscalationConfigEntity::getDurationMinutes)
++        .orElse(0);
++  }
++
++  /**
++   * Returns all SPAREPART_REQUEST config rows as domain records.
++   */
++  public List<EscalationConfig> allForScope() {
++    return repository.findByScope(SPAREPART_REQUEST_SCOPE).stream()
++        .map(e -> new EscalationConfig(e.getScope(), e.getStep(), e.getMinCost(), e.getMaxCost(),
++            e.getDurationMinutes(), e.getApprovalRole()))
++        .toList();
++  }
++}
+\ No newline at end of file
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestEscalationService.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestEscalationService.java
+new file mode 100644
+index 0000000..83caaad
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestEscalationService.java
+@@ -0,0 +1,212 @@
++package com.syncro.sparepart.request.application;
++
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.AuthUserEntity;
++import com.syncro.auth.infrastructure.AuthUserRepository;
++import com.syncro.machine.domain.ResponsibilityLevel;
++import com.syncro.machine.infrastructure.MachineResponsibilityRepository;
++import com.syncro.maintenance.infrastructure.db.WorkOrderRepository;
++import com.syncro.notification.domain.NotificationJobStatus;
++import com.syncro.notification.infrastructure.NotificationJobEntity;
++import com.syncro.notification.infrastructure.NotificationJobRepository;
++import com.syncro.sparepart.request.domain.SparepartRequestStatus;
++import com.syncro.sparepart.request.infrastructure.db.SparepartRequestEntity;
++import com.syncro.sparepart.request.infrastructure.db.SparepartRequestRepository;
++import java.time.Clock;
++import java.time.Instant;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++import org.springframework.dao.DataIntegrityViolationException;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++
++/**
++ * Escalation worker logic for sparepart requests (story 12-3, FR-147). For each configured
++ * escalation step (ACK_WAITING / PROCESS_WAITING / PURCHASE_WAITING) it finds requests that
++ * have been stuck in the step's status set longer than the configured duration, resolves
++ * recipients (the machine's LEADER responsibility user + every INVENTORY_MAINTENANCE /
++ * STOREKEEPER user with a phone number) and enqueues one notification job per recipient
++ * with a hardcoded request-summary body. Enqueue goes through the notification module's
++ * repository with the saveIgnoreDuplicate pattern — never WAHA inline.
++ */
++@Service
++public class SparepartRequestEscalationService {
++
++  private static final Logger log = LoggerFactory.getLogger(SparepartRequestEscalationService.class);
++
++  private static final List<ApplicationRole> INVENTORY_ROLES = List.of(
++      ApplicationRole.INVENTORY_MAINTENANCE,
++      ApplicationRole.STOREKEEPER);
++
++  private static final Map<String, List<SparepartRequestStatus>> STEP_STATUSES = Map.of(
++      "ACK_WAITING", List.of(SparepartRequestStatus.REQUESTED, SparepartRequestStatus.PENDING_COMPLETION),
++      "PROCESS_WAITING", List.of(SparepartRequestStatus.ACKED, SparepartRequestStatus.PROCESSING),
++      "PURCHASE_WAITING", List.of(SparepartRequestStatus.PURCHASE_REQUESTED, SparepartRequestStatus.PART_RECEIVED));
++
++  private static final String IDEMPOTENCY_KEY_PREFIX = "SPAREPART_REQUEST:";
++
++  private final SparepartRequestRepository requests;
++  private final EscalationConfigService escalationConfigs;
++  private final MachineResponsibilityRepository responsibilities;
++  private final AuthUserRepository users;
++  private final WorkOrderRepository workOrders;
++  private final NotificationJobRepository notificationJobs;
++  private final Clock clock;
++
++  public SparepartRequestEscalationService(
++      SparepartRequestRepository requests,
++      EscalationConfigService escalationConfigs,
++      MachineResponsibilityRepository responsibilities,
++      AuthUserRepository users,
++      WorkOrderRepository workOrders,
++      NotificationJobRepository notificationJobs,
++      Clock clock) {
++    this.requests = requests;
++    this.escalationConfigs = escalationConfigs;
++    this.responsibilities = responsibilities;
++    this.users = users;
++    this.workOrders = workOrders;
++    this.notificationJobs = notificationJobs;
++    this.clock = clock;
++  }
++
++  /**
++   * Evaluates every configured step once: requests whose status is in the step's set and
++   * whose updated_at is older than the step duration get one notification job per recipient.
++   * Idempotency keys are per (request, step) so duplicates are skipped by the unique
++   * constraint. Per-step/request error isolation — a failure never aborts the whole run.
++   */
++  @Transactional
++  public void escalateStale() {
++    Instant now = Instant.now(clock);
++    for (var step : STEP_STATUSES.keySet()) {
++      int durationMinutes = escalationConfigs.durationMinutes(step);
++      if (durationMinutes <= 0) {
++        log.warn("[SparepartRequestEscalationService] No escalation_configs row for step {} — skipping", step);
++        continue;
++      }
++      Instant cutoff = now.minusSeconds(durationMinutes * 60L);
++      List<SparepartRequestEntity> stale = requests.findStaleByStatusInAndUpdatedAtBefore(
++          STEP_STATUSES.get(step), cutoff);
++      if (stale.isEmpty()) {
++        continue;
++      }
++      log.info("[SparepartRequestEscalationService] Step {} has {} stale request(s)", step, stale.size());
++      for (var request : stale) {
++        try {
++          escalateRequest(request, step);
++        } catch (Exception e) {
++          log.error("[SparepartRequestEscalationService] Failed to escalate request {} for step {}: {}",
++              request.getId(), step, e.getMessage(), e);
++        }
++      }
++    }
++  }
++
++  private void escalateRequest(SparepartRequestEntity request, String step) {
++    UUID machineId = resolveMachineId(request);
++    if (machineId == null) {
++      log.info("[SparepartRequestEscalationService] Request {} has no machine target — skipping", request.getId());
++      return;
++    }
++
++    String idempotencyKey = IDEMPOTENCY_KEY_PREFIX + request.getId() + ":" + step;
++    String body = composeBody(request);
++    String traceId = null;
++
++    // 1. Machine LEADER responsibility user (FR-147: "section leaders and above")
++    var responsibility = responsibilities
++        .findFirstByMachineIdAndResponsibilityLevelOrderByCreatedAtAsc(machineId, ResponsibilityLevel.LEADER);
++
++    if (responsibility.isPresent()) {
++      var user = users.findById(responsibility.get().getUserId()).orElse(null);
++      if (user == null) {
++        log.warn("[SparepartRequestEscalationService] LEADER userId {} not found for machine {} — ROUTING_FAILED",
++            responsibility.get().getUserId(), machineId);
++        saveIgnoreDuplicate(notificationJob(
++            request, step, idempotencyKey, NotificationJobStatus.ROUTING_FAILED,
++            responsibility.get().getUserId(), null, traceId,
++            "LEADER userId=" + responsibility.get().getUserId() + " not found", body));
++      } else if (user.getWhatsappNumber() == null || user.getWhatsappNumber().isBlank()) {
++        log.warn("[SparepartRequestEscalationService] LEADER userId {} has no whatsappNumber — ROUTING_FAILED",
++            responsibility.get().getUserId());
++        saveIgnoreDuplicate(notificationJob(
++            request, step, idempotencyKey, NotificationJobStatus.ROUTING_FAILED,
++            user.getId(), null, traceId,
++            "LEADER userId=" + user.getId() + " has no whatsappNumber", body));
++      } else {
++        saveIgnoreDuplicate(notificationJob(
++            request, step, idempotencyKey, NotificationJobStatus.PENDING,
++            user.getId(), user.getWhatsappNumber(), traceId, null, body));
++      }
++    } else {
++      // No LEADER assignment — the FR-147 recipient set is still partially satisfiable
++      // by inventory/stores roles; the no-responsibility case is logged + skipped below.
++      log.info("[SparepartRequestEscalationService] Machine {} has no LEADER assignment — skipping leader job",
++          machineId);
++    }
++
++    // 2. Every INVENTORY_MAINTENANCE / STOREKEEPER user with a phone
++    var inventoryUsers = users.findAllByApplicationRoleInWithWhatsapp(INVENTORY_ROLES);
++    for (var user : inventoryUsers) {
++      if (user.getWhatsappNumber() == null || user.getWhatsappNumber().isBlank()) {
++        continue;
++      }
++      saveIgnoreDuplicate(notificationJob(
++          request, step, idempotencyKey, NotificationJobStatus.PENDING,
++          user.getId(), user.getWhatsappNumber(), traceId, null, body));
++    }
++
++    // 3. No recipients at all → log + skip (no job)
++    if (responsibility.isEmpty() && inventoryUsers.isEmpty()) {
++      log.info("[SparepartRequestEscalationService] Request {} step {} has no recipients — skipping",
++          request.getId(), step);
++    }
++  }
++
++  /** Resolve the machine a request is scoped against: its own machine, else the bound workorder's machine. */
++  private UUID resolveMachineId(SparepartRequestEntity request) {
++    if (request.getMachineId() != null) {
++      return request.getMachineId();
++    }
++    if (request.getWorkOrderId() != null) {
++      return workOrders.findById(request.getWorkOrderId())
++          .map(w -> w.getMachineId())
++          .orElse(null);
++    }
++    return null;
++  }
++
++  /**
++   * v1 request-summary body (FR-147): requestId, material code or 'new', qty, status,
++   * machine code. Composed here and carried on the job's message_body column.
++   */
+warning: in the working copy of 'syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestEscalationWorker.java', LF will be replaced by CRLF the next time Git touches it
++  private String composeBody(SparepartRequestEntity request) {
++    return "Permintaan sparepart menunggu tindakan: ID " + request.getId()
++        + " · Part: " + (request.getMaterialCode() != null ? request.getMaterialCode() : "new")
++        + " · Qty: " + request.getQuantity()
++        + " · Status: " + request.getStatus().name();
++  }
++
++  private static NotificationJobEntity notificationJob(SparepartRequestEntity request, String step,
++      String idempotencyKey, NotificationJobStatus status, UUID recipientUserId, String recipientPhone,
++      String traceId, String errorDetail, String messageBody) {
++    // alertId is non-null in the schema (V24) — escalation jobs reuse the idempotency
++    // key as the discriminator; a random UUID satisfies the NOT NULL constraint without
++    // implying an alert relationship.
++    return new NotificationJobEntity(
++        UUID.randomUUID(), step, status, recipientUserId, recipientPhone, idempotencyKey,
++        traceId, errorDetail, messageBody);
++  }
++
++  private void saveIgnoreDuplicate(NotificationJobEntity job) {
++    try {
++      notificationJobs.save(job);
++    } catch (DataIntegrityViolationException ignored) {
++      // Duplicate escalation job — idempotent skip (per-request, per-step)
++    }
++  }
++}
+\ No newline at end of file
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestEscalationWorker.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestEscalationWorker.java
+new file mode 100644
+index 0000000..082bfbb
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestEscalationWorker.java
+@@ -0,0 +1,34 @@
++package com.syncro.sparepart.request.application;
++
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++import org.springframework.scheduling.annotation.Scheduled;
++import org.springframework.stereotype.Component;
++
++/**
++ * Scheduled poller for sparepart-request escalation (story 12-3, FR-147). Runs every
++ * configurable interval (default 60s) and delegates to the escalation service. Per-step
++ * and per-request error isolation lives inside the service; this class only wraps the
++ * top-level call so one unexpected failure never kills the schedule.
++ */
++@Component
++public class SparepartRequestEscalationWorker {
++
++  private static final Logger log = LoggerFactory.getLogger(SparepartRequestEscalationWorker.class);
++
++  private final SparepartRequestEscalationService escalationService;
++
++  public SparepartRequestEscalationWorker(SparepartRequestEscalationService escalationService) {
++    this.escalationService = escalationService;
++  }
++
++  @Scheduled(fixedDelayString = "${syncro.sparepart.escalation.poll-interval-ms:60000}")
++  public void poll() {
++    try {
++      escalationService.escalateStale();
++    } catch (Exception e) {
++      log.error("[SparepartRequestEscalationWorker] Unexpected error during escalation run: {}",
++          e.getMessage(), e);
++    }
++  }
++}
+\ No newline at end of file
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestMapper.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestMapper.java
+index c256ef7..d000aab 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestMapper.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestMapper.java
+@@ -17,6 +17,15 @@ public final class SparepartRequestMapper {
+         entity.getUpdatedAt());
+   }
+ 
++  /** Story 12-3: reconstructs an entity from a domain value for per-user action/scope checks. */
++  public static SparepartRequestEntity toEntity(SparepartRequest request) {
++    return new SparepartRequestEntity(request.id(), request.requestType(), request.workOrderId(),
++        request.machineId(), request.sparepartId(), request.materialCode(), request.quantity(),
++        request.estPriceId(), request.estUnitPrice(), request.purchaseReferenceUrl(), request.status(),
++        request.requestedBy(), request.requestedAt(), request.notes(), request.createdAt(),
++        request.updatedAt());
++  }
++
+   /** Maps a timeline entity to a view record (story 12-2, FR-141). */
+   public static TimelineEventView toTimelineView(SparepartRequestTimelineEntity entity) {
+     return new TimelineEventView(entity.getId(), entity.getRequestId(), entity.getFromStatus(),
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestService.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestService.java
+index be565f3..45c4062 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestService.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestService.java
+@@ -12,6 +12,8 @@ import com.syncro.machine.infrastructure.MachineRepository;
+ import com.syncro.maintenance.application.WorkOrderService;
+ import com.syncro.maintenance.infrastructure.db.WorkOrderEntity;
+ import com.syncro.maintenance.infrastructure.db.WorkOrderRepository;
++import com.syncro.notification.domain.NotificationJobStatus;
++import com.syncro.notification.infrastructure.NotificationJobRepository;
+ import com.syncro.org.application.OperationalScope;
+ import com.syncro.org.application.OperationalScopeService;
+ import com.syncro.sparepart.infrastructure.SparepartEntity;
+@@ -66,6 +68,8 @@ public class SparepartRequestService {
+   private final MachineRepository machines;
+   private final SparepartRepository spareparts;
+   private final SparepartPriceEntryRepository priceEntries;
++  private final EscalationConfigService escalationConfigs;
++  private final NotificationJobRepository notificationJobs;
+   private final AuditLogWriter auditLog;
+   private final OperationalScopeService scopes;
+   private final Clock clock;
+@@ -74,6 +78,7 @@ public class SparepartRequestService {
+       SparepartRequestTimelineRepository timelines, WorkOrderRepository workOrders,
+       WorkOrderService workOrderService, MachineRepository machines,
+       SparepartRepository spareparts, SparepartPriceEntryRepository priceEntries,
++      EscalationConfigService escalationConfigs, NotificationJobRepository notificationJobs,
+       AuditLogWriter auditLog, OperationalScopeService scopes, Clock clock) {
+     this.requests = requests;
+     this.timelines = timelines;
+@@ -82,6 +87,8 @@ public class SparepartRequestService {
+     this.machines = machines;
+     this.spareparts = spareparts;
+     this.priceEntries = priceEntries;
++    this.escalationConfigs = escalationConfigs;
++    this.notificationJobs = notificationJobs;
+     this.auditLog = auditLog;
+     this.scopes = scopes;
+     this.clock = clock;
+@@ -178,6 +185,17 @@ public class SparepartRequestService {
+     entity.transitionTo(toStatus, now);
+     var saved = requests.saveAndFlush(entity);
+ 
++    // Ack-stop (FR-147, story 12-3): reaching ACKED or CLOSED cancels every non-terminal
++    // escalation job for this request in the same transaction (idempotency-key prefix).
++    if (toStatus == SparepartRequestStatus.ACKED || toStatus == SparepartRequestStatus.CLOSED) {
++      notificationJobs.cancelActiveForRequest(
++          "SPAREPART_REQUEST:" + saved.getId() + ":%",
++          List.of(NotificationJobStatus.PENDING, NotificationJobStatus.SENT,
++              NotificationJobStatus.RATE_LIMITED),
++          NotificationJobStatus.CANCELLED,
++          now);
++    }
++
+     var traceId = PolicyDecisionPoint.currentTraceId();
+     timelines.saveAndFlush(new SparepartRequestTimelineEntity(UUID.randomUUID(), saved.getId(), fromStatus,
+         toStatus, UUID.fromString(user.id()), TIMELINE_ACTION_TRANSITION, null,
+@@ -229,6 +247,141 @@ public class SparepartRequestService {
+     return SparepartRequestMapper.toDomain(entity);
+   }
+ 
++  /**
++   * Approve a sparepart request (story 12-3, FR-142/AD-16). Approval is NOT a new status —
++   * it performs the REQUESTED/PENDING_COMPLETION → ACKED transition after the approval
++   * gates pass. Gate order (authoritative server-side):
++   * <ol>
++   *   <li><b>SoD:</b> requester may never approve their own request → 403 SELF_APPROVAL_FORBIDDEN
++   *       (before OPA and before any state-machine check).</li>
++   *   <li><b>State:</b> current status must allow ACKED (else 409 INVALID_STATE_TRANSITION).</li>
++   *   <li><b>Cost tier:</b> required role resolved from escalation_configs by estimatedCost
++   *       (qty × unit price); no price → SECTION_LEADER.</li>
++   *   <li><b>Role + scope:</b> user's application role must have authority ≥ the required
++   *       role AND be an in-scope leader for the request's machine. SUPER_ADMIN bypasses.</li>
++   * </ol>
++   * On success the internal {@link #transition} machinery runs (timeline, audit,
++   * ON_PROCUREMENT recompute, ack-stop).
++   */
++  @Transactional
++  public SparepartRequest approve(AuthenticatedUser user, UUID requestId, ApproveCommand command) {
++    var entity = requests.findByIdForUpdate(requestId).orElseThrow(RequestNotFoundException::new);
++    var requesterId = entity.getRequestedBy();
++    var actorId = UUID.fromString(user.id());
++    if (requesterId != null && requesterId.equals(actorId)) {
++      // SoD (AD-16, NFR-P2-5): enforced before OPA and before any state-machine check.
++      throw new SelfApprovalForbiddenException();
++    }
++    if (!SparepartRequestStateMachine.can(entity.getStatus(), SparepartRequestStatus.ACKED)) {
++      throw new InvalidRequestStateTransitionException();
++    }
++
++    var machine = machineForRequest(entity);
++    var requiredRole = requiredApprovalRole(entity, machine);
++    requireApprovalAccess(user, entity, machine, requiredRole);
++
++    var note = command != null && command.note() != null && !command.note().isBlank()
++        ? "Approved " + requiredRole + ": " + command.note().trim()
++        : "Approved " + requiredRole;
++    return transition(user, requestId, new TransitionCommand(SparepartRequestStatus.ACKED, note));
++  }
++
++  /**
++   * Resolves the required approval role from escalation_configs tiers. The estimated cost
++   * is qty × unit price in IDR; unit price = estUnitPrice when set, else the linked price
++   * entry's idrAmount. No price at all → SECTION_LEADER (AD-16).
++   */
++  private String requiredApprovalRole(SparepartRequestEntity entity, MachineEntity machine) {
++    BigDecimal unitPrice = entity.getEstUnitPrice();
++    if (unitPrice == null && entity.getEstPriceId() != null) {
++      unitPrice = priceEntries.findById(entity.getEstPriceId())
++          .map(entry -> entry.getIdrAmount())
++          .orElse(null);
++    }
++    boolean hasPrice = unitPrice != null;
++    BigDecimal estimatedCost = hasPrice
++        ? unitPrice.multiply(BigDecimal.valueOf(entity.getQuantity()))
++        : null;
++    return escalationConfigs.requiredApprovalRole(estimatedCost, hasPrice);
++  }
++
++  /**
++   * Approval gate: SUPER_ADMIN bypasses. Otherwise the user must (a) hold an application
++   * role with authority ≥ the required role (SECTION_LEADER < MAINTENANCE_LEADER <
++   * MANAGER_MAINTENANCE — monotone) and (b) be an in-scope leader for the request's
++   * machine (SECTION_LEADER group-in-scope; MAINTENANCE_LEADER/MANAGER plant-or-group).
++   */
++  private void requireApprovalAccess(AuthenticatedUser user, SparepartRequestEntity entity,
++      MachineEntity machine, String requiredRole) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    var role = user.applicationRole().name();
++    if (!hasApprovalAuthority(role, requiredRole)) {
++      throw new RequestForbiddenException();
++    }
++    if (!isInScopeLeader(user, machine)) {
++      throw new RequestForbiddenException();
++    }
++  }
++
++  /** Authority order: SECTION_LEADER < MAINTENANCE_LEADER < MANAGER_MAINTENANCE. */
++  private static boolean hasApprovalAuthority(String actorRole, String requiredRole) {
++    int actorRank = approvalRank(actorRole);
++    int requiredRank = approvalRank(requiredRole);
++    return actorRank >= requiredRank && actorRank > 0;
++  }
++
+warning: in the working copy of 'syncro/apps/backend/src/main/java/com/syncro/sparepart/request/domain/EscalationConfig.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/EscalationConfigEntity.java', LF will be replaced by CRLF the next time Git touches it
++  private static int approvalRank(String role) {
++    return switch (role) {
++      case "SECTION_LEADER" -> 1;
++      case "MAINTENANCE_LEADER" -> 2;
++      case "MANAGER_MAINTENANCE" -> 3;
++      default -> 0;
++    };
++  }
++
++  /**
++   * Per-user allowed actions for a request (story 12-3). Computed server-side; the
++   * frontend renders from this, never from its own role logic. {@code approve} is present
++   * only when the current user can approve (not requester, approvable status,
++   * role/scope sufficient). {@code requiredApprovalRole} is the tier's required role or
++   * null when not approvable/approved.
++   */
++  public RequestAllowedActions allowedActionsFor(AuthenticatedUser user, SparepartRequest request) {
++    var allowed = new java.util.LinkedHashSet<String>();
++    String requiredRole = null;
++    var status = request.status();
++
++    if (SparepartRequestStateMachine.can(status, SparepartRequestStatus.ACKED)) {
++      var isRequester = request.requestedBy() != null
++          && request.requestedBy().equals(UUID.fromString(user.id()));
++      if (!isRequester) {
++        var entity = SparepartRequestMapper.toEntity(request);
++        var machine = machineForRequest(entity);
++        var required = requiredApprovalRole(entity, machine);
++        if (canApprove(user, machine, required)) {
++          allowed.add("approve");
++          requiredRole = required;
++        }
++      }
++    }
++    return new RequestAllowedActions(allowed, requiredRole);
++  }
++
++  private boolean canApprove(AuthenticatedUser user, MachineEntity machine, String requiredRole) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return true;
++    }
++    if (!hasApprovalAuthority(user.applicationRole().name(), requiredRole)) {
++      return false;
++    }
++    return isInScopeLeader(user, machine);
++  }
++
++  public record RequestAllowedActions(java.util.Set<String> allowedActions, String requiredApprovalRole) {
++  }
++
+   // -------------------------------------------------------------------------
+   // Helpers
+   // -------------------------------------------------------------------------
+@@ -664,9 +817,17 @@ public class SparepartRequestService {
+   public record MreCommand(String mreCode, String note) {
+   }
+ 
++  /** Story 12-3 approval command (FR-142): optional note attached to the timeline/audit. */
++  public record ApproveCommand(String note) {
++  }
++
+   public static class RequestForbiddenException extends RuntimeException {
+   }
+ 
++  /** Story 12-3: requester attempting to approve their own request → 403 (AD-16, NFR-P2-5). */
++  public static class SelfApprovalForbiddenException extends RuntimeException {
++  }
++
+   /** Story 12-2: invalid/terminal state transition or MRE in the wrong state → 409 (FR-141). */
+   public static class InvalidRequestStateTransitionException extends RuntimeException {
+   }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/domain/EscalationConfig.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/domain/EscalationConfig.java
+new file mode 100644
+index 0000000..6045438
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/domain/EscalationConfig.java
+@@ -0,0 +1,17 @@
++package com.syncro.sparepart.request.domain;
++
++import java.math.BigDecimal;
++
++/**
++ * Escalation configuration record (story 12-3, FR-142/FR-147). Represents a single row
++ * from the escalation_configs table — an approval tier (cost threshold + required role)
++ * or an escalation duration (step name + timeout).
++ */
++public record EscalationConfig(
++    String scope,
++    String step,
++    BigDecimal minCost,
++    BigDecimal maxCost,
++    int durationMinutes,
++    String approvalRole) {
++}
+\ No newline at end of file
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/EscalationConfigEntity.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/EscalationConfigEntity.java
+new file mode 100644
+index 0000000..c34fa7c
+--- /dev/null
+warning: in the working copy of 'syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/EscalationConfigRepository.java', LF will be replaced by CRLF the next time Git touches it
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/EscalationConfigEntity.java
+@@ -0,0 +1,57 @@
++package com.syncro.sparepart.request.infrastructure.db;
++
++import jakarta.persistence.Column;
++import jakarta.persistence.Entity;
++import jakarta.persistence.Id;
++import jakarta.persistence.Table;
++import java.math.BigDecimal;
++import java.time.Instant;
++import java.util.UUID;
++
++/**
++ * Persisted escalation_configs row (story 12-3, FR-142/FR-147).
++ */
++@Entity
++@Table(name = "escalation_configs")
++public class EscalationConfigEntity {
++
++  @Id
++  private UUID id;
++
++  @Column(nullable = false, length = 20)
++  private String scope;
++
++  @Column(nullable = false, length = 30)
++  private String step;
++
++  @Column(name = "min_cost", precision = 18, scale = 2)
++  private BigDecimal minCost;
++
++  @Column(name = "max_cost", precision = 18, scale = 2)
++  private BigDecimal maxCost;
++
++  @Column(name = "duration_minutes", nullable = false)
++  private int durationMinutes;
++
++  @Column(name = "approval_role", length = 30)
++  private String approvalRole;
++
++  @Column(name = "created_at", nullable = false)
++  private Instant createdAt;
++
++  @Column(name = "updated_at", nullable = false)
++  private Instant updatedAt;
++
++  protected EscalationConfigEntity() {
++  }
++
++  public UUID getId() { return id; }
++  public String getScope() { return scope; }
++  public String getStep() { return step; }
++  public BigDecimal getMinCost() { return minCost; }
++  public BigDecimal getMaxCost() { return maxCost; }
++  public int getDurationMinutes() { return durationMinutes; }
++  public String getApprovalRole() { return approvalRole; }
++  public Instant getCreatedAt() { return createdAt; }
++  public Instant getUpdatedAt() { return updatedAt; }
++}
+\ No newline at end of file
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/EscalationConfigRepository.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/EscalationConfigRepository.java
+new file mode 100644
+index 0000000..47ca9f8
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/EscalationConfigRepository.java
+@@ -0,0 +1,10 @@
++package com.syncro.sparepart.request.infrastructure.db;
++
++import java.util.List;
++import java.util.UUID;
++import org.springframework.data.jpa.repository.JpaRepository;
++
++public interface EscalationConfigRepository extends JpaRepository<EscalationConfigEntity, UUID> {
++
++  List<EscalationConfigEntity> findByScope(String scope);
++}
+\ No newline at end of file
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/SparepartRequestRepository.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/SparepartRequestRepository.java
+index 941bf5d..88ac6d4 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/SparepartRequestRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/SparepartRequestRepository.java
+@@ -1,6 +1,8 @@
+ package com.syncro.sparepart.request.infrastructure.db;
+ 
++import com.syncro.sparepart.request.domain.SparepartRequestStatus;
+ import jakarta.persistence.LockModeType;
++import java.time.Instant;
+ import java.util.Collection;
+ import java.util.List;
+ import java.util.Optional;
+@@ -40,6 +42,21 @@ public interface SparepartRequestRepository extends JpaRepository<SparepartReque
+       """)
+   boolean hasLiveNonReadyRequest(@Param("workOrderId") String workOrderId);
+ 
++  /**
++   * Escalation stale query (story 12-3, FR-147): requests whose status is in the given
++   * step's status set and whose updated_at is older than the step cutoff. The escalation
++   * worker evaluates this per run, so each step fires once when its duration elapses.
++   */
++  @Query("""
++      select r
++      from SparepartRequestEntity r
++      where r.status in :statuses
++        and r.updatedAt <= :cutoff
++      """)
++  List<SparepartRequestEntity> findStaleByStatusInAndUpdatedAtBefore(
+warning: in the working copy of 'syncro/apps/backend/src/main/resources/db/migration/V60__escalation_configs.sql', LF will be replaced by CRLF the next time Git touches it
++      @Param("statuses") Collection<SparepartRequestStatus> statuses,
++      @Param("cutoff") Instant cutoff);
++
+   /**
+    * Sparepart-request list read (story 12-1 list view): every request visible in the
+    * derived scope (plant OR machine-group), joined to the machine so the plant/group
+diff --git a/syncro/apps/backend/src/main/resources/db/migration/V60__escalation_configs.sql b/syncro/apps/backend/src/main/resources/db/migration/V60__escalation_configs.sql
+new file mode 100644
+index 0000000..4ae3ff3
+--- /dev/null
++++ b/syncro/apps/backend/src/main/resources/db/migration/V60__escalation_configs.sql
+@@ -0,0 +1,46 @@
++-- Story 12-3: Approval, Separation of Duty & Escalation (FR-142/FR-147).
++-- Additive on V59.
++--
++-- 1. Create escalation_configs table with unique (scope, step) constraint.
++-- 2. Seed SPAREPART_REQUEST rows: 3 approval tiers + 3 escalation durations.
++-- 3. Add message_body column to notification_jobs (for sparepart request escalation).
++
++-- ---------------------------------------------------------------------------
++-- 1. escalation_configs — configurable approval tiers and escalation durations
++-- ---------------------------------------------------------------------------
++CREATE TABLE escalation_configs (
++  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
++  scope VARCHAR(20) NOT NULL CHECK (scope IN ('SPAREPART_REQUEST','WORKORDER')),
++  step VARCHAR(30) NOT NULL,
++  min_cost NUMERIC(18,2),
++  max_cost NUMERIC(18,2),
++  duration_minutes INTEGER NOT NULL,
++  approval_role VARCHAR(30),
++  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
++);
++
++ALTER TABLE escalation_configs ADD CONSTRAINT uq_escalation_configs_scope_step UNIQUE (scope, step);
++
++-- ---------------------------------------------------------------------------
++-- 2. Seed SPAREPART_REQUEST rows
++-- ---------------------------------------------------------------------------
++
++-- Approval tiers (no cost = unbounded)
++INSERT INTO escalation_configs (scope, step, min_cost, max_cost, duration_minutes, approval_role)
++VALUES
++  ('SPAREPART_REQUEST', 'SECTION_LEADER_APPROVAL',    NULL,          5000000,     0, 'SECTION_LEADER'),
++  ('SPAREPART_REQUEST', 'MAINTENANCE_LEADER_APPROVAL', 5000000,      50000000,    0, 'MAINTENANCE_LEADER'),
++  ('SPAREPART_REQUEST', 'MANAGER_APPROVAL',            50000000,     NULL,        0, 'MANAGER_MAINTENANCE');
++
++-- Escalation durations (seeded defaults pending PRD OQ-2 confirmation; configurable)
++INSERT INTO escalation_configs (scope, step, min_cost, max_cost, duration_minutes, approval_role)
++VALUES
++  ('SPAREPART_REQUEST', 'ACK_WAITING',      NULL, NULL,  480, NULL),
++  ('SPAREPART_REQUEST', 'PROCESS_WAITING',  NULL, NULL, 1440, NULL),
++  ('SPAREPART_REQUEST', 'PURCHASE_WAITING', NULL, NULL, 2880, NULL);
++
++-- ---------------------------------------------------------------------------
++-- 3. Add message_body to notification_jobs (additive, nullable)
++-- ---------------------------------------------------------------------------
++ALTER TABLE notification_jobs ADD COLUMN message_body TEXT;
+\ No newline at end of file
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/db/SparepartRequestMigrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/db/SparepartRequestMigrationTest.java
+index 3713a6b..0f7af6d 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/db/SparepartRequestMigrationTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/db/SparepartRequestMigrationTest.java
+@@ -185,6 +185,111 @@ class SparepartRequestMigrationTest extends AbstractPostgresIntegrationTest {
+         .contains("idx_sparepart_request_timeline_request");
+   }
+ 
++  // -------------------------------------------------------------------------
++  // Story 12-3 (V60): escalation_configs + notification_jobs.message_body
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("12.3-DB-001 P0 escalation_configs table exists with expected columns")
++  void escalationConfigsTableExists() {
++    assertThat(columnNames("escalation_configs"))
++        .contains("id", "scope", "step", "min_cost", "max_cost", "duration_minutes", "approval_role",
++            "created_at", "updated_at");
++  }
++
++  @Test
++  @DisplayName("12.3-DB-002 P0 escalation_configs scope CHECK rejects unknown values")
++  void escalationConfigsScopeCheck() {
++    assertThatThrownBy(() -> jdbc.update("""
++        INSERT INTO escalation_configs (id, scope, step, duration_minutes)
++        VALUES (?, 'BOGUS', 'TEST_STEP', 60)
++        """, UUID.randomUUID()))
++        .isInstanceOf(DataIntegrityViolationException.class);
++  }
++
++  @Test
++  @DisplayName("12.3-DB-003 P0 escalation_configs scope CHECK accepts SPAREPART_REQUEST")
++  void escalationConfigsScopeAcceptsSparepart() {
++    jdbc.update("""
++        INSERT INTO escalation_configs (id, scope, step, duration_minutes)
++        VALUES (?, 'SPAREPART_REQUEST', 'TEST_STEP', 60)
++        """, UUID.randomUUID());
++    assertThat(jdbc.queryForObject(
++        "SELECT count(*) FROM escalation_configs WHERE scope = 'SPAREPART_REQUEST' AND step = 'TEST_STEP'",
++        Long.class)).isEqualTo(1L);
++  }
++
++  @Test
++  @DisplayName("12.3-DB-004 P0 escalation_configs unique (scope, step) constraint")
++  void escalationConfigsUniqueScopeStep() {
++    var id = UUID.randomUUID();
++    jdbc.update("""
++        INSERT INTO escalation_configs (id, scope, step, duration_minutes)
++        VALUES (?, 'SPAREPART_REQUEST', 'TEST_STEP', 60)
++        """, id);
++    assertThatThrownBy(() -> jdbc.update("""
++        INSERT INTO escalation_configs (id, scope, step, duration_minutes)
++        VALUES (?, 'SPAREPART_REQUEST', 'TEST_STEP', 60)
++        """, UUID.randomUUID()))
++        .isInstanceOf(DataIntegrityViolationException.class);
++  }
++
++  @Test
++  @DisplayName("12.3-DB-005 P0 escalation_configs has 6 seed rows for SPAREPART_REQUEST")
++  void escalationConfigsSeedData() {
++    var count = jdbc.queryForObject(
++        "SELECT count(*) FROM escalation_configs WHERE scope = 'SPAREPART_REQUEST'", Long.class);
++    assertThat(count).isEqualTo(6L);
++  }
++
++  @Test
++  @DisplayName("12.3-DB-006 P0 notification_jobs has message_body column (additive, nullable)")
++  void notificationJobsMessageBodyColumn() {
++    assertThat(columnNames("notification_jobs")).contains("message_body");
++  }
++
++  @Test
++  @DisplayName("12.3-DB-007 P0 notification_jobs.message_body is nullable and accepts text")
++  void notificationJobsMessageBodyColumnExists() {
++    assertThat(columnNames("notification_jobs")).contains("message_body");
++    // Verify the column is nullable by checking its IS NULLable attribute
++    var nullable = jdbc.queryForObject("""
++        SELECT is_nullable FROM information_schema.columns
++        WHERE table_schema = 'public' AND table_name = 'notification_jobs' AND column_name = 'message_body'
++        """, String.class);
++    assertThat(nullable).isEqualTo("YES");
++  }
++
++  @Test
++  @DisplayName("12.3-DB-008 P0 escalation_configs seed data has correct approval tiers")
++  void escalationConfigsApprovalTiers() {
++    var tiers = jdbc.queryForList("""
++        SELECT step, min_cost, max_cost, approval_role
++        FROM escalation_configs
++        WHERE scope = 'SPAREPART_REQUEST' AND approval_role IS NOT NULL
++        ORDER BY min_cost NULLS FIRST
++        """);
++    assertThat(tiers).hasSize(3);
++    assertThat(tiers.get(0).get("approval_role")).isEqualTo("SECTION_LEADER");
++    assertThat(tiers.get(1).get("approval_role")).isEqualTo("MAINTENANCE_LEADER");
++    assertThat(tiers.get(2).get("approval_role")).isEqualTo("MANAGER_MAINTENANCE");
++  }
++
++  @Test
++  @DisplayName("12.3-DB-009 P0 escalation_configs seed data has correct escalation durations")
++  void escalationConfigsEscalationDurations() {
++    var durations = jdbc.queryForList("""
++        SELECT step, duration_minutes
++        FROM escalation_configs
++        WHERE scope = 'SPAREPART_REQUEST' AND approval_role IS NULL
++        ORDER BY duration_minutes
++        """);
++    assertThat(durations).hasSize(3);
++    assertThat(durations.get(0).get("duration_minutes")).isEqualTo(480);
++    assertThat(durations.get(1).get("duration_minutes")).isEqualTo(1440);
++    assertThat(durations.get(2).get("duration_minutes")).isEqualTo(2880);
++  }
++
+   private java.util.List<String> columnNames(String table) {
+     return jdbc.queryForList(
+         "SELECT column_name FROM information_schema.columns "
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/api/SparepartRequestControllerTest.java b/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/api/SparepartRequestControllerTest.java
+index b15fb3b..4c01f9e 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/api/SparepartRequestControllerTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/api/SparepartRequestControllerTest.java
+@@ -32,6 +32,7 @@ import java.math.BigDecimal;
+ import java.time.Instant;
+ import java.util.List;
+ import java.util.Map;
++import java.util.Set;
+ import java.util.UUID;
+ import org.junit.jupiter.api.DisplayName;
+ import org.junit.jupiter.api.Test;
+@@ -67,6 +68,7 @@ class SparepartRequestControllerTest {
+   void createReturnsCreated() throws Exception {
+     var user = user(ApplicationRole.STAFF_MAINTENANCE);
+     when(service.create(eq(user), any(CreateRequestCommand.class))).thenReturn(requestDomain());
++    stubAllowedActions(user);
+ 
+     mockMvc.perform(post("/api/v1/sparepart-requests")
+             .with(auth(user))
+@@ -188,6 +190,7 @@ class SparepartRequestControllerTest {
+     var id = UUID.randomUUID();
+     when(service.transition(eq(user), eq(id), any(SparepartRequestService.TransitionCommand.class)))
+         .thenReturn(requestDomain(SparepartRequestStatus.ACKED));
++    stubAllowedActions(user);
+ 
+     mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/transition")
+             .with(auth(user))
+@@ -266,6 +269,7 @@ class SparepartRequestControllerTest {
+     var id = UUID.randomUUID();
+     when(service.recordMre(eq(user), eq(id), any(SparepartRequestService.MreCommand.class)))
+         .thenReturn(requestDomain(SparepartRequestStatus.PURCHASE_REQUESTED));
++    stubAllowedActions(user);
+ 
+     mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/mre")
+             .with(auth(user))
+@@ -290,6 +294,93 @@ class SparepartRequestControllerTest {
+         .andExpect(jsonPath("$.fieldErrors.mreCode").exists());
+   }
+ 
++  private void stubAllowedActions(AuthenticatedUser user) {
++    when(service.allowedActionsFor(eq(user), any(SparepartRequest.class)))
++        .thenReturn(new SparepartRequestService.RequestAllowedActions(Set.of(), null));
++  }
++
++  @Test
++  @DisplayName("12.3-API-001 P0 approve endpoint returns 200 view with approval fields")
++  void approveReturnsView() throws Exception {
++    var user = user(ApplicationRole.SECTION_LEADER);
++    var id = UUID.randomUUID();
++    when(service.approve(eq(user), eq(id), any(SparepartRequestService.ApproveCommand.class)))
++        .thenReturn(requestDomain(SparepartRequestStatus.ACKED));
++    when(service.allowedActionsFor(eq(user), any(SparepartRequest.class)))
++        .thenReturn(new SparepartRequestService.RequestAllowedActions(Set.of(), null));
++
++    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/approve")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"note\":\"ok\"}"))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.status").value("ACKED"));
++  }
++
++  @Test
++  @DisplayName("12.3-API-002 P0 self-approval maps to 403 SELF_APPROVAL_FORBIDDEN")
++  void approveSelfApprovalForbidden() throws Exception {
++    var user = user(ApplicationRole.SECTION_LEADER);
++    var id = UUID.randomUUID();
++    doThrow(new SparepartRequestService.SelfApprovalForbiddenException())
++        .when(service).approve(eq(user), eq(id), any(SparepartRequestService.ApproveCommand.class));
++
++    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/approve")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{}"))
++        .andExpect(status().isForbidden())
+warning: in the working copy of 'syncro/apps/backend/src/test/java/com/syncro/sparepart/request/application/SparepartRequestEscalationServiceTest.java', LF will be replaced by CRLF the next time Git touches it
++        .andExpect(jsonPath("$.code").value("SELF_APPROVAL_FORBIDDEN"));
++  }
++
++  @Test
++  @DisplayName("12.3-API-003 P0 approval in a wrong state maps to 409 INVALID_STATE_TRANSITION")
++  void approveInvalidState() throws Exception {
++    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
++    var id = UUID.randomUUID();
++    doThrow(new InvalidRequestStateTransitionException())
++        .when(service).approve(eq(user), eq(id), any(SparepartRequestService.ApproveCommand.class));
++
++    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/approve")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{}"))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("INVALID_STATE_TRANSITION"));
++  }
++
++  @Test
++  @DisplayName("12.3-API-004 P0 approval with insufficient role/scope maps to 403 FORBIDDEN")
++  void approveForbidden() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    var id = UUID.randomUUID();
++    doThrow(new RequestForbiddenException())
++        .when(service).approve(eq(user), eq(id), any(SparepartRequestService.ApproveCommand.class));
++
++    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/approve")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{}"))
++        .andExpect(status().isForbidden())
++        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
++  }
++
++  @Test
++  @DisplayName("12.3-API-005 P0 unknown request on approve maps to 404 REQUEST_NOT_FOUND")
++  void approveNotFound() throws Exception {
++    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
++    var id = UUID.randomUUID();
++    doThrow(new RequestNotFoundException())
++        .when(service).approve(eq(user), eq(id), any(SparepartRequestService.ApproveCommand.class));
++
++    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/approve")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{}"))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("REQUEST_NOT_FOUND"));
++  }
++
+   private static SparepartRequest requestDomain() {
+     return requestDomain(SparepartRequestStatus.REQUESTED);
+   }
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/application/SparepartRequestEscalationServiceTest.java b/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/application/SparepartRequestEscalationServiceTest.java
+new file mode 100644
+index 0000000..d6f7364
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/application/SparepartRequestEscalationServiceTest.java
+@@ -0,0 +1,230 @@
++package com.syncro.sparepart.request.application;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.Mockito.never;
++import static org.mockito.Mockito.verify;
++import static org.mockito.Mockito.when;
++
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.AuthUserEntity;
++import com.syncro.auth.infrastructure.AuthUserRepository;
++import com.syncro.machine.domain.ResponsibilityLevel;
++import com.syncro.machine.infrastructure.MachineResponsibilityEntity;
++import com.syncro.machine.infrastructure.MachineResponsibilityRepository;
++import com.syncro.maintenance.infrastructure.db.WorkOrderEntity;
++import com.syncro.maintenance.infrastructure.db.WorkOrderRepository;
++import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
++import com.syncro.notification.domain.NotificationJobStatus;
++import com.syncro.notification.infrastructure.NotificationJobEntity;
++import com.syncro.notification.infrastructure.NotificationJobRepository;
++import com.syncro.sparepart.request.domain.SparepartRequestStatus;
++import com.syncro.sparepart.request.domain.SparepartRequestType;
++import com.syncro.sparepart.request.infrastructure.db.SparepartRequestEntity;
++import com.syncro.sparepart.request.infrastructure.db.SparepartRequestRepository;
++import java.time.Clock;
++import java.time.Instant;
++import java.time.ZoneOffset;
++import java.util.List;
++import java.util.Optional;
++import java.util.UUID;
++import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.api.extension.ExtendWith;
++import org.mockito.ArgumentCaptor;
++import org.mockito.Mock;
++import org.mockito.junit.jupiter.MockitoExtension;
++import org.mockito.junit.jupiter.MockitoSettings;
++import org.mockito.quality.Strictness;
++import org.springframework.dao.DataIntegrityViolationException;
++
++@ExtendWith(MockitoExtension.class)
++@MockitoSettings(strictness = Strictness.LENIENT)
++class SparepartRequestEscalationServiceTest {
++
++  private static final Instant NOW = Instant.parse("2026-08-28T00:00:00Z");
++
++  @Mock
++  private SparepartRequestRepository requests;
++  @Mock
++  private EscalationConfigService escalationConfigs;
++  @Mock
++  private MachineResponsibilityRepository responsibilities;
++  @Mock
++  private AuthUserRepository users;
++  @Mock
++  private WorkOrderRepository workOrders;
++  @Mock
++  private NotificationJobRepository notificationJobs;
++
++  private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
++  private final UUID machineId = UUID.randomUUID();
++  private final UUID requestId = UUID.randomUUID();
++  private final UUID leaderUserId = UUID.randomUUID();
++
++  private SparepartRequestEscalationService service;
++
++  @BeforeEach
++  void setUp() {
++    service = new SparepartRequestEscalationService(
++        requests, escalationConfigs, responsibilities, users, workOrders, notificationJobs, clock);
++    when(escalationConfigs.durationMinutes("ACK_WAITING")).thenReturn(480);
++    when(escalationConfigs.durationMinutes("PROCESS_WAITING")).thenReturn(1440);
++    when(escalationConfigs.durationMinutes("PURCHASE_WAITING")).thenReturn(2880);
++    when(requests.findStaleByStatusInAndUpdatedAtBefore(any(), any())).thenReturn(List.of());
++    when(users.findAllByApplicationRoleInWithWhatsapp(any())).thenReturn(List.of());
++    when(notificationJobs.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
++  }
++
++  private SparepartRequestEntity staleRequest(SparepartRequestStatus status) {
++    return new SparepartRequestEntity(requestId, SparepartRequestType.SPAREPART, null, machineId,
++        null, "MC-0001", (short) 2, null, null, null, status, UUID.randomUUID(), NOW, null, NOW, NOW);
++  }
++
++  private AuthUserEntity userWithPhone(UUID id, ApplicationRole role, String phone) {
++    var user = new AuthUserEntity(id, role.name().toLowerCase() + "@test", "hash", role, true, NOW, NOW);
++    if (phone != null) {
++      org.springframework.test.util.ReflectionTestUtils.setField(user, "whatsappNumber", phone);
++    }
++    return user;
++  }
++
++  @Test
++  @DisplayName("12.3-ESC-001 P0 ACK_WAITING stale request enqueues jobs for LEADER responsibility + inventory roles")
++  void escalateAckStale() {
++    var request = staleRequest(SparepartRequestStatus.REQUESTED);
++    when(requests.findStaleByStatusInAndUpdatedAtBefore(
++        org.mockito.ArgumentMatchers.argThat(statuses -> statuses.contains(SparepartRequestStatus.REQUESTED)),
++        any())).thenReturn(List.of(request));
++    var responsibility = new MachineResponsibilityEntity(UUID.randomUUID(), machineId, leaderUserId,
++        ResponsibilityLevel.LEADER, NOW, NOW);
++    when(responsibilities.findFirstByMachineIdAndResponsibilityLevelOrderByCreatedAtAsc(machineId,
++        ResponsibilityLevel.LEADER)).thenReturn(Optional.of(responsibility));
++    when(users.findById(leaderUserId)).thenReturn(Optional.of(userWithPhone(leaderUserId, ApplicationRole.SECTION_LEADER, "628111")));
++
++    service.escalateStale();
++
++    var captor = ArgumentCaptor.forClass(NotificationJobEntity.class);
++    verify(notificationJobs).save(captor.capture());
++    var job = captor.getValue();
++    assertThat(job.getStatus()).isEqualTo(NotificationJobStatus.PENDING);
++    assertThat(job.getEscalationLevel()).isEqualTo("ACK_WAITING");
++    assertThat(job.getIdempotencyKey()).isEqualTo("SPAREPART_REQUEST:" + requestId + ":ACK_WAITING");
++    assertThat(job.getMessageBody()).contains(requestId.toString()).contains("MC-0001");
++  }
++
++  @Test
++  @DisplayName("12.3-ESC-002 P0 duplicate idempotency key is silently skipped (saveIgnoreDuplicate)")
++  void duplicateSkipped() {
++    var request = staleRequest(SparepartRequestStatus.REQUESTED);
++    when(requests.findStaleByStatusInAndUpdatedAtBefore(
++        org.mockito.ArgumentMatchers.argThat(statuses -> statuses.contains(SparepartRequestStatus.REQUESTED)),
++        any())).thenReturn(List.of(request));
++    var responsibility = new MachineResponsibilityEntity(UUID.randomUUID(), machineId, leaderUserId,
++        ResponsibilityLevel.LEADER, NOW, NOW);
++    when(responsibilities.findFirstByMachineIdAndResponsibilityLevelOrderByCreatedAtAsc(machineId,
++        ResponsibilityLevel.LEADER)).thenReturn(Optional.of(responsibility));
++    when(users.findById(leaderUserId)).thenReturn(Optional.of(userWithPhone(leaderUserId, ApplicationRole.SECTION_LEADER, "628111")));
++    when(notificationJobs.save(any())).thenThrow(new DataIntegrityViolationException("duplicate"));
++
++    // Must not throw despite the duplicate
++    service.escalateStale();
++  }
++
++  @Test
++  @DisplayName("12.3-ESC-003 P0 LEADER without phone records ROUTING_FAILED job with reason")
++  void leaderNoPhoneRoutingFailed() {
++    var request = staleRequest(SparepartRequestStatus.REQUESTED);
++    when(requests.findStaleByStatusInAndUpdatedAtBefore(
++        org.mockito.ArgumentMatchers.argThat(statuses -> statuses.contains(SparepartRequestStatus.REQUESTED)),
++        any())).thenReturn(List.of(request));
++    var responsibility = new MachineResponsibilityEntity(UUID.randomUUID(), machineId, leaderUserId,
++        ResponsibilityLevel.LEADER, NOW, NOW);
++    when(responsibilities.findFirstByMachineIdAndResponsibilityLevelOrderByCreatedAtAsc(machineId,
++        ResponsibilityLevel.LEADER)).thenReturn(Optional.of(responsibility));
++    when(users.findById(leaderUserId)).thenReturn(Optional.of(userWithPhone(leaderUserId, ApplicationRole.SECTION_LEADER, null)));
++
++    service.escalateStale();
++
++    var captor = ArgumentCaptor.forClass(NotificationJobEntity.class);
++    verify(notificationJobs).save(captor.capture());
++    assertThat(captor.getValue().getStatus()).isEqualTo(NotificationJobStatus.ROUTING_FAILED);
++    assertThat(captor.getValue().getErrorDetail()).contains("no whatsappNumber");
++  }
++
++  @Test
++  @DisplayName("12.3-ESC-004 P0 request without machine target is logged and skipped (no job)")
++  void noMachineTargetSkipped() {
++    var request = new SparepartRequestEntity(requestId, SparepartRequestType.CONSUMABLE, null, null,
++        null, null, (short) 1, null, null, null, SparepartRequestStatus.REQUESTED, UUID.randomUUID(),
++        NOW, null, NOW, NOW);
++    when(requests.findStaleByStatusInAndUpdatedAtBefore(
++        org.mockito.ArgumentMatchers.argThat(statuses -> statuses.contains(SparepartRequestStatus.REQUESTED)),
++        any())).thenReturn(List.of(request));
++
++    service.escalateStale();
++
++    verify(notificationJobs, never()).save(any(NotificationJobEntity.class));
++  }
++
++  @Test
++  @DisplayName("12.3-ESC-005 P0 no LEADER assignment + no inventory recipients → log + skip (no job)")
++  void noRecipientsSkipped() {
++    var request = staleRequest(SparepartRequestStatus.REQUESTED);
++    when(requests.findStaleByStatusInAndUpdatedAtBefore(
++        org.mockito.ArgumentMatchers.argThat(statuses -> statuses.contains(SparepartRequestStatus.REQUESTED)),
++        any())).thenReturn(List.of(request));
++    when(responsibilities.findFirstByMachineIdAndResponsibilityLevelOrderByCreatedAtAsc(machineId,
++        ResponsibilityLevel.LEADER)).thenReturn(Optional.empty());
++    when(users.findAllByApplicationRoleInWithWhatsapp(any())).thenReturn(List.of());
++
++    service.escalateStale();
++
++    verify(notificationJobs, never()).save(any(NotificationJobEntity.class));
++  }
++
++  @Test
++  @DisplayName("12.3-ESC-006 P0 inventory/stores users with phones are enqueued as additional recipients")
++  void inventoryRecipientsEnqueued() {
++    var request = staleRequest(SparepartRequestStatus.REQUESTED);
++    when(requests.findStaleByStatusInAndUpdatedAtBefore(
++        org.mockito.ArgumentMatchers.argThat(statuses -> statuses.contains(SparepartRequestStatus.REQUESTED)),
++        any())).thenReturn(List.of(request));
++    when(responsibilities.findFirstByMachineIdAndResponsibilityLevelOrderByCreatedAtAsc(machineId,
++        ResponsibilityLevel.LEADER)).thenReturn(Optional.empty());
++    var inventory = userWithPhone(UUID.randomUUID(), ApplicationRole.INVENTORY_MAINTENANCE, "628222");
++    var store = userWithPhone(UUID.randomUUID(), ApplicationRole.STOREKEEPER, "628333");
++    when(users.findAllByApplicationRoleInWithWhatsapp(any())).thenReturn(List.of(inventory, store));
++
++    service.escalateStale();
++
++    var captor = ArgumentCaptor.forClass(NotificationJobEntity.class);
++    verify(notificationJobs, org.mockito.Mockito.times(2)).save(captor.capture());
++    var phones = captor.getAllValues().stream().map(NotificationJobEntity::getRecipientPhone).toList();
++    assertThat(phones).containsExactlyInAnyOrder("628222", "628333");
++  }
++
++  @Test
++  @DisplayName("12.3-ESC-007 P0 request bound to a workorder resolves the workorder's machine for recipients")
++  void boundWorkOrderMachineResolution() {
++    var request = new SparepartRequestEntity(requestId, SparepartRequestType.SERVICE_EXTERNAL, "WO-2609-00001",
++        null, null, null, (short) 1, null, null, null, SparepartRequestStatus.REQUESTED, UUID.randomUUID(),
++        NOW, null, NOW, NOW);
++    when(requests.findStaleByStatusInAndUpdatedAtBefore(
++        org.mockito.ArgumentMatchers.argThat(statuses -> statuses.contains(SparepartRequestStatus.REQUESTED)),
++        any())).thenReturn(List.of(request));
++    var workOrder = new WorkOrderEntity("WO-2609-00001", "INTERNAL", null, WorkOrderStatus.OPEN, null, machineId,
++        "fix", 0L, null, null, null, NOW, NOW);
++    when(workOrders.findById("WO-2609-00001")).thenReturn(Optional.of(workOrder));
++    var responsibility = new MachineResponsibilityEntity(UUID.randomUUID(), machineId, leaderUserId,
++        ResponsibilityLevel.LEADER, NOW, NOW);
++    when(responsibilities.findFirstByMachineIdAndResponsibilityLevelOrderByCreatedAtAsc(machineId,
++        ResponsibilityLevel.LEADER)).thenReturn(Optional.of(responsibility));
++    when(users.findById(leaderUserId)).thenReturn(Optional.of(userWithPhone(leaderUserId, ApplicationRole.SECTION_LEADER, "628111")));
++
++    service.escalateStale();
++
++    verify(notificationJobs).save(any(NotificationJobEntity.class));
++  }
++}
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/application/SparepartRequestServiceTest.java b/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/application/SparepartRequestServiceTest.java
+index bdf52ff..e2f8bc8 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/application/SparepartRequestServiceTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/application/SparepartRequestServiceTest.java
+@@ -3,6 +3,7 @@ package com.syncro.sparepart.request.application;
+ import static org.assertj.core.api.Assertions.assertThat;
+ import static org.assertj.core.api.Assertions.assertThatThrownBy;
+ import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.anyBoolean;
+ import static org.mockito.ArgumentMatchers.eq;
+ import static org.mockito.Mockito.lenient;
+ import static org.mockito.Mockito.never;
+@@ -21,16 +22,19 @@ import com.syncro.maintenance.application.WorkOrderService;
+ import com.syncro.maintenance.infrastructure.db.WorkOrderEntity;
+ import com.syncro.maintenance.infrastructure.db.WorkOrderRepository;
+ import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
++import com.syncro.notification.infrastructure.NotificationJobRepository;
+ import com.syncro.org.application.OperationalScope;
+ import com.syncro.org.application.OperationalScopeService;
+ import com.syncro.sparepart.infrastructure.SparepartEntity;
+ import com.syncro.sparepart.infrastructure.SparepartPriceEntryRepository;
+ import com.syncro.sparepart.infrastructure.SparepartRepository;
+ import com.syncro.sparepart.infrastructure.SparepartTaxonomyEntity;
++import com.syncro.sparepart.request.application.SparepartRequestService.ApproveCommand;
+ import com.syncro.sparepart.request.application.SparepartRequestService.CreateRequestCommand;
+ import com.syncro.sparepart.request.application.SparepartRequestService.MreCommand;
+ import com.syncro.sparepart.request.application.SparepartRequestService.RequestForbiddenException;
+ import com.syncro.sparepart.request.application.SparepartRequestService.RequestValidationException;
++import com.syncro.sparepart.request.application.SparepartRequestService.SelfApprovalForbiddenException;
+ import com.syncro.sparepart.request.application.SparepartRequestService.TransitionCommand;
+ import com.syncro.sparepart.request.application.SparepartRequestService.InvalidRequestStateTransitionException;
+ import com.syncro.sparepart.request.application.SparepartRequestService.RequestNotFoundException;
+@@ -78,6 +82,10 @@ class SparepartRequestServiceTest {
+   @Mock
+   private SparepartPriceEntryRepository priceEntries;
+   @Mock
++  private EscalationConfigService escalationConfigs;
++  @Mock
++  private NotificationJobRepository notificationJobs;
++  @Mock
+   private AuditLogWriter auditLog;
+   @Mock
+   private OperationalScopeService scopes;
+@@ -95,7 +103,7 @@ class SparepartRequestServiceTest {
+   @BeforeEach
+   void setUp() {
+     service = new SparepartRequestService(requests, timelines, workOrders, workOrderService, machines, spareparts,
+-        priceEntries, auditLog, scopes, clock);
++        priceEntries, escalationConfigs, notificationJobs, auditLog, scopes, clock);
+     machine = machineWithPlant(plantId, groupId, machineId);
+     lenient().when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
+     when(requests.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+@@ -607,6 +615,153 @@ class SparepartRequestServiceTest {
+         .isInstanceOf(RequestValidationException.class);
+   }
+ 
++  // -------------------------------------------------------------------------
++  // Story 12-3: approval tests (FR-142/AD-16)
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("12.3-SVC-001 P0 APPROVE_OK_LOW — SECTION_LEADER approves REQUESTED with cost ≤5M → ACKED")
++  void approveOkLow() {
++    var user = sectionLeaderUser();
++    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
++    var entity = requestEntity(SparepartRequestStatus.REQUESTED);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++    when(escalationConfigs.requiredApprovalRole(any(), anyBoolean())).thenReturn("SECTION_LEADER");
++
++    var result = service.approve(user, id, new ApproveCommand(null));
++
++    assertThat(result.status()).isEqualTo(SparepartRequestStatus.ACKED);
++    verify(timelines).saveAndFlush(any(SparepartRequestTimelineEntity.class));
++    verify(auditLog).record(eq(user), org.mockito.ArgumentMatchers.argThat(r ->
++        r.action() == AuditAction.UPDATE && r.entityType() == AuditEntityType.SPAREPART_REQUEST));
++  }
++
++  @Test
++  @DisplayName("12.3-SVC-002 P0 APPROVE_OK_HIGH — MANAGER_MAINTENANCE approves REQUESTED with cost >50M → ACKED")
++  void approveOkHigh() {
++    var user = new AuthenticatedUser(UUID.randomUUID().toString(), "mgr@test", ApplicationRole.MANAGER_MAINTENANCE);
++    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
++    var entity = requestEntity(SparepartRequestStatus.REQUESTED);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++    when(escalationConfigs.requiredApprovalRole(any(), anyBoolean())).thenReturn("MANAGER_MAINTENANCE");
++
++    var result = service.approve(user, id, new ApproveCommand(null));
++
++    assertThat(result.status()).isEqualTo(SparepartRequestStatus.ACKED);
++  }
++
++  @Test
++  @DisplayName("12.3-SVC-003 P0 APPROVE_OK_NO_PRICE — SECTION_LEADER approves PENDING_COMPLETION with no price → ACKED")
++  void approveOkNoPrice() {
++    var user = sectionLeaderUser();
++    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
++    var entity = requestEntity(SparepartRequestStatus.PENDING_COMPLETION);
++    // Unset price
++    entity = new SparepartRequestEntity(entity.getId(), entity.getRequestType(), entity.getWorkOrderId(),
++        entity.getMachineId(), entity.getSparepartId(), entity.getMaterialCode(), entity.getQuantity(),
++        null, null, null, entity.getStatus(), entity.getRequestedBy(), NOW, null, NOW, NOW);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++    when(escalationConfigs.requiredApprovalRole(null, false)).thenReturn("SECTION_LEADER");
++
++    var result = service.approve(user, id, new ApproveCommand(null));
++
++    assertThat(result.status()).isEqualTo(SparepartRequestStatus.ACKED);
++  }
++
++  @Test
++  @DisplayName("12.3-SVC-004 P0 SELF_APPROVAL — requester approves their own request → 403 SELF_APPROVAL_FORBIDDEN")
++  void selfApproval() {
++    var user = new AuthenticatedUser(staffId.toString(), "staff@test", ApplicationRole.STAFF_MAINTENANCE);
++    var entity = requestEntity(SparepartRequestStatus.REQUESTED);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++
++    assertThatThrownBy(() -> service.approve(user, id, new ApproveCommand(null)))
++        .isInstanceOf(SelfApprovalForbiddenException.class);
++  }
++
++  @Test
++  @DisplayName("12.3-SVC-005 P0 INSUFFICIENT_ROLE — SECTION_LEADER cannot approve a MANAGER_MAINTENANCE tier")
++  void insufficientRole() {
++    var user = sectionLeaderUser();
++    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
++    var entity = requestEntity(SparepartRequestStatus.REQUESTED);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++    when(escalationConfigs.requiredApprovalRole(any(), anyBoolean())).thenReturn("MANAGER_MAINTENANCE");
++
++    assertThatThrownBy(() -> service.approve(user, id, new ApproveCommand(null)))
++        .isInstanceOf(RequestForbiddenException.class);
++  }
++
++  @Test
++  @DisplayName("12.3-SVC-006 P0 INSUFFICIENT_SCOPE — MANAGER_MAINTENANCE without plant scope → 403 FORBIDDEN")
++  void insufficientScope() {
++    var user = new AuthenticatedUser(UUID.randomUUID().toString(), "mgr@test", ApplicationRole.MANAGER_MAINTENANCE);
++    // Empty scope — no plant/group access
++    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(), Set.of()));
++    var entity = requestEntity(SparepartRequestStatus.REQUESTED);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++    when(escalationConfigs.requiredApprovalRole(any(), anyBoolean())).thenReturn("MANAGER_MAINTENANCE");
++
++    assertThatThrownBy(() -> service.approve(user, id, new ApproveCommand(null)))
++        .isInstanceOf(RequestForbiddenException.class);
++  }
++
++  @Test
++  @DisplayName("12.3-SVC-007 P0 WRONG_STATE — ACKED request cannot be approved → 409 INVALID_STATE_TRANSITION")
++  void approveWrongState() {
++    var user = new AuthenticatedUser(UUID.randomUUID().toString(), "mgr@test", ApplicationRole.MANAGER_MAINTENANCE);
++    var entity = requestEntity(SparepartRequestStatus.ACKED);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++
++    assertThatThrownBy(() -> service.approve(user, id, new ApproveCommand(null)))
++        .isInstanceOf(InvalidRequestStateTransitionException.class);
++  }
++
++  @Test
+warning: in the working copy of 'syncro/apps/web/src/features/sparepart-requests/components/approve-dialog.tsx', LF will be replaced by CRLF the next time Git touches it
++  @DisplayName("12.3-SVC-008 P0 ACK_STOP — REQUESTED→ACKED cancels active escalation jobs for the request")
++  void ackStopOnAck() {
++    var user = inventoryUser();
++    var entity = requestEntity(SparepartRequestStatus.REQUESTED);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++
++    service.transition(user, id, new TransitionCommand(SparepartRequestStatus.ACKED, null));
++
++    verify(notificationJobs).cancelActiveForRequest(eq("SPAREPART_REQUEST:" + id + ":%"),
++        org.mockito.ArgumentMatchers.anyList(), eq(com.syncro.notification.domain.NotificationJobStatus.CANCELLED),
++        any());
++  }
++
++  @Test
++  @DisplayName("12.3-SVC-009 P0 CLOSE_STOP — PICKED_UP→CLOSED cancels active escalation jobs for the request")
++  void closeStopOnClose() {
++    var user = sectionLeaderUser();
++    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
++    var entity = requestEntity(SparepartRequestStatus.PICKED_UP);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++
++    service.transition(user, id, new TransitionCommand(SparepartRequestStatus.CLOSED, null));
++
++    verify(notificationJobs).cancelActiveForRequest(eq("SPAREPART_REQUEST:" + id + ":%"),
++        org.mockito.ArgumentMatchers.anyList(), eq(com.syncro.notification.domain.NotificationJobStatus.CANCELLED),
++        any());
++  }
++
+   @Test
+   @DisplayName("12.2-SVC-016 P0 unknown request id → 404 REQUEST_NOT_FOUND")
+   void notFound() {
+diff --git a/syncro/apps/web/src/features/sparepart-requests/components/approve-dialog.tsx b/syncro/apps/web/src/features/sparepart-requests/components/approve-dialog.tsx
+new file mode 100644
+index 0000000..bda7495
+--- /dev/null
++++ b/syncro/apps/web/src/features/sparepart-requests/components/approve-dialog.tsx
+@@ -0,0 +1,76 @@
++"use client";
++
++import { useState } from "react";
++
++import { Loader2 } from "lucide-react";
++
++import { Button } from "@/components/ui/button";
++import {
++  Dialog,
++  DialogContent,
++  DialogDescription,
++  DialogHeader,
++  DialogTitle,
++  DialogTrigger,
++} from "@/components/ui/dialog";
++import { Label } from "@/components/ui/label";
++import { Textarea } from "@/components/ui/textarea";
++import { useApproveRequest } from "@/features/sparepart-requests/hooks/use-sparepart-requests";
++
++/**
++ * Story 12-3 approval dialog (FR-142/AD-16): confirm + optional note for approving a
++ * pending sparepart request. The button visibility is driven by the backend-provided
++ * allowedActions; this dialog only composes the request.
++ */
++export function ApproveDialog({ requestId }: { requestId: string }) {
++  const [open, setOpen] = useState(false);
++  const [note, setNote] = useState("");
++  const approve = useApproveRequest();
++
++  const handleSubmit = () => {
++    approve.mutate(
++      { id: requestId, data: note.trim() ? { note: note.trim() } : undefined },
++      {
++        onSuccess: () => {
++          setOpen(false);
++          setNote("");
++        },
++      },
++    );
++  };
++
++  return (
++    <Dialog open={open} onOpenChange={setOpen}>
++      <DialogTrigger asChild>
++        <Button variant="outline" size="sm">
++          Approve
++        </Button>
++      </DialogTrigger>
++      <DialogContent>
++        <DialogHeader>
++          <DialogTitle>Approve request</DialogTitle>
++          <DialogDescription>
++            Approving moves the request to Acknowledged so inventory can process it.
++          </DialogDescription>
++        </DialogHeader>
++        <div className="space-y-4">
++          <div className="space-y-2">
++            <Label htmlFor="approveNote">Note (optional)</Label>
++            <Textarea
++              id="approveNote"
++              placeholder="e.g. Approved for procurement"
++              value={note}
++              onChange={(e) => setNote(e.target.value)}
++              maxLength={500}
++              rows={3}
++            />
++          </div>
++          <Button onClick={handleSubmit} disabled={approve.isPending}>
++            {approve.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
++            Approve
++          </Button>
++        </div>
++      </DialogContent>
++    </Dialog>
++  );
++}
+diff --git a/syncro/apps/web/src/features/sparepart-requests/components/sparepart-requests-list.tsx b/syncro/apps/web/src/features/sparepart-requests/components/sparepart-requests-list.tsx
+index b5cf1a0..20886ef 100644
+--- a/syncro/apps/web/src/features/sparepart-requests/components/sparepart-requests-list.tsx
++++ b/syncro/apps/web/src/features/sparepart-requests/components/sparepart-requests-list.tsx
+@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
+ import { Label } from "@/components/ui/label";
+ import { Skeleton } from "@/components/ui/skeleton";
+ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
++import { ApproveDialog } from "@/features/sparepart-requests/components/approve-dialog";
+ import { useRecordMre, useTransitionRequest } from "@/features/sparepart-requests/hooks/use-sparepart-requests";
+ import type { SparepartRequestStatus } from "@/features/sparepart-requests/types";
+ import { syncroFetch } from "@/lib/api/orval-mutator";
+@@ -38,6 +39,8 @@ interface SparepartRequestRow {
+   status: SparepartRequestStatus;
+   requestedAt: string;
+   notes: string | null;
++  allowedActions: string[];
++  requiredApprovalRole?: string | null;
+ }
+ 
+ const PAGE_SIZE = 20;
+@@ -234,9 +237,19 @@ export function SparepartRequestsPageContent() {
+                     </TableCell>
+                     <TableCell className="text-xs">{request.quantity}</TableCell>
+                     <TableCell>
+-                      <Badge variant={STATUS_VARIANTS[request.status] ?? "default"}>
+-                        {STATUS_LABELS[request.status] ?? request.status}
+-                      </Badge>
++                      <div className="flex flex-wrap items-center gap-1">
++                        <Badge variant={STATUS_VARIANTS[request.status] ?? "default"}>
++                          {STATUS_LABELS[request.status] ?? request.status}
++                        </Badge>
++                        {request.status === "REQUESTED" || request.status === "PENDING_COMPLETION" ? (
++                          <Badge variant="secondary">
++                            {request.allowedActions.includes("approve") && request.requiredApprovalRole
++                              ? `Pending: ${request.requiredApprovalRole}`
++                              : "Pending approval"}
++                          </Badge>
++                        ) : null}
++                        {request.status === "ACKED" ? <Badge variant="outline">Approved</Badge> : null}
++                      </div>
+                     </TableCell>
+                     <TableCell className="text-muted-foreground text-xs">
+                       {format(new Date(request.requestedAt), "d MMM yyyy HH:mm")}
+@@ -261,6 +274,7 @@ export function SparepartRequestsPageContent() {
+                             {action.label}
+                           </Button>
+                         ))}
++                        {request.allowedActions.includes("approve") ? <ApproveDialog requestId={request.id} /> : null}
+                         {request.status === "PURCHASE_REQUESTED" ? <MreDialog requestId={request.id} /> : null}
+                       </div>
+                     </TableCell>
+diff --git a/syncro/apps/web/src/features/sparepart-requests/hooks/use-sparepart-requests.ts b/syncro/apps/web/src/features/sparepart-requests/hooks/use-sparepart-requests.ts
+index a8eac33..91e10ae 100644
+--- a/syncro/apps/web/src/features/sparepart-requests/hooks/use-sparepart-requests.ts
++++ b/syncro/apps/web/src/features/sparepart-requests/hooks/use-sparepart-requests.ts
+@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
+ import { toast } from "sonner";
+ 
+ import type {
++  ApproveRequest,
+   CreateSparepartRequestRequest,
+   MreRequest,
+   SparepartRequestView,
+@@ -58,6 +59,36 @@ export function useTransitionRequest() {
+   });
+ }
+ 
++/** Approves a sparepart request (story 12-3, FR-142/AD-16). */
++export function useApproveRequest() {
++  const queryClient = useQueryClient();
++  return useMutation({
++    mutationFn: async ({ id, data }: { id: string; data?: ApproveRequest }) => {
++      const response = await syncroFetch<{ data: SparepartRequestView }>(`${REQUESTS_KEY}/${id}/approve`, {
++        method: "POST",
++        body: data ? JSON.stringify(data) : undefined,
++      });
++      return response.data;
++    },
++    onSuccess: () => {
++      queryClient.invalidateQueries({ queryKey: [REQUESTS_KEY] });
++      toast.success("Request approved");
++    },
++    onError: (error: unknown) => {
++      const err = error as { code?: string };
++      if (err.code === "SELF_APPROVAL_FORBIDDEN") {
++        toast.error("You cannot approve your own request.");
++      } else if (err.code === "INVALID_STATE_TRANSITION") {
++        toast.error("This request is no longer pending approval.");
++      } else if (err.code === "FORBIDDEN") {
++        toast.error("You do not have the required role or scope to approve this request.");
++      } else {
++        toast.error("Failed to approve request");
++      }
++    },
++  });
++}
++
+ /** Records a manual MRE code (story 12-2, FR-145). */
+ export function useRecordMre() {
+   const queryClient = useQueryClient();
+diff --git a/syncro/apps/web/src/features/sparepart-requests/types.ts b/syncro/apps/web/src/features/sparepart-requests/types.ts
+index e82ddb2..1db72a9 100644
+--- a/syncro/apps/web/src/features/sparepart-requests/types.ts
++++ b/syncro/apps/web/src/features/sparepart-requests/types.ts
+@@ -29,6 +29,10 @@ export interface SparepartRequestView {
+   notes: string | null;
+   createdAt: string;
+   updatedAt: string;
++  /** Story 12-3: backend-computed allowed actions for the current user. */
++  allowedActions: string[];
++  /** Story 12-3: the required approval role when the user can approve; null otherwise. */
++  requiredApprovalRole?: string | null;
+ }
+ 
+ export interface CreateSparepartRequestRequest {
+@@ -55,3 +59,8 @@ export interface MreRequest {
+   mreCode: string;
+   note?: string | null;
+ }
++
++/** Story 12-3: approval request body (FR-142). */
++export interface ApproveRequest {
++  note?: string | null;
++}
+diff --git a/syncro/authz/.gitignore b/syncro/authz/.gitignore
+index fb34c2c..f242937 100644
+--- a/syncro/authz/.gitignore
++++ b/syncro/authz/.gitignore
+@@ -2,3 +2,7 @@
+ opa-test-output.txt
+ 
+ opa-run-result.txt
++
++opa-raw.txt
++
++opa-result.txt
+diff --git a/syncro/authz/policy/authz.rego b/syncro/authz/policy/authz.rego
+index b8724b9..0006457 100644
+--- a/syncro/authz/policy/authz.rego
++++ b/syncro/authz/policy/authz.rego
+@@ -98,6 +98,13 @@ sparepart_request_transition_paths := {
+   "/api/v1/sparepart-requests/*/mre",
+ }
+ 
++# Sparepart request approval (story 12-3): three-leader allow set — the coarse gate.
++# SUPER_ADMIN is covered by the generic rule; SoD (requester != approver), tier selection
++# and in-scope checks stay service-side (rego cannot see the body or the request state).
++sparepart_request_approval_paths := {
++  "/api/v1/sparepart-requests/*/approve",
++}
++
+ workorder_assign_paths := {
+   "/api/v1/workorders/*/assign",
+ }
+@@ -349,6 +356,26 @@ mutation_allowed if {
+   path_matches(sparepart_request_transition_paths)
+ }
+ 
++# Sparepart request approval (story 12-3): three-leader allow set
++# (SUPER_ADMIN via the generic rule).
++mutation_allowed if {
++  input.subject.roles[_] == "MANAGER_MAINTENANCE"
++  is_mutation
++  path_matches(sparepart_request_approval_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "MAINTENANCE_LEADER"
++  is_mutation
++  path_matches(sparepart_request_approval_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "SECTION_LEADER"
++  is_mutation
++  path_matches(sparepart_request_approval_paths)
++}
++
+ # Assign: leadership roles only (STAFF_MAINTENANCE and PRODUCTION_LEADER excluded).
+ mutation_allowed if {
+   input.subject.roles[_] == "MANAGER_MAINTENANCE"
+diff --git a/syncro/authz/policy/authz_test.rego b/syncro/authz/policy/authz_test.rego
+index dae9c01..468944d 100644
+--- a/syncro/authz/policy/authz_test.rego
++++ b/syncro/authz/policy/authz_test.rego
+@@ -700,6 +700,48 @@ test_auditor_sparepart_request_transition_read_allowed if {
+   authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666"}
+ }
+ 
++# -- Sparepart request approval (story 12-3): three-leader allow set ----------------
++
++test_manager_sparepart_request_approve_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/approve"}
++}
++
++test_maintenance_leader_sparepart_request_approve_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/approve"}
++}
++
++test_section_leader_sparepart_request_approve_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/approve"}
++}
++
++test_super_admin_sparepart_request_approve_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/approve"}
++}
++
++test_technician_sparepart_request_approve_denied if {
++  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/approve"}
++}
++
++test_staff_sparepart_request_approve_denied if {
++  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/approve"}
++}
++
++test_inventory_sparepart_request_approve_denied if {
++  not authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/approve"}
++}
++
++test_storekeeper_sparepart_request_approve_denied if {
++  not authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/approve"}
++}
++
++test_auditor_sparepart_request_approve_denied if {
++  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/approve"}
++}
++
++test_anonymous_sparepart_request_approve_denied if {
++  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/approve"}
++}
++
+ # -- Org maintenance (spec-org-maintenance-model): departments, section leader,
+ #    user master — MANAGER_MAINTENANCE + SUPER_ADMIN mutate; others denied -------
+ 

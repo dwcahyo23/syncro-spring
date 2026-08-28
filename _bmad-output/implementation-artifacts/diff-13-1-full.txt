@@ -1,0 +1,1778 @@
+TRACKED DIFF (git diff since baseline):
+
+warning: in the working copy of 'syncro/.env.example', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderEntity.java', LF will be replaced by CRLF the next time Git touches it
+diff --git a/_bmad-output/implementation-artifacts/sprint-status.yaml b/_bmad-output/implementation-artifacts/sprint-status.yaml
+index 30c3cc0..74e862c 100644
+--- a/_bmad-output/implementation-artifacts/sprint-status.yaml
++++ b/_bmad-output/implementation-artifacts/sprint-status.yaml
+@@ -36,6 +36,7 @@
+ 
+ generated: 2026-05-25
+ last_updated: 2026-08-28
++# updated: 13-1 in-progress (sync pipeline foundation)
+ # updated: 12-4 done (stock OP/OQ & new-item completion); epic-12 done
+ # updated: 12-2 done (state machine, MRE, AD-5 readiness port, V59, frontend)
+ # updated: 12-1 frontend upgraded (BOM-search cart + list page)
+@@ -184,8 +185,8 @@ development_status:
+   epic-12-retrospective: optional
+ 
+   # Epic 13: External Sync & Hardening
+-  epic-13: backlog
+-  13-1-sync-pipeline-foundation: backlog
++  epic-13: in-progress
++  13-1-sync-pipeline-foundation: done
+   13-2-conflict-resolution-and-field-mapping: backlog
+   13-3-quarantine-and-observability: backlog
+   epic-13-retrospective: optional
+diff --git a/syncro/.env.example b/syncro/.env.example
+index 47442dd..6387e0f 100644
+--- a/syncro/.env.example
++++ b/syncro/.env.example
+@@ -84,3 +84,13 @@ SYNCRO_AUTHZ_POLICY_FILE=file:syncro/authz/policy/authz.rego
+ 
+ # Sparepart request escalation worker poll interval (story 12-3, FR-147)
+ SYNCRO_SPAREPART_ESCALATION_POLL_INTERVAL_MS=60000
++
++# External Sync Pipeline (story 13-1, AD-7/FR-150/FR-151)
++# Disabled by default — enable to connect the external PostgreSQL.
++# SYNCRO_SYNC_ENABLED=true
++# SYNCRO_SYNC_DATASOURCE_URL=jdbc:postgresql://external-host:5432/external_db
++# SYNCRO_SYNC_DATASOURCE_USERNAME=external_user
++# SYNCRO_SYNC_DATASOURCE_PASSWORD=CHANGE_ME_strong_password
++# SYNCRO_SYNC_BATCH_SIZE=100
++# SYNCRO_SYNC_POLL_INTERVAL_MS=60000
++# SYNCRO_SYNC_LOCK_TTL_MS=900000
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java b/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
+index 5c0e197..cb206c5 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
+@@ -27,5 +27,6 @@ public enum AuditEntityType {
+   DEPARTMENT,
+   DEPARTMENT_MEMBER,
+   USER,
+-  SPAREPART_STOCK
++  SPAREPART_STOCK,
++  SYNC_RUN
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderEntity.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderEntity.java
+index f949bea..cfbd2b8 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderEntity.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderEntity.java
+@@ -301,6 +301,28 @@ public class WorkOrderEntity {
+     this.stopTimeDetail = stopTimeDetail;
+   }
+ 
++  /**
++   * Applies external master fields on re-sync (AD-7/FR-151, story 13-1): status,
++   * machine/category binding, parent link and description take the external values;
++   * the external {@code updated_at} becomes the local {@code updated_at} so
++   * {@code sync_version} semantics stay consistent with the external row's freshness.
++   * Local operational fields (report, evidence, ratings, sessions) are never touched —
++   * field classification is story 13.2 (AD-8).
++   */
++  public void applySync(WorkOrderStatus status, UUID categoryId, String description, String parentId,
++      Instant updatedAt) {
++    this.status = status;
++    this.categoryId = categoryId;
++    this.description = description;
++    this.parentId = parentId;
++    this.updatedAt = updatedAt;
++  }
++
++  /** Bumps the sync version counter on every external touch (story 13-1). */
++  public void bumpSyncVersion() {
++    this.syncVersion = this.syncVersion + 1L;
++  }
++
+   public void setCpkPdfObjectKey(String cpkPdfObjectKey) {
+     this.cpkPdfObjectKey = cpkPdfObjectKey;
+   }
+diff --git a/syncro/apps/backend/src/main/resources/application.yml b/syncro/apps/backend/src/main/resources/application.yml
+index 82ba119..daaf18d 100644
+--- a/syncro/apps/backend/src/main/resources/application.yml
++++ b/syncro/apps/backend/src/main/resources/application.yml
+@@ -160,3 +160,18 @@ syncro:
+     telemetry:
+       ttl-minutes: 5
+       max-size: 1000
++  sync:
++    # External workorder sync pipeline (story 13-1, AD-7/FR-150). Disabled by default:
++    # the app boots without an external DB. Flip to true and supply syncro.sync.datasource.*
++    # (via env) to activate the scheduled worker.
++    enabled: ${SYNCRO_SYNC_ENABLED:false}
++    datasource:
++      url: ${SYNCRO_SYNC_DATASOURCE_URL:}
++      username: ${SYNCRO_SYNC_DATASOURCE_USERNAME:}
++      password: ${SYNCRO_SYNC_DATASOURCE_PASSWORD:}
++    # Rows per batch (default 100)
++    batch-size: ${SYNCRO_SYNC_BATCH_SIZE:100}
++    # Poll interval in milliseconds (default 60 seconds)
++    poll-interval-ms: ${SYNCRO_SYNC_POLL_INTERVAL_MS:60000}
++    # Redis distributed lock TTL in milliseconds (default 15 minutes — auto-expires on crash)
++    lock-ttl-ms: ${SYNCRO_SYNC_LOCK_TTL_MS:900000}
+
+
+=== NEW/UNTRACKED FILES ===
+
+=== syncro\apps\backend\src\main\java\com\syncro\sync\application\SyncBatchProcessor.java ===
+package com.syncro.sync.application;
+
+import com.syncro.config.SyncProperties;
+import com.syncro.maintenance.application.WorkorderImportService;
+import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
+import com.syncro.maintenance.infrastructure.db.WorkOrderCategoryRepository;
+import com.syncro.machine.infrastructure.MachineRepository;
+import com.syncro.sync.domain.SyncSourceRow;
+import com.syncro.sync.infrastructure.SyncWatermarkEntity;
+import com.syncro.sync.infrastructure.SyncWatermarkRepository;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Transactional batch processor (AD-7/FR-150, story 13-1). One external batch is
+ * processed inside a single Syncro DB transaction: every row is upserted via
+ * {@link WorkorderImportService#upsert} (joining this transaction with REQUIRED) and
+ * the watermark is advanced in the same transaction. A single failing row rolls back
+ * the whole batch — the watermark stays at the previous position and the next poll
+ * cycle re-reads the batch from there (idempotent, no duplicates).
+ *
+ * <p>This is a separate bean (not a private method of the worker) so the
+ * {@code @Transactional} boundary is a real Spring proxy, not a self-invocation.
+ */
+@Service
+@ConditionalOnProperty(prefix = "syncro.sync", name = "enabled", havingValue = "true")
+public class SyncBatchProcessor {
+
+  private static final Logger log = LoggerFactory.getLogger(SyncBatchProcessor.class);
+
+  private final WorkorderImportService importService;
+  private final MachineRepository machines;
+  private final WorkOrderCategoryRepository categories;
+  private final SyncWatermarkRepository watermarks;
+  private final Clock clock;
+
+  public SyncBatchProcessor(WorkorderImportService importService, MachineRepository machines,
+      WorkOrderCategoryRepository categories, SyncWatermarkRepository watermarks, Clock clock) {
+    this.importService = importService;
+    this.machines = machines;
+    this.categories = categories;
+    this.watermarks = watermarks;
+    this.clock = clock;
+  }
+
+  /**
+   * Upserts the batch and advances the watermark in one transaction.
+   *
+   * @return number of rows upserted (unmapped/unknown rows are skipped with a warning)
+   */
+  @Transactional
+  public int importBatch(List<SyncSourceRow> batch) {
+    int upserted = 0;
+    String lastSheetNo = null;
+    for (var row : batch) {
+      if (upsertRow(row)) {
+        upserted++;
+      }
+      lastSheetNo = row.sheetNo();
+    }
+    if (lastSheetNo != null) {
+      watermarks.saveAndFlush(new SyncWatermarkEntity(lastSheetNo, Instant.now(clock)));
+    }
+    return upserted;
+  }
+
+  /**
+   * Resolves machine + category and upserts one external row. Rows with unmapped
+   * machine/category or an unknown status are skipped with a warning (quarantine is
+   * story 13.3). Returns true when the row was upserted.
+   */
+  private boolean upsertRow(SyncSourceRow row) {
+    var machine = row.machineCode() == null ? null
+        : machines.findByCodeIgnoreCase(row.machineCode()).orElse(null);
+    if (machine == null) {
+      log.warn("[SyncWorker] skip sheet_no={} — machine_code '{}' not mapped",
+          row.sheetNo(), row.machineCode());
+      return false;
+    }
+    var category = row.categoryCode() == null ? null
+        : categories.findByCode(row.categoryCode().toUpperCase()).orElse(null);
+    if (category == null) {
+      log.warn("[SyncWorker] skip sheet_no={} — category_code '{}' not mapped",
+          row.sheetNo(), row.categoryCode());
+      return false;
+    }
+    var status = mapStatus(row.status());
+    if (status == null) {
+      log.warn("[SyncWorker] skip sheet_no={} — unknown external status '{}'",
+          row.sheetNo(), row.status());
+      return false;
+    }
+    importService.upsert(row.sheetNo(), machine.getId(), category.getId(), status,
+        row.description(), row.parentSheetNo(), row.updatedAt());
+    return true;
+  }
+
+  /** External status strings map directly to the local lifecycle (e.g. OPEN/IN_PROGRESS/DONE/CLOSED). */
+  static WorkOrderStatus mapStatus(String externalStatus) {
+    if (externalStatus == null) {
+      return null;
+    }
+    try {
+      return WorkOrderStatus.valueOf(externalStatus.trim().toUpperCase());
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
+  }
+}
+=== syncro\apps\backend\src\main\java\com\syncro\sync\application\SyncWorker.java ===
+package com.syncro.sync.application;
+
+import com.syncro.config.SyncProperties;
+import com.syncro.sync.domain.SyncSourceRow;
+import com.syncro.sync.infrastructure.SyncRunEntity;
+import com.syncro.sync.infrastructure.SyncRunRepository;
+import com.syncro.sync.infrastructure.SyncSourceReader;
+import com.syncro.sync.infrastructure.SyncWatermarkRepository;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+/**
+ * Scheduled sync poller (AD-7/FR-150, story 13-1). One cycle: acquire the Redis
+ * distributed lock → read the watermark → query the external DB in batches ordered
+ * by {@code sheet_no ASC} → delegate each batch to {@link SyncBatchProcessor} (which
+ * upserts in a transaction and advances the watermark) → record a {@code sync_runs}
+ * row. The whole cycle is wrapped in try/catch so an external DB outage (retried
+ * with backoff) or any other failure never kills the schedule.
+ *
+ * <p>Conditional on {@code syncro.sync.enabled=true}: external sync is disabled by
+ * default so the app boots without an external DB connection (story 13-1 config note).
+ */
+@Component
+@ConditionalOnProperty(prefix = "syncro.sync", name = "enabled", havingValue = "true")
+public class SyncWorker {
+
+  private static final Logger log = LoggerFactory.getLogger(SyncWorker.class);
+
+  static final String LOCK_KEY = "sync:workorder:lock";
+  static final String RUNNING = "RUNNING";
+  static final String SUCCESS = "SUCCESS";
+  static final String FAILED = "FAILED";
+  static final int MAX_QUERY_RETRIES = 3;
+  static final Duration RETRY_BACKOFF = Duration.ofSeconds(5);
+
+  private final SyncProperties properties;
+  private final StringRedisTemplate redis;
+  private final SyncSourceReader sourceReader;
+  private final SyncWatermarkRepository watermarks;
+  private final SyncRunRepository runs;
+  private final SyncBatchProcessor batchProcessor;
+  private final Clock clock;
+
+  public SyncWorker(SyncProperties properties, StringRedisTemplate redis, SyncSourceReader sourceReader,
+      SyncWatermarkRepository watermarks, SyncRunRepository runs, SyncBatchProcessor batchProcessor,
+      Clock clock) {
+    this.properties = properties;
+    this.redis = redis;
+    this.sourceReader = sourceReader;
+    this.watermarks = watermarks;
+    this.runs = runs;
+    this.batchProcessor = batchProcessor;
+    this.clock = clock;
+  }
+
+  @Scheduled(fixedDelayString = "${syncro.sync.poll-interval-ms:60000}")
+  public void poll() {
+    if (!properties.enabled()) {
+      return;
+    }
+    String instanceId = UUID.randomUUID().toString();
+    Boolean acquired = redis.opsForValue().setIfAbsent(
+        LOCK_KEY, instanceId, Duration.ofMillis(properties.lockTtlMs()));
+    if (!Boolean.TRUE.equals(acquired)) {
+      log.info("[SyncWorker] lock {} held by another instance — skipping this cycle", LOCK_KEY);
+      return;
+    }
+    try {
+      runCycle(instanceId);
+    } catch (Exception e) {
+      log.error("[SyncWorker] unexpected failure during cycle — schedule kept alive", e);
+    } finally {
+      releaseLock(instanceId);
+    }
+  }
+
+  /**
+   * The pipeline body. External DB reads happen before any Syncro DB transaction
+   * starts (the external connection is read-only, no transaction needed); each batch
+   * is processed transactionally by {@link SyncBatchProcessor}.
+   */
+  public void runCycle(String instanceId) {
+    var runId = UUID.randomUUID();
+    var startedAt = Instant.now(clock);
+    runs.saveAndFlush(new SyncRunEntity(runId, startedAt, RUNNING, 0, 0, null));
+
+    int totalRead = 0;
+    int totalUpserted = 0;
+    String lastSheetNo = watermarks.findLastSheetNo().orElse(null);
+
+    try {
+      while (true) {
+        var batch = readWithRetry(lastSheetNo);
+        if (batch.isEmpty()) {
+          break;
+        }
+        totalUpserted += batchProcessor.importBatch(batch);
+        totalRead += batch.size();
+        lastSheetNo = lastRowOf(batch);
+        if (batch.size() < properties.batchSize()) {
+          break;
+        }
+      }
+
+      var completed = runs.findById(runId).orElseThrow();
+      completed.complete(SUCCESS, totalRead, totalUpserted, null, Instant.now(clock));
+      runs.saveAndFlush(completed);
+      log.info("[SyncWorker] run={} success rowsRead={} rowsUpserted={} watermark={}",
+          runId, totalRead, totalUpserted, lastSheetNo);
+    } catch (Exception e) {
+      var failed = runs.findById(runId).orElseThrow();
+      failed.complete(FAILED, totalRead, totalUpserted, safeMessage(e), Instant.now(clock));
+      runs.saveAndFlush(failed);
+      log.error("[SyncWorker] run={} failed rowsRead={} watermark={}: {}",
+          runId, totalRead, lastSheetNo, e.getMessage(), e);
+    }
+  }
+
+  /**
+   * Reads the next batch, retrying up to 3× with 5s backoff when the external DB is
+   * unreachable. After the retries are exhausted the exception propagates so the
+   * cycle is marked FAILED and the schedule survives (never crashes).
+   */
+  private java.util.List<SyncSourceRow> readWithRetry(String lastSheetNo) {
+    var watermark = lastSheetNo == null ? "" : lastSheetNo;
+    RuntimeException lastFailure = null;
+    for (int attempt = 1; attempt <= MAX_QUERY_RETRIES; attempt++) {
+      try {
+        return sourceReader.readBatch(watermark, properties.batchSize());
+      } catch (RuntimeException e) {
+        lastFailure = e;
+        if (attempt < MAX_QUERY_RETRIES) {
+          log.warn("[SyncWorker] external DB read failed attempt={}/{} — backing off 5s: {}",
+              attempt, MAX_QUERY_RETRIES, e.getMessage());
+          sleepBackoff();
+        }
+      }
+    }
+    throw lastFailure;
+  }
+
+  private void sleepBackoff() {
+    try {
+      Thread.sleep(RETRY_BACKOFF.toMillis());
+    } catch (InterruptedException interrupted) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("sync worker interrupted during backoff", interrupted);
+    }
+  }
+
+  private String lastRowOf(java.util.List<SyncSourceRow> batch) {
+    return batch.get(batch.size() - 1).sheetNo();
+  }
+
+  private void releaseLock(String instanceId) {
+    try {
+      var current = redis.opsForValue().get(LOCK_KEY);
+      if (instanceId.equals(current)) {
+        redis.delete(LOCK_KEY);
+      }
+    } catch (RuntimeException e) {
+      // Lock auto-expires via TTL; a failed release must not break the cycle.
+      log.warn("[SyncWorker] lock release failed — TTL will expire it: {}", e.getMessage());
+    }
+  }
+
+  private String safeMessage(Exception e) {
+    var message = e.getMessage();
+    return message == null ? e.getClass().getSimpleName() : message;
+  }
+}
+=== syncro\apps\backend\src\main\java\com\syncro\sync\domain\SyncSourceRow.java ===
+package com.syncro.sync.domain;
+
+import java.time.Instant;
+
+/**
+ * External row from {@code sch_ot.mow_mtn_appm} (the reference system's workorder table).
+ * Mapped by {@link com.syncro.sync.infrastructure.SyncSourceReader} via JdbcTemplate.
+ */
+public record SyncSourceRow(
+    String sheetNo,
+    String machineCode,
+    String categoryCode,
+    String status,
+    String description,
+    Instant createdAt,
+    Instant updatedAt,
+    String parentSheetNo) {
+}
+=== syncro\apps\backend\src\main\java\com\syncro\sync\infrastructure\ExternalDataSourceConfig.java ===
+package com.syncro.sync.infrastructure;
+
+import com.syncro.config.SyncProperties;
+import javax.sql.DataSource;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.jdbc.DataSourceBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+/**
+ * Secondary {@link DataSource} + {@link JdbcTemplate} for the external PostgreSQL
+ * (the reference system's {@code sch_ot.mow_mtn_appm} table). Only created when
+ * {@code syncro.sync.enabled=true} — the app boots without an external DB.
+ *
+ * <p>The primary Syncro DB datasource is untouched; this bean is qualified with
+ * {@code @Qualifier("syncDataSource")} to avoid ambiguity.
+ */
+@Configuration
+@ConditionalOnProperty(prefix = "syncro.sync", name = "enabled", havingValue = "true")
+public class ExternalDataSourceConfig {
+
+  @Bean
+  DataSource syncDataSource(SyncProperties properties) {
+    var ds = properties.datasource();
+    return DataSourceBuilder.create()
+        .url(ds.url())
+        .username(ds.username())
+        .password(ds.password())
+        .driverClassName("org.postgresql.Driver")
+        .build();
+  }
+
+  @Bean
+  JdbcTemplate syncJdbcTemplate(DataSource syncDataSource) {
+    return new JdbcTemplate(syncDataSource);
+  }
+}
+=== syncro\apps\backend\src\main\java\com\syncro\sync\infrastructure\SyncRunEntity.java ===
+package com.syncro.sync.infrastructure;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+
+/**
+ * Persisted {@code sync_runs} row (AD-7/FR-150). One row per sync cycle recording
+ * status, rows read, rows upserted, and error detail.
+ */
+@Entity
+@Table(name = "sync_runs")
+public class SyncRunEntity {
+
+  @Id
+  private UUID id;
+
+  @Column(name = "started_at", nullable = false)
+  private Instant startedAt;
+
+  @Column(name = "completed_at")
+  private Instant completedAt;
+
+  @Column(nullable = false, length = 20)
+  private String status;
+
+  @Column(name = "rows_read", nullable = false)
+  private int rowsRead;
+
+  @Column(name = "rows_upserted", nullable = false)
+  private int rowsUpserted;
+
+  @Column(name = "error_message", columnDefinition = "text")
+  private String errorMessage;
+
+  protected SyncRunEntity() {
+  }
+
+  public SyncRunEntity(UUID id, Instant startedAt, String status, int rowsRead, int rowsUpserted,
+      String errorMessage) {
+    this.id = id;
+    this.startedAt = startedAt;
+    this.status = status;
+    this.rowsRead = rowsRead;
+    this.rowsUpserted = rowsUpserted;
+    this.errorMessage = errorMessage;
+  }
+
+  public UUID getId() {
+    return id;
+  }
+
+  public Instant getStartedAt() {
+    return startedAt;
+  }
+
+  public Instant getCompletedAt() {
+    return completedAt;
+  }
+
+  public String getStatus() {
+    return status;
+  }
+
+  public int getRowsRead() {
+    return rowsRead;
+  }
+
+  public int getRowsUpserted() {
+    return rowsUpserted;
+  }
+
+  public String getErrorMessage() {
+    return errorMessage;
+  }
+
+  public void complete(String status, int rowsRead, int rowsUpserted, String errorMessage,
+      Instant completedAt) {
+    this.status = status;
+    this.rowsRead = rowsRead;
+    this.rowsUpserted = rowsUpserted;
+    this.errorMessage = errorMessage;
+    this.completedAt = completedAt;
+  }
+}
+=== syncro\apps\backend\src\main\java\com\syncro\sync\infrastructure\SyncRunRepository.java ===
+package com.syncro.sync.infrastructure;
+
+import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+/**
+ * JPA repository for {@code sync_runs} — per-cycle run records. The {@code save()}
+ * method handles both insert (new run) and update (completion).
+ */
+public interface SyncRunRepository extends JpaRepository<SyncRunEntity, UUID> {
+}
+=== syncro\apps\backend\src\main\java\com\syncro\sync\infrastructure\SyncSourceReader.java ===
+package com.syncro.sync.infrastructure;
+
+import com.syncro.sync.domain.SyncSourceRow;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.Instant;
+import java.util.List;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Repository;
+
+/**
+ * Reads external workorder rows from the reference system's {@code sch_ot.mow_mtn_appm}
+ * table via the secondary {@link JdbcTemplate}. Ordered by {@code sheet_no ASC} with a
+ * configurable batch limit and watermark offset.
+ *
+ * <p>Only created when {@code syncro.sync.enabled=true} — the secondary datasource bean
+ * {@code syncJdbcTemplate} is conditional on the same property.
+ */
+@Repository
+@ConditionalOnProperty(prefix = "syncro.sync", name = "enabled", havingValue = "true")
+public class SyncSourceReader {
+
+  private static final String QUERY = """
+      SELECT sheet_no, machine_code, category_code, status, description,
+             created_at, updated_at, parent_sheet_no
+      FROM sch_ot.mow_mtn_appm
+      WHERE sheet_no > ?
+      ORDER BY sheet_no ASC
+      LIMIT ?
+      """;
+
+  private final JdbcTemplate jdbc;
+
+  public SyncSourceReader(JdbcTemplate syncJdbcTemplate) {
+    this.jdbc = syncJdbcTemplate;
+  }
+
+  /**
+   * Returns the next batch of rows strictly above the given watermark.
+   *
+   * @param lastSheetNo the last processed sheet_no (exclusive), or empty string for the first run
+   * @param batchSize   maximum rows to return
+   * @return list of external rows, ordered by sheet_no ASC
+   */
+  public List<SyncSourceRow> readBatch(String lastSheetNo, int batchSize) {
+    return jdbc.query(QUERY, new SyncSourceRowMapper(), lastSheetNo, batchSize);
+  }
+
+  private static class SyncSourceRowMapper implements RowMapper<SyncSourceRow> {
+
+    @Override
+    public SyncSourceRow mapRow(ResultSet rs, int rowNum) throws SQLException {
+      return new SyncSourceRow(
+          rs.getString("sheet_no"),
+          rs.getString("machine_code"),
+          rs.getString("category_code"),
+          rs.getString("status"),
+          rs.getString("description"),
+          toInstant(rs.getTimestamp("created_at")),
+          toInstant(rs.getTimestamp("updated_at")),
+          rs.getString("parent_sheet_no")
+      );
+    }
+
+    private static Instant toInstant(java.sql.Timestamp timestamp) {
+      return timestamp != null ? timestamp.toInstant() : null;
+    }
+  }
+}
+=== syncro\apps\backend\src\main\java\com\syncro\sync\infrastructure\SyncWatermarkEntity.java ===
+package com.syncro.sync.infrastructure;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+
+/**
+ * Persisted {@code sync_watermarks} row (AD-7/FR-150). Single-row table guarded by a
+ * CHECK constraint on the PK ({@code id = '00000000-0000-0000-0000-000000000001'}).
+ * The fixed UUID gives JPA a stable {@code findById} key for the upsert.
+ */
+@Entity
+@Table(name = "sync_watermarks")
+public class SyncWatermarkEntity {
+
+  @Id
+  private UUID id = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+  @Column(name = "last_sheet_no", length = 50)
+  private String lastSheetNo;
+
+  @Column(name = "updated_at", nullable = false)
+  private Instant updatedAt;
+
+  protected SyncWatermarkEntity() {
+  }
+
+  public SyncWatermarkEntity(String lastSheetNo, Instant updatedAt) {
+    this.lastSheetNo = lastSheetNo;
+    this.updatedAt = updatedAt;
+  }
+
+  public UUID getId() {
+    return id;
+  }
+
+  public String getLastSheetNo() {
+    return lastSheetNo;
+  }
+
+  public Instant getUpdatedAt() {
+    return updatedAt;
+  }
+}
+=== syncro\apps\backend\src\main\java\com\syncro\sync\infrastructure\SyncWatermarkRepository.java ===
+package com.syncro.sync.infrastructure;
+
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+/**
+ * JPA repository for the {@code sync_watermarks} single-row table. The fixed id
+ * {@code 00000000-0000-0000-0000-000000000001} is guarded by a CHECK constraint,
+ * so {@code save()} always triggers an upsert.
+ */
+public interface SyncWatermarkRepository extends JpaRepository<SyncWatermarkEntity, UUID> {
+
+  UUID FIXED_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+  default Optional<String> findLastSheetNo() {
+    return findById(FIXED_ID).map(SyncWatermarkEntity::getLastSheetNo);
+  }
+}
+=== syncro\apps\backend\src\test\java\com\syncro\sync\application\SyncBatchProcessorTest.java ===
+package com.syncro.sync.application;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.syncro.config.SyncProperties;
+import com.syncro.maintenance.application.WorkorderImportService;
+import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
+import com.syncro.maintenance.infrastructure.db.WorkOrderCategoryEntity;
+import com.syncro.maintenance.infrastructure.db.WorkOrderCategoryRepository;
+import com.syncro.machine.infrastructure.MachineEntity;
+import com.syncro.machine.infrastructure.MachineRepository;
+import com.syncro.sync.domain.SyncSourceRow;
+import com.syncro.sync.infrastructure.SyncWatermarkEntity;
+import com.syncro.sync.infrastructure.SyncWatermarkRepository;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+/**
+ * Story 13-1 unit tests for {@link SyncBatchProcessor} — the transactional batch
+ * boundary between the worker and the import service. Covers the matrix rows the
+ * worker/reader tests do not reach: unmapped machine/category skip, unknown-status
+ * skip, and the "batch fails → whole batch rolls back via a single @Transactional"
+ * contract (a failing upsert propagates so the transaction rolls back and the
+ * watermark is not advanced — re-read on the next cycle keeps it idempotent).
+ */
+@ExtendWith(MockitoExtension.class)
+class SyncBatchProcessorTest {
+
+  private static final Instant NOW = Instant.parse("2026-08-28T00:00:00Z");
+  private static final Clock CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
+  private static final UUID MACHINE_ID = UUID.randomUUID();
+  private static final UUID CATEGORY_ID = UUID.randomUUID();
+
+  @Mock
+  private WorkorderImportService importService;
+  @Mock
+  private MachineRepository machines;
+  @Mock
+  private WorkOrderCategoryRepository categories;
+  @Mock
+  private SyncWatermarkRepository watermarks;
+  @Mock
+  private SyncProperties properties;
+
+  private SyncBatchProcessor processor;
+
+  @BeforeEach
+  void setUp() {
+    processor = new SyncBatchProcessor(importService, machines, categories, watermarks, CLOCK);
+  }
+
+  private SyncSourceRow row(String sheetNo, String machineCode, String categoryCode,
+      String status) {
+    return new SyncSourceRow(sheetNo, machineCode, categoryCode, status, "desc " + sheetNo,
+        NOW, NOW, null);
+  }
+
+  private MachineEntity machine() {
+    // MachineEntity has a protected constructor — mock it; only getId matters here.
+    var m = org.mockito.Mockito.mock(MachineEntity.class);
+    lenient().when(machines.findByCodeIgnoreCase("MC-001")).thenReturn(Optional.of(m));
+    lenient().when(m.getId()).thenReturn(MACHINE_ID);
+    return m;
+  }
+
+  private WorkOrderCategoryEntity category() {
+    // WorkOrderCategoryEntity has a protected constructor — mock it; only getId matters here.
+    var c = org.mockito.Mockito.mock(WorkOrderCategoryEntity.class);
+    lenient().when(categories.findByCode("01")).thenReturn(Optional.of(c));
+    lenient().when(c.getId()).thenReturn(CATEGORY_ID);
+    return c;
+  }
+
+  @Test
+  @DisplayName("13.1-BP-001 P0 unmapped machine: row skipped with warning, no upsert; watermark still advances (skip is terminal — never re-read)")
+  void unmappedMachineSkipsRow() {
+    when(machines.findByCodeIgnoreCase("MC-UNKNOWN")).thenReturn(Optional.empty());
+
+    var batch = List.of(row("EXT-00001", "MC-UNKNOWN", "01", "OPEN"));
+    int upserted = processor.importBatch(batch);
+
+    assertThat(upserted).isZero();
+    verify(importService, never()).upsert(any(), any(), any(), any(), any(), any(), any());
+    // The watermark advances past the skipped row so the next cycle does not re-read it
+    // forever (quarantine in 13.3 replaces the silent skip). Same transaction: if the
+    // batch later fails, the rollback undoes the watermark too.
+    var captor = org.mockito.ArgumentCaptor.forClass(SyncWatermarkEntity.class);
+    verify(watermarks).saveAndFlush(captor.capture());
+    assertThat(captor.getValue().getLastSheetNo()).isEqualTo("EXT-00001");
+  }
+
+  @Test
+  @DisplayName("13.1-BP-002 P0 unmapped category: row skipped with warning, no upsert; watermark advances")
+  void unmappedCategorySkipsRow() {
+    var m = machine();
+    when(machines.findByCodeIgnoreCase("MC-001")).thenReturn(Optional.of(m));
+    when(categories.findByCode("99")).thenReturn(Optional.empty());
+
+    var batch = List.of(row("EXT-00001", "MC-001", "99", "OPEN"));
+    int upserted = processor.importBatch(batch);
+
+    assertThat(upserted).isZero();
+    verify(importService, never()).upsert(any(), any(), any(), any(), any(), any(), any());
+    var captor = org.mockito.ArgumentCaptor.forClass(SyncWatermarkEntity.class);
+    verify(watermarks).saveAndFlush(captor.capture());
+    assertThat(captor.getValue().getLastSheetNo()).isEqualTo("EXT-00001");
+  }
+
+  @Test
+  @DisplayName("13.1-BP-003 P0 unknown status: row skipped, no upsert")
+  void unknownStatusSkipsRow() {
+    var m = machine();
+    var c = category();
+    when(machines.findByCodeIgnoreCase("MC-001")).thenReturn(Optional.of(m));
+    when(categories.findByCode("01")).thenReturn(Optional.of(c));
+
+    var batch = List.of(row("EXT-00001", "MC-001", "01", "NOT_A_STATUS"));
+    int upserted = processor.importBatch(batch);
+
+    assertThat(upserted).isZero();
+    verify(importService, never()).upsert(any(), any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  @DisplayName("13.1-BP-004 P0 mapped rows upserted, watermark advanced to last sheet_no")
+  void mappedRowsUpsertAndAdvanceWatermark() {
+    var m = machine();
+    var c = category();
+    when(machines.findByCodeIgnoreCase("MC-001")).thenReturn(Optional.of(m));
+    when(categories.findByCode("01")).thenReturn(Optional.of(c));
+    lenient().when(importService.upsert(any(), eq(MACHINE_ID), eq(CATEGORY_ID), any(),
+        any(), any(), any())).thenReturn("EXT-00001");
+
+    var batch = List.of(
+        row("EXT-00001", "MC-001", "01", "OPEN"),
+        row("EXT-00002", "MC-001", "01", "DONE"));
+    int upserted = processor.importBatch(batch);
+
+    assertThat(upserted).isEqualTo(2);
+    verify(importService).upsert("EXT-00001", MACHINE_ID, CATEGORY_ID, WorkOrderStatus.OPEN,
+        "desc EXT-00001", null, NOW);
+    verify(importService).upsert("EXT-00002", MACHINE_ID, CATEGORY_ID, WorkOrderStatus.DONE,
+        "desc EXT-00002", null, NOW);
+    var captor = org.mockito.ArgumentCaptor.forClass(SyncWatermarkEntity.class);
+    verify(watermarks).saveAndFlush(captor.capture());
+    assertThat(captor.getValue().getLastSheetNo()).isEqualTo("EXT-00002");
+  }
+
+  @Test
+  @DisplayName("13.1-BP-005 P0 batch failure propagates so the transaction rolls back (watermark not advanced)")
+  void failingRowPropagatesForRollback() {
+    var m = machine();
+    var c = category();
+    when(machines.findByCodeIgnoreCase("MC-001")).thenReturn(Optional.of(m));
+    when(categories.findByCode("01")).thenReturn(Optional.of(c));
+    // First row succeeds, second row throws — the exception propagates out of
+    // importBatch so the @Transactional boundary rolls back the whole batch.
+    when(importService.upsert("EXT-00001", MACHINE_ID, CATEGORY_ID, WorkOrderStatus.OPEN,
+        "desc EXT-00001", null, NOW)).thenReturn("EXT-00001");
+    when(importService.upsert("EXT-00002", MACHINE_ID, CATEGORY_ID, WorkOrderStatus.DONE,
+        "desc EXT-00002", null, NOW)).thenThrow(new RuntimeException("constraint violation"));
+
+    var batch = List.of(
+        row("EXT-00001", "MC-001", "01", "OPEN"),
+        row("EXT-00002", "MC-001", "01", "DONE"));
+
+    try {
+      processor.importBatch(batch);
+    } catch (RuntimeException expected) {
+      // Propagated as expected — the @Transactional proxy rolls back.
+    }
+
+    // The watermark write happens after the loop; a rollback means it is never committed.
+    verify(watermarks, never()).saveAndFlush(any(SyncWatermarkEntity.class));
+  }
+}
+=== syncro\apps\backend\src\test\java\com\syncro\sync\application\SyncWorkerTest.java ===
+package com.syncro.sync.application;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.syncro.config.SyncProperties;
+import com.syncro.sync.domain.SyncSourceRow;
+import com.syncro.sync.infrastructure.SyncRunEntity;
+import com.syncro.sync.infrastructure.SyncRunRepository;
+import com.syncro.sync.infrastructure.SyncSourceReader;
+import com.syncro.sync.infrastructure.SyncWatermarkRepository;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
+
+/**
+ * Story 13-1 unit tests for {@link SyncWorker} — lock, watermark, retry, and
+ * pipeline orchestration (FR-150). The upsert logic is delegated to
+ * {@link SyncBatchProcessor} and tested separately.
+ */
+@ExtendWith(MockitoExtension.class)
+class SyncWorkerTest {
+
+  private static final Instant NOW = Instant.parse("2026-08-28T00:00:00Z");
+  private static final Clock CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
+  private static final Duration LOCK_TTL = Duration.ofMillis(900_000L);
+
+  @Mock
+  private SyncProperties properties;
+  @Mock
+  private StringRedisTemplate redis;
+  @Mock
+  private ValueOperations<String, String> valueOps;
+  @Mock
+  private SyncSourceReader sourceReader;
+  @Mock
+  private SyncWatermarkRepository watermarks;
+  @Mock
+  private SyncRunRepository runs;
+  @Mock
+  private SyncBatchProcessor batchProcessor;
+
+  private SyncWorker worker;
+
+  @BeforeEach
+  void setUp() {
+    when(properties.lockTtlMs()).thenReturn(900_000L);
+    when(redis.opsForValue()).thenReturn(valueOps);
+    lenient().when(runs.saveAndFlush(any(SyncRunEntity.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    lenient().when(runs.findById(any())).thenAnswer(invocation -> {
+      var run = new SyncRunEntity(invocation.getArgument(0), NOW, "RUNNING", 0, 0, null);
+      return Optional.of(run);
+    });
+    // Lenient to avoid UnnecessaryStubbing on the lock-held test.
+    lenient().when(properties.enabled()).thenReturn(true);
+    lenient().when(properties.batchSize()).thenReturn(100);
+    lenient().when(watermarks.findLastSheetNo()).thenReturn(Optional.empty());
+
+    worker = new SyncWorker(properties, redis, sourceReader, watermarks, runs, batchProcessor, CLOCK);
+  }
+
+  @Test
+  @DisplayName("13.1-SW-001 P0 lock held: worker returns immediately, no DB query")
+  void lockHeldSkipsCycle() {
+    when(valueOps.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(false);
+
+    worker.poll();
+
+    verify(sourceReader, never()).readBatch(anyString(), anyInt());
+    verify(batchProcessor, never()).importBatch(any());
+    verify(runs, never()).saveAndFlush(any(SyncRunEntity.class));
+  }
+
+  @Test
+  @DisplayName("13.1-SW-002 P0 empty batch: run recorded with 0 rows, no watermark change")
+  void emptyBatch() {
+    when(valueOps.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(true);
+    when(sourceReader.readBatch("", 100)).thenReturn(List.of());
+
+    worker.poll();
+
+    // saveAndFlush: once for RUNNING insert, once for SUCCESS update.
+    verify(runs, times(2)).saveAndFlush(any(SyncRunEntity.class));
+    verify(watermarks, never()).saveAndFlush(any());
+  }
+
+  @Test
+  @DisplayName("13.1-SW-003 P0 successful batch: rows read, rows upserted, watermark advanced")
+  void successfulBatch() {
+    when(valueOps.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(true);
+    var row = new SyncSourceRow("EXT-00001", "MC-001", "01", "OPEN", "desc", NOW, NOW, null);
+    when(sourceReader.readBatch("", 100)).thenReturn(List.of(row));
+    when(batchProcessor.importBatch(List.of(row))).thenReturn(1);
+
+    worker.poll();
+
+    // 2 saves: RUNNING insert + SUCCESS update.
+    var runCaptor = ArgumentCaptor.forClass(SyncRunEntity.class);
+    verify(runs, times(2)).saveAndFlush(runCaptor.capture());
+    var completed = runCaptor.getAllValues().get(1);
+    assertThat(completed.getStatus()).isEqualTo("SUCCESS");
+    assertThat(completed.getRowsRead()).isEqualTo(1);
+    assertThat(completed.getRowsUpserted()).isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName("13.1-SW-004 P0 external DB down: retries 3×, then cycle FAILED, schedule survives")
+  void externalDbDownRetriesThenFails() {
+    AtomicReference<String> lockValue = new AtomicReference<>();
+    when(valueOps.setIfAbsent(eq(SyncWorker.LOCK_KEY), anyString(), eq(LOCK_TTL)))
+        .thenAnswer(invocation -> {
+          lockValue.set(invocation.getArgument(1));
+          return true;
+        });
+    when(valueOps.get(SyncWorker.LOCK_KEY)).thenAnswer(invocation -> lockValue.get());
+    when(sourceReader.readBatch("", 100))
+        .thenThrow(new RuntimeException("Connection refused"))
+        .thenThrow(new RuntimeException("Connection refused"))
+        .thenThrow(new RuntimeException("Connection refused"));
+
+    worker.poll();
+
+    var runCaptor = ArgumentCaptor.forClass(SyncRunEntity.class);
+    verify(runs, times(2)).saveAndFlush(runCaptor.capture());
+    var failed = runCaptor.getAllValues().get(1);
+    assertThat(failed.getStatus()).isEqualTo("FAILED");
+    assertThat(failed.getRowsRead()).isZero();
+    assertThat(failed.getErrorMessage()).isNotNull();
+    // Lock released after failure (finally block).
+    verify(redis).delete(SyncWorker.LOCK_KEY);
+  }
+
+  @Test
+  @DisplayName("13.1-SW-005 P0 lock released after cycle (finally block)")
+  void lockReleasedInFinally() {
+    AtomicReference<String> lockValue = new AtomicReference<>();
+    when(valueOps.setIfAbsent(eq(SyncWorker.LOCK_KEY), anyString(), eq(LOCK_TTL)))
+        .thenAnswer(invocation -> {
+          lockValue.set(invocation.getArgument(1));
+          return true;
+        });
+    when(valueOps.get(SyncWorker.LOCK_KEY)).thenAnswer(invocation -> lockValue.get());
+    when(sourceReader.readBatch("", 100)).thenReturn(List.of());
+
+    worker.poll();
+
+    verify(redis).delete(SyncWorker.LOCK_KEY);
+  }
+}
+=== syncro\apps\backend\src\test\java\com\syncro\sync\infrastructure\SyncSourceReaderTest.java ===
+package com.syncro.sync.infrastructure;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.syncro.AbstractPostgresIntegrationTest;
+import java.sql.Timestamp;
+import java.time.Instant;
+import javax.sql.DataSource;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+/**
+ * Story 13-1 integration test for {@link SyncSourceReader}: the external query
+ * ({@code WHERE sheet_no > ? ORDER BY sheet_no ASC LIMIT ?}) and the row mapping.
+ * Uses a real Postgres with the external {@code sch_ot.mow_mtn_appm} shape — the
+ * reader is constructed directly with a JdbcTemplate (the conditional bean is not
+ * active in the shared test context).
+ */
+class SyncSourceReaderTest extends AbstractPostgresIntegrationTest {
+
+  @Autowired
+  private DataSource dataSource;
+
+  private JdbcTemplate externalJdbc;
+  private SyncSourceReader reader;
+  private final Timestamp ts = Timestamp.from(Instant.parse("2026-08-28T00:00:00Z"));
+
+  @BeforeEach
+  void setUpExternalSchema() {
+    externalJdbc = new JdbcTemplate(dataSource);
+    externalJdbc.execute("CREATE SCHEMA IF NOT EXISTS sch_ot");
+    externalJdbc.execute("""
+        CREATE TABLE IF NOT EXISTS sch_ot.mow_mtn_appm (
+          sheet_no VARCHAR(50) PRIMARY KEY,
+          machine_code VARCHAR(64),
+          category_code VARCHAR(16),
+          status VARCHAR(20),
+          description TEXT,
+          created_at TIMESTAMPTZ,
+          updated_at TIMESTAMPTZ,
+          parent_sheet_no VARCHAR(50)
+        )
+        """);
+    reader = new SyncSourceReader(externalJdbc);
+  }
+
+  @Test
+  @DisplayName("13.1-SR-001 P0 returns rows above the watermark ordered by sheet_no ASC, limited to batch size")
+  void readsAboveWatermarkOrderedAndLimited() {
+    externalJdbc.update("DELETE FROM sch_ot.mow_mtn_appm");
+    externalJdbc.update("""
+        INSERT INTO sch_ot.mow_mtn_appm (sheet_no, machine_code, category_code, status, description, created_at, updated_at)
+        VALUES ('EXT-00001', 'MC-001', '01', 'OPEN', 'desc 1', ?, ?),
+               ('EXT-00002', 'MC-002', '02', 'DONE', 'desc 2', ?, ?),
+               ('EXT-00003', 'MC-003', '01', 'CLOSED', 'desc 3', ?, ?)
+        """, ts, ts, ts, ts, ts, ts);
+
+    var rows = reader.readBatch("EXT-00001", 100);
+
+    assertThat(rows).hasSize(2);
+    assertThat(rows.get(0).sheetNo()).isEqualTo("EXT-00002");
+    assertThat(rows.get(1).sheetNo()).isEqualTo("EXT-00003");
+    assertThat(rows.get(0).machineCode()).isEqualTo("MC-002");
+    assertThat(rows.get(0).status()).isEqualTo("DONE");
+    assertThat(rows.get(0).description()).isEqualTo("desc 2");
+    assertThat(rows.get(0).createdAt()).isEqualTo(ts.toInstant());
+    assertThat(rows.get(0).updatedAt()).isEqualTo(ts.toInstant());
+  }
+
+  @Test
+  @DisplayName("13.1-SR-002 P0 empty watermark reads from the beginning; batch limit honored")
+  void readsFromStartWithLimit() {
+    externalJdbc.update("DELETE FROM sch_ot.mow_mtn_appm");
+    for (int i = 1; i <= 10; i++) {
+      externalJdbc.update("""
+          INSERT INTO sch_ot.mow_mtn_appm (sheet_no, machine_code, category_code, status, created_at, updated_at)
+          VALUES (?, 'MC-001', '01', 'OPEN', ?, ?)
+          """, "EXT-%05d".formatted(i), ts, ts);
+    }
+
+    var firstBatch = reader.readBatch("", 3);
+    assertThat(firstBatch).hasSize(3);
+    assertThat(firstBatch.get(0).sheetNo()).isEqualTo("EXT-00001");
+    assertThat(firstBatch.get(2).sheetNo()).isEqualTo("EXT-00003");
+
+    var secondBatch = reader.readBatch(firstBatch.get(2).sheetNo(), 100);
+    assertThat(secondBatch).hasSize(7);
+    assertThat(secondBatch.get(0).sheetNo()).isEqualTo("EXT-00004");
+  }
+
+  @Test
+  @DisplayName("13.1-SR-003 P0 maps nullable parent_sheet_no and null timestamps")
+  void mapsNullables() {
+    externalJdbc.update("DELETE FROM sch_ot.mow_mtn_appm");
+    externalJdbc.update("""
+        INSERT INTO sch_ot.mow_mtn_appm (sheet_no, machine_code, category_code, status, description, parent_sheet_no)
+        VALUES ('EXT-00020', 'MC-001', '01', 'OPEN', 'no timestamps', 'EXT-00001')
+        """);
+
+    var rows = reader.readBatch("", 100);
+
+    assertThat(rows).hasSize(1);
+    assertThat(rows.get(0).parentSheetNo()).isEqualTo("EXT-00001");
+    assertThat(rows.get(0).createdAt()).isNull();
+    assertThat(rows.get(0).updatedAt()).isNull();
+  }
+
+  @Test
+  @DisplayName("13.1-SR-004 P0 unknown watermark matches no rows")
+  void unknownWatermarkMatchesNothing() {
+    externalJdbc.update("DELETE FROM sch_ot.mow_mtn_appm");
+    var rows = reader.readBatch("EXT-99999", 100);
+    assertThat(rows).isEmpty();
+  }
+
+  @Test
+  @DisplayName("13.1-SR-005 P0 returns an empty list for an empty table")
+  void emptyTableReturnsEmpty() {
+    externalJdbc.update("DELETE FROM sch_ot.mow_mtn_appm");
+    assertThat(reader.readBatch("", 100)).isEmpty();
+  }
+}
+=== syncro\apps\backend\src\main\java\com\syncro\config\SyncProperties.java ===
+package com.syncro.config;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.DefaultValue;
+import org.springframework.validation.annotation.Validated;
+
+/**
+ * Typed configuration for the external sync pipeline (story 13-1, AD-7/FR-150).
+ * Bound from {@code syncro.sync.*} in {@code application.yml}. External sync is
+ * disabled by default ({@code enabled = false}): the backend boots without an
+ * external database connection, and the scheduled worker is only created when the
+ * operator flips the flag and supplies {@code syncro.sync.datasource.*} credentials
+ * via environment.
+ */
+@Validated
+@ConfigurationProperties(prefix = "syncro.sync")
+public record SyncProperties(
+    @DefaultValue("false") boolean enabled,
+    @DefaultValue Datasource datasource,
+    @DefaultValue("100") int batchSize,
+    @DefaultValue("60000") long pollIntervalMs,
+    @DefaultValue("900000") long lockTtlMs) {
+
+  /**
+   * Connection for the external PostgreSQL (the reference system's DB). Read-only
+   * {@code JdbcTemplate} queries only — never JPA. When {@code enabled} is false the
+   * values are ignored and the secondary DataSource bean is not created.
+   */
+  public record Datasource(
+      @DefaultValue("") String url,
+      @DefaultValue("") String username,
+      @DefaultValue("") String password) {
+
+    public Datasource {
+      if (url == null) {
+        throw new IllegalArgumentException("syncro.sync.datasource.url must not be null");
+      }
+    }
+  }
+
+  public SyncProperties {
+    if (batchSize <= 0) {
+      throw new IllegalArgumentException("syncro.sync.batch-size must be positive");
+    }
+    if (pollIntervalMs <= 0) {
+      throw new IllegalArgumentException("syncro.sync.poll-interval-ms must be positive");
+    }
+    if (lockTtlMs <= 0) {
+      throw new IllegalArgumentException("syncro.sync.lock-ttl-ms must be positive");
+    }
+    if (enabled && (datasource == null || datasource.url() == null || datasource.url().isBlank())) {
+      throw new IllegalArgumentException(
+          "syncro.sync.datasource.url must be configured when syncro.sync.enabled=true");
+    }
+  }
+}
+=== syncro\apps\backend\src\main\java\com\syncro\maintenance\application\WorkorderImportService.java ===
+package com.syncro.maintenance.application;
+
+import com.syncro.audit.application.AuditLogWriter;
+import com.syncro.audit.application.AuditRecord;
+import com.syncro.audit.domain.AuditAction;
+import com.syncro.audit.domain.AuditEntityType;
+import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
+import com.syncro.maintenance.infrastructure.db.WorkOrderEntity;
+import com.syncro.maintenance.infrastructure.db.WorkOrderRepository;
+import com.syncro.maintenance.infrastructure.db.WorkOrderStatusHistoryEntity;
+import com.syncro.maintenance.infrastructure.db.WorkOrderStatusHistoryRepository;
+import com.syncro.authz.application.PolicyDecisionPoint;
+import java.nio.charset.StandardCharsets;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Single upsert entry point for SYNCED workorders (AD-7/FR-150/FR-151, story 13-1).
+ *
+ * <p>The sync module never writes {@code work_orders} via JPA — every external row
+ * passes through {@link #upsert}. The maintenance module owns the workorder aggregate:
+ * this service find-or-creates the entity with {@code source=SYNCED} and the external
+ * {@code sheet_no} as id (no WO- prefix), writes a {@code SYNC}/{@code SYSTEM} status
+ * history row, and records audit via {@link AuditLogWriter#recordSystem}. A re-sync of
+ * an existing sheet_no updates fields and bumps {@code sync_version} — idempotent per
+ * FR-151. Unresolvable machines/categories never auto-create workorders (13.3 adds
+ * quarantine); callers resolve and skip such rows before invoking this service.
+ */
+@Service
+public class WorkorderImportService {
+
+  static final String SOURCE_SYNCED = "SYNCED";
+  static final String HISTORY_SOURCE_SYNC = "SYNC";
+  static final String SYSTEM_ACTOR = "SYSTEM";
+
+  private final WorkOrderRepository workOrders;
+  private final WorkOrderStatusHistoryRepository statusHistory;
+  private final AuditLogWriter auditLog;
+  private final Clock clock;
+
+  public WorkorderImportService(WorkOrderRepository workOrders,
+      WorkOrderStatusHistoryRepository statusHistory, AuditLogWriter auditLog, Clock clock) {
+    this.workOrders = workOrders;
+    this.statusHistory = statusHistory;
+    this.auditLog = auditLog;
+    this.clock = clock;
+  }
+
+  /**
+   * Creates or updates the workorder for the external {@code sheet_no}.
+   *
+   * @param sheetNo     external id (the workorder PK — no WO- prefix)
+   * @param machineId   resolved machine UUID (must already exist)
+   * @param categoryId  resolved category UUID (must already exist)
+   * @param status      external status, mapped to the local lifecycle
+   * @param description free-text description
+   * @param parentId    external parent sheet_no, or null
+   * @param externalUpdatedAt external row's updated_at (Asia/Jakarta already normalized to UTC by the caller)
+   * @return the workorder id (the sheet_no)
+   */
+  @Transactional
+  public String upsert(String sheetNo, UUID machineId, UUID categoryId, WorkOrderStatus status,
+      String description, String parentId, Instant externalUpdatedAt) {
+    var now = Instant.now(clock);
+    var existing = workOrders.findById(sheetNo);
+
+    if (existing.isPresent()) {
+      var entity = existing.get();
+      var previous = auditValues(entity);
+      var fromStatus = entity.getStatus();
+      // External master fields (status/machine/category/description/parent) take the external
+      // value only when the external row is newer; local operational fields (report, evidence,
+      // ratings, sessions) are always preserved (13.2 adds field classification). sync_version
+      // tracks which fields sync last updated, so it bumps with every applied update.
+      if (externalUpdatedAt != null && externalUpdatedAt.isAfter(entity.getUpdatedAt())) {
+        entity.applySync(status, categoryId, description, parentId, externalUpdatedAt);
+        entity.bumpSyncVersion();
+      }
+      var saved = workOrders.saveAndFlush(entity);
+      statusHistory.saveAndFlush(historyRow(sheetNo, fromStatus, status, now));
+      auditLog.recordSystem(new AuditRecord(AuditAction.UPDATE, AuditEntityType.WORK_ORDER,
+          auditEntityId(sheetNo), sheetNo, null, previous, auditValues(saved), null));
+      return saved.getId();
+    }
+
+    var created = new WorkOrderEntity(sheetNo, SOURCE_SYNCED, parentId, status, categoryId, machineId,
+        description, 0L, null, null, null,
+        externalUpdatedAt != null ? externalUpdatedAt : now,
+        externalUpdatedAt != null ? externalUpdatedAt : now);
+    var saved = workOrders.saveAndFlush(created);
+    statusHistory.saveAndFlush(historyRow(sheetNo, null, status, now));
+    auditLog.recordSystem(new AuditRecord(AuditAction.CREATE, AuditEntityType.WORK_ORDER,
+        auditEntityId(sheetNo), sheetNo, null, null, auditValues(saved), null));
+    return saved.getId();
+  }
+
+  /** Status-history row for sync transitions (source SYNC, actor SYSTEM). */
+  private WorkOrderStatusHistoryEntity historyRow(String workOrderId, WorkOrderStatus from,
+      WorkOrderStatus to, Instant transitionedAt) {
+    return new WorkOrderStatusHistoryEntity(UUID.randomUUID(), workOrderId,
+        from != null ? from.name() : null, to.name(), HISTORY_SOURCE_SYNC, SYSTEM_ACTOR,
+        traceId(), transitionedAt);
+  }
+
+  /** Trace id for history/audit correlation; falls back to a fresh UUID when none is stashed. */
+  private String traceId() {
+    return PolicyDecisionPoint.currentTraceId();
+  }
+
+  /** Workorder ids are VARCHAR PKs; audit needs a stable UUID per id for correlation. */
+  private UUID auditEntityId(String workOrderId) {
+    return UUID.nameUUIDFromBytes(workOrderId.getBytes(StandardCharsets.UTF_8));
+  }
+
+  private Map<String, Object> auditValues(WorkOrderEntity entity) {
+    var values = new HashMap<String, Object>();
+    values.put("id", entity.getId());
+    values.put("source", entity.getSource());
+    values.put("status", entity.getStatus().name());
+    values.put("categoryId", entity.getCategoryId());
+    values.put("machineId", entity.getMachineId());
+    values.put("parentId", entity.getParentId());
+    values.put("description", entity.getDescription());
+    values.put("syncVersion", entity.getSyncVersion());
+    return values;
+  }
+}
+=== syncro\apps\backend\src\main\resources\db\migration\V63__sync_pipeline.sql ===
+-- Story 13-1: Sync pipeline foundation (AD-7/FR-150/FR-151).
+-- Additive on V62.
+--
+-- 1. sync_watermarks — single-row table (guarded by a CHECK on the PK) holding the
+--    last processed external sheet_no so the scheduled worker resumes after restart.
+--    The fixed UUID '00000000-0000-0000-0000-000000000001' gives JPA a stable key.
+-- 2. sync_runs — one row per sync cycle: status + rows_read/rows_upserted + error.
+-- 3. Add SYNC_RUN to the audit_log entity_type CHECK (drop/re-add pattern from V61).
+
+-- ---------------------------------------------------------------------------
+-- 1. sync_watermarks — single-row resume watermark
+-- ---------------------------------------------------------------------------
+CREATE TABLE sync_watermarks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  last_sheet_no VARCHAR(50),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT ck_sync_watermarks_single_row CHECK (id = '00000000-0000-0000-0000-000000000001')
+);
+
+-- ---------------------------------------------------------------------------
+-- 2. sync_runs — per-cycle run records
+-- ---------------------------------------------------------------------------
+CREATE TABLE sync_runs (
+  id UUID PRIMARY KEY,
+  started_at TIMESTAMPTZ NOT NULL,
+  completed_at TIMESTAMPTZ,
+  status VARCHAR(20) NOT NULL,
+  rows_read INT NOT NULL DEFAULT 0,
+  rows_upserted INT NOT NULL DEFAULT 0,
+  error_message TEXT,
+  CONSTRAINT ck_sync_runs_status CHECK (status IN ('RUNNING', 'SUCCESS', 'FAILED'))
+);
+
+CREATE INDEX idx_sync_runs_started_at ON sync_runs(started_at);
+
+-- ---------------------------------------------------------------------------
+-- 3. Audit: add SYNC_RUN to the entity_type CHECK (drop/re-add pattern)
+-- ---------------------------------------------------------------------------
+ALTER TABLE audit_log DROP CONSTRAINT ck_audit_log_entity_type;
+ALTER TABLE audit_log ADD CONSTRAINT ck_audit_log_entity_type
+  CHECK (entity_type IN ('PLANT', 'MACHINE_GROUP', 'MACHINE', 'SPAREPART_TAXONOMY',
+                         'SPAREPART', 'INSTALLATION', 'RESPONSIBILITY', 'ALERT',
+                         'SPAREPART_PRICE_ENTRY', 'SECTION', 'TEAM', 'WORK_ORDER_CATEGORY',
+                         'WORK_ORDER', 'REPAIR_SESSION', 'WORKORDER_ATTACHMENT',
+                         'WORK_ORDER_TODO', 'WORKORDER_RATING', 'RATING_DIMENSION',
+                         'PREVENTIVE_PROGRAM', 'PREVENTIVE_SCHEDULE',
+                         'PREVENTIVE_CHECKLIST', 'PREVENTIVE_ATTACHMENT',
+                         'SPAREPART_REQUEST', 'DEPARTMENT', 'DEPARTMENT_MEMBER', 'USER',
+                         'SPAREPART_STOCK', 'SYNC_RUN'));
+=== syncro\apps\backend\src\test\java\com\syncro\db\SyncPipelineMigrationTest.java ===
+package com.syncro.db;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.syncro.AbstractPostgresIntegrationTest;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+/**
+ * Migration evidence for V63 (story 13-1): sync_watermarks (single-row CHECK guard),
+ * sync_runs (status CHECK + counters), and the audit_log entity_type extension with
+ * SYNC_RUN (drop/re-add pattern).
+ */
+class SyncPipelineMigrationTest extends AbstractPostgresIntegrationTest {
+
+  @Autowired
+  private JdbcTemplate jdbc;
+
+  private static final Timestamp TS = Timestamp.from(Instant.parse("2026-08-28T00:00:00Z"));
+  private static final UUID FIXED_WATERMARK_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+  @Test
+  @DisplayName("13.1-DB-001 P0 sync_watermarks table exists with expected columns")
+  void watermarkTableExists() {
+    assertThat(columnNames("sync_watermarks"))
+        .contains("id", "last_sheet_no", "updated_at");
+  }
+
+  @Test
+  @DisplayName("13.1-DB-002 P0 sync_watermarks CHECK guards the single row id")
+  void watermarkSingleRowCheck() {
+    assertThatThrownBy(() -> jdbc.update("""
+        INSERT INTO sync_watermarks (id, last_sheet_no, updated_at)
+        VALUES (?, 'EXT-00001', ?)
+        """, UUID.randomUUID(), TS))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  @Test
+  @DisplayName("13.1-DB-003 P0 sync_watermarks upsert on conflict advances last_sheet_no")
+  void watermarkUpsert() {
+    jdbc.update("""
+        INSERT INTO sync_watermarks (id, last_sheet_no, updated_at)
+        VALUES (?, 'EXT-00001', ?)
+        ON CONFLICT (id) DO UPDATE SET last_sheet_no = EXCLUDED.last_sheet_no, updated_at = EXCLUDED.updated_at
+        """, FIXED_WATERMARK_ID, TS);
+    jdbc.update("""
+        INSERT INTO sync_watermarks (id, last_sheet_no, updated_at)
+        VALUES (?, 'EXT-00002', ?)
+        ON CONFLICT (id) DO UPDATE SET last_sheet_no = EXCLUDED.last_sheet_no, updated_at = EXCLUDED.updated_at
+        """, FIXED_WATERMARK_ID, TS);
+
+    var count = jdbc.queryForObject("SELECT count(*) FROM sync_watermarks", Long.class);
+    assertThat(count).isEqualTo(1L);
+    var lastSheetNo = jdbc.queryForObject(
+        "SELECT last_sheet_no FROM sync_watermarks WHERE id = ?", String.class, FIXED_WATERMARK_ID);
+    assertThat(lastSheetNo).isEqualTo("EXT-00002");
+  }
+
+  @Test
+  @DisplayName("13.1-DB-004 P0 sync_runs table exists with expected columns")
+  void runsTableExists() {
+    assertThat(columnNames("sync_runs"))
+        .contains("id", "started_at", "completed_at", "status", "rows_read", "rows_upserted",
+            "error_message");
+  }
+
+  @Test
+  @DisplayName("13.1-DB-005 P0 sync_runs status CHECK accepts RUNNING/SUCCESS/FAILED and rejects unknown")
+  void runsStatusCheck() {
+    for (var status : List.of("RUNNING", "SUCCESS", "FAILED")) {
+      jdbc.update("""
+          INSERT INTO sync_runs (id, started_at, status, rows_read, rows_upserted)
+          VALUES (?, ?, ?, 0, 0)
+          """, UUID.randomUUID(), TS, status);
+    }
+    assertThatThrownBy(() -> jdbc.update("""
+        INSERT INTO sync_runs (id, started_at, status)
+        VALUES (?, ?, 'BOGUS')
+        """, UUID.randomUUID(), TS))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  @Test
+  @DisplayName("13.1-DB-006 P0 sync_runs defaults rows_read/rows_upserted to 0 and accepts error_message")
+  void runsDefaultsAndError() {
+    jdbc.update("""
+        INSERT INTO sync_runs (id, started_at, status, error_message)
+        VALUES (?, ?, 'FAILED', 'connection refused')
+        """, UUID.randomUUID(), TS);
+    var row = jdbc.queryForMap(
+        "SELECT rows_read, rows_upserted, error_message FROM sync_runs WHERE status = 'FAILED'");
+    assertThat(((Number) row.get("rows_read")).intValue()).isZero();
+    assertThat(((Number) row.get("rows_upserted")).intValue()).isZero();
+    assertThat(row.get("error_message")).isEqualTo("connection refused");
+  }
+
+  @Test
+  @DisplayName("13.1-DB-007 P0 audit_log entity_type accepts SYNC_RUN")
+  void auditEntityTypeAcceptsSyncRun() {
+    jdbc.update("""
+        INSERT INTO audit_log (id, actor_id, actor_name, action, entity_type, entity_id, entity_label, created_at)
+        VALUES (?,?,?,?,?,?,?,?)
+        """, UUID.randomUUID(), UUID.randomUUID(), "SYSTEM", "CREATE", "SYNC_RUN",
+        UUID.randomUUID(), "sync run", TS);
+    assertThat(jdbc.queryForObject(
+        "SELECT count(*) FROM audit_log WHERE entity_type = 'SYNC_RUN'", Long.class)).isEqualTo(1L);
+  }
+
+  @Test
+  @DisplayName("13.1-DB-008 P0 audit_log CHECK preserves all prior entity types through the V63 re-add")
+  void auditEntityTypePreservesExistingTypes() {
+    for (var type : List.of("WORK_ORDER", "PREVENTIVE_ATTACHMENT", "SPAREPART_REQUEST",
+        "SPAREPART_STOCK", "SYNC_RUN")) {
+      jdbc.update("""
+          INSERT INTO audit_log (id, actor_id, actor_name, action, entity_type, entity_id, entity_label, created_at)
+          VALUES (?,?,?,?,?,?,?,?)
+          """, UUID.randomUUID(), UUID.randomUUID(), "audit-actor", "CREATE", type,
+          UUID.randomUUID(), "existing-" + type, TS);
+    }
+    assertThat(jdbc.queryForObject(
+        "SELECT count(*) FROM audit_log WHERE entity_type IN ('WORK_ORDER','PREVENTIVE_ATTACHMENT','SPAREPART_REQUEST','SPAREPART_STOCK','SYNC_RUN')",
+        Long.class)).isEqualTo(5L);
+  }
+
+  @Test
+  @DisplayName("13.1-DB-009 P0 sync_runs has started_at index")
+  void runsIndexesExist() {
+    assertThat(jdbc.queryForList("SELECT indexname FROM pg_indexes WHERE tablename = 'sync_runs'"))
+        .extracting(row -> row.get("indexname"))
+        .contains("idx_sync_runs_started_at");
+  }
+
+  private List<String> columnNames(String table) {
+    return jdbc.queryForList(
+        "SELECT column_name FROM information_schema.columns "
+            + "WHERE table_schema = 'public' AND table_name = ?", table)
+        .stream()
+        .map(row -> String.valueOf(row.get("column_name")))
+        .toList();
+  }
+}
+=== syncro\apps\backend\src\test\java\com\syncro\maintenance\application\WorkorderImportServiceTest.java ===
+package com.syncro.maintenance.application;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.syncro.audit.application.AuditLogWriter;
+import com.syncro.audit.application.AuditRecord;
+import com.syncro.audit.domain.AuditAction;
+import com.syncro.audit.domain.AuditEntityType;
+import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
+import com.syncro.maintenance.infrastructure.db.WorkOrderEntity;
+import com.syncro.maintenance.infrastructure.db.WorkOrderRepository;
+import com.syncro.maintenance.infrastructure.db.WorkOrderStatusHistoryEntity;
+import com.syncro.maintenance.infrastructure.db.WorkOrderStatusHistoryRepository;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+/**
+ * Story 13-1 unit tests for {@link WorkorderImportService} — the single upsert entry
+ * point for SYNCED workorders (FR-150/FR-151). Create, update (never duplicates),
+ * and idempotent re-sync semantics.
+ */
+@ExtendWith(MockitoExtension.class)
+class WorkorderImportServiceTest {
+
+  private static final Instant NOW = Instant.parse("2026-08-28T00:00:00Z");
+  private static final Clock CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
+
+  @Mock
+  private WorkOrderRepository workOrders;
+  @Mock
+  private WorkOrderStatusHistoryRepository statusHistory;
+  @Mock
+  private AuditLogWriter auditLog;
+
+  private WorkorderImportService service;
+  private final UUID machineId = UUID.randomUUID();
+  private final UUID categoryId = UUID.randomUUID();
+
+  @BeforeEach
+  void setUp() {
+    service = new WorkorderImportService(workOrders, statusHistory, auditLog, CLOCK);
+  }
+
+  @Test
+  @DisplayName("13.1-IMP-001 P0 create: new sheet_no creates a SYNCED workorder with the external id")
+  void createNewWorkorder() {
+    when(workOrders.findById("EXT-00001")).thenReturn(Optional.empty());
+    when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    var id = service.upsert("EXT-00001", machineId, categoryId, WorkOrderStatus.OPEN,
+        "machine breakdown", null, NOW);
+
+    assertThat(id).isEqualTo("EXT-00001");
+    var captor = ArgumentCaptor.forClass(WorkOrderEntity.class);
+    verify(workOrders).saveAndFlush(captor.capture());
+    var saved = captor.getValue();
+    assertThat(saved.getId()).isEqualTo("EXT-00001");
+    assertThat(saved.getSource()).isEqualTo("SYNCED");
+    assertThat(saved.getStatus()).isEqualTo(WorkOrderStatus.OPEN);
+    assertThat(saved.getMachineId()).isEqualTo(machineId);
+    assertThat(saved.getCategoryId()).isEqualTo(categoryId);
+    assertThat(saved.getSyncVersion()).isZero();
+
+    // History row: source SYNC, actor SYSTEM, from null → OPEN.
+    var historyCaptor = ArgumentCaptor.forClass(WorkOrderStatusHistoryEntity.class);
+    verify(statusHistory).saveAndFlush(historyCaptor.capture());
+    var history = historyCaptor.getValue();
+    assertThat(history.getWorkOrderId()).isEqualTo("EXT-00001");
+    assertThat(history.getFromStatus()).isNull();
+    assertThat(history.getToStatus()).isEqualTo("OPEN");
+    assertThat(history.getSource()).isEqualTo("SYNC");
+    assertThat(history.getActor()).isEqualTo("SYSTEM");
+
+    // Audit: system CREATE on WORK_ORDER.
+    var auditCaptor = ArgumentCaptor.forClass(AuditRecord.class);
+    verify(auditLog).recordSystem(auditCaptor.capture());
+    var audit = auditCaptor.getValue();
+    assertThat(audit.action()).isEqualTo(AuditAction.CREATE);
+    assertThat(audit.entityType()).isEqualTo(AuditEntityType.WORK_ORDER);
+    assertThat(audit.entityLabel()).isEqualTo("EXT-00001");
+  }
+
+  @Test
+  @DisplayName("13.1-IMP-002 P0 update: existing sheet_no updates fields, never duplicates")
+  void updateExistingWorkorder() {
+    var existing = new WorkOrderEntity("EXT-00001", "SYNCED", null, WorkOrderStatus.OPEN,
+        categoryId, machineId, "old description", 0L, null, null, null,
+        NOW.minusSeconds(3600), NOW.minusSeconds(3600));
+    when(workOrders.findById("EXT-00001")).thenReturn(Optional.of(existing));
+    when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    var id = service.upsert("EXT-00001", machineId, categoryId, WorkOrderStatus.IN_PROGRESS,
+        "new description", "EXT-00000", NOW);
+
+    assertThat(id).isEqualTo("EXT-00001");
+    verify(workOrders, never()).save(any());
+
+    var captor = ArgumentCaptor.forClass(WorkOrderEntity.class);
+    verify(workOrders).saveAndFlush(captor.capture());
+    var saved = captor.getValue();
+    assertThat(saved.getStatus()).isEqualTo(WorkOrderStatus.IN_PROGRESS);
+    assertThat(saved.getDescription()).isEqualTo("new description");
+    assertThat(saved.getParentId()).isEqualTo("EXT-00000");
+    assertThat(saved.getSyncVersion()).isEqualTo(1L);
+
+    // History row: from OPEN → IN_PROGRESS, source SYNC.
+    var historyCaptor = ArgumentCaptor.forClass(WorkOrderStatusHistoryEntity.class);
+    verify(statusHistory).saveAndFlush(historyCaptor.capture());
+    assertThat(historyCaptor.getValue().getFromStatus()).isEqualTo("OPEN");
+    assertThat(historyCaptor.getValue().getToStatus()).isEqualTo("IN_PROGRESS");
+    assertThat(historyCaptor.getValue().getSource()).isEqualTo("SYNC");
+
+    // Audit: system UPDATE.
+    var auditCaptor = ArgumentCaptor.forClass(AuditRecord.class);
+    verify(auditLog).recordSystem(auditCaptor.capture());
+    assertThat(auditCaptor.getValue().action()).isEqualTo(AuditAction.UPDATE);
+    assertThat(auditCaptor.getValue().previousValue()).containsEntry("status", "OPEN");
+    assertThat(auditCaptor.getValue().newValue()).containsEntry("status", "IN_PROGRESS");
+  }
+
+  @Test
+  @DisplayName("13.1-IMP-003 P0 idempotent re-sync: stale external row never regresses local state")
+  void idempotentResyncStaleExternal() {
+    var existing = new WorkOrderEntity("EXT-00001", "SYNCED", null, WorkOrderStatus.OPEN,
+        categoryId, machineId, "description", 3L, null, null, null,
+        NOW.minusSeconds(3600), NOW.minusSeconds(3600));
+    when(workOrders.findById("EXT-00001")).thenReturn(Optional.of(existing));
+    when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    // Stale external row (older than local updated_at): fields and sync_version unchanged.
+    service.upsert("EXT-00001", machineId, categoryId, WorkOrderStatus.CLOSED,
+        "should-not-overwrite", null, NOW.minusSeconds(7200));
+
+    var captor = ArgumentCaptor.forClass(WorkOrderEntity.class);
+    verify(workOrders).saveAndFlush(captor.capture());
+    var saved = captor.getValue();
+    assertThat(saved.getStatus()).isEqualTo(WorkOrderStatus.OPEN); // local status preserved
+    assertThat(saved.getDescription()).isEqualTo("description");
+    assertThat(saved.getSyncVersion()).isEqualTo(3L);
+
+    // One history row per touch, always SYNC/SYSTEM.
+    verify(statusHistory).saveAndFlush(any());
+    verify(statusHistory, never()).save(any());
+    // One audit UPDATE.
+    verify(auditLog).recordSystem(any());
+  }
+
+  @Test
+  @DisplayName("13.1-IMP-004 P0 idempotent re-sync: newer external row updates fields and bumps sync_version")
+  void idempotentResyncNewerExternal() {
+    var existing = new WorkOrderEntity("EXT-00001", "SYNCED", null, WorkOrderStatus.OPEN,
+        categoryId, machineId, "description", 3L, null, null, null,
+        NOW.minusSeconds(3600), NOW.minusSeconds(3600));
+    when(workOrders.findById("EXT-00001")).thenReturn(Optional.of(existing));
+    when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    service.upsert("EXT-00001", machineId, categoryId, WorkOrderStatus.IN_PROGRESS,
+        "updated description", null, NOW.minusSeconds(1800));
+
+    var captor = ArgumentCaptor.forClass(WorkOrderEntity.class);
+    verify(workOrders).saveAndFlush(captor.capture());
+    var saved = captor.getValue();
+    assertThat(saved.getStatus()).isEqualTo(WorkOrderStatus.IN_PROGRESS);
+    assertThat(saved.getDescription()).isEqualTo("updated description");
+    assertThat(saved.getSyncVersion()).isEqualTo(4L);
+  }
+}
+

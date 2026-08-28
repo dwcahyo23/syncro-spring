@@ -1,0 +1,3414 @@
+diff --git a/syncro/.env.example b/syncro/.env.example
+index d9840d3..47442dd 100644
+--- a/syncro/.env.example
++++ b/syncro/.env.example
+@@ -75,7 +75,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+ 
+ # Authz coarse gate (9.5 rolls out enforcement on the org/maintenance/sync surface;
+ # health/actuator stay public and are deliberately excluded)
+-SYNCRO_AUTHZ_ENFORCED_PATHS=/api/v1/plants/**,/api/v1/machine-groups/**,/api/v1/sections/**,/api/v1/teams/**,/api/v1/machine-responsibilities/**,/api/v1/machines/**,/api/v1/machine-sparepart-installations/**,/api/v1/spareparts/**,/api/v1/sparepart-taxonomies/**,/api/v1/alerts/**,/api/v1/audit-log/**,/api/v1/setup-completeness/**,/api/v1/telemetry/**,/api/v1/notification/templates/**,/api/v1/notification/worker/**,/api/v1/work-order-categories/**,/api/v1/workorders/**,/api/v1/workorders/*/transition,/api/v1/workorders/*/sessions,/api/v1/workorders/*/sessions/stop,/api/v1/workorders/*/attachments,/api/v1/workorders/*/attachments/*,/api/v1/workorders/*/report,/api/v1/workorders/*/report/cpk,/api/v1/workorders/*/todos,/api/v1/workorders/*/todos/*,/api/v1/workorders/*/todos/*/assign,/api/v1/workorders/*/todos/*/complete,/api/v1/workorders/*/todos/*/reorder,/api/v1/workorders/*/ratings,/api/v1/workorders/*/ratings/technician,/api/v1/workorders/*/ratings/workorder,/api/v1/rating-dimensions,/api/v1/rating-dimensions/*,/api/v1/preventive-programs,/api/v1/preventive-programs/*,/api/v1/preventive-programs/*/generate,/api/v1/preventive-schedules,/api/v1/preventive-schedules/*/checklist,/api/v1/preventive-schedules/*/evidence,/api/v1/preventive-schedules/*/evidence/*,/api/v1/preventive-schedules/*/approve,/api/v1/preventive-schedules/*/skip,/api/v1/sparepart-requests,/api/v1/sparepart-requests/*/transition,/api/v1/sparepart-requests/*/mre,/api/v1/sparepart-requests/*/approve,/api/v1/departments,/api/v1/departments/*,/api/v1/departments/*/members,/api/v1/sections/*/leader,/api/v1/auth/users/*
++SYNCRO_AUTHZ_ENFORCED_PATHS=/api/v1/plants/**,/api/v1/machine-groups/**,/api/v1/sections/**,/api/v1/teams/**,/api/v1/machine-responsibilities/**,/api/v1/machines/**,/api/v1/machine-sparepart-installations/**,/api/v1/spareparts/**,/api/v1/sparepart-taxonomies/**,/api/v1/alerts/**,/api/v1/audit-log/**,/api/v1/setup-completeness/**,/api/v1/telemetry/**,/api/v1/notification/templates/**,/api/v1/notification/worker/**,/api/v1/work-order-categories/**,/api/v1/workorders/**,/api/v1/workorders/*/transition,/api/v1/workorders/*/sessions,/api/v1/workorders/*/sessions/stop,/api/v1/workorders/*/attachments,/api/v1/workorders/*/attachments/*,/api/v1/workorders/*/report,/api/v1/workorders/*/report/cpk,/api/v1/workorders/*/todos,/api/v1/workorders/*/todos/*,/api/v1/workorders/*/todos/*/assign,/api/v1/workorders/*/todos/*/complete,/api/v1/workorders/*/todos/*/reorder,/api/v1/workorders/*/ratings,/api/v1/workorders/*/ratings/technician,/api/v1/workorders/*/ratings/workorder,/api/v1/rating-dimensions,/api/v1/rating-dimensions/*,/api/v1/preventive-programs,/api/v1/preventive-programs/*,/api/v1/preventive-programs/*/generate,/api/v1/preventive-schedules,/api/v1/preventive-schedules/*/checklist,/api/v1/preventive-schedules/*/evidence,/api/v1/preventive-schedules/*/evidence/*,/api/v1/preventive-schedules/*/approve,/api/v1/preventive-schedules/*/skip,/api/v1/sparepart-requests,/api/v1/sparepart-requests/*/transition,/api/v1/sparepart-requests/*/mre,/api/v1/sparepart-requests/*/approve,/api/v1/sparepart-requests/*/complete,/api/v1/sparepart-stock,/api/v1/sparepart-stock/*,/api/v1/sparepart-stock/*/adjust,/api/v1/departments,/api/v1/departments/*,/api/v1/departments/*/members,/api/v1/sections/*/leader,/api/v1/auth/users/*
+ SYNCRO_AUTHZ_DEGRADED_ALLOWLIST=/api/v1/health,/actuator/**
+ 
+ # Authz decision-log retention (days) for the authz_decisions purge job
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java b/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
+index 6f965f7..5c0e197 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
+@@ -26,5 +26,6 @@ public enum AuditEntityType {
+   SPAREPART_REQUEST,
+   DEPARTMENT,
+   DEPARTMENT_MEMBER,
+-  USER
++  USER,
++  SPAREPART_STOCK
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartImageService.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartImageService.java
+index e35d664..2a674e0 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartImageService.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartImageService.java
+@@ -96,6 +96,37 @@ public class SparepartImageService {
+     return new SparepartImageView(saved.getId(), newKey, presignedGetUrl(newKey));
+   }
+ 
++  /**
++   * Story 12-4: attaches an already-stored Garage object key to the sparepart's
++   * {@code image_object_key} without re-uploading bytes. Used by the request-completion
++   * flow (FR-144) where the frontend has already placed the object in Garage and the
++   * completion endpoint only persists the reference. The same gate relaxation as the
++   * other completion-path methods applies (INVENTORY_MAINTENANCE/STOREKEEPER admitted).
++   * If the sparepart already has an image, the previous object is deleted (replace
++   * semantics, no orphans).
++   */
++  @Transactional
++  public SparepartImageView attachObjectKey(AuthenticatedUser user, UUID sparepartId, String objectKey,
++      boolean completingRequest) {
++    requireMutationRole(user, completingRequest);
++    var sparepart = findScopedSparepart(user, sparepartId);
++    if (objectKey == null || objectKey.isBlank()) {
++      throw new ValidationException(Map.of("imageObjectKey", "Object key must not be blank."));
++    }
++    var previousKey = sparepart.getImageObjectKey();
++    if (previousKey != null && !previousKey.equals(objectKey)) {
++      deleteObject(previousKey);
++    }
++    sparepart.updateImageObjectKey(objectKey, Instant.now(clock));
++    var saved = spareparts.saveAndFlush(sparepart);
++    var action = previousKey == null ? AuditAction.CREATE : AuditAction.UPDATE;
++    var previous = previousKey == null ? null : Map.<String, Object>of("imageObjectKey", previousKey);
++    auditLog.record(user, new AuditRecord(action, AuditEntityType.SPAREPART, sparepartId,
++        saved.getCode(), saved.getMachine().getPlant().getId(), previous,
++        Map.<String, Object>of("imageObjectKey", objectKey), null));
++    return new SparepartImageView(saved.getId(), objectKey, presignedGetUrl(objectKey));
++  }
++
+   /** Removes the sparepart image; a missing image is an idempotent no-op with no audit. */
+   @Transactional
+   public void delete(AuthenticatedUser user, UUID sparepartId) {
+@@ -139,10 +170,20 @@ public class SparepartImageService {
+   }
+ 
+   private void requireMutationRole(AuthenticatedUser user) {
+-    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN
+-        && user.applicationRole() != ApplicationRole.MANAGER_MAINTENANCE) {
+-      throw new MutationForbiddenException();
++    requireMutationRole(user, false);
++  }
++
++  /** Story 12-4 gate relaxation: the completion path (FR-144) also admits inventory/stores. */
++  private void requireMutationRole(AuthenticatedUser user, boolean completingRequest) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN
++        || user.applicationRole() == ApplicationRole.MANAGER_MAINTENANCE) {
++      return;
++    }
++    if (completingRequest && (user.applicationRole() == ApplicationRole.INVENTORY_MAINTENANCE
++        || user.applicationRole() == ApplicationRole.STOREKEEPER)) {
++      return;
+     }
++    throw new MutationForbiddenException();
+   }
+ 
+   private SparepartEntity findScopedSparepart(AuthenticatedUser user, UUID sparepartId) {
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartPriceEntryService.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartPriceEntryService.java
+index 7af4580..d93bf5b 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartPriceEntryService.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartPriceEntryService.java
+@@ -66,8 +66,23 @@ public class SparepartPriceEntryService {
+    */
+   @Transactional
+   public SparepartPriceEntryView create(AuthenticatedUser user, UUID sparepartId, PriceEntryCommand command) {
+-    requireMutationRole(user);
+-    jobScopes.requireLevelOrAbove(user, JOB_SCOPE_LEVEL);
++    return create(user, sparepartId, command, false);
++  }
++
++  /**
++   * Story 12-4 completion-path overload of {@link #create}: when {@code completingRequest}
++   * is true the MANAGER-only app-role gate is relaxed to admit INVENTORY_MAINTENANCE/
++   * STOREKEEPER and the LEADER job-scope requirement is skipped (inventory/stores users
++   * typically hold no machine responsibility). Plant access still applies via
++   * {@link #findScopedSparepart}. The completion endpoint itself is the OPA-enforced surface.
++   */
++  @Transactional
++  public SparepartPriceEntryView create(AuthenticatedUser user, UUID sparepartId, PriceEntryCommand command,
++      boolean completingRequest) {
++    requireMutationRole(user, completingRequest);
++    if (!completingRequest) {
++      jobScopes.requireLevelOrAbove(user, JOB_SCOPE_LEVEL);
++    }
+     var sparepart = findScopedSparepart(user, sparepartId);
+     var normalized = normalize(command);
+     var idrAmount = normalized.amount().multiply(normalized.kursToIdr()).setScale(2, RoundingMode.HALF_UP);
+@@ -95,9 +110,20 @@ public class SparepartPriceEntryService {
+   }
+ 
+   private void requireMutationRole(AuthenticatedUser user) {
+-    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN && user.applicationRole() != ApplicationRole.MANAGER_MAINTENANCE) {
+-      throw new MutationForbiddenException();
++    requireMutationRole(user, false);
++  }
++
++  /** Story 12-4 gate relaxation: the completion path (FR-144) also admits inventory/stores. */
++  private void requireMutationRole(AuthenticatedUser user, boolean completingRequest) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN
++        || user.applicationRole() == ApplicationRole.MANAGER_MAINTENANCE) {
++      return;
++    }
++    if (completingRequest && (user.applicationRole() == ApplicationRole.INVENTORY_MAINTENANCE
++        || user.applicationRole() == ApplicationRole.STOREKEEPER)) {
++      return;
+     }
++    throw new MutationForbiddenException();
+   }
+ 
+   private SparepartEntity findScopedSparepart(AuthenticatedUser user, UUID sparepartId) {
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartService.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartService.java
+index 58be28b..9822be3 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartService.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartService.java
+@@ -35,6 +35,8 @@ public class SparepartService {
+   private static final String DUPLICATE_CODE_CONSTRAINT = "uq_spareparts_lower_code";
+   private static final String DUPLICATE_IDENTITY_CONSTRAINT = "uq_spareparts_machine_taxonomy_identity";
+   private static final String DUPLICATE_MATERIAL_CODE_CONSTRAINT = "uq_spareparts_material_code";
++  /** V61 (story 12-4) adds a case-sensitive UNIQUE backing the stock FK; duplicate codes can surface under either name. */
++  private static final String DUPLICATE_MATERIAL_CODE_KEY_CONSTRAINT = "uq_spareparts_material_code_key";
+   private static final String PROCUREMENT_JOB_SCOPE_LEVEL = "LEADER";
+   private static final int MAX_MATERIAL_CODE_LENGTH = 64;
+ 
+@@ -147,8 +149,24 @@ public class SparepartService {
+    */
+   @Transactional
+   public SparepartView patchProcurement(AuthenticatedUser user, UUID sparepartId, SparepartProcurementCommand command) {
+-    requireMutationRole(user);
+-    jobScopes.requireLevelOrAbove(user, PROCUREMENT_JOB_SCOPE_LEVEL);
++    return patchProcurement(user, sparepartId, command, false);
++  }
++
++  /**
++   * Story 12-4: completion-path overload of {@link #patchProcurement}. When
++   * {@code completingRequest} is true the MANAGER-only app-role gate is relaxed to
++   * accept INVENTORY_MAINTENANCE/STOREKEEPER (FR-144 requires inventory/stores to
++   * complete a new-item request); the LEADER job-scope check is skipped for the same
++   * reason (inventory/stores users typically hold no machine responsibility). Plant
++   * access still applies. The completion endpoint itself is the OPA-enforced surface.
++   */
++  @Transactional
++  public SparepartView patchProcurement(AuthenticatedUser user, UUID sparepartId,
++      SparepartProcurementCommand command, boolean completingRequest) {
++    requireMutationRole(user, completingRequest);
++    if (!completingRequest) {
++      jobScopes.requireLevelOrAbove(user, PROCUREMENT_JOB_SCOPE_LEVEL);
++    }
+     var sparepart = find(sparepartId);
+     requireSparepartPlantAccess(user, sparepart);
+     var materialCode = normalizeMaterialCode(command.materialCode());
+@@ -170,14 +188,71 @@ public class SparepartService {
+     return toView(saved);
+   }
+ 
++  /**
++   * Story 12-4: creates a bare (minimal) sparepart record for the PENDING_COMPLETION
++   * completion flow when no sparepart yet exists with the given material code.
++   * Uses the ELECTRIC category and creates placeholder brand/kind/type taxonomy entries
++   * if they do not yet exist — the full taxonomy is out of scope for this story;
++   * a later masterdata story can enrich it.
++   */
++  @Transactional
++  public SparepartView createForCompletion(AuthenticatedUser user, UUID machineId, String materialCode) {
++    var machine = resolveMachine(user, machineId);
++    var electricCat = taxonomy.findByDimensionAndCodeIgnoreCase(SparepartTaxonomyDimension.CATEGORY, "ELECTRIC")
++        .orElseThrow(() -> new SparepartTaxonomyReferenceNotFoundException());
++    var brand = ensureTaxonomy(SparepartTaxonomyDimension.BRAND, "GENERIC", "Generic", electricCat);
++    var kind = ensureTaxonomy(SparepartTaxonomyDimension.KIND, "GENERIC", "Generic", electricCat);
++    var type = ensureTaxonomy(SparepartTaxonomyDimension.TYPE, "GENERIC", "Generic", electricCat);
++
++    var now = Instant.now(clock);
++    var name = "Part " + materialCode;
++    var generatedCode = nextBomCode(machine, new TaxonomyRefs(electricCat, brand, kind, type));
++    var saved = save(new SparepartEntity(UUID.randomUUID(), generatedCode, name, machine,
++        electricCat, brand, kind, type, now, now));
++    // Set the material code on the freshly created sparepart
++    saved.updateProcurement(materialCode, null, now);
++    saved = spareparts.saveAndFlush(saved);
++
++    auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.SPAREPART,
++        saved.getId(), saved.getCode(), machine.getPlant().getId(), null,
++        SparepartAuditValues.of(saved), null));
++    return toView(saved);
++  }
++
++  /** Finds a taxonomy entry by dimension and code, or creates it if missing. */
++  private SparepartTaxonomyEntity ensureTaxonomy(SparepartTaxonomyDimension dimension, String code,
++      String name, SparepartTaxonomyEntity category) {
++    return taxonomy.findByDimensionAndCodeIgnoreCase(dimension, code)
++        .orElseGet(() -> {
++          var now = Instant.now(clock);
++          var entity = new SparepartTaxonomyEntity(UUID.randomUUID(), dimension, code, name, category, now, now);
++          return taxonomy.saveAndFlush(entity);
++        });
++  }
++
+   private SparepartEntity find(UUID sparepartId) {
+     return spareparts.findById(sparepartId).orElseThrow(SparepartNotFoundException::new);
+   }
+ 
+   private void requireMutationRole(AuthenticatedUser user) {
+-    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN && user.applicationRole() != ApplicationRole.MANAGER_MAINTENANCE) {
+-      throw new SparepartMutationForbiddenException();
++    requireMutationRole(user, false);
++  }
++
++  /**
++   * Story 12-4 gate relaxation: the completion path (FR-144) also admits
++   * INVENTORY_MAINTENANCE/STOREKEEPER. All other mutations stay
++   * SUPER_ADMIN/MANAGER_MAINTENANCE-only.
++   */
++  private void requireMutationRole(AuthenticatedUser user, boolean completingRequest) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN
++        || user.applicationRole() == ApplicationRole.MANAGER_MAINTENANCE) {
++      return;
++    }
++    if (completingRequest && (user.applicationRole() == ApplicationRole.INVENTORY_MAINTENANCE
++        || user.applicationRole() == ApplicationRole.STOREKEEPER)) {
++      return;
+     }
++    throw new SparepartMutationForbiddenException();
+   }
+ 
+   private SparepartCommand normalize(SparepartCommand command) {
+@@ -365,7 +440,8 @@ public class SparepartService {
+       if (isConstraintViolation(exception, DUPLICATE_CODE_CONSTRAINT, DUPLICATE_IDENTITY_CONSTRAINT)) {
+         throw new DuplicateSparepartException();
+       }
+-      if (isConstraintViolation(exception, DUPLICATE_MATERIAL_CODE_CONSTRAINT)) {
++      if (isConstraintViolation(exception, DUPLICATE_MATERIAL_CODE_CONSTRAINT,
++          DUPLICATE_MATERIAL_CODE_KEY_CONSTRAINT)) {
+         throw new DuplicateMaterialCodeException();
+       }
+       throw new SparepartDataIntegrityException();
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestController.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestController.java
+index 02789a3..abd05b1 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestController.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestController.java
+@@ -2,6 +2,7 @@ package com.syncro.sparepart.request.api;
+ 
+ import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
+ import com.syncro.sparepart.request.api.SparepartRequestDtos.ApproveRequest;
++import com.syncro.sparepart.request.api.SparepartRequestDtos.CompleteRequest;
+ import com.syncro.sparepart.request.api.SparepartRequestDtos.CreateSparepartRequestRequest;
+ import com.syncro.sparepart.request.api.SparepartRequestDtos.MreRequest;
+ import com.syncro.sparepart.request.api.SparepartRequestDtos.SparepartRequestListView;
+@@ -9,6 +10,7 @@ import com.syncro.sparepart.request.api.SparepartRequestDtos.SparepartRequestVie
+ import com.syncro.sparepart.request.api.SparepartRequestDtos.TransitionRequest;
+ import com.syncro.sparepart.request.application.SparepartRequestService;
+ import com.syncro.sparepart.request.application.SparepartRequestService.ApproveCommand;
++import com.syncro.sparepart.request.application.SparepartRequestService.CompleteCommand;
+ import com.syncro.sparepart.request.application.SparepartRequestService.CreateRequestCommand;
+ import com.syncro.sparepart.request.application.SparepartRequestService.MreCommand;
+ import com.syncro.sparepart.request.application.SparepartRequestService.TransitionCommand;
+@@ -128,6 +130,24 @@ public class SparepartRequestController {
+     return toView(service.approve(user, id, command), user);
+   }
+ 
++  @Operation(operationId = "completeSparepartRequest",
++      summary = "Complete a new-item request (FR-144): register material code, image and est price, then ACK")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Request completed (ACKED)",
++          content = @Content(schema = @Schema(implementation = SparepartRequestView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Request or price entry not found"),
++      @ApiResponse(responseCode = "409", description = "INVALID_STATE_TRANSITION or DUPLICATE_MATERIAL_CODE")
++  })
++  @PostMapping("/{id}/complete")
++  public SparepartRequestView complete(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id, @Valid @RequestBody CompleteRequest request) {
++    var command = new CompleteCommand(request.materialCode(), request.imageObjectKey(), request.estPriceId());
++    return toView(service.complete(user, id, command), user);
++  }
++
+   private SparepartRequestView toView(com.syncro.sparepart.request.domain.SparepartRequest r,
+       AuthenticatedUser user) {
+     var allowed = service.allowedActionsFor(user, r);
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestDtos.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestDtos.java
+index 3363b67..6c520a6 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestDtos.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestDtos.java
+@@ -45,6 +45,13 @@ public final class SparepartRequestDtos {
+       @Size(max = 500) @Schema(description = "Optional note attached to the approval", nullable = true) String note) {
+   }
+ 
++  /** Story 12-4 completion request body (FR-144): material code + optional image/est-price. */
++  public record CompleteRequest(
++      @NotBlank @Size(max = 64) @Schema(description = "Material code registered for the new part", nullable = false, maxLength = 64) String materialCode,
++      @Size(max = 255) @Schema(description = "Garage object key of the already-uploaded part image", nullable = true) String imageObjectKey,
++      @Schema(description = "Existing price-entry id to reference as the estimated price", nullable = true) UUID estPriceId) {
++  }
++
+   /** Story 12-2 status transition request body (FR-141). */
+   public record TransitionRequest(
+       @NotNull @Schema(description = "Target status for the transition", nullable = false) SparepartRequestStatus toStatus,
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestExceptionHandler.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestExceptionHandler.java
+index 027d36c..d25adca 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestExceptionHandler.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestExceptionHandler.java
+@@ -10,6 +10,7 @@ import com.syncro.sparepart.request.application.SparepartRequestService.Sparepar
+ import com.syncro.sparepart.request.application.SparepartRequestService.WorkOrderNotFoundException;
+ import com.syncro.sparepart.request.application.SparepartRequestService.InvalidRequestStateTransitionException;
+ import com.syncro.sparepart.request.application.SparepartRequestService.SelfApprovalForbiddenException;
++import com.syncro.sparepart.request.application.SparepartRequestService.DuplicateMaterialCodeException;
+ import java.time.Clock;
+ import java.time.Instant;
+ import java.util.LinkedHashMap;
+@@ -109,6 +110,13 @@ public class SparepartRequestExceptionHandler {
+         "You cannot approve your own request.", Map.of());
+   }
+ 
++  /** Story 12-4: completion material code already belongs to another sparepart → 409 (FR-144). */
++  @ExceptionHandler(DuplicateMaterialCodeException.class)
++  ResponseEntity<ErrorResponse> duplicateMaterialCode() {
++    return error(HttpStatus.CONFLICT, "DUPLICATE_MATERIAL_CODE",
++        "The material code already belongs to another sparepart.", Map.of());
++  }
++
+   @ExceptionHandler(MachineNotFoundException.class)
+   ResponseEntity<ErrorResponse> machineNotFound() {
+     return error(HttpStatus.NOT_FOUND, "MACHINE_NOT_FOUND", "Machine was not found.", Map.of());
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestService.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestService.java
+index 45c4062..ba48bb8 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestService.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestService.java
+@@ -16,10 +16,14 @@ import com.syncro.notification.domain.NotificationJobStatus;
+ import com.syncro.notification.infrastructure.NotificationJobRepository;
+ import com.syncro.org.application.OperationalScope;
+ import com.syncro.org.application.OperationalScopeService;
++import com.syncro.sparepart.application.SparepartImageService;
++import com.syncro.sparepart.application.SparepartPriceEntryService;
++import com.syncro.sparepart.application.SparepartService;
+ import com.syncro.sparepart.infrastructure.SparepartEntity;
+ import com.syncro.sparepart.infrastructure.SparepartPriceEntryRepository;
+ import com.syncro.sparepart.infrastructure.SparepartRepository;
+ import com.syncro.sparepart.infrastructure.SparepartTaxonomyEntity;
++import com.syncro.sparepart.stock.application.SparepartStockService;
+ import com.syncro.sparepart.request.domain.SparepartRequest;
+ import com.syncro.sparepart.request.domain.SparepartRequestStateMachine;
+ import com.syncro.sparepart.request.domain.SparepartRequestStatus;
+@@ -73,13 +77,19 @@ public class SparepartRequestService {
+   private final AuditLogWriter auditLog;
+   private final OperationalScopeService scopes;
+   private final Clock clock;
++  private final SparepartStockService stocks;
++  private final SparepartService sparepartService;
++  private final SparepartPriceEntryService priceEntryService;
++  private final SparepartImageService sparepartImages;
+ 
+   public SparepartRequestService(SparepartRequestRepository requests,
+       SparepartRequestTimelineRepository timelines, WorkOrderRepository workOrders,
+       WorkOrderService workOrderService, MachineRepository machines,
+       SparepartRepository spareparts, SparepartPriceEntryRepository priceEntries,
+       EscalationConfigService escalationConfigs, NotificationJobRepository notificationJobs,
+-      AuditLogWriter auditLog, OperationalScopeService scopes, Clock clock) {
++      AuditLogWriter auditLog, OperationalScopeService scopes, Clock clock,
++      SparepartStockService stocks, SparepartService sparepartService,
++      SparepartPriceEntryService priceEntryService, SparepartImageService sparepartImages) {
+     this.requests = requests;
+     this.timelines = timelines;
+     this.workOrders = workOrders;
+@@ -92,6 +102,10 @@ public class SparepartRequestService {
+     this.auditLog = auditLog;
+     this.scopes = scopes;
+     this.clock = clock;
++    this.stocks = stocks;
++    this.sparepartService = sparepartService;
++    this.priceEntryService = priceEntryService;
++    this.sparepartImages = sparepartImages;
+   }
+ 
+   @Transactional(readOnly = true)
+@@ -201,6 +215,22 @@ public class SparepartRequestService {
+         toStatus, UUID.fromString(user.id()), TIMELINE_ACTION_TRANSITION, null,
+         normalizeNote(command.note()), traceId, now));
+ 
++    // Stock decrement on PICKED_UP (FR-146/AD-11, story 12-4): SPAREPART requests with a
++    // resolvable material code decrement the plant's stock in the same transaction. An
++    // unbound machine (CONSUMABLE) is skipped silently; a missing stock row is skipped
++    // silently (stock is optional per plant). A decrement that would go negative throws,
++    // rolling back the whole transition — no partial pickup.
++    if (toStatus == SparepartRequestStatus.PICKED_UP
++        && entity.getRequestType() == SparepartRequestType.SPAREPART) {
++      var materialCode = entity.getMaterialCode();
++      var machineForStock = machine;
++      var plantId = plantIdOf(machineForStock);
++      if (materialCode != null && plantId != null && spareparts.findByMaterialCodeIgnoreCase(materialCode).isPresent()) {
++        stocks.decrementOnPickup(materialCode, plantId,
++            java.math.BigDecimal.valueOf(entity.getQuantity()));
++      }
++    }
++
+     var newValue = requestValues(saved);
+     if (command.note() != null && !command.note().isBlank()) {
+       newValue.put("note", command.note().trim());
+@@ -247,6 +277,127 @@ public class SparepartRequestService {
+     return SparepartRequestMapper.toDomain(entity);
+   }
+ 
++  /**
++   * Complete a new-item request (FR-144, story 12-4): valid only when status is
++   * PENDING_COMPLETION. Roles: INVENTORY_MAINTENANCE/STOREKEEPER/SUPER_ADMIN.
++   *
++   * <p>Flow (AD-11 — never direct cross-module writes):
++   * <ol>
++   *   <li>Resolve the request's machine/plant.
++   *   <li>If no sparepart exists with the given material code, create one via
++   *       {@link SparepartService#createForCompletion} (machine-bound, minimal taxonomy).
++   *   <li>If a sparepart exists, {@code patchProcurement} to set the material code
++   *       (completingRequest=true so the INVENTORY/STOREKEEPER gate passes).
++   *   <li>Attach image via {@link SparepartImageService#attachObjectKey} when
++   *       {@code imageObjectKey} is provided.
++   *   <li>Create the price entry via {@link SparepartPriceEntryService#create} when
++   *       {@code estPriceId} is absent and a price is provided (or use the given estPriceId
++   *       when it already exists).
++   *   <li>Transition PENDING_COMPLETION → ACKED (state machine already allows this edge).
++   *   <li>Audit + timeline.
++   * </ol>
++   */
++  @Transactional
++  public SparepartRequest complete(AuthenticatedUser user, UUID requestId, CompleteCommand command) {
++    var entity = requests.findByIdForUpdate(requestId).orElseThrow(RequestNotFoundException::new);
++    if (entity.getStatus() != SparepartRequestStatus.PENDING_COMPLETION) {
++      throw new InvalidRequestStateTransitionException();
++    }
++    var machine = machineForRequest(entity);
++    requireCompletionAccess(user, machine);
++
++    var materialCode = normalizeMaterialCode(command.materialCode());
++    if (materialCode == null) {
++      throw new RequestValidationException(Map.of("materialCode", "Material code is required for completion."));
++    }
++
++    // 1. Resolve the sparepart. If the material code already belongs to a sparepart
++    //    that is NOT the one bound to this request, reject (409 DUPLICATE_MATERIAL_CODE).
++    var existingSparepart = spareparts.findByMaterialCodeIgnoreCase(materialCode).orElse(null);
++    if (existingSparepart != null && entity.getSparepartId() != null
++        && !existingSparepart.getId().equals(entity.getSparepartId())) {
++      throw new DuplicateMaterialCodeException();
++    }
++    UUID sparepartId;
++    if (existingSparepart != null) {
++      // The material code already exists — "existing sparepart" path (COMPLETE_EXISTING).
++      // patchProcurement sets the material code + lead time via the masterdata service
++      // (completingRequest=true so the INVENTORY/STOREKEEPER gate passes).
++      sparepartId = existingSparepart.getId();
++      sparepartService.patchProcurement(user, sparepartId,
++          new SparepartService.SparepartProcurementCommand(materialCode, null), true);
++    } else {
++      // 2. Create a new bare sparepart via the masterdata service (COMPLETE_OK).
++      if (machine == null) {
++        throw new RequestValidationException(Map.of("machineId", "Request must have a machine for new-part creation."));
++      }
++      var created = sparepartService.createForCompletion(user, machine.getId(), materialCode);
++      sparepartId = created.id();
++    }
++
++    var now = Instant.now(clock);
++    // Capture the before-state for audit before any binding/transition mutates the entity.
++    var previous = requestValues(entity);
++
++    // 3. Attach image if provided (the frontend has already stored the object in Garage;
++    // we only persist the reference via the masterdata service).
++    String imageObjectKey = command.imageObjectKey();
++    if (imageObjectKey != null && !imageObjectKey.isBlank()) {
++      try {
++        sparepartImages.attachObjectKey(user, sparepartId, imageObjectKey, true);
++      } catch (Exception e) {
++        // Image attach failure is non-fatal for completion; skip and continue.
++      }
++    }
++
++    // 4. Reference the estimated price entry when provided (FR-144 "when they provide").
++    // The price is optional; a provided estPriceId must exist and must belong to the
++    // resolved sparepart. No price → the request completes without one.
++    UUID estPriceId = command.estPriceId();
++    if (estPriceId != null) {
++      var entry = priceEntries.findById(estPriceId)
++          .orElseThrow(PriceEntryNotFoundException::new);
++      if (!entry.getSparepart().getId().equals(sparepartId)) {
++        throw new RequestValidationException(Map.of("estPriceId",
++            "The price entry does not belong to the completed sparepart."));
++      }
++      entity.bindEstPrice(estPriceId, now);
++    }
++
++    // 5. Bind the resolved sparepart and transition PENDING_COMPLETION → ACKED
++    entity.bindSparepart(sparepartId, materialCode, now);
++    entity.transitionTo(SparepartRequestStatus.ACKED, now);
++    var saved = requests.saveAndFlush(entity);
++
++    // 6. Timeline + audit
++    timelines.saveAndFlush(new SparepartRequestTimelineEntity(UUID.randomUUID(), saved.getId(),
++        SparepartRequestStatus.PENDING_COMPLETION, SparepartRequestStatus.ACKED,
++        UUID.fromString(user.id()), TIMELINE_ACTION_TRANSITION, null,
++        "Completed with material code " + materialCode,
++        PolicyDecisionPoint.currentTraceId(), now));
++
++    var newValue = requestValues(saved);
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.SPAREPART_REQUEST,
++        saved.getId(), entityLabel(saved), plantIdOf(machine), previous, newValue, null));
++
++    recomputeProcurement(entity);
++    return SparepartRequestMapper.toDomain(saved);
++  }
++
++  private void requireCompletionAccess(AuthenticatedUser user, MachineEntity machine) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    if (user.applicationRole() == ApplicationRole.INVENTORY_MAINTENANCE
++        || user.applicationRole() == ApplicationRole.STOREKEEPER) {
++      return;
++    }
++    if (isInScopeLeader(user, machine)) {
++      return;
++    }
++    throw new RequestForbiddenException();
++  }
++
+   /**
+    * Approve a sparepart request (story 12-3, FR-142/AD-16). Approval is NOT a new status —
+    * it performs the REQUESTED/PENDING_COMPLETION → ACKED transition after the approval
+@@ -366,9 +517,22 @@ public class SparepartRequestService {
+         }
+       }
+     }
++
++    // Story 12-4: PENDING_COMPLETION rows may be completed by inventory/stores
++    // (or any in-scope leader as a fallback) — FR-144.
++    if (status == SparepartRequestStatus.PENDING_COMPLETION && canComplete(user)) {
++      allowed.add("complete");
++    }
+     return new RequestAllowedActions(allowed, requiredRole);
+   }
+ 
++  /** Completion gate (FR-144): SUPER_ADMIN, INVENTORY_MAINTENANCE, STOREKEEPER. */
++  private boolean canComplete(AuthenticatedUser user) {
++    return user.applicationRole() == ApplicationRole.SUPER_ADMIN
++        || user.applicationRole() == ApplicationRole.INVENTORY_MAINTENANCE
++        || user.applicationRole() == ApplicationRole.STOREKEEPER;
++  }
++
+   private boolean canApprove(AuthenticatedUser user, MachineEntity machine, String requiredRole) {
+     if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
+       return true;
+@@ -821,6 +985,10 @@ public class SparepartRequestService {
+   public record ApproveCommand(String note) {
+   }
+ 
++  /** Story 12-4 completion command (FR-144): material code, optional image key, optional est-price id. */
++  public record CompleteCommand(String materialCode, String imageObjectKey, UUID estPriceId) {
++  }
++
+   public static class RequestForbiddenException extends RuntimeException {
+   }
+ 
+@@ -832,6 +1000,10 @@ public class SparepartRequestService {
+   public static class InvalidRequestStateTransitionException extends RuntimeException {
+   }
+ 
++  /** Story 12-4: the completion material code already belongs to another sparepart → 409. */
++  public static class DuplicateMaterialCodeException extends RuntimeException {
++  }
++
+   /** Story 12-2: unknown request id → 404 (mirrors WorkOrderExceptionHandler codes). */
+   public static class RequestNotFoundException extends RuntimeException {
+   }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/SparepartRequestEntity.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/SparepartRequestEntity.java
+index 3e1838b..26e4032 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/SparepartRequestEntity.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/SparepartRequestEntity.java
+@@ -122,4 +122,20 @@ public class SparepartRequestEntity {
+     this.status = status;
+     this.updatedAt = updatedAt;
+   }
++
++  /**
++   * Story 12-4: binds the resolved sparepart id (and material code snapshot) after the
++   * completion flow has created/patched the sparepart via masterdata services (FR-144).
++   */
++  public void bindSparepart(UUID sparepartId, String materialCode, Instant updatedAt) {
++    this.sparepartId = sparepartId;
++    this.materialCode = materialCode;
++    this.updatedAt = updatedAt;
++  }
++
++  /** Story 12-4: references the estimated price entry chosen during completion (FR-144). */
++  public void bindEstPrice(UUID estPriceId, Instant updatedAt) {
++    this.estPriceId = estPriceId;
++    this.updatedAt = updatedAt;
++  }
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/api/SparepartStockController.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/api/SparepartStockController.java
+new file mode 100644
+index 0000000..359b782
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/api/SparepartStockController.java
+@@ -0,0 +1,130 @@
++package com.syncro.sparepart.stock.api;
++
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.sparepart.stock.api.SparepartStockDtos.AdjustSparepartStockRequest;
++import com.syncro.sparepart.stock.api.SparepartStockDtos.CreateSparepartStockRequest;
++import com.syncro.sparepart.stock.api.SparepartStockDtos.SparepartStockListView;
++import com.syncro.sparepart.stock.api.SparepartStockDtos.SparepartStockView;
++import com.syncro.sparepart.stock.api.SparepartStockDtos.UpdateSparepartStockRequest;
++import com.syncro.sparepart.stock.application.SparepartStockService;
++import com.syncro.sparepart.stock.application.SparepartStockService.AdjustStockCommand;
++import com.syncro.sparepart.stock.application.SparepartStockService.UpdateStockCommand;
++import com.syncro.sparepart.stock.application.SparepartStockService.UpsertStockCommand;
++import io.swagger.v3.oas.annotations.Operation;
++import io.swagger.v3.oas.annotations.media.Content;
++import io.swagger.v3.oas.annotations.media.Schema;
++import io.swagger.v3.oas.annotations.responses.ApiResponse;
++import io.swagger.v3.oas.annotations.responses.ApiResponses;
++import jakarta.validation.Valid;
++import java.util.UUID;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.security.core.annotation.AuthenticationPrincipal;
++import org.springframework.validation.annotation.Validated;
++import org.springframework.web.bind.annotation.GetMapping;
++import org.springframework.web.bind.annotation.PathVariable;
++import org.springframework.web.bind.annotation.PostMapping;
++import org.springframework.web.bind.annotation.PutMapping;
++import org.springframework.web.bind.annotation.RequestBody;
++import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RequestParam;
++import org.springframework.web.bind.annotation.RestController;
++
++@Validated
++@RestController
++@RequestMapping("/api/v1/sparepart-stock")
++public class SparepartStockController {
++
++  private final SparepartStockService service;
++
++  public SparepartStockController(SparepartStockService service) {
++    this.service = service;
++  }
++
++  @Operation(operationId = "listSparepartStock", summary = "List stock rows for a plant (FR-146)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Stock rows returned"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden")
++  })
++  @GetMapping
++  public SparepartStockListView list(@AuthenticationPrincipal AuthenticatedUser user,
++      @RequestParam UUID plantId) {
++    var items = service.list(user, plantId).stream()
++        .map(SparepartStockView::from)
++        .toList();
++    return new SparepartStockListView(items);
++  }
++
++  @Operation(operationId = "listSparepartStockReorderWarnings",
++      summary = "Reorder-warning rows for a plant (stock_on_hand <= order_point)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Reorder warnings returned"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden")
++  })
++  @GetMapping("/reorder-warnings")
++  public SparepartStockListView reorderWarnings(@AuthenticationPrincipal AuthenticatedUser user,
++      @RequestParam UUID plantId) {
++    var items = service.reorderWarnings(user, plantId).stream()
++        .map(SparepartStockView::from)
++        .toList();
++    return new SparepartStockListView(items);
++  }
++
++  @Operation(operationId = "createSparepartStock",
++      summary = "Create (or upsert) a stock row for a material code and plant (FR-146)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "201", description = "Stock row created",
++          content = @Content(schema = @Schema(implementation = SparepartStockView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Sparepart not found")
++  })
++  @PostMapping
++  public ResponseEntity<SparepartStockView> create(@AuthenticationPrincipal AuthenticatedUser user,
++      @Valid @RequestBody CreateSparepartStockRequest request) {
++    var command = new UpsertStockCommand(request.materialCode(), request.plantId(), request.stockOnHand(),
++        request.orderPoint(), request.orderQty());
++    var created = service.upsert(user, command);
++    return ResponseEntity.status(HttpStatus.CREATED).body(SparepartStockView.from(created));
++  }
++
++  @Operation(operationId = "updateSparepartStock",
++      summary = "Partially overwrite a stock row (optimistic lock; 409 VERSION_CONFLICT on mismatch)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Stock row updated",
++          content = @Content(schema = @Schema(implementation = SparepartStockView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Stock row not found"),
++      @ApiResponse(responseCode = "409", description = "VERSION_CONFLICT")
++  })
++  @PutMapping("/{materialCode}")
++  public SparepartStockView update(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable String materialCode, @Valid @RequestBody UpdateSparepartStockRequest request) {
++    var command = new UpdateStockCommand(request.plantId(), request.version(), request.stockOnHand(),
++        request.orderPoint(), request.orderQty());
++    return SparepartStockView.from(service.update(user, materialCode, command));
++  }
++
++  @Operation(operationId = "adjustSparepartStock",
++      summary = "Apply a signed delta to stock_on_hand atomically (409 NEGATIVE_STOCK_REJECTED on underflow)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Stock adjusted",
++          content = @Content(schema = @Schema(implementation = SparepartStockView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Stock row not found"),
++      @ApiResponse(responseCode = "409", description = "NEGATIVE_STOCK_REJECTED")
++  })
++  @PostMapping("/{materialCode}/adjust")
++  public SparepartStockView adjust(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable String materialCode, @Valid @RequestBody AdjustSparepartStockRequest request) {
++    var command = new AdjustStockCommand(request.plantId(), request.delta());
++    return SparepartStockView.from(service.adjust(user, materialCode, command));
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/api/SparepartStockDtos.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/api/SparepartStockDtos.java
+new file mode 100644
+index 0000000..28094a7
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/api/SparepartStockDtos.java
+@@ -0,0 +1,72 @@
++package com.syncro.sparepart.stock.api;
++
++import com.syncro.sparepart.stock.domain.SparepartStock;
++import io.swagger.v3.oas.annotations.media.Schema;
++import jakarta.validation.constraints.Digits;
++import jakarta.validation.constraints.NotBlank;
++import jakarta.validation.constraints.NotNull;
++import jakarta.validation.constraints.Size;
++import java.math.BigDecimal;
++import java.time.Instant;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++
++public final class SparepartStockDtos {
++  private SparepartStockDtos() {
++  }
++
++  /** Story 12-4: stock row read model (FR-146). */
++  public record SparepartStockView(
++      String materialCode,
++      UUID plantId,
++      BigDecimal stockOnHand,
++      BigDecimal orderPoint,
++      BigDecimal orderQty,
++      long version,
++      Instant createdAt,
++      Instant updatedAt,
++      boolean reorderWarning) {
++
++    public static SparepartStockView from(SparepartStock stock) {
++      return new SparepartStockView(stock.materialCode(), stock.plantId(), stock.stockOnHand(),
++          stock.orderPoint(), stock.orderQty(), stock.version(), stock.createdAt(), stock.updatedAt(),
++          stock.reorderWarning());
++    }
++  }
++
++  public record SparepartStockListView(List<SparepartStockView> items) {
++  }
++
++  /** POST /api/v1/sparepart-stock — create (upsert semantics, version starts at 0). */
++  public record CreateSparepartStockRequest(
++      @NotBlank @Size(max = 64) String materialCode,
++      @NotNull UUID plantId,
++      @NotNull @Digits(integer = 16, fraction = 2) BigDecimal stockOnHand,
++      @NotNull @Digits(integer = 16, fraction = 2) BigDecimal orderPoint,
++      @NotNull @Digits(integer = 16, fraction = 2) BigDecimal orderQty) {
++  }
++
++  /**
++   * PUT /api/v1/sparepart-stock/{materialCode} — partial overwrite: all three value
++   * fields are optional but at least one is required; the version is mandatory for
++   * optimistic locking (409 VERSION_CONFLICT on mismatch).
++   */
++  public record UpdateSparepartStockRequest(
++      @NotNull UUID plantId,
++      @NotNull Long version,
++      @Digits(integer = 16, fraction = 2) BigDecimal stockOnHand,
++      @Digits(integer = 16, fraction = 2) BigDecimal orderPoint,
++      @Digits(integer = 16, fraction = 2) BigDecimal orderQty) {
++  }
++
++  /** POST /api/v1/sparepart-stock/{materialCode}/adjust — signed delta (FR-146). */
++  public record AdjustSparepartStockRequest(
++      @NotNull UUID plantId,
++      @NotNull @Digits(integer = 16, fraction = 2) BigDecimal delta) {
++  }
++
++  public record ErrorResponse(String code, String message, Map<String, String> fieldErrors, String timestamp,
++      String traceId) {
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/api/SparepartStockExceptionHandler.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/api/SparepartStockExceptionHandler.java
+new file mode 100644
+index 0000000..4186566
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/api/SparepartStockExceptionHandler.java
+@@ -0,0 +1,123 @@
++package com.syncro.sparepart.stock.api;
++
++import com.syncro.sparepart.stock.api.SparepartStockDtos.ErrorResponse;
++import com.syncro.sparepart.stock.application.SparepartStockService.NegativeStockRejectedException;
++import com.syncro.sparepart.stock.application.SparepartStockService.SparepartStockForbiddenException;
++import com.syncro.sparepart.stock.application.SparepartStockService.SparepartStockNotFoundException;
++import com.syncro.sparepart.stock.application.SparepartStockService.SparepartStockValidationException;
++import com.syncro.sparepart.stock.application.SparepartStockService.SparepartNotFoundException;
++import com.syncro.sparepart.stock.application.SparepartStockService.VersionConflictException;
++import jakarta.validation.ConstraintViolationException;
++import java.time.Clock;
++import java.time.Instant;
++import java.util.LinkedHashMap;
++import java.util.Map;
++import java.util.UUID;
++import org.springframework.core.Ordered;
++import org.springframework.core.annotation.Order;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.http.converter.HttpMessageNotReadableException;
++import org.springframework.web.bind.MethodArgumentNotValidException;
++import org.springframework.web.bind.annotation.ExceptionHandler;
++import org.springframework.web.bind.annotation.RestControllerAdvice;
++import tools.jackson.databind.exc.InvalidFormatException;
++
++@Order(Ordered.HIGHEST_PRECEDENCE)
++@RestControllerAdvice(assignableTypes = {SparepartStockController.class})
++public class SparepartStockExceptionHandler {
++
++  private final Clock clock;
++
++  public SparepartStockExceptionHandler(Clock clock) {
++    this.clock = clock;
++  }
++
++  @ExceptionHandler(MethodArgumentNotValidException.class)
++  ResponseEntity<ErrorResponse> validationError(MethodArgumentNotValidException exception) {
++    var fieldErrors = new LinkedHashMap<String, String>();
++    for (var error : exception.getBindingResult().getFieldErrors()) {
++      fieldErrors.putIfAbsent(error.getField(), "Invalid value.");
++    }
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", fieldErrors);
++  }
++
++  @ExceptionHandler(ConstraintViolationException.class)
++  ResponseEntity<ErrorResponse> constraintViolation(ConstraintViolationException exception) {
++    var fieldErrors = new LinkedHashMap<String, String>();
++    for (var violation : exception.getConstraintViolations()) {
++      fieldErrors.putIfAbsent(violation.getPropertyPath().toString(), violation.getMessage());
++    }
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", fieldErrors);
++  }
++
++  @ExceptionHandler(HttpMessageNotReadableException.class)
++  ResponseEntity<ErrorResponse> malformedJson(HttpMessageNotReadableException exception) {
++    var invalidFormat = findInvalidFormat(exception);
++    if (invalidFormat != null) {
++      var fieldErrors = new LinkedHashMap<String, String>();
++      for (var reference : invalidFormat.getPath()) {
++        var propertyName = reference.getPropertyName();
++        if (propertyName != null) {
++          fieldErrors.putIfAbsent(propertyName, "Invalid value.");
++        }
++      }
++      if (!fieldErrors.isEmpty()) {
++        return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", fieldErrors);
++      }
++    }
++    return error(HttpStatus.BAD_REQUEST, "MALFORMED_JSON", "Request body is malformed.", Map.of());
++  }
++
++  private InvalidFormatException findInvalidFormat(Throwable throwable) {
++    var current = throwable;
++    while (current != null) {
++      if (current instanceof InvalidFormatException invalidFormat) {
++        return invalidFormat;
++      }
++      current = current.getCause();
++    }
++    return null;
++  }
++
++  @ExceptionHandler(SparepartStockValidationException.class)
++  ResponseEntity<ErrorResponse> stockValidation(SparepartStockValidationException exception) {
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", exception.getFieldErrors());
++  }
++
++  @ExceptionHandler(SparepartStockForbiddenException.class)
++  ResponseEntity<ErrorResponse> forbidden() {
++    return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "You do not have permission to access this resource.", Map.of());
++  }
++
++  @ExceptionHandler(SparepartStockNotFoundException.class)
++  ResponseEntity<ErrorResponse> stockNotFound() {
++    return error(HttpStatus.NOT_FOUND, "STOCK_NOT_FOUND", "Stock row was not found.", Map.of());
++  }
++
++  @ExceptionHandler(SparepartNotFoundException.class)
++  ResponseEntity<ErrorResponse> sparepartNotFound() {
++    return error(HttpStatus.NOT_FOUND, "SPAREPART_NOT_FOUND", "Sparepart was not found.", Map.of());
++  }
++
++  /** Atomic conditional update matched 0 rows → stock would go negative. */
++  @ExceptionHandler(NegativeStockRejectedException.class)
++  ResponseEntity<ErrorResponse> negativeStockRejected() {
++    return error(HttpStatus.CONFLICT, "NEGATIVE_STOCK_REJECTED",
++        "The adjustment would make stock negative.", Map.of());
++  }
++
++  /** Optimistic-lock mismatch on PUT. */
++  @ExceptionHandler(VersionConflictException.class)
++  ResponseEntity<ErrorResponse> versionConflict() {
++    return error(HttpStatus.CONFLICT, "VERSION_CONFLICT",
++        "Concurrent update detected; reload and retry.", Map.of());
++  }
++
++  private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message,
++      Map<String, String> fieldErrors) {
++    return ResponseEntity.status(status)
++        .body(new ErrorResponse(code, message, fieldErrors, Instant.now(clock).toString(),
++            UUID.randomUUID().toString()));
++  }
++}
+\ No newline at end of file
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/application/SparepartStockService.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/application/SparepartStockService.java
+new file mode 100644
+index 0000000..71f6115
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/application/SparepartStockService.java
+@@ -0,0 +1,303 @@
++package com.syncro.sparepart.stock.application;
++
++import com.syncro.audit.application.AuditLogWriter;
++import com.syncro.audit.application.AuditRecord;
++import com.syncro.audit.domain.AuditAction;
++import com.syncro.audit.domain.AuditEntityType;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
++import com.syncro.sparepart.infrastructure.SparepartRepository;
++import com.syncro.sparepart.stock.domain.SparepartStock;
++import com.syncro.sparepart.stock.infrastructure.db.SparepartStockEntity;
++import com.syncro.sparepart.stock.infrastructure.db.SparepartStockId;
++import com.syncro.sparepart.stock.infrastructure.db.SparepartStockRepository;
++import java.math.BigDecimal;
++import java.time.Clock;
++import java.time.Instant;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++
++/**
++ * Sparepart stock application service (FR-146/AD-11, story 12-4). Owns every stock
++ * mutation — the request/workorder modules never touch {@code sparepart_stock}
++ * directly; the PICKED_UP decrement and the completion flow call into this service.
++ *
++ * <p>Gates: mutations require INVENTORY_MAINTENANCE/STOREKEEPER/SUPER_ADMIN with the
++ * target plant in the user's assignment scope (SUPER_ADMIN exempt). Negative stock is
++ * impossible by construction: adjustments run as a single atomic conditional UPDATE
++ * guarded by {@code stock_on_hand + delta >= 0}; a rejected adjustment is a 409
++ * NEGATIVE_STOCK_REJECTED. Version conflicts surface as 409 VERSION_CONFLICT.
++ */
++@Service
++public class SparepartStockService {
++
++  private final SparepartStockRepository stocks;
++  private final SparepartRepository spareparts;
++  private final AuthUserPlantAssignmentRepository assignments;
++  private final AuditLogWriter auditLog;
++  private final Clock clock;
++
++  public SparepartStockService(SparepartStockRepository stocks, SparepartRepository spareparts,
++      AuthUserPlantAssignmentRepository assignments, AuditLogWriter auditLog, Clock clock) {
++    this.stocks = stocks;
++    this.spareparts = spareparts;
++    this.assignments = assignments;
++    this.auditLog = auditLog;
++    this.clock = clock;
++  }
++
++  /**
++   * Upsert semantics (STOCK_CREATE/STOCK_UPSERT): a missing row is created with the
++   * provided values (version starts at 0); an existing row is fully overwritten with
++   * the provided fields and the version is advanced (optimistic lock).
++   */
++  @Transactional
++  public SparepartStock upsert(AuthenticatedUser user, UpsertStockCommand command) {
++    requireMutationAccess(user, command.plantId());
++    var materialCode = requireMaterialCode(command.materialCode());
++    requireKnownSparepart(materialCode);
++    var id = new SparepartStockId(materialCode, command.plantId());
++    var now = Instant.now(clock);
++    var existing = stocks.findById(id).orElse(null);
++    if (existing == null) {
++      var entity = new SparepartStockEntity(materialCode, command.plantId(),
++          command.stockOnHand(), command.orderPoint(), command.orderQty(), now, now);
++      var saved = stocks.saveAndFlush(entity);
++      auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.SPAREPART_STOCK,
++          stockEntityId(saved), entityLabel(saved), saved.getPlantId(), null,
++          stockValues(saved), null));
++      return toDomain(saved);
++    }
++    var previous = stockValues(existing);
++    existing.replace(command.stockOnHand(), command.orderPoint(), command.orderQty(), now);
++    var saved = stocks.saveAndFlush(existing);
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.SPAREPART_STOCK,
++        stockEntityId(saved), entityLabel(saved), saved.getPlantId(), previous,
++        stockValues(saved), null));
++    return toDomain(saved);
++  }
++
++  /**
++   * Full overwrite of the provided fields (PUT semantics, story 12-4). All three values
++   * are optional in the body but at least one must be present; provided fields are
++   * replaced, absent fields keep their current value. The optimistic-lock version is
++   * required and validated against the stored row (409 VERSION_CONFLICT on mismatch).
++   */
++  @Transactional
++  public SparepartStock update(AuthenticatedUser user, String materialCode, UpdateStockCommand command) {
++    requireMutationAccess(user, command.plantId());
++    var id = new SparepartStockId(materialCode, command.plantId());
++    var existing = stocks.findById(id)
++        .orElseThrow(SparepartStockNotFoundException::new);
++    if (existing.getVersion() != command.version()) {
++      throw new VersionConflictException();
++    }
++    var previous = stockValues(existing);
++    var now = Instant.now(clock);
++    var newOnHand = command.stockOnHand() != null ? command.stockOnHand() : existing.getStockOnHand();
++    var newOp = command.orderPoint() != null ? command.orderPoint() : existing.getOrderPoint();
++    var newOq = command.orderQty() != null ? command.orderQty() : existing.getOrderQty();
++    existing.replace(newOnHand, newOp, newOq, now);
++    var saved = stocks.saveAndFlush(existing);
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.SPAREPART_STOCK,
++        stockEntityId(saved), entityLabel(saved), saved.getPlantId(), previous,
++        stockValues(saved), null));
++    return toDomain(saved);
++  }
++
++  /**
++   * Stock adjustment (FR-146, NFR-P2-6): a signed delta applied atomically with the
++   * non-negative guard. {@code delta} may be negative (withdrawal) or positive
++   * (correction/restock). A zero-row update means the guard failed → 409
++   * NEGATIVE_STOCK_REJECTED, and no change is applied. The version column is bumped
++   * by the same statement so concurrent readers observe the new value.
++   */
++  @Transactional
++  public SparepartStock adjust(AuthenticatedUser user, String materialCode, AdjustStockCommand command) {
++    requireMutationAccess(user, command.plantId());
++    var id = new SparepartStockId(materialCode, command.plantId());
++    var existing = stocks.findById(id)
++        .orElseThrow(SparepartStockNotFoundException::new);
++    var previous = stockValues(existing);
++    var delta = command.delta();
++    var now = Instant.now(clock);
++    int rows = stocks.adjustIfSufficient(materialCode, command.plantId(), delta, now);
++    if (rows == 0) {
++      throw new NegativeStockRejectedException();
++    }
++    stocks.flush();
++    var updated = stocks.findById(id)
++        .orElseThrow(SparepartStockNotFoundException::new);
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.SPAREPART_STOCK,
++        stockEntityId(updated), entityLabel(updated), updated.getPlantId(), previous,
++        stockValues(updated), null));
++    return toDomain(updated);
++  }
++
++  /**
++   * Atomic decrement for the PICKED_UP hook (AD-11, story 12-4). When the stock row is
++   * missing the call returns {@code null} and the caller skips silently (stock is
++   * optional per plant; the request lifecycle must not block on an absent record). A
++   * decrement that would go negative throws {@link NegativeStockRejectedException} so
++   * the request transition rolls back (no partial pickup).
++   */
++  @Transactional
++  public SparepartStock decrementOnPickup(String materialCode, UUID plantId, BigDecimal quantity) {
++    var id = new SparepartStockId(materialCode, plantId);
++    var existing = stocks.findById(id).orElse(null);
++    if (existing == null) {
++      return null;
++    }
++    var now = Instant.now(clock);
++    int rows = stocks.decrementIfSufficient(materialCode, plantId, quantity.negate(), now);
++    if (rows == 0) {
++      throw new NegativeStockRejectedException();
++    }
++    stocks.flush();
++    return toDomain(stocks.findById(id).orElseThrow(SparepartStockNotFoundException::new));
++  }
++
++  /** Reorder-warning rows for a plant (FR-146): on-hand ≤ OP, recommend OQ. */
++  @Transactional(readOnly = true)
++  public List<SparepartStock> reorderWarnings(AuthenticatedUser user, UUID plantId) {
++    requireReadAccess(user, plantId);
++    return stocks.findReorderWarnings(plantId).stream()
++        .map(SparepartStockService::toDomain)
++        .toList();
++  }
++
++  /** All stock rows for a plant (read path for the Stock page). */
++  @Transactional(readOnly = true)
++  public List<SparepartStock> list(AuthenticatedUser user, UUID plantId) {
++    requireReadAccess(user, plantId);
++    return stocks.findAllByPlantId(plantId).stream()
++        .map(SparepartStockService::toDomain)
++        .toList();
++  }
++
++  // -------------------------------------------------------------------------
++  // Helpers
++  // -------------------------------------------------------------------------
++
++  private void requireMutationAccess(AuthenticatedUser user, UUID plantId) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    if (user.applicationRole() != ApplicationRole.INVENTORY_MAINTENANCE
++        && user.applicationRole() != ApplicationRole.STOREKEEPER) {
++      throw new SparepartStockForbiddenException();
++    }
++    if (!plantAssigned(user, plantId)) {
++      throw new SparepartStockForbiddenException();
++    }
++  }
++
++  private void requireReadAccess(AuthenticatedUser user, UUID plantId) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    if (!plantAssigned(user, plantId)) {
++      throw new SparepartStockForbiddenException();
++    }
++  }
++
++  private boolean plantAssigned(AuthenticatedUser user, UUID plantId) {
++    return assignments.findByAuthUserId(UUID.fromString(user.id())).stream()
++        .anyMatch(assignment -> assignment.getPlantId().equals(plantId));
++  }
++
++  private String requireMaterialCode(String materialCode) {
++    if (materialCode == null || materialCode.trim().isEmpty()) {
++      throw new SparepartStockValidationException(Map.of("materialCode",
++          "Material code must not be blank."));
++    }
++    var trimmed = materialCode.trim();
++    if (trimmed.length() > 64) {
++      throw new SparepartStockValidationException(Map.of("materialCode",
++          "Material code must be at most 64 characters."));
++    }
++    return trimmed;
++  }
++
++  private void requireKnownSparepart(String materialCode) {
++    if (spareparts.findByMaterialCodeIgnoreCase(materialCode).isEmpty()) {
++      throw new SparepartNotFoundException();
++    }
++  }
++
++  /** Upsert-create command (STOCK_CREATE). */
++  public record UpsertStockCommand(String materialCode, UUID plantId, BigDecimal stockOnHand,
++      BigDecimal orderPoint, BigDecimal orderQty) {
++  }
++
++  /** PUT partial-overwrite command (all three optional, at least one required). */
++  public record UpdateStockCommand(UUID plantId, long version, BigDecimal stockOnHand,
++      BigDecimal orderPoint, BigDecimal orderQty) {
++  }
++
++  /** POST /adjust signed-delta command. */
++  public record AdjustStockCommand(UUID plantId, BigDecimal delta) {
++  }
++
++  private static UUID stockEntityId(SparepartStockEntity entity) {
++    return UUID.nameUUIDFromBytes(
++        (entity.getMaterialCode() + ":" + entity.getPlantId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
++  }
++
++  private static String entityLabel(SparepartStockEntity entity) {
++    return entity.getMaterialCode() + " @" + entity.getPlantId();
++  }
++
++  private static Map<String, Object> stockValues(SparepartStockEntity entity) {
++    var values = new LinkedHashMap<String, Object>();
++    values.put("materialCode", entity.getMaterialCode());
++    values.put("plantId", entity.getPlantId());
++    values.put("stockOnHand", entity.getStockOnHand());
++    values.put("orderPoint", entity.getOrderPoint());
++    values.put("orderQty", entity.getOrderQty());
++    values.put("version", entity.getVersion());
++    return values;
++  }
++
++  private static SparepartStock toDomain(SparepartStockEntity entity) {
++    return new SparepartStock(entity.getMaterialCode(), entity.getPlantId(), entity.getStockOnHand(),
++        entity.getOrderPoint(), entity.getOrderQty(), entity.getVersion(),
++        entity.getCreatedAt(), entity.getUpdatedAt());
++  }
++
++  public static class SparepartStockNotFoundException extends RuntimeException {
++  }
++
++  /** Plant-scope or role rejection → 403 FORBIDDEN. */
++  public static class SparepartStockForbiddenException extends RuntimeException {
++  }
++
++  /** Atomic conditional update matched 0 rows → 409 NEGATIVE_STOCK_REJECTED (AD-11). */
++  public static class NegativeStockRejectedException extends RuntimeException {
++  }
++
++  /** Optimistic-lock mismatch → 409 VERSION_CONFLICT. */
++  public static class VersionConflictException extends RuntimeException {
++  }
++
++  /** Unknown sparepart material code → 404 SPAREPART_NOT_FOUND. */
++  public static class SparepartNotFoundException extends RuntimeException {
++  }
++
++  public static class SparepartStockValidationException extends RuntimeException {
++    private final Map<String, String> fieldErrors;
++
++    public SparepartStockValidationException(Map<String, String> fieldErrors) {
++      this.fieldErrors = new LinkedHashMap<>(fieldErrors);
++    }
++
++    public Map<String, String> getFieldErrors() {
++      return fieldErrors;
++    }
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/domain/SparepartStock.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/domain/SparepartStock.java
+new file mode 100644
+index 0000000..1937ccf
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/domain/SparepartStock.java
+@@ -0,0 +1,36 @@
++package com.syncro.sparepart.stock.domain;
++
++import java.math.BigDecimal;
++import java.time.Instant;
++import java.util.UUID;
++
++/**
++ * Sparepart stock aggregate (FR-146, story 12-4). Stock is keyed by material code
++ * (global one-code-one-sparepart, FR-078) per plant — unique (material_code, plant_id).
++ * The reorder rule (stock_on_hand &le; order_point &rarr; recommend purchase of order_qty)
++ * is a derived application-layer signal, never a persisted flag (AD-11).
++ *
++ * @param materialCode the sparepart material code (matches spareparts.material_code)
++ * @param plantId      the plant this stock row belongs to
++ * @param stockOnHand  current on-hand quantity
++ * @param orderPoint   reorder point (OP)
++ * @param orderQty     recommended purchase quantity (OQ)
++ * @param version      optimistic-lock version (concurrent updates conflict → 409)
++ * @param createdAt    row creation time
++ * @param updatedAt    last mutation time
++ */
++public record SparepartStock(
++    String materialCode,
++    UUID plantId,
++    BigDecimal stockOnHand,
++    BigDecimal orderPoint,
++    BigDecimal orderQty,
++    long version,
++    Instant createdAt,
++    Instant updatedAt) {
++
++  /** Whether the reorder rule holds: on-hand is at or below the order point (FR-146). */
++  public boolean reorderWarning() {
++    return orderPoint != null && stockOnHand != null && stockOnHand.compareTo(orderPoint) <= 0;
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/infrastructure/db/SparepartStockEntity.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/infrastructure/db/SparepartStockEntity.java
+new file mode 100644
+index 0000000..3481917
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/infrastructure/db/SparepartStockEntity.java
+@@ -0,0 +1,104 @@
++package com.syncro.sparepart.stock.infrastructure.db;
++
++import jakarta.persistence.Column;
++import jakarta.persistence.Entity;
++import jakarta.persistence.Id;
++import jakarta.persistence.IdClass;
++import jakarta.persistence.Table;
++import jakarta.persistence.Version;
++import java.math.BigDecimal;
++import java.time.Instant;
++import java.util.UUID;
++
++/**
++ * Persisted {@code sparepart_stock} row (story 12-4, FR-146/AD-11). The composite key
++ * {@code (material_code, plant_id)} is materialized via an {@link IdClass}; the
++ * {@code version} column is the JPA optimistic-lock counter. Negative stock is guarded
++ * at the repository layer by the atomic conditional update, never by a DB CHECK.
++ */
++@Entity
++@Table(name = "sparepart_stock")
++@IdClass(SparepartStockId.class)
++public class SparepartStockEntity {
++
++  @Id
++  @Column(name = "material_code", nullable = false, length = 64)
++  private String materialCode;
++
++  @Id
++  @Column(name = "plant_id", nullable = false)
++  private UUID plantId;
++
++  @Column(name = "stock_on_hand", nullable = false, precision = 18, scale = 2)
++  private BigDecimal stockOnHand;
++
++  @Column(name = "order_point", nullable = false, precision = 18, scale = 2)
++  private BigDecimal orderPoint;
++
++  @Column(name = "order_qty", nullable = false, precision = 18, scale = 2)
++  private BigDecimal orderQty;
++
++  @Version
++  @Column(name = "version", nullable = false)
++  private long version;
++
++  @Column(name = "created_at", nullable = false, updatable = false)
++  private Instant createdAt;
++
++  @Column(name = "updated_at", nullable = false)
++  private Instant updatedAt;
++
++  protected SparepartStockEntity() {
++  }
++
++  public SparepartStockEntity(String materialCode, UUID plantId, BigDecimal stockOnHand,
++      BigDecimal orderPoint, BigDecimal orderQty, Instant createdAt, Instant updatedAt) {
++    this.materialCode = materialCode;
++    this.plantId = plantId;
++    this.stockOnHand = stockOnHand;
++    this.orderPoint = orderPoint;
++    this.orderQty = orderQty;
++    this.createdAt = createdAt;
++    this.updatedAt = updatedAt;
++  }
++
++  public String getMaterialCode() {
++    return materialCode;
++  }
++
++  public UUID getPlantId() {
++    return plantId;
++  }
++
++  public BigDecimal getStockOnHand() {
++    return stockOnHand;
++  }
++
++  public BigDecimal getOrderPoint() {
++    return orderPoint;
++  }
++
++  public BigDecimal getOrderQty() {
++    return orderQty;
++  }
++
++  public long getVersion() {
++    return version;
++  }
++
++  public Instant getCreatedAt() {
++    return createdAt;
++  }
++
++  public Instant getUpdatedAt() {
++    return updatedAt;
++  }
++
++  /** Full overwrite of the provided fields (PUT semantics, story 12-4). */
++  public void replace(BigDecimal stockOnHand, BigDecimal orderPoint, BigDecimal orderQty, Instant updatedAt) {
++    this.stockOnHand = stockOnHand;
++    this.orderPoint = orderPoint;
++    this.orderQty = orderQty;
++    this.updatedAt = updatedAt;
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/infrastructure/db/SparepartStockId.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/infrastructure/db/SparepartStockId.java
+new file mode 100644
+index 0000000..7af3664
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/infrastructure/db/SparepartStockId.java
+@@ -0,0 +1,47 @@
++package com.syncro.sparepart.stock.infrastructure.db;
++
++import java.io.Serializable;
++import java.util.Objects;
++import java.util.UUID;
++
++/**
++ * Composite id class for {@code sparepart_stock} — {@code (material_code, plant_id)}
++ * (story 12-4, FR-146). Must match the entity's @Id fields exactly for JPA id mapping.
++ */
++public class SparepartStockId implements Serializable {
++
++  private String materialCode;
++  private UUID plantId;
++
++  protected SparepartStockId() {
++  }
++
++  public SparepartStockId(String materialCode, UUID plantId) {
++    this.materialCode = materialCode;
++    this.plantId = plantId;
++  }
++
++  public String getMaterialCode() {
++    return materialCode;
++  }
++
++  public UUID getPlantId() {
++    return plantId;
++  }
++
++  @Override
++  public boolean equals(Object other) {
++    if (this == other) {
++      return true;
++    }
++    if (!(other instanceof SparepartStockId that)) {
++      return false;
++    }
++    return Objects.equals(materialCode, that.materialCode) && Objects.equals(plantId, that.plantId);
++  }
++
++  @Override
++  public int hashCode() {
++    return Objects.hash(materialCode, plantId);
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/infrastructure/db/SparepartStockRepository.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/infrastructure/db/SparepartStockRepository.java
+new file mode 100644
+index 0000000..9a2be98
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/infrastructure/db/SparepartStockRepository.java
+@@ -0,0 +1,88 @@
++package com.syncro.sparepart.stock.infrastructure.db;
++
++import java.math.BigDecimal;
++import java.util.List;
++import java.util.Optional;
++import java.util.UUID;
++import org.springframework.data.jpa.repository.JpaRepository;
++import org.springframework.data.jpa.repository.Modifying;
++import org.springframework.data.jpa.repository.Query;
++import org.springframework.data.repository.query.Param;
++
++public interface SparepartStockRepository extends JpaRepository<SparepartStockEntity, SparepartStockId> {
++
++  Optional<SparepartStockEntity> findById(SparepartStockId id);
++
++  /**
++   * Atomic conditional decrement (AD-11, NFR-P2-6): subtracts {@code delta} from
++   * stock_on_hand and bumps the version, but only when the result stays non-negative.
++   * Returns the number of rows updated — 0 means the guard failed and the caller must
++   * reject with NEGATIVE_STOCK_REJECTED (409). The single UPDATE statement is atomic
++   * under MVCC, so concurrent decrements can never drive stock negative.
++   */
++  @Modifying
++  @Query("""
++      update SparepartStockEntity s
++      set s.stockOnHand = s.stockOnHand + :delta,
++          s.version = s.version + 1,
++          s.updatedAt = :now
++      where s.materialCode = :materialCode
++        and s.plantId = :plantId
++        and s.stockOnHand + :delta >= 0
++      """)
++  int decrementIfSufficient(
++      @Param("materialCode") String materialCode,
++      @Param("plantId") UUID plantId,
++      @Param("delta") BigDecimal delta,
++      @Param("now") java.time.Instant now);
++
++  /**
++   * Atomic conditional adjust (AD-11, NFR-P2-6): same guard as {@link #decrementIfSufficient}
++   * but accepts a signed delta so stock can also be corrected upward. Returns rows updated.
++   */
++  @Modifying
++  @Query("""
++      update SparepartStockEntity s
++      set s.stockOnHand = s.stockOnHand + :delta,
++          s.version = s.version + 1,
++          s.updatedAt = :now
++      where s.materialCode = :materialCode
++        and s.plantId = :plantId
++        and s.stockOnHand + :delta >= 0
++      """)
++  int adjustIfSufficient(
++      @Param("materialCode") String materialCode,
++      @Param("plantId") UUID plantId,
++      @Param("delta") BigDecimal delta,
++      @Param("now") java.time.Instant now);
++
++  /**
++   * Reorder-warning rows (FR-146): every stock row where stock_on_hand &le; order_point,
++   * scoped by plant. The rule is recomputed per query — it is a derived signal, never a
++   * persisted flag, so it cannot go stale.
++   */
++  @Query("""
++      select s
++      from SparepartStockEntity s
++      where s.plantId = :plantId
++        and s.stockOnHand <= s.orderPoint
++      order by s.materialCode asc
++      """)
++  List<SparepartStockEntity> findReorderWarnings(@Param("plantId") UUID plantId);
++
++  @Query("""
++      select s
++      from SparepartStockEntity s
++      where s.plantId = :plantId
++      order by s.materialCode asc
++      """)
++  List<SparepartStockEntity> findAllByPlantId(@Param("plantId") UUID plantId);
++
++  @Query("""
++      select s
++      from SparepartStockEntity s
++      where (:plantId is null or s.plantId = :plantId)
++      order by s.plantId asc, s.materialCode asc
++      """)
++  List<SparepartStockEntity> findAllScoped(@Param("plantId") UUID plantId);
++}
+diff --git a/syncro/apps/backend/src/main/resources/db/migration/V61__sparepart_stock.sql b/syncro/apps/backend/src/main/resources/db/migration/V61__sparepart_stock.sql
+new file mode 100644
+index 0000000..a4a7194
+--- /dev/null
++++ b/syncro/apps/backend/src/main/resources/db/migration/V61__sparepart_stock.sql
+@@ -0,0 +1,53 @@
++-- Story 12-4: Sparepart Stock OP/OQ & New-Item Completion (FR-144/FR-146/AD-11).
++-- Additive on V60.
++--
++-- 1. Add a plain UNIQUE constraint on spareparts.material_code to back the stock FK.
++--    (The existing uq_spareparts_material_code is a partial expression index on
++--    lower(material_code) and cannot back a foreign key in PostgreSQL. The new
++--    case-sensitive UNIQUE constraint is guaranteed safe: the case-insensitive
++--    partial index already prevents duplicate non-null codes, and NULLs are
++--    allowed to repeat under both.)
++-- 2. Create sparepart_stock table with composite PK (material_code, plant_id).
++-- 3. Add SPAREPART_STOCK to the audit_log entity_type CHECK.
++-- 4. Index for plant-scoped queries.
++
++-- ---------------------------------------------------------------------------
++-- 1. Unique constraint on spareparts(material_code) for the FK reference
++-- ---------------------------------------------------------------------------
++ALTER TABLE spareparts ADD CONSTRAINT uq_spareparts_material_code_key UNIQUE (material_code);
++
++-- ---------------------------------------------------------------------------
++-- 2. sparepart_stock — per-plant stock tracking by material code
++-- ---------------------------------------------------------------------------
++CREATE TABLE sparepart_stock (
++  material_code VARCHAR(64) NOT NULL,
++  plant_id UUID NOT NULL,
++  stock_on_hand NUMERIC(18,2) NOT NULL DEFAULT 0,
++  order_point NUMERIC(18,2) NOT NULL DEFAULT 0,
++  order_qty NUMERIC(18,2) NOT NULL DEFAULT 0,
++  version BIGINT NOT NULL DEFAULT 0,
++  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++  CONSTRAINT pk_sparepart_stock PRIMARY KEY (material_code, plant_id),
++  CONSTRAINT fk_sparepart_stock_material_code FOREIGN KEY (material_code)
++    REFERENCES spareparts(material_code),
++  CONSTRAINT fk_sparepart_stock_plant FOREIGN KEY (plant_id)
++    REFERENCES plants(id)
++);
++
++CREATE INDEX idx_sparepart_stock_plant ON sparepart_stock(plant_id);
++
++-- ---------------------------------------------------------------------------
++-- 2. Audit: add SPAREPART_STOCK to the entity_type CHECK (drop/re-add pattern)
++-- ---------------------------------------------------------------------------
++ALTER TABLE audit_log DROP CONSTRAINT ck_audit_log_entity_type;
++ALTER TABLE audit_log ADD CONSTRAINT ck_audit_log_entity_type
++  CHECK (entity_type IN ('PLANT', 'MACHINE_GROUP', 'MACHINE', 'SPAREPART_TAXONOMY',
++                         'SPAREPART', 'INSTALLATION', 'RESPONSIBILITY', 'ALERT',
++                         'SPAREPART_PRICE_ENTRY', 'SECTION', 'TEAM', 'WORK_ORDER_CATEGORY',
++                         'WORK_ORDER', 'REPAIR_SESSION', 'WORKORDER_ATTACHMENT',
++                         'WORK_ORDER_TODO', 'WORKORDER_RATING', 'RATING_DIMENSION',
++                         'PREVENTIVE_PROGRAM', 'PREVENTIVE_SCHEDULE',
++                         'PREVENTIVE_CHECKLIST', 'PREVENTIVE_ATTACHMENT',
++                         'SPAREPART_REQUEST', 'DEPARTMENT', 'DEPARTMENT_MEMBER', 'USER',
++                         'SPAREPART_STOCK'));
+\ No newline at end of file
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/db/SparepartRequestMigrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/db/SparepartRequestMigrationTest.java
+index 0f7af6d..fbfd39b 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/db/SparepartRequestMigrationTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/db/SparepartRequestMigrationTest.java
+@@ -290,6 +290,136 @@ class SparepartRequestMigrationTest extends AbstractPostgresIntegrationTest {
+     assertThat(durations.get(2).get("duration_minutes")).isEqualTo(2880);
+   }
+ 
++  // -------------------------------------------------------------------------
++  // Story 12-4 (V61): sparepart_stock + audit entity-type extension
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("12.4-DB-001 P0 sparepart_stock table exists with expected columns")
++  void stockTableExists() {
++    assertThat(columnNames("sparepart_stock"))
++        .contains("material_code", "plant_id", "stock_on_hand", "order_point", "order_qty",
++            "version", "created_at", "updated_at");
++  }
++
++  private record StockFixture(UUID plantId, UUID machineId) {
++  }
++
++  /** Creates a plant + machine group + machine + sparepart with a material code. */
++  private StockFixture stockFixture(String codeSuffix, String materialCode) {
++    var plantId = UUID.randomUUID();
++    jdbc.update("INSERT INTO plants (id, code, name, created_at, updated_at) VALUES (?,?,?,?,?)",
++        plantId, "PLANT-" + codeSuffix, "Plant " + codeSuffix, TS, TS);
++    var groupId = UUID.randomUUID();
++    jdbc.update("INSERT INTO machine_groups (id, plant_id, name, created_at, updated_at) VALUES (?,?,?,?,?)",
++        groupId, plantId, "Group " + codeSuffix, TS, TS);
++    var machineId = UUID.randomUUID();
++    jdbc.update("""
++        INSERT INTO machines (id, plant_id, machine_group_id, code, name, status, created_at, updated_at)
++        VALUES (?,?,?,?,?, 'ACTIVE', ?, ?)
++        """, machineId, plantId, groupId, "M-" + codeSuffix, "Machine " + codeSuffix, TS, TS);
++    // ELECTRIC category is seeded by V13; reuse it (unique per dimension+code).
++    var categoryId = jdbc.queryForObject(
++        "SELECT id FROM sparepart_taxonomy WHERE dimension = 'CATEGORY' AND code = 'ELECTRIC'", UUID.class);
++    var brandId = UUID.randomUUID();
++    jdbc.update("""
++        INSERT INTO sparepart_taxonomy (id, dimension, code, name, category_id, created_at, updated_at)
++        VALUES (?, 'BRAND', ?, 'Brand', ?, ?, ?)
++        """, brandId, "BRAND-" + codeSuffix, categoryId, TS, TS);
++    var kindId = UUID.randomUUID();
++    jdbc.update("""
++        INSERT INTO sparepart_taxonomy (id, dimension, code, name, category_id, created_at, updated_at)
++        VALUES (?, 'KIND', ?, 'Kind', ?, ?, ?)
++        """, kindId, "KIND-" + codeSuffix, categoryId, TS, TS);
++    var typeId = UUID.randomUUID();
++    jdbc.update("""
++        INSERT INTO sparepart_taxonomy (id, dimension, code, name, category_id, created_at, updated_at)
++        VALUES (?, 'TYPE', ?, 'Type', ?, ?, ?)
++        """, typeId, "TYPE-" + codeSuffix, categoryId, TS, TS);
++    jdbc.update("""
++        INSERT INTO spareparts (id, code, name, machine_id, category_id, brand_id, kind_id, type_id, material_code, created_at, updated_at)
++        VALUES (?, 'BOM-' || ?, 'Stock Part', ?, ?, ?, ?, ?, ?, ?, ?)
++        """, UUID.randomUUID(), codeSuffix, machineId, categoryId, brandId, kindId, typeId, materialCode, TS, TS);
++    return new StockFixture(plantId, machineId);
++  }
++
++  @Test
++  @DisplayName("12.4-DB-002 P0 sparepart_stock unique per (material_code, plant_id)")
++  void stockUniquePerMaterialPlant() {
++    var fixture = stockFixture("A", "MC-STK-001");
++    jdbc.update("""
++        INSERT INTO sparepart_stock (material_code, plant_id, stock_on_hand, order_point, order_qty, version)
++        VALUES ('MC-STK-001', ?, 10, 5, 20, 0)
++        """, fixture.plantId());
++    assertThatThrownBy(() -> jdbc.update("""
++        INSERT INTO sparepart_stock (material_code, plant_id, stock_on_hand, order_point, order_qty, version)
++        VALUES ('MC-STK-001', ?, 10, 5, 20, 0)
++        """, fixture.plantId()))
++        .isInstanceOf(DataIntegrityViolationException.class);
++  }
++
++  @Test
++  @DisplayName("12.4-DB-003 P0 sparepart_stock FK to spareparts.material_code rejects unknown codes")
++  void stockMaterialCodeFk() {
++    var fixture = stockFixture("B", "MC-STK-003");
++    assertThatThrownBy(() -> jdbc.update("""
++        INSERT INTO sparepart_stock (material_code, plant_id, stock_on_hand, order_point, order_qty, version)
++        VALUES ('UNKNOWN-MC-001', ?, 10, 5, 20, 0)
++        """, fixture.plantId()))
++        .isInstanceOf(DataIntegrityViolationException.class);
++  }
++
++  @Test
++  @DisplayName("12.4-DB-004 P0 sparepart_stock defaults: on-hand 0, OP 0, OQ 0, version 0")
++  void stockDefaults() {
++    var fixture = stockFixture("C", "MC-STK-004");
++    jdbc.update("""
++        INSERT INTO sparepart_stock (material_code, plant_id)
++        VALUES ('MC-STK-004', ?)
++        """, fixture.plantId());
++    var row = jdbc.queryForMap(
++        "SELECT stock_on_hand, order_point, order_qty, version FROM sparepart_stock WHERE material_code = 'MC-STK-004'");
++    assertThat(((Number) row.get("stock_on_hand")).doubleValue()).isEqualTo(0.0);
++    assertThat(((Number) row.get("order_point")).doubleValue()).isEqualTo(0.0);
++    assertThat(((Number) row.get("order_qty")).doubleValue()).isEqualTo(0.0);
++    assertThat(((Number) row.get("version")).longValue()).isZero();
++  }
++
++  @Test
++  @DisplayName("12.4-DB-005 P0 audit_log entity_type accepts SPAREPART_STOCK")
++  void stockAuditEntityTypeAccepts() {
++    jdbc.update("""
++        INSERT INTO audit_log (id, actor_id, actor_name, action, entity_type, entity_id, entity_label, created_at)
++        VALUES (?,?,?,?,?,?,?,?)
++        """, UUID.randomUUID(), UUID.randomUUID(), "audit-actor", "CREATE", "SPAREPART_STOCK",
++        UUID.randomUUID(), "MC-STK-001 @plant", TS);
++    assertThat(jdbc.queryForObject(
++        "SELECT count(*) FROM audit_log WHERE entity_type = 'SPAREPART_STOCK'", Long.class)).isEqualTo(1L);
++  }
++
++  @Test
++  @DisplayName("12.4-DB-006 P0 sparepart_stock has expected index")
++  void stockIndexesExist() {
++    assertThat(jdbc.queryForList("SELECT indexname FROM pg_indexes WHERE tablename = 'sparepart_stock'"))
++        .extracting(row -> row.get("indexname"))
++        .contains("pk_sparepart_stock", "idx_sparepart_stock_plant");
++  }
++
++  @Test
++  @DisplayName("12.4-DB-007 P0 audit_log CHECK still accepts all prior entity types after V61 re-add")
++  void stockAuditPreservesExistingTypes() {
++    for (var type : List.of("WORK_ORDER", "PREVENTIVE_ATTACHMENT", "SPAREPART_REQUEST", "SPAREPART_STOCK")) {
++      jdbc.update("""
++          INSERT INTO audit_log (id, actor_id, actor_name, action, entity_type, entity_id, entity_label, created_at)
++          VALUES (?,?,?,?,?,?,?,?)
++          """, UUID.randomUUID(), UUID.randomUUID(), "audit-actor", "CREATE", type,
++          UUID.randomUUID(), "existing-" + type, TS);
++    }
++    assertThat(jdbc.queryForObject(
++        "SELECT count(*) FROM audit_log WHERE entity_type IN ('WORK_ORDER','PREVENTIVE_ATTACHMENT','SPAREPART_REQUEST','SPAREPART_STOCK')",
++        Long.class)).isEqualTo(4L);
++  }
++
+   private java.util.List<String> columnNames(String table) {
+     return jdbc.queryForList(
+         "SELECT column_name FROM information_schema.columns "
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/api/SparepartRequestControllerTest.java b/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/api/SparepartRequestControllerTest.java
+index 4c01f9e..723c149 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/api/SparepartRequestControllerTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/api/SparepartRequestControllerTest.java
+@@ -381,6 +381,102 @@ class SparepartRequestControllerTest {
+         .andExpect(jsonPath("$.code").value("REQUEST_NOT_FOUND"));
+   }
+ 
++  @Test
++  @DisplayName("12.4-API-001 P0 complete endpoint returns 200 view with ACKED status")
++  void completeReturnsView() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    var id = UUID.randomUUID();
++    when(service.complete(eq(user), eq(id), any(SparepartRequestService.CompleteCommand.class)))
++        .thenReturn(requestDomain(SparepartRequestStatus.ACKED));
++    stubAllowedActions(user);
++
++    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/complete")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"materialCode\":\"MC-NEW-001\"}"))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.status").value("ACKED"));
++  }
++
++  @Test
++  @DisplayName("12.4-API-002 P0 blank material code maps to 400 VALIDATION_ERROR")
++  void completeBlankMaterialCode() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    var id = UUID.randomUUID();
++
++    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/complete")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"materialCode\":\"\"}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.materialCode").exists());
++  }
++
++  @Test
++  @DisplayName("12.4-API-003 P0 duplicate material code maps to 409 DUPLICATE_MATERIAL_CODE")
++  void completeDuplicateMaterialCode() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    var id = UUID.randomUUID();
++    doThrow(new SparepartRequestService.DuplicateMaterialCodeException())
++        .when(service).complete(eq(user), eq(id), any(SparepartRequestService.CompleteCommand.class));
++
++    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/complete")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"materialCode\":\"MC-0001\"}"))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("DUPLICATE_MATERIAL_CODE"));
++  }
++
++  @Test
++  @DisplayName("12.4-API-004 P0 wrong state maps to 409 INVALID_STATE_TRANSITION")
++  void completeWrongState() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    var id = UUID.randomUUID();
++    doThrow(new InvalidRequestStateTransitionException())
++        .when(service).complete(eq(user), eq(id), any(SparepartRequestService.CompleteCommand.class));
++
++    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/complete")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"materialCode\":\"MC-0001\"}"))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("INVALID_STATE_TRANSITION"));
++  }
++
++  @Test
++  @DisplayName("12.4-API-005 P0 forbidden completion maps to 403 FORBIDDEN")
++  void completeForbidden() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    var id = UUID.randomUUID();
++    doThrow(new RequestForbiddenException())
++        .when(service).complete(eq(user), eq(id), any(SparepartRequestService.CompleteCommand.class));
++
++    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/complete")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"materialCode\":\"MC-0001\"}"))
++        .andExpect(status().isForbidden())
++        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
++  }
++
++  @Test
++  @DisplayName("12.4-API-006 P0 unknown request maps to 404 REQUEST_NOT_FOUND")
++  void completeNotFound() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    var id = UUID.randomUUID();
++    doThrow(new RequestNotFoundException())
++        .when(service).complete(eq(user), eq(id), any(SparepartRequestService.CompleteCommand.class));
++
++    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/complete")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"materialCode\":\"MC-0001\"}"))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("REQUEST_NOT_FOUND"));
++  }
++
+   private static SparepartRequest requestDomain() {
+     return requestDomain(SparepartRequestStatus.REQUESTED);
+   }
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/application/SparepartRequestServiceTest.java b/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/application/SparepartRequestServiceTest.java
+index e2f8bc8..de10002 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/application/SparepartRequestServiceTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/application/SparepartRequestServiceTest.java
+@@ -89,6 +89,14 @@ class SparepartRequestServiceTest {
+   private AuditLogWriter auditLog;
+   @Mock
+   private OperationalScopeService scopes;
++  @Mock
++  private com.syncro.sparepart.stock.application.SparepartStockService stocks;
++  @Mock
++  private com.syncro.sparepart.application.SparepartService sparepartService;
++  @Mock
++  private com.syncro.sparepart.application.SparepartPriceEntryService priceEntryService;
++  @Mock
++  private com.syncro.sparepart.application.SparepartImageService sparepartImages;
+ 
+   private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
+   private final UUID plantId = UUID.randomUUID();
+@@ -103,7 +111,8 @@ class SparepartRequestServiceTest {
+   @BeforeEach
+   void setUp() {
+     service = new SparepartRequestService(requests, timelines, workOrders, workOrderService, machines, spareparts,
+-        priceEntries, escalationConfigs, notificationJobs, auditLog, scopes, clock);
++        priceEntries, escalationConfigs, notificationJobs, auditLog, scopes, clock,
++        stocks, sparepartService, priceEntryService, sparepartImages);
+     machine = machineWithPlant(plantId, groupId, machineId);
+     lenient().when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
+     when(requests.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+@@ -773,6 +782,240 @@ class SparepartRequestServiceTest {
+         .isInstanceOf(RequestNotFoundException.class);
+   }
+ 
++  // -------------------------------------------------------------------------
++  // Story 12-4: PICKED_UP decrement hook + completion (FR-144/FR-146/AD-11)
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("12.4-SVC-001 P0 PICKUP_DECREMENT — READY→PICKED_UP decrements stock by quantity in the same transaction")
++  void pickUpDecrementsStock() {
++    var user = sectionLeaderUser();
++    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
++    var entity = requestEntity(SparepartRequestStatus.READY);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++    when(spareparts.findByMaterialCodeIgnoreCase("MC-0001"))
++        .thenReturn(Optional.of(sparepartEntity("MC-0001")));
++
++    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PICKED_UP, null));
++
++    assertThat(result.status()).isEqualTo(SparepartRequestStatus.PICKED_UP);
++    verify(stocks).decrementOnPickup(eq("MC-0001"), eq(plantId), any(java.math.BigDecimal.class));
++  }
++
++  @Test
++  @DisplayName("12.4-SVC-002 P0 PICKUP_NO_STOCK — PICKED_UP with no stock row is a silent skip")
++  void pickUpNoStockRow() {
++    var user = sectionLeaderUser();
++    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
++    var entity = requestEntity(SparepartRequestStatus.READY);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++    when(spareparts.findByMaterialCodeIgnoreCase("MC-0001"))
++        .thenReturn(Optional.of(sparepartEntity("MC-0001")));
++    when(stocks.decrementOnPickup(any(), any(), any())).thenReturn(null);
++
++    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PICKED_UP, null));
++
++    assertThat(result.status()).isEqualTo(SparepartRequestStatus.PICKED_UP);
++  }
++
++  @Test
++  @DisplayName("12.4-SVC-003 P0 PICKUP_UNKNOWN_CODE — no material code on the request → no decrement")
++  void pickUpNoMaterialCode() {
++    var user = sectionLeaderUser();
++    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
++    var entity = new SparepartRequestEntity(UUID.randomUUID(), SparepartRequestType.SPAREPART, null, machineId,
++        null, null, (short) 1, null, null, null, SparepartRequestStatus.READY, staffId, NOW, null, NOW, NOW);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++
++    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PICKED_UP, null));
++
++    assertThat(result.status()).isEqualTo(SparepartRequestStatus.PICKED_UP);
++    verify(stocks, never()).decrementOnPickup(any(), any(), any());
++  }
++
++  @Test
++  @DisplayName("12.4-SVC-004 P0 CONSUMABLE pickup does not touch stock (no stock flow)")
++  void consumablePickUpNoStock() {
++    var user = new AuthenticatedUser(UUID.randomUUID().toString(), "leader2@test", ApplicationRole.SECTION_LEADER);
++    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
++    // CONSUMABLE bound to a workorder resolves the workorder's machine (so pickup is
++    // allowed), but the hook skips because the request type is not SPAREPART.
++    var entity = new SparepartRequestEntity(UUID.randomUUID(), SparepartRequestType.CONSUMABLE, "WO-2609-00001",
++        null, null, "CONS-1", (short) 1, null, null, null, SparepartRequestStatus.READY, staffId, NOW, null, NOW, NOW);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubBoundWorkOrder("WO-2609-00001");
++    stubScopedMachine(machineId, user);
++
++    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PICKED_UP, null));
++
++    assertThat(result.status()).isEqualTo(SparepartRequestStatus.PICKED_UP);
++    verify(stocks, never()).decrementOnPickup(any(), any(), any());
++  }
++
++  @Test
++  @DisplayName("12.4-SVC-005 P0 COMPLETE_OK — PENDING_COMPLETION with new material code creates sparepart + ACKED")
++  void completeOk() {
++    var user = inventoryUser();
++    var entity = requestEntity(SparepartRequestStatus.PENDING_COMPLETION);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++    when(spareparts.findByMaterialCodeIgnoreCase("MC-NEW-001")).thenReturn(Optional.empty());
++    when(sparepartService.createForCompletion(user, machineId, "MC-NEW-001"))
++        .thenReturn(new com.syncro.sparepart.application.SparepartService.SparepartView(
++            sparepartId, "BOM-0099", machineRef(), catRef(), catRef(), catRef(), catRef(),
++            "MC-NEW-001", null, NOW, NOW));
++
++    var result = service.complete(user, id,
++        new com.syncro.sparepart.request.application.SparepartRequestService.CompleteCommand(
++            "MC-NEW-001", null, null));
++
++    assertThat(result.status()).isEqualTo(SparepartRequestStatus.ACKED);
++    assertThat(result.sparepartId()).isEqualTo(sparepartId);
++    verify(auditLog).record(eq(user), org.mockito.ArgumentMatchers.argThat(r ->
++        r.action() == AuditAction.UPDATE && r.entityType() == AuditEntityType.SPAREPART_REQUEST));
++    verify(stocks, never()).decrementOnPickup(any(), any(), any());
++  }
++
++  @Test
++  @DisplayName("12.4-SVC-006 P0 COMPLETE_EXISTING — material code exists → patchProcurement + bind + ACKED")
++  void completeExisting() {
++    var user = inventoryUser();
++    var entity = requestEntity(SparepartRequestStatus.PENDING_COMPLETION);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++    when(spareparts.findByMaterialCodeIgnoreCase("MC-0001"))
++        .thenReturn(Optional.of(sparepartEntity("MC-0001")));
++
++    var result = service.complete(user, id,
++        new com.syncro.sparepart.request.application.SparepartRequestService.CompleteCommand(
++            "MC-0001", null, null));
++
++    assertThat(result.status()).isEqualTo(SparepartRequestStatus.ACKED);
++    assertThat(result.sparepartId()).isEqualTo(sparepartId);
++    verify(sparepartService).patchProcurement(eq(user), eq(sparepartId),
++        any(com.syncro.sparepart.application.SparepartService.SparepartProcurementCommand.class), eq(true));
++  }
++
++  @Test
++  @DisplayName("12.4-SVC-007 P0 COMPLETE_DUPLICATE — material code belongs to a different sparepart → 409")
++  void completeDuplicate() {
++    var user = inventoryUser();
++    // The request is already bound to a different sparepart than the code's owner.
++    var otherSparepartId = UUID.randomUUID();
++    var entity = new SparepartRequestEntity(UUID.randomUUID(), SparepartRequestType.SPAREPART, null, machineId,
++        otherSparepartId, "OTHER-CODE", (short) 1, null, null, null,
++        SparepartRequestStatus.PENDING_COMPLETION, staffId, NOW, null, NOW, NOW);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++    when(spareparts.findByMaterialCodeIgnoreCase("MC-0001"))
++        .thenReturn(Optional.of(sparepartEntity("MC-0001")));
++
++    assertThatThrownBy(() -> service.complete(user, id,
++        new com.syncro.sparepart.request.application.SparepartRequestService.CompleteCommand(
++            "MC-0001", null, null)))
++        .isInstanceOf(SparepartRequestService.DuplicateMaterialCodeException.class);
++  }
++
++  @Test
++  @DisplayName("12.4-SVC-008 P0 COMPLETE_WRONG_STATE — ACKED (not PENDING_COMPLETION) → 409 INVALID_STATE_TRANSITION")
++  void completeWrongState() {
++    var user = inventoryUser();
++    var entity = requestEntity(SparepartRequestStatus.ACKED);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++
++    assertThatThrownBy(() -> service.complete(user, id,
++        new com.syncro.sparepart.request.application.SparepartRequestService.CompleteCommand(
++            "MC-0001", null, null)))
++        .isInstanceOf(InvalidRequestStateTransitionException.class);
++  }
++
++  @Test
++  @DisplayName("12.4-SVC-009 P0 COMPLETE_FORBIDDEN — TECHNICIAN cannot complete → 403")
++  void completeForbidden() {
++    var user = technicianUser();
++    var entity = requestEntity(SparepartRequestStatus.PENDING_COMPLETION);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++
++    assertThatThrownBy(() -> service.complete(user, id,
++        new com.syncro.sparepart.request.application.SparepartRequestService.CompleteCommand(
++            "MC-0001", null, null)))
++        .isInstanceOf(RequestForbiddenException.class);
++  }
++
++  @Test
++  @DisplayName("12.4-SVC-010 P0 COMPLETE_NO_PRICE — completes to ACKED with no price entry when none provided")
++  void completeNoPrice() {
++    var user = inventoryUser();
++    var entity = requestEntity(SparepartRequestStatus.PENDING_COMPLETION);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++    when(spareparts.findByMaterialCodeIgnoreCase("MC-NEW-001")).thenReturn(Optional.empty());
++    when(sparepartService.createForCompletion(user, machineId, "MC-NEW-001"))
++        .thenReturn(new com.syncro.sparepart.application.SparepartService.SparepartView(
++            sparepartId, "BOM-0100", machineRef(), catRef(), catRef(), catRef(), catRef(),
++            "MC-NEW-001", null, NOW, NOW));
++
++    var result = service.complete(user, id,
++        new com.syncro.sparepart.request.application.SparepartRequestService.CompleteCommand(
++            "MC-NEW-001", null, null));
++
++    assertThat(result.status()).isEqualTo(SparepartRequestStatus.ACKED);
++    verify(priceEntryService, never()).create(any(), any(), any());
++  }
++
++  @Test
++  @DisplayName("12.4-SVC-011 P0 COMPLETE_IMAGE_AND_PRICE — image key attached + estPriceId referenced")
++  void completeWithImageAndPrice() {
++    var user = inventoryUser();
++    var entity = requestEntity(SparepartRequestStatus.PENDING_COMPLETION);
++    var id = entity.getId();
++    var priceEntryId = UUID.randomUUID();
++    var priceEntry = new com.syncro.sparepart.infrastructure.SparepartPriceEntryEntity(
++        priceEntryId, sparepartEntity("MC-NEW-002"), new java.math.BigDecimal("50000"), "IDR",
++        java.math.BigDecimal.ONE, new java.math.BigDecimal("50000"), null, NOW);
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++    when(spareparts.findByMaterialCodeIgnoreCase("MC-NEW-002")).thenReturn(Optional.empty());
++    when(sparepartService.createForCompletion(user, machineId, "MC-NEW-002"))
++        .thenReturn(new com.syncro.sparepart.application.SparepartService.SparepartView(
++            sparepartId, "BOM-0101", machineRef(), catRef(), catRef(), catRef(), catRef(),
++            "MC-NEW-002", null, NOW, NOW));
++    when(priceEntries.findById(priceEntryId)).thenReturn(Optional.of(priceEntry));
++
++    var result = service.complete(user, id,
++        new com.syncro.sparepart.request.application.SparepartRequestService.CompleteCommand(
++            "MC-NEW-002", "spareparts/abc/image.jpg", priceEntryId));
++
++    assertThat(result.status()).isEqualTo(SparepartRequestStatus.ACKED);
++    verify(sparepartImages).attachObjectKey(eq(user), eq(sparepartId),
++        eq("spareparts/abc/image.jpg"), eq(true));
++  }
++
++  private com.syncro.sparepart.application.SparepartService.SparepartMachineRefView machineRef() {
++    return new com.syncro.sparepart.application.SparepartService.SparepartMachineRefView(
++        machineId, "M-001", "Machine", plantId, "P01", "Plant");
++  }
++
++  private com.syncro.sparepart.application.SparepartService.SparepartTaxonomyRefView catRef() {
++    return new com.syncro.sparepart.application.SparepartService.SparepartTaxonomyRefView(
++        UUID.randomUUID(), "ELECTRIC", "Electric");
++  }
++
+   private AuthenticatedUser staffUser() {
+     return new AuthenticatedUser(staffId.toString(), "staff@test", ApplicationRole.STAFF_MAINTENANCE);
+   }
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/sparepart/stock/api/SparepartStockControllerTest.java b/syncro/apps/backend/src/test/java/com/syncro/sparepart/stock/api/SparepartStockControllerTest.java
+new file mode 100644
+index 0000000..33f2cd6
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/sparepart/stock/api/SparepartStockControllerTest.java
+@@ -0,0 +1,215 @@
++package com.syncro.sparepart.stock.api;
++
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.eq;
++import static org.mockito.Mockito.doThrow;
++import static org.mockito.Mockito.when;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
++
++import com.syncro.TestJsonConfig;
++import com.syncro.auth.application.JwtTokenService;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.JwtAuthenticationFilter;
++import com.syncro.config.SecurityConfig;
++import com.syncro.config.TimeConfig;
++import com.syncro.sparepart.stock.application.SparepartStockService;
++import com.syncro.sparepart.stock.application.SparepartStockService.AdjustStockCommand;
++import com.syncro.sparepart.stock.application.SparepartStockService.NegativeStockRejectedException;
++import com.syncro.sparepart.stock.application.SparepartStockService.SparepartStockForbiddenException;
++import com.syncro.sparepart.stock.application.SparepartStockService.SparepartStockNotFoundException;
++import com.syncro.sparepart.stock.application.SparepartStockService.SparepartNotFoundException;
++import com.syncro.sparepart.stock.application.SparepartStockService.UpdateStockCommand;
++import com.syncro.sparepart.stock.application.SparepartStockService.UpsertStockCommand;
++import com.syncro.sparepart.stock.application.SparepartStockService.VersionConflictException;
++import com.syncro.sparepart.stock.domain.SparepartStock;
++import java.math.BigDecimal;
++import java.time.Instant;
++import java.util.List;
++import java.util.UUID;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
++import org.springframework.context.annotation.Import;
++import org.springframework.http.MediaType;
++import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
++import org.springframework.security.core.authority.SimpleGrantedAuthority;
++import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
++import org.springframework.test.context.bean.override.mockito.MockitoBean;
++import org.springframework.test.web.servlet.MockMvc;
++import org.springframework.test.web.servlet.request.RequestPostProcessor;
++
++@WebMvcTest({SparepartStockController.class})
++@Import({SecurityConfig.class, SparepartStockExceptionHandler.class, JwtAuthenticationFilter.class,
++    TimeConfig.class, TestJsonConfig.class})
++class SparepartStockControllerTest {
++
++  @Autowired
++  private MockMvc mockMvc;
++
++  @MockitoBean
++  private SparepartStockService service;
++
++  @MockitoBean
++  private JwtTokenService jwtTokenService;
++
++  private static final UUID PLANT_ID = UUID.fromString("88888888-8888-8888-8888-888888888888");
++  private static final Instant NOW = Instant.parse("2026-08-28T00:00:00Z");
++
++  @Test
++  @DisplayName("12.4-STK-API-001 P0 create stock returns 201 with the created view")
++  void createReturnsCreated() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    when(service.upsert(eq(user), any(UpsertStockCommand.class))).thenReturn(stockDomain());
++
++    mockMvc.perform(post("/api/v1/sparepart-stock")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"materialCode\":\"MC-0001\",\"plantId\":\"" + PLANT_ID
++                + "\",\"stockOnHand\":10,\"orderPoint\":5,\"orderQty\":20}"))
++        .andExpect(status().isCreated())
++        .andExpect(jsonPath("$.materialCode").value("MC-0001"))
++        .andExpect(jsonPath("$.stockOnHand").value(10))
++        .andExpect(jsonPath("$.reorderWarning").value(false));
++  }
++
++  @Test
++  @DisplayName("12.4-STK-API-002 P0 create with blank material code maps to 400 VALIDATION_ERROR")
++  void createBlankMaterialCode() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++
++    mockMvc.perform(post("/api/v1/sparepart-stock")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"materialCode\":\"\",\"plantId\":\"" + PLANT_ID
++                + "\",\"stockOnHand\":10,\"orderPoint\":5,\"orderQty\":20}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.materialCode").exists());
++  }
++
++  @Test
++  @DisplayName("12.4-STK-API-003 P0 forbidden stock mutation maps to 403 FORBIDDEN")
++  void createForbidden() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    doThrow(new SparepartStockForbiddenException())
++        .when(service).upsert(eq(user), any(UpsertStockCommand.class));
++
++    mockMvc.perform(post("/api/v1/sparepart-stock")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"materialCode\":\"MC-0001\",\"plantId\":\"" + PLANT_ID
++                + "\",\"stockOnHand\":10,\"orderPoint\":5,\"orderQty\":20}"))
++        .andExpect(status().isForbidden())
++        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
++  }
++
++  @Test
++  @DisplayName("12.4-STK-API-004 P0 unknown sparepart maps to 404 SPAREPART_NOT_FOUND")
++  void createUnknownSparepart() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    doThrow(new SparepartNotFoundException())
++        .when(service).upsert(eq(user), any(UpsertStockCommand.class));
++
++    mockMvc.perform(post("/api/v1/sparepart-stock")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"materialCode\":\"UNKNOWN-1\",\"plantId\":\"" + PLANT_ID
++                + "\",\"stockOnHand\":10,\"orderPoint\":5,\"orderQty\":20}"))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("SPAREPART_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("12.4-STK-API-005 P0 update with stale version maps to 409 VERSION_CONFLICT")
++  void updateVersionConflict() throws Exception {
++    var user = user(ApplicationRole.STOREKEEPER);
++    doThrow(new VersionConflictException())
++        .when(service).update(eq(user), eq("MC-0001"), any(UpdateStockCommand.class));
++
++    mockMvc.perform(put("/api/v1/sparepart-stock/MC-0001")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"plantId\":\"" + PLANT_ID + "\",\"version\":3,\"stockOnHand\":8}"))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("VERSION_CONFLICT"));
++  }
++
++  @Test
++  @DisplayName("12.4-STK-API-006 P0 update missing row maps to 404 STOCK_NOT_FOUND")
++  void updateNotFound() throws Exception {
++    var user = user(ApplicationRole.STOREKEEPER);
++    doThrow(new SparepartStockNotFoundException())
++        .when(service).update(eq(user), eq("MC-0001"), any(UpdateStockCommand.class));
++
++    mockMvc.perform(put("/api/v1/sparepart-stock/MC-0001")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"plantId\":\"" + PLANT_ID + "\",\"version\":0,\"stockOnHand\":8}"))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("STOCK_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("12.4-STK-API-007 P0 adjust returning NEGATIVE_STOCK maps to 409 NEGATIVE_STOCK_REJECTED")
++  void adjustNegativeRejected() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    doThrow(new NegativeStockRejectedException())
++        .when(service).adjust(eq(user), eq("MC-0001"), any(AdjustStockCommand.class));
++
++    mockMvc.perform(post("/api/v1/sparepart-stock/MC-0001/adjust")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"plantId\":\"" + PLANT_ID + "\",\"delta\":-5}"))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("NEGATIVE_STOCK_REJECTED"));
++  }
++
++  @Test
++  @DisplayName("12.4-STK-API-008 P0 list returns the stock view list")
++  void listReturnsRows() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(service.list(eq(user), eq(PLANT_ID))).thenReturn(List.of(stockDomain()));
++
++    mockMvc.perform(get("/api/v1/sparepart-stock")
++            .with(auth(user))
++            .param("plantId", PLANT_ID.toString()))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.items[0].materialCode").value("MC-0001"))
++        .andExpect(jsonPath("$.items[0].stockOnHand").value(10));
++  }
++
++  @Test
++  @DisplayName("12.4-STK-API-009 P0 reorder-warnings returns only warning rows with recommendation")
++  void reorderWarningsListed() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    when(service.reorderWarnings(eq(user), eq(PLANT_ID))).thenReturn(List.of(stockDomain()));
++
++    mockMvc.perform(get("/api/v1/sparepart-stock/reorder-warnings")
++            .with(auth(user))
++            .param("plantId", PLANT_ID.toString()))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.items[0].reorderWarning").value(false));
++  }
++
++  private static SparepartStock stockDomain() {
++    return new SparepartStock("MC-0001", PLANT_ID, new BigDecimal("10"), new BigDecimal("5"),
++        new BigDecimal("20"), 0L, NOW, NOW);
++  }
++
++  private static AuthenticatedUser user(ApplicationRole role) {
++    return new AuthenticatedUser(UUID.randomUUID().toString(), role.name().toLowerCase() + "@syncro.dev", role);
++  }
++
++  private static RequestPostProcessor auth(AuthenticatedUser user) {
++    return SecurityMockMvcRequestPostProcessors.authentication(new UsernamePasswordAuthenticationToken(
++        user,
++        null,
++        List.of(new SimpleGrantedAuthority("ROLE_" + user.applicationRole().name()))));
++  }
++}
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/sparepart/stock/application/SparepartStockServiceTest.java b/syncro/apps/backend/src/test/java/com/syncro/sparepart/stock/application/SparepartStockServiceTest.java
+new file mode 100644
+index 0000000..f3b3276
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/sparepart/stock/application/SparepartStockServiceTest.java
+@@ -0,0 +1,265 @@
++package com.syncro.sparepart.stock.application;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.api.Assertions.assertThatThrownBy;
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.eq;
++import static org.mockito.Mockito.lenient;
++import static org.mockito.Mockito.verify;
++import static org.mockito.Mockito.when;
++
++import com.syncro.audit.application.AuditLogWriter;
++import com.syncro.audit.domain.AuditAction;
++import com.syncro.audit.domain.AuditEntityType;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentEntity;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
++import com.syncro.sparepart.infrastructure.SparepartEntity;
++import com.syncro.sparepart.infrastructure.SparepartRepository;
++import com.syncro.sparepart.stock.application.SparepartStockService.AdjustStockCommand;
++import com.syncro.sparepart.stock.application.SparepartStockService.NegativeStockRejectedException;
++import com.syncro.sparepart.stock.application.SparepartStockService.SparepartStockForbiddenException;
++import com.syncro.sparepart.stock.application.SparepartStockService.SparepartStockNotFoundException;
++import com.syncro.sparepart.stock.application.SparepartStockService.UpdateStockCommand;
++import com.syncro.sparepart.stock.application.SparepartStockService.UpsertStockCommand;
++import com.syncro.sparepart.stock.application.SparepartStockService.VersionConflictException;
++import com.syncro.sparepart.stock.infrastructure.db.SparepartStockEntity;
++import com.syncro.sparepart.stock.infrastructure.db.SparepartStockId;
++import com.syncro.sparepart.stock.infrastructure.db.SparepartStockRepository;
++import java.math.BigDecimal;
++import java.time.Clock;
++import java.time.Instant;
++import java.time.ZoneOffset;
++import java.util.List;
++import java.util.Optional;
++import java.util.UUID;
++import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.api.extension.ExtendWith;
++import org.mockito.Mock;
++import org.mockito.junit.jupiter.MockitoExtension;
++import org.mockito.junit.jupiter.MockitoSettings;
++import org.mockito.quality.Strictness;
++
++@ExtendWith(MockitoExtension.class)
++@MockitoSettings(strictness = Strictness.LENIENT)
++class SparepartStockServiceTest {
++
++  private static final Instant NOW = Instant.parse("2026-08-28T00:00:00Z");
++
++  @Mock
++  private SparepartStockRepository stocks;
++  @Mock
++  private SparepartRepository spareparts;
++  @Mock
++  private AuthUserPlantAssignmentRepository assignments;
++  @Mock
++  private AuditLogWriter auditLog;
++
++  private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
++  private final UUID plantId = UUID.randomUUID();
++  private final String materialCode = "MC-0001";
++  private final UUID userId = UUID.randomUUID();
++
++  private SparepartStockService service;
++
++  @BeforeEach
++  void setUp() {
++    service = new SparepartStockService(stocks, spareparts, assignments, auditLog, clock);
++    lenient().when(spareparts.findByMaterialCodeIgnoreCase(materialCode))
++        .thenReturn(Optional.of(sparepartEntity()));
++    lenient().when(assignments.findByAuthUserId(userId))
++        .thenReturn(List.of(new AuthUserPlantAssignmentEntity(userId, plantId, NOW)));
++    lenient().when(stocks.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
++  }
++
++  private AuthenticatedUser inventoryUser() {
++    return new AuthenticatedUser(userId.toString(), "inv@test", ApplicationRole.INVENTORY_MAINTENANCE);
++  }
++
++  private AuthenticatedUser technicianUser() {
++    return new AuthenticatedUser(UUID.randomUUID().toString(), "tech@test", ApplicationRole.TECHNICIAN);
++  }
++
++  private SparepartEntity sparepartEntity() {
++    var plant = new com.syncro.auth.infrastructure.PlantEntity(plantId, "P01", "Plant", NOW, NOW);
++    var group = new com.syncro.masterdata.infrastructure.MachineGroupEntity(UUID.randomUUID(), plant, "Group", NOW, NOW);
++    var machine = new com.syncro.machine.infrastructure.MachineEntity(UUID.randomUUID(), plant, group,
++        "M-001", "Machine", com.syncro.machine.domain.MachineStatus.ACTIVE, null, null, null, List.of(), NOW, NOW);
++    var category = new com.syncro.sparepart.infrastructure.SparepartTaxonomyEntity(
++        UUID.randomUUID(), com.syncro.sparepart.domain.SparepartTaxonomyDimension.CATEGORY, "ELECTRIC", "Electric", NOW, NOW);
++    var entity = new SparepartEntity(UUID.randomUUID(), "BOM-001", "Part", machine, category, null, null, null, NOW, NOW);
++    entity.updateProcurement(materialCode, null, NOW);
++    return entity;
++  }
++
++  private SparepartStockEntity stockEntity(BigDecimal onHand, BigDecimal op, BigDecimal oq, long version) {
++    return new SparepartStockEntity(materialCode, plantId, onHand, op, oq, NOW, NOW);
++  }
++
++  private SparepartStockEntity stocked(BigDecimal onHand, BigDecimal op, BigDecimal oq, long version) {
++    var entity = stockEntity(onHand, op, oq, version);
++    org.springframework.test.util.ReflectionTestUtils.setField(entity, "version", version);
++    return entity;
++  }
++
++  @Test
++  @DisplayName("12.4-STK-001 P0 STOCK_CREATE — upsert creates a row with provided values and audits CREATE")
++  void createOk() {
++    var user = inventoryUser();
++    when(stocks.findById(new SparepartStockId(materialCode, plantId))).thenReturn(Optional.empty());
++
++    var created = service.upsert(user, new UpsertStockCommand(materialCode, plantId,
++        new BigDecimal("10"), new BigDecimal("5"), new BigDecimal("20")));
++
++    assertThat(created.materialCode()).isEqualTo(materialCode);
++    assertThat(created.stockOnHand()).isEqualByComparingTo("10");
++    assertThat(created.orderPoint()).isEqualByComparingTo("5");
++    assertThat(created.orderQty()).isEqualByComparingTo("20");
++    assertThat(created.reorderWarning()).isFalse();
++    verify(auditLog).record(eq(user), org.mockito.ArgumentMatchers.argThat(r ->
++        r.action() == AuditAction.CREATE && r.entityType() == AuditEntityType.SPAREPART_STOCK));
++  }
++
++  @Test
++  @DisplayName("12.4-STK-002 P0 STOCK_UPSERT — existing row values are overwritten and audited as UPDATE")
++  void upsertExisting() {
++    var user = inventoryUser();
++    when(stocks.findById(new SparepartStockId(materialCode, plantId)))
++        .thenReturn(Optional.of(stocked(new BigDecimal("3"), new BigDecimal("5"), new BigDecimal("10"), 0L)));
++
++    var updated = service.upsert(user, new UpsertStockCommand(materialCode, plantId,
++        new BigDecimal("7"), new BigDecimal("4"), new BigDecimal("15")));
++
++    assertThat(updated.stockOnHand()).isEqualByComparingTo("7");
++    assertThat(updated.orderPoint()).isEqualByComparingTo("4");
++    verify(auditLog).record(eq(user), org.mockito.ArgumentMatchers.argThat(r ->
++        r.action() == AuditAction.UPDATE && r.entityType() == AuditEntityType.SPAREPART_STOCK));
++  }
++
++  @Test
++  @DisplayName("12.4-STK-003 P0 STOCK_ADJUST_OK — delta -3 on on-hand 10 → 7")
++  void adjustOk() {
++    var user = inventoryUser();
++    var id = new SparepartStockId(materialCode, plantId);
++    when(stocks.findById(id)).thenReturn(Optional.of(stocked(new BigDecimal("10"), BigDecimal.ZERO, BigDecimal.ZERO, 0L)));
++    when(stocks.adjustIfSufficient(materialCode, plantId, new BigDecimal("-3"), NOW)).thenReturn(1);
++    when(stocks.findById(id)).thenReturn(Optional.of(stocked(new BigDecimal("7"), BigDecimal.ZERO, BigDecimal.ZERO, 1L)));
++
++    var result = service.adjust(user, materialCode, new AdjustStockCommand(plantId, new BigDecimal("-3")));
++
++    assertThat(result.stockOnHand()).isEqualByComparingTo("7");
++    verify(auditLog).record(eq(user), org.mockito.ArgumentMatchers.argThat(r ->
++        r.action() == AuditAction.UPDATE && r.entityType() == AuditEntityType.SPAREPART_STOCK));
++  }
++
++  @Test
++  @DisplayName("12.4-STK-004 P0 STOCK_ADJUST_NEGATIVE — delta -5 on on-hand 2 → 409 NEGATIVE_STOCK_REJECTED")
++  void adjustNegativeRejected() {
++    var user = inventoryUser();
++    var id = new SparepartStockId(materialCode, plantId);
++    when(stocks.findById(id)).thenReturn(Optional.of(stocked(new BigDecimal("2"), BigDecimal.ZERO, BigDecimal.ZERO, 0L)));
++    when(stocks.adjustIfSufficient(materialCode, plantId, new BigDecimal("-5"), NOW)).thenReturn(0);
++
++    assertThatThrownBy(() -> service.adjust(user, materialCode, new AdjustStockCommand(plantId, new BigDecimal("-5"))))
++        .isInstanceOf(NegativeStockRejectedException.class);
++  }
++
++  @Test
++  @DisplayName("12.4-STK-005 P0 STOCK_VERSION_CONFLICT — stale version → 409 VERSION_CONFLICT")
++  void versionConflict() {
++    var user = inventoryUser();
++    var id = new SparepartStockId(materialCode, plantId);
++    when(stocks.findById(id)).thenReturn(Optional.of(stocked(new BigDecimal("10"), BigDecimal.ZERO, BigDecimal.ZERO, 5L)));
++
++    assertThatThrownBy(() -> service.update(user, materialCode,
++        new UpdateStockCommand(plantId, 3L, new BigDecimal("8"), null, null)))
++        .isInstanceOf(VersionConflictException.class);
++  }
++
++  @Test
++  @DisplayName("12.4-STK-006 P0 STOCK_REORDER — on-hand 4 ≤ OP 5 → row in reorder warnings with OQ recommendation")
++  void reorderWarningListed() {
++    var user = inventoryUser();
++    var warning = stocked(new BigDecimal("4"), new BigDecimal("5"), new BigDecimal("20"), 0L);
++    when(stocks.findReorderWarnings(plantId)).thenReturn(List.of(warning));
++
++    var warnings = service.reorderWarnings(user, plantId);
++
++    assertThat(warnings).hasSize(1);
++    assertThat(warnings.getFirst().reorderWarning()).isTrue();
++    assertThat(warnings.getFirst().orderQty()).isEqualByComparingTo("20");
++  }
++
++  @Test
++  @DisplayName("12.4-STK-007 P0 STOCK_REORDER_OK — on-hand 6 > OP 5 → not in the list")
++  void reorderWarningNotListed() {
++    var user = inventoryUser();
++    var fine = stocked(new BigDecimal("6"), new BigDecimal("5"), new BigDecimal("20"), 0L);
++    when(stocks.findReorderWarnings(plantId)).thenReturn(List.of(fine));
++
++    var warnings = service.reorderWarnings(user, plantId);
++
++    assertThat(warnings).hasSize(1);
++    assertThat(warnings.getFirst().reorderWarning()).isFalse();
++  }
++
++  @Test
++  @DisplayName("12.4-STK-008 P0 FORBIDDEN — technician without inventory role cannot mutate stock")
++  void forbiddenRole() {
++    var user = technicianUser();
++
++    assertThatThrownBy(() -> service.upsert(user, new UpsertStockCommand(materialCode, plantId,
++        BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.ZERO)))
++        .isInstanceOf(SparepartStockForbiddenException.class);
++  }
++
++  @Test
++  @DisplayName("12.4-STK-009 P0 NOT_FOUND — adjusting a missing stock row → 404")
++  void adjustMissingRow() {
++    var user = inventoryUser();
++    var id = new SparepartStockId(materialCode, plantId);
++    when(stocks.findById(id)).thenReturn(Optional.empty());
++
++    assertThatThrownBy(() -> service.adjust(user, materialCode, new AdjustStockCommand(plantId, BigDecimal.ONE)))
++        .isInstanceOf(SparepartStockNotFoundException.class);
++  }
++
++  @Test
++  @DisplayName("12.4-STK-010 P0 PICKUP_DECREMENT — decrementOnPickup subtracts quantity from stock")
++  void decrementOnPickupOk() {
++    var id = new SparepartStockId(materialCode, plantId);
++    when(stocks.findById(id)).thenReturn(Optional.of(stocked(new BigDecimal("10"), BigDecimal.ZERO, BigDecimal.ZERO, 0L)));
++    when(stocks.decrementIfSufficient(materialCode, plantId, new BigDecimal("-3"), NOW)).thenReturn(1);
++    when(stocks.findById(id)).thenReturn(Optional.of(stocked(new BigDecimal("7"), BigDecimal.ZERO, BigDecimal.ZERO, 1L)));
++
++    var result = service.decrementOnPickup(materialCode, plantId, new BigDecimal("3"));
++
++    assertThat(result).isNotNull();
++    assertThat(result.stockOnHand()).isEqualByComparingTo("7");
++  }
++
++  @Test
++  @DisplayName("12.4-STK-011 P0 PICKUP_NO_STOCK — missing row returns null (silent skip)")
++  void decrementOnPickupMissingRow() {
++    var id = new SparepartStockId(materialCode, plantId);
++    when(stocks.findById(id)).thenReturn(Optional.empty());
++
++    var result = service.decrementOnPickup(materialCode, plantId, new BigDecimal("3"));
++
++    assertThat(result).isNull();
++  }
++
++  @Test
++  @DisplayName("12.4-STK-012 P0 PICKUP_NEGATIVE — decrement below zero throws NEGATIVE_STOCK_REJECTED")
++  void decrementOnPickupNegative() {
++    var id = new SparepartStockId(materialCode, plantId);
++    when(stocks.findById(id)).thenReturn(Optional.of(stocked(new BigDecimal("2"), BigDecimal.ZERO, BigDecimal.ZERO, 0L)));
++    when(stocks.decrementIfSufficient(materialCode, plantId, new BigDecimal("-5"), NOW)).thenReturn(0);
++
++    assertThatThrownBy(() -> service.decrementOnPickup(materialCode, plantId, new BigDecimal("5")))
++        .isInstanceOf(NegativeStockRejectedException.class);
++  }
++}
+diff --git a/syncro/apps/web/src/app/(main)/dashboard/stock/page.tsx b/syncro/apps/web/src/app/(main)/dashboard/stock/page.tsx
+new file mode 100644
+index 0000000..04ec4f6
+--- /dev/null
++++ b/syncro/apps/web/src/app/(main)/dashboard/stock/page.tsx
+@@ -0,0 +1,9 @@
++import { SparepartStockPageContent } from "@/features/sparepart-stock/components/sparepart-stock-page";
++
++/**
++ * Stock route (story 12-4, FR-146). Per-plant stock levels, reorder points, and
++ * adjustment actions for inventory/store roles.
++ */
++export default function StockPage() {
++  return <SparepartStockPageContent />;
++}
+diff --git a/syncro/apps/web/src/features/sparepart-requests/components/complete-dialog.tsx b/syncro/apps/web/src/features/sparepart-requests/components/complete-dialog.tsx
+new file mode 100644
+index 0000000..93640c9
+--- /dev/null
++++ b/syncro/apps/web/src/features/sparepart-requests/components/complete-dialog.tsx
+@@ -0,0 +1,95 @@
++"use client";
++
++import { useState } from "react";
++
++import { Loader2 } from "lucide-react";
++
++import { Button } from "@/components/ui/button";
++import {
++  Dialog,
++  DialogContent,
++  DialogDescription,
++  DialogHeader,
++  DialogTitle,
++  DialogTrigger,
++} from "@/components/ui/dialog";
++import { Input } from "@/components/ui/input";
++import { Label } from "@/components/ui/label";
++import { useCompleteRequest } from "@/features/sparepart-requests/hooks/use-sparepart-requests";
++
++/**
++ * Story 12-4 completion dialog (FR-144): registers the material code (and optional
++ * image object key / est-price id) for a PENDING_COMPLETION request. The button
++ * visibility is driven by the backend-provided allowedActions; this dialog only
++ * composes the request. Non-native shadcn controls only.
++ */
++export function CompleteDialog({ requestId }: { requestId: string }) {
++  const [open, setOpen] = useState(false);
++  const [materialCode, setMaterialCode] = useState("");
++  const [imageObjectKey, setImageObjectKey] = useState("");
++  const complete = useCompleteRequest();
++
++  const handleSubmit = () => {
++    if (!materialCode.trim()) return;
++    complete.mutate(
++      {
++        id: requestId,
++        data: {
++          materialCode: materialCode.trim(),
++          imageObjectKey: imageObjectKey.trim() ? imageObjectKey.trim() : null,
++        },
++      },
++      {
++        onSuccess: () => {
++          setOpen(false);
++          setMaterialCode("");
++          setImageObjectKey("");
++        },
++      },
++    );
++  };
++
++  return (
++    <Dialog open={open} onOpenChange={setOpen}>
++      <DialogTrigger asChild>
++        <Button variant="outline" size="sm">
++          Complete
++        </Button>
++      </DialogTrigger>
++      <DialogContent>
++        <DialogHeader>
++          <DialogTitle>Complete new part</DialogTitle>
++          <DialogDescription>
++            Register the material code for this new part. The request moves to Acknowledged once complete.
++          </DialogDescription>
++        </DialogHeader>
++        <div className="space-y-4">
++          <div className="space-y-2">
++            <Label htmlFor="materialCode">Material code</Label>
++            <Input
++              id="materialCode"
++              placeholder="e.g. MC-0001"
++              value={materialCode}
++              onChange={(e) => setMaterialCode(e.target.value)}
++              maxLength={64}
++            />
++          </div>
++          <div className="space-y-2">
++            <Label htmlFor="imageObjectKey">Image object key (optional)</Label>
++            <Input
++              id="imageObjectKey"
++              placeholder="e.g. spareparts/abc/image.jpg"
++              value={imageObjectKey}
++              onChange={(e) => setImageObjectKey(e.target.value)}
++              maxLength={255}
++            />
++          </div>
++          <Button onClick={handleSubmit} disabled={complete.isPending || !materialCode.trim()}>
++            {complete.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
++            Complete request
++          </Button>
++        </div>
++      </DialogContent>
++    </Dialog>
++  );
++}
+diff --git a/syncro/apps/web/src/features/sparepart-requests/components/sparepart-requests-list.tsx b/syncro/apps/web/src/features/sparepart-requests/components/sparepart-requests-list.tsx
+index 20886ef..00d89d9 100644
+--- a/syncro/apps/web/src/features/sparepart-requests/components/sparepart-requests-list.tsx
++++ b/syncro/apps/web/src/features/sparepart-requests/components/sparepart-requests-list.tsx
+@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
+ import { Skeleton } from "@/components/ui/skeleton";
+ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+ import { ApproveDialog } from "@/features/sparepart-requests/components/approve-dialog";
++import { CompleteDialog } from "@/features/sparepart-requests/components/complete-dialog";
+ import { useRecordMre, useTransitionRequest } from "@/features/sparepart-requests/hooks/use-sparepart-requests";
+ import type { SparepartRequestStatus } from "@/features/sparepart-requests/types";
+ import { syncroFetch } from "@/lib/api/orval-mutator";
+@@ -275,6 +276,7 @@ export function SparepartRequestsPageContent() {
+                           </Button>
+                         ))}
+                         {request.allowedActions.includes("approve") ? <ApproveDialog requestId={request.id} /> : null}
++                        {request.allowedActions.includes("complete") ? <CompleteDialog requestId={request.id} /> : null}
+                         {request.status === "PURCHASE_REQUESTED" ? <MreDialog requestId={request.id} /> : null}
+                       </div>
+                     </TableCell>
+diff --git a/syncro/apps/web/src/features/sparepart-requests/hooks/use-sparepart-requests.ts b/syncro/apps/web/src/features/sparepart-requests/hooks/use-sparepart-requests.ts
+index 91e10ae..cbe1429 100644
+--- a/syncro/apps/web/src/features/sparepart-requests/hooks/use-sparepart-requests.ts
++++ b/syncro/apps/web/src/features/sparepart-requests/hooks/use-sparepart-requests.ts
+@@ -5,6 +5,7 @@ import { toast } from "sonner";
+ 
+ import type {
+   ApproveRequest,
++  CompleteRequest,
+   CreateSparepartRequestRequest,
+   MreRequest,
+   SparepartRequestView,
+@@ -114,3 +115,31 @@ export function useRecordMre() {
+     },
+   });
+ }
++
++/** Completes a new-item request (story 12-4, FR-144). */
++export function useCompleteRequest() {
++  const queryClient = useQueryClient();
++  return useMutation({
++    mutationFn: async ({ id, data }: { id: string; data: CompleteRequest }) => {
++      const response = await syncroFetch<{ data: SparepartRequestView }>(`${REQUESTS_KEY}/${id}/complete`, {
++        method: "POST",
++        body: JSON.stringify(data),
++      });
++      return response.data;
++    },
++    onSuccess: () => {
++      queryClient.invalidateQueries({ queryKey: [REQUESTS_KEY] });
++      toast.success("Request completed");
++    },
++    onError: (error: unknown) => {
++      const err = error as { code?: string };
++      if (err.code === "INVALID_STATE_TRANSITION") {
++        toast.error("This request is no longer pending completion.");
++      } else if (err.code === "DUPLICATE_MATERIAL_CODE") {
++        toast.error("That material code already belongs to another part.");
++      } else {
++        toast.error("Failed to complete request");
++      }
++    },
++  });
++}
+diff --git a/syncro/apps/web/src/features/sparepart-requests/types.ts b/syncro/apps/web/src/features/sparepart-requests/types.ts
+index 1db72a9..dc4c4e3 100644
+--- a/syncro/apps/web/src/features/sparepart-requests/types.ts
++++ b/syncro/apps/web/src/features/sparepart-requests/types.ts
+@@ -64,3 +64,10 @@ export interface MreRequest {
+ export interface ApproveRequest {
+   note?: string | null;
+ }
++
++/** Story 12-4: new-item completion request body (FR-144). */
++export interface CompleteRequest {
++  materialCode: string;
++  imageObjectKey?: string | null;
++  estPriceId?: string | null;
++}
+diff --git a/syncro/apps/web/src/features/sparepart-stock/components/sparepart-stock-page.tsx b/syncro/apps/web/src/features/sparepart-stock/components/sparepart-stock-page.tsx
+new file mode 100644
+index 0000000..9834af3
+--- /dev/null
++++ b/syncro/apps/web/src/features/sparepart-stock/components/sparepart-stock-page.tsx
+@@ -0,0 +1,245 @@
++"use client";
++
++import { useState } from "react";
++
++import { useQuery } from "@tanstack/react-query";
++import { Loader2, PackageSearchIcon, TriangleAlertIcon } from "lucide-react";
++
++import { Badge } from "@/components/ui/badge";
++import { Button } from "@/components/ui/button";
++import { Card, CardContent } from "@/components/ui/card";
++import { DataTablePagination } from "@/components/ui/data-table-pagination";
++import {
++  Dialog,
++  DialogContent,
++  DialogDescription,
++  DialogHeader,
++  DialogTitle,
++  DialogTrigger,
++} from "@/components/ui/dialog";
++import { Input } from "@/components/ui/input";
++import { Label } from "@/components/ui/label";
++import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
++import { Skeleton } from "@/components/ui/skeleton";
++import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
++import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
++import { useAdjustStock, useListStock, useReorderWarnings } from "@/features/sparepart-stock/hooks/use-sparepart-stock";
++import { syncroFetch } from "@/lib/api/orval-mutator";
++
++const PAGE_SIZE = 50;
++
++/** Minimal plant option for the plant filter. */
++interface PlantOption {
++  id: string;
++  code: string;
++  name: string;
++}
++
++/**
++ * Stock page (story 12-4, FR-146): TanStack Table server-side, columns material code/plant/
++ * on-hand/OP/OQ, reorder-warning badge, edit + adjust dialogs. Non-native shadcn controls.
++ */
++export function SparepartStockPageContent() {
++  const { scope, activePlantId } = usePlantScope();
++  const [selectedPlantId, setSelectedPlantId] = useState(activePlantId !== "all" ? activePlantId : "");
++
++  const { data: plantItems } = useQuery<PlantOption[]>({
++    queryKey: ["/api/v1/plants"],
++    queryFn: async () => {
++      const res = await syncroFetch<{ data: PlantOption[] }>("/api/v1/plants", { method: "GET" });
++      return res.data ?? [];
++    },
++    staleTime: 60_000,
++  });
++
++  const availablePlants = (plantItems ?? []).filter((p) => {
++    if (!scope?.availablePlants || scope.mode === "UNRESTRICTED") return true;
++    return scope.availablePlants.some((ap) => ap.id === p.id);
++  });
++
++  const effectivePlantId = selectedPlantId || availablePlants[0]?.id || "";
++
++  const { data: stockItems, isLoading, isError, refetch } = useListStock(effectivePlantId || null);
++  const { data: warnings } = useReorderWarnings(effectivePlantId || null);
++  const warningCodes = new Set(warnings?.map((w) => w.materialCode) ?? []);
++
++  const [page, setPage] = useState(0);
++  const items = stockItems ?? [];
++  const total = items.length;
++
++  return (
++    <div className="space-y-4">
++      <div className="flex items-end justify-between gap-4">
++        <div>
++          <h1 className="font-semibold text-xl">Stock</h1>
++          <p className="text-muted-foreground text-sm">
++            Per-plant stock levels, reorder points and quantity recommendations.
++          </p>
++        </div>
++        <div className="flex items-center gap-2">
++          <Select
++            value={effectivePlantId}
++            onValueChange={(v) => {
++              setSelectedPlantId(v);
++              setPage(0);
++            }}
++          >
++            <SelectTrigger className="w-48">
++              <SelectValue placeholder="Select plant" />
++            </SelectTrigger>
++            <SelectContent>
++              {availablePlants.map((plant) => (
++                <SelectItem key={plant.id} value={plant.id}>
++                  {plant.code} — {plant.name}
++                </SelectItem>
++              ))}
++            </SelectContent>
++          </Select>
++          <Button variant="outline" size="sm" onClick={() => void refetch()}>
++            Refresh
++          </Button>
++        </div>
++      </div>
++
++      {isLoading ? (
++        <div className="space-y-2">
++          <Skeleton className="h-10 w-full" />
++          <Skeleton className="h-10 w-full" />
++        </div>
++      ) : null}
++      {isError ? (
++        <Card>
++          <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
++            <p className="text-muted-foreground text-sm">Failed to load stock data.</p>
++            <Button variant="outline" size="sm" onClick={() => void refetch()}>
++              Retry
++            </Button>
++          </CardContent>
++        </Card>
++      ) : null}
++      {!isLoading && !isError && items.length === 0 ? (
++        <Card>
++          <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
++            <PackageSearchIcon className="size-10 text-muted-foreground" />
++            <p className="font-medium">No stock rows for this plant.</p>
++          </CardContent>
++        </Card>
++      ) : null}
++      {!isLoading && !isError && items.length > 0 ? (
++        <div className="rounded-lg border">
++          <Table>
++            <TableHeader>
++              <TableRow>
++                <TableHead>Material code</TableHead>
++                <TableHead>On hand</TableHead>
++                <TableHead>Order point</TableHead>
++                <TableHead>Order qty</TableHead>
++                <TableHead>Status</TableHead>
++                <TableHead>Actions</TableHead>
++              </TableRow>
++            </TableHeader>
++            <TableBody>
++              {items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((row) => (
++                <TableRow key={row.materialCode}>
++                  <TableCell className="font-mono text-xs">{row.materialCode}</TableCell>
++                  <TableCell className="text-xs">{Number(row.stockOnHand).toLocaleString()}</TableCell>
++                  <TableCell className="text-xs">{Number(row.orderPoint).toLocaleString()}</TableCell>
++                  <TableCell className="text-xs">{Number(row.orderQty).toLocaleString()}</TableCell>
++                  <TableCell>
++                    {warningCodes.has(row.materialCode) ? (
++                      <Badge variant="destructive" className="flex items-center gap-1">
++                        <TriangleAlertIcon className="size-3" />
++                        Reorder
++                      </Badge>
++                    ) : (
++                      <Badge variant="outline">OK</Badge>
++                    )}
++                  </TableCell>
++                  <TableCell>
++                    <AdjustStockDialog
++                      materialCode={row.materialCode}
++                      plantId={effectivePlantId}
++                      currentOnHand={row.stockOnHand}
++                    />
++                  </TableCell>
++                </TableRow>
++              ))}
++            </TableBody>
++          </Table>
++          <DataTablePagination
++            page={page}
++            size={PAGE_SIZE}
++            totalElements={total}
++            onPageChange={setPage}
++            onSizeChange={() => setPage(0)}
++            pageSizeOptions={[PAGE_SIZE]}
++          />
++        </div>
++      ) : null}
++    </div>
++  );
++}
++
++function AdjustStockDialog({
++  materialCode,
++  plantId,
++  currentOnHand,
++}: {
++  materialCode: string;
++  plantId: string;
++  currentOnHand: string;
++}) {
++  const [open, setOpen] = useState(false);
++  const [delta, setDelta] = useState("");
++  const adjust = useAdjustStock();
++
++  const handleSubmit = () => {
++    const num = Number(delta);
++    if (Number.isNaN(num) || num === 0) return;
++    adjust.mutate(
++      { materialCode, data: { plantId, delta: num } },
++      {
++        onSuccess: () => {
++          setOpen(false);
++          setDelta("");
++        },
++      },
++    );
++  };
++
++  return (
++    <Dialog open={open} onOpenChange={setOpen}>
++      <DialogTrigger asChild>
++        <Button variant="outline" size="sm">
++          Adjust
++        </Button>
++      </DialogTrigger>
++      <DialogContent>
++        <DialogHeader>
++          <DialogTitle>Adjust stock — {materialCode}</DialogTitle>
++          <DialogDescription>
++            Current on-hand: {Number(currentOnHand).toLocaleString()}. Use a positive delta to restock, negative to
++            withdraw.
++          </DialogDescription>
++        </DialogHeader>
++        <div className="space-y-4">
++          <div className="space-y-2">
++            <Label htmlFor="delta">Delta (signed adjustment)</Label>
++            <Input
++              id="delta"
++              type="number"
++              step="0.01"
++              placeholder="e.g. -5 or +10"
++              value={delta}
++              onChange={(e) => setDelta(e.target.value)}
++            />
++          </div>
++          <Button onClick={handleSubmit} disabled={adjust.isPending || !delta.trim()}>
++            {adjust.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
++            Confirm adjustment
++          </Button>
++        </div>
++      </DialogContent>
++    </Dialog>
++  );
++}
+diff --git a/syncro/apps/web/src/features/sparepart-stock/hooks/use-sparepart-stock.ts b/syncro/apps/web/src/features/sparepart-stock/hooks/use-sparepart-stock.ts
+new file mode 100644
+index 0000000..5474c53
+--- /dev/null
++++ b/syncro/apps/web/src/features/sparepart-stock/hooks/use-sparepart-stock.ts
+@@ -0,0 +1,100 @@
++"use client";
++
++import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
++import { toast } from "sonner";
++
++import type {
++  AdjustSparepartStockRequest,
++  CreateSparepartStockRequest,
++  SparepartStockView,
++} from "@/features/sparepart-stock/types";
++import { syncroFetch } from "@/lib/api/orval-mutator";
++
++const STOCK_KEY = "/api/v1/sparepart-stock";
++
++/** Lists stock rows for a plant (story 12-4, FR-146). */
++export function useListStock(plantId: string | null) {
++  return useQuery<SparepartStockView[]>({
++    queryKey: [STOCK_KEY, plantId],
++    queryFn: async () => {
++      if (!plantId) return [];
++      const params = new URLSearchParams();
++      params.set("plantId", plantId);
++      const res = await syncroFetch<{ data: { items: SparepartStockView[] } }>(`${STOCK_KEY}?${params.toString()}`, {
++        method: "GET",
++      });
++      return res.data?.items ?? [];
++    },
++    enabled: !!plantId,
++    staleTime: 30_000,
++  });
++}
++
++/** Creates (or upserts) a stock row (story 12-4, FR-146). */
++export function useCreateStock() {
++  const queryClient = useQueryClient();
++  return useMutation({
++    mutationFn: async (data: CreateSparepartStockRequest) => {
++      const response = await syncroFetch<{ data: SparepartStockView }>(STOCK_KEY, {
++        method: "POST",
++        body: JSON.stringify(data),
++      });
++      return response.data;
++    },
++    onSuccess: () => {
++      queryClient.invalidateQueries({ queryKey: [STOCK_KEY] });
++      toast.success("Stock row created");
++    },
++    onError: () => {
++      toast.error("Failed to create stock row");
++    },
++  });
++}
++
++/** Adjusts stock with a signed delta (story 12-4, FR-146). */
++export function useAdjustStock() {
++  const queryClient = useQueryClient();
++  return useMutation({
++    mutationFn: async ({ materialCode, data }: { materialCode: string; data: AdjustSparepartStockRequest }) => {
++      const response = await syncroFetch<{ data: SparepartStockView }>(
++        `${STOCK_KEY}/${encodeURIComponent(materialCode)}/adjust`,
++        {
++          method: "POST",
++          body: JSON.stringify(data),
++        },
++      );
++      return response.data;
++    },
++    onSuccess: () => {
++      queryClient.invalidateQueries({ queryKey: [STOCK_KEY] });
++      toast.success("Stock adjusted");
++    },
++    onError: (error: unknown) => {
++      const err = error as { code?: string };
++      if (err.code === "NEGATIVE_STOCK_REJECTED") {
++        toast.error("Stock cannot go negative.");
++      } else {
++        toast.error("Failed to adjust stock");
++      }
++    },
++  });
++}
++
++/** Fetches reorder warnings for a plant (story 12-4, FR-146). */
++export function useReorderWarnings(plantId: string | null) {
++  return useQuery<SparepartStockView[]>({
++    queryKey: [STOCK_KEY, "reorder-warnings", plantId],
++    queryFn: async () => {
++      if (!plantId) return [];
++      const params = new URLSearchParams();
++      params.set("plantId", plantId);
++      const res = await syncroFetch<{ data: { items: SparepartStockView[] } }>(
++        `${STOCK_KEY}/reorder-warnings?${params.toString()}`,
++        { method: "GET" },
++      );
++      return res.data?.items ?? [];
++    },
++    enabled: !!plantId,
++    staleTime: 30_000,
++  });
++}
+diff --git a/syncro/apps/web/src/features/sparepart-stock/types.ts b/syncro/apps/web/src/features/sparepart-stock/types.ts
+new file mode 100644
+index 0000000..f9b64a4
+--- /dev/null
++++ b/syncro/apps/web/src/features/sparepart-stock/types.ts
+@@ -0,0 +1,41 @@
++/** Sparepart stock contract types (story 12-4, FR-146). */
++
++export interface SparepartStockView {
++  materialCode: string;
++  plantId: string;
++  stockOnHand: string;
++  orderPoint: string;
++  orderQty: string;
++  version: number;
++  createdAt: string;
++  updatedAt: string;
++  reorderWarning: boolean;
++}
++
++export interface SparepartStockListView {
++  items: SparepartStockView[];
++}
++
++/** Story 12-4: create (upsert) a stock row. */
++export interface CreateSparepartStockRequest {
++  materialCode: string;
++  plantId: string;
++  stockOnHand: number;
++  orderPoint: number;
++  orderQty: number;
++}
++
++/** Story 12-4: partial overwrite with optimistic lock (at least one value field required). */
++export interface UpdateSparepartStockRequest {
++  plantId: string;
++  version: number;
++  stockOnHand?: number | null;
++  orderPoint?: number | null;
++  orderQty?: number | null;
++}
++
++/** Story 12-4: signed delta adjustment. */
++export interface AdjustSparepartStockRequest {
++  plantId: string;
++  delta: number;
++}
+diff --git a/syncro/apps/web/src/navigation/sidebar/sidebar-items.ts b/syncro/apps/web/src/navigation/sidebar/sidebar-items.ts
+index ccc5d10..69504d0 100644
+--- a/syncro/apps/web/src/navigation/sidebar/sidebar-items.ts
++++ b/syncro/apps/web/src/navigation/sidebar/sidebar-items.ts
+@@ -103,6 +103,11 @@ export const sidebarItems: NavGroup[] = [
+         url: "/dashboard/sparepart-requests",
+         icon: Package,
+       },
++      {
++        title: "Stock",
++        url: "/dashboard/stock",
++        icon: Package,
++      },
+     ],
+   },
+   {
+diff --git a/syncro/authz/policy/authz.rego b/syncro/authz/policy/authz.rego
+index 0006457..7f6b92a 100644
+--- a/syncro/authz/policy/authz.rego
++++ b/syncro/authz/policy/authz.rego
+@@ -105,6 +105,21 @@ sparepart_request_approval_paths := {
+   "/api/v1/sparepart-requests/*/approve",
+ }
+ 
++# Sparepart request completion (story 12-4, FR-144): coarse three-role allow set
++# (INVENTORY_MAINTENANCE, STOREKEEPER; SUPER_ADMIN via the generic rule). Scope and
++# state checks stay service-side (rego cannot see the body or the request state).
++sparepart_request_completion_paths := {
++  "/api/v1/sparepart-requests/*/complete",
++}
++
++# Sparepart stock (story 12-4, FR-146): mutations for INVENTORY_MAINTENANCE/STOREKEEPER
++# (SUPER_ADMIN via the generic rule). Reads (GET) flow through generic read_allowed.
++sparepart_stock_paths := {
++  "/api/v1/sparepart-stock",
++  "/api/v1/sparepart-stock/*",
++  "/api/v1/sparepart-stock/*/adjust",
++}
++
+ workorder_assign_paths := {
+   "/api/v1/workorders/*/assign",
+ }
+@@ -376,6 +391,33 @@ mutation_allowed if {
+   path_matches(sparepart_request_approval_paths)
+ }
+ 
++# Sparepart request completion (story 12-4): INVENTORY_MAINTENANCE/STOREKEEPER
++# (SUPER_ADMIN via the generic rule).
++mutation_allowed if {
++  input.subject.roles[_] == "INVENTORY_MAINTENANCE"
++  is_mutation
++  path_matches(sparepart_request_completion_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "STOREKEEPER"
++  is_mutation
++  path_matches(sparepart_request_completion_paths)
++}
++
++# Sparepart stock mutations (story 12-4, FR-146): INVENTORY_MAINTENANCE/STOREKEEPER.
++mutation_allowed if {
++  input.subject.roles[_] == "INVENTORY_MAINTENANCE"
++  is_mutation
++  path_matches(sparepart_stock_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "STOREKEEPER"
++  is_mutation
++  path_matches(sparepart_stock_paths)
++}
++
+ # Assign: leadership roles only (STAFF_MAINTENANCE and PRODUCTION_LEADER excluded).
+ mutation_allowed if {
+   input.subject.roles[_] == "MANAGER_MAINTENANCE"
+diff --git a/syncro/authz/policy/authz_test.rego b/syncro/authz/policy/authz_test.rego
+index 468944d..451594c 100644
+--- a/syncro/authz/policy/authz_test.rego
++++ b/syncro/authz/policy/authz_test.rego
+@@ -742,6 +742,83 @@ test_anonymous_sparepart_request_approve_denied if {
+   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/approve"}
+ }
+ 
++# -- Sparepart request completion (story 12-4, FR-144): inventory/stores + SUPER_ADMIN;
++#    leaders/technicians/staff/auditor denied ---------------------------------------
++
++test_inventory_sparepart_request_complete_allowed if {
++  authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/complete"}
++}
++
++test_storekeeper_sparepart_request_complete_allowed if {
++  authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/complete"}
++}
++
++test_super_admin_sparepart_request_complete_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/complete"}
++}
++
++test_technician_sparepart_request_complete_denied if {
++  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/complete"}
++}
++
++test_staff_sparepart_request_complete_denied if {
++  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/complete"}
++}
++
++test_section_leader_sparepart_request_complete_denied if {
++  not authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/complete"}
++}
++
++test_auditor_sparepart_request_complete_denied if {
++  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/complete"}
++}
++
++test_anonymous_sparepart_request_complete_denied if {
++  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/complete"}
++}
++
++# -- Sparepart stock (story 12-4, FR-146): inventory/stores mutations; reads any-auth ----
++
++test_inventory_sparepart_stock_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/sparepart-stock"}
++}
++
++test_storekeeper_sparepart_stock_update_allowed if {
++  authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "PUT /api/v1/sparepart-stock/MC-0001"}
++}
++
++test_inventory_sparepart_stock_adjust_allowed if {
++  authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/sparepart-stock/MC-0001/adjust"}
++}
++
++test_super_admin_sparepart_stock_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/sparepart-stock"}
++}
++
++test_technician_sparepart_stock_mutation_denied if {
++  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/sparepart-stock"}
++}
++
++test_manager_sparepart_stock_mutation_denied if {
++  not authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/sparepart-stock"}
++}
++
++test_section_leader_sparepart_stock_mutation_denied if {
++  not authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/sparepart-stock/MC-0001/adjust"}
++}
++
++test_auditor_sparepart_stock_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/sparepart-stock?plantId=7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_auditor_sparepart_stock_reorder_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/sparepart-stock/reorder-warnings?plantId=7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_anonymous_sparepart_stock_denied if {
++  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/sparepart-stock"}
++}
++
+ # -- Org maintenance (spec-org-maintenance-model): departments, section leader,
+ #    user master — MANAGER_MAINTENANCE + SUPER_ADMIN mutate; others denied -------
+ 

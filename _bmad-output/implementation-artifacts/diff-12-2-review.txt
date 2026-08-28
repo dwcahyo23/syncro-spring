@@ -1,0 +1,1950 @@
+diff --git a/syncro/.env.example b/syncro/.env.example
+index 2feb473..539b3fa 100644
+--- a/syncro/.env.example
++++ b/syncro/.env.example
+@@ -75,7 +75,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+ 
+ # Authz coarse gate (9.5 rolls out enforcement on the org/maintenance/sync surface;
+ # health/actuator stay public and are deliberately excluded)
+-SYNCRO_AUTHZ_ENFORCED_PATHS=/api/v1/plants/**,/api/v1/machine-groups/**,/api/v1/sections/**,/api/v1/teams/**,/api/v1/machine-responsibilities/**,/api/v1/machines/**,/api/v1/machine-sparepart-installations/**,/api/v1/spareparts/**,/api/v1/sparepart-taxonomies/**,/api/v1/alerts/**,/api/v1/audit-log/**,/api/v1/setup-completeness/**,/api/v1/telemetry/**,/api/v1/notification/templates/**,/api/v1/notification/worker/**,/api/v1/work-order-categories/**,/api/v1/workorders/**,/api/v1/workorders/*/transition,/api/v1/workorders/*/sessions,/api/v1/workorders/*/sessions/stop,/api/v1/workorders/*/attachments,/api/v1/workorders/*/attachments/*,/api/v1/workorders/*/report,/api/v1/workorders/*/report/cpk,/api/v1/workorders/*/todos,/api/v1/workorders/*/todos/*,/api/v1/workorders/*/todos/*/assign,/api/v1/workorders/*/todos/*/complete,/api/v1/workorders/*/todos/*/reorder,/api/v1/workorders/*/ratings,/api/v1/workorders/*/ratings/technician,/api/v1/workorders/*/ratings/workorder,/api/v1/rating-dimensions,/api/v1/rating-dimensions/*,/api/v1/preventive-programs,/api/v1/preventive-programs/*,/api/v1/preventive-programs/*/generate,/api/v1/preventive-schedules,/api/v1/preventive-schedules/*/checklist,/api/v1/preventive-schedules/*/evidence,/api/v1/preventive-schedules/*/evidence/*,/api/v1/preventive-schedules/*/approve,/api/v1/preventive-schedules/*/skip,/api/v1/sparepart-requests,/api/v1/departments,/api/v1/departments/*,/api/v1/departments/*/members,/api/v1/sections/*/leader,/api/v1/auth/users/*
++SYNCRO_AUTHZ_ENFORCED_PATHS=/api/v1/plants/**,/api/v1/machine-groups/**,/api/v1/sections/**,/api/v1/teams/**,/api/v1/machine-responsibilities/**,/api/v1/machines/**,/api/v1/machine-sparepart-installations/**,/api/v1/spareparts/**,/api/v1/sparepart-taxonomies/**,/api/v1/alerts/**,/api/v1/audit-log/**,/api/v1/setup-completeness/**,/api/v1/telemetry/**,/api/v1/notification/templates/**,/api/v1/notification/worker/**,/api/v1/work-order-categories/**,/api/v1/workorders/**,/api/v1/workorders/*/transition,/api/v1/workorders/*/sessions,/api/v1/workorders/*/sessions/stop,/api/v1/workorders/*/attachments,/api/v1/workorders/*/attachments/*,/api/v1/workorders/*/report,/api/v1/workorders/*/report/cpk,/api/v1/workorders/*/todos,/api/v1/workorders/*/todos/*,/api/v1/workorders/*/todos/*/assign,/api/v1/workorders/*/todos/*/complete,/api/v1/workorders/*/todos/*/reorder,/api/v1/workorders/*/ratings,/api/v1/workorders/*/ratings/technician,/api/v1/workorders/*/ratings/workorder,/api/v1/rating-dimensions,/api/v1/rating-dimensions/*,/api/v1/preventive-programs,/api/v1/preventive-programs/*,/api/v1/preventive-programs/*/generate,/api/v1/preventive-schedules,/api/v1/preventive-schedules/*/checklist,/api/v1/preventive-schedules/*/evidence,/api/v1/preventive-schedules/*/evidence/*,/api/v1/preventive-schedules/*/approve,/api/v1/preventive-schedules/*/skip,/api/v1/sparepart-requests,/api/v1/sparepart-requests/*/transition,/api/v1/sparepart-requests/*/mre,/api/v1/departments,/api/v1/departments/*,/api/v1/departments/*/members,/api/v1/sections/*/leader,/api/v1/auth/users/*
+ SYNCRO_AUTHZ_DEGRADED_ALLOWLIST=/api/v1/health,/actuator/**
+ 
+ # Authz decision-log retention (days) for the authz_decisions purge job
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestController.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestController.java
+index 487dc67..96bf43e 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestController.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestController.java
+@@ -2,21 +2,27 @@ package com.syncro.sparepart.request.api;
+ 
+ import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
+ import com.syncro.sparepart.request.api.SparepartRequestDtos.CreateSparepartRequestRequest;
++import com.syncro.sparepart.request.api.SparepartRequestDtos.MreRequest;
+ import com.syncro.sparepart.request.api.SparepartRequestDtos.SparepartRequestListView;
+ import com.syncro.sparepart.request.api.SparepartRequestDtos.SparepartRequestView;
++import com.syncro.sparepart.request.api.SparepartRequestDtos.TransitionRequest;
+ import com.syncro.sparepart.request.application.SparepartRequestService;
+ import com.syncro.sparepart.request.application.SparepartRequestService.CreateRequestCommand;
++import com.syncro.sparepart.request.application.SparepartRequestService.MreCommand;
++import com.syncro.sparepart.request.application.SparepartRequestService.TransitionCommand;
+ import io.swagger.v3.oas.annotations.Operation;
+ import io.swagger.v3.oas.annotations.media.Content;
+ import io.swagger.v3.oas.annotations.media.Schema;
+ import io.swagger.v3.oas.annotations.responses.ApiResponse;
+ import io.swagger.v3.oas.annotations.responses.ApiResponses;
+ import jakarta.validation.Valid;
++import java.util.UUID;
+ import org.springframework.http.HttpStatus;
+ import org.springframework.http.ResponseEntity;
+ import org.springframework.security.core.annotation.AuthenticationPrincipal;
+ import org.springframework.validation.annotation.Validated;
+ import org.springframework.web.bind.annotation.GetMapping;
++import org.springframework.web.bind.annotation.PathVariable;
+ import org.springframework.web.bind.annotation.PostMapping;
+ import org.springframework.web.bind.annotation.RequestBody;
+ import org.springframework.web.bind.annotation.RequestMapping;
+@@ -69,6 +75,40 @@ public class SparepartRequestController {
+         .body(toView(created));
+   }
+ 
++  @Operation(operationId = "transitionSparepartRequest", summary = "Transition a sparepart request (FR-141)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Request transitioned",
++          content = @Content(schema = @Schema(implementation = SparepartRequestView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Request not found"),
++      @ApiResponse(responseCode = "409", description = "Invalid state transition")
++  })
++  @PostMapping("/{id}/transition")
++  public SparepartRequestView transition(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id, @Valid @RequestBody TransitionRequest request) {
++    var command = new TransitionCommand(request.toStatus(), request.note());
++    return toView(service.transition(user, id, command));
++  }
++
++  @Operation(operationId = "recordSparepartRequestMre", summary = "Record a manual MRE code (FR-145)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "MRE code recorded",
++          content = @Content(schema = @Schema(implementation = SparepartRequestView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Request not found"),
++      @ApiResponse(responseCode = "409", description = "Invalid state transition")
++  })
++  @PostMapping("/{id}/mre")
++  public SparepartRequestView recordMre(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id, @Valid @RequestBody MreRequest request) {
++    var command = new MreCommand(request.mreCode(), request.note());
++    return toView(service.recordMre(user, id, command));
++  }
++
+   private static SparepartRequestView toView(com.syncro.sparepart.request.domain.SparepartRequest r) {
+     return new SparepartRequestView(r.id(), r.requestType(), r.workOrderId(), r.machineId(), r.sparepartId(),
+         r.materialCode(), r.quantity(), r.estPriceId(), r.estUnitPrice(), r.purchaseReferenceUrl(), r.status(),
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestDtos.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestDtos.java
+index f113ec8..fa82992 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestDtos.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestDtos.java
+@@ -5,6 +5,7 @@ import com.syncro.sparepart.request.domain.SparepartRequestType;
+ import jakarta.validation.constraints.Digits;
+ import jakarta.validation.constraints.Max;
+ import jakarta.validation.constraints.Min;
++import jakarta.validation.constraints.NotBlank;
+ import jakarta.validation.constraints.NotNull;
+ import jakarta.validation.constraints.Size;
+ import java.math.BigDecimal;
+@@ -36,6 +37,18 @@ public final class SparepartRequestDtos {
+       String notes, Instant createdAt, Instant updatedAt) {
+   }
+ 
++  /** Story 12-2 status transition request body (FR-141). */
++  public record TransitionRequest(
++      @NotNull SparepartRequestStatus toStatus,
++      @Size(max = 500) String note) {
++  }
++
++  /** Story 12-2 manual MRE code request body (FR-145). */
++  public record MreRequest(
++      @NotBlank @Size(max = 64) String mreCode,
++      @Size(max = 500) String note) {
++  }
++
+   public record SparepartRequestListView(List<SparepartRequestView> items, long total, int page, int size) {
+   }
+ 
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestExceptionHandler.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestExceptionHandler.java
+index 838b201..1a9d6b9 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestExceptionHandler.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/api/SparepartRequestExceptionHandler.java
+@@ -4,9 +4,11 @@ import com.syncro.sparepart.request.api.SparepartRequestDtos.ErrorResponse;
+ import com.syncro.sparepart.request.application.SparepartRequestService.MachineNotFoundException;
+ import com.syncro.sparepart.request.application.SparepartRequestService.PriceEntryNotFoundException;
+ import com.syncro.sparepart.request.application.SparepartRequestService.RequestForbiddenException;
++import com.syncro.sparepart.request.application.SparepartRequestService.RequestNotFoundException;
+ import com.syncro.sparepart.request.application.SparepartRequestService.RequestValidationException;
+ import com.syncro.sparepart.request.application.SparepartRequestService.SparepartNotFoundException;
+ import com.syncro.sparepart.request.application.SparepartRequestService.WorkOrderNotFoundException;
++import com.syncro.sparepart.request.application.SparepartRequestService.InvalidRequestStateTransitionException;
+ import java.time.Clock;
+ import java.time.Instant;
+ import java.util.LinkedHashMap;
+@@ -86,6 +88,19 @@ public class SparepartRequestExceptionHandler {
+     return error(HttpStatus.NOT_FOUND, "WORKORDER_NOT_FOUND", "Work order was not found.", Map.of());
+   }
+ 
++  /** Story 12-2: invalid or terminal state transition → 409 CONFLICT (mirrors WorkOrderExceptionHandler). */
++  @ExceptionHandler(InvalidRequestStateTransitionException.class)
++  ResponseEntity<ErrorResponse> invalidStateTransition() {
++    return error(HttpStatus.CONFLICT, "INVALID_STATE_TRANSITION",
++        "Request is not in a state that allows this transition.", Map.of());
++  }
++
++  /** Story 12-2: unknown request id → 404 (mirrors WorkOrderExceptionHandler codes). */
++  @ExceptionHandler(RequestNotFoundException.class)
++  ResponseEntity<ErrorResponse> requestNotFound() {
++    return error(HttpStatus.NOT_FOUND, "REQUEST_NOT_FOUND", "Sparepart request was not found.", Map.of());
++  }
++
+   @ExceptionHandler(MachineNotFoundException.class)
+   ResponseEntity<ErrorResponse> machineNotFound() {
+     return error(HttpStatus.NOT_FOUND, "MACHINE_NOT_FOUND", "Machine was not found.", Map.of());
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestMapper.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestMapper.java
+index df86e8e..c256ef7 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestMapper.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestMapper.java
+@@ -2,6 +2,7 @@ package com.syncro.sparepart.request.application;
+ 
+ import com.syncro.sparepart.request.domain.SparepartRequest;
+ import com.syncro.sparepart.request.infrastructure.db.SparepartRequestEntity;
++import com.syncro.sparepart.request.infrastructure.db.SparepartRequestTimelineEntity;
+ 
+ /** Maps persisted sparepart-request entities to their domain values. */
+ public final class SparepartRequestMapper {
+@@ -15,4 +16,25 @@ public final class SparepartRequestMapper {
+         entity.getRequestedBy(), entity.getRequestedAt(), entity.getNotes(), entity.getCreatedAt(),
+         entity.getUpdatedAt());
+   }
++
++  /** Maps a timeline entity to a view record (story 12-2, FR-141). */
++  public static TimelineEventView toTimelineView(SparepartRequestTimelineEntity entity) {
++    return new TimelineEventView(entity.getId(), entity.getRequestId(), entity.getFromStatus(),
++        entity.getToStatus(), entity.getActor(), entity.getAction(), entity.getMreCode(), entity.getNote(),
++        entity.getTraceId(), entity.getCreatedAt());
++  }
++
++  /** Timeline event view record (story 12-2). */
++  public record TimelineEventView(
++      java.util.UUID id,
++      java.util.UUID requestId,
++      com.syncro.sparepart.request.domain.SparepartRequestStatus fromStatus,
++      com.syncro.sparepart.request.domain.SparepartRequestStatus toStatus,
++      java.util.UUID actor,
++      String action,
++      String mreCode,
++      String note,
++      String traceId,
++      java.time.Instant createdAt) {
++  }
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestService.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestService.java
+index cd5fc30..be565f3 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestService.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestService.java
+@@ -6,8 +6,10 @@ import com.syncro.audit.domain.AuditAction;
+ import com.syncro.audit.domain.AuditEntityType;
+ import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
+ import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.authz.application.PolicyDecisionPoint;
+ import com.syncro.machine.infrastructure.MachineEntity;
+ import com.syncro.machine.infrastructure.MachineRepository;
++import com.syncro.maintenance.application.WorkOrderService;
+ import com.syncro.maintenance.infrastructure.db.WorkOrderEntity;
+ import com.syncro.maintenance.infrastructure.db.WorkOrderRepository;
+ import com.syncro.org.application.OperationalScope;
+@@ -17,10 +19,13 @@ import com.syncro.sparepart.infrastructure.SparepartPriceEntryRepository;
+ import com.syncro.sparepart.infrastructure.SparepartRepository;
+ import com.syncro.sparepart.infrastructure.SparepartTaxonomyEntity;
+ import com.syncro.sparepart.request.domain.SparepartRequest;
++import com.syncro.sparepart.request.domain.SparepartRequestStateMachine;
+ import com.syncro.sparepart.request.domain.SparepartRequestStatus;
+ import com.syncro.sparepart.request.domain.SparepartRequestType;
+ import com.syncro.sparepart.request.infrastructure.db.SparepartRequestEntity;
+ import com.syncro.sparepart.request.infrastructure.db.SparepartRequestRepository;
++import com.syncro.sparepart.request.infrastructure.db.SparepartRequestTimelineEntity;
++import com.syncro.sparepart.request.infrastructure.db.SparepartRequestTimelineRepository;
+ import java.math.BigDecimal;
+ import java.net.URI;
+ import java.net.URISyntaxException;
+@@ -36,11 +41,9 @@ import org.springframework.stereotype.Service;
+ import org.springframework.transaction.annotation.Transactional;
+ 
+ /**
+- * Sparepart request creation (FR-140/FR-143/FR-144, story 12-1). Enforces the type
+- * rules: SPAREPART binds a machine + sparepart (electric/mechanic taxonomy), CONSUMABLE
+- * has no machine binding, SERVICE_EXTERNAL requires a workorder. A request with an
+- * unknown/absent material code starts PENDING_COMPLETION for inventory to finish (12-4).
+- * The full state machine, ON_PROCUREMENT wiring, approval and stock are later stories.
++ * Sparepart request creation (FR-140/FR-143/FR-144, story 12-1) and state machine
++ * (FR-141/FR-145/AD-5, story 12-2). Enforces the type rules, scopes, role gates, valid
++ * transitions, MRE recording, and ON_PROCUREMENT recomputation via WorkOrderService.
+  */
+ @Service
+ public class SparepartRequestService {
+@@ -50,10 +53,16 @@ public class SparepartRequestService {
+   private static final int MAX_QUANTITY = Short.MAX_VALUE;
+   private static final int MAX_EST_PRICE_SCALE = 2;
+   private static final int MAX_EST_PRICE_PRECISION = 18;
++  private static final int MAX_NOTE_LENGTH = 500;
++  private static final int MAX_MRE_CODE_LENGTH = 64;
++  private static final String TIMELINE_ACTION_TRANSITION = "TRANSITION";
++  private static final String TIMELINE_ACTION_MRE = "MRE_RECORDED";
+   private static final Set<String> SPAREPART_CATEGORY_CODES = Set.of("ELECTRIC", "MECHANIC");
+ 
+   private final SparepartRequestRepository requests;
++  private final SparepartRequestTimelineRepository timelines;
+   private final WorkOrderRepository workOrders;
++  private final WorkOrderService workOrderService;
+   private final MachineRepository machines;
+   private final SparepartRepository spareparts;
+   private final SparepartPriceEntryRepository priceEntries;
+@@ -61,11 +70,15 @@ public class SparepartRequestService {
+   private final OperationalScopeService scopes;
+   private final Clock clock;
+ 
+-  public SparepartRequestService(SparepartRequestRepository requests, WorkOrderRepository workOrders,
+-      MachineRepository machines, SparepartRepository spareparts, SparepartPriceEntryRepository priceEntries,
++  public SparepartRequestService(SparepartRequestRepository requests,
++      SparepartRequestTimelineRepository timelines, WorkOrderRepository workOrders,
++      WorkOrderService workOrderService, MachineRepository machines,
++      SparepartRepository spareparts, SparepartPriceEntryRepository priceEntries,
+       AuditLogWriter auditLog, OperationalScopeService scopes, Clock clock) {
+     this.requests = requests;
++    this.timelines = timelines;
+     this.workOrders = workOrders;
++    this.workOrderService = workOrderService;
+     this.machines = machines;
+     this.spareparts = spareparts;
+     this.priceEntries = priceEntries;
+@@ -79,17 +92,20 @@ public class SparepartRequestService {
+     validatePageAndSize(page, size);
+     var scope = scopes.derive(user);
+     var unrestricted = scope.plantIds() == null;
++    var hasPlantScope = scope.plantIds() != null && !scope.plantIds().isEmpty();
+     var groupIds = new java.util.HashSet<UUID>();
+     groupIds.addAll(scope.machineGroupIds());
+     groupIds.addAll(scope.activeTeamIds());
+ 
+     var rows = requests.findScopedPage(
+         unrestricted,
++        hasPlantScope,
+         scope.plantIds() == null ? List.of() : scope.plantIds(),
+         groupIds,
+         PageRequest.of(page, size));
+     var total = requests.countScoped(
+         unrestricted,
++        hasPlantScope,
+         scope.plantIds() == null ? List.of() : scope.plantIds(),
+         groupIds);
+     var items = rows.stream().map(SparepartRequestMapper::toDomain).toList();
+@@ -131,6 +147,88 @@ public class SparepartRequestService {
+     return SparepartRequestMapper.toDomain(saved);
+   }
+ 
++  /**
++   * Request status transition (FR-141, story 12-2). Valid edges come from
++   * {@link SparepartRequestStateMachine}; the actor gate is authoritative (in-scope
++   * leader OR inventory/stores for ACK/PROCESSING/READY/PURCHASE_REQUESTED/PART_RECEIVED;
++   * workorder section leader or SUPER_ADMIN for PICKED_UP/CLOSED — requester may not
++   * close their own unless also a leader, SoD spirit AD-16). Writes a timeline row +
++   * audit, then recomputes the workorder's derived ON_PROCUREMENT state (AD-5).
++   */
++  @Transactional
++  public SparepartRequest transition(AuthenticatedUser user, UUID requestId, TransitionCommand command) {
++    var entity = requests.findByIdForUpdate(requestId).orElseThrow(RequestNotFoundException::new);
++    var fromStatus = entity.getStatus();
++    var toStatus = command.toStatus();
++    if (toStatus == null || !SparepartRequestStateMachine.can(fromStatus, toStatus)) {
++      throw new InvalidRequestStateTransitionException();
++    }
++    var machine = machineForRequest(entity);
++    requireTransitionAccess(user, entity, toStatus, machine);
++    var requesterId = entity.getRequestedBy();
++    var isRequester = requesterId != null && requesterId.equals(UUID.fromString(user.id()));
++    if (!isInScopeLeader(user, machine) && isRequester
++        && (toStatus == SparepartRequestStatus.PICKED_UP || toStatus == SparepartRequestStatus.CLOSED)) {
++      // SoD (AD-16 spirit): the requester may not pick up/close their own request
++      // unless they are also an in-scope leader (leaders pass the gate above).
++      throw new RequestForbiddenException();
++    }
++    var previous = requestValues(entity);
++    var now = Instant.now(clock);
++    entity.transitionTo(toStatus, now);
++    var saved = requests.saveAndFlush(entity);
++
++    var traceId = PolicyDecisionPoint.currentTraceId();
++    timelines.saveAndFlush(new SparepartRequestTimelineEntity(UUID.randomUUID(), saved.getId(), fromStatus,
++        toStatus, UUID.fromString(user.id()), TIMELINE_ACTION_TRANSITION, null,
++        normalizeNote(command.note()), traceId, now));
++
++    var newValue = requestValues(saved);
++    if (command.note() != null && !command.note().isBlank()) {
++      newValue.put("note", command.note().trim());
++    }
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.SPAREPART_REQUEST,
++        saved.getId(), entityLabel(saved), plantIdOf(machine), previous, newValue, null));
++
++    recomputeProcurement(entity);
++    return SparepartRequestMapper.toDomain(saved);
++  }
++
++  /**
++   * Manual MRE code recording (FR-145, story 12-2). Only valid in PURCHASE_REQUESTED;
++   * the code is trimmed (≤64 chars) and never auto-generated. Writes an MRE_RECORDED
++   * timeline row + audit. MRE does not change readiness, so no recompute is needed.
++   */
++  @Transactional
++  public SparepartRequest recordMre(AuthenticatedUser user, UUID requestId, MreCommand command) {
++    var mreCode = normalizeMreCode(command.mreCode());
++    if (mreCode == null || mreCode.length() > MAX_MRE_CODE_LENGTH) {
++      throw new RequestValidationException(Map.of("mreCode",
++          "MRE code must be between 1 and " + MAX_MRE_CODE_LENGTH + " characters."));
++    }
++    var entity = requests.findByIdForUpdate(requestId).orElseThrow(RequestNotFoundException::new);
++    if (entity.getStatus() != SparepartRequestStatus.PURCHASE_REQUESTED) {
++      throw new InvalidRequestStateTransitionException();
++    }
++    var machine = machineForRequest(entity);
++    requireInventoryAccess(user, machine);
++    var now = Instant.now(clock);
++
++    timelines.saveAndFlush(new SparepartRequestTimelineEntity(UUID.randomUUID(), entity.getId(),
++        entity.getStatus(), entity.getStatus(), UUID.fromString(user.id()), TIMELINE_ACTION_MRE,
++        mreCode, normalizeNote(command.note()), PolicyDecisionPoint.currentTraceId(), now));
++
++    var newValue = new LinkedHashMap<>(requestValues(entity));
++    newValue.put("mreCode", mreCode);
++    if (command.note() != null && !command.note().isBlank()) {
++      newValue.put("note", command.note().trim());
++    }
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.SPAREPART_REQUEST,
++        entity.getId(), entityLabel(entity), plantIdOf(machine),
++        requestValues(entity), newValue, null));
++    return SparepartRequestMapper.toDomain(entity);
++  }
++
+   // -------------------------------------------------------------------------
+   // Helpers
+   // -------------------------------------------------------------------------
+@@ -266,16 +364,29 @@ public class SparepartRequestService {
+     throw new RequestForbiddenException();
+   }
+ 
++  /**
++   * Leader scope. For a bound machine: SECTION_LEADER is group-in-scope only (FR-103
++   * parity); MAINTENANCE_LEADER/MANAGER_MAINTENANCE may act on group-in-scope OR plant
++   * scope; SUPER_ADMIN is unrestricted. A {@code null} machine (unbound CONSUMABLE
++   * request) has no target to scope against — any non-empty scope dimension suffices.
++   */
+   private boolean isInScopeLeader(AuthenticatedUser user, MachineEntity machine) {
+     switch (user.applicationRole()) {
+       case SUPER_ADMIN -> {
+         return true;
+       }
+       case SECTION_LEADER -> {
++        if (machine == null) {
++          var scope = scopes.derive(user);
++          return !scope.machineGroupIds().isEmpty() || !scope.activeTeamIds().isEmpty();
++        }
+         return groupInScope(scopes.derive(user), machine);
+       }
+       case MAINTENANCE_LEADER, MANAGER_MAINTENANCE -> {
+         var scope = scopes.derive(user);
++        if (machine == null) {
++          return scope.plantIds() != null && !scope.plantIds().isEmpty();
++        }
+         var plantInScope = scope.plantIds() != null && scope.plantIds().contains(machine.getPlant().getId());
+         return groupInScope(scope, machine) || plantInScope;
+       }
+@@ -285,6 +396,113 @@ public class SparepartRequestService {
+     }
+   }
+ 
++  /**
++   * Transition actor gate (FR-141, story 12-2). ACK/PROCESSING/READY/PURCHASE_REQUESTED/
++   * PART_RECEIVED are INVENTORY_MAINTENANCE/STOREKEEPER (or any in-scope leader as a
++   * fallback); PICKED_UP/CLOSED require the workorder's section leader in scope (or
++   * SUPER_ADMIN). The gate is authoritative — the rego only does role-level default-deny.
++   * A null machine (unbound CONSUMABLE) is allowed for inventory roles and in-scope leaders.
++   */
++  private void requireTransitionAccess(AuthenticatedUser user, SparepartRequestEntity entity,
++      SparepartRequestStatus toStatus, MachineEntity machine) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    if (isInventoryAction(toStatus)) {
++      if (user.applicationRole() == ApplicationRole.INVENTORY_MAINTENANCE
++          || user.applicationRole() == ApplicationRole.STOREKEEPER) {
++        return;
++      }
++      if (isInScopeLeader(user, machine)) {
++        return;
++      }
++      throw new RequestForbiddenException();
++    }
++    // PICKED_UP / CLOSED: the workorder's section leader in scope (or SUPER_ADMIN above).
++    if (machine == null || !isInScopeLeader(user, machine)) {
++      throw new RequestForbiddenException();
++    }
++  }
++
++  /** Inventory/stores-driven actions (FR-141): ACK/PROCESSING/READY/PURCHASE_REQUESTED/PART_RECEIVED. */
++  private static boolean isInventoryAction(SparepartRequestStatus toStatus) {
++    return toStatus == SparepartRequestStatus.ACKED
++        || toStatus == SparepartRequestStatus.PROCESSING
++        || toStatus == SparepartRequestStatus.READY
++        || toStatus == SparepartRequestStatus.PURCHASE_REQUESTED
++        || toStatus == SparepartRequestStatus.PART_RECEIVED;
++  }
++
++  /** MRE recording is inventory/stores-driven (FR-145). */
++  private void requireInventoryAccess(AuthenticatedUser user, MachineEntity machine) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    if (user.applicationRole() == ApplicationRole.INVENTORY_MAINTENANCE
++        || user.applicationRole() == ApplicationRole.STOREKEEPER) {
++      return;
++    }
++    if (isInScopeLeader(user, machine)) {
++      return;
++    }
++    throw new RequestForbiddenException();
++  }
++
++  /**
++   * AD-5: after a status-affecting request transition bound to a workorder, recompute
++   * the workorder's derived ON_PROCUREMENT state via the maintenance application service.
++   * {@code recomputeProcurementState} is idempotent and only applies to
++   * IN_PROGRESS/ON_PROCUREMENT workorders, so calling it unconditionally is safe; it is a
++   * no-op otherwise. MRE does not change readiness and never reaches this path.
++   */
++  private void recomputeProcurement(SparepartRequestEntity entity) {
++    if (entity.getWorkOrderId() != null) {
++      workOrderService.recomputeProcurementState(entity.getWorkOrderId());
++    }
++  }
++
++  /**
++   * Resolve the machine a request is scoped against for plant/group access checks: the
++   * request's own machine when bound, else the bound workorder's machine, else {@code null}
++   * (unbound CONSUMABLE — inventory roles may act, leaders need a non-empty plant scope).
++   */
++  private MachineEntity machineForRequest(SparepartRequestEntity entity) {
++    if (entity.getMachineId() != null) {
++      return machine(entity.getMachineId());
++    }
++    if (entity.getWorkOrderId() != null) {
++      var workOrder = workOrders.findById(entity.getWorkOrderId()).orElseThrow(RequestNotFoundException::new);
++      if (workOrder.getMachineId() != null) {
++        return machine(workOrder.getMachineId());
++      }
++    }
++    return null;
++  }
++
++  private UUID plantIdOf(MachineEntity machine) {
++    return machine != null ? machine.getPlant().getId() : null;
++  }
++
++  private static String normalizeNote(String note) {
++    if (note == null) {
++      return null;
++    }
++    var trimmed = note.trim();
++    if (trimmed.isEmpty() || trimmed.length() > MAX_NOTE_LENGTH) {
++      throw new RequestValidationException(Map.of("note",
++          "Note must be between 1 and " + MAX_NOTE_LENGTH + " characters."));
++    }
++    return trimmed;
++  }
++
++  private static String normalizeMreCode(String mreCode) {
++    if (mreCode == null) {
++      return null;
++    }
++    var trimmed = mreCode.trim();
++    return trimmed.isEmpty() ? null : trimmed;
++  }
++
+   private boolean isExecutor(AuthenticatedUser user, WorkOrderEntity workOrder) {
+     return workOrder.getAssignedTechnicianId() != null
+         && UUID.fromString(user.id()).equals(workOrder.getAssignedTechnicianId())
+@@ -438,9 +656,25 @@ public class SparepartRequestService {
+       String purchaseReferenceUrl, String notes) {
+   }
+ 
++  /** Story 12-2 status transition command (FR-141). */
++  public record TransitionCommand(SparepartRequestStatus toStatus, String note) {
++  }
++
++  /** Story 12-2 manual MRE code command (FR-145). */
++  public record MreCommand(String mreCode, String note) {
++  }
++
+   public static class RequestForbiddenException extends RuntimeException {
+   }
+ 
++  /** Story 12-2: invalid/terminal state transition or MRE in the wrong state → 409 (FR-141). */
++  public static class InvalidRequestStateTransitionException extends RuntimeException {
++  }
++
++  /** Story 12-2: unknown request id → 404 (mirrors WorkOrderExceptionHandler codes). */
++  public static class RequestNotFoundException extends RuntimeException {
++  }
++
+   public static class WorkOrderNotFoundException extends RuntimeException {
+   }
+ 
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/domain/SparepartRequestStatus.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/domain/SparepartRequestStatus.java
+index 9d1e3f8..e0a939a 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/domain/SparepartRequestStatus.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/domain/SparepartRequestStatus.java
+@@ -1,12 +1,19 @@
+ package com.syncro.sparepart.request.domain;
+ 
+ /**
+- * Sparepart request status (story 12-1). 12-1 only creates requests — REQUESTED for a
+- * known part, PENDING_COMPLETION for a new/unknown part awaiting inventory to finish
+- * (FR-144). The full state machine (ACKED/PROCESSING/READY/PURCHASE_REQUESTED/
+- * PART_RECEIVED/PICKED_UP/CLOSED) is owned by story 12-2.
++ * Full sparepart request status set (FR-141, story 12-2). The state machine edges are
++ * owned by {@link SparepartRequestStateMachine}: REQUESTED → ACKED → PROCESSING →
++ * [READY | PURCHASE_REQUESTED → PART_RECEIVED → READY] → PICKED_UP → CLOSED.
++ * PENDING_COMPLETION → ACKED is also allowed (new-item requests from 12-4).
+  */
+ public enum SparepartRequestStatus {
+   REQUESTED,
+-  PENDING_COMPLETION
++  PENDING_COMPLETION,
++  ACKED,
++  PROCESSING,
++  READY,
++  PURCHASE_REQUESTED,
++  PART_RECEIVED,
++  PICKED_UP,
++  CLOSED
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/SparepartRequestEntity.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/SparepartRequestEntity.java
+index d5c8ca7..3e1838b 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/SparepartRequestEntity.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/SparepartRequestEntity.java
+@@ -113,4 +113,13 @@ public class SparepartRequestEntity {
+   public String getNotes() { return notes; }
+   public Instant getCreatedAt() { return createdAt; }
+   public Instant getUpdatedAt() { return updatedAt; }
++
++  /**
++   * Applies a status transition (FR-141, story 12-2). Validity is owned by the
++   * state machine; this method mutates the row and bumps the timestamp.
++   */
++  public void transitionTo(SparepartRequestStatus status, Instant updatedAt) {
++    this.status = status;
++    this.updatedAt = updatedAt;
++  }
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/SparepartRequestRepository.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/SparepartRequestRepository.java
+index 1d43c0e..941bf5d 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/SparepartRequestRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/SparepartRequestRepository.java
+@@ -1,11 +1,13 @@
+ package com.syncro.sparepart.request.infrastructure.db;
+ 
++import jakarta.persistence.LockModeType;
+ import java.util.Collection;
+ import java.util.List;
+ import java.util.Optional;
+ import java.util.UUID;
+ import org.springframework.data.domain.Pageable;
+ import org.springframework.data.jpa.repository.JpaRepository;
++import org.springframework.data.jpa.repository.Lock;
+ import org.springframework.data.jpa.repository.Query;
+ import org.springframework.data.repository.query.Param;
+ 
+@@ -15,26 +17,50 @@ public interface SparepartRequestRepository extends JpaRepository<SparepartReque
+ 
+   Optional<SparepartRequestEntity> findById(UUID id);
+ 
++  /**
++   * A single request row locked for update (PESSIMISTIC_WRITE) — serializes concurrent
++   * transitions on the same request (story 12-2). Mirrors the workorder
++   * {@code findByIdForUpdate} pattern (AD-5).
++   */
++  @Lock(LockModeType.PESSIMISTIC_WRITE)
++  @Query("select r from SparepartRequestEntity r where r.id = :id")
++  Optional<SparepartRequestEntity> findByIdForUpdate(@Param("id") UUID id);
++
++  /**
++   * Readiness query for the real {@code SparepartRequestReadinessPort} (AD-5, story 12-2):
++   * whether the workorder has at least one live non-READY request — any non-terminal
++   * request whose status is not READY or CLOSED.
++   */
++  @Query("""
++      select count(r) > 0
++      from SparepartRequestEntity r
++      where r.workOrderId = :workOrderId
++        and r.status <> com.syncro.sparepart.request.domain.SparepartRequestStatus.READY
++        and r.status <> com.syncro.sparepart.request.domain.SparepartRequestStatus.CLOSED
++      """)
++  boolean hasLiveNonReadyRequest(@Param("workOrderId") String workOrderId);
++
+   /**
+    * Sparepart-request list read (story 12-1 list view): every request visible in the
+    * derived scope (plant OR machine-group), joined to the machine so the plant/group
+    * predicates work. Unbound CONSUMABLE requests (no machine, no workorder) carry no
+-   * scope and are visible only to unrestricted users (SUPER_ADMIN). Rows are ordered by
+-   * {@code requestedAt desc} for a stable page order. {@code unrestricted} (SUPER_ADMIN)
+-   * bypasses the scope filter.
++   * scope and are visible only to unrestricted users (SUPER_ADMIN) or users with an
++   * empty plant scope. Rows are ordered by {@code requestedAt desc} for a stable page
++   * order. {@code unrestricted} (SUPER_ADMIN) bypasses the scope filter.
+    */
+   @Query("""
+       select r
+       from SparepartRequestEntity r
+       left join MachineEntity m on m.id = r.machineId
+       where (:unrestricted = true
+-             or (m is null and r.machineId is null and :plantIds is empty)
++             or (m is null and r.machineId is null and :hasPlantScope = false)
+              or m.plant.id in :plantIds
+              or m.machineGroup.id in :groupIds)
+       order by r.requestedAt desc
+       """)
+   List<SparepartRequestEntity> findScopedPage(
+       @Param("unrestricted") boolean unrestricted,
++      @Param("hasPlantScope") boolean hasPlantScope,
+       @Param("plantIds") Collection<UUID> plantIds,
+       @Param("groupIds") Collection<UUID> groupIds,
+       Pageable pageable);
+@@ -48,12 +74,13 @@ public interface SparepartRequestRepository extends JpaRepository<SparepartReque
+       from SparepartRequestEntity r
+       left join MachineEntity m on m.id = r.machineId
+       where (:unrestricted = true
+-             or (m is null and r.machineId is null and :plantIds is empty)
++             or (m is null and r.machineId is null and :hasPlantScope = false)
+              or m.plant.id in :plantIds
+              or m.machineGroup.id in :groupIds)
+       """)
+   long countScoped(
+       @Param("unrestricted") boolean unrestricted,
++      @Param("hasPlantScope") boolean hasPlantScope,
+       @Param("plantIds") Collection<UUID> plantIds,
+       @Param("groupIds") Collection<UUID> groupIds);
+ }
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/db/SparepartRequestMigrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/db/SparepartRequestMigrationTest.java
+index 79c65d9..3713a6b 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/db/SparepartRequestMigrationTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/db/SparepartRequestMigrationTest.java
+@@ -48,8 +48,9 @@ class SparepartRequestMigrationTest extends AbstractPostgresIntegrationTest {
+   }
+ 
+   @Test
+-  @DisplayName("12.1-DB-003 P0 status CHECK rejects unknown values")
++  @DisplayName("12.1-DB-003 P0 status CHECK rejects unknown values (V57+V59)")
+   void statusCheck() {
++    // V57 rejects it; V59 also rejects it but with a different CHECK value set.
+     assertThatThrownBy(() -> jdbc.update("""
+         INSERT INTO sparepart_requests (id, request_type, quantity, status, requested_by, requested_at, created_at, updated_at)
+         VALUES (?, 'SPAREPART', 1, 'BOGUS', ?, ?, ?, ?)
+@@ -106,6 +107,84 @@ class SparepartRequestMigrationTest extends AbstractPostgresIntegrationTest {
+             "idx_sparepart_requests_machine");
+   }
+ 
++  // -------------------------------------------------------------------------
++  // Story 12-2 (V59): full status CHECK + timeline table
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("12.2-DB-001 P0 V59 status CHECK accepts the full FR-141 status set")
++  void v59FullStatusSet() {
++    for (var status : List.of("REQUESTED", "PENDING_COMPLETION", "ACKED", "PROCESSING", "READY",
++        "PURCHASE_REQUESTED", "PART_RECEIVED", "PICKED_UP", "CLOSED")) {
++      jdbc.update("""
++          INSERT INTO sparepart_requests (id, request_type, quantity, status, requested_by, requested_at, created_at, updated_at)
++          VALUES (?, 'SPAREPART', 1, ?, ?, ?, ?, ?)
++          """, UUID.randomUUID(), status, UUID.randomUUID(), TS, TS, TS);
++    }
++    assertThat(jdbc.queryForObject(
++        "SELECT count(*) FROM sparepart_requests WHERE status IN ('ACKED','PROCESSING','READY','PURCHASE_REQUESTED','PART_RECEIVED','PICKED_UP','CLOSED')",
++        Long.class)).isEqualTo(7L);
++  }
++
++  @Test
++  @DisplayName("12.2-DB-002 P0 V59 status CHECK still rejects unknown values")
++  void v59StatusRejectsUnknown() {
++    assertThatThrownBy(() -> jdbc.update("""
++        INSERT INTO sparepart_requests (id, request_type, quantity, status, requested_by, requested_at, created_at, updated_at)
++        VALUES (?, 'SPAREPART', 1, 'BOGUS', ?, ?, ?, ?)
++        """, UUID.randomUUID(), UUID.randomUUID(), TS, TS, TS))
++        .isInstanceOf(DataIntegrityViolationException.class);
++  }
++
++  @Test
++  @DisplayName("12.2-DB-003 P0 sparepart_request_timeline table exists with expected columns")
++  void timelineTableExists() {
++    assertThat(columnNames("sparepart_request_timeline"))
++        .contains("id", "request_id", "from_status", "to_status", "actor", "action", "mre_code", "note",
++            "trace_id", "created_at");
++  }
++
++  @Test
++  @DisplayName("12.2-DB-004 P0 timeline FK cascades on request delete")
++  void timelineCascade() {
++    var requestId = UUID.randomUUID();
++    jdbc.update("""
++        INSERT INTO sparepart_requests (id, request_type, quantity, status, requested_by, requested_at, created_at, updated_at)
++        VALUES (?, 'SPAREPART', 1, 'REQUESTED', ?, ?, ?, ?)
++        """, requestId, UUID.randomUUID(), TS, TS, TS);
++    jdbc.update("""
++        INSERT INTO sparepart_request_timeline (id, request_id, to_status, actor, action, created_at)
++        VALUES (?, ?, 'REQUESTED', ?, 'TRANSITION', ?)
++        """, UUID.randomUUID(), requestId, UUID.randomUUID(), TS);
++    jdbc.update("DELETE FROM sparepart_requests WHERE id = ?", requestId);
++    assertThat(jdbc.queryForObject(
++        "SELECT count(*) FROM sparepart_request_timeline WHERE request_id = ?", Long.class, requestId))
++        .isEqualTo(0L);
++  }
++
++  @Test
++  @DisplayName("12.2-DB-005 P0 timeline action CHECK rejects unknown values")
++  void timelineActionCheck() {
++    var requestId = UUID.randomUUID();
++    jdbc.update("""
++        INSERT INTO sparepart_requests (id, request_type, quantity, status, requested_by, requested_at, created_at, updated_at)
++        VALUES (?, 'SPAREPART', 1, 'REQUESTED', ?, ?, ?, ?)
++        """, requestId, UUID.randomUUID(), TS, TS, TS);
++    assertThatThrownBy(() -> jdbc.update("""
++        INSERT INTO sparepart_request_timeline (id, request_id, to_status, actor, action, created_at)
++        VALUES (?, ?, 'REQUESTED', ?, 'BOGUS', ?)
++        """, UUID.randomUUID(), requestId, UUID.randomUUID(), TS))
++        .isInstanceOf(DataIntegrityViolationException.class);
++  }
++
++  @Test
++  @DisplayName("12.2-DB-006 P0 timeline has expected index")
++  void timelineIndexesExist() {
++    assertThat(jdbc.queryForList("SELECT indexname FROM pg_indexes WHERE tablename = 'sparepart_request_timeline'"))
++        .extracting(row -> row.get("indexname"))
++        .contains("idx_sparepart_request_timeline_request");
++  }
++
+   private java.util.List<String> columnNames(String table) {
+     return jdbc.queryForList(
+         "SELECT column_name FROM information_schema.columns "
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/api/SparepartRequestControllerTest.java b/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/api/SparepartRequestControllerTest.java
+index 567ec35..b15fb3b 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/api/SparepartRequestControllerTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/api/SparepartRequestControllerTest.java
+@@ -17,9 +17,11 @@ import com.syncro.config.SecurityConfig;
+ import com.syncro.config.TimeConfig;
+ import com.syncro.sparepart.request.application.SparepartRequestService;
+ import com.syncro.sparepart.request.application.SparepartRequestService.CreateRequestCommand;
++import com.syncro.sparepart.request.application.SparepartRequestService.InvalidRequestStateTransitionException;
+ import com.syncro.sparepart.request.application.SparepartRequestService.MachineNotFoundException;
+ import com.syncro.sparepart.request.application.SparepartRequestService.PriceEntryNotFoundException;
+ import com.syncro.sparepart.request.application.SparepartRequestService.RequestForbiddenException;
++import com.syncro.sparepart.request.application.SparepartRequestService.RequestNotFoundException;
+ import com.syncro.sparepart.request.application.SparepartRequestService.RequestValidationException;
+ import com.syncro.sparepart.request.application.SparepartRequestService.SparepartNotFoundException;
+ import com.syncro.sparepart.request.application.SparepartRequestService.WorkOrderNotFoundException;
+@@ -179,9 +181,122 @@ class SparepartRequestControllerTest {
+         .andExpect(jsonPath("$.code").value("PRICE_ENTRY_NOT_FOUND"));
+   }
+ 
++  @Test
++  @DisplayName("12.2-API-001 P0 transition endpoint returns 200 view")
++  void transitionReturnsView() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    var id = UUID.randomUUID();
++    when(service.transition(eq(user), eq(id), any(SparepartRequestService.TransitionCommand.class)))
++        .thenReturn(requestDomain(SparepartRequestStatus.ACKED));
++
++    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/transition")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"toStatus\":\"ACKED\"}"))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.status").value("ACKED"));
++  }
++
++  @Test
++  @DisplayName("12.2-API-002 P0 invalid transition maps to 409 INVALID_STATE_TRANSITION")
++  void transitionInvalidEdge() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    var id = UUID.randomUUID();
++    doThrow(new InvalidRequestStateTransitionException())
++        .when(service).transition(eq(user), eq(id), any(SparepartRequestService.TransitionCommand.class));
++
++    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/transition")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"toStatus\":\"READY\"}"))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("INVALID_STATE_TRANSITION"));
++  }
++
++  @Test
++  @DisplayName("12.2-API-003 P0 unknown request maps to 404 REQUEST_NOT_FOUND")
++  void transitionNotFound() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    var id = UUID.randomUUID();
++    doThrow(new RequestNotFoundException())
++        .when(service).transition(eq(user), eq(id), any(SparepartRequestService.TransitionCommand.class));
++
++    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/transition")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"toStatus\":\"ACKED\"}"))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("REQUEST_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("12.2-API-004 P0 forbidden transition maps to 403 FORBIDDEN")
++  void transitionForbidden() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    var id = UUID.randomUUID();
++    doThrow(new RequestForbiddenException())
++        .when(service).transition(eq(user), eq(id), any(SparepartRequestService.TransitionCommand.class));
++
++    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/transition")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"toStatus\":\"ACKED\"}"))
++        .andExpect(status().isForbidden())
++        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
++  }
++
++  @Test
++  @DisplayName("12.2-API-005 P0 unknown toStatus enum maps to 400 VALIDATION_ERROR")
++  void transitionInvalidEnum() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    var id = UUID.randomUUID();
++
++    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/transition")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"toStatus\":\"BOGUS\"}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
++  }
++
++  @Test
++  @DisplayName("12.2-API-006 P0 MRE endpoint records and returns the view")
++  void mreReturnsView() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    var id = UUID.randomUUID();
++    when(service.recordMre(eq(user), eq(id), any(SparepartRequestService.MreCommand.class)))
++        .thenReturn(requestDomain(SparepartRequestStatus.PURCHASE_REQUESTED));
++
++    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/mre")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"mreCode\":\"MRE26023xxxx\"}"))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.status").value("PURCHASE_REQUESTED"));
++  }
++
++  @Test
++  @DisplayName("12.2-API-007 P0 blank MRE code maps to 400 VALIDATION_ERROR fieldErrors.mreCode")
++  void mreBlankCode() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    var id = UUID.randomUUID();
++
++    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/mre")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"mreCode\":\"   \"}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.mreCode").exists());
++  }
++
+   private static SparepartRequest requestDomain() {
++    return requestDomain(SparepartRequestStatus.REQUESTED);
++  }
++
++  private static SparepartRequest requestDomain(SparepartRequestStatus status) {
+     return new SparepartRequest(UUID.randomUUID(), SparepartRequestType.SPAREPART, null, MACHINE_ID, null,
+-        "MC-0001", (short) 2, null, new BigDecimal("50000"), null, SparepartRequestStatus.REQUESTED,
++        "MC-0001", (short) 2, null, new BigDecimal("50000"), null, status,
+         UUID.randomUUID(), Instant.parse("2026-08-27T00:00:00Z"), null,
+         Instant.parse("2026-08-27T00:00:00Z"), Instant.parse("2026-08-27T00:00:00Z"));
+   }
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/application/SparepartRequestServiceTest.java b/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/application/SparepartRequestServiceTest.java
+index 7a9914c..bdf52ff 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/application/SparepartRequestServiceTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/application/SparepartRequestServiceTest.java
+@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
+ import static org.mockito.ArgumentMatchers.any;
+ import static org.mockito.ArgumentMatchers.eq;
+ import static org.mockito.Mockito.lenient;
++import static org.mockito.Mockito.never;
+ import static org.mockito.Mockito.verify;
+ import static org.mockito.Mockito.when;
+ 
+@@ -16,6 +17,7 @@ import com.syncro.auth.domain.ApplicationRole;
+ import com.syncro.machine.domain.MachineStatus;
+ import com.syncro.machine.infrastructure.MachineEntity;
+ import com.syncro.machine.infrastructure.MachineRepository;
++import com.syncro.maintenance.application.WorkOrderService;
+ import com.syncro.maintenance.infrastructure.db.WorkOrderEntity;
+ import com.syncro.maintenance.infrastructure.db.WorkOrderRepository;
+ import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
+@@ -26,12 +28,18 @@ import com.syncro.sparepart.infrastructure.SparepartPriceEntryRepository;
+ import com.syncro.sparepart.infrastructure.SparepartRepository;
+ import com.syncro.sparepart.infrastructure.SparepartTaxonomyEntity;
+ import com.syncro.sparepart.request.application.SparepartRequestService.CreateRequestCommand;
++import com.syncro.sparepart.request.application.SparepartRequestService.MreCommand;
+ import com.syncro.sparepart.request.application.SparepartRequestService.RequestForbiddenException;
+ import com.syncro.sparepart.request.application.SparepartRequestService.RequestValidationException;
++import com.syncro.sparepart.request.application.SparepartRequestService.TransitionCommand;
++import com.syncro.sparepart.request.application.SparepartRequestService.InvalidRequestStateTransitionException;
++import com.syncro.sparepart.request.application.SparepartRequestService.RequestNotFoundException;
+ import com.syncro.sparepart.request.domain.SparepartRequestStatus;
+ import com.syncro.sparepart.request.domain.SparepartRequestType;
+ import com.syncro.sparepart.request.infrastructure.db.SparepartRequestEntity;
+ import com.syncro.sparepart.request.infrastructure.db.SparepartRequestRepository;
++import com.syncro.sparepart.request.infrastructure.db.SparepartRequestTimelineEntity;
++import com.syncro.sparepart.request.infrastructure.db.SparepartRequestTimelineRepository;
+ import java.math.BigDecimal;
+ import java.time.Clock;
+ import java.time.Instant;
+@@ -58,8 +66,12 @@ class SparepartRequestServiceTest {
+   @Mock
+   private SparepartRequestRepository requests;
+   @Mock
++  private SparepartRequestTimelineRepository timelines;
++  @Mock
+   private WorkOrderRepository workOrders;
+   @Mock
++  private WorkOrderService workOrderService;
++  @Mock
+   private MachineRepository machines;
+   @Mock
+   private SparepartRepository spareparts;
+@@ -82,10 +94,12 @@ class SparepartRequestServiceTest {
+ 
+   @BeforeEach
+   void setUp() {
+-    service = new SparepartRequestService(requests, workOrders, machines, spareparts, priceEntries, auditLog, scopes, clock);
++    service = new SparepartRequestService(requests, timelines, workOrders, workOrderService, machines, spareparts,
++        priceEntries, auditLog, scopes, clock);
+     machine = machineWithPlant(plantId, groupId, machineId);
+     lenient().when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
+     when(requests.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
++    when(timelines.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+   }
+ 
+   @Test
+@@ -339,6 +353,271 @@ class SparepartRequestServiceTest {
+     return entity;
+   }
+ 
++  private SparepartRequestEntity requestEntity(SparepartRequestStatus status) {
++    return new SparepartRequestEntity(UUID.randomUUID(), SparepartRequestType.SPAREPART, null, machineId,
++        sparepartId, "MC-0001", (short) 2, null, null, null, status, staffId, NOW, null, NOW, NOW);
++  }
++
++  private SparepartRequestEntity requestEntityBoundToWorkOrder(SparepartRequestStatus status, String workOrderId) {
++    return new SparepartRequestEntity(UUID.randomUUID(), SparepartRequestType.SERVICE_EXTERNAL, workOrderId, null,
++        null, null, (short) 1, null, null, null, status, staffId, NOW, null, NOW, NOW);
++  }
++
++  private void stubBoundWorkOrder(String workOrderId) {
++    var workOrder = new WorkOrderEntity(workOrderId, "INTERNAL", null, WorkOrderStatus.IN_PROGRESS, null, machineId,
++        "fix", 0L, null, null, null, NOW, NOW);
++    when(workOrders.findById(workOrderId)).thenReturn(Optional.of(workOrder));
++  }
++
++  private AuthenticatedUser inventoryUser() {
++    return new AuthenticatedUser(UUID.randomUUID().toString(), "inv@test", ApplicationRole.INVENTORY_MAINTENANCE);
++  }
++
++  private AuthenticatedUser sectionLeaderUser() {
++    return new AuthenticatedUser(UUID.randomUUID().toString(), "leader@test", ApplicationRole.SECTION_LEADER);
++  }
++
++  private AuthenticatedUser technicianUser() {
++    return new AuthenticatedUser(UUID.randomUUID().toString(), "tech@test", ApplicationRole.TECHNICIAN);
++  }
++
++  private void stubScopedMachine(UUID machineId, AuthenticatedUser user) {
++    when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
++  }
++
++  // -------------------------------------------------------------------------
++  // Story 12-2: state machine tests
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("12.2-SVC-001 P0 REQUESTED→ACKED by inventory writes timeline + audit")
++  void ackOk() {
++    var user = inventoryUser();
++    var entity = requestEntity(SparepartRequestStatus.REQUESTED);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++
++    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.ACKED, null));
++
++    assertThat(result.status()).isEqualTo(SparepartRequestStatus.ACKED);
++    verify(timelines).saveAndFlush(any(SparepartRequestTimelineEntity.class));
++    verify(auditLog).record(eq(user), org.mockito.ArgumentMatchers.argThat(r ->
++        r.action() == AuditAction.UPDATE && r.entityType() == AuditEntityType.SPAREPART_REQUEST));
++    verify(workOrderService, never()).recomputeProcurementState(any());
++  }
++
++  @Test
++  @DisplayName("12.2-SVC-002 P0 PENDING_COMPLETION→ACKED is allowed")
++  void pendingAckOk() {
++    var user = inventoryUser();
++    var entity = requestEntity(SparepartRequestStatus.PENDING_COMPLETION);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++
++    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.ACKED, null));
++
++    assertThat(result.status()).isEqualTo(SparepartRequestStatus.ACKED);
++  }
++
++  @Test
++  @DisplayName("12.2-SVC-003 P0 ACKED→PROCESSING by storekeeper")
++  void processOk() {
++    var user = new AuthenticatedUser(UUID.randomUUID().toString(), "store@test", ApplicationRole.STOREKEEPER);
++    var entity = requestEntity(SparepartRequestStatus.ACKED);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++
++    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PROCESSING, null));
++
++    assertThat(result.status()).isEqualTo(SparepartRequestStatus.PROCESSING);
++  }
++
++  @Test
++  @DisplayName("12.2-SVC-004 P0 PROCESSING→READY recomputes procurement on a bound workorder")
++  void readyOk() {
++    var user = inventoryUser();
++    var entity = requestEntityBoundToWorkOrder(SparepartRequestStatus.PROCESSING, "WO-2609-00001");
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubBoundWorkOrder("WO-2609-00001");
++    stubScopedMachine(machineId, user);
++
++    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.READY, null));
++
++    assertThat(result.status()).isEqualTo(SparepartRequestStatus.READY);
++    verify(workOrderService).recomputeProcurementState("WO-2609-00001");
++  }
++
++  @Test
++  @DisplayName("12.2-SVC-005 P0 PROCESSING→PURCHASE_REQUESTED recomputes ON_PROCUREMENT")
++  void purchaseOk() {
++    var user = inventoryUser();
++    var entity = requestEntityBoundToWorkOrder(SparepartRequestStatus.PROCESSING, "WO-2609-00001");
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubBoundWorkOrder("WO-2609-00001");
++    stubScopedMachine(machineId, user);
++
++    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PURCHASE_REQUESTED, null));
++
++    assertThat(result.status()).isEqualTo(SparepartRequestStatus.PURCHASE_REQUESTED);
++    verify(workOrderService).recomputeProcurementState("WO-2609-00001");
++  }
++
++  @Test
++  @DisplayName("12.2-SVC-006 P0 PURCHASE_REQUESTED→PART_RECEIVED recomputes")
++  void partReceivedOk() {
++    var user = inventoryUser();
++    var entity = requestEntityBoundToWorkOrder(SparepartRequestStatus.PURCHASE_REQUESTED, "WO-2609-00001");
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubBoundWorkOrder("WO-2609-00001");
++    stubScopedMachine(machineId, user);
++
++    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PART_RECEIVED, null));
++
++    assertThat(result.status()).isEqualTo(SparepartRequestStatus.PART_RECEIVED);
++    verify(workOrderService).recomputeProcurementState("WO-2609-00001");
++  }
++
++  @Test
++  @DisplayName("12.2-SVC-007 P0 READY→PICKED_UP by section leader")
++  void pickUpOk() {
++    var user = sectionLeaderUser();
++    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
++    var entity = requestEntity(SparepartRequestStatus.READY);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++
++    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PICKED_UP, null));
++
++    assertThat(result.status()).isEqualTo(SparepartRequestStatus.PICKED_UP);
++  }
++
++  @Test
++  @DisplayName("12.2-SVC-008 P0 PICKED_UP→CLOSED by section leader")
++  void closeOk() {
++    var user = sectionLeaderUser();
++    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
++    var entity = requestEntity(SparepartRequestStatus.PICKED_UP);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++
++    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.CLOSED, null));
++
++    assertThat(result.status()).isEqualTo(SparepartRequestStatus.CLOSED);
++  }
++
++  @Test
++  @DisplayName("12.2-SVC-009 P0 invalid edge REQUESTED→READY is rejected (409 INVALID_STATE_TRANSITION)")
++  void invalidEdge() {
++    var user = inventoryUser();
++    var entity = requestEntity(SparepartRequestStatus.REQUESTED);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++
++    assertThatThrownBy(() -> service.transition(user, id, new TransitionCommand(SparepartRequestStatus.READY, null)))
++        .isInstanceOf(InvalidRequestStateTransitionException.class);
++  }
++
++  @Test
++  @DisplayName("12.2-SVC-010 P0 terminal state CLOSED→anything is rejected")
++  void terminalViolation() {
++    var user = sectionLeaderUser();
++    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
++    var entity = requestEntity(SparepartRequestStatus.CLOSED);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++
++    assertThatThrownBy(() -> service.transition(user, id, new TransitionCommand(SparepartRequestStatus.READY, null)))
++        .isInstanceOf(InvalidRequestStateTransitionException.class);
++  }
++
++  @Test
++  @DisplayName("12.2-SVC-011 P0 technician (not assigned) cannot ACK → FORBIDDEN")
++  void forbiddenRole() {
++    var user = technicianUser();
++    var entity = requestEntity(SparepartRequestStatus.REQUESTED);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++
++    assertThatThrownBy(() -> service.transition(user, id, new TransitionCommand(SparepartRequestStatus.ACKED, null)))
++        .isInstanceOf(RequestForbiddenException.class);
++  }
++
++  @Test
++  @DisplayName("12.2-SVC-012 P0 requester (non-leader) cannot PICK_UP their own request → FORBIDDEN")
++  void wrongActorClose() {
++    var user = new AuthenticatedUser(staffId.toString(), "staff@test", ApplicationRole.STAFF_MAINTENANCE);
++    var entity = requestEntity(SparepartRequestStatus.READY);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++
++    assertThatThrownBy(() -> service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PICKED_UP, null)))
++        .isInstanceOf(RequestForbiddenException.class);
++  }
++
++  @Test
++  @DisplayName("12.2-SVC-013 P0 MRE in PURCHASE_REQUESTED records timeline + audit")
++  void mreOk() {
++    var user = inventoryUser();
++    var entity = requestEntity(SparepartRequestStatus.PURCHASE_REQUESTED);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++
++    var result = service.recordMre(user, id, new MreCommand("MRE26023xxxx", null));
++
++    assertThat(result.status()).isEqualTo(SparepartRequestStatus.PURCHASE_REQUESTED);
++    verify(timelines).saveAndFlush(any(SparepartRequestTimelineEntity.class));
++    verify(auditLog).record(eq(user), org.mockito.ArgumentMatchers.argThat(r ->
++        r.action() == AuditAction.UPDATE && r.entityType() == AuditEntityType.SPAREPART_REQUEST));
++    verify(workOrderService, never()).recomputeProcurementState(any());
++  }
++
++  @Test
++  @DisplayName("12.2-SVC-014 P0 MRE in wrong state (REQUESTED) → 409 INVALID_STATE_TRANSITION")
++  void mreWrongState() {
++    var user = inventoryUser();
++    var entity = requestEntity(SparepartRequestStatus.REQUESTED);
++    var id = entity.getId();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
++    stubScopedMachine(machineId, user);
++
++    assertThatThrownBy(() -> service.recordMre(user, id, new MreCommand("MRE26023xxxx", null)))
++        .isInstanceOf(InvalidRequestStateTransitionException.class);
++  }
++
++  @Test
++  @DisplayName("12.2-SVC-015 P0 blank MRE code → 400 VALIDATION_ERROR fieldErrors.mreCode")
++  void mreBlank() {
++    var user = inventoryUser();
++    var id = UUID.randomUUID();
++
++    assertThatThrownBy(() -> service.recordMre(user, id, new MreCommand("   ", null)))
++        .isInstanceOf(RequestValidationException.class);
++  }
++
++  @Test
++  @DisplayName("12.2-SVC-016 P0 unknown request id → 404 REQUEST_NOT_FOUND")
++  void notFound() {
++    var user = inventoryUser();
++    var id = UUID.randomUUID();
++    when(requests.findByIdForUpdate(id)).thenReturn(Optional.empty());
++
++    assertThatThrownBy(() -> service.transition(user, id, new TransitionCommand(SparepartRequestStatus.ACKED, null)))
++        .isInstanceOf(RequestNotFoundException.class);
++  }
++
+   private AuthenticatedUser staffUser() {
+     return new AuthenticatedUser(staffId.toString(), "staff@test", ApplicationRole.STAFF_MAINTENANCE);
+   }
+diff --git a/syncro/apps/web/src/features/sparepart-requests/components/sparepart-requests-list.tsx b/syncro/apps/web/src/features/sparepart-requests/components/sparepart-requests-list.tsx
+index 74d32ba..57dad4d 100644
+--- a/syncro/apps/web/src/features/sparepart-requests/components/sparepart-requests-list.tsx
++++ b/syncro/apps/web/src/features/sparepart-requests/components/sparepart-requests-list.tsx
+@@ -4,14 +4,19 @@ import { useState } from "react";
+ 
+ import { useQuery } from "@tanstack/react-query";
+ import { format } from "date-fns";
+-import { PackageSearchIcon } from "lucide-react";
++import { Loader2, PackageSearchIcon } from "lucide-react";
+ 
+ import { Badge } from "@/components/ui/badge";
+ import { Button } from "@/components/ui/button";
+ import { Card, CardContent } from "@/components/ui/card";
+ import { DataTablePagination } from "@/components/ui/data-table-pagination";
++import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
++import { Input } from "@/components/ui/input";
++import { Label } from "@/components/ui/label";
+ import { Skeleton } from "@/components/ui/skeleton";
+ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
++import { useRecordMre, useTransitionRequest } from "@/features/sparepart-requests/hooks/use-sparepart-requests";
++import type { SparepartRequestStatus } from "@/features/sparepart-requests/types";
+ import { syncroFetch } from "@/lib/api/orval-mutator";
+ 
+ interface SparepartRequestRow {
+@@ -23,7 +28,7 @@ interface SparepartRequestRow {
+   quantity: number;
+   estUnitPrice: string | null;
+   purchaseReferenceUrl: string | null;
+-  status: string;
++  status: SparepartRequestStatus;
+   requestedAt: string;
+   notes: string | null;
+ }
+@@ -35,10 +40,110 @@ const TYPE_LABELS: Record<string, string> = {
+   SERVICE_EXTERNAL: "External service",
+ };
+ 
+-/** Type label helper kept for the table; filters are backend-scoped in 12-2. */
++const STATUS_LABELS: Record<string, string> = {
++  REQUESTED: "Requested",
++  PENDING_COMPLETION: "Pending completion",
++  ACKED: "Acknowledged",
++  PROCESSING: "Processing",
++  READY: "Ready",
++  PURCHASE_REQUESTED: "Purchase requested",
++  PART_RECEIVED: "Part received",
++  PICKED_UP: "Picked up",
++  CLOSED: "Closed",
++};
++
++const STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline" | "ghost" | "destructive"> = {
++  REQUESTED: "default",
++  PENDING_COMPLETION: "secondary",
++  ACKED: "outline",
++  PROCESSING: "default",
++  READY: "default",
++  PURCHASE_REQUESTED: "secondary",
++  PART_RECEIVED: "outline",
++  PICKED_UP: "ghost",
++  CLOSED: "ghost",
++};
++
++/** Story 12-2: row actions available per current status (FR-141). */
++function availableActions(status: SparepartRequestStatus): { label: string; toStatus: SparepartRequestStatus }[] {
++  switch (status) {
++    case "REQUESTED":
++    case "PENDING_COMPLETION":
++      return [{ label: "Acknowledge", toStatus: "ACKED" }];
++    case "ACKED":
++      return [{ label: "Process", toStatus: "PROCESSING" }];
++    case "PROCESSING":
++      return [
++        { label: "Mark Ready", toStatus: "READY" },
++        { label: "Mark Purchased", toStatus: "PURCHASE_REQUESTED" },
++      ];
++    case "PURCHASE_REQUESTED":
++      return [{ label: "Part Received", toStatus: "PART_RECEIVED" }];
++    case "PART_RECEIVED":
++      return [{ label: "Mark Ready", toStatus: "READY" }];
++    case "READY":
++      return [{ label: "Pick Up", toStatus: "PICKED_UP" }];
++    case "PICKED_UP":
++      return [{ label: "Close", toStatus: "CLOSED" }];
++    default:
++      return [];
++  }
++}
++
++function MreDialog({ requestId }: { requestId: string }) {
++  const [open, setOpen] = useState(false);
++  const [mreCode, setMreCode] = useState("");
++  const recordMre = useRecordMre();
++
++  const handleSubmit = () => {
++    if (!mreCode.trim()) return;
++    recordMre.mutate(
++      { id: requestId, data: { mreCode: mreCode.trim() } },
++      {
++        onSuccess: () => {
++          setOpen(false);
++          setMreCode("");
++        },
++      },
++    );
++  };
++
++  return (
++    <Dialog open={open} onOpenChange={setOpen}>
++      <DialogTrigger asChild>
++        <Button variant="outline" size="sm">
++          Record MRE
++        </Button>
++      </DialogTrigger>
++      <DialogContent>
++        <DialogHeader>
++          <DialogTitle>Record MRE Code</DialogTitle>
++          <DialogDescription>Enter the manual MRE (material request) code for this purchase.</DialogDescription>
++        </DialogHeader>
++        <div className="space-y-4">
++          <div className="space-y-2">
++            <Label htmlFor="mreCode">MRE Code</Label>
++            <Input
++              id="mreCode"
++              placeholder="e.g. MRE26023xxxx"
++              value={mreCode}
++              onChange={(e) => setMreCode(e.target.value)}
++              maxLength={64}
++            />
++          </div>
++          <Button onClick={handleSubmit} disabled={recordMre.isPending || !mreCode.trim()}>
++            {recordMre.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
++            Record
++          </Button>
++        </div>
++      </DialogContent>
++    </Dialog>
++  );
++}
+ 
+ export function SparepartRequestsPageContent() {
+   const [page, setPage] = useState(0);
++  const transition = useTransitionRequest();
+ 
+   const { data, isLoading, isError, refetch } = useQuery<{ items: SparepartRequestRow[]; total: number }>({
+     queryKey: ["/api/v1/sparepart-requests", page],
+@@ -105,28 +210,48 @@ export function SparepartRequestsPageContent() {
+                 <TableHead>Qty</TableHead>
+                 <TableHead>Status</TableHead>
+                 <TableHead>Requested</TableHead>
++                <TableHead>Actions</TableHead>
+               </TableRow>
+             </TableHeader>
+             <TableBody>
+-              {items.map((request) => (
+-                <TableRow key={request.id}>
+-                  <TableCell className="text-xs">{TYPE_LABELS[request.requestType] ?? request.requestType}</TableCell>
+-                  <TableCell className="font-mono text-xs">{request.workOrderId ?? "-"}</TableCell>
+-                  <TableCell className="text-xs">
+-                    {request.materialCode ?? "-"}
+-                    {request.estUnitPrice ? ` · Rp ${Number(request.estUnitPrice).toLocaleString()}` : ""}
+-                  </TableCell>
+-                  <TableCell className="text-xs">{request.quantity}</TableCell>
+-                  <TableCell>
+-                    <Badge variant={request.status === "PENDING_COMPLETION" ? "secondary" : "default"}>
+-                      {request.status === "PENDING_COMPLETION" ? "Pending completion" : "Requested"}
+-                    </Badge>
+-                  </TableCell>
+-                  <TableCell className="text-muted-foreground text-xs">
+-                    {format(new Date(request.requestedAt), "d MMM yyyy HH:mm")}
+-                  </TableCell>
+-                </TableRow>
+-              ))}
++              {items.map((request) => {
++                const actions = availableActions(request.status);
++                return (
++                  <TableRow key={request.id}>
++                    <TableCell className="text-xs">{TYPE_LABELS[request.requestType] ?? request.requestType}</TableCell>
++                    <TableCell className="font-mono text-xs">{request.workOrderId ?? "-"}</TableCell>
++                    <TableCell className="text-xs">
++                      {request.materialCode ?? "-"}
++                      {request.estUnitPrice ? ` · Rp ${Number(request.estUnitPrice).toLocaleString()}` : ""}
++                    </TableCell>
++                    <TableCell className="text-xs">{request.quantity}</TableCell>
++                    <TableCell>
++                      <Badge variant={STATUS_VARIANTS[request.status] ?? "default"}>
++                        {STATUS_LABELS[request.status] ?? request.status}
++                      </Badge>
++                    </TableCell>
++                    <TableCell className="text-muted-foreground text-xs">
++                      {format(new Date(request.requestedAt), "d MMM yyyy HH:mm")}
++                    </TableCell>
++                    <TableCell>
++                      <div className="flex flex-wrap gap-1">
++                        {actions.map((action) => (
++                          <Button
++                            key={action.toStatus}
++                            variant="outline"
++                            size="sm"
++                            disabled={transition.isPending}
++                            onClick={() => transition.mutate({ id: request.id, data: { toStatus: action.toStatus } })}
++                          >
++                            {action.label}
++                          </Button>
++                        ))}
++                        {request.status === "PURCHASE_REQUESTED" ? <MreDialog requestId={request.id} /> : null}
++                      </div>
++                    </TableCell>
++                  </TableRow>
++                );
++              })}
+             </TableBody>
+           </Table>
+           <DataTablePagination
+diff --git a/syncro/apps/web/src/features/sparepart-requests/hooks/use-sparepart-requests.ts b/syncro/apps/web/src/features/sparepart-requests/hooks/use-sparepart-requests.ts
+index 54d2e5f..bebfaf8 100644
+--- a/syncro/apps/web/src/features/sparepart-requests/hooks/use-sparepart-requests.ts
++++ b/syncro/apps/web/src/features/sparepart-requests/hooks/use-sparepart-requests.ts
+@@ -1,9 +1,14 @@
+ "use client";
+ 
+-import { useMutation } from "@tanstack/react-query";
++import { useMutation, useQueryClient } from "@tanstack/react-query";
+ import { toast } from "sonner";
+ 
+-import type { CreateSparepartRequestRequest, SparepartRequestView } from "@/features/sparepart-requests/types";
++import type {
++  CreateSparepartRequestRequest,
++  MreRequest,
++  SparepartRequestView,
++  TransitionRequest,
++} from "@/features/sparepart-requests/types";
+ import { syncroFetch } from "@/lib/api/orval-mutator";
+ 
+ const REQUESTS_KEY = "/api/v1/sparepart-requests";
+@@ -26,3 +31,50 @@ export function useCreateSparepartRequest() {
+     },
+   });
+ }
++
++/** Transitions a sparepart request (story 12-2, FR-141). */
++export function useTransitionRequest() {
++  const queryClient = useQueryClient();
++  return useMutation({
++    mutationFn: async ({ id, data }: { id: string; data: TransitionRequest }) => {
++      const response = await syncroFetch<{ data: SparepartRequestView }>(`${REQUESTS_KEY}/${id}/transition`, {
++        method: "POST",
++        body: JSON.stringify(data),
++      });
++      return response.data;
++    },
++    onSuccess: () => {
++      queryClient.invalidateQueries({ queryKey: [REQUESTS_KEY] });
++      toast.success("Request status updated");
++    },
++    onError: (error: unknown) => {
++      const err = error as { code?: string };
++      if (err.code === "INVALID_STATE_TRANSITION") {
++        toast.error("This transition is not allowed in the current state.");
++      } else {
++        toast.error("Failed to update request status");
++      }
++    },
++  });
++}
++
++/** Records a manual MRE code (story 12-2, FR-145). */
++export function useRecordMre() {
++  const queryClient = useQueryClient();
++  return useMutation({
++    mutationFn: async ({ id, data }: { id: string; data: MreRequest }) => {
++      const response = await syncroFetch<{ data: SparepartRequestView }>(`${REQUESTS_KEY}/${id}/mre`, {
++        method: "POST",
++        body: JSON.stringify(data),
++      });
++      return response.data;
++    },
++    onSuccess: () => {
++      queryClient.invalidateQueries({ queryKey: [REQUESTS_KEY] });
++      toast.success("MRE code recorded");
++    },
++    onError: () => {
++      toast.error("Failed to record MRE code");
++    },
++  });
++}
+diff --git a/syncro/apps/web/src/features/sparepart-requests/types.ts b/syncro/apps/web/src/features/sparepart-requests/types.ts
+index 2696ec0..e82ddb2 100644
+--- a/syncro/apps/web/src/features/sparepart-requests/types.ts
++++ b/syncro/apps/web/src/features/sparepart-requests/types.ts
+@@ -1,7 +1,16 @@
+-/** Sparepart request contract types (story 12-1, FR-140/FR-143/FR-144). */
++/** Sparepart request contract types (story 12-1, FR-140/FR-143/FR-144; story 12-2, FR-141/FR-145). */
+ 
+ export type SparepartRequestType = "SPAREPART" | "CONSUMABLE" | "SERVICE_EXTERNAL";
+-export type SparepartRequestStatus = "REQUESTED" | "PENDING_COMPLETION";
++export type SparepartRequestStatus =
++  | "REQUESTED"
++  | "PENDING_COMPLETION"
++  | "ACKED"
++  | "PROCESSING"
++  | "READY"
++  | "PURCHASE_REQUESTED"
++  | "PART_RECEIVED"
++  | "PICKED_UP"
++  | "CLOSED";
+ 
+ export interface SparepartRequestView {
+   id: string;
+@@ -34,3 +43,15 @@ export interface CreateSparepartRequestRequest {
+   purchaseReferenceUrl?: string | null;
+   notes?: string | null;
+ }
++
++/** Story 12-2: status transition request (FR-141). */
++export interface TransitionRequest {
++  toStatus: SparepartRequestStatus;
++  note?: string | null;
++}
++
++/** Story 12-2: manual MRE code request (FR-145). */
++export interface MreRequest {
++  mreCode: string;
++  note?: string | null;
++}
+diff --git a/syncro/authz/policy/authz.rego b/syncro/authz/policy/authz.rego
+index 15a2017..d0d8e7d 100644
+--- a/syncro/authz/policy/authz.rego
++++ b/syncro/authz/policy/authz.rego
+@@ -88,6 +88,15 @@ sparepart_request_paths := {
+   "/api/v1/sparepart-requests",
+ }
+ 
++# Sparepart request transition and MRE (story 12-2): eight-role allow set
++# (SUPER_ADMIN/MANAGER_MAINTENANCE/MAINTENANCE_LEADER/SECTION_LEADER/
++#  INVENTORY_MAINTENANCE/STOREKEEPER/STAFF_MAINTENANCE/TECHNICIAN).
++# Service gate is authoritative for scope/role/ownership checks.
++sparepart_request_transition_paths := {
++  "/api/v1/sparepart-requests/*/transition",
++  "/api/v1/sparepart-requests/*/mre",
++}
++
+ workorder_assign_paths := {
+   "/api/v1/workorders/*/assign",
+ }
+@@ -295,6 +304,49 @@ mutation_allowed if {
+   path_matches(sparepart_request_paths)
+ }
+ 
++# Sparepart request transition + MRE (story 12-2): eight-role allow set.
++mutation_allowed if {
++  input.subject.roles[_] == "MANAGER_MAINTENANCE"
++  is_mutation
++  path_matches(sparepart_request_transition_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "SECTION_LEADER"
++  is_mutation
++  path_matches(sparepart_request_transition_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "MAINTENANCE_LEADER"
++  is_mutation
++  path_matches(sparepart_request_transition_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "STAFF_MAINTENANCE"
++  is_mutation
++  path_matches(sparepart_request_transition_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "TECHNICIAN"
++  is_mutation
++  path_matches(sparepart_request_transition_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "INVENTORY_MAINTENANCE"
++  is_mutation
++  path_matches(sparepart_request_transition_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "STOREKEEPER"
++  is_mutation
++  path_matches(sparepart_request_transition_paths)
++}
++
+ # Assign: leadership roles only (STAFF_MAINTENANCE and PRODUCTION_LEADER excluded).
+ mutation_allowed if {
+   input.subject.roles[_] == "MANAGER_MAINTENANCE"
+diff --git a/syncro/authz/policy/authz_test.rego b/syncro/authz/policy/authz_test.rego
+index abefb2d..dae9c01 100644
+--- a/syncro/authz/policy/authz_test.rego
++++ b/syncro/authz/policy/authz_test.rego
+@@ -638,6 +638,68 @@ test_anonymous_sparepart_request_denied if {
+   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/sparepart-requests"}
+ }
+ 
++# -- Sparepart request transition + MRE (story 12-2): eight-role allow set -----------
++
++test_manager_sparepart_request_transition_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/transition"}
++}
++
++test_section_leader_sparepart_request_transition_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/transition"}
++}
++
++test_maintenance_leader_sparepart_request_transition_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/transition"}
++}
++
++test_staff_sparepart_request_transition_allowed if {
++  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/transition"}
++}
++
++test_technician_sparepart_request_transition_allowed if {
++  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/transition"}
++}
++
++test_inventory_sparepart_request_transition_allowed if {
++  authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/transition"}
++}
++
++test_storekeeper_sparepart_request_transition_allowed if {
++  authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/transition"}
++}
++
++test_inventory_sparepart_request_mre_allowed if {
++  authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/mre"}
++}
++
++test_storekeeper_sparepart_request_mre_allowed if {
++  authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/mre"}
++}
++
++test_super_admin_sparepart_request_transition_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/transition"}
++}
++
++test_auditor_sparepart_request_transition_denied if {
++  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/transition"}
++}
++
++test_production_leader_sparepart_request_transition_denied if {
++  not authz.allow with input as {"subject": {"roles": ["PRODUCTION_LEADER"], "userId": "u8"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/transition"}
++}
++
++test_auditor_sparepart_request_mre_denied if {
++  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/mre"}
++}
++
++test_anonymous_sparepart_request_transition_denied if {
++  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/transition"}
++}
++
++test_auditor_sparepart_request_transition_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
+ # -- Org maintenance (spec-org-maintenance-model): departments, section leader,
+ #    user master — MANAGER_MAINTENANCE + SUPER_ADMIN mutate; others denied -------
+ 
+
+=== UNTRACKED FILE: SparepartRequestStateMachine.java ===
+package com.syncro.sparepart.request.domain;
+
+import java.util.EnumSet;
+import java.util.Set;
+
+/**
+ * Explicit sparepart-request transition table (FR-141, story 12-2). Mirrors
+ * {@code WorkOrderStateMachine}'s shape: a {@code Set} of Transition records plus
+ * {@code can}/{@code isTerminal}. Valid edges:
+ *
+ * <pre>
+ * REQUESTED → ACKED
+ * PENDING_COMPLETION → ACKED
+ * ACKED → PROCESSING
+ * PROCESSING → READY
+ * PROCESSING → PURCHASE_REQUESTED
+ * PURCHASE_REQUESTED → PART_RECEIVED
+ * PART_RECEIVED → READY
+ * READY → PICKED_UP
+ * PICKED_UP → CLOSED
+ * </pre>
+ *
+ * <p>CLOSED is terminal — nothing may leave it. Everything else → INVALID_STATE_TRANSITION.
+ */
+public final class SparepartRequestStateMachine {
+
+  private SparepartRequestStateMachine() {
+  }
+
+  private record Transition(SparepartRequestStatus from, SparepartRequestStatus to) {
+  }
+
+  private static final Set<Transition> VALID_TRANSITIONS = Set.of(
+      new Transition(SparepartRequestStatus.REQUESTED, SparepartRequestStatus.ACKED),
+      new Transition(SparepartRequestStatus.PENDING_COMPLETION, SparepartRequestStatus.ACKED),
+      new Transition(SparepartRequestStatus.ACKED, SparepartRequestStatus.PROCESSING),
+      new Transition(SparepartRequestStatus.PROCESSING, SparepartRequestStatus.READY),
+      new Transition(SparepartRequestStatus.PROCESSING, SparepartRequestStatus.PURCHASE_REQUESTED),
+      new Transition(SparepartRequestStatus.PURCHASE_REQUESTED, SparepartRequestStatus.PART_RECEIVED),
+      new Transition(SparepartRequestStatus.PART_RECEIVED, SparepartRequestStatus.READY),
+      new Transition(SparepartRequestStatus.READY, SparepartRequestStatus.PICKED_UP),
+      new Transition(SparepartRequestStatus.PICKED_UP, SparepartRequestStatus.CLOSED));
+
+  private static final Set<SparepartRequestStatus> TERMINAL_STATES = EnumSet.of(
+      SparepartRequestStatus.CLOSED);
+
+  public static boolean can(SparepartRequestStatus from, SparepartRequestStatus to) {
+    return VALID_TRANSITIONS.contains(new Transition(from, to));
+  }
+
+  /** CLOSED is terminal: nothing may leave it (FR-141). */
+  public static boolean isTerminal(SparepartRequestStatus status) {
+    return TERMINAL_STATES.contains(status);
+  }
+}
+
+=== UNTRACKED FILE: SparepartRequestReadinessService.java ===
+package com.syncro.sparepart.request.infrastructure.db;
+
+import com.syncro.maintenance.application.SparepartRequestReadinessPort;
+import org.springframework.context.annotation.Primary;
+import org.springframework.stereotype.Component;
+
+/**
+ * Real sparepart-request readiness port (AD-5, story 12-2). Replaces the Noop placeholder
+ * from Epic 10. Queries the sparepart_requests table for any live non-READY request on
+ * the given workorder. The {@code @Primary} annotation takes precedence over the Noop
+ * bean (which stays for test isolation).
+ *
+ * <p>Module boundary respected: sparepart.request module queries its own repository and
+ * implements the maintenance module's port interface.
+ */
+@Component
+@Primary
+public class SparepartRequestReadinessService implements SparepartRequestReadinessPort {
+
+  private final SparepartRequestRepository requests;
+
+  public SparepartRequestReadinessService(SparepartRequestRepository requests) {
+    this.requests = requests;
+  }
+
+  @Override
+  public boolean hasLiveNonReadyRequest(String workOrderId) {
+    return requests.hasLiveNonReadyRequest(workOrderId);
+  }
+}
+=== UNTRACKED FILE: SparepartRequestTimelineEntity.java ===
+package com.syncro.sparepart.request.infrastructure.db;
+
+import com.syncro.sparepart.request.domain.SparepartRequestStatus;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
+
+/**
+ * Persisted {@code sparepart_request_timeline} row (FR-141, story 12-2). One row per
+ * status transition or MRE code recording, providing per-request operational evidence.
+ */
+@Entity
+@Table(name = "sparepart_request_timeline")
+public class SparepartRequestTimelineEntity {
+
+  @Id
+  private UUID id;
+
+  @Column(name = "request_id", nullable = false)
+  private UUID requestId;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "from_status", length = 20)
+  private SparepartRequestStatus fromStatus;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "to_status", nullable = false, length = 20)
+  private SparepartRequestStatus toStatus;
+
+  @Column(nullable = false)
+  private UUID actor;
+
+  @Column(nullable = false, length = 20)
+  private String action;
+
+  @Column(name = "mre_code", length = 64)
+  private String mreCode;
+
+  @Column(length = 500)
+  private String note;
+
+  @Column(name = "trace_id", length = 64)
+  private String traceId;
+
+  @Column(name = "created_at", nullable = false)
+  private Instant createdAt;
+
+  protected SparepartRequestTimelineEntity() {
+  }
+
+  public SparepartRequestTimelineEntity(UUID id, UUID requestId, SparepartRequestStatus fromStatus,
+      SparepartRequestStatus toStatus, UUID actor, String action, String mreCode, String note,
+      String traceId, Instant createdAt) {
+    this.id = id;
+    this.requestId = requestId;
+    this.fromStatus = fromStatus;
+    this.toStatus = toStatus;
+    this.actor = actor;
+    this.action = action;
+    this.mreCode = mreCode;
+    this.note = note;
+    this.traceId = traceId;
+    this.createdAt = createdAt;
+  }
+
+  public UUID getId() { return id; }
+  public UUID getRequestId() { return requestId; }
+  public SparepartRequestStatus getFromStatus() { return fromStatus; }
+  public SparepartRequestStatus getToStatus() { return toStatus; }
+  public UUID getActor() { return actor; }
+  public String getAction() { return action; }
+  public String getMreCode() { return mreCode; }
+  public String getNote() { return note; }
+  public String getTraceId() { return traceId; }
+  public Instant getCreatedAt() { return createdAt; }
+}
+=== UNTRACKED FILE: SparepartRequestTimelineRepository.java ===
+package com.syncro.sparepart.request.infrastructure.db;
+
+import java.util.List;
+import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+/**
+ * Per-request timeline persistence (FR-141, story 12-2). Rows are written on every
+ * status transition or MRE code recording for operational evidence.
+ */
+public interface SparepartRequestTimelineRepository extends JpaRepository<SparepartRequestTimelineEntity, UUID> {
+
+  List<SparepartRequestTimelineEntity> findByRequestIdOrderByCreatedAtAsc(UUID requestId);
+}
+=== UNTRACKED FILE: V59__sparepart_request_state_machine.sql ===
+-- Story 12-2: Sparepart Request State Machine (FR-141/FR-145/AD-5). Additive on V58.
+--
+-- 1. Drop/re-add ck_sparepart_requests_status with the full FR-141 set (REQUESTED,
+--    PENDING_COMPLETION, ACKED, PROCESSING, READY, PURCHASE_REQUESTED,
+--    PART_RECEIVED, PICKED_UP, CLOSED).
+-- 2. Create sparepart_request_timeline for per-transition operational evidence.
+
+-- ---------------------------------------------------------------------------
+-- 1. Status CHECK re-add (drop/re-add pattern, additive on V57's two-value set)
+-- ---------------------------------------------------------------------------
+ALTER TABLE sparepart_requests DROP CONSTRAINT ck_sparepart_requests_status;
+ALTER TABLE sparepart_requests ADD CONSTRAINT ck_sparepart_requests_status
+  CHECK (status IN ('REQUESTED','PENDING_COMPLETION','ACKED','PROCESSING','READY',
+                    'PURCHASE_REQUESTED','PART_RECEIVED','PICKED_UP','CLOSED'));
+
+-- ---------------------------------------------------------------------------
+-- 2. sparepart_request_timeline — per-request operational evidence
+-- ---------------------------------------------------------------------------
+CREATE TABLE sparepart_request_timeline (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  request_id UUID NOT NULL REFERENCES sparepart_requests(id) ON DELETE CASCADE,
+  from_status VARCHAR(20),
+  to_status VARCHAR(20) NOT NULL,
+  actor UUID NOT NULL,
+  action VARCHAR(20) NOT NULL CHECK (action IN ('TRANSITION','MRE_RECORDED')),
+  mre_code VARCHAR(64),
+  note VARCHAR(500),
+  trace_id VARCHAR(64),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_sparepart_request_timeline_request ON sparepart_request_timeline(request_id);
