@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-08-28'
 status: 'done'
 baseline_commit: '9ccfce7156d2961cd92ee1d8c5080429262947e8'
-review_loop_iteration: 0
+review_loop_iteration: 1
 followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/project-context.md'
@@ -15,13 +15,6 @@ warnings:
   - 'multiple-goals'
   - 'oversized'
 deferred:
-  - summary: >-
-      Escalation jobs fabricate a random alertId (NOT NULL constraint) and pass traceId null; the idempotency-key prefix is the request handle.
-    evidence: >-
-      V24 requires alert_id NOT NULL; AD-9 polymorphic target_type/target_id is deferred, so the random UUID is the v1 stopgap. The dispatch path short-circuits template rendering via messageBody, and the alert escalation query joins on SparepartAlertEntity so these jobs never match. Verify no future path dereferences alertId for these jobs.
-    location: >-
-      syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestEscalationService.java
-    severity: medium
   - summary: >-
       Escalation recipients (inventory/storekeeper roles) are not plant-scoped; all such users across all plants are notified for any stale request.
     evidence: >-
@@ -37,13 +30,6 @@ deferred:
       syncro/apps/backend/src/main/java/com/syncro/notification/infrastructure/NotificationJobRepository.java
     severity: low
   - summary: >-
-      EscalationConfigService has no direct unit test (tier boundary semantics, gap fallback, no-config default).
-    evidence: >-
-      All approval tests stub requiredApprovalRole(...) with canned values; the actual range-matching loop, null min/max boundaries, and fail-closed fallback are untested directly.
-    location: >-
-      syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/EscalationConfigService.java
-    severity: medium
-  - summary: >-
       Escalation fires once per (request, step, recipient) only; if the first job set never completes delivery there is no re-escalation.
     evidence: >-
       The unique idempotency key prevents a second job for the same recipient/step; correctness relies on the notification worker's retry path (maxAttempts=3). No re-escalation or cooldown mechanism.
@@ -53,9 +39,37 @@ deferred:
   - summary: >-
       N+1 query fan-out on the sparepart-requests list: allowedActionsFor runs per row, re-reading machine, price entry and escalation config per pending row.
     evidence: >-
-      list() maps each row through toView(r, user) which calls allowedActionsFor -> machineForRequest -> EscalationConfigService.findByScopeOrderByStepAsc on every pending row. Acceptable at current list sizes; cache or batch when list grows.
+      list() maps each row through toView(r, user) which calls allowedActionsFor -> machineForRequest -> EscalationConfigService query on every pending row. Acceptable at current list sizes; cache or batch when list grows.
     location: >-
       syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestService.java
+    severity: low
+  - summary: >-
+      Approval is bypassable via the generic /transition endpoint: REQUESTED→ACKED is reachable by inventory/stores without SoD/tier/scope gates (approve() gates apply only on /approve).
+    evidence: >-
+      SparepartRequestStateMachine allows REQUESTED→ACKED; transition() actor gate admits INVENTORY_MAINTENANCE/STOREKEEPER for ACKED (12.3-SVC-008 proves it). /approve is the blessed path and OPA covers only /approve; a future story may fold the gate into /transition or remove the direct edge.
+    location: >-
+      syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestService.java
+    severity: medium
+  - summary: >-
+      Escalation dispatch falls back to the WAHA template renderer when a job's message_body is null/blank — a malformed escalation job would render an alert template from a null alertId.
+    evidence: >-
+      NotificationDispatchService.dispatch branches on message_body presence; escalation jobs always compose a body today, but the fallback path is untested for alert-less jobs. Guard (skip or ROUTING_FAILED) for a later pass.
+    location: >-
+      syncro/apps/backend/src/main/java/com/syncro/notification/application/NotificationDispatchService.java
+    severity: low
+  - summary: >-
+      Staleness anchor is updatedAt; any non-transition update to a stuck request postpones its escalation window.
+    evidence: >-
+      findStaleByStatusInAndUpdatedAtBefore keys on updated_at; notes edits or other touches re-arm the step. FR-147 step semantics arguably should key on the last status transition; acceptable v1 because transitions are the only status-changing updates.
+    location: >-
+      syncro/apps/backend/src/main/java/com/syncro/sparepart/request/infrastructure/db/SparepartRequestRepository.java
+    severity: low
+  - summary: >-
+      STEP_STATUSES iteration order is unspecified (Map.of) — per-step processing order and log ordering are not pinned by any test.
+    evidence: >-
+      escalateStale iterates STEP_STATUSES.keySet(); Map.of iteration order is JVM-defined but unspecified. Deterministic ordering (LinkedHashMap) for a later pass if per-step ordering matters.
+    location: >-
+      syncro/apps/backend/src/main/java/com/syncro/sparepart/request/application/SparepartRequestEscalationService.java
     severity: low
 ---
 
@@ -221,42 +235,65 @@ deferred:
   - `[medium]` `[patch]` @Valid missing on approve endpoint — ApproveRequest.note @Size(max=500) now enforced → 400 VALIDATION_ERROR instead of a 500.
   - `[medium]` `[patch]` NotificationDispatchService messageBody path untested — added dispatch test asserting verbatim send with template render never invoked.
 
+### 2026-08-28 — Follow-up review pass (fresh, `done` spec)
+- intent_gap: 0
+- bad_spec: 4 (high 3, medium 1)
+- patch: 8 (high 3, medium 5, low 0)
+- defer: 6
+- reject: 7
+- addressed_findings:
+  - `[high]` `[patch]` Escalation job alertId was a random UUID violating the still-active `notification_jobs_alert_id_fkey` (NOT NULL + FK to sparepart_alerts) — confirmed live: every escalation insert failed at runtime, so FR-147 never delivered. Fix: new V62 migration drops NOT NULL on alert_id; escalation service passes null; entity nullable.
+  - `[high]` `[patch]` saveIgnoreDuplicate's TransactionTemplate defaulted to PROPAGATION_REQUIRED (not REQUIRES_NEW as commented) — a duplicate at flush would mark the outer run rollback-only. Fix: `setPropagationBehavior(PROPAGATION_REQUIRES_NEW)`.
+  - `[high]` `[patch]` hasApprovalAuthority failed open for an unknown required role (rank 0) — a misconfigured escalation_configs role downgraded the gate to the weakest leader. Fix: `requiredRank > 0` guard (fail closed).
+  - `[high]` `[bad_spec]` Cost-tier resolver (`EscalationConfigService.requiredApprovalRole`) never tested at its own surface — every test stubbed the service. Added direct unit tests (below).
+  - `[high]` `[bad_spec]` allowedActionsFor — the server-side UI gate (approve button + badge) — had zero direct tests. Added tests.
+  - `[high]` `[bad_spec]` Ack-stop bulk update (`cancelActiveForRequest`) never executed against a real DB. Added container test.
+  - `[medium]` `[patch]` A missing estPriceId silently downgraded approval to the SECTION_LEADER tier — now throws PRICE_ENTRY_NOT_FOUND (fail closed).
+  - `[medium]` `[patch]` allowedActionsFor could 500 the whole list on a broken request (missing machine/workorder) — now catches and hides approve for that row.
+  - `[medium]` `[patch]` Tier ordering by `ORDER BY step ASC` was alphabetical, not cost — fallback depended on step names. Fix: `findByScopeOrderByMinCostAscNullsFirst`.
+  - `[medium]` `[patch]` Escalation traceId was null — dispatch logs un-correlatable. Fix: composed traceId per (request, step).
+  - `[medium]` `[patch]` Requester could receive their own escalation job (SoD dead notification); LEADER user duplicated when also an inventory role. Fix: exclude requester and dedupe recipients.
+  - `[medium]` `[bad_spec]` Stale-query semantics (`updatedAt <= cutoff`) never verified at repository level — added container coverage.
+  - `[medium]` `[patch]` Migration test 12.3-DB-007 asserted only IS_NULLABLE despite its name — now actually inserts/reads text; added 12.3-DB-010 for V62 alert_id nullability.
+
 ## Design Notes
 
 - Approval is NOT a new status: it is the REQUESTED→ACKED transition. SoD + tier + scope gates run first, then the existing `transition()` handles timeline/audit/recompute — zero duplicated state-machine logic. This is why `SparepartRequestStateMachine` stays untouched.
 - The escalation job's escalationLevel column holds the step name (`ACK_WAITING`/`PROCESS_WAITING`/`PURCHASE_WAITING`, ≤16 chars to fit VARCHAR(16)), and the worker's stale query re-evaluates per run, so no SENT-age escalation pass is needed (unlike alerts): each step fires once when its duration elapses, and `updated_at` advances on every transition so a step re-arms after the request moves.
-- `message_body` is the v1 request-summary body override; the existing template renderer stays the default path for alerts. This keeps the change to `NotificationDispatchService` a one-branch seam.
-- Idempotency key is per (request, step) — a single recipient per step is enqueued; the recipient set is fixed per step, so dedupe is safe. If per-recipient granularity is needed later, extend the key (AD-9 polymorphic target migration).
-- Approval tier monotonicity is by application-role authority order SECTION_LEADER < MAINTENANCE_LEADER < MANAGER_MAINTENANCE, applied on top of the in-scope leader check — so a MANAGER can approve a low tier but a SECTION_LEADER can never approve a high tier.
+- `message_body` is the v1 request-summary body override; the existing template renderer stays the default path for alerts. This keeps the change to `NotificationDispatchService` a one-branch seam. Follow-up fix: escalation jobs carry `alert_id = NULL` (V62) — the original random-UUID stopgap violated the V24 FK and every escalation insert failed at runtime.
+- Idempotency key is per (request, step, recipient) — one job per recipient, deduped by the `uq_notification_jobs_idempotency_key` unique index (V36). The ack-stop prefix `SPAREPART_REQUEST:{requestId}:%` matches all recipients of the request. If per-recipient granularity is later dropped, the key can shrink (AD-9 polymorphic target migration).
+- Approval tier monotonicity is by application-role authority order SECTION_LEADER < MAINTENANCE_LEADER < MANAGER_MAINTENANCE, applied on top of the in-scope leader check — so a MANAGER can approve a low tier but a SECTION_LEADER can never approve a high tier. An unknown `approval_role` in `escalation_configs` fails closed (no one can approve) rather than downgrading to the weakest leader.
+- `saveIgnoreDuplicate` runs each job save in a REQUIRES_NEW transaction (TransactionTemplate with PROPAGATION_REQUIRES_NEW) so a duplicate insert's unique violation rolls back only that job, never the run.
 
 ## Verification
 
 **Commands:**
-- `./mvnw.cmd -f syncro/apps/backend/pom.xml test "-Dtest=SparepartRequestServiceTest,SparepartRequestControllerTest,SparepartRequestEscalationServiceTest,SparepartRequestMigrationTest"` -- expected BUILD SUCCESS.
+- `./mvnw.cmd -f syncro/apps/backend/pom.xml test "-Dtest=EscalationConfigServiceTest,SparepartRequestServiceTest,SparepartRequestControllerTest,SparepartRequestEscalationServiceTest,NotificationDispatchServiceTest,SparepartRequestMigrationTest,SparepartRequestEscalationCancelIntegrationTest"` -- expected BUILD SUCCESS.
 - `cd syncro/authz && ./run-opa-test.ps1` -- expected PASS incl. new approve parity cases.
 - `cd syncro/apps/web && npx tsc --noEmit` -- expected green.
 - `cd syncro/apps/web && npx biome check src/features/sparepart-requests` -- expected clean.
 
 ## Auto Run Result
 
-**Summary of implemented change:** Story 12-3 (Approval, Separation of Duty & Escalation, FR-142/FR-147/AD-16) — V60 migration (escalation_configs table + notification_jobs.message_body), approval endpoint POST /{id}/approve with SoD/cost-tier/role-scope gates, EscalationConfigService for DB-driven tier/duration resolution, SparepartRequestEscalationWorker + SparepartRequestEscalationService for step-driven stale-request escalation with WAHA job enqueue, messageBody dispatch path in NotificationDispatchService, ack-stop on ACKED/CLOSED (cancelActiveForRequest), allowedActions per-user in API views, OPA approval path rego + parity, frontend approve dialog + badge + button driven by allowedActions.
+**Summary of implemented change:** Story 12-3 (Approval, Separation of Duty & Escalation, FR-142/FR-147/AD-16) — V60 migration (escalation_configs table + notification_jobs.message_body) + V62 fix (alert_id nullable), approval endpoint POST /{id}/approve with SoD/cost-tier/role-scope gates, EscalationConfigService for DB-driven tier/duration resolution, SparepartRequestEscalationWorker + SparepartRequestEscalationService for step-driven stale-request escalation with WAHA job enqueue, messageBody dispatch path in NotificationDispatchService, ack-stop on ACKED/CLOSED (cancelActiveForRequest), allowedActions per-user in API views, OPA approval path rego + parity, frontend approve dialog + badge + button driven by allowedActions.
 
-**Files changed:** 20 modified + 6 new backend files (V60 migration, EscalationConfig domain/entity/repo/service, EscalationService + Worker, controller/DTOs/exception handler, service, mapper, repository, NotificationJobEntity/Repository/DispatchService, AuthUserRepository, rego + rego_test, .env.example) + 4 frontend files (types, hook, list, new approve-dialog).
+**Files changed:** 20 modified + 6 new backend files (V60 migration, EscalationConfig domain/entity/repo/service, EscalationService + Worker, controller/DTOs/exception handler, service, mapper, repository, NotificationJobEntity/Repository/DispatchService, AuthUserRepository, rego + rego_test, .env.example) + 4 frontend files (types, hook, list, new approve-dialog). Follow-up pass adds V62 migration + fixes in EscalationConfigService/Repository, SparepartRequestEscalationService, SparepartRequestService, NotificationJobEntity, migration test.
 
-**Review findings breakdown:**
-- Patches applied: 6 (1 high, 3 medium, 2 low) — idempotency key per-recipient, REQUIRES_NEW saveIgnoreDuplicate, tier ordering/fail-closed, @Valid on approve, messageBody dispatch test, step name length
-- Items deferred: 6 (random alertId, non-scoped inventory recipients, no ack-stop index, EscalationConfigService untested, no re-escalation, N+1 list query)
-- Items rejected: 2 (approval-tier fail-open severity — closed as misread; @EnableScheduling check — already present)
+**Review findings breakdown (follow-up pass):**
+- Patches applied: 8 (3 high, 5 medium) — V62 alert_id nullable, REQUIRES_NEW saveIgnoreDuplicate, hasApprovalAuthority fail-closed, estPriceId fail-closed, allowedActionsFor defensive, tier ordering by cost, traceId, recipient dedup/exclusion
+- Items deferred: 6 (see frontmatter `deferred`)
+- Items rejected: 7 (see triage log)
 
-**Follow-up review recommendation:** true — 2 high + 3 medium = 2×3 + 3×2 = 12 ≥ 5.
+**Follow-up review recommendation:** true — 3 high + 5 medium = 3×3 + 5×2 = 19 ≥ 5.
 
-**Verification performed:**
-- Backend: 79 tests pass (43 service + 20 controller + 7 escalation + 9 dispatch), compile SUCCESS
-- Frontend: `tsc --noEmit` green, `biome check` clean on 5 files
-- OPA: 198/198 rego parity tests pass (not re-run after patch, untouched by patches)
+**Verification performed (follow-up pass):**
+- Backend: EscalationConfigServiceTest 11/11, SparepartRequestServiceTest 59/59 (incl. 5 new allowedActionsFor), SparepartRequestEscalationServiceTest 7/7, SparepartRequestControllerTest 26/26, NotificationDispatchServiceTest 9/9, SparepartRequestMigrationTest 30/30 (incl. new 12.3-DB-010 V62 alert_id nullable), SparepartRequestEscalationCancelIntegrationTest 4/4 (new ack-stop container tests) — all BUILD SUCCESS
+- Frontend: `tsc --noEmit` green, `biome check` clean (unchanged by follow-up)
+- OPA: 198/198 rego parity tests pass (unchanged by follow-up)
 
 **Residual risks:**
-- Escalation job alertId is a random UUID (NOT NULL constraint) — the dispatch path short-circuits via messageBody, but any future code that dereferences alertId for escalation jobs will crash. Acceptable v1 per AD-9 deferral.
 - Escalation recipients are not plant-scoped — all INVENTORY_MAINTENANCE/STOREKEEPER users globally get notified for every stale request. Acceptable v1 mitigated by the LEADER responsibility being machine-scoped and inventory roles being a parallel channel.
 - Escalation fires once per (request, step, recipient) with no re-escalation — relies on the notification worker's retry path (maxAttempts=3). A job that exhausts its attempts without delivery is never re-escalated.
-- EscalationConfigService tier logic is not directly unit-tested — exercised indirectly through SparepartRequestServiceTest mocks. Reviewers flagged this as a gap; deferred to a follow-up.
+- No index serves the ack-stop idempotency-key prefix scan (LIKE 'SPAREPART_REQUEST:{id}:%') — acceptable at request volume; should gain an index if job rows grow.
+- Approval is still reachable via the generic `/transition` endpoint (REQUESTED→ACKED) by inventory/stores without the approval gate — the `/approve` endpoint enforces SoD/tier/scope, but `/transition` remains a bypass surface. Mitigation: `/approve` is the blessed approval path and the OPA coarse gate covers only `/approve`; a future story may fold the approval gate into `/transition` or drop the direct REQUESTED→ACKED edge.
+- Escalation dispatch falls back to the WAHA template renderer if a job's `message_body` is null/blank — escalation jobs always compose a body today, but a malformed row would render an alert template from a null alertId. Acceptable v1; flagged for a future guard.

@@ -1,13 +1,9 @@
 package com.syncro.sparepart.request.application;
 
-import com.syncro.sparepart.request.domain.EscalationConfig;
 import com.syncro.sparepart.request.infrastructure.db.EscalationConfigEntity;
 import com.syncro.sparepart.request.infrastructure.db.EscalationConfigRepository;
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.Optional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -16,8 +12,6 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class EscalationConfigService {
-
-  private static final Logger log = LoggerFactory.getLogger(EscalationConfigService.class);
 
   private static final String SPAREPART_REQUEST_SCOPE = "SPAREPART_REQUEST";
 
@@ -36,7 +30,7 @@ public class EscalationConfigService {
     if (!hasPrice) {
       return "SECTION_LEADER";
     }
-    var configs = repository.findByScopeOrderByStepAsc(SPAREPART_REQUEST_SCOPE);
+    var configs = repository.findByScopeOrderByMinCostAscNullsFirst(SPAREPART_REQUEST_SCOPE);
     // Only approval tiers have a non-null approval_role
     var tiers = configs.stream()
         .filter(c -> c.getApprovalRole() != null)
@@ -74,21 +68,11 @@ public class EscalationConfigService {
    * Returns the duration in minutes for a given escalation step, or 0 if not found.
    */
   public int durationMinutes(String step) {
-    var configs = repository.findByScopeOrderByStepAsc(SPAREPART_REQUEST_SCOPE);
+    var configs = repository.findByScopeOrderByMinCostAscNullsFirst(SPAREPART_REQUEST_SCOPE);
     return configs.stream()
         .filter(c -> step.equals(c.getStep()))
         .findFirst()
         .map(EscalationConfigEntity::getDurationMinutes)
         .orElse(0);
-  }
-
-  /**
-   * Returns all SPAREPART_REQUEST config rows as domain records.
-   */
-  public List<EscalationConfig> allForScope() {
-    return repository.findByScopeOrderByStepAsc(SPAREPART_REQUEST_SCOPE).stream()
-        .map(e -> new EscalationConfig(e.getScope(), e.getStep(), e.getMinCost(), e.getMaxCost(),
-            e.getDurationMinutes(), e.getApprovalRole()))
-        .toList();
   }
 }

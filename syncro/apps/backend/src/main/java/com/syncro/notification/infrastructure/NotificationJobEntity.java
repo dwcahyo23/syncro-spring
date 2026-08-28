@@ -23,7 +23,8 @@ public class NotificationJobEntity {
   @GeneratedValue(strategy = GenerationType.UUID)
   private UUID id;
 
-  @Column(name = "alert_id", nullable = false)
+  /** Nullable since V62: sparepart-request escalation jobs carry no sparepart_alert reference. */
+  @Column(name = "alert_id")
   private UUID alertId;
 
   @Column(name = "escalation_level", nullable = false, length = 16)

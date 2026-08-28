@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -76,6 +77,7 @@ public class SparepartRequestEscalationService {
     this.notificationJobs = notificationJobs;
     this.clock = clock;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
+    transactionTemplate.setPropagationBehavior(TransactionTemplate.PROPAGATION_REQUIRES_NEW);
   }
 
   /**
@@ -119,7 +121,9 @@ public class SparepartRequestEscalationService {
     }
 
     String body = composeBody(request);
-    String traceId = null;
+    // Trace the whole escalation run so dispatch logs and attempt rows correlate back to
+    // the poll cycle (the alert path carries a real traceId; escalation jobs had none).
+    String traceId = "sparepart-escalation-" + request.getId() + "-" + step;
 
     // 1. Machine LEADER responsibility user (FR-147: "section leaders and above")
     var responsibility = responsibilities
@@ -156,10 +160,18 @@ public class SparepartRequestEscalationService {
           machineId);
     }
 
-    // 2. Every INVENTORY_MAINTENANCE / STOREKEEPER user with a phone
+    // 2. Every INVENTORY_MAINTENANCE / STOREKEEPER user with a phone, excluding the
+    // requester (SoD: they cannot approve their own request, so notifying them is noise)
+    // and any user already covered by the LEADER job above (no duplicate WhatsApp).
     var inventoryUsers = users.findAllByApplicationRoleInWithWhatsapp(INVENTORY_ROLES);
     for (var user : inventoryUsers) {
       if (user.getWhatsappNumber() == null || user.getWhatsappNumber().isBlank()) {
+        continue;
+      }
+      if (user.getId().equals(request.getRequestedBy())) {
+        continue;
+      }
+      if (responsibility.isPresent() && user.getId().equals(responsibility.get().getUserId())) {
         continue;
       }
       saveIgnoreDuplicate(notificationJob(
@@ -194,8 +206,10 @@ public class SparepartRequestEscalationService {
   }
 
   /**
-   * v1 request-summary body (FR-147): requestId, material code or 'new', qty, status,
-   * machine code. Composed here and carried on the job's message_body column.
+   * v1 request-summary body (FR-147): requestId, material code or 'new', qty, status.
+   * Composed here and carried on the job's message_body column. No machine code or action
+   * link in v1 — the recipient must navigate to the app to act. The body is in Indonesian
+   * because the WAHA recipients are Indonesian-speaking plant operators.
    */
   private String composeBody(SparepartRequestEntity request) {
     return "Permintaan sparepart menunggu tindakan: ID " + request.getId()
@@ -207,11 +221,12 @@ public class SparepartRequestEscalationService {
   private static NotificationJobEntity notificationJob(SparepartRequestEntity request, String step,
       String idempotencyKey, NotificationJobStatus status, UUID recipientUserId, String recipientPhone,
       String traceId, String errorDetail, String messageBody) {
-    // alertId is non-null in the schema (V24) — escalation jobs reuse the idempotency
-    // key as the discriminator; a random UUID satisfies the NOT NULL constraint without
-    // implying an alert relationship.
+    // alertId is null: escalation jobs carry no sparepart_alert reference.
+    // V62 drops the NOT NULL constraint so a null alertId is accepted without
+    // violating the FK (PostgreSQL skips FK checks on null values). The
+    // uq_notification_jobs_idempotency_key unique constraint handles dedup.
     return new NotificationJobEntity(
-        UUID.randomUUID(), step, status, recipientUserId, recipientPhone, idempotencyKey,
+        null, step, status, recipientUserId, recipientPhone, idempotencyKey,
         traceId, errorDetail, messageBody);
   }
 
