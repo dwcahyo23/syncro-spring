@@ -4,9 +4,11 @@ import com.syncro.sparepart.request.api.SparepartRequestDtos.ErrorResponse;
 import com.syncro.sparepart.request.application.SparepartRequestService.MachineNotFoundException;
 import com.syncro.sparepart.request.application.SparepartRequestService.PriceEntryNotFoundException;
 import com.syncro.sparepart.request.application.SparepartRequestService.RequestForbiddenException;
+import com.syncro.sparepart.request.application.SparepartRequestService.RequestNotFoundException;
 import com.syncro.sparepart.request.application.SparepartRequestService.RequestValidationException;
 import com.syncro.sparepart.request.application.SparepartRequestService.SparepartNotFoundException;
 import com.syncro.sparepart.request.application.SparepartRequestService.WorkOrderNotFoundException;
+import com.syncro.sparepart.request.application.SparepartRequestService.InvalidRequestStateTransitionException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -84,6 +86,19 @@ public class SparepartRequestExceptionHandler {
   @ExceptionHandler(WorkOrderNotFoundException.class)
   ResponseEntity<ErrorResponse> workOrderNotFound() {
     return error(HttpStatus.NOT_FOUND, "WORKORDER_NOT_FOUND", "Work order was not found.", Map.of());
+  }
+
+  /** Story 12-2: invalid or terminal state transition → 409 CONFLICT (mirrors WorkOrderExceptionHandler). */
+  @ExceptionHandler(InvalidRequestStateTransitionException.class)
+  ResponseEntity<ErrorResponse> invalidStateTransition() {
+    return error(HttpStatus.CONFLICT, "INVALID_STATE_TRANSITION",
+        "Request is not in a state that allows this transition.", Map.of());
+  }
+
+  /** Story 12-2: unknown request id → 404 (mirrors WorkOrderExceptionHandler codes). */
+  @ExceptionHandler(RequestNotFoundException.class)
+  ResponseEntity<ErrorResponse> requestNotFound() {
+    return error(HttpStatus.NOT_FOUND, "REQUEST_NOT_FOUND", "Sparepart request was not found.", Map.of());
   }
 
   @ExceptionHandler(MachineNotFoundException.class)

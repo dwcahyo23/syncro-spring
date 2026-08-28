@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -16,6 +17,7 @@ import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.machine.domain.MachineStatus;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
+import com.syncro.maintenance.application.WorkOrderService;
 import com.syncro.maintenance.infrastructure.db.WorkOrderEntity;
 import com.syncro.maintenance.infrastructure.db.WorkOrderRepository;
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
@@ -26,12 +28,18 @@ import com.syncro.sparepart.infrastructure.SparepartPriceEntryRepository;
 import com.syncro.sparepart.infrastructure.SparepartRepository;
 import com.syncro.sparepart.infrastructure.SparepartTaxonomyEntity;
 import com.syncro.sparepart.request.application.SparepartRequestService.CreateRequestCommand;
+import com.syncro.sparepart.request.application.SparepartRequestService.MreCommand;
 import com.syncro.sparepart.request.application.SparepartRequestService.RequestForbiddenException;
 import com.syncro.sparepart.request.application.SparepartRequestService.RequestValidationException;
+import com.syncro.sparepart.request.application.SparepartRequestService.TransitionCommand;
+import com.syncro.sparepart.request.application.SparepartRequestService.InvalidRequestStateTransitionException;
+import com.syncro.sparepart.request.application.SparepartRequestService.RequestNotFoundException;
 import com.syncro.sparepart.request.domain.SparepartRequestStatus;
 import com.syncro.sparepart.request.domain.SparepartRequestType;
 import com.syncro.sparepart.request.infrastructure.db.SparepartRequestEntity;
 import com.syncro.sparepart.request.infrastructure.db.SparepartRequestRepository;
+import com.syncro.sparepart.request.infrastructure.db.SparepartRequestTimelineEntity;
+import com.syncro.sparepart.request.infrastructure.db.SparepartRequestTimelineRepository;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -58,7 +66,11 @@ class SparepartRequestServiceTest {
   @Mock
   private SparepartRequestRepository requests;
   @Mock
+  private SparepartRequestTimelineRepository timelines;
+  @Mock
   private WorkOrderRepository workOrders;
+  @Mock
+  private WorkOrderService workOrderService;
   @Mock
   private MachineRepository machines;
   @Mock
@@ -82,10 +94,12 @@ class SparepartRequestServiceTest {
 
   @BeforeEach
   void setUp() {
-    service = new SparepartRequestService(requests, workOrders, machines, spareparts, priceEntries, auditLog, scopes, clock);
+    service = new SparepartRequestService(requests, timelines, workOrders, workOrderService, machines, spareparts,
+        priceEntries, auditLog, scopes, clock);
     machine = machineWithPlant(plantId, groupId, machineId);
     lenient().when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
     when(requests.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    when(timelines.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
   }
 
   @Test
@@ -337,6 +351,271 @@ class SparepartRequestServiceTest {
         category, null, null, null, NOW, NOW);
     entity.updateProcurement(materialCode, null, NOW);
     return entity;
+  }
+
+  private SparepartRequestEntity requestEntity(SparepartRequestStatus status) {
+    return new SparepartRequestEntity(UUID.randomUUID(), SparepartRequestType.SPAREPART, null, machineId,
+        sparepartId, "MC-0001", (short) 2, null, null, null, status, staffId, NOW, null, NOW, NOW);
+  }
+
+  private SparepartRequestEntity requestEntityBoundToWorkOrder(SparepartRequestStatus status, String workOrderId) {
+    return new SparepartRequestEntity(UUID.randomUUID(), SparepartRequestType.SERVICE_EXTERNAL, workOrderId, null,
+        null, null, (short) 1, null, null, null, status, staffId, NOW, null, NOW, NOW);
+  }
+
+  private void stubBoundWorkOrder(String workOrderId) {
+    var workOrder = new WorkOrderEntity(workOrderId, "INTERNAL", null, WorkOrderStatus.IN_PROGRESS, null, machineId,
+        "fix", 0L, null, null, null, NOW, NOW);
+    when(workOrders.findById(workOrderId)).thenReturn(Optional.of(workOrder));
+  }
+
+  private AuthenticatedUser inventoryUser() {
+    return new AuthenticatedUser(UUID.randomUUID().toString(), "inv@test", ApplicationRole.INVENTORY_MAINTENANCE);
+  }
+
+  private AuthenticatedUser sectionLeaderUser() {
+    return new AuthenticatedUser(UUID.randomUUID().toString(), "leader@test", ApplicationRole.SECTION_LEADER);
+  }
+
+  private AuthenticatedUser technicianUser() {
+    return new AuthenticatedUser(UUID.randomUUID().toString(), "tech@test", ApplicationRole.TECHNICIAN);
+  }
+
+  private void stubScopedMachine(UUID machineId, AuthenticatedUser user) {
+    when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
+  }
+
+  // -------------------------------------------------------------------------
+  // Story 12-2: state machine tests
+  // -------------------------------------------------------------------------
+
+  @Test
+  @DisplayName("12.2-SVC-001 P0 REQUESTED→ACKED by inventory writes timeline + audit")
+  void ackOk() {
+    var user = inventoryUser();
+    var entity = requestEntity(SparepartRequestStatus.REQUESTED);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+
+    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.ACKED, null));
+
+    assertThat(result.status()).isEqualTo(SparepartRequestStatus.ACKED);
+    verify(timelines).saveAndFlush(any(SparepartRequestTimelineEntity.class));
+    verify(auditLog).record(eq(user), org.mockito.ArgumentMatchers.argThat(r ->
+        r.action() == AuditAction.UPDATE && r.entityType() == AuditEntityType.SPAREPART_REQUEST));
+    verify(workOrderService, never()).recomputeProcurementState(any());
+  }
+
+  @Test
+  @DisplayName("12.2-SVC-002 P0 PENDING_COMPLETION→ACKED is allowed")
+  void pendingAckOk() {
+    var user = inventoryUser();
+    var entity = requestEntity(SparepartRequestStatus.PENDING_COMPLETION);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+
+    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.ACKED, null));
+
+    assertThat(result.status()).isEqualTo(SparepartRequestStatus.ACKED);
+  }
+
+  @Test
+  @DisplayName("12.2-SVC-003 P0 ACKED→PROCESSING by storekeeper")
+  void processOk() {
+    var user = new AuthenticatedUser(UUID.randomUUID().toString(), "store@test", ApplicationRole.STOREKEEPER);
+    var entity = requestEntity(SparepartRequestStatus.ACKED);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+
+    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PROCESSING, null));
+
+    assertThat(result.status()).isEqualTo(SparepartRequestStatus.PROCESSING);
+  }
+
+  @Test
+  @DisplayName("12.2-SVC-004 P0 PROCESSING→READY recomputes procurement on a bound workorder")
+  void readyOk() {
+    var user = inventoryUser();
+    var entity = requestEntityBoundToWorkOrder(SparepartRequestStatus.PROCESSING, "WO-2609-00001");
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubBoundWorkOrder("WO-2609-00001");
+    stubScopedMachine(machineId, user);
+
+    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.READY, null));
+
+    assertThat(result.status()).isEqualTo(SparepartRequestStatus.READY);
+    verify(workOrderService).recomputeProcurementState("WO-2609-00001");
+  }
+
+  @Test
+  @DisplayName("12.2-SVC-005 P0 PROCESSING→PURCHASE_REQUESTED recomputes ON_PROCUREMENT")
+  void purchaseOk() {
+    var user = inventoryUser();
+    var entity = requestEntityBoundToWorkOrder(SparepartRequestStatus.PROCESSING, "WO-2609-00001");
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubBoundWorkOrder("WO-2609-00001");
+    stubScopedMachine(machineId, user);
+
+    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PURCHASE_REQUESTED, null));
+
+    assertThat(result.status()).isEqualTo(SparepartRequestStatus.PURCHASE_REQUESTED);
+    verify(workOrderService).recomputeProcurementState("WO-2609-00001");
+  }
+
+  @Test
+  @DisplayName("12.2-SVC-006 P0 PURCHASE_REQUESTED→PART_RECEIVED recomputes")
+  void partReceivedOk() {
+    var user = inventoryUser();
+    var entity = requestEntityBoundToWorkOrder(SparepartRequestStatus.PURCHASE_REQUESTED, "WO-2609-00001");
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubBoundWorkOrder("WO-2609-00001");
+    stubScopedMachine(machineId, user);
+
+    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PART_RECEIVED, null));
+
+    assertThat(result.status()).isEqualTo(SparepartRequestStatus.PART_RECEIVED);
+    verify(workOrderService).recomputeProcurementState("WO-2609-00001");
+  }
+
+  @Test
+  @DisplayName("12.2-SVC-007 P0 READY→PICKED_UP by section leader")
+  void pickUpOk() {
+    var user = sectionLeaderUser();
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
+    var entity = requestEntity(SparepartRequestStatus.READY);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+
+    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PICKED_UP, null));
+
+    assertThat(result.status()).isEqualTo(SparepartRequestStatus.PICKED_UP);
+  }
+
+  @Test
+  @DisplayName("12.2-SVC-008 P0 PICKED_UP→CLOSED by section leader")
+  void closeOk() {
+    var user = sectionLeaderUser();
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
+    var entity = requestEntity(SparepartRequestStatus.PICKED_UP);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+
+    var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.CLOSED, null));
+
+    assertThat(result.status()).isEqualTo(SparepartRequestStatus.CLOSED);
+  }
+
+  @Test
+  @DisplayName("12.2-SVC-009 P0 invalid edge REQUESTED→READY is rejected (409 INVALID_STATE_TRANSITION)")
+  void invalidEdge() {
+    var user = inventoryUser();
+    var entity = requestEntity(SparepartRequestStatus.REQUESTED);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+
+    assertThatThrownBy(() -> service.transition(user, id, new TransitionCommand(SparepartRequestStatus.READY, null)))
+        .isInstanceOf(InvalidRequestStateTransitionException.class);
+  }
+
+  @Test
+  @DisplayName("12.2-SVC-010 P0 terminal state CLOSED→anything is rejected")
+  void terminalViolation() {
+    var user = sectionLeaderUser();
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
+    var entity = requestEntity(SparepartRequestStatus.CLOSED);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+
+    assertThatThrownBy(() -> service.transition(user, id, new TransitionCommand(SparepartRequestStatus.READY, null)))
+        .isInstanceOf(InvalidRequestStateTransitionException.class);
+  }
+
+  @Test
+  @DisplayName("12.2-SVC-011 P0 technician (not assigned) cannot ACK → FORBIDDEN")
+  void forbiddenRole() {
+    var user = technicianUser();
+    var entity = requestEntity(SparepartRequestStatus.REQUESTED);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+
+    assertThatThrownBy(() -> service.transition(user, id, new TransitionCommand(SparepartRequestStatus.ACKED, null)))
+        .isInstanceOf(RequestForbiddenException.class);
+  }
+
+  @Test
+  @DisplayName("12.2-SVC-012 P0 requester (non-leader) cannot PICK_UP their own request → FORBIDDEN")
+  void wrongActorClose() {
+    var user = new AuthenticatedUser(staffId.toString(), "staff@test", ApplicationRole.STAFF_MAINTENANCE);
+    var entity = requestEntity(SparepartRequestStatus.READY);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+
+    assertThatThrownBy(() -> service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PICKED_UP, null)))
+        .isInstanceOf(RequestForbiddenException.class);
+  }
+
+  @Test
+  @DisplayName("12.2-SVC-013 P0 MRE in PURCHASE_REQUESTED records timeline + audit")
+  void mreOk() {
+    var user = inventoryUser();
+    var entity = requestEntity(SparepartRequestStatus.PURCHASE_REQUESTED);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+
+    var result = service.recordMre(user, id, new MreCommand("MRE26023xxxx", null));
+
+    assertThat(result.status()).isEqualTo(SparepartRequestStatus.PURCHASE_REQUESTED);
+    verify(timelines).saveAndFlush(any(SparepartRequestTimelineEntity.class));
+    verify(auditLog).record(eq(user), org.mockito.ArgumentMatchers.argThat(r ->
+        r.action() == AuditAction.UPDATE && r.entityType() == AuditEntityType.SPAREPART_REQUEST));
+    verify(workOrderService, never()).recomputeProcurementState(any());
+  }
+
+  @Test
+  @DisplayName("12.2-SVC-014 P0 MRE in wrong state (REQUESTED) → 409 INVALID_STATE_TRANSITION")
+  void mreWrongState() {
+    var user = inventoryUser();
+    var entity = requestEntity(SparepartRequestStatus.REQUESTED);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+
+    assertThatThrownBy(() -> service.recordMre(user, id, new MreCommand("MRE26023xxxx", null)))
+        .isInstanceOf(InvalidRequestStateTransitionException.class);
+  }
+
+  @Test
+  @DisplayName("12.2-SVC-015 P0 blank MRE code → 400 VALIDATION_ERROR fieldErrors.mreCode")
+  void mreBlank() {
+    var user = inventoryUser();
+    var id = UUID.randomUUID();
+
+    assertThatThrownBy(() -> service.recordMre(user, id, new MreCommand("   ", null)))
+        .isInstanceOf(RequestValidationException.class);
+  }
+
+  @Test
+  @DisplayName("12.2-SVC-016 P0 unknown request id → 404 REQUEST_NOT_FOUND")
+  void notFound() {
+    var user = inventoryUser();
+    var id = UUID.randomUUID();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.transition(user, id, new TransitionCommand(SparepartRequestStatus.ACKED, null)))
+        .isInstanceOf(RequestNotFoundException.class);
   }
 
   private AuthenticatedUser staffUser() {

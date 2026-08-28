@@ -88,6 +88,16 @@ sparepart_request_paths := {
   "/api/v1/sparepart-requests",
 }
 
+# Sparepart request transition and MRE (story 12-2): seven-role allow set
+# (MANAGER_MAINTENANCE/MAINTENANCE_LEADER/SECTION_LEADER/INVENTORY_MAINTENANCE/
+#  STOREKEEPER/STAFF_MAINTENANCE/TECHNICIAN). SUPER_ADMIN is covered by the
+# generic SUPER_ADMIN mutation_allowed rule. Service gate is authoritative for
+# scope/role/ownership checks.
+sparepart_request_transition_paths := {
+  "/api/v1/sparepart-requests/*/transition",
+  "/api/v1/sparepart-requests/*/mre",
+}
+
 workorder_assign_paths := {
   "/api/v1/workorders/*/assign",
 }
@@ -293,6 +303,50 @@ mutation_allowed if {
   input.subject.roles[_] == "TECHNICIAN"
   is_mutation
   path_matches(sparepart_request_paths)
+}
+
+# Sparepart request transition + MRE (story 12-2): seven-role allow set
+# (SUPER_ADMIN via the generic rule).
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(sparepart_request_transition_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(sparepart_request_transition_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(sparepart_request_transition_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STAFF_MAINTENANCE"
+  is_mutation
+  path_matches(sparepart_request_transition_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "TECHNICIAN"
+  is_mutation
+  path_matches(sparepart_request_transition_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "INVENTORY_MAINTENANCE"
+  is_mutation
+  path_matches(sparepart_request_transition_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STOREKEEPER"
+  is_mutation
+  path_matches(sparepart_request_transition_paths)
 }
 
 # Assign: leadership roles only (STAFF_MAINTENANCE and PRODUCTION_LEADER excluded).

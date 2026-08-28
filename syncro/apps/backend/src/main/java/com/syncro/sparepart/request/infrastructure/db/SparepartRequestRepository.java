@@ -1,11 +1,13 @@
 package com.syncro.sparepart.request.infrastructure.db;
 
+import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,25 +18,49 @@ public interface SparepartRequestRepository extends JpaRepository<SparepartReque
   Optional<SparepartRequestEntity> findById(UUID id);
 
   /**
+   * A single request row locked for update (PESSIMISTIC_WRITE) — serializes concurrent
+   * transitions on the same request (story 12-2). Mirrors the workorder
+   * {@code findByIdForUpdate} pattern (AD-5).
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select r from SparepartRequestEntity r where r.id = :id")
+  Optional<SparepartRequestEntity> findByIdForUpdate(@Param("id") UUID id);
+
+  /**
+   * Readiness query for the real {@code SparepartRequestReadinessPort} (AD-5, story 12-2):
+   * whether the workorder has at least one live non-READY request — any non-terminal
+   * request whose status is not READY or CLOSED.
+   */
+  @Query("""
+      select count(r) > 0
+      from SparepartRequestEntity r
+      where r.workOrderId = :workOrderId
+        and r.status <> com.syncro.sparepart.request.domain.SparepartRequestStatus.READY
+        and r.status <> com.syncro.sparepart.request.domain.SparepartRequestStatus.CLOSED
+      """)
+  boolean hasLiveNonReadyRequest(@Param("workOrderId") String workOrderId);
+
+  /**
    * Sparepart-request list read (story 12-1 list view): every request visible in the
    * derived scope (plant OR machine-group), joined to the machine so the plant/group
    * predicates work. Unbound CONSUMABLE requests (no machine, no workorder) carry no
-   * scope and are visible only to unrestricted users (SUPER_ADMIN). Rows are ordered by
-   * {@code requestedAt desc} for a stable page order. {@code unrestricted} (SUPER_ADMIN)
-   * bypasses the scope filter.
+   * scope and are visible only to unrestricted users (SUPER_ADMIN) or users with an
+   * empty plant scope. Rows are ordered by {@code requestedAt desc} for a stable page
+   * order. {@code unrestricted} (SUPER_ADMIN) bypasses the scope filter.
    */
   @Query("""
       select r
       from SparepartRequestEntity r
       left join MachineEntity m on m.id = r.machineId
       where (:unrestricted = true
-             or (m is null and r.machineId is null and :plantIds is empty)
+             or (m is null and r.machineId is null and :hasPlantScope = false)
              or m.plant.id in :plantIds
              or m.machineGroup.id in :groupIds)
       order by r.requestedAt desc
       """)
   List<SparepartRequestEntity> findScopedPage(
       @Param("unrestricted") boolean unrestricted,
+      @Param("hasPlantScope") boolean hasPlantScope,
       @Param("plantIds") Collection<UUID> plantIds,
       @Param("groupIds") Collection<UUID> groupIds,
       Pageable pageable);
@@ -48,12 +74,13 @@ public interface SparepartRequestRepository extends JpaRepository<SparepartReque
       from SparepartRequestEntity r
       left join MachineEntity m on m.id = r.machineId
       where (:unrestricted = true
-             or (m is null and r.machineId is null and :plantIds is empty)
+             or (m is null and r.machineId is null and :hasPlantScope = false)
              or m.plant.id in :plantIds
              or m.machineGroup.id in :groupIds)
       """)
   long countScoped(
       @Param("unrestricted") boolean unrestricted,
+      @Param("hasPlantScope") boolean hasPlantScope,
       @Param("plantIds") Collection<UUID> plantIds,
       @Param("groupIds") Collection<UUID> groupIds);
 }

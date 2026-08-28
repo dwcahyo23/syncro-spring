@@ -17,9 +17,11 @@ import com.syncro.config.SecurityConfig;
 import com.syncro.config.TimeConfig;
 import com.syncro.sparepart.request.application.SparepartRequestService;
 import com.syncro.sparepart.request.application.SparepartRequestService.CreateRequestCommand;
+import com.syncro.sparepart.request.application.SparepartRequestService.InvalidRequestStateTransitionException;
 import com.syncro.sparepart.request.application.SparepartRequestService.MachineNotFoundException;
 import com.syncro.sparepart.request.application.SparepartRequestService.PriceEntryNotFoundException;
 import com.syncro.sparepart.request.application.SparepartRequestService.RequestForbiddenException;
+import com.syncro.sparepart.request.application.SparepartRequestService.RequestNotFoundException;
 import com.syncro.sparepart.request.application.SparepartRequestService.RequestValidationException;
 import com.syncro.sparepart.request.application.SparepartRequestService.SparepartNotFoundException;
 import com.syncro.sparepart.request.application.SparepartRequestService.WorkOrderNotFoundException;
@@ -179,9 +181,122 @@ class SparepartRequestControllerTest {
         .andExpect(jsonPath("$.code").value("PRICE_ENTRY_NOT_FOUND"));
   }
 
+  @Test
+  @DisplayName("12.2-API-001 P0 transition endpoint returns 200 view")
+  void transitionReturnsView() throws Exception {
+    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
+    var id = UUID.randomUUID();
+    when(service.transition(eq(user), eq(id), any(SparepartRequestService.TransitionCommand.class)))
+        .thenReturn(requestDomain(SparepartRequestStatus.ACKED));
+
+    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/transition")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"toStatus\":\"ACKED\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("ACKED"));
+  }
+
+  @Test
+  @DisplayName("12.2-API-002 P0 invalid transition maps to 409 INVALID_STATE_TRANSITION")
+  void transitionInvalidEdge() throws Exception {
+    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
+    var id = UUID.randomUUID();
+    doThrow(new InvalidRequestStateTransitionException())
+        .when(service).transition(eq(user), eq(id), any(SparepartRequestService.TransitionCommand.class));
+
+    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/transition")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"toStatus\":\"READY\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("INVALID_STATE_TRANSITION"));
+  }
+
+  @Test
+  @DisplayName("12.2-API-003 P0 unknown request maps to 404 REQUEST_NOT_FOUND")
+  void transitionNotFound() throws Exception {
+    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
+    var id = UUID.randomUUID();
+    doThrow(new RequestNotFoundException())
+        .when(service).transition(eq(user), eq(id), any(SparepartRequestService.TransitionCommand.class));
+
+    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/transition")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"toStatus\":\"ACKED\"}"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("REQUEST_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("12.2-API-004 P0 forbidden transition maps to 403 FORBIDDEN")
+  void transitionForbidden() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    var id = UUID.randomUUID();
+    doThrow(new RequestForbiddenException())
+        .when(service).transition(eq(user), eq(id), any(SparepartRequestService.TransitionCommand.class));
+
+    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/transition")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"toStatus\":\"ACKED\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  @DisplayName("12.2-API-005 P0 unknown toStatus enum maps to 400 VALIDATION_ERROR")
+  void transitionInvalidEnum() throws Exception {
+    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
+    var id = UUID.randomUUID();
+
+    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/transition")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"toStatus\":\"BOGUS\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+  }
+
+  @Test
+  @DisplayName("12.2-API-006 P0 MRE endpoint records and returns the view")
+  void mreReturnsView() throws Exception {
+    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
+    var id = UUID.randomUUID();
+    when(service.recordMre(eq(user), eq(id), any(SparepartRequestService.MreCommand.class)))
+        .thenReturn(requestDomain(SparepartRequestStatus.PURCHASE_REQUESTED));
+
+    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/mre")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"mreCode\":\"MRE26023xxxx\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("PURCHASE_REQUESTED"));
+  }
+
+  @Test
+  @DisplayName("12.2-API-007 P0 blank MRE code maps to 400 VALIDATION_ERROR fieldErrors.mreCode")
+  void mreBlankCode() throws Exception {
+    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
+    var id = UUID.randomUUID();
+
+    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/mre")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"mreCode\":\"   \"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.fieldErrors.mreCode").exists());
+  }
+
   private static SparepartRequest requestDomain() {
+    return requestDomain(SparepartRequestStatus.REQUESTED);
+  }
+
+  private static SparepartRequest requestDomain(SparepartRequestStatus status) {
     return new SparepartRequest(UUID.randomUUID(), SparepartRequestType.SPAREPART, null, MACHINE_ID, null,
-        "MC-0001", (short) 2, null, new BigDecimal("50000"), null, SparepartRequestStatus.REQUESTED,
+        "MC-0001", (short) 2, null, new BigDecimal("50000"), null, status,
         UUID.randomUUID(), Instant.parse("2026-08-27T00:00:00Z"), null,
         Instant.parse("2026-08-27T00:00:00Z"), Instant.parse("2026-08-27T00:00:00Z"));
   }

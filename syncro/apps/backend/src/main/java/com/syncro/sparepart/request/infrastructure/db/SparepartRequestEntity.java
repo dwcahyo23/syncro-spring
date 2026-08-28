@@ -113,4 +113,13 @@ public class SparepartRequestEntity {
   public String getNotes() { return notes; }
   public Instant getCreatedAt() { return createdAt; }
   public Instant getUpdatedAt() { return updatedAt; }
+
+  /**
+   * Applies a status transition (FR-141, story 12-2). Validity is owned by the
+   * state machine; this method mutates the row and bumps the timestamp.
+   */
+  public void transitionTo(SparepartRequestStatus status, Instant updatedAt) {
+    this.status = status;
+    this.updatedAt = updatedAt;
+  }
 }

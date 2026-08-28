@@ -48,8 +48,9 @@ class SparepartRequestMigrationTest extends AbstractPostgresIntegrationTest {
   }
 
   @Test
-  @DisplayName("12.1-DB-003 P0 status CHECK rejects unknown values")
+  @DisplayName("12.1-DB-003 P0 status CHECK rejects unknown values (V57+V59)")
   void statusCheck() {
+    // V57 rejects it; V59 also rejects it but with a different CHECK value set.
     assertThatThrownBy(() -> jdbc.update("""
         INSERT INTO sparepart_requests (id, request_type, quantity, status, requested_by, requested_at, created_at, updated_at)
         VALUES (?, 'SPAREPART', 1, 'BOGUS', ?, ?, ?, ?)
@@ -104,6 +105,84 @@ class SparepartRequestMigrationTest extends AbstractPostgresIntegrationTest {
         .extracting(row -> row.get("indexname"))
         .contains("idx_sparepart_requests_work_order", "idx_sparepart_requests_status",
             "idx_sparepart_requests_machine");
+  }
+
+  // -------------------------------------------------------------------------
+  // Story 12-2 (V59): full status CHECK + timeline table
+  // -------------------------------------------------------------------------
+
+  @Test
+  @DisplayName("12.2-DB-001 P0 V59 status CHECK accepts the full FR-141 status set")
+  void v59FullStatusSet() {
+    for (var status : List.of("REQUESTED", "PENDING_COMPLETION", "ACKED", "PROCESSING", "READY",
+        "PURCHASE_REQUESTED", "PART_RECEIVED", "PICKED_UP", "CLOSED")) {
+      jdbc.update("""
+          INSERT INTO sparepart_requests (id, request_type, quantity, status, requested_by, requested_at, created_at, updated_at)
+          VALUES (?, 'SPAREPART', 1, ?, ?, ?, ?, ?)
+          """, UUID.randomUUID(), status, UUID.randomUUID(), TS, TS, TS);
+    }
+    assertThat(jdbc.queryForObject(
+        "SELECT count(*) FROM sparepart_requests WHERE status IN ('ACKED','PROCESSING','READY','PURCHASE_REQUESTED','PART_RECEIVED','PICKED_UP','CLOSED')",
+        Long.class)).isEqualTo(7L);
+  }
+
+  @Test
+  @DisplayName("12.2-DB-002 P0 V59 status CHECK still rejects unknown values")
+  void v59StatusRejectsUnknown() {
+    assertThatThrownBy(() -> jdbc.update("""
+        INSERT INTO sparepart_requests (id, request_type, quantity, status, requested_by, requested_at, created_at, updated_at)
+        VALUES (?, 'SPAREPART', 1, 'BOGUS', ?, ?, ?, ?)
+        """, UUID.randomUUID(), UUID.randomUUID(), TS, TS, TS))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  @Test
+  @DisplayName("12.2-DB-003 P0 sparepart_request_timeline table exists with expected columns")
+  void timelineTableExists() {
+    assertThat(columnNames("sparepart_request_timeline"))
+        .contains("id", "request_id", "from_status", "to_status", "actor", "action", "mre_code", "note",
+            "trace_id", "created_at");
+  }
+
+  @Test
+  @DisplayName("12.2-DB-004 P0 timeline FK cascades on request delete")
+  void timelineCascade() {
+    var requestId = UUID.randomUUID();
+    jdbc.update("""
+        INSERT INTO sparepart_requests (id, request_type, quantity, status, requested_by, requested_at, created_at, updated_at)
+        VALUES (?, 'SPAREPART', 1, 'REQUESTED', ?, ?, ?, ?)
+        """, requestId, UUID.randomUUID(), TS, TS, TS);
+    jdbc.update("""
+        INSERT INTO sparepart_request_timeline (id, request_id, to_status, actor, action, created_at)
+        VALUES (?, ?, 'REQUESTED', ?, 'TRANSITION', ?)
+        """, UUID.randomUUID(), requestId, UUID.randomUUID(), TS);
+    jdbc.update("DELETE FROM sparepart_requests WHERE id = ?", requestId);
+    assertThat(jdbc.queryForObject(
+        "SELECT count(*) FROM sparepart_request_timeline WHERE request_id = ?", Long.class, requestId))
+        .isEqualTo(0L);
+  }
+
+  @Test
+  @DisplayName("12.2-DB-005 P0 timeline action CHECK rejects unknown values")
+  void timelineActionCheck() {
+    var requestId = UUID.randomUUID();
+    jdbc.update("""
+        INSERT INTO sparepart_requests (id, request_type, quantity, status, requested_by, requested_at, created_at, updated_at)
+        VALUES (?, 'SPAREPART', 1, 'REQUESTED', ?, ?, ?, ?)
+        """, requestId, UUID.randomUUID(), TS, TS, TS);
+    assertThatThrownBy(() -> jdbc.update("""
+        INSERT INTO sparepart_request_timeline (id, request_id, to_status, actor, action, created_at)
+        VALUES (?, ?, 'REQUESTED', ?, 'BOGUS', ?)
+        """, UUID.randomUUID(), requestId, UUID.randomUUID(), TS))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  @Test
+  @DisplayName("12.2-DB-006 P0 timeline has expected index")
+  void timelineIndexesExist() {
+    assertThat(jdbc.queryForList("SELECT indexname FROM pg_indexes WHERE tablename = 'sparepart_request_timeline'"))
+        .extracting(row -> row.get("indexname"))
+        .contains("idx_sparepart_request_timeline_request");
   }
 
   private java.util.List<String> columnNames(String table) {

@@ -638,6 +638,68 @@ test_anonymous_sparepart_request_denied if {
   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/sparepart-requests"}
 }
 
+# -- Sparepart request transition + MRE (story 12-2): eight-role allow set -----------
+
+test_manager_sparepart_request_transition_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/transition"}
+}
+
+test_section_leader_sparepart_request_transition_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/transition"}
+}
+
+test_maintenance_leader_sparepart_request_transition_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/transition"}
+}
+
+test_staff_sparepart_request_transition_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/transition"}
+}
+
+test_technician_sparepart_request_transition_allowed if {
+  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/transition"}
+}
+
+test_inventory_sparepart_request_transition_allowed if {
+  authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/transition"}
+}
+
+test_storekeeper_sparepart_request_transition_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/transition"}
+}
+
+test_inventory_sparepart_request_mre_allowed if {
+  authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/mre"}
+}
+
+test_storekeeper_sparepart_request_mre_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/mre"}
+}
+
+test_super_admin_sparepart_request_transition_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/transition"}
+}
+
+test_auditor_sparepart_request_transition_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/transition"}
+}
+
+test_production_leader_sparepart_request_transition_denied if {
+  not authz.allow with input as {"subject": {"roles": ["PRODUCTION_LEADER"], "userId": "u8"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/transition"}
+}
+
+test_auditor_sparepart_request_mre_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/mre"}
+}
+
+test_anonymous_sparepart_request_transition_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/transition"}
+}
+
+test_auditor_sparepart_request_transition_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
 # -- Org maintenance (spec-org-maintenance-model): departments, section leader,
 #    user master — MANAGER_MAINTENANCE + SUPER_ADMIN mutate; others denied -------
 
