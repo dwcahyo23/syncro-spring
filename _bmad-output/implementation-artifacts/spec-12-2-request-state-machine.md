@@ -3,7 +3,7 @@ title: 'Request State Machine'
 type: 'feature'
 created: '2026-08-28'
 baseline_commit: 'cb3d664fbab881c01e4ce74d4243d3dad8101ff5'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: true
 context:
