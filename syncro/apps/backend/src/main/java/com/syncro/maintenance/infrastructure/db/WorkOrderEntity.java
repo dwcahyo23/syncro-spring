@@ -301,6 +301,29 @@ public class WorkOrderEntity {
     this.stopTimeDetail = stopTimeDetail;
   }
 
+  /**
+   * Applies external master fields on re-sync (AD-7/FR-151, story 13-1): status,
+   * machine/category binding, parent link and description take the external values;
+   * the external {@code updated_at} becomes the local {@code updated_at} so
+   * {@code sync_version} semantics stay consistent with the external row's freshness.
+   * Local operational fields (report, evidence, ratings, sessions) are never touched —
+   * field classification is story 13.2 (AD-8).
+   */
+  public void applySync(WorkOrderStatus status, UUID categoryId, UUID machineId, String description,
+      String parentId, Instant updatedAt) {
+    this.status = status;
+    this.categoryId = categoryId;
+    this.machineId = machineId;
+    this.description = description;
+    this.parentId = parentId;
+    this.updatedAt = updatedAt;
+  }
+
+  /** Bumps the sync version counter on every external touch (story 13-1). */
+  public void bumpSyncVersion() {
+    this.syncVersion = this.syncVersion + 1L;
+  }
+
   public void setCpkPdfObjectKey(String cpkPdfObjectKey) {
     this.cpkPdfObjectKey = cpkPdfObjectKey;
   }

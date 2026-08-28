@@ -36,6 +36,7 @@
 
 generated: 2026-05-25
 last_updated: 2026-08-28
+# updated: 13-1 done (sync pipeline foundation); epic-13 in-progress
 # updated: 12-4 done (stock OP/OQ & new-item completion); epic-12 done
 # updated: 12-2 done (state machine, MRE, AD-5 readiness port, V59, frontend)
 # updated: 12-1 frontend upgraded (BOM-search cart + list page)
@@ -184,8 +185,8 @@ development_status:
   epic-12-retrospective: optional
 
   # Epic 13: External Sync & Hardening
-  epic-13: backlog
-  13-1-sync-pipeline-foundation: backlog
+  epic-13: in-progress
+  13-1-sync-pipeline-foundation: done
   13-2-conflict-resolution-and-field-mapping: backlog
   13-3-quarantine-and-observability: backlog
   epic-13-retrospective: optional

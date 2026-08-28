@@ -160,3 +160,18 @@ syncro:
     telemetry:
       ttl-minutes: 5
       max-size: 1000
+  sync:
+    # External workorder sync pipeline (story 13-1, AD-7/FR-150). Disabled by default:
+    # the app boots without an external DB. Flip to true and supply syncro.sync.datasource.*
+    # (via env) to activate the scheduled worker.
+    enabled: ${SYNCRO_SYNC_ENABLED:false}
+    datasource:
+      url: ${SYNCRO_SYNC_DATASOURCE_URL:}
+      username: ${SYNCRO_SYNC_DATASOURCE_USERNAME:}
+      password: ${SYNCRO_SYNC_DATASOURCE_PASSWORD:}
+    # Rows per batch (default 100)
+    batch-size: ${SYNCRO_SYNC_BATCH_SIZE:100}
+    # Poll interval in milliseconds (default 60 seconds)
+    poll-interval-ms: ${SYNCRO_SYNC_POLL_INTERVAL_MS:60000}
+    # Redis distributed lock TTL in milliseconds (default 15 minutes — auto-expires on crash)
+    lock-ttl-ms: ${SYNCRO_SYNC_LOCK_TTL_MS:900000}
