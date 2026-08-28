@@ -32,6 +32,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -67,6 +68,7 @@ class SparepartRequestControllerTest {
   void createReturnsCreated() throws Exception {
     var user = user(ApplicationRole.STAFF_MAINTENANCE);
     when(service.create(eq(user), any(CreateRequestCommand.class))).thenReturn(requestDomain());
+    stubAllowedActions(user);
 
     mockMvc.perform(post("/api/v1/sparepart-requests")
             .with(auth(user))
@@ -188,6 +190,7 @@ class SparepartRequestControllerTest {
     var id = UUID.randomUUID();
     when(service.transition(eq(user), eq(id), any(SparepartRequestService.TransitionCommand.class)))
         .thenReturn(requestDomain(SparepartRequestStatus.ACKED));
+    stubAllowedActions(user);
 
     mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/transition")
             .with(auth(user))
@@ -266,6 +269,7 @@ class SparepartRequestControllerTest {
     var id = UUID.randomUUID();
     when(service.recordMre(eq(user), eq(id), any(SparepartRequestService.MreCommand.class)))
         .thenReturn(requestDomain(SparepartRequestStatus.PURCHASE_REQUESTED));
+    stubAllowedActions(user);
 
     mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/mre")
             .with(auth(user))
@@ -288,6 +292,93 @@ class SparepartRequestControllerTest {
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
         .andExpect(jsonPath("$.fieldErrors.mreCode").exists());
+  }
+
+  private void stubAllowedActions(AuthenticatedUser user) {
+    when(service.allowedActionsFor(eq(user), any(SparepartRequest.class)))
+        .thenReturn(new SparepartRequestService.RequestAllowedActions(Set.of(), null));
+  }
+
+  @Test
+  @DisplayName("12.3-API-001 P0 approve endpoint returns 200 view with approval fields")
+  void approveReturnsView() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+    var id = UUID.randomUUID();
+    when(service.approve(eq(user), eq(id), any(SparepartRequestService.ApproveCommand.class)))
+        .thenReturn(requestDomain(SparepartRequestStatus.ACKED));
+    when(service.allowedActionsFor(eq(user), any(SparepartRequest.class)))
+        .thenReturn(new SparepartRequestService.RequestAllowedActions(Set.of(), null));
+
+    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/approve")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"note\":\"ok\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("ACKED"));
+  }
+
+  @Test
+  @DisplayName("12.3-API-002 P0 self-approval maps to 403 SELF_APPROVAL_FORBIDDEN")
+  void approveSelfApprovalForbidden() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+    var id = UUID.randomUUID();
+    doThrow(new SparepartRequestService.SelfApprovalForbiddenException())
+        .when(service).approve(eq(user), eq(id), any(SparepartRequestService.ApproveCommand.class));
+
+    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/approve")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("SELF_APPROVAL_FORBIDDEN"));
+  }
+
+  @Test
+  @DisplayName("12.3-API-003 P0 approval in a wrong state maps to 409 INVALID_STATE_TRANSITION")
+  void approveInvalidState() throws Exception {
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
+    var id = UUID.randomUUID();
+    doThrow(new InvalidRequestStateTransitionException())
+        .when(service).approve(eq(user), eq(id), any(SparepartRequestService.ApproveCommand.class));
+
+    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/approve")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("INVALID_STATE_TRANSITION"));
+  }
+
+  @Test
+  @DisplayName("12.3-API-004 P0 approval with insufficient role/scope maps to 403 FORBIDDEN")
+  void approveForbidden() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    var id = UUID.randomUUID();
+    doThrow(new RequestForbiddenException())
+        .when(service).approve(eq(user), eq(id), any(SparepartRequestService.ApproveCommand.class));
+
+    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/approve")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  @DisplayName("12.3-API-005 P0 unknown request on approve maps to 404 REQUEST_NOT_FOUND")
+  void approveNotFound() throws Exception {
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
+    var id = UUID.randomUUID();
+    doThrow(new RequestNotFoundException())
+        .when(service).approve(eq(user), eq(id), any(SparepartRequestService.ApproveCommand.class));
+
+    mockMvc.perform(post("/api/v1/sparepart-requests/" + id + "/approve")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{}"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("REQUEST_NOT_FOUND"));
   }
 
   private static SparepartRequest requestDomain() {

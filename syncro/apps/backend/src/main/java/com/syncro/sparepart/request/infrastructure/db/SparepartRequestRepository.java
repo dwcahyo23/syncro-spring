@@ -1,6 +1,8 @@
 package com.syncro.sparepart.request.infrastructure.db;
 
+import com.syncro.sparepart.request.domain.SparepartRequestStatus;
 import jakarta.persistence.LockModeType;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -39,6 +41,21 @@ public interface SparepartRequestRepository extends JpaRepository<SparepartReque
         and r.status <> com.syncro.sparepart.request.domain.SparepartRequestStatus.CLOSED
       """)
   boolean hasLiveNonReadyRequest(@Param("workOrderId") String workOrderId);
+
+  /**
+   * Escalation stale query (story 12-3, FR-147): requests whose status is in the given
+   * step's status set and whose updated_at is older than the step cutoff. The escalation
+   * worker evaluates this per run, so each step fires once when its duration elapses.
+   */
+  @Query("""
+      select r
+      from SparepartRequestEntity r
+      where r.status in :statuses
+        and r.updatedAt <= :cutoff
+      """)
+  List<SparepartRequestEntity> findStaleByStatusInAndUpdatedAtBefore(
+      @Param("statuses") Collection<SparepartRequestStatus> statuses,
+      @Param("cutoff") Instant cutoff);
 
   /**
    * Sparepart-request list read (story 12-1 list view): every request visible in the

@@ -48,6 +48,14 @@ public class NotificationJobEntity {
   @Column(name = "error_detail", length = 512)
   private String errorDetail;
 
+  /**
+   * Optional pre-composed message body (story 12-3). When present, the dispatch service
+   * sends it directly instead of rendering an alert template — used by sparepart-request
+   * escalation jobs which have no alert to render. Null for all alert jobs.
+   */
+  @Column(name = "message_body")
+  private String messageBody;
+
   @Column(name = "sent_at")
   private Instant sentAt;
 
@@ -76,6 +84,14 @@ public class NotificationJobEntity {
   public NotificationJobEntity(UUID alertId, String escalationLevel, NotificationJobStatus status,
       UUID recipientUserId, String recipientPhone, String idempotencyKey, String traceId,
       String errorDetail) {
+    this(alertId, escalationLevel, status, recipientUserId, recipientPhone, idempotencyKey, traceId,
+        errorDetail, null);
+  }
+
+  /** Story 12-3: overload carrying a pre-composed message body (null for alert jobs). */
+  public NotificationJobEntity(UUID alertId, String escalationLevel, NotificationJobStatus status,
+      UUID recipientUserId, String recipientPhone, String idempotencyKey, String traceId,
+      String errorDetail, String messageBody) {
     this.alertId = alertId;
     this.escalationLevel = escalationLevel;
     this.status = status;
@@ -84,6 +100,7 @@ public class NotificationJobEntity {
     this.idempotencyKey = idempotencyKey;
     this.traceId = traceId;
     this.errorDetail = errorDetail;
+    this.messageBody = messageBody;
   }
 
   public void markSent(Instant now) {
@@ -181,6 +198,10 @@ public class NotificationJobEntity {
 
   public String getErrorDetail() {
     return errorDetail;
+  }
+
+  public String getMessageBody() {
+    return messageBody;
   }
 
   public Instant getSentAt() {

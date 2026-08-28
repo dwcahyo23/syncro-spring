@@ -9,6 +9,7 @@ import com.syncro.sparepart.request.application.SparepartRequestService.RequestV
 import com.syncro.sparepart.request.application.SparepartRequestService.SparepartNotFoundException;
 import com.syncro.sparepart.request.application.SparepartRequestService.WorkOrderNotFoundException;
 import com.syncro.sparepart.request.application.SparepartRequestService.InvalidRequestStateTransitionException;
+import com.syncro.sparepart.request.application.SparepartRequestService.SelfApprovalForbiddenException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -99,6 +100,13 @@ public class SparepartRequestExceptionHandler {
   @ExceptionHandler(RequestNotFoundException.class)
   ResponseEntity<ErrorResponse> requestNotFound() {
     return error(HttpStatus.NOT_FOUND, "REQUEST_NOT_FOUND", "Sparepart request was not found.", Map.of());
+  }
+
+  /** Story 12-3: requester approving their own request → 403 SELF_APPROVAL_FORBIDDEN (AD-16). */
+  @ExceptionHandler(SelfApprovalForbiddenException.class)
+  ResponseEntity<ErrorResponse> selfApprovalForbidden() {
+    return error(HttpStatus.FORBIDDEN, "SELF_APPROVAL_FORBIDDEN",
+        "You cannot approve your own request.", Map.of());
   }
 
   @ExceptionHandler(MachineNotFoundException.class)

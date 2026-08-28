@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public final class SparepartRequestDtos {
@@ -35,7 +36,13 @@ public final class SparepartRequestDtos {
   public record SparepartRequestView(UUID id, SparepartRequestType requestType, String workOrderId, UUID machineId,
       UUID sparepartId, String materialCode, int quantity, UUID estPriceId, BigDecimal estUnitPrice,
       String purchaseReferenceUrl, SparepartRequestStatus status, UUID requestedBy, Instant requestedAt,
-      String notes, Instant createdAt, Instant updatedAt) {
+      String notes, Instant createdAt, Instant updatedAt,
+      Set<String> allowedActions, String requiredApprovalRole) {
+  }
+
+  /** Story 12-3 approval request body (FR-142): optional note. */
+  public record ApproveRequest(
+      @Size(max = 500) @Schema(description = "Optional note attached to the approval", nullable = true) String note) {
   }
 
   /** Story 12-2 status transition request body (FR-141). */

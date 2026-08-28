@@ -29,6 +29,10 @@ export interface SparepartRequestView {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Story 12-3: backend-computed allowed actions for the current user. */
+  allowedActions: string[];
+  /** Story 12-3: the required approval role when the user can approve; null otherwise. */
+  requiredApprovalRole?: string | null;
 }
 
 export interface CreateSparepartRequestRequest {
@@ -53,5 +57,10 @@ export interface TransitionRequest {
 /** Story 12-2: manual MRE code request (FR-145). */
 export interface MreRequest {
   mreCode: string;
+  note?: string | null;
+}
+
+/** Story 12-3: approval request body (FR-142). */
+export interface ApproveRequest {
   note?: string | null;
 }

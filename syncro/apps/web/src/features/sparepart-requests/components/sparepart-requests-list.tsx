@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ApproveDialog } from "@/features/sparepart-requests/components/approve-dialog";
 import { useRecordMre, useTransitionRequest } from "@/features/sparepart-requests/hooks/use-sparepart-requests";
 import type { SparepartRequestStatus } from "@/features/sparepart-requests/types";
 import { syncroFetch } from "@/lib/api/orval-mutator";
@@ -38,6 +39,8 @@ interface SparepartRequestRow {
   status: SparepartRequestStatus;
   requestedAt: string;
   notes: string | null;
+  allowedActions: string[];
+  requiredApprovalRole?: string | null;
 }
 
 const PAGE_SIZE = 20;
@@ -234,9 +237,19 @@ export function SparepartRequestsPageContent() {
                     </TableCell>
                     <TableCell className="text-xs">{request.quantity}</TableCell>
                     <TableCell>
-                      <Badge variant={STATUS_VARIANTS[request.status] ?? "default"}>
-                        {STATUS_LABELS[request.status] ?? request.status}
-                      </Badge>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <Badge variant={STATUS_VARIANTS[request.status] ?? "default"}>
+                          {STATUS_LABELS[request.status] ?? request.status}
+                        </Badge>
+                        {request.status === "REQUESTED" || request.status === "PENDING_COMPLETION" ? (
+                          <Badge variant="secondary">
+                            {request.allowedActions.includes("approve") && request.requiredApprovalRole
+                              ? `Pending: ${request.requiredApprovalRole}`
+                              : "Pending approval"}
+                          </Badge>
+                        ) : null}
+                        {request.status === "ACKED" ? <Badge variant="outline">Approved</Badge> : null}
+                      </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs">
                       {format(new Date(request.requestedAt), "d MMM yyyy HH:mm")}
@@ -261,6 +274,7 @@ export function SparepartRequestsPageContent() {
                             {action.label}
                           </Button>
                         ))}
+                        {request.allowedActions.includes("approve") ? <ApproveDialog requestId={request.id} /> : null}
                         {request.status === "PURCHASE_REQUESTED" ? <MreDialog requestId={request.id} /> : null}
                       </div>
                     </TableCell>

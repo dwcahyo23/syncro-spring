@@ -1,12 +1,14 @@
 package com.syncro.sparepart.request.api;
 
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
+import com.syncro.sparepart.request.api.SparepartRequestDtos.ApproveRequest;
 import com.syncro.sparepart.request.api.SparepartRequestDtos.CreateSparepartRequestRequest;
 import com.syncro.sparepart.request.api.SparepartRequestDtos.MreRequest;
 import com.syncro.sparepart.request.api.SparepartRequestDtos.SparepartRequestListView;
 import com.syncro.sparepart.request.api.SparepartRequestDtos.SparepartRequestView;
 import com.syncro.sparepart.request.api.SparepartRequestDtos.TransitionRequest;
 import com.syncro.sparepart.request.application.SparepartRequestService;
+import com.syncro.sparepart.request.application.SparepartRequestService.ApproveCommand;
 import com.syncro.sparepart.request.application.SparepartRequestService.CreateRequestCommand;
 import com.syncro.sparepart.request.application.SparepartRequestService.MreCommand;
 import com.syncro.sparepart.request.application.SparepartRequestService.TransitionCommand;
@@ -51,7 +53,7 @@ public class SparepartRequestController {
       @RequestParam(name = "size", defaultValue = "20") int size) {
     var result = service.list(user, page, size);
     return new SparepartRequestListView(
-        result.items().stream().map(SparepartRequestController::toView).toList(),
+        result.items().stream().map(r -> toView(r, user)).toList(),
         result.total(), result.page(), result.size());
   }
 
@@ -72,7 +74,7 @@ public class SparepartRequestController {
         request.estUnitPrice(), request.purchaseReferenceUrl(), request.notes());
     var created = service.create(user, command);
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(toView(created));
+        .body(toView(created, user));
   }
 
   @Operation(operationId = "transitionSparepartRequest", summary = "Transition a sparepart request (FR-141)")
@@ -89,7 +91,7 @@ public class SparepartRequestController {
   public SparepartRequestView transition(@AuthenticationPrincipal AuthenticatedUser user,
       @PathVariable UUID id, @Valid @RequestBody TransitionRequest request) {
     var command = new TransitionCommand(request.toStatus(), request.note());
-    return toView(service.transition(user, id, command));
+    return toView(service.transition(user, id, command), user);
   }
 
   @Operation(operationId = "recordSparepartRequestMre", summary = "Record a manual MRE code (FR-145)")
@@ -106,12 +108,32 @@ public class SparepartRequestController {
   public SparepartRequestView recordMre(@AuthenticationPrincipal AuthenticatedUser user,
       @PathVariable UUID id, @Valid @RequestBody MreRequest request) {
     var command = new MreCommand(request.mreCode(), request.note());
-    return toView(service.recordMre(user, id, command));
+    return toView(service.recordMre(user, id, command), user);
   }
 
-  private static SparepartRequestView toView(com.syncro.sparepart.request.domain.SparepartRequest r) {
+  @Operation(operationId = "approveSparepartRequest", summary = "Approve a sparepart request (FR-142, AD-16)")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Request approved (ACKED)",
+          content = @Content(schema = @Schema(implementation = SparepartRequestView.class))),
+      @ApiResponse(responseCode = "400", description = "Validation failed"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden (incl. SELF_APPROVAL_FORBIDDEN)"),
+      @ApiResponse(responseCode = "404", description = "Request not found"),
+      @ApiResponse(responseCode = "409", description = "Invalid state transition")
+  })
+  @PostMapping("/{id}/approve")
+  public SparepartRequestView approve(@AuthenticationPrincipal AuthenticatedUser user,
+      @PathVariable UUID id, @Valid @RequestBody(required = false) ApproveRequest request) {
+    var command = new ApproveCommand(request == null ? null : request.note());
+    return toView(service.approve(user, id, command), user);
+  }
+
+  private SparepartRequestView toView(com.syncro.sparepart.request.domain.SparepartRequest r,
+      AuthenticatedUser user) {
+    var allowed = service.allowedActionsFor(user, r);
     return new SparepartRequestView(r.id(), r.requestType(), r.workOrderId(), r.machineId(), r.sparepartId(),
         r.materialCode(), r.quantity(), r.estPriceId(), r.estUnitPrice(), r.purchaseReferenceUrl(), r.status(),
-        r.requestedBy(), r.requestedAt(), r.notes(), r.createdAt(), r.updatedAt());
+        r.requestedBy(), r.requestedAt(), r.notes(), r.createdAt(), r.updatedAt(),
+        allowed.allowedActions(), allowed.requiredApprovalRole());
   }
 }

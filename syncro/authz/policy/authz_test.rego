@@ -700,6 +700,48 @@ test_auditor_sparepart_request_transition_read_allowed if {
   authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666"}
 }
 
+# -- Sparepart request approval (story 12-3): three-leader allow set ----------------
+
+test_manager_sparepart_request_approve_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/approve"}
+}
+
+test_maintenance_leader_sparepart_request_approve_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/approve"}
+}
+
+test_section_leader_sparepart_request_approve_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/approve"}
+}
+
+test_super_admin_sparepart_request_approve_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/approve"}
+}
+
+test_technician_sparepart_request_approve_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/approve"}
+}
+
+test_staff_sparepart_request_approve_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/approve"}
+}
+
+test_inventory_sparepart_request_approve_denied if {
+  not authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/approve"}
+}
+
+test_storekeeper_sparepart_request_approve_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/approve"}
+}
+
+test_auditor_sparepart_request_approve_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/approve"}
+}
+
+test_anonymous_sparepart_request_approve_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/sparepart-requests/7b7c6d5e-1111-2222-3333-444455556666/approve"}
+}
+
 # -- Org maintenance (spec-org-maintenance-model): departments, section leader,
 #    user master — MANAGER_MAINTENANCE + SUPER_ADMIN mutate; others denied -------
 

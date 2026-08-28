@@ -94,6 +94,33 @@ public interface NotificationJobRepository extends JpaRepository<NotificationJob
       @Param("now") Instant now);
 
   /**
+   * Cancel all non-terminal notification jobs for a sparepart request in one statement
+   * (story 12-3, FR-147 ack-stop). Matches the request's escalation jobs by the
+   * idempotency-key prefix {@code SPAREPART_REQUEST:{requestId}:%} — the idempotency
+   * key is the request handle (AD-9 polymorphic target columns are deliberately NOT
+   * introduced here). Called from {@code SparepartRequestService.transition()} when a
+   * request transitions to ACKED or CLOSED.
+   *
+   * <p>Same {@code @Version}-bypass tradeoff as {@link #cancelActiveForAlert}: the bulk
+   * update must not race a dispatch into SENT; the idempotency-key unique constraint
+   * prevents duplicate logical sends.
+   *
+   * @return the number of rows cancelled
+   */
+  @Modifying
+  @Query("""
+      update NotificationJobEntity j
+      set j.status = :cancelled, j.nextAttemptAt = null, j.updatedAt = :now
+      where j.idempotencyKey like :requestKeyPrefix
+        and j.status in :activeStatuses
+      """)
+  int cancelActiveForRequest(
+      @Param("requestKeyPrefix") String requestKeyPrefix,
+      @Param("activeStatuses") Collection<NotificationJobStatus> activeStatuses,
+      @Param("cancelled") NotificationJobStatus cancelled,
+      @Param("now") Instant now);
+
+  /**
    * Returns the most recently updated non-CANCELLED job for each alertId in the
    * given collection. Uses a subquery on MAX(updatedAt) per alertId to select
    * the single representative row without window functions.

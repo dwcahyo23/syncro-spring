@@ -275,4 +275,26 @@ class NotificationDispatchServiceTest {
     // Job should be FAILED (retryable), not EXHAUSTED
     assertThat(job.getStatus()).isNotEqualTo(NotificationJobStatus.EXHAUSTED);
   }
+
+  // --- Pre-composed messageBody path (story 12-3 escalation jobs) ---
+
+  @Test
+  void dispatch_whenMessageBodyPresent_sendsBodyVerbatimWithoutTemplateRender() {
+    String body = "Permintaan sparepart menunggu tindakan: ID abc · Part: MC-0001 · Qty: 2 · Status: REQUESTED";
+    var job = new NotificationJobEntity(
+        UUID.randomUUID(), "ACK_WAITING", NotificationJobStatus.PENDING,
+        UUID.randomUUID(), RECIPIENT_PHONE,
+        "SPAREPART_REQUEST:abc:ACK_WAITING:user-1", TRACE_ID, null, body);
+
+    when(rateLimiter.isRateLimited(any(), any())).thenReturn(false);
+    when(wahaClient.send(eq(RECIPIENT_PHONE), eq(body), eq(TRACE_ID)))
+        .thenReturn(new WahaClient.Result(true, 200, "OK"));
+    when(jobRepository.save(any())).thenReturn(job);
+    when(attemptRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    service.dispatch(job);
+
+    verify(templateRenderer, never()).render(any());
+    assertThat(job.getStatus()).isEqualTo(NotificationJobStatus.SENT);
+  }
 }

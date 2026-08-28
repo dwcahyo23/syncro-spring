@@ -12,6 +12,8 @@ import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.maintenance.application.WorkOrderService;
 import com.syncro.maintenance.infrastructure.db.WorkOrderEntity;
 import com.syncro.maintenance.infrastructure.db.WorkOrderRepository;
+import com.syncro.notification.domain.NotificationJobStatus;
+import com.syncro.notification.infrastructure.NotificationJobRepository;
 import com.syncro.org.application.OperationalScope;
 import com.syncro.org.application.OperationalScopeService;
 import com.syncro.sparepart.infrastructure.SparepartEntity;
@@ -66,6 +68,8 @@ public class SparepartRequestService {
   private final MachineRepository machines;
   private final SparepartRepository spareparts;
   private final SparepartPriceEntryRepository priceEntries;
+  private final EscalationConfigService escalationConfigs;
+  private final NotificationJobRepository notificationJobs;
   private final AuditLogWriter auditLog;
   private final OperationalScopeService scopes;
   private final Clock clock;
@@ -74,6 +78,7 @@ public class SparepartRequestService {
       SparepartRequestTimelineRepository timelines, WorkOrderRepository workOrders,
       WorkOrderService workOrderService, MachineRepository machines,
       SparepartRepository spareparts, SparepartPriceEntryRepository priceEntries,
+      EscalationConfigService escalationConfigs, NotificationJobRepository notificationJobs,
       AuditLogWriter auditLog, OperationalScopeService scopes, Clock clock) {
     this.requests = requests;
     this.timelines = timelines;
@@ -82,6 +87,8 @@ public class SparepartRequestService {
     this.machines = machines;
     this.spareparts = spareparts;
     this.priceEntries = priceEntries;
+    this.escalationConfigs = escalationConfigs;
+    this.notificationJobs = notificationJobs;
     this.auditLog = auditLog;
     this.scopes = scopes;
     this.clock = clock;
@@ -178,6 +185,17 @@ public class SparepartRequestService {
     entity.transitionTo(toStatus, now);
     var saved = requests.saveAndFlush(entity);
 
+    // Ack-stop (FR-147, story 12-3): reaching ACKED or CLOSED cancels every non-terminal
+    // escalation job for this request in the same transaction (idempotency-key prefix).
+    if (toStatus == SparepartRequestStatus.ACKED || toStatus == SparepartRequestStatus.CLOSED) {
+      notificationJobs.cancelActiveForRequest(
+          "SPAREPART_REQUEST:" + saved.getId() + ":%",
+          List.of(NotificationJobStatus.PENDING, NotificationJobStatus.SENT,
+              NotificationJobStatus.RATE_LIMITED),
+          NotificationJobStatus.CANCELLED,
+          now);
+    }
+
     var traceId = PolicyDecisionPoint.currentTraceId();
     timelines.saveAndFlush(new SparepartRequestTimelineEntity(UUID.randomUUID(), saved.getId(), fromStatus,
         toStatus, UUID.fromString(user.id()), TIMELINE_ACTION_TRANSITION, null,
@@ -227,6 +245,141 @@ public class SparepartRequestService {
         entity.getId(), entityLabel(entity), plantIdOf(machine),
         requestValues(entity), newValue, null));
     return SparepartRequestMapper.toDomain(entity);
+  }
+
+  /**
+   * Approve a sparepart request (story 12-3, FR-142/AD-16). Approval is NOT a new status —
+   * it performs the REQUESTED/PENDING_COMPLETION → ACKED transition after the approval
+   * gates pass. Gate order (authoritative server-side):
+   * <ol>
+   *   <li><b>SoD:</b> requester may never approve their own request → 403 SELF_APPROVAL_FORBIDDEN
+   *       (before OPA and before any state-machine check).</li>
+   *   <li><b>State:</b> current status must allow ACKED (else 409 INVALID_STATE_TRANSITION).</li>
+   *   <li><b>Cost tier:</b> required role resolved from escalation_configs by estimatedCost
+   *       (qty × unit price); no price → SECTION_LEADER.</li>
+   *   <li><b>Role + scope:</b> user's application role must have authority ≥ the required
+   *       role AND be an in-scope leader for the request's machine. SUPER_ADMIN bypasses.</li>
+   * </ol>
+   * On success the internal {@link #transition} machinery runs (timeline, audit,
+   * ON_PROCUREMENT recompute, ack-stop).
+   */
+  @Transactional
+  public SparepartRequest approve(AuthenticatedUser user, UUID requestId, ApproveCommand command) {
+    var entity = requests.findByIdForUpdate(requestId).orElseThrow(RequestNotFoundException::new);
+    var requesterId = entity.getRequestedBy();
+    var actorId = UUID.fromString(user.id());
+    if (requesterId != null && requesterId.equals(actorId)) {
+      // SoD (AD-16, NFR-P2-5): enforced before OPA and before any state-machine check.
+      throw new SelfApprovalForbiddenException();
+    }
+    if (!SparepartRequestStateMachine.can(entity.getStatus(), SparepartRequestStatus.ACKED)) {
+      throw new InvalidRequestStateTransitionException();
+    }
+
+    var machine = machineForRequest(entity);
+    var requiredRole = requiredApprovalRole(entity, machine);
+    requireApprovalAccess(user, entity, machine, requiredRole);
+
+    var note = command != null && command.note() != null && !command.note().isBlank()
+        ? "Approved " + requiredRole + ": " + command.note().trim()
+        : "Approved " + requiredRole;
+    return transition(user, requestId, new TransitionCommand(SparepartRequestStatus.ACKED, note));
+  }
+
+  /**
+   * Resolves the required approval role from escalation_configs tiers. The estimated cost
+   * is qty × unit price in IDR; unit price = estUnitPrice when set, else the linked price
+   * entry's idrAmount. No price at all → SECTION_LEADER (AD-16).
+   */
+  private String requiredApprovalRole(SparepartRequestEntity entity, MachineEntity machine) {
+    BigDecimal unitPrice = entity.getEstUnitPrice();
+    if (unitPrice == null && entity.getEstPriceId() != null) {
+      unitPrice = priceEntries.findById(entity.getEstPriceId())
+          .map(entry -> entry.getIdrAmount())
+          .orElse(null);
+    }
+    boolean hasPrice = unitPrice != null;
+    BigDecimal estimatedCost = hasPrice
+        ? unitPrice.multiply(BigDecimal.valueOf(entity.getQuantity()))
+        : null;
+    return escalationConfigs.requiredApprovalRole(estimatedCost, hasPrice);
+  }
+
+  /**
+   * Approval gate: SUPER_ADMIN bypasses. Otherwise the user must (a) hold an application
+   * role with authority ≥ the required role (SECTION_LEADER < MAINTENANCE_LEADER <
+   * MANAGER_MAINTENANCE — monotone) and (b) be an in-scope leader for the request's
+   * machine (SECTION_LEADER group-in-scope; MAINTENANCE_LEADER/MANAGER plant-or-group).
+   */
+  private void requireApprovalAccess(AuthenticatedUser user, SparepartRequestEntity entity,
+      MachineEntity machine, String requiredRole) {
+    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
+      return;
+    }
+    var role = user.applicationRole().name();
+    if (!hasApprovalAuthority(role, requiredRole)) {
+      throw new RequestForbiddenException();
+    }
+    if (!isInScopeLeader(user, machine)) {
+      throw new RequestForbiddenException();
+    }
+  }
+
+  /** Authority order: SECTION_LEADER < MAINTENANCE_LEADER < MANAGER_MAINTENANCE. */
+  private static boolean hasApprovalAuthority(String actorRole, String requiredRole) {
+    int actorRank = approvalRank(actorRole);
+    int requiredRank = approvalRank(requiredRole);
+    return actorRank >= requiredRank && actorRank > 0;
+  }
+
+  private static int approvalRank(String role) {
+    return switch (role) {
+      case "SECTION_LEADER" -> 1;
+      case "MAINTENANCE_LEADER" -> 2;
+      case "MANAGER_MAINTENANCE" -> 3;
+      default -> 0;
+    };
+  }
+
+  /**
+   * Per-user allowed actions for a request (story 12-3). Computed server-side; the
+   * frontend renders from this, never from its own role logic. {@code approve} is present
+   * only when the current user can approve (not requester, approvable status,
+   * role/scope sufficient). {@code requiredApprovalRole} is the tier's required role or
+   * null when not approvable/approved.
+   */
+  public RequestAllowedActions allowedActionsFor(AuthenticatedUser user, SparepartRequest request) {
+    var allowed = new java.util.LinkedHashSet<String>();
+    String requiredRole = null;
+    var status = request.status();
+
+    if (SparepartRequestStateMachine.can(status, SparepartRequestStatus.ACKED)) {
+      var isRequester = request.requestedBy() != null
+          && request.requestedBy().equals(UUID.fromString(user.id()));
+      if (!isRequester) {
+        var entity = SparepartRequestMapper.toEntity(request);
+        var machine = machineForRequest(entity);
+        var required = requiredApprovalRole(entity, machine);
+        if (canApprove(user, machine, required)) {
+          allowed.add("approve");
+          requiredRole = required;
+        }
+      }
+    }
+    return new RequestAllowedActions(allowed, requiredRole);
+  }
+
+  private boolean canApprove(AuthenticatedUser user, MachineEntity machine, String requiredRole) {
+    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
+      return true;
+    }
+    if (!hasApprovalAuthority(user.applicationRole().name(), requiredRole)) {
+      return false;
+    }
+    return isInScopeLeader(user, machine);
+  }
+
+  public record RequestAllowedActions(java.util.Set<String> allowedActions, String requiredApprovalRole) {
   }
 
   // -------------------------------------------------------------------------
@@ -664,7 +817,15 @@ public class SparepartRequestService {
   public record MreCommand(String mreCode, String note) {
   }
 
+  /** Story 12-3 approval command (FR-142): optional note attached to the timeline/audit. */
+  public record ApproveCommand(String note) {
+  }
+
   public static class RequestForbiddenException extends RuntimeException {
+  }
+
+  /** Story 12-3: requester attempting to approve their own request → 403 (AD-16, NFR-P2-5). */
+  public static class SelfApprovalForbiddenException extends RuntimeException {
   }
 
   /** Story 12-2: invalid/terminal state transition or MRE in the wrong state → 409 (FR-141). */

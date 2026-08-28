@@ -3,6 +3,7 @@ package com.syncro.sparepart.request.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -21,16 +22,19 @@ import com.syncro.maintenance.application.WorkOrderService;
 import com.syncro.maintenance.infrastructure.db.WorkOrderEntity;
 import com.syncro.maintenance.infrastructure.db.WorkOrderRepository;
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
+import com.syncro.notification.infrastructure.NotificationJobRepository;
 import com.syncro.org.application.OperationalScope;
 import com.syncro.org.application.OperationalScopeService;
 import com.syncro.sparepart.infrastructure.SparepartEntity;
 import com.syncro.sparepart.infrastructure.SparepartPriceEntryRepository;
 import com.syncro.sparepart.infrastructure.SparepartRepository;
 import com.syncro.sparepart.infrastructure.SparepartTaxonomyEntity;
+import com.syncro.sparepart.request.application.SparepartRequestService.ApproveCommand;
 import com.syncro.sparepart.request.application.SparepartRequestService.CreateRequestCommand;
 import com.syncro.sparepart.request.application.SparepartRequestService.MreCommand;
 import com.syncro.sparepart.request.application.SparepartRequestService.RequestForbiddenException;
 import com.syncro.sparepart.request.application.SparepartRequestService.RequestValidationException;
+import com.syncro.sparepart.request.application.SparepartRequestService.SelfApprovalForbiddenException;
 import com.syncro.sparepart.request.application.SparepartRequestService.TransitionCommand;
 import com.syncro.sparepart.request.application.SparepartRequestService.InvalidRequestStateTransitionException;
 import com.syncro.sparepart.request.application.SparepartRequestService.RequestNotFoundException;
@@ -78,6 +82,10 @@ class SparepartRequestServiceTest {
   @Mock
   private SparepartPriceEntryRepository priceEntries;
   @Mock
+  private EscalationConfigService escalationConfigs;
+  @Mock
+  private NotificationJobRepository notificationJobs;
+  @Mock
   private AuditLogWriter auditLog;
   @Mock
   private OperationalScopeService scopes;
@@ -95,7 +103,7 @@ class SparepartRequestServiceTest {
   @BeforeEach
   void setUp() {
     service = new SparepartRequestService(requests, timelines, workOrders, workOrderService, machines, spareparts,
-        priceEntries, auditLog, scopes, clock);
+        priceEntries, escalationConfigs, notificationJobs, auditLog, scopes, clock);
     machine = machineWithPlant(plantId, groupId, machineId);
     lenient().when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
     when(requests.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -605,6 +613,153 @@ class SparepartRequestServiceTest {
 
     assertThatThrownBy(() -> service.recordMre(user, id, new MreCommand("   ", null)))
         .isInstanceOf(RequestValidationException.class);
+  }
+
+  // -------------------------------------------------------------------------
+  // Story 12-3: approval tests (FR-142/AD-16)
+  // -------------------------------------------------------------------------
+
+  @Test
+  @DisplayName("12.3-SVC-001 P0 APPROVE_OK_LOW — SECTION_LEADER approves REQUESTED with cost ≤5M → ACKED")
+  void approveOkLow() {
+    var user = sectionLeaderUser();
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
+    var entity = requestEntity(SparepartRequestStatus.REQUESTED);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+    when(escalationConfigs.requiredApprovalRole(any(), anyBoolean())).thenReturn("SECTION_LEADER");
+
+    var result = service.approve(user, id, new ApproveCommand(null));
+
+    assertThat(result.status()).isEqualTo(SparepartRequestStatus.ACKED);
+    verify(timelines).saveAndFlush(any(SparepartRequestTimelineEntity.class));
+    verify(auditLog).record(eq(user), org.mockito.ArgumentMatchers.argThat(r ->
+        r.action() == AuditAction.UPDATE && r.entityType() == AuditEntityType.SPAREPART_REQUEST));
+  }
+
+  @Test
+  @DisplayName("12.3-SVC-002 P0 APPROVE_OK_HIGH — MANAGER_MAINTENANCE approves REQUESTED with cost >50M → ACKED")
+  void approveOkHigh() {
+    var user = new AuthenticatedUser(UUID.randomUUID().toString(), "mgr@test", ApplicationRole.MANAGER_MAINTENANCE);
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
+    var entity = requestEntity(SparepartRequestStatus.REQUESTED);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+    when(escalationConfigs.requiredApprovalRole(any(), anyBoolean())).thenReturn("MANAGER_MAINTENANCE");
+
+    var result = service.approve(user, id, new ApproveCommand(null));
+
+    assertThat(result.status()).isEqualTo(SparepartRequestStatus.ACKED);
+  }
+
+  @Test
+  @DisplayName("12.3-SVC-003 P0 APPROVE_OK_NO_PRICE — SECTION_LEADER approves PENDING_COMPLETION with no price → ACKED")
+  void approveOkNoPrice() {
+    var user = sectionLeaderUser();
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
+    var entity = requestEntity(SparepartRequestStatus.PENDING_COMPLETION);
+    // Unset price
+    entity = new SparepartRequestEntity(entity.getId(), entity.getRequestType(), entity.getWorkOrderId(),
+        entity.getMachineId(), entity.getSparepartId(), entity.getMaterialCode(), entity.getQuantity(),
+        null, null, null, entity.getStatus(), entity.getRequestedBy(), NOW, null, NOW, NOW);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+    when(escalationConfigs.requiredApprovalRole(null, false)).thenReturn("SECTION_LEADER");
+
+    var result = service.approve(user, id, new ApproveCommand(null));
+
+    assertThat(result.status()).isEqualTo(SparepartRequestStatus.ACKED);
+  }
+
+  @Test
+  @DisplayName("12.3-SVC-004 P0 SELF_APPROVAL — requester approves their own request → 403 SELF_APPROVAL_FORBIDDEN")
+  void selfApproval() {
+    var user = new AuthenticatedUser(staffId.toString(), "staff@test", ApplicationRole.STAFF_MAINTENANCE);
+    var entity = requestEntity(SparepartRequestStatus.REQUESTED);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+
+    assertThatThrownBy(() -> service.approve(user, id, new ApproveCommand(null)))
+        .isInstanceOf(SelfApprovalForbiddenException.class);
+  }
+
+  @Test
+  @DisplayName("12.3-SVC-005 P0 INSUFFICIENT_ROLE — SECTION_LEADER cannot approve a MANAGER_MAINTENANCE tier")
+  void insufficientRole() {
+    var user = sectionLeaderUser();
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
+    var entity = requestEntity(SparepartRequestStatus.REQUESTED);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+    when(escalationConfigs.requiredApprovalRole(any(), anyBoolean())).thenReturn("MANAGER_MAINTENANCE");
+
+    assertThatThrownBy(() -> service.approve(user, id, new ApproveCommand(null)))
+        .isInstanceOf(RequestForbiddenException.class);
+  }
+
+  @Test
+  @DisplayName("12.3-SVC-006 P0 INSUFFICIENT_SCOPE — MANAGER_MAINTENANCE without plant scope → 403 FORBIDDEN")
+  void insufficientScope() {
+    var user = new AuthenticatedUser(UUID.randomUUID().toString(), "mgr@test", ApplicationRole.MANAGER_MAINTENANCE);
+    // Empty scope — no plant/group access
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(), Set.of()));
+    var entity = requestEntity(SparepartRequestStatus.REQUESTED);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+    when(escalationConfigs.requiredApprovalRole(any(), anyBoolean())).thenReturn("MANAGER_MAINTENANCE");
+
+    assertThatThrownBy(() -> service.approve(user, id, new ApproveCommand(null)))
+        .isInstanceOf(RequestForbiddenException.class);
+  }
+
+  @Test
+  @DisplayName("12.3-SVC-007 P0 WRONG_STATE — ACKED request cannot be approved → 409 INVALID_STATE_TRANSITION")
+  void approveWrongState() {
+    var user = new AuthenticatedUser(UUID.randomUUID().toString(), "mgr@test", ApplicationRole.MANAGER_MAINTENANCE);
+    var entity = requestEntity(SparepartRequestStatus.ACKED);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+
+    assertThatThrownBy(() -> service.approve(user, id, new ApproveCommand(null)))
+        .isInstanceOf(InvalidRequestStateTransitionException.class);
+  }
+
+  @Test
+  @DisplayName("12.3-SVC-008 P0 ACK_STOP — REQUESTED→ACKED cancels active escalation jobs for the request")
+  void ackStopOnAck() {
+    var user = inventoryUser();
+    var entity = requestEntity(SparepartRequestStatus.REQUESTED);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+
+    service.transition(user, id, new TransitionCommand(SparepartRequestStatus.ACKED, null));
+
+    verify(notificationJobs).cancelActiveForRequest(eq("SPAREPART_REQUEST:" + id + ":%"),
+        org.mockito.ArgumentMatchers.anyList(), eq(com.syncro.notification.domain.NotificationJobStatus.CANCELLED),
+        any());
+  }
+
+  @Test
+  @DisplayName("12.3-SVC-009 P0 CLOSE_STOP — PICKED_UP→CLOSED cancels active escalation jobs for the request")
+  void closeStopOnClose() {
+    var user = sectionLeaderUser();
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
+    var entity = requestEntity(SparepartRequestStatus.PICKED_UP);
+    var id = entity.getId();
+    when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
+    stubScopedMachine(machineId, user);
+
+    service.transition(user, id, new TransitionCommand(SparepartRequestStatus.CLOSED, null));
+
+    verify(notificationJobs).cancelActiveForRequest(eq("SPAREPART_REQUEST:" + id + ":%"),
+        org.mockito.ArgumentMatchers.anyList(), eq(com.syncro.notification.domain.NotificationJobStatus.CANCELLED),
+        any());
   }
 
   @Test

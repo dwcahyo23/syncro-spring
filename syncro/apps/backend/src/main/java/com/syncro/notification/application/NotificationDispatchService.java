@@ -67,11 +67,15 @@ public class NotificationDispatchService {
       return;
     }
 
-    // Render template
+    // Render message text: a pre-composed body (sparepart-request escalation jobs, story
+    // 12-3) is sent verbatim; alert jobs fall back to the WAHA template renderer.
     String messageText;
-    try {
-      messageText = templateRenderer.render(job.getAlertId());
-    } catch (WahaTemplateRenderException e) {
+    if (job.getMessageBody() != null && !job.getMessageBody().isBlank()) {
+      messageText = job.getMessageBody();
+    } else {
+      try {
+        messageText = templateRenderer.render(job.getAlertId());
+      } catch (WahaTemplateRenderException e) {
       log.error("[traceId={}] Template render failed for job {}: {}", job.getTraceId(), job.getId(),
           e.getMessage());
       transactionTemplate.executeWithoutResult(status -> {
@@ -83,6 +87,7 @@ public class NotificationDispatchService {
         jobRepository.save(job);
       });
       return;
+      }
     }
 
     // Send via WAHA (WahaClient handles timeout + circuit breaker internally)

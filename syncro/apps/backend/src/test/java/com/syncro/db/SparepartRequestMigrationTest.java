@@ -185,6 +185,111 @@ class SparepartRequestMigrationTest extends AbstractPostgresIntegrationTest {
         .contains("idx_sparepart_request_timeline_request");
   }
 
+  // -------------------------------------------------------------------------
+  // Story 12-3 (V60): escalation_configs + notification_jobs.message_body
+  // -------------------------------------------------------------------------
+
+  @Test
+  @DisplayName("12.3-DB-001 P0 escalation_configs table exists with expected columns")
+  void escalationConfigsTableExists() {
+    assertThat(columnNames("escalation_configs"))
+        .contains("id", "scope", "step", "min_cost", "max_cost", "duration_minutes", "approval_role",
+            "created_at", "updated_at");
+  }
+
+  @Test
+  @DisplayName("12.3-DB-002 P0 escalation_configs scope CHECK rejects unknown values")
+  void escalationConfigsScopeCheck() {
+    assertThatThrownBy(() -> jdbc.update("""
+        INSERT INTO escalation_configs (id, scope, step, duration_minutes)
+        VALUES (?, 'BOGUS', 'TEST_STEP', 60)
+        """, UUID.randomUUID()))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  @Test
+  @DisplayName("12.3-DB-003 P0 escalation_configs scope CHECK accepts SPAREPART_REQUEST")
+  void escalationConfigsScopeAcceptsSparepart() {
+    jdbc.update("""
+        INSERT INTO escalation_configs (id, scope, step, duration_minutes)
+        VALUES (?, 'SPAREPART_REQUEST', 'TEST_STEP', 60)
+        """, UUID.randomUUID());
+    assertThat(jdbc.queryForObject(
+        "SELECT count(*) FROM escalation_configs WHERE scope = 'SPAREPART_REQUEST' AND step = 'TEST_STEP'",
+        Long.class)).isEqualTo(1L);
+  }
+
+  @Test
+  @DisplayName("12.3-DB-004 P0 escalation_configs unique (scope, step) constraint")
+  void escalationConfigsUniqueScopeStep() {
+    var id = UUID.randomUUID();
+    jdbc.update("""
+        INSERT INTO escalation_configs (id, scope, step, duration_minutes)
+        VALUES (?, 'SPAREPART_REQUEST', 'TEST_STEP', 60)
+        """, id);
+    assertThatThrownBy(() -> jdbc.update("""
+        INSERT INTO escalation_configs (id, scope, step, duration_minutes)
+        VALUES (?, 'SPAREPART_REQUEST', 'TEST_STEP', 60)
+        """, UUID.randomUUID()))
+        .isInstanceOf(DataIntegrityViolationException.class);
+  }
+
+  @Test
+  @DisplayName("12.3-DB-005 P0 escalation_configs has 6 seed rows for SPAREPART_REQUEST")
+  void escalationConfigsSeedData() {
+    var count = jdbc.queryForObject(
+        "SELECT count(*) FROM escalation_configs WHERE scope = 'SPAREPART_REQUEST'", Long.class);
+    assertThat(count).isEqualTo(6L);
+  }
+
+  @Test
+  @DisplayName("12.3-DB-006 P0 notification_jobs has message_body column (additive, nullable)")
+  void notificationJobsMessageBodyColumn() {
+    assertThat(columnNames("notification_jobs")).contains("message_body");
+  }
+
+  @Test
+  @DisplayName("12.3-DB-007 P0 notification_jobs.message_body is nullable and accepts text")
+  void notificationJobsMessageBodyColumnExists() {
+    assertThat(columnNames("notification_jobs")).contains("message_body");
+    // Verify the column is nullable by checking its IS NULLable attribute
+    var nullable = jdbc.queryForObject("""
+        SELECT is_nullable FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'notification_jobs' AND column_name = 'message_body'
+        """, String.class);
+    assertThat(nullable).isEqualTo("YES");
+  }
+
+  @Test
+  @DisplayName("12.3-DB-008 P0 escalation_configs seed data has correct approval tiers")
+  void escalationConfigsApprovalTiers() {
+    var tiers = jdbc.queryForList("""
+        SELECT step, min_cost, max_cost, approval_role
+        FROM escalation_configs
+        WHERE scope = 'SPAREPART_REQUEST' AND approval_role IS NOT NULL
+        ORDER BY min_cost NULLS FIRST
+        """);
+    assertThat(tiers).hasSize(3);
+    assertThat(tiers.get(0).get("approval_role")).isEqualTo("SECTION_LEADER");
+    assertThat(tiers.get(1).get("approval_role")).isEqualTo("MAINTENANCE_LEADER");
+    assertThat(tiers.get(2).get("approval_role")).isEqualTo("MANAGER_MAINTENANCE");
+  }
+
+  @Test
+  @DisplayName("12.3-DB-009 P0 escalation_configs seed data has correct escalation durations")
+  void escalationConfigsEscalationDurations() {
+    var durations = jdbc.queryForList("""
+        SELECT step, duration_minutes
+        FROM escalation_configs
+        WHERE scope = 'SPAREPART_REQUEST' AND approval_role IS NULL
+        ORDER BY duration_minutes
+        """);
+    assertThat(durations).hasSize(3);
+    assertThat(durations.get(0).get("duration_minutes")).isEqualTo(480);
+    assertThat(durations.get(1).get("duration_minutes")).isEqualTo(1440);
+    assertThat(durations.get(2).get("duration_minutes")).isEqualTo(2880);
+  }
+
   private java.util.List<String> columnNames(String table) {
     return jdbc.queryForList(
         "SELECT column_name FROM information_schema.columns "

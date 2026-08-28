@@ -98,6 +98,13 @@ sparepart_request_transition_paths := {
   "/api/v1/sparepart-requests/*/mre",
 }
 
+# Sparepart request approval (story 12-3): three-leader allow set — the coarse gate.
+# SUPER_ADMIN is covered by the generic rule; SoD (requester != approver), tier selection
+# and in-scope checks stay service-side (rego cannot see the body or the request state).
+sparepart_request_approval_paths := {
+  "/api/v1/sparepart-requests/*/approve",
+}
+
 workorder_assign_paths := {
   "/api/v1/workorders/*/assign",
 }
@@ -347,6 +354,26 @@ mutation_allowed if {
   input.subject.roles[_] == "STOREKEEPER"
   is_mutation
   path_matches(sparepart_request_transition_paths)
+}
+
+# Sparepart request approval (story 12-3): three-leader allow set
+# (SUPER_ADMIN via the generic rule).
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(sparepart_request_approval_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(sparepart_request_approval_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(sparepart_request_approval_paths)
 }
 
 # Assign: leadership roles only (STAFF_MAINTENANCE and PRODUCTION_LEADER excluded).
