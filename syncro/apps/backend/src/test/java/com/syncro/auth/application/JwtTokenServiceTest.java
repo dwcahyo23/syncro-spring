@@ -118,6 +118,20 @@ class JwtTokenServiceTest {
     assertThat(parsed.id()).isEqualTo("66666666-6666-6666-6666-666666666666");
   }
 
+  @Test
+  @DisplayName("14.4-AUTH-005 parse rejects non-UUID subject (DW-137)")
+  void parseRejectsNonUuidSubject() {
+    assertThatThrownBy(() -> service.parse(signedTokenWithSubject("not-a-uuid")))
+        .isInstanceOf(JwtTokenService.InvalidTokenException.class);
+  }
+
+  @Test
+  @DisplayName("14.4-AUTH-006 parseAutoLogin rejects non-UUID subject (DW-137)")
+  void parseAutoLoginRejectsNonUuidSubject() {
+    assertThatThrownBy(() -> service.parseAutoLogin(signedAutoLoginWithSubject("not-a-uuid")))
+        .isInstanceOf(JwtTokenService.InvalidTokenException.class);
+  }
+
   /** Mints a structurally valid, correctly signed token whose role claim predates V45. */
   private String signedLegacyToken(String role) {
     var payload = new LinkedHashMap<String, Object>();
@@ -127,6 +141,44 @@ class JwtTokenServiceTest {
     payload.put("role", role);
     payload.put("iat", NOW.getEpochSecond());
     payload.put("exp", NOW.plusSeconds(600).getEpochSecond());
+    try {
+      var header = base64Url(objectMapper.writeValueAsBytes(Map.of("alg", "HS256", "typ", "JWT")));
+      var body = base64Url(objectMapper.writeValueAsBytes(payload));
+      var unsigned = header + "." + body;
+      return unsigned + "." + sign(unsigned);
+    } catch (Exception exception) {
+      throw new IllegalStateException(exception);
+    }
+  }
+
+  /** Mints a signed regular token whose subject is the given value (DW-137). */
+  private String signedTokenWithSubject(String subject) {
+    var payload = new LinkedHashMap<String, Object>();
+    payload.put("iss", "syncro-test");
+    payload.put("sub", subject);
+    payload.put("loginIdentifier", "malformed@syncro.dev");
+    payload.put("role", ApplicationRole.TECHNICIAN.name());
+    payload.put("iat", NOW.getEpochSecond());
+    payload.put("exp", NOW.plusSeconds(600).getEpochSecond());
+    return mint(payload);
+  }
+
+  /** Mints a signed AUTO_LOGIN token whose subject is the given value (DW-137). */
+  private String signedAutoLoginWithSubject(String subject) {
+    var payload = new LinkedHashMap<String, Object>();
+    payload.put("iss", "syncro-test");
+    payload.put("typ", "AUTO_LOGIN");
+    payload.put("sub", subject);
+    payload.put("loginIdentifier", "malformed@syncro.dev");
+    payload.put("role", ApplicationRole.PRODUCTION_LEADER.name());
+    payload.put("wa", "6281234567890");
+    payload.put("wo", "WO-2608-00001");
+    payload.put("iat", NOW.getEpochSecond());
+    payload.put("exp", NOW.plusSeconds(600).getEpochSecond());
+    return mint(payload);
+  }
+
+  private String mint(Map<String, Object> payload) {
     try {
       var header = base64Url(objectMapper.writeValueAsBytes(Map.of("alg", "HS256", "typ", "JWT")));
       var body = base64Url(objectMapper.writeValueAsBytes(payload));

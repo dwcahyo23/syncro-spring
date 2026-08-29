@@ -99,11 +99,15 @@ public class JwtTokenService {
     if (whatsapp == null || workOrderId == null) {
       throw new InvalidTokenException();
     }
+    // DW-137: a malformed (non-UUID) subject must fail closed to the standard
+    // invalid-token path (401 re-login) so downstream UUID.fromString(user.id())
+    // callers (workorder executor gates) can never throw a 500.
+    var subject = String.valueOf(payload.get("sub"));
+    if (!isValidUuid(subject)) {
+      throw new InvalidTokenException();
+    }
     return new AutoLoginToken(
-        new AuthenticatedUser(
-            String.valueOf(payload.get("sub")),
-            String.valueOf(payload.get("loginIdentifier")),
-            role),
+        new AuthenticatedUser(subject, String.valueOf(payload.get("loginIdentifier")), role),
         String.valueOf(whatsapp),
         String.valueOf(workOrderId));
   }
@@ -133,10 +137,25 @@ public class JwtTokenService {
     } catch (IllegalArgumentException exception) {
       throw new InvalidTokenException();
     }
+    // DW-137: same fail-closed subject guard as parseAutoLogin — a non-UUID subject
+    // must never reach the ~29 UUID.fromString(user.id()) call sites in maintenance.
+    var subject = String.valueOf(payload.get("sub"));
+    if (!isValidUuid(subject)) {
+      throw new InvalidTokenException();
+    }
     return new AuthenticatedUser(
-        String.valueOf(payload.get("sub")),
+        subject,
         String.valueOf(payload.get("loginIdentifier")),
         role);
+  }
+
+  private static boolean isValidUuid(String value) {
+    try {
+      java.util.UUID.fromString(value);
+      return true;
+    } catch (IllegalArgumentException exception) {
+      return false;
+    }
   }
 
   public long expiresInSeconds() {

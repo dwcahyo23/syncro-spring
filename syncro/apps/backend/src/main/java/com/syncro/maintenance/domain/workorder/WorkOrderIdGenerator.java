@@ -1,18 +1,22 @@
 package com.syncro.maintenance.domain.workorder;
 
+import com.syncro.config.ProjectionProperties;
 import com.syncro.maintenance.infrastructure.db.WorkOrderIdSequenceRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Internal workorder ID generator (AD-3): {@code WO-YYMM-XXXXX}. The prefix derives
- * from the injected clock, so a new month naturally yields a new prefix row and the
- * sequence restarts at 00001. {@code nextId()} holds a pessimistic write lock on the
- * prefix row for the whole transaction, so concurrent calls stay gapless.
+ * from the plant timezone (DW-134) so the month rolls at plant-local midnight rather
+ * than UTC midnight — a UTC+7 plant at 2024-10-01T00:00 local correctly gets {@code 2410},
+ * not the prior month's prefix. The sequence restarts at 00001 per prefix.
+ * {@code nextId()} holds a pessimistic write lock on the prefix row for the whole
+ * transaction, so concurrent calls stay gapless.
  */
 @Service
 public class WorkOrderIdGenerator {
@@ -22,10 +26,13 @@ public class WorkOrderIdGenerator {
 
   private final WorkOrderIdSequenceRepository sequences;
   private final Clock clock;
+  private final ZoneId plantZone;
 
-  public WorkOrderIdGenerator(WorkOrderIdSequenceRepository sequences, Clock clock) {
+  public WorkOrderIdGenerator(WorkOrderIdSequenceRepository sequences, Clock clock,
+      ProjectionProperties properties) {
     this.sequences = sequences;
     this.clock = clock;
+    this.plantZone = properties.plantZoneId();
   }
 
   @Transactional
@@ -45,7 +52,7 @@ public class WorkOrderIdGenerator {
   }
 
   private String derivePrefix() {
-    return YearMonth.now(clock).format(PREFIX_FORMAT);
+    return YearMonth.now(clock.withZone(plantZone)).format(PREFIX_FORMAT);
   }
 
   /** The 99999-per-month budget for a prefix is exhausted (unlikely at one site). */

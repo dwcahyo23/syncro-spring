@@ -171,6 +171,21 @@ class WorkOrderIdGeneratorTest {
     assertThat(row.getLastSeq()).isEqualTo(99999);
   }
 
+  @Test
+  @DisplayName("10.1-GEN-006 P1 prefix rolls at plant-local midnight, not UTC midnight (DW-134)")
+  void prefixRollsAtPlantLocalMidnight() {
+    // 2024-09-30T17:00:00Z = 2024-10-01T00:00+07 (Asia/Jakarta) — the plant month is
+    // October while UTC is still September. The prefix must be 2410, not 2409.
+    testClock.setInstant(Instant.parse("2024-09-30T17:00:00Z"));
+    jdbc.execute("DELETE FROM workorder_id_sequences");
+
+    var id = generator.nextId();
+
+    assertThat(id).isEqualTo("WO-2410-00001");
+    var row = sequences.findById("2410").orElseThrow();
+    assertThat(row.getLastSeq()).isEqualTo(1);
+  }
+
   private static int sequenceOf(String id) {
     return Integer.parseInt(id.substring(id.length() - 5));
   }
