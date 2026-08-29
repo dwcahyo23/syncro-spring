@@ -2,8 +2,11 @@ package com.syncro.maintenance.api;
 
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.maintenance.api.DashboardDtos.MachineDashboardResponse;
+import com.syncro.maintenance.api.DashboardDtos.MtbfMttrResponse;
 import com.syncro.maintenance.api.DashboardDtos.PreventiveDashboardResponse;
+import com.syncro.maintenance.api.DashboardDtos.TechnicianKpiResponse;
 import com.syncro.maintenance.api.DashboardDtos.WorkorderDashboardResponse;
+import com.syncro.maintenance.application.DashboardAnalyticsService;
 import com.syncro.maintenance.application.DashboardService;
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,21 +22,25 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Dashboard read surface (story 14-1, FR-170/FR-171/FR-172): three thin scope-aware
- * GET endpoints. Every count is backend-computed by {@link DashboardService}; the
- * frontend renders only. Optional filters: {@code plantId} on all three;
- * {@code sectionId}/{@code status}/{@code categoryCode} additionally on the workorder
- * dashboard. An out-of-scope filter value yields an empty payload (never a 403,
- * never out-of-scope rows).
+ * Dashboard read surface (story 14-1 + 14-2, FR-170..FR-174): thin scope-aware GET
+ * endpoints. Every count is backend-computed by {@link DashboardService} and
+ * {@link DashboardAnalyticsService}; the frontend renders only. Optional filters:
+ * {@code plantId} on all five; {@code sectionId}/{@code status}/{@code categoryCode}
+ * additionally on the workorder dashboard. An out-of-scope filter value yields an
+ * empty payload (never a 403, never out-of-scope rows). The analytics endpoints
+ * ({@code /mtbf-mttr}, {@code /technician-kpi}) are role-gated server-side in the
+ * service (same roles as the sidebar Analytics item).
  */
 @RestController
 @RequestMapping("/api/v1/dashboard")
 public class DashboardController {
 
   private final DashboardService dashboards;
+  private final DashboardAnalyticsService analytics;
 
-  public DashboardController(DashboardService dashboards) {
+  public DashboardController(DashboardService dashboards, DashboardAnalyticsService analytics) {
     this.dashboards = dashboards;
+    this.analytics = analytics;
   }
 
   @Operation(operationId = "getMachineDashboard", summary = "Machine dashboard: per-machine status, telemetry freshness, open workorders/alerts, lifetime risk")
@@ -76,5 +83,33 @@ public class DashboardController {
   public PreventiveDashboardResponse preventive(@AuthenticationPrincipal AuthenticatedUser user,
       @RequestParam(required = false) UUID plantId) {
     return dashboards.preventiveDashboard(user, plantId);
+  }
+
+  @Operation(operationId = "getMtbfMttr", summary = "MTBF/MTTR dashboard: reliability analytics over the rolling 30-day window")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "MTBF/MTTR analytics returned",
+          content = @Content(schema = @Schema(implementation = MtbfMttrResponse.class))),
+      @ApiResponse(responseCode = "400", description = "Invalid filter value"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Role denied")
+  })
+  @GetMapping("/mtbf-mttr")
+  public MtbfMttrResponse mtbfMttr(@AuthenticationPrincipal AuthenticatedUser user,
+      @RequestParam(required = false) UUID plantId) {
+    return analytics.mtbfMttr(user, plantId);
+  }
+
+  @Operation(operationId = "getTechnicianKpi", summary = "Technician KPI dashboard: objective KPIs and per-dimension ratings per technician")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Technician KPI analytics returned",
+          content = @Content(schema = @Schema(implementation = TechnicianKpiResponse.class))),
+      @ApiResponse(responseCode = "400", description = "Invalid filter value"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Role denied")
+  })
+  @GetMapping("/technician-kpi")
+  public TechnicianKpiResponse technicianKpi(@AuthenticationPrincipal AuthenticatedUser user,
+      @RequestParam(required = false) UUID plantId) {
+    return analytics.technicianKpi(user, plantId);
   }
 }

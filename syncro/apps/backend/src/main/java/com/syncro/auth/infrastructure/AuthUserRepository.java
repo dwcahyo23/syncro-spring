@@ -38,4 +38,11 @@ public interface AuthUserRepository extends JpaRepository<AuthUserEntity, UUID> 
       """)
   List<AuthUserEntity> findAllByApplicationRoleInWithWhatsapp(
       @Param("roles") Collection<ApplicationRole> roles);
+
+  /**
+   * Batch user lookup by ids (story 14-2, FR-174): resolves technician display names
+   * for the technician KPI dashboard. One query, no N+1.
+   */
+  @Query("select u from AuthUserEntity u where u.id in :ids")
+  List<AuthUserEntity> findByIds(@Param("ids") Collection<UUID> ids);
 }

@@ -129,6 +129,20 @@ export const sidebarItems: NavGroup[] = [
           "AUDITOR",
         ],
       },
+      {
+        title: "Analytics",
+        url: "/analytics",
+        icon: Activity,
+        isNew: true,
+        roles: [
+          "SUPER_ADMIN",
+          "MANAGER_MAINTENANCE",
+          "MAINTENANCE_LEADER",
+          "SECTION_LEADER",
+          "PRODUCTION_LEADER",
+          "AUDITOR",
+        ],
+      },
     ],
   },
   {

@@ -257,6 +257,100 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrderEntity, Stri
       @Param("groupIds") Collection<UUID> groupIds);
 
   // -------------------------------------------------------------------------
+  // Dashboard analytics (14-2, FR-173/FR-174)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Stopped breakdown workorders (category code {@code 01}, status DONE or CLOSED) in
+   * scope within the rolling analytics window. The window predicate is keyed on the
+   * DERIVED stop time — the latest DONE transition from {@code work_order_status_history}
+   * (fallback {@code updatedAt} when no DONE row exists, the sync edge case) — matching
+   * the ordering key ({@code coalesce(max(h.transitionedAt), w.updatedAt)}). The LEFT
+   * JOIN + GROUP BY derives the stop time in SQL so the projection, the HAVING window
+   * predicate and the ORDER BY all use the same key. OPEN/IN_PROGRESS/ASSIGNED breakdown
+   * workorders are never counted as stops. {@code from}/{@code to} are the 30-day window
+   * bounds computed from the injected {@code Clock}. Category target is nullable —
+   * on-time % only counts rows where BOTH responseTimeMinutes and targetResponseMinutes
+   * are present.
+   */
+  @Query("""
+      select new com.syncro.maintenance.infrastructure.db.WorkOrderAnalyticsRow(
+        w.id, w.status, w.machineId, m.plant.id, w.assignedTechnicianId,
+        w.mttrMinutes, w.responseTimeMinutes, c.code, c.targetResponseMinutes,
+        coalesce(max(h.transitionedAt), w.updatedAt))
+      from WorkOrderEntity w
+      left join WorkOrderCategoryEntity c on c.id = w.categoryId
+      join MachineEntity m on m.id = w.machineId
+      left join WorkOrderStatusHistoryEntity h on h.workOrderId = w.id and h.toStatus = 'DONE'
+      where c.code = :breakdownCode
+        and w.status in :stoppedStatuses
+        and (:unrestricted = true or m.plant.id in :plantIds or m.machineGroup.id in :groupIds)
+      group by w.id, w.status, w.machineId, m.plant.id, w.assignedTechnicianId,
+        w.mttrMinutes, w.responseTimeMinutes, c.code, c.targetResponseMinutes, w.updatedAt
+      having coalesce(max(h.transitionedAt), w.updatedAt) >= :from
+        and coalesce(max(h.transitionedAt), w.updatedAt) < :to
+      """)
+  List<WorkOrderAnalyticsRow> findStoppedBreakdownAnalyticsRows(
+      @Param("breakdownCode") String breakdownCode,
+      @Param("stoppedStatuses") Collection<WorkOrderStatus> stoppedStatuses,
+      @Param("unrestricted") boolean unrestricted,
+      @Param("plantIds") Collection<UUID> plantIds,
+      @Param("groupIds") Collection<UUID> groupIds,
+      @Param("from") Instant from,
+      @Param("to") Instant to);
+
+  /**
+   * Technician objective-KPI rows (FR-174): every workorder in scope with its
+   * assigned technician and category target. Window keyed on updatedAt (the
+   * documented stop-time source for attribution — the workorder's last update).
+   * Rows are deduplicated with the repair-session source by (technician, workorder)
+   * in the application layer.
+   */
+  @Query("""
+      select new com.syncro.maintenance.infrastructure.db.TechnicianKpiRow(
+        w.assignedTechnicianId, w.id, w.status, m.plant.id, c.code,
+        w.mttrMinutes, w.responseTimeMinutes, c.targetResponseMinutes)
+      from WorkOrderEntity w
+      left join WorkOrderCategoryEntity c on c.id = w.categoryId
+      join MachineEntity m on m.id = w.machineId
+      where w.assignedTechnicianId is not null
+        and (:unrestricted = true or m.plant.id in :plantIds or m.machineGroup.id in :groupIds)
+        and w.updatedAt >= :from
+        and w.updatedAt < :to
+      """)
+  List<TechnicianKpiRow> findTechnicianObjectiveRows(
+      @Param("unrestricted") boolean unrestricted,
+      @Param("plantIds") Collection<UUID> plantIds,
+      @Param("groupIds") Collection<UUID> groupIds,
+      @Param("from") Instant from,
+      @Param("to") Instant to);
+
+  /**
+   * Technician objective-KPI rows sourced from repair sessions (FR-174): a workorder is
+   * attributed to every technician who logged a completed repair session on it, even
+   * when the assigned technician is null (a WO can be worked by more than one person).
+   */
+  @Query("""
+      select new com.syncro.maintenance.infrastructure.db.TechnicianKpiRow(
+        r.technicianId, w.id, w.status, m.plant.id, c.code,
+        w.mttrMinutes, w.responseTimeMinutes, c.targetResponseMinutes)
+      from RepairSessionEntity r
+      join WorkOrderEntity w on w.id = r.workOrderId
+      left join WorkOrderCategoryEntity c on c.id = w.categoryId
+      join MachineEntity m on m.id = w.machineId
+      where r.endedAt is not null
+        and (:unrestricted = true or m.plant.id in :plantIds or m.machineGroup.id in :groupIds)
+        and w.updatedAt >= :from
+        and w.updatedAt < :to
+      """)
+  List<TechnicianKpiRow> findTechnicianObjectiveRowsFromSessions(
+      @Param("unrestricted") boolean unrestricted,
+      @Param("plantIds") Collection<UUID> plantIds,
+      @Param("groupIds") Collection<UUID> groupIds,
+      @Param("from") Instant from,
+      @Param("to") Instant to);
+
+  // -------------------------------------------------------------------------
   // Projection interfaces for group-by results
   // -------------------------------------------------------------------------
 

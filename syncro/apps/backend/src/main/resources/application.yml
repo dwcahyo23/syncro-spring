@@ -160,6 +160,10 @@ syncro:
     telemetry:
       ttl-minutes: 5
       max-size: 1000
+  dashboard:
+    # Redis cache TTL for computed dashboard analytics (MTBF/MTTR, technician KPI).
+    # Env-overridable via SYNCRO_DASHBOARD_ANALYTICS_TTL (default: 30 minutes).
+    analytics-ttl: ${SYNCRO_DASHBOARD_ANALYTICS_TTL:PT30M}
   sync:
     # External workorder sync pipeline (story 13-1, AD-7/FR-150). Disabled by default:
     # the app boots without an external DB. Flip to true and supply syncro.sync.datasource.*

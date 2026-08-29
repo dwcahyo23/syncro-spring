@@ -27,6 +27,7 @@ const nextConfig = {
       { source: "/machine-dashboard", destination: "/dashboard/machine-dashboard" },
       { source: "/workorder-dashboard", destination: "/dashboard/workorder-dashboard" },
       { source: "/preventive-dashboard", destination: "/dashboard/preventive-dashboard" },
+      { source: "/analytics", destination: "/dashboard/analytics" },
       { source: "/telemetry", destination: "/dashboard/telemetry" },
       { source: "/alerts", destination: "/dashboard/alerts" },
       { source: "/master-data/:path*", destination: "/dashboard/master-data/:path*" },

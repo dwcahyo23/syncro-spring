@@ -1,6 +1,5 @@
 package com.syncro.maintenance.api;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -15,6 +14,7 @@ import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.auth.infrastructure.JwtAuthenticationFilter;
 import com.syncro.config.SecurityConfig;
 import com.syncro.config.TimeConfig;
+import com.syncro.maintenance.application.DashboardAnalyticsService;
 import com.syncro.maintenance.application.DashboardService;
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
 import java.time.Instant;
@@ -44,6 +44,9 @@ class DashboardControllerTest {
   private DashboardService dashboards;
 
   @MockitoBean
+  private DashboardAnalyticsService analytics;
+
+  @MockitoBean
   private JwtTokenService jwtTokenService;
 
   @Test
@@ -56,6 +59,12 @@ class DashboardControllerTest {
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
     mockMvc.perform(get("/api/v1/dashboard/preventive"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
+    mockMvc.perform(get("/api/v1/dashboard/mtbf-mttr"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
+    mockMvc.perform(get("/api/v1/dashboard/technician-kpi"))
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
   }
@@ -167,6 +176,106 @@ class DashboardControllerTest {
         .with(auth(user(ApplicationRole.SUPER_ADMIN))))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("INVALID_QUERY_VALUE"));
+  }
+
+  @Test
+  @DisplayName("14.2-API-001 P1 MTBF/MTTR returns analytics and passes plantId")
+  void mtbfMttrReturnsAnalytics() throws Exception {
+    var user = user(ApplicationRole.SUPER_ADMIN);
+    var plantId = UUID.randomUUID();
+    var now = Instant.now();
+    var mtbf = new DashboardDtos.MtbfView("AVAILABLE", 48.0, 5);
+    var mttr = new DashboardDtos.MttrView("AVAILABLE", 2.5, 3);
+    var response = new DashboardDtos.MtbfMttrResponse(
+        mtbf, mttr, now.minusSeconds(30 * 86400), now, now, null, false);
+    when(analytics.mtbfMttr(user, plantId)).thenReturn(response);
+
+    mockMvc.perform(get("/api/v1/dashboard/mtbf-mttr")
+        .param("plantId", plantId.toString())
+        .with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.mtbf.status").value("AVAILABLE"))
+        .andExpect(jsonPath("$.mtbf.valueHours").value(48.0))
+        .andExpect(jsonPath("$.mttr.status").value("AVAILABLE"))
+        .andExpect(jsonPath("$.mttr.valueHours").value(2.5))
+        .andExpect(jsonPath("$.stale").value(false));
+  }
+
+  @Test
+  @DisplayName("14.2-API-002 P1 MTBF/MTTR passes null plantId when omitted")
+  void mtbfMttrPassesNullPlantId() throws Exception {
+    var user = user(ApplicationRole.SUPER_ADMIN);
+    var now = Instant.now();
+    var response = new DashboardDtos.MtbfMttrResponse(
+        new DashboardDtos.MtbfView("INSUFFICIENT_DATA", null, 0),
+        new DashboardDtos.MttrView("INSUFFICIENT_DATA", null, 0),
+        null, null, now, null, false);
+    when(analytics.mtbfMttr(eq(user), eq(null))).thenReturn(response);
+
+    mockMvc.perform(get("/api/v1/dashboard/mtbf-mttr").with(auth(user)))
+        .andExpect(status().isOk());
+
+    verify(analytics).mtbfMttr(eq(user), eq(null));
+  }
+
+  @Test
+  @DisplayName("14.2-API-003 P1 technician KPI returns rows and passes plantId")
+  void technicianKpiReturnsRows() throws Exception {
+    var user = user(ApplicationRole.SUPER_ADMIN);
+    var plantId = UUID.randomUUID();
+    var techId = UUID.randomUUID();
+    var now = Instant.now();
+    var techRow = new DashboardDtos.TechnicianKpiRowView(
+        techId, "Technician A", 10L, 3.0, 80.0, List.of());
+    var response = new DashboardDtos.TechnicianKpiResponse(
+        List.of(techRow), now.minusSeconds(30 * 86400), now, now, null, false);
+    when(analytics.technicianKpi(user, plantId)).thenReturn(response);
+
+    mockMvc.perform(get("/api/v1/dashboard/technician-kpi")
+        .param("plantId", plantId.toString())
+        .with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.technicians[0].technicianId").value(techId.toString()))
+        .andExpect(jsonPath("$.technicians[0].technicianName").value("Technician A"))
+        .andExpect(jsonPath("$.technicians[0].completedCount").value(10))
+        .andExpect(jsonPath("$.technicians[0].averageMttrHours").value(3.0))
+        .andExpect(jsonPath("$.technicians[0].onTimePercentage").value(80.0))
+        .andExpect(jsonPath("$.stale").value(false));
+  }
+
+  @Test
+  @DisplayName("14.2-API-004 P1 technician KPI passes null plantId when omitted")
+  void technicianKpiPassesNullPlantId() throws Exception {
+    var user = user(ApplicationRole.SUPER_ADMIN);
+    var now = Instant.now();
+    var response = new DashboardDtos.TechnicianKpiResponse(
+        List.of(), null, null, now, null, false);
+    when(analytics.technicianKpi(eq(user), eq(null))).thenReturn(response);
+
+    mockMvc.perform(get("/api/v1/dashboard/technician-kpi").with(auth(user)))
+        .andExpect(status().isOk());
+
+    verify(analytics).technicianKpi(eq(user), eq(null));
+  }
+
+  @Test
+  @DisplayName("14.2-API-005 P1 TECHNICIAN role is denied on both analytics endpoints")
+  void technicianRoleDeniedOnAnalytics() throws Exception {
+    var techUser = user(ApplicationRole.TECHNICIAN);
+    // The role gate lives in the service; the mocked service throws for denied roles.
+    when(analytics.mtbfMttr(techUser, null))
+        .thenThrow(new DashboardAnalyticsService.AnalyticsForbiddenException());
+    when(analytics.technicianKpi(techUser, null))
+        .thenThrow(new DashboardAnalyticsService.AnalyticsForbiddenException());
+
+    mockMvc.perform(get("/api/v1/dashboard/mtbf-mttr")
+        .with(auth(techUser)))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    mockMvc.perform(get("/api/v1/dashboard/technician-kpi")
+        .with(auth(techUser)))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
   }
 
   private static AuthenticatedUser user(ApplicationRole role) {

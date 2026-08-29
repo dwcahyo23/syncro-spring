@@ -1,6 +1,7 @@
 package com.syncro.maintenance.api;
 
 import com.syncro.maintenance.api.DashboardDtos.ErrorResponse;
+import com.syncro.maintenance.application.DashboardAnalyticsService.AnalyticsForbiddenException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Map;
@@ -14,9 +15,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /**
- * Error mapping for the dashboard read surface (story 14-1). The dashboard contract
- * (I/O matrix) returns empty payloads for out-of-scope filter values — never a 403.
- * Only live mappings: invalid query values (bad UUIDs, bad enums) → 400.
+ * Error mapping for the dashboard read surface (story 14-1 + 14-2). The dashboard
+ * contract (I/O matrix) returns empty payloads for out-of-scope filter values — never
+ * a 403 for scope. Role-denied analytics calls (14-2) map to a FORBIDDEN 403.
+ * Live mappings: invalid query values (bad UUIDs, bad enums) → 400; analytics role
+ * denial → 403.
  */
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(assignableTypes = DashboardController.class)
@@ -31,6 +34,12 @@ public class DashboardExceptionHandler {
   @ExceptionHandler(MethodArgumentTypeMismatchException.class)
   ResponseEntity<ErrorResponse> invalidQueryValue(MethodArgumentTypeMismatchException exception) {
     return error(HttpStatus.BAD_REQUEST, "INVALID_QUERY_VALUE", "Query value is invalid.", Map.of());
+  }
+
+  @ExceptionHandler(AnalyticsForbiddenException.class)
+  ResponseEntity<ErrorResponse> analyticsForbidden(AnalyticsForbiddenException exception) {
+    return error(HttpStatus.FORBIDDEN, "FORBIDDEN",
+        "You do not have permission to access this resource.", Map.of());
   }
 
   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message,
