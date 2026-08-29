@@ -177,4 +177,108 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrderEntity, Stri
       @Param("noMachine") UUID noMachine,
       @Param("categoryCode") String categoryCode,
       @Param("search") String search);
+
+  // -------------------------------------------------------------------------
+  // Dashboard group-by counts (14-1, FR-171)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Scoped count of workorders grouped by status. Optional filters: sectionId,
+   * status, categoryCode. Follows the same (unrestricted, plantIds, groupIds)
+   * scope pattern as {@link #findScopedPage}.
+   */
+  @Query("""
+      select w.status as status, count(w) as count
+      from WorkOrderEntity w
+      left join WorkOrderCategoryEntity c on c.id = w.categoryId
+      join MachineEntity m on m.id = w.machineId
+      where (:unrestricted = true or m.plant.id in :plantIds or m.machineGroup.id in :groupIds)
+        and (:plantId = :noPlant or m.plant.id = :plantId)
+        and (:sectionId = :noSectionId or m.machineGroup.sectionId = :sectionId)
+        and (:status = '' or w.status = cast(:status as string))
+        and (:categoryCode = '' or c.code = :categoryCode)
+      group by w.status
+      """)
+  List<StatusCountProjection> countByStatusScoped(
+      @Param("unrestricted") boolean unrestricted,
+      @Param("plantIds") Collection<UUID> plantIds,
+      @Param("groupIds") Collection<UUID> groupIds,
+      @Param("plantId") UUID plantId,
+      @Param("noPlant") UUID noPlant,
+      @Param("sectionId") UUID sectionId,
+      @Param("noSectionId") UUID noSectionId,
+      @Param("status") String status,
+      @Param("categoryCode") String categoryCode);
+
+  /**
+   * Scoped count of workorders grouped by category. Categories with no workorders
+   * are absent; the frontend renders zero by omission.
+   */
+  @Query("""
+      select c.id as categoryId, c.code as categoryCode, c.label as categoryLabel, count(w) as count
+      from WorkOrderEntity w
+      left join WorkOrderCategoryEntity c on c.id = w.categoryId
+      join MachineEntity m on m.id = w.machineId
+      where (:unrestricted = true or m.plant.id in :plantIds or m.machineGroup.id in :groupIds)
+        and (:plantId = :noPlant or m.plant.id = :plantId)
+        and (:sectionId = :noSectionId or m.machineGroup.sectionId = :sectionId)
+        and (:status = '' or w.status = cast(:status as string))
+        and (:categoryCode = '' or c.code = :categoryCode)
+      group by c.id, c.code, c.label
+      order by count(w) desc
+      """)
+  List<CategoryCountProjection> countByCategoryScoped(
+      @Param("unrestricted") boolean unrestricted,
+      @Param("plantIds") Collection<UUID> plantIds,
+      @Param("groupIds") Collection<UUID> groupIds,
+      @Param("plantId") UUID plantId,
+      @Param("noPlant") UUID noPlant,
+      @Param("sectionId") UUID sectionId,
+      @Param("noSectionId") UUID noSectionId,
+      @Param("status") String status,
+      @Param("categoryCode") String categoryCode);
+
+  /**
+   * Scoped count of non-terminal workorders grouped by machine — open workorder
+   * counts for the machine dashboard.
+   */
+  @Query("""
+      select w.machineId as machineId, count(w) as count
+      from WorkOrderEntity w
+      join MachineEntity m on m.id = w.machineId
+      where w.status not in :terminalStatuses
+        and (:unrestricted = true or m.plant.id in :plantIds or m.machineGroup.id in :groupIds)
+      group by w.machineId
+      """)
+  List<OpenByMachineProjection> countOpenByMachineScoped(
+      @Param("terminalStatuses") Collection<WorkOrderStatus> terminalStatuses,
+      @Param("unrestricted") boolean unrestricted,
+      @Param("plantIds") Collection<UUID> plantIds,
+      @Param("groupIds") Collection<UUID> groupIds);
+
+  // -------------------------------------------------------------------------
+  // Projection interfaces for group-by results
+  // -------------------------------------------------------------------------
+
+  interface StatusCountProjection {
+    WorkOrderStatus getStatus();
+
+    long getCount();
+  }
+
+  interface CategoryCountProjection {
+    UUID getCategoryId();
+
+    String getCategoryCode();
+
+    String getCategoryLabel();
+
+    long getCount();
+  }
+
+  interface OpenByMachineProjection {
+    UUID getMachineId();
+
+    long getCount();
+  }
 }

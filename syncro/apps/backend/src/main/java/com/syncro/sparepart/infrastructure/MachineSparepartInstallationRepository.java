@@ -1,5 +1,6 @@
 package com.syncro.sparepart.infrastructure;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -93,4 +94,13 @@ public interface MachineSparepartInstallationRepository extends JpaRepository<Ma
         and installation.sparepart.leadTimeHours is not null
       """)
   boolean existsByMachineIdAndSparepartLeadTimeHoursIsNotNull(@Param("machineId") UUID machineId);
+
+  /** Batch threshold lookup for the machine dashboard lifetime risk (story 14-1, FR-170). */
+  @Query("""
+      select installation from MachineSparepartInstallationEntity installation
+      join fetch installation.machine
+      where installation.machine.id in :machineIds
+      """)
+  List<MachineSparepartInstallationEntity> findAllByMachineIdIn(
+      @Param("machineIds") Collection<UUID> machineIds);
 }

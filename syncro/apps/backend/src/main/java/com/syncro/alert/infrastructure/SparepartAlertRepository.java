@@ -2,6 +2,7 @@ package com.syncro.alert.infrastructure;
 
 import com.syncro.alert.domain.SparepartAlertStatus;
 import com.syncro.alert.domain.SparepartAlertType;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -93,5 +94,29 @@ public interface SparepartAlertRepository extends JpaRepository<SparepartAlertEn
       @Param("plantIds") List<UUID> plantIds,
       @Param("leaderGroupIds") List<UUID> leaderGroupIds,
       @Param("teamGroupIds") List<UUID> teamGroupIds);
+
+  /**
+   * Scoped count of non-RESOLVED alerts grouped by machine — open alert counts
+   * for the machine dashboard (story 14-1, FR-170).
+   */
+  @Query("""
+      select a.machineId as machineId, count(a) as count
+      from SparepartAlertEntity a
+      join MachineEntity m on m.id = a.machineId
+      where a.status <> :excludedStatus
+        and (:unrestricted = true or m.plant.id in :plantIds or m.machineGroup.id in :groupIds)
+      group by a.machineId
+      """)
+  List<AlertCountByMachineProjection> countOpenByMachineScoped(
+      @Param("excludedStatus") SparepartAlertStatus excludedStatus,
+      @Param("unrestricted") boolean unrestricted,
+      @Param("plantIds") Collection<UUID> plantIds,
+      @Param("groupIds") Collection<UUID> groupIds);
+
+  interface AlertCountByMachineProjection {
+    UUID getMachineId();
+
+    long getCount();
+  }
 }
 

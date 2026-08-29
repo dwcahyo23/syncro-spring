@@ -24,6 +24,9 @@ const nextConfig = {
   async rewrites() {
     return [
       { source: "/operations-overview", destination: "/dashboard/operations-overview" },
+      { source: "/machine-dashboard", destination: "/dashboard/machine-dashboard" },
+      { source: "/workorder-dashboard", destination: "/dashboard/workorder-dashboard" },
+      { source: "/preventive-dashboard", destination: "/dashboard/preventive-dashboard" },
       { source: "/telemetry", destination: "/dashboard/telemetry" },
       { source: "/alerts", destination: "/dashboard/alerts" },
       { source: "/master-data/:path*", destination: "/dashboard/master-data/:path*" },

@@ -114,6 +114,43 @@ public class RedisLatestTelemetryWriter {
     return result;
   }
 
+  /**
+   * Reads the {@code counting} value of the latest-telemetry hashes for many machines
+   * in ONE pipelined round trip (story 14-1 batch lifetime evaluation). Machines without
+   * a counting value (or without a hash at all) are absent from the result.
+   */
+  public Map<UUID, Long> readCountingBatch(Collection<UUID> machineIds) {
+    if (machineIds == null || machineIds.isEmpty()) {
+      return Map.of();
+    }
+    List<UUID> ids = machineIds.stream().filter(Objects::nonNull).distinct().toList();
+    if (ids.isEmpty()) {
+      return Map.of();
+    }
+    List<Object> pipelineResults = redis.executePipelined(new SessionCallback<Object>() {
+      @Override
+      public Object execute(RedisOperations operations) throws DataAccessException {
+        for (UUID machineId : ids) {
+          operations.opsForHash().get(latestKey(machineId), "counting");
+        }
+        return null;
+      }
+    });
+    Map<UUID, Long> result = new HashMap<>();
+    for (int i = 0; i < ids.size(); i++) {
+      Object raw = pipelineResults.get(i);
+      if (raw == null) {
+        continue;
+      }
+      try {
+        result.put(ids.get(i), Long.parseLong(raw.toString()));
+      } catch (NumberFormatException malformed) {
+        log.warn("mqtt_telemetry_latest_counting_malformed machineId={} rawValue={}", ids.get(i), raw);
+      }
+    }
+    return result;
+  }
+
   public void hdel(UUID machineId, Collection<String> fieldNames) {
     if (fieldNames == null || fieldNames.isEmpty()) {
       return;

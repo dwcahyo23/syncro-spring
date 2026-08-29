@@ -3,6 +3,7 @@ package com.syncro.sparepart.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
+import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.sparepart.infrastructure.MachineSparepartInstallationEntity;
 import com.syncro.sparepart.infrastructure.MachineSparepartInstallationRepository;
 import com.syncro.telemetry.infrastructure.RedisLatestTelemetryWriter;
@@ -154,4 +155,60 @@ class SparepartLifetimeEvaluatorTest {
     assertThat(result.get(installationId).consumedProductionCount()).isEqualTo(250L);
     assertThat(result.get(installationId).consumedPercentage()).isEqualByComparingTo(new BigDecimal("25.00"));
   }
+
+  // ---------------------------------------------------------------------------
+  // Batch evaluation (story 14-1, FR-170) — single Redis round trip, no per-machine N+1
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void evaluateBatch_happyPath_returnsResultsPerMachine() {
+    UUID machine1 = UUID.randomUUID();
+    UUID machine2 = UUID.randomUUID();
+    UUID inst1 = UUID.randomUUID();
+    UUID inst2 = UUID.randomUUID();
+    var now = Instant.parse("2026-08-25T09:00:00Z");
+    var entity1 = new MachineSparepartInstallationEntity(inst1, machine(machine1), null,
+        "func1", 1000, 0, 80, now, now, now);
+    var entity2 = new MachineSparepartInstallationEntity(inst2, machine(machine2), null,
+        "func2", 2000, 0, 80, now, now, now);
+    when(redisLatestWriter.readCountingBatch(List.of(machine1, machine2)))
+        .thenReturn(Map.of(machine1, 250L, machine2, 500L));
+    when(installationRepository.findAllByMachineIdIn(List.of(machine1, machine2)))
+        .thenReturn(List.of(entity1, entity2));
+
+    var result = evaluator.evaluateBatch(List.of(machine1, machine2));
+
+    assertThat(result).containsKey(machine1);
+    assertThat(result).containsKey(machine2);
+    // machine1: baseline 0, current 250 → 25.00%
+    assertThat(result.get(machine1).get(inst1).consumedPercentage())
+        .isEqualByComparingTo(new BigDecimal("25.00"));
+    // machine2: baseline 0, current 500 → 25.00%
+    assertThat(result.get(machine2).get(inst2).consumedPercentage())
+        .isEqualByComparingTo(new BigDecimal("25.00"));
+  }
+
+  @Test
+  void evaluateBatch_machineWithoutCounting_absent() {
+    UUID machine1 = UUID.randomUUID();
+    // No counting data in Redis → evaluateBatch returns empty before querying installations.
+    when(redisLatestWriter.readCountingBatch(List.of(machine1))).thenReturn(Map.of());
+
+    var result = evaluator.evaluateBatch(List.of(machine1));
+
+    assertThat(result).isEmpty();
+  }
+
+  @Test
+  void evaluateBatch_emptyInput_returnsEmpty() {
+    assertThat(evaluator.evaluateBatch(List.of())).isEmpty();
+    assertThat(evaluator.evaluateBatch(null)).isEmpty();
+  }
+
+  private static MachineEntity machine(UUID id) {
+    return new MachineEntity(id, null, null, "MC", "Machine", com.syncro.machine.domain.MachineStatus.ACTIVE,
+        null, null, null, List.of(), TS, TS);
+  }
+
+  private static final Instant TS = Instant.parse("2026-08-25T09:00:00Z");
 }

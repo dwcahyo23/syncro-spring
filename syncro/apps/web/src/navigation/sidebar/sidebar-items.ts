@@ -4,7 +4,9 @@ import {
   CalendarCheck,
   Database,
   FileText,
+  Gauge,
   HeartPulse,
+  LayoutDashboard,
   type LucideIcon,
   MessageSquare,
   Package,
@@ -86,6 +88,51 @@ export const sidebarItems: NavGroup[] = [
   },
   {
     id: 2,
+    label: "Dashboards",
+    items: [
+      {
+        title: "Machine Dashboard",
+        url: "/machine-dashboard",
+        icon: Gauge,
+        roles: [
+          "SUPER_ADMIN",
+          "MANAGER_MAINTENANCE",
+          "MAINTENANCE_LEADER",
+          "SECTION_LEADER",
+          "PRODUCTION_LEADER",
+          "AUDITOR",
+        ],
+      },
+      {
+        title: "Workorder Dashboard",
+        url: "/workorder-dashboard",
+        icon: LayoutDashboard,
+        roles: [
+          "SUPER_ADMIN",
+          "MANAGER_MAINTENANCE",
+          "MAINTENANCE_LEADER",
+          "SECTION_LEADER",
+          "PRODUCTION_LEADER",
+          "AUDITOR",
+        ],
+      },
+      {
+        title: "Preventive Dashboard",
+        url: "/preventive-dashboard",
+        icon: CalendarCheck,
+        roles: [
+          "SUPER_ADMIN",
+          "MANAGER_MAINTENANCE",
+          "MAINTENANCE_LEADER",
+          "SECTION_LEADER",
+          "PRODUCTION_LEADER",
+          "AUDITOR",
+        ],
+      },
+    ],
+  },
+  {
+    id: 3,
     label: "Maintenance",
     items: [
       {
@@ -111,7 +158,7 @@ export const sidebarItems: NavGroup[] = [
     ],
   },
   {
-    id: 3,
+    id: 4,
     label: "Configuration",
     items: [
       {
