@@ -12,6 +12,9 @@ spring:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
+      # DW-47: client-level Redis command timeout (Lettuce). Bounds the health-indicator
+      # PING and all Redis command paths so a stalled Redis cannot block for the 60s default.
+      timeout: ${SYNCRO_REDIS_COMMAND_TIMEOUT_MS:2000}ms
   flyway:
     enabled: true
     locations: classpath:db/migration

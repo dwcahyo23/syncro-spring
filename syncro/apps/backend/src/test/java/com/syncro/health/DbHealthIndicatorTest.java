@@ -70,4 +70,25 @@ class DbHealthIndicatorTest {
         .containsEntry("statusSeverity", "CRITICAL")
         .containsEntry("statusReason", "CONNECTION_REFUSED");
   }
+
+  @Test
+  void health_whenPoolAcquireBlocks_returnsDownAfterBoundedTimeout() throws Exception {
+    // DW-46: a pool that never hands out a connection (Hikari waiting up to its 30s
+    // connection-timeout) must report DOWN with POOL_ACQUIRE_TIMEOUT after ~2s, not block.
+    when(dataSource.getConnection()).thenAnswer(invocation -> {
+      Thread.sleep(60_000);
+      throw new AssertionError("should have timed out");
+    });
+
+    long startedAt = System.nanoTime();
+    Health health = new DbHealthIndicator(dataSource, FIXED_CLOCK).health();
+    long elapsedMillis = (System.nanoTime() - startedAt) / 1_000_000;
+
+    assertThat(health.getStatus()).isEqualTo(Status.DOWN);
+    assertThat(health.getDetails())
+        .containsEntry("statusLabel", "Down")
+        .containsEntry("statusSeverity", "CRITICAL")
+        .containsEntry("statusReason", "POOL_ACQUIRE_TIMEOUT");
+    assertThat(elapsedMillis).isLessThan(10_000);
+  }
 }
