@@ -9,6 +9,7 @@ import com.syncro.auth.application.PlantScopeService;
 import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
 import com.syncro.auth.infrastructure.PlantRepository;
+import com.syncro.common.LikePattern;
 import com.syncro.machine.domain.MachineStatus;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
@@ -357,8 +358,7 @@ public class MachineService {
     if (search == null || search.isBlank()) {
       return null;
     }
-    var normalized = search.trim().toLowerCase(Locale.ROOT).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
-    return "%" + normalized + "%";
+    return LikePattern.containsLower(search.trim());
   }
 
   private int normalizePage(int page) {

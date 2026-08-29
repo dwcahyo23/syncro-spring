@@ -2,6 +2,7 @@ package com.syncro.maintenance.application;
 
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.infrastructure.AuthUserRepository;
+import com.syncro.common.LikePattern;
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
 import com.syncro.maintenance.infrastructure.db.WorkOrderListRow;
 import com.syncro.maintenance.infrastructure.db.WorkOrderRepository;
@@ -179,11 +180,7 @@ public class WorkOrderListService {
     if (term == null || term.isBlank()) {
       return "";
     }
-    var escaped = term.trim()
-        .replace("\\", "\\\\")
-        .replace("%", "\\%")
-        .replace("_", "\\_");
-    return "%" + escaped.toLowerCase() + "%";
+    return LikePattern.containsLower(term.trim());
   }
 
   /**

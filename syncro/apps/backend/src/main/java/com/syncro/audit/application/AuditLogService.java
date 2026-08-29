@@ -10,6 +10,7 @@ import com.syncro.audit.infrastructure.AuditLogRepository;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.application.PlantScopeService;
 import com.syncro.auth.domain.ApplicationRole;
+import com.syncro.common.LikePattern;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
@@ -107,10 +108,7 @@ public class AuditLogService {
     if (actor == null || actor.isBlank()) {
       return null;
     }
-    return "%" + actor.trim().toLowerCase(Locale.ROOT)
-        .replace("\\", "\\\\")
-        .replace("%", "\\%")
-        .replace("_", "\\_") + "%";
+    return LikePattern.containsLower(actor.trim());
   }
 
   private int normalizeSize(int size) {

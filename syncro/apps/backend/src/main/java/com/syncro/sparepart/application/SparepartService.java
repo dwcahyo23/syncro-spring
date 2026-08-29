@@ -8,6 +8,7 @@ import com.syncro.auth.application.JobScopeService;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
+import com.syncro.common.LikePattern;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.projection.application.ProjectionCacheEvictionEvent;
@@ -273,10 +274,8 @@ public class SparepartService {
   }
 
   private String escapeLikePattern(String search) {
-    return search
-        .replace("\\", "\\\\")
-        .replace("%", "\\%")
-        .replace("_", "\\_");
+    // DW-123: shared helper — backslash-first ordering is load-bearing.
+    return LikePattern.escape(search);
   }
 
   private void validatePageable(Pageable pageable) {
@@ -320,7 +319,7 @@ public class SparepartService {
   private String nextBomCode(String prefix) {
     // DW-121: machine codes may contain _ (and defensively %/\); escape them so the
     // LIKE only matches this machine's own BOM series instead of wildcarding.
-    var escaped = prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+    var escaped = LikePattern.escape(prefix);
     var maxSeries = spareparts.findCodesByEscapedPrefix(escaped).stream()
         .filter(code -> code.length() == prefix.length() + 3)
         .map(code -> code.substring(prefix.length()))
