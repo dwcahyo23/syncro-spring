@@ -7,8 +7,8 @@ import { toast } from "sonner";
 
 import { CounterRateProjectionCard } from "@/components/syncro/counter-rate-projection-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { getMachineByCodeResponse } from "@/lib/api/generated/syncro";
-import { useGetMachineByCode } from "@/lib/api/generated/syncro";
+import type { getMachineByCodeResponse, getMachineResponse } from "@/lib/api/generated/syncro";
+import { useGetMachine, useGetMachineByCode } from "@/lib/api/generated/syncro";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
 
 import { AlertsTab } from "./alerts-tab";
@@ -19,16 +19,35 @@ import { ShiftSection } from "./shift-section";
 import { SparepartsTab } from "./spareparts-tab";
 import { TelemetryTab } from "./telemetry-tab";
 
-export function MachineHubPageContent({ machineCode }: { machineCode: string }) {
+/**
+ * Machine hub (DW-71): resolves by {@code machineId} when provided (unambiguous across
+ * plants) and falls back to code-based resolution otherwise. Code-only resolution is
+ * ambiguous when the same code exists in two plants; links that carry a machineId
+ * (e.g. the system-health stale-machine list) must use the ID path.
+ */
+export function MachineHubPageContent({ machineCode, machineId }: { machineCode?: string; machineId?: string }) {
   const [activeTab, setActiveTab] = useState("overview");
 
-  const machineQuery = useGetMachineByCode<getMachineByCodeResponse, SyncroApiError>(machineCode, {
+  const machineCodeQuery = useGetMachineByCode<getMachineByCodeResponse, SyncroApiError>(machineCode ?? "", {
     query: {
+      enabled: machineId == null && machineCode != null,
       retry: (failureCount, error) =>
         failureCount < 2 && !(error instanceof SyncroApiError && (error.status === 403 || error.status === 404)),
       staleTime: 15_000,
     },
   });
+
+  const machineIdQuery = useGetMachine<getMachineResponse, SyncroApiError>(machineId ?? "", {
+    query: {
+      enabled: machineId != null,
+      retry: (failureCount, error) =>
+        failureCount < 2 && !(error instanceof SyncroApiError && (error.status === 403 || error.status === 404)),
+      staleTime: 15_000,
+    },
+  });
+
+  const machineQuery = machineId != null ? machineIdQuery : machineCodeQuery;
+  const resolvedCode = machineQuery.data?.data?.code ?? machineCode ?? "";
 
   const machine = machineQuery.data?.data;
   const error = machineQuery.error;
@@ -39,7 +58,7 @@ export function MachineHubPageContent({ machineCode }: { machineCode: string }) 
         <div className="rounded-lg border p-6 text-center">
           <h2 className="text-lg font-semibold">Machine not found</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            No machine with code &quot;{machineCode}&quot; exists or is visible to you.
+            No machine with code &quot;{resolvedCode}&quot; exists or is visible to you.
           </p>
         </div>
       );
@@ -80,7 +99,7 @@ export function MachineHubPageContent({ machineCode }: { machineCode: string }) 
       )}
 
       <MachineHeader
-        machineCode={machineCode}
+        machineCode={resolvedCode}
         machine={machine}
         freshnessState={machine?.latestTelemetry?.freshnessState}
         isLoading={machineQuery.isFetching}
@@ -103,7 +122,7 @@ export function MachineHubPageContent({ machineCode }: { machineCode: string }) 
         </TabsContent>
 
         <TabsContent value="telemetry" className="mt-6">
-          <TelemetryTab machineCode={machineCode} isActive={activeTab === "telemetry"} />
+          <TelemetryTab machineCode={resolvedCode} isActive={activeTab === "telemetry"} />
         </TabsContent>
 
         <TabsContent value="spareparts" className="mt-6">

@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
+
 import Link from "next/link";
 
 import type { UseQueryResult } from "@tanstack/react-query";
 import { CircleCheck, CircleX, RefreshCw, TriangleAlert } from "lucide-react";
 
+import { DataQualityPanel } from "@/components/syncro/data-quality-panel";
 import {
   deriveSeverity,
   formatDateTimeUtc,
@@ -14,7 +16,6 @@ import {
   type HealthSeverity,
 } from "@/components/syncro/health-card";
 import { HealthEvidenceLink } from "@/components/syncro/health-evidence-link";
-import { DataQualityPanel } from "@/components/syncro/data-quality-panel";
 import { LatencyIndicator } from "@/components/syncro/latency-indicator";
 import { QuarantineLogTable } from "@/components/syncro/quarantine-log-table";
 import { Button } from "@/components/ui/button";
@@ -285,7 +286,10 @@ export function SystemHealthPage() {
                     : "—"
                 }
               />
-              <HealthMetricRow label="Circuit state" value={metricString(notificationWorker.data?.circuitBreakerState)} />
+              <HealthMetricRow
+                label="Circuit state"
+                value={metricString(notificationWorker.data?.circuitBreakerState)}
+              />
               {nextStepRow(resolvedWorkerSeverity(notificationWorker.data), NOTIFICATION_WORKER_NEXT_STEP_HINT)}
             </HealthCard>
             {notifEvidenceLink}
@@ -297,11 +301,7 @@ export function SystemHealthPage() {
       <section aria-label="Data Quality">
         <h2 className="mb-3 font-medium text-muted-foreground text-sm">Data Quality</h2>
         <div className="max-w-2xl">
-          <DataQualityPanel
-            status={dataQuality.data}
-            isLoading={dataQuality.isLoading}
-            isError={dataQuality.isError}
-          />
+          <DataQualityPanel status={dataQuality.data} isLoading={dataQuality.isLoading} isError={dataQuality.isError} />
         </div>
       </section>
 
@@ -703,9 +703,7 @@ function evidenceLink({ alertId, severity }: { readonly alertId: string | null; 
   if (!alertId || !ALERT_ID_PATTERN.test(alertId) || (severity !== "warning" && severity !== "critical")) {
     return null;
   }
-  return (
-    <HealthEvidenceLink href={`/dashboard/alerts/${alertId}`}>View notification history</HealthEvidenceLink>
-  );
+  return <HealthEvidenceLink href={`/dashboard/alerts/${alertId}`}>View notification history</HealthEvidenceLink>;
 }
 
 /** Expandable per-machine stale-telemetry evidence list linking to each machine hub. */
@@ -734,13 +732,10 @@ function StaleMachineEvidenceList({
       {/* Always mounted so aria-controls resolves; hidden removes it from the a11y tree. */}
       <ul id={listId} aria-label="Machines with stale telemetry" hidden={!expanded} className="space-y-1">
         {items.map((item) => (
-          <li
-            key={item.machineId}
-            className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 text-xs"
-          >
+          <li key={item.machineId} className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 text-xs">
             <Link
               className="font-medium text-primary underline-offset-4 hover:underline"
-              href={`/dashboard/master-data/machines/${encodeURIComponent(item.machineCode)}`}
+              href={`/dashboard/master-data/machines/by-id/${encodeURIComponent(item.machineId)}`}
             >
               {item.machineCode}
             </Link>

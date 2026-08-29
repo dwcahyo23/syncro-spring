@@ -89,6 +89,7 @@ vi.mock("@/lib/api/generated/syncro", async (importOriginal) => {
     ...original,
     getGetMachineShiftConfigQueryKey: vi.fn(() => ["/mock-machine-shift-key"]),
     useGetMachineByCode: vi.fn(() => mockMachineQuery),
+    useGetMachine: vi.fn(() => mockMachineQuery),
     useGetMachineShiftConfig: vi.fn(() => mockShiftConfig),
     useUpdateMachineShiftConfig: vi.fn(() => mockUpdateMachineShiftConfig),
     useDeleteMachineShiftConfig: vi.fn(() => mockDeleteMachineShiftConfig),
@@ -109,6 +110,10 @@ const Wrapper = ({ children }: { children: ReactNode }) => (
 
 function renderHub() {
   return render(<MachineHubPageContent machineCode="BF-08410" />, { wrapper: Wrapper });
+}
+
+function renderHubById() {
+  return render(<MachineHubPageContent machineId="m-1" />, { wrapper: Wrapper });
 }
 
 // ---------------------------------------------------------------------------
@@ -203,6 +208,12 @@ describe("MachineHubPageContent shift section (Story 8-5)", () => {
     expect(screen.queryByText(/no shift schedule configured/i)).toBeNull();
     expect(screen.getByRole("button", { name: /save shift override/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /clear shift override/i })).toBeTruthy();
+  });
+
+  it("resolves by machineId when provided (DW-71)", async () => {
+    mockShiftConfig = { data: null, isLoading: false, isError: false, status: "success" };
+    renderHubById();
+    expect(await screen.findByTestId("header-stub")).toBeTruthy();
   });
 
   it("shows an empty state when neither machine nor group define shifts", async () => {
