@@ -50,6 +50,13 @@ import com.syncro.maintenance.application.WorkOrderTodoService.WorkOrderTerminal
 import com.syncro.maintenance.application.WorkOrderTodoService.WorkOrderTodoValidationException;
 import com.syncro.maintenance.application.WorkOrderService.WorkorderForbiddenException;
 import com.syncro.maintenance.application.WorkOrderService.WorkorderNotInProgressException;
+import com.syncro.maintenance.application.WorkorderSignatureService.SignatureAlreadyExistsException;
+import com.syncro.maintenance.application.WorkorderSignatureService.SignatureForbiddenException;
+import com.syncro.maintenance.application.WorkorderSignatureService.SignatureMachineNotFoundException;
+import com.syncro.maintenance.application.WorkorderSignatureService.SignatureStorageException;
+import com.syncro.maintenance.application.WorkorderSignatureService.SignatureValidationException;
+import com.syncro.maintenance.application.WorkorderSignatureService.SignatureWorkOrderNotFoundException;
+import com.syncro.maintenance.application.WorkorderSignatureService.WorkorderNotTerminalException;
 import com.syncro.maintenance.domain.workorder.WorkOrderIdGenerator.WorkorderIdExhaustedException;
 import jakarta.validation.ConstraintViolationException;
 import java.time.Clock;
@@ -458,6 +465,61 @@ public class WorkOrderExceptionHandler {
   ResponseEntity<ErrorResponse> dimensionInUse() {
     return error(HttpStatus.BAD_REQUEST, "RATING_DIMENSION_IN_USE",
         "A rating dimension referenced by existing scores cannot be deleted.", Map.of());
+  }
+
+  // -------------------------------------------------------------------------
+  // Print report & signature (14-3, FR-175)
+  // -------------------------------------------------------------------------
+
+  @ExceptionHandler(SignatureForbiddenException.class)
+  ResponseEntity<ErrorResponse> signatureForbidden() {
+    return error(HttpStatus.FORBIDDEN, "FORBIDDEN",
+        "You do not have permission to approve this workorder.", Map.of());
+  }
+
+  @ExceptionHandler(SignatureWorkOrderNotFoundException.class)
+  ResponseEntity<ErrorResponse> signatureWorkOrderNotFound() {
+    return error(HttpStatus.NOT_FOUND, "WORKORDER_NOT_FOUND", "Workorder was not found.", Map.of());
+  }
+
+  @ExceptionHandler(SignatureMachineNotFoundException.class)
+  ResponseEntity<ErrorResponse> signatureMachineNotFound() {
+    return error(HttpStatus.NOT_FOUND, "MACHINE_NOT_FOUND", "Machine was not found.", Map.of());
+  }
+
+  @ExceptionHandler(SignatureValidationException.class)
+  ResponseEntity<ErrorResponse> signatureValidation(SignatureValidationException exception) {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
+        exception.getFieldErrors());
+  }
+
+  @ExceptionHandler(WorkorderNotTerminalException.class)
+  ResponseEntity<ErrorResponse> workorderNotTerminal() {
+    return error(HttpStatus.BAD_REQUEST, "WORKORDER_NOT_TERMINAL",
+        "Only DONE or CLOSED workorders can be signed.", Map.of());
+  }
+
+  @ExceptionHandler(SignatureAlreadyExistsException.class)
+  ResponseEntity<ErrorResponse> signatureAlreadyExists() {
+    return error(HttpStatus.CONFLICT, "ALREADY_SIGNED",
+        "This workorder has already been signed.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.application.WorkorderPrintReportService.PrintReportWorkOrderNotFoundException.class)
+  ResponseEntity<ErrorResponse> printReportWorkOrderNotFound() {
+    return error(HttpStatus.NOT_FOUND, "WORKORDER_NOT_FOUND", "Workorder was not found.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.application.WorkorderPrintReportService.PrintReportStorageException.class)
+  ResponseEntity<ErrorResponse> printReportStorageError() {
+    return error(HttpStatus.BAD_GATEWAY, "OBJECT_STORAGE_ERROR",
+        "Object storage operation failed.", Map.of());
+  }
+
+  @ExceptionHandler(SignatureStorageException.class)
+  ResponseEntity<ErrorResponse> signatureStorageError() {
+    return error(HttpStatus.BAD_GATEWAY, "OBJECT_STORAGE_ERROR",
+        "Object storage operation failed.", Map.of());
   }
 
   /**

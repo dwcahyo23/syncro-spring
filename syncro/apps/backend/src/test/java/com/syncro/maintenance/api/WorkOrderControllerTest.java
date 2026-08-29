@@ -34,6 +34,24 @@ import com.syncro.maintenance.application.WorkOrderEvidenceService.StorageExcept
 import com.syncro.maintenance.application.WorkOrderEvidenceService.ValidationException;
 import com.syncro.maintenance.application.WorkOrderEvidenceService.WorkorderAttachmentView;
 import com.syncro.maintenance.application.WorkOrderEvidenceService.WorkorderAttachmentsView;
+import com.syncro.maintenance.api.WorkorderPrintReportDtos.PrintReportCpkView;
+import com.syncro.maintenance.api.WorkorderPrintReportDtos.PrintReportEvidenceView;
+import com.syncro.maintenance.api.WorkorderPrintReportDtos.PrintReportHeaderView;
+import com.syncro.maintenance.api.WorkorderPrintReportDtos.PrintReportNarrativeView;
+import com.syncro.maintenance.api.WorkorderPrintReportDtos.PrintReportPartView;
+import com.syncro.maintenance.api.WorkorderPrintReportDtos.PrintReportSessionView;
+import com.syncro.maintenance.api.WorkorderPrintReportDtos.PrintReportSignatureView;
+import com.syncro.maintenance.api.WorkorderPrintReportDtos.WorkorderPrintReportView;
+import com.syncro.maintenance.application.WorkorderPrintReportService;
+import com.syncro.maintenance.application.WorkorderPrintReportService.PrintReportWorkOrderNotFoundException;
+import com.syncro.maintenance.application.WorkorderSignatureService;
+import com.syncro.maintenance.application.WorkorderSignatureService.ApproveSignatureCommand;
+import com.syncro.maintenance.application.WorkorderSignatureService.SignatureAlreadyExistsException;
+import com.syncro.maintenance.application.WorkorderSignatureService.SignatureForbiddenException;
+import com.syncro.maintenance.application.WorkorderSignatureService.SignatureMachineNotFoundException;
+import com.syncro.maintenance.application.WorkorderSignatureService.SignatureResult;
+import com.syncro.maintenance.application.WorkorderSignatureService.SignatureValidationException;
+import com.syncro.maintenance.application.WorkorderSignatureService.WorkorderNotTerminalException;
 import com.syncro.maintenance.application.WorkOrderReportService;
 import com.syncro.maintenance.application.WorkOrderReportService.CpkPdfCommand;
 import com.syncro.maintenance.application.WorkOrderReportService.ReportForbiddenException;
@@ -136,6 +154,12 @@ class WorkOrderControllerTest {
 
   @MockitoBean
   private WorkOrderListService lists;
+
+  @MockitoBean
+  private WorkorderPrintReportService printReports;
+
+  @MockitoBean
+  private WorkorderSignatureService signatures;
 
   @MockitoBean
   private JwtTokenService jwtTokenService;
@@ -1614,6 +1638,152 @@ class WorkOrderControllerTest {
     return new RepairSessionsResult(workOrder, List.of(new RepairSession(
         UUID.randomUUID(), "WO-2409-00001", ASSIGNEE_ID, "diagnosis",
         Instant.parse("2026-08-26T00:00:00Z"), null, null)));
+  }
+
+  // -------------------------------------------------------------------------
+  // Print report & signature (14-3, FR-175)
+  // -------------------------------------------------------------------------
+
+  @Test
+  @DisplayName("14.3-API-001 P0 print report returns the aggregate view")
+  void printReportOk() throws Exception {
+    var reportView = new WorkorderPrintReportView(
+        new PrintReportHeaderView("WO-2409-00001", "INTERNAL", "DONE", "01", "Breakdown",
+            MACHINE_ID, "M-001", "Pump", "P01", "breakdown", ASSIGNEE_ID, "Tech", null, null, null),
+        List.of(new PrintReportSessionView(UUID.randomUUID(), ASSIGNEE_ID, "diagnosis",
+            Instant.parse("2026-08-26T00:00:00Z"), null, null)),
+        new PrintReportNarrativeView("chrono", "analyze", "corrective", "preventive"),
+        new PrintReportCpkView(null, null, null, null, null, null, null),
+        List.of(new PrintReportEvidenceView(UUID.randomUUID(), "photo.jpg", "image/jpeg", "https://presigned")),
+        List.of(new PrintReportPartView(UUID.randomUUID(), "MRE-001", (short) 2, "READY", null)),
+        new PrintReportSignatureView("https://presigned/sig", "Leader", ASSIGNEE_ID,
+            Instant.parse("2026-08-26T00:00:00Z")));
+    when(printReports.get("WO-2409-00001")).thenReturn(reportView);
+
+    mockMvc.perform(get("/api/v1/workorders/{id}/print-report", "WO-2409-00001")
+        .with(auth(user(ApplicationRole.TECHNICIAN))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.header.id").value("WO-2409-00001"))
+        .andExpect(jsonPath("$.header.categoryCode").value("01"))
+        .andExpect(jsonPath("$.sessions[0].description").value("diagnosis"))
+        .andExpect(jsonPath("$.evidence[0].filename").value("photo.jpg"))
+        .andExpect(jsonPath("$.parts[0].materialCode").value("MRE-001"))
+        .andExpect(jsonPath("$.signature.signerIdentity").value("Leader"));
+  }
+
+  @Test
+  @DisplayName("14.3-API-002 P0 print report on an unknown workorder is 404")
+  void printReportNotFound() throws Exception {
+    doThrow(new PrintReportWorkOrderNotFoundException()).when(printReports).get("WO-2409-NADA");
+
+    mockMvc.perform(get("/api/v1/workorders/{id}/print-report", "WO-2409-NADA")
+        .with(auth(user(ApplicationRole.TECHNICIAN))))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("WORKORDER_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("14.3-API-003 P0 leader approves a DONE workorder")
+  void approveOk() throws Exception {
+    var user = user(ApplicationRole.MAINTENANCE_LEADER);
+    var result = new SignatureResult(UUID.randomUUID(), "workorders/WO-2409-00001/signature/abc.png",
+        "Leader", UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"));
+    when(signatures.approve(eq(user), eq("WO-2409-00001"), any(ApproveSignatureCommand.class))).thenReturn(result);
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/approve", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"signatureObjectKey\":\"workorders/WO-2409-00001/signature/abc.png\",\"signerIdentity\":\"Leader\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.signerIdentity").value("Leader"))
+        .andExpect(jsonPath("$.signatureObjectKey").value("workorders/WO-2409-00001/signature/abc.png"));
+  }
+
+  @Test
+  @DisplayName("14.3-API-004 P0 approve with a blank signature key is 400 VALIDATION_ERROR")
+  void approveMissingKey() throws Exception {
+    mockMvc.perform(post("/api/v1/workorders/{id}/approve", "WO-2409-00001")
+        .with(auth(user(ApplicationRole.MAINTENANCE_LEADER)))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"signatureObjectKey\":\"\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+  }
+
+  @Test
+  @DisplayName("14.3-API-005 P0 non-leader approve is 403 FORBIDDEN")
+  void approveForbidden() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    doThrow(new SignatureForbiddenException()).when(signatures)
+        .approve(eq(user), eq("WO-2409-00001"), any(ApproveSignatureCommand.class));
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/approve", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"signatureObjectKey\":\"key\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  @DisplayName("14.3-API-006 P0 duplicate approve is 409 ALREADY_SIGNED")
+  void approveDuplicate() throws Exception {
+    var user = user(ApplicationRole.SUPER_ADMIN);
+    doThrow(new SignatureAlreadyExistsException()).when(signatures)
+        .approve(eq(user), eq("WO-2409-00001"), any(ApproveSignatureCommand.class));
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/approve", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"signatureObjectKey\":\"key\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("ALREADY_SIGNED"));
+  }
+
+  @Test
+  @DisplayName("14.3-API-007 P0 approve on a non-terminal workorder is 400 WORKORDER_NOT_TERMINAL")
+  void approveNotTerminal() throws Exception {
+    var user = user(ApplicationRole.SUPER_ADMIN);
+    doThrow(new WorkorderNotTerminalException()).when(signatures)
+        .approve(eq(user), eq("WO-2409-00001"), any(ApproveSignatureCommand.class));
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/approve", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"signatureObjectKey\":\"key\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("WORKORDER_NOT_TERMINAL"));
+  }
+
+  @Test
+  @DisplayName("14.3-API-008 P0 approve with a missing machine is 404 MACHINE_NOT_FOUND")
+  void approveMachineNotFound() throws Exception {
+    var user = user(ApplicationRole.SUPER_ADMIN);
+    doThrow(new SignatureMachineNotFoundException()).when(signatures)
+        .approve(eq(user), eq("WO-2409-00001"), any(ApproveSignatureCommand.class));
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/approve", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"signatureObjectKey\":\"key\"}"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("MACHINE_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("14.3-API-009 P0 approve validation errors map to 400 VALIDATION_ERROR")
+  void approveValidationError() throws Exception {
+    var user = user(ApplicationRole.SUPER_ADMIN);
+    doThrow(new SignatureValidationException(java.util.Map.of("signerIdentity", "Signer identity must be at most 200 characters.")))
+        .when(signatures).approve(eq(user), eq("WO-2409-00001"), any(ApproveSignatureCommand.class));
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/approve", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"signatureObjectKey\":\"key\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.fieldErrors.signerIdentity").exists());
   }
 
   private static AuthenticatedUser user(ApplicationRole role) {

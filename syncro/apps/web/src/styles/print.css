@@ -1,0 +1,110 @@
+/* ==========================================================================
+   Print stylesheet (story 14-3, FR-175)
+   Shared by the preventive report page and the workorder print report page.
+   When @media print applies, the WYSIWYG layout hides the app chrome, forces
+   white background / black text and ensures table borders, logo and signature
+   print at correct positions.
+
+   Scope: chrome-hiding selectors are limited to pages that carry the
+   .print-mode marker on <html> (added by print pages) so the rules never leak
+   into unrelated pages. The report surface itself is .print-surface.
+   ========================================================================== */
+
+@media print {
+  /* Hide the app chrome ONLY on print-mode pages (report routes). */
+  html.print-mode aside,
+  html.print-mode header,
+  html.print-mode nav,
+  html.print-mode footer,
+  html.print-mode button,
+  html.print-mode .no-print,
+  html.print-mode [data-sidebar],
+  html.print-mode [data-radix-popper-content-wrapper],
+  html.print-mode .print-hide {
+    display: none !important;
+  }
+
+  /* The print surface spans the full page. */
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* Neutralize dark-mode/theme background so text is black on white. */
+  body,
+  .print-surface,
+  .print-surface * {
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Set page margins via the browser print dialog-friendly box. */
+  @page {
+    size: A4;
+    margin: 14mm 12mm;
+  }
+
+  /* Cards lose their borders/shadows; content flows cleanly. */
+  .print-surface .card,
+  .print-surface [class*="rounded-lg"],
+  .print-surface [class*="rounded-md"] {
+    border-color: #000000 !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+  }
+
+  /* Ensure tables get crisp black borders in print. */
+  .print-surface table,
+  .print-surface th,
+  .print-surface td {
+    border-color: #000000 !important;
+  }
+
+  .print-surface th,
+  .print-surface td {
+    padding: 4px 6px !important;
+    text-align: left !important;
+  }
+
+  .print-surface thead {
+    border-bottom: 1.5px solid #000000 !important;
+  }
+
+  /* Prevent awkward page breaks inside report rows/sections. */
+  .print-surface tr {
+    page-break-inside: avoid;
+  }
+
+  .print-surface h1,
+  .print-surface h2,
+  .print-surface h3,
+  .print-surface .print-section {
+    page-break-after: avoid;
+  }
+
+  /* Logo and signature render at their natural size, never clipped. */
+  .print-surface img {
+    max-width: 100% !important;
+  }
+
+  .print-logo {
+    max-height: 56px !important;
+    width: auto !important;
+  }
+
+  .print-signature {
+    max-height: 72px !important;
+    width: auto !important;
+  }
+}
+
+/* On-screen hints so the report surface is distinguishable from app chrome. */
+.print-surface {
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}

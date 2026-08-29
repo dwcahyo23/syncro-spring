@@ -7,15 +7,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePreventiveReport } from "@/features/preventive/hooks/use-preventive";
+import { useCompanyLogo } from "@/features/settings/hooks/use-company-logo";
 
 /**
- * Preventive report print view (story 11-3, FR-133). Data-driven tabular report with
- * checklist items, evidence thumbnails/links, and a signature block. Calls
- * window.print() on mount. The WYSIWYG template editor is 14.3 — this is the basic
- * data-driven print page.
+ * Preventive report print view (story 11-3, FR-133 + story 14-3, FR-175). Data-driven
+ * tabular report with checklist items, evidence thumbnails/links, and a signature block.
+ * Calls window.print() on mount. Story 14.3 enhances it with the shared print stylesheet
+ * (styles/print.css) and the company logo from settings.
  */
 export function PreventiveReportPage({ scheduleId, onClose }: { scheduleId: string; onClose: () => void }) {
   const { data, isLoading, isError, refetch } = usePreventiveReport(scheduleId);
+  const { data: logo } = useCompanyLogo();
+
+  useEffect(() => {
+    document.documentElement.classList.add("print-mode");
+    return () => document.documentElement.classList.remove("print-mode");
+  }, []);
 
   useEffect(() => {
     if (data && !isLoading) {
@@ -48,7 +55,7 @@ export function PreventiveReportPage({ scheduleId, onClose }: { scheduleId: stri
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground text-sm">Failed to load report.</p>
-          <div className="flex gap-2 mt-2">
+          <div className="mt-2 flex gap-2">
             <Button variant="outline" size="sm" onClick={() => void refetch()}>
               Retry
             </Button>
@@ -63,7 +70,7 @@ export function PreventiveReportPage({ scheduleId, onClose }: { scheduleId: stri
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="no-print flex items-center justify-between">
         <h1 className="font-semibold text-lg">Preventive Report</h1>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => window.print()}>
@@ -75,10 +82,15 @@ export function PreventiveReportPage({ scheduleId, onClose }: { scheduleId: stri
         </div>
       </div>
 
+      <div className="print-surface space-y-4">
       {/* Header */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">{data.programTitle}</CardTitle>
+          {logo?.presignedUrl && (
+            // biome-ignore lint/performance/noImgElement: presigned URL from settings; short-TTL, dynamic
+            <img src={logo.presignedUrl} alt="Company logo" className="print-logo h-14 w-auto" />
+          )}
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-2 text-sm">
           <div>
@@ -179,6 +191,7 @@ export function PreventiveReportPage({ scheduleId, onClose }: { scheduleId: stri
       {!data.items.length && !data.signerIdentity && (
         <p className="text-muted-foreground text-sm">No checklist has been submitted for this schedule.</p>
       )}
+      </div>
     </div>
   );
 }

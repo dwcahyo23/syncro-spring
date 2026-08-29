@@ -180,4 +180,23 @@ public final class WorkOrderDtos {
   public record RateableWorkorderView(String id, String source, WorkOrderStatus status, String categoryCode,
       UUID machineId, String description, UUID assignedTechnicianId, Instant createdAt, List<UUID> executorPool) {
   }
+
+  // -------------------------------------------------------------------------
+  // Print report & signature (14-3, FR-175)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Approve body (POST /{id}/approve). {@code signatureObjectKey} is the Garage object
+   * key of the already-uploaded signature image; {@code signerIdentity} defaults to the
+   * approver's login identifier when blank.
+   */
+  public record ApproveWorkorderRequest(
+      @NotBlank @Size(max = 512) String signatureObjectKey,
+      @Size(max = 200) String signerIdentity) {
+  }
+
+  /** Signature view returned after a successful approve. */
+  public record WorkorderSignatureView(UUID id, String signatureObjectKey, String signerIdentity,
+      UUID signedBy, Instant signedAt) {
+  }
 }

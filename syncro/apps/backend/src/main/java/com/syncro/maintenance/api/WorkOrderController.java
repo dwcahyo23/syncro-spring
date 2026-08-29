@@ -33,6 +33,11 @@ import com.syncro.maintenance.application.WorkOrderService.RepairSessionsResult;
 import com.syncro.maintenance.application.WorkOrderService.StartSessionCommand;
 import com.syncro.maintenance.application.WorkOrderService.TransitionWorkOrderCommand;
 import com.syncro.maintenance.application.WorkOrderRatingService;
+import com.syncro.maintenance.api.WorkorderPrintReportDtos.WorkorderPrintReportView;
+import com.syncro.maintenance.application.WorkorderPrintReportService;
+import com.syncro.maintenance.application.WorkorderSignatureService;
+import com.syncro.maintenance.application.WorkorderSignatureService.ApproveSignatureCommand;
+import com.syncro.maintenance.application.WorkorderSignatureService.SignatureResult;
 import com.syncro.maintenance.application.WorkOrderTodoService;
 import com.syncro.maintenance.application.WorkOrderTodoService.CreateTodoCommand;
 import com.syncro.maintenance.domain.workorder.RepairSession;
@@ -80,16 +85,21 @@ public class WorkOrderController {
   private final WorkOrderTodoService todos;
   private final WorkOrderRatingService ratings;
   private final WorkOrderListService lists;
+  private final WorkorderPrintReportService printReports;
+  private final WorkorderSignatureService signatures;
 
   public WorkOrderController(WorkOrderService workOrders, WorkOrderEvidenceService evidence,
       WorkOrderReportService report, WorkOrderTodoService todos, WorkOrderRatingService ratings,
-      WorkOrderListService lists) {
+      WorkOrderListService lists, WorkorderPrintReportService printReports,
+      WorkorderSignatureService signatures) {
     this.workOrders = workOrders;
     this.evidence = evidence;
     this.report = report;
     this.todos = todos;
     this.ratings = ratings;
     this.lists = lists;
+    this.printReports = printReports;
+    this.signatures = signatures;
   }
 
   /**
@@ -560,6 +570,49 @@ public class WorkOrderController {
     return ratings.listRateableClosed(user).stream().map(WorkOrderController::toRateableDto).toList();
   }
 
+  // -------------------------------------------------------------------------
+  // Print report & signature (14-3, FR-175)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Aggregate print report (GET /{id}/print-report): WO header, sessions, narrative,
+   * CP/CPK, evidence, sparepart requests, and the signature block (when present) for the
+   * WYSIWYG browser-print page. Any authenticated user.
+   */
+  @Operation(operationId = "getWorkorderPrintReport", summary = "Aggregate workorder print report (WYSIWYG browser print)")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Print report returned",
+          content = @Content(schema = @Schema(implementation = WorkorderPrintReportView.class))),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "404", description = "Workorder not found")
+  })
+  @GetMapping("/{id}/print-report")
+  public WorkorderPrintReportView printReport(@PathVariable String id) {
+    return printReports.get(id);
+  }
+
+  /**
+   * Workorder approval with signature (POST /{id}/approve). Only DONE/CLOSED workorders
+   * accept signatures; gate: in-scope leader/SPV. Duplicate approve → 409.
+   */
+  @Operation(operationId = "approveWorkorder", summary = "Approve a DONE/CLOSED workorder with a signature")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Workorder approved; signature recorded",
+          content = @Content(schema = @Schema(implementation = WorkOrderDtos.WorkorderSignatureView.class))),
+      @ApiResponse(responseCode = "400", description = "Workorder not DONE/CLOSED"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden (leader/SPV only)"),
+      @ApiResponse(responseCode = "404", description = "Workorder not found"),
+      @ApiResponse(responseCode = "409", description = "Workorder already signed")
+  })
+  @PostMapping("/{id}/approve")
+  public WorkOrderDtos.WorkorderSignatureView approve(@AuthenticationPrincipal AuthenticatedUser user,
+      @PathVariable String id, @Valid @RequestBody WorkOrderDtos.ApproveWorkorderRequest request) {
+    var result = signatures.approve(user, id,
+        new ApproveSignatureCommand(request.signatureObjectKey(), request.signerIdentity()));
+    return toSignatureDto(result);
+  }
+
   private static WorkOrderDtos.RatingView toRatingDto(WorkorderRating rating) {
     return new WorkOrderDtos.RatingView(rating.id(), rating.workorderId(), rating.ratingType().name(),
         rating.ratedUserId(), rating.raterUserId(), rating.createdAt(),
@@ -571,6 +624,11 @@ public class WorkOrderController {
   private static WorkOrderDtos.RateableWorkorderView toRateableDto(WorkOrderRatingService.RateableWorkorder item) {
     return new WorkOrderDtos.RateableWorkorderView(item.id(), item.source(), item.status(), item.categoryCode(),
         item.machineId(), item.description(), item.assignedTechnicianId(), item.createdAt(), item.executorPool());
+  }
+
+  private static WorkOrderDtos.WorkorderSignatureView toSignatureDto(SignatureResult result) {
+    return new WorkOrderDtos.WorkorderSignatureView(result.id(), result.signatureObjectKey(),
+        result.signerIdentity(), result.signedBy(), result.signedAt());
   }
 
   private static TodoView toTodoDto(WorkOrderTodo todo) {
