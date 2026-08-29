@@ -18,6 +18,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -92,6 +93,14 @@ public class TeamExceptionHandler {
   @ExceptionHandler(MachineNotFoundException.class)
   ResponseEntity<ErrorResponse> machineNotFound() {
     return error(HttpStatus.NOT_FOUND, "MACHINE_NOT_FOUND", "Machine was not found.", Map.of());
+  }
+
+  @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+  ResponseEntity<ErrorResponse> concurrentModification() {
+    // DW-126: TeamEntity carries @Version; a lost-update race on PUT/DELETE must surface
+    // as 409 CONCURRENT_MODIFICATION (retry signal), not a raw 500.
+    return error(HttpStatus.CONFLICT, "CONCURRENT_MODIFICATION",
+        "Team was modified concurrently. Reload and retry.", Map.of());
   }
 
   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message,

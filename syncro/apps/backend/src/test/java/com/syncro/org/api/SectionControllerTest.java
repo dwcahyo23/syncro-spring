@@ -38,6 +38,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
@@ -276,6 +277,22 @@ class SectionControllerTest {
     mockMvc.perform(get("/api/v1/sections").param("plantId", "not-a-uuid").with(auth(user)))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("INVALID_QUERY_VALUE"));
+  }
+
+  @Test
+  @DisplayName("9.1-API-016 P1 concurrent PUT returns 409 CONCURRENT_MODIFICATION (DW-126)")
+  void concurrentModificationMapsToConflict() throws Exception {
+    var user = user(ApplicationRole.SUPER_ADMIN);
+    var sectionId = "00000000-0000-0000-0000-000000000002";
+    when(sections.update(eq(user), eq(UUID.fromString(sectionId)), any(UpdateSectionCommand.class)))
+        .thenThrow(new ObjectOptimisticLockingFailureException("SectionEntity", sectionId));
+
+    mockMvc.perform(put("/api/v1/sections/{sectionId}", sectionId)
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"name\":\"Machine Section\",\"active\":true}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("CONCURRENT_MODIFICATION"));
   }
 
   private static AuthenticatedUser user(ApplicationRole role) {

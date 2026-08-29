@@ -21,6 +21,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -107,6 +108,14 @@ public class SectionExceptionHandler {
   @ExceptionHandler(PlantNotFoundForSectionException.class)
   ResponseEntity<ErrorResponse> plantNotFound() {
     return error(HttpStatus.NOT_FOUND, "PLANT_NOT_FOUND", "Plant was not found.", Map.of());
+  }
+
+  @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+  ResponseEntity<ErrorResponse> concurrentModification() {
+    // DW-126: SectionEntity carries @Version; a lost-update race on PUT/DELETE must surface
+    // as 409 CONCURRENT_MODIFICATION (retry signal), not a raw 500.
+    return error(HttpStatus.CONFLICT, "CONCURRENT_MODIFICATION",
+        "Section was modified concurrently. Reload and retry.", Map.of());
   }
 
   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message,
