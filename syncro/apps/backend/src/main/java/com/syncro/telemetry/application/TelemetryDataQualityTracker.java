@@ -4,6 +4,7 @@ import com.syncro.config.TelemetryProperties;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 import org.springframework.stereotype.Component;
 
@@ -49,6 +50,7 @@ public class TelemetryDataQualityTracker {
   private final Clock clock;
   private final long windowMinutes;
   private final int bucketCount;
+  private final AtomicLong lastMinute = new AtomicLong(Long.MIN_VALUE);
   private final AtomicLongArray acceptedBuckets;
   private final AtomicLongArray acceptedMinutes;
   private final AtomicLongArray quarantinedBuckets;
@@ -130,8 +132,25 @@ public class TelemetryDataQualityTracker {
     return windowMinutes * 60;
   }
 
+  /**
+   * Current wall-clock minute, clamped to be monotonic (DW-72). A backward NTP step must not
+   * re-tag ring buckets: without the clamp, time re-passing the same minutes would re-claim
+   * buckets and re-accumulate counts into fresh windows, and a forward jump larger than the
+   * ring would read zero mid-run. Clamping stalls the minute at its last value on a backward
+   * step (counts freeze into the current window) until wall time catches up — the same
+   * treat-regression-as-full-reset policy applied to {@link TelemetryIngestTracker} (DW-69).
+   */
   private long currentMinute() {
-    return clock.instant().getEpochSecond() / 60;
+    long wallMinute = clock.instant().getEpochSecond() / 60;
+    while (true) {
+      long previous = lastMinute.get();
+      if (wallMinute <= previous) {
+        return previous;
+      }
+      if (lastMinute.compareAndSet(previous, wallMinute)) {
+        return wallMinute;
+      }
+    }
   }
 
   /**

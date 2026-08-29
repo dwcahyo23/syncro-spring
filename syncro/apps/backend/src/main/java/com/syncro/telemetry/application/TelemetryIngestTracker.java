@@ -26,10 +26,14 @@ public class TelemetryIngestTracker {
 
   /** Records an accepted telemetry message; {@code lastAcceptedAt} becomes {@code now}. */
   public synchronized void recordAccepted() {
-    Instant now = Instant.now(clock);
-    if (lastAcceptedAt == null || now.isAfter(lastAcceptedAt)) {
-      lastAcceptedAt = now;
-    }
+    // DW-69: set lastAcceptedAt unconditionally rather than guarding with now.isAfter().
+    // The monotonic guard was intended to protect against a backward NTP step, but it had
+    // the opposite effect: a backward clock left lastAcceptedAt in the future, and freshness
+    // reported LIVE until wall time caught up. Accepting the update unconditionally means
+    // a backward clock also moves lastAcceptedAt backward — the freshness correctly reports
+    // the lower time, and the clock-skew awareness branch in TelemetryFreshnessService
+    // handles the negative-elapsed case.
+    lastAcceptedAt = Instant.now(clock);
     acceptedCount.incrementAndGet();
   }
 

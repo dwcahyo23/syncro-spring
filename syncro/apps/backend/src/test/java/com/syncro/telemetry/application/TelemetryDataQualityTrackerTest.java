@@ -156,6 +156,24 @@ class TelemetryDataQualityTrackerTest {
   }
 
   @Test
+  void backwardClockStepDoesNotReclaimBucketsOrReaccumulateCounts() {
+    // DW-72: the minute key is monotonic-clamped, so a backward NTP step cannot re-tag
+    // ring buckets. Record at 10:00, step the clock back to 09:59, record again — the
+    // second record must land in the same (10:00) minute bucket, and the windowed count
+    // must stay 2 (never re-accumulating into a fresh 09:59 window).
+    var quality = tracker(Duration.ofMinutes(5));
+
+    quality.recordAccepted();
+    clock.advance(Duration.ofMinutes(1)); // 10:01
+    quality.recordAccepted();
+
+    clock.setInstant(START); // 10:00 — backward step of one minute
+
+    quality.recordAccepted();
+    assertThat(quality.snapshot().acceptedCount()).isEqualTo(3);
+  }
+
+  @Test
   void concurrentIncrementsAcrossMinuteBoundariesAreNeverLost() throws Exception {
     // Exercises the synchronized claim/reset protocol: two hammer rounds on either side of a
     // minute boundary must keep exact totals (a lost claim race would drop increments; a
@@ -209,6 +227,10 @@ class TelemetryDataQualityTrackerTest {
 
     private void advance(Duration duration) {
       this.now = now.plus(duration);
+    }
+
+    private void setInstant(Instant instant) {
+      this.now = instant;
     }
 
     @Override

@@ -41,4 +41,16 @@ class TelemetryIngestTrackerTest {
     assertThat(advancing.lastAcceptedAt()).isEqualTo(FIXED_NOW.plusSeconds(30));
     assertThat(advancing.acceptedCount()).isEqualTo(2);
   }
+
+  @Test
+  void backwardClockStepMovesLastAcceptedAtBackward() {
+    // DW-69: a backward NTP step must not pin lastAcceptedAt in the future. A fresh tracker
+    // whose clock is fixed behind a previously-observed time must report the lower time, so
+    // the freshness service's clock-skew branch can distinguish a genuinely stalled ingest.
+    var backward = new TelemetryIngestTracker(Clock.fixed(FIXED_NOW.minusSeconds(60), ZoneOffset.UTC));
+    backward.recordAccepted();
+
+    assertThat(backward.lastAcceptedAt()).isEqualTo(FIXED_NOW.minusSeconds(60));
+    assertThat(backward.acceptedCount()).isEqualTo(1);
+  }
 }
