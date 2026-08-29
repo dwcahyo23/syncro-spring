@@ -17,6 +17,11 @@ import com.syncro.maintenance.api.WorkOrderDtos.WorkorderAttachmentsView;
 import com.syncro.maintenance.api.WorkOrderDtos.SaveWorkOrderReportRequest;
 import com.syncro.maintenance.api.WorkOrderDtos.WorkOrderReportView;
 import com.syncro.maintenance.api.WorkOrderDtos.WorkOrderView;
+import com.syncro.auth.infrastructure.JwtAuthenticationFilter;
+import com.syncro.maintenance.application.WorkOrderAckService;
+import jakarta.servlet.http.HttpServletRequest;
+import com.syncro.maintenance.application.WorkOrderAckService.AckResult;
+import com.syncro.maintenance.application.WorkOrderAckService.TaskListView;
 import com.syncro.maintenance.application.WorkOrderEvidenceService;
 import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceCommand;
 import com.syncro.maintenance.application.WorkOrderListService;
@@ -87,11 +92,12 @@ public class WorkOrderController {
   private final WorkOrderListService lists;
   private final WorkorderPrintReportService printReports;
   private final WorkorderSignatureService signatures;
+  private final WorkOrderAckService acks;
 
   public WorkOrderController(WorkOrderService workOrders, WorkOrderEvidenceService evidence,
       WorkOrderReportService report, WorkOrderTodoService todos, WorkOrderRatingService ratings,
       WorkOrderListService lists, WorkorderPrintReportService printReports,
-      WorkorderSignatureService signatures) {
+      WorkorderSignatureService signatures, WorkOrderAckService acks) {
     this.workOrders = workOrders;
     this.evidence = evidence;
     this.report = report;
@@ -100,6 +106,7 @@ public class WorkOrderController {
     this.lists = lists;
     this.printReports = printReports;
     this.signatures = signatures;
+    this.acks = acks;
   }
 
   /**
@@ -568,6 +575,60 @@ public class WorkOrderController {
   @GetMapping("/ratings")
   public List<WorkOrderDtos.RateableWorkorderView> listRateable(@AuthenticationPrincipal AuthenticatedUser user) {
     return ratings.listRateableClosed(user).stream().map(WorkOrderController::toRateableDto).toList();
+  }
+
+  // -------------------------------------------------------------------------
+  // 4-hour acknowledgment (14-4, FR-181)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Records the leader's ack for a workorder (POST /{id}/acknowledge). Stops further
+   * escalation (cancels pending jobs) and writes an audit row. Any authenticated user.
+   */
+  @Operation(operationId = "acknowledgeWorkorder", summary = "Acknowledge a workorder's 4-hour escalation")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Workorder acknowledged",
+          content = @Content(schema = @Schema(implementation = WorkOrderDtos.AckView.class))),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "404", description = "Workorder not found"),
+      @ApiResponse(responseCode = "409", description = "Workorder already acknowledged")
+  })
+  @PostMapping("/{id}/acknowledge")
+  public WorkOrderDtos.AckView acknowledge(@AuthenticationPrincipal AuthenticatedUser user,
+      @PathVariable String id, HttpServletRequest request) {
+    var traceId = (String) request.getAttribute(JwtAuthenticationFilter.AUTO_LOGIN_ATTR);
+    AckResult result = acks.acknowledge(user, id, traceId);
+    return new WorkOrderDtos.AckView(result.workOrderId(), UUID.fromString(user.id()), result.acknowledgedAt());
+  }
+
+  /**
+   * The 4-hour ack landing task list (GET /ack-task-list): acknowledged vs pending acks
+   * and rated vs unrated closed workorders. Accepts an AUTO_LOGIN token via the filter
+   * (FR-181) — phone-bound, single-use, short-lived.
+   */
+  @Operation(operationId = "getWorkorderAckTaskList", summary = "4-hour ack task list (acknowledged vs pending, rated vs unrated)")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Task list returned",
+          content = @Content(schema = @Schema(implementation = WorkOrderDtos.AckTaskListView.class))),
+      @ApiResponse(responseCode = "401", description = "Authentication required")
+  })
+  @GetMapping("/ack-task-list")
+  public WorkOrderDtos.AckTaskListView ackTaskList(@AuthenticationPrincipal AuthenticatedUser user) {
+    TaskListView view = acks.taskList(user);
+    return new WorkOrderDtos.AckTaskListView(
+        view.acknowledged().stream().map(WorkOrderController::toAckEntryDto).toList(),
+        view.pending().stream().map(WorkOrderController::toAckEntryDto).toList(),
+        view.rated().stream().map(WorkOrderController::toClosedEntryDto).toList(),
+        view.unrated().stream().map(WorkOrderController::toClosedEntryDto).toList());
+  }
+
+  private static WorkOrderDtos.AckEntryView toAckEntryDto(WorkOrderAckService.AckEntry entry) {
+    return new WorkOrderDtos.AckEntryView(entry.workOrderId(), entry.acknowledgedBy(), entry.acknowledgedAt());
+  }
+
+  private static WorkOrderDtos.ClosedWorkorderEntryView toClosedEntryDto(
+      WorkOrderAckService.ClosedWorkorderEntry entry) {
+    return new WorkOrderDtos.ClosedWorkorderEntryView(entry.id(), entry.status(), entry.description(), entry.rated());
   }
 
   // -------------------------------------------------------------------------

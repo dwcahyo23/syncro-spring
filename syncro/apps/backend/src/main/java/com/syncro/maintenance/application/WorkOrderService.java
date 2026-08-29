@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -81,6 +82,7 @@ public class WorkOrderService {
   private final SparepartRequestReadinessPort sparepartReadiness;
   private final AuditLogWriter auditLog;
   private final RepairSessionRepository repairSessions;
+  private final ApplicationEventPublisher events;
   private final Clock clock;
 
   public WorkOrderService(WorkOrderIdGenerator idGenerator, WorkOrderRepository workOrders,
@@ -88,6 +90,17 @@ public class WorkOrderService {
       MachineRepository machines, AuthUserRepository users, OperationalScopeService scopes,
       PlantScopeService plantScopes, SparepartRequestReadinessPort sparepartReadiness, AuditLogWriter auditLog,
       RepairSessionRepository repairSessions, Clock clock) {
+    this(idGenerator, workOrders, statusHistory, categories, machines, users, scopes, plantScopes,
+        sparepartReadiness, auditLog, repairSessions, event -> { }, clock);
+  }
+
+  /** Story 14-4: publisher-injected variant; publishes lifecycle events after transitions. */
+  @org.springframework.beans.factory.annotation.Autowired
+  public WorkOrderService(WorkOrderIdGenerator idGenerator, WorkOrderRepository workOrders,
+      WorkOrderStatusHistoryRepository statusHistory, WorkOrderCategoryRepository categories,
+      MachineRepository machines, AuthUserRepository users, OperationalScopeService scopes,
+      PlantScopeService plantScopes, SparepartRequestReadinessPort sparepartReadiness, AuditLogWriter auditLog,
+      RepairSessionRepository repairSessions, ApplicationEventPublisher events, Clock clock) {
     this.idGenerator = idGenerator;
     this.workOrders = workOrders;
     this.statusHistory = statusHistory;
@@ -99,6 +112,7 @@ public class WorkOrderService {
     this.sparepartReadiness = sparepartReadiness;
     this.auditLog = auditLog;
     this.repairSessions = repairSessions;
+    this.events = events;
     this.clock = clock;
   }
 
@@ -280,6 +294,7 @@ public class WorkOrderService {
     }
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.WORK_ORDER,
         auditEntityId(workOrderId), workOrderId, machine.getPlant().getId(), previous, newValue, null));
+    publishLifecycleEvent(workOrderId, toStatus, traceId());
     return WorkOrderMapper.toDomain(saved);
   }
 
@@ -313,6 +328,12 @@ public class WorkOrderService {
     entity.transitionTo(target, now);
     workOrders.saveAndFlush(entity);
     statusHistory.saveAndFlush(derivedHistoryRow(workOrderId, status, target, now));
+    // Story 14-4 (FR-180): derived procurement transitions notify too — ON_PROCUREMENT
+    // enters procurement, IN_PROGRESS (from ON_PROCUREMENT) is the part-READY signal.
+    String eventType = target == WorkOrderStatus.ON_PROCUREMENT
+        ? WorkOrderLifecycleEvent.EVENT_ON_PROCUREMENT
+        : WorkOrderLifecycleEvent.EVENT_PART_READY;
+    events.publishEvent(new WorkOrderLifecycleEvent(workOrderId, eventType, target, traceId()));
   }
 
   // -------------------------------------------------------------------------
@@ -708,6 +729,23 @@ public class WorkOrderService {
   /** Trace id for history/audit correlation; falls back to a fresh UUID when none is stashed. */
   private String traceId() {
     return PolicyDecisionPoint.currentTraceId();
+  }
+
+  /**
+   * Publishes a lifecycle event for the notification module (story 14-4, FR-180).
+   * Only INTERNAL workorders produce events; SYNCED workorders are excluded.
+   */
+  private void publishLifecycleEvent(String workOrderId, WorkOrderStatus toStatus, String traceId) {
+    String eventType = switch (toStatus) {
+      case IN_PROGRESS -> WorkOrderLifecycleEvent.EVENT_BREAKDOWN;
+      case ON_PROCUREMENT -> WorkOrderLifecycleEvent.EVENT_ON_PROCUREMENT;
+      case DONE -> WorkOrderLifecycleEvent.EVENT_DONE;
+      case CLOSED -> WorkOrderLifecycleEvent.EVENT_CLOSED;
+      default -> null;
+    };
+    if (eventType != null) {
+      events.publishEvent(new WorkOrderLifecycleEvent(workOrderId, eventType, toStatus, traceId));
+    }
   }
 
   /** Workorder ids are VARCHAR PKs; audit needs a stable UUID per id for correlation. */

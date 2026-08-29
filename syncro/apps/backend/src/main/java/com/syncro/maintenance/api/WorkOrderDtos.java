@@ -199,4 +199,28 @@ public final class WorkOrderDtos {
   public record WorkorderSignatureView(UUID id, String signatureObjectKey, String signerIdentity,
       UUID signedBy, Instant signedAt) {
   }
+
+  // -------------------------------------------------------------------------
+  // 4-hour acknowledgment (14-4, FR-181)
+  // -------------------------------------------------------------------------
+
+  /** Ack view returned after a successful acknowledge. */
+  public record AckView(String workOrderId, UUID acknowledgedBy, Instant acknowledgedAt) {
+  }
+
+  /** One ack entry on the task list. */
+  public record AckEntryView(String workOrderId, UUID acknowledgedBy, Instant acknowledgedAt) {
+  }
+
+  /** One closed-workorder entry on the task list (rated flag splits rated vs unrated). */
+  public record ClosedWorkorderEntryView(String id, WorkOrderStatus status, String description, boolean rated) {
+  }
+
+  /** The 4-hour ack landing task list. */
+  public record AckTaskListView(
+      List<AckEntryView> acknowledged,
+      List<AckEntryView> pending,
+      List<ClosedWorkorderEntryView> rated,
+      List<ClosedWorkorderEntryView> unrated) {
+  }
 }

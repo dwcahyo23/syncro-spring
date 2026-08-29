@@ -31,6 +31,13 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrderEntity, Stri
 
   Optional<WorkOrderEntity> findByPreventiveScheduleId(java.util.UUID preventiveScheduleId);
 
+  /**
+   * Story 14-4 (FR-181): all INTERNAL workorders in the given status — used by the ack
+   * worker to find ack candidates. SYNCED workorders are excluded (internal-only events).
+   */
+  @Query("select w from WorkOrderEntity w where w.source = 'INTERNAL' and w.status = :status")
+  List<WorkOrderEntity> findAllNonSyncedByStatus(@Param("status") WorkOrderStatus status);
+
   Optional<WorkOrderEntity> findByIdempotencyKeyAndCreatedByAndCreatedAtAfter(
       String idempotencyKey, UUID createdBy, Instant createdAt);
 

@@ -55,9 +55,16 @@ public class NotificationDispatchService {
     Instant now = Instant.now(clock);
     int nextAttemptNumber = job.getAttemptCount() + 1;
 
-    // Check rate limit before doing any work
-    if (rateLimiter.isRateLimited(job.getAlertId(), job.getRecipientPhone())) {
-      Instant retryAfter = rateLimiter.getRateLimitExpiry(job.getAlertId(), job.getRecipientPhone());
+    // Check rate limit before doing any work. Workorder jobs (story 14-4) carry a null
+    // alertId — the rate limiter discriminates on the idempotency key instead.
+    boolean workorderJob = job.getAlertId() == null;
+    boolean rateLimited = workorderJob
+        ? rateLimiter.isRateLimited(job.getIdempotencyKey(), job.getRecipientPhone())
+        : rateLimiter.isRateLimited(job.getAlertId(), job.getRecipientPhone());
+    if (rateLimited) {
+      Instant retryAfter = workorderJob
+          ? rateLimiter.getRateLimitExpiry(job.getIdempotencyKey(), job.getRecipientPhone())
+          : rateLimiter.getRateLimitExpiry(job.getAlertId(), job.getRecipientPhone());
       transactionTemplate.executeWithoutResult(status -> {
         job.markRateLimited(now, retryAfter);
         jobRepository.save(job);
@@ -94,8 +101,13 @@ public class NotificationDispatchService {
     var result = wahaClient.send(job.getRecipientPhone(), messageText, job.getTraceId());
 
     if (result.success()) {
-      // Record rate-limit key so duplicates are suppressed within the dedup window
-      rateLimiter.acquire(job.getAlertId(), job.getRecipientPhone());
+      // Record rate-limit key so duplicates are suppressed within the dedup window.
+      // Workorder jobs (story 14-4) use the idempotency key as discriminator.
+      if (workorderJob) {
+        rateLimiter.acquire(job.getIdempotencyKey(), job.getRecipientPhone());
+      } else {
+        rateLimiter.acquire(job.getAlertId(), job.getRecipientPhone());
+      }
 
       transactionTemplate.executeWithoutResult(status -> {
         var attempt = new NotificationAttemptEntity(

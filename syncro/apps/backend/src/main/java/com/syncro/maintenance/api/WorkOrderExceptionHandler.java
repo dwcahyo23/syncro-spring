@@ -2,6 +2,8 @@ package com.syncro.maintenance.api;
 
 import com.syncro.auth.application.PlantScopeService.PlantAccessDeniedException;
 import com.syncro.maintenance.api.WorkOrderDtos.ErrorResponse;
+import com.syncro.maintenance.application.WorkOrderAckService.AckAlreadyExistsException;
+import com.syncro.maintenance.application.WorkOrderAckService.AckWorkOrderNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.BreakdownCategoryRequiredException;
 import com.syncro.maintenance.application.WorkOrderService.ChildrenNotTerminalException;
 import com.syncro.maintenance.application.WorkOrderService.DoneWithoutSessionReasonRequiredException;
@@ -465,6 +467,21 @@ public class WorkOrderExceptionHandler {
   ResponseEntity<ErrorResponse> dimensionInUse() {
     return error(HttpStatus.BAD_REQUEST, "RATING_DIMENSION_IN_USE",
         "A rating dimension referenced by existing scores cannot be deleted.", Map.of());
+  }
+
+  // -------------------------------------------------------------------------
+  // 4-hour acknowledgment (14-4, FR-181)
+  // -------------------------------------------------------------------------
+
+  @ExceptionHandler(AckWorkOrderNotFoundException.class)
+  ResponseEntity<ErrorResponse> ackWorkOrderNotFound() {
+    return error(HttpStatus.NOT_FOUND, "WORKORDER_NOT_FOUND", "Workorder was not found.", Map.of());
+  }
+
+  @ExceptionHandler(AckAlreadyExistsException.class)
+  ResponseEntity<ErrorResponse> ackAlreadyExists() {
+    return error(HttpStatus.CONFLICT, "ACK_ALREADY_EXISTS",
+        "This workorder has already been acknowledged.", Map.of());
   }
 
   // -------------------------------------------------------------------------

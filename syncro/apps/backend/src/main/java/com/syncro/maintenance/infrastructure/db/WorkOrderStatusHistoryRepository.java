@@ -45,4 +45,10 @@ public interface WorkOrderStatusHistoryRepository extends JpaRepository<WorkOrde
 
     Instant getLatestTransitionedAt();
   }
+
+  /**
+   * Story 14-4 (FR-181): all status-history rows for a workorder in transition order —
+   * the 4-hour ack clock reads these segments.
+   */
+  List<WorkOrderStatusHistoryEntity> findByWorkOrderIdOrderByTransitionedAtAsc(String workOrderId);
 }

@@ -58,6 +58,66 @@ class JwtTokenServiceTest {
         .isInstanceOf(JwtTokenService.InvalidTokenException.class);
   }
 
+  // -------------------------------------------------------------------------
+  // Story 14-4 auto-login tokens (FR-181)
+  // -------------------------------------------------------------------------
+
+  @Test
+  @DisplayName("14.4-AUTH-001 AUTO_LOGIN token round-trips with wa/wo claims")
+  void autoLoginTokenRoundTrips() {
+    var user = new AuthUserEntity(
+        java.util.UUID.fromString("33333333-3333-3333-3333-333333333333"),
+        "pl@syncro.dev", "hash", ApplicationRole.PRODUCTION_LEADER, true, NOW, NOW);
+    var token = service.createToken(user, java.time.Duration.ofMinutes(15),
+        Map.of("typ", "AUTO_LOGIN", "wa", "6281234567890", "wo", "WO-2608-00001"));
+
+    var parsed = service.parseAutoLogin(token);
+
+    assertThat(parsed.user().id()).isEqualTo("33333333-3333-3333-3333-333333333333");
+    assertThat(parsed.user().applicationRole()).isEqualTo(ApplicationRole.PRODUCTION_LEADER);
+    assertThat(parsed.whatsappNumber()).isEqualTo("6281234567890");
+    assertThat(parsed.workOrderId()).isEqualTo("WO-2608-00001");
+  }
+
+  @Test
+  @DisplayName("14.4-AUTH-002 expired AUTO_LOGIN token is rejected")
+  void expiredAutoLoginRejected() {
+    var user = new AuthUserEntity(
+        java.util.UUID.fromString("44444444-4444-4444-4444-444444444444"),
+        "pl@syncro.dev", "hash", ApplicationRole.PRODUCTION_LEADER, true, NOW, NOW);
+    var token = service.createToken(user, java.time.Duration.ofMinutes(-1),
+        Map.of("typ", "AUTO_LOGIN", "wa", "6281234567890", "wo", "WO-2608-00001"));
+
+    assertThatThrownBy(() -> service.parseAutoLogin(token))
+        .isInstanceOf(JwtTokenService.InvalidTokenException.class);
+  }
+
+  @Test
+  @DisplayName("14.4-AUTH-003 AUTO_LOGIN without typ claim is rejected by parseAutoLogin")
+  void missingTypRejected() {
+    var user = new AuthUserEntity(
+        java.util.UUID.fromString("55555555-5555-5555-5555-555555555555"),
+        "pl@syncro.dev", "hash", ApplicationRole.PRODUCTION_LEADER, true, NOW, NOW);
+    // Regular token (no typ=AUTO_LOGIN) must not pass parseAutoLogin
+    var token = service.createToken(user);
+
+    assertThatThrownBy(() -> service.parseAutoLogin(token))
+        .isInstanceOf(JwtTokenService.InvalidTokenException.class);
+  }
+
+  @Test
+  @DisplayName("14.4-AUTH-004 createToken with ttl+extraClaims does not clobber base claims")
+  void extraClaimsCannotClobberBaseClaims() {
+    var user = new AuthUserEntity(
+        java.util.UUID.fromString("66666666-6666-6666-6666-666666666666"),
+        "pl@syncro.dev", "hash", ApplicationRole.PRODUCTION_LEADER, true, NOW, NOW);
+    var token = service.createToken(user, java.time.Duration.ofMinutes(5),
+        Map.of("sub", "attacker", "typ", "AUTO_LOGIN", "wa", "6281234567890", "wo", "WO-2608-00001"));
+
+    var parsed = service.parse(token);
+    assertThat(parsed.id()).isEqualTo("66666666-6666-6666-6666-666666666666");
+  }
+
   /** Mints a structurally valid, correctly signed token whose role claim predates V45. */
   private String signedLegacyToken(String role) {
     var payload = new LinkedHashMap<String, Object>();

@@ -46,4 +46,10 @@ public interface WorkorderRatingRepository extends JpaRepository<WorkorderRating
       """)
   List<RatingAverageRow> findRatingAveragesByWorkorderIds(
       @Param("workorderIds") Collection<String> workorderIds);
+
+  /**
+   * Story 14-4 (FR-181): whether any rating exists for the given workorder (any type).
+   */
+  @Query("select count(r) > 0 from WorkorderRatingEntity r where r.workorderId = :workorderId")
+  boolean existsByWorkorderId(@Param("workorderId") String workorderId);
 }

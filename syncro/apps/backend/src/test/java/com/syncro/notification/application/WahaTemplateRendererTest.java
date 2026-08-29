@@ -11,6 +11,7 @@ import com.syncro.alert.infrastructure.SparepartAlertRepository;
 import com.syncro.auth.infrastructure.PlantEntity;
 import com.syncro.machine.domain.MachineStatus;
 import com.syncro.machine.infrastructure.MachineEntity;
+import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.masterdata.infrastructure.MachineGroupEntity;
 import com.syncro.notification.domain.WahaTemplate;
 import com.syncro.notification.infrastructure.WahaTemplateEntity;
@@ -43,7 +44,11 @@ class WahaTemplateRendererTest {
   @Mock
   private MachineSparepartInstallationRepository installationRepository;
 
-  private final Clock clock = Clock.fixed(Instant.parse("2026-08-24T12:00:00Z"), ZoneOffset.UTC);
+  @Mock
+  private MachineRepository machineRepository;
+
+  private final Instant now = Instant.parse("2026-08-24T12:00:00Z");
+  private final Clock clock = Clock.fixed(now, ZoneOffset.UTC);
 
   private WahaTemplateRenderer renderer() {
     return new WahaTemplateRenderer(wahaTemplateRepository, sparepartAlertRepository, installationRepository);
@@ -51,7 +56,6 @@ class WahaTemplateRendererTest {
 
   @Test
   void rendersProcurementRiskWithEvidenceInBody() {
-    var now = Instant.now(clock);
     var plantId = UUID.randomUUID();
     var groupId = UUID.randomUUID();
     var machineId = UUID.randomUUID();
@@ -92,5 +96,44 @@ class WahaTemplateRendererTest {
         .contains("BF-08410")
         .contains("GM1")
         .contains("Forming");
+  }
+
+  // -------------------------------------------------------------------------
+  // Story 14-4 workorder templates (FR-180/FR-181)
+  // -------------------------------------------------------------------------
+
+  @Test
+  void rendersWorkorderLifecycleTemplate() {
+    when(wahaTemplateRepository.findByTemplateKey(WahaTemplate.WORKORDER_LIFECYCLE_KEY))
+        .thenReturn(Optional.of(new WahaTemplateEntity(UUID.randomUUID(),
+            WahaTemplate.WORKORDER_LIFECYCLE_KEY,
+            "WO {workOrderId} mesin {machineCode} {eventLabel} ({status}) at {transitionedAt}", now, now)));
+
+    var body = renderer().renderWorkorderLifecycle("WO-2608-00001", "BF-08410", "IN_PROGRESS",
+        "Mulai perbaikan", Instant.parse("2026-08-24T12:00:00Z"));
+
+    assertThat(body)
+        .contains("WO WO-2608-00001")
+        .contains("mesin BF-08410")
+        .contains("Mulai perbaikan")
+        .contains("IN_PROGRESS")
+        .contains("2026-08-24 19:00"); // UTC+7
+  }
+
+  @Test
+  void rendersWorkorderAckTemplate() {
+    when(wahaTemplateRepository.findByTemplateKey(WahaTemplate.WORKORDER_ACK_KEY))
+        .thenReturn(Optional.of(new WahaTemplateEntity(UUID.randomUUID(),
+            WahaTemplate.WORKORDER_ACK_KEY,
+            "WO {workOrderId} mesin {machineCode} deadline {ackDeadline} link {ackLink}", now, now)));
+
+    var body = renderer().renderWorkorderAck("WO-2608-00001", "BF-08410",
+        Instant.parse("2026-08-24T16:00:00Z"), "/dashboard/workorders/ack-task-list?token=abc");
+
+    assertThat(body)
+        .contains("WO WO-2608-00001")
+        .contains("mesin BF-08410")
+        .contains("deadline 2026-08-24 23:00")
+        .contains("link /dashboard/workorders/ack-task-list?token=abc");
   }
 }

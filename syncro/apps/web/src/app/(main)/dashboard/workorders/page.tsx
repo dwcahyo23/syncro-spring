@@ -1,4 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AckTaskList } from "@/features/workorders/components/ack-task-list";
 import { KanbanBoard } from "@/features/workorders/components/kanban-board";
 import { RatingsPageContent } from "@/features/workorders/components/ratings-page-content";
 import { WorkOrderCategoryManagement } from "@/features/workorders/components/workorder-category-management";
@@ -6,8 +7,8 @@ import { WorkorderTable } from "@/features/workorders/components/workorder-table
 
 /**
  * Workorders route (Epic 10). Lives inside the dashboard shell. The workorder table is
- * the default tab (workorder-table story); kanban, ratings and category master data
- * remain accessible as secondary tabs.
+ * the default tab (workorder-table story); kanban, ratings, category master data and the
+ * 4-hour ack task list (story 14-4, FR-181) remain accessible as secondary tabs.
  */
 export default function WorkordersPage() {
   return (
@@ -21,6 +22,7 @@ export default function WorkordersPage() {
           <TabsTrigger value="table">Table</TabsTrigger>
           <TabsTrigger value="kanban">Kanban</TabsTrigger>
           <TabsTrigger value="ratings">Ratings</TabsTrigger>
+          <TabsTrigger value="ack-task-list">Ack Task List</TabsTrigger>
           <TabsTrigger value="categories">Categories</TabsTrigger>
         </TabsList>
       </div>
@@ -33,6 +35,9 @@ export default function WorkordersPage() {
         </TabsContent>
         <TabsContent value="ratings">
           <RatingsPageContent />
+        </TabsContent>
+        <TabsContent value="ack-task-list">
+          <AckTaskList />
         </TabsContent>
         <TabsContent value="categories">
           <WorkOrderCategoryManagement />

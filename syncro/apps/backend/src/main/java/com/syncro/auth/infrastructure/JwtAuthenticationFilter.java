@@ -41,8 +41,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       return;
     }
 
+    var bearerToken = header.substring("Bearer ".length());
+    // Story 14-4 (FR-181): the ack-task-list endpoint accepts AUTO_LOGIN tokens — a
+    // short-lived, phone-bound, single-use token minted for the 4-hour ack link. The
+    // ack controller re-validates phone binding and single-use; any mismatch falls
+    // back to normal login with no residual access.
+    if (isAckTaskListRequest(request)) {
+      try {
+        var autoLogin = tokens.parseAutoLogin(bearerToken);
+        var user = autoLogin.user();
+        var authentication = new UsernamePasswordAuthenticationToken(
+            user,
+            null,
+            List.of(new SimpleGrantedAuthority("ROLE_" + user.applicationRole().name())));
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        request.setAttribute(AUTO_LOGIN_ATTR, autoLogin);
+        filterChain.doFilter(request, response);
+        return;
+      } catch (InvalidTokenException ignored) {
+        // fall through to normal parse — expired/mismatched AUTO_LOGIN behaves like
+        // any other invalid token
+      }
+    }
     try {
-      var user = tokens.parse(header.substring("Bearer ".length()));
+      var user = tokens.parse(bearerToken);
       var authentication = new UsernamePasswordAuthenticationToken(
           user,
           null,
@@ -59,5 +81,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
           Instant.now(clock).toString(),
           UUID.randomUUID().toString()));
     }
+  }
+
+  /** Attribute key carrying the parsed AUTO_LOGIN token for the ack controller. */
+  public static final String AUTO_LOGIN_ATTR = "syncro.autoLoginToken";
+
+  private static boolean isAckTaskListRequest(HttpServletRequest request) {
+    var uri = request.getRequestURI();
+    return "/api/v1/workorders/ack-task-list".equals(uri)
+        || uri.startsWith("/api/v1/workorders/ack-task-list/");
   }
 }

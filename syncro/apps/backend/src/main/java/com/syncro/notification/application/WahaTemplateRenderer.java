@@ -5,6 +5,7 @@ import com.syncro.alert.infrastructure.SparepartAlertEntity;
 import com.syncro.alert.infrastructure.SparepartAlertRepository;
 import com.syncro.auth.infrastructure.PlantEntity;
 import com.syncro.machine.infrastructure.MachineEntity;
+import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.masterdata.infrastructure.MachineGroupEntity;
 import com.syncro.notification.domain.WahaTemplate;
 import com.syncro.notification.infrastructure.WahaTemplateRepository;
@@ -27,13 +28,24 @@ public class WahaTemplateRenderer {
   private final WahaTemplateRepository wahaTemplateRepository;
   private final SparepartAlertRepository sparepartAlertRepository;
   private final MachineSparepartInstallationRepository installationRepository;
+  private final MachineRepository machineRepository;
 
+  @org.springframework.beans.factory.annotation.Autowired
   public WahaTemplateRenderer(WahaTemplateRepository wahaTemplateRepository,
       SparepartAlertRepository sparepartAlertRepository,
-      MachineSparepartInstallationRepository installationRepository) {
+      MachineSparepartInstallationRepository installationRepository,
+      MachineRepository machineRepository) {
     this.wahaTemplateRepository = wahaTemplateRepository;
     this.sparepartAlertRepository = sparepartAlertRepository;
     this.installationRepository = installationRepository;
+    this.machineRepository = machineRepository;
+  }
+
+  /** Constructor used by existing tests; the machine repo is injected by Spring. */
+  public WahaTemplateRenderer(WahaTemplateRepository wahaTemplateRepository,
+      SparepartAlertRepository sparepartAlertRepository,
+      MachineSparepartInstallationRepository installationRepository) {
+    this(wahaTemplateRepository, sparepartAlertRepository, installationRepository, null);
   }
 
   /**
@@ -99,6 +111,54 @@ public class WahaTemplateRenderer {
         + "Basis proyeksi: " + basis + " · "
         + "Perkiraan habis: " + depletion + ". "
         + "Pabrik " + safeStr(plant.getCode()) + " / " + safeStr(machineGroup.getName()) + ".";
+  }
+
+  /**
+   * Renders the active {@code workorder_lifecycle} template with workorder context data
+   * (story 14-4, FR-180). Variables: workOrderId, machineCode, status, eventLabel, transitionedAt.
+   */
+  @Transactional(readOnly = true)
+  public String renderWorkorderLifecycle(String workOrderId, String machineCode, String status,
+      String eventLabel, java.time.Instant transitionedAt) {
+    var templateEntity = wahaTemplateRepository.findByTemplateKey(WahaTemplate.WORKORDER_LIFECYCLE_KEY)
+        .orElseThrow(() -> new WahaTemplateRenderException(
+            "No active WAHA template found for key: " + WahaTemplate.WORKORDER_LIFECYCLE_KEY));
+    String body = templateEntity.getBody();
+    body = body.replace("{workOrderId}", safeStr(workOrderId));
+    body = body.replace("{machineCode}", safeStr(machineCode));
+    body = body.replace("{status}", safeStr(status));
+    body = body.replace("{eventLabel}", safeStr(eventLabel));
+    body = body.replace("{transitionedAt}",
+        transitionedAt != null ? ALERT_TIME_FORMAT.format(transitionedAt) : "");
+    return body;
+  }
+
+  /**
+   * Renders the active {@code workorder_ack} template (story 14-4, FR-181).
+   * Variables: workOrderId, machineCode, ackDeadline, ackLink.
+   */
+  @Transactional(readOnly = true)
+  public String renderWorkorderAck(String workOrderId, String machineCode,
+      java.time.Instant ackDeadline, String ackLink) {
+    var templateEntity = wahaTemplateRepository.findByTemplateKey(WahaTemplate.WORKORDER_ACK_KEY)
+        .orElseThrow(() -> new WahaTemplateRenderException(
+            "No active WAHA template found for key: " + WahaTemplate.WORKORDER_ACK_KEY));
+    String body = templateEntity.getBody();
+    body = body.replace("{workOrderId}", safeStr(workOrderId));
+    body = body.replace("{machineCode}", safeStr(machineCode));
+    body = body.replace("{ackDeadline}",
+        ackDeadline != null ? ALERT_TIME_FORMAT.format(ackDeadline) : "");
+    body = body.replace("{ackLink}", safeStr(ackLink));
+    return body;
+  }
+
+  /** Resolves a workorder's machine code; empty string when the machine is missing. */
+  @Transactional(readOnly = true)
+  public String machineCodeFor(String workOrderId, UUID machineId) {
+    if (machineId == null || machineRepository == null) {
+      return "";
+    }
+    return machineRepository.findById(machineId).map(MachineEntity::getCode).orElse("");
   }
 
   private static String safeStr(String value) {

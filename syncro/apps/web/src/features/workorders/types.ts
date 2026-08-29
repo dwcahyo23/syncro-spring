@@ -149,3 +149,33 @@ export interface RateableWorkorderView {
   createdAt: string;
   executorPool: string[];
 }
+
+// ---------------------------------------------------------------------------
+// 4-hour acknowledgment (14-4, FR-181)
+// ---------------------------------------------------------------------------
+
+export interface AckEntry {
+  workOrderId: string;
+  acknowledgedBy: string | null;
+  acknowledgedAt: string | null;
+}
+
+export interface ClosedWorkorderEntry {
+  id: string;
+  status: string;
+  description: string | null;
+  rated: boolean;
+}
+
+export interface AckTaskList {
+  acknowledged: AckEntry[];
+  pending: AckEntry[];
+  rated: ClosedWorkorderEntry[];
+  unrated: ClosedWorkorderEntry[];
+}
+
+export interface AckView {
+  workOrderId: string;
+  acknowledgedBy: string;
+  acknowledgedAt: string;
+}
