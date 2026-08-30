@@ -143,3 +143,22 @@ Story 1.5 implements authenticated access baseline. Role enforcement, plant scop
 
 Changing InfluxDB first-init credentials after volumes are created requires removing the local InfluxDB volumes or recreating the stack with fresh volumes.
 
+## InfluxDB Optional-Field Type Migration (DW-114)
+
+Since the DW-28 change, every numeric optional telemetry field is written as a Double (`InfluxTelemetryWriter` coerces via `doubleValue()`). InfluxDB rejects a field-type change within a measurement, so a bucket that already holds integer-typed samples for a field (e.g. `rpm=1200i` from before the change) rejects the first `rpm=1200.0` point.
+
+- **Dev/CI buckets** — reset is the supported path: `docker compose down -v` for the InfluxDB service (drops the named `influxdb_data` volume) then `docker compose up -d`. The backend recreates the bucket on startup.
+- **Production/preview buckets with legacy integer samples** — do NOT rely on a plain reset; rewrite the affected measurement before the new backend writes to it. In InfluxDB 3 the storage contract is per measurement, so either migrate the bucket to a fresh measurement (write the legacy series into a new measurement that only ever receives Double values) or recreate the bucket and re-import the data from the durable source (PostgreSQL `machine_counter_states` / Redis latest hash are not full telemetry history — the telemetry is only in InfluxDB, so prefer a measurement rewrite over a bucket drop).
+- After migration, verify with a probe write of a float-valued sample for every configured optional field before enabling the new backend against the bucket.
+
+## Managed PostgreSQL: btree_gist Extension Prerequisite (DW-139)
+
+Migration `V49__repair_sessions_mttr.sql` is the first migration in the chain that installs an extension: `CREATE EXTENSION IF NOT EXISTS btree_gist` (required by the gist EXCLUDE constraint on `repair_sessions`). Local `postgres:17-alpine` applies it automatically because the container superuser owns the database.
+
+Managed PostgreSQL (RDS, Cloud SQL, Supabase, …) does **not** grant extension-creation to the application user by default. Before the first Flyway run against a managed database:
+
+1. Connect as a superuser (e.g. the RDS master user, or `cloudsqlsuperuser` on Cloud SQL).
+2. Run `CREATE EXTENSION IF NOT EXISTS btree_gist;` in the target database.
+3. Grant the application user `USAGE` on the extension if the provider requires it (check provider docs; RDS needs no extra grant after creation).
+
+Deploying a managed database without this step fails the migration at V49 with `permission denied to create extension "btree_gist"`. Add this to the deployment runbook before the Flyway step.

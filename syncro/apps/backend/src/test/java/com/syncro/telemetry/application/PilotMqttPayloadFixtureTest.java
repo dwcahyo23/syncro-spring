@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import com.syncro.sparepart.domain.SparepartDerivation;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -189,9 +190,10 @@ class PilotMqttPayloadFixtureTest {
     long consumed = CountingDeltaCalculator.delta(BASELINE_COUNTER, counting);
     assertThat(consumed).isEqualTo(expectedConsumed);
 
-    BigDecimal consumedPercentage = BigDecimal.valueOf(consumed)
-        .multiply(BigDecimal.valueOf(100))
-        .divide(BigDecimal.valueOf(EXPECTED_PRODUCTION_COUNT), 2, RoundingMode.HALF_UP);
+    // DW-74: run the production percentage formula via the extracted pure function instead
+    // of the inline mirror, so evaluator drift (rounding/comparator direction) fails here.
+    BigDecimal consumedPercentage =
+        SparepartDerivation.consumedPercentage(consumed, EXPECTED_PRODUCTION_COUNT);
     assertThat(consumedPercentage.toPlainString()).isEqualTo(expectedPercentage);
 
     int comparison = consumedPercentage.compareTo(BigDecimal.valueOf(THRESHOLD_PERCENTAGE));

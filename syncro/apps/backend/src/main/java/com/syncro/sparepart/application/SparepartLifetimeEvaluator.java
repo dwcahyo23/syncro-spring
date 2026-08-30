@@ -1,11 +1,11 @@
 package com.syncro.sparepart.application;
 
+import com.syncro.sparepart.domain.SparepartDerivation;
 import com.syncro.sparepart.infrastructure.MachineSparepartInstallationEntity;
 import com.syncro.sparepart.infrastructure.MachineSparepartInstallationRepository;
 import com.syncro.telemetry.application.CountingDeltaCalculator;
 import com.syncro.telemetry.infrastructure.RedisLatestTelemetryWriter;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -44,9 +44,8 @@ public class SparepartLifetimeEvaluator {
       return Optional.empty();
     }
     long consumed = CountingDeltaCalculator.delta(installation.getBaselineCounter(), current);
-    BigDecimal pct = BigDecimal.valueOf(consumed)
-        .multiply(BigDecimal.valueOf(100))
-        .divide(BigDecimal.valueOf(installation.getExpectedProductionCount()), 2, RoundingMode.HALF_UP);
+    BigDecimal pct = SparepartDerivation.consumedPercentage(
+        consumed, installation.getExpectedProductionCount());
     return Optional.of(new EvaluationResult(current, consumed, pct));
   }
 
@@ -67,9 +66,8 @@ public class SparepartLifetimeEvaluator {
         continue;
       }
       long consumed = CountingDeltaCalculator.delta(installation.getBaselineCounter(), current);
-      BigDecimal pct = BigDecimal.valueOf(consumed)
-          .multiply(BigDecimal.valueOf(100))
-          .divide(BigDecimal.valueOf(installation.getExpectedProductionCount()), 2, RoundingMode.HALF_UP);
+      BigDecimal pct = SparepartDerivation.consumedPercentage(
+          consumed, installation.getExpectedProductionCount());
       results.put(installation.getId(), new EvaluationResult(current, consumed, pct));
     }
     return results;
@@ -103,9 +101,8 @@ public class SparepartLifetimeEvaluator {
         continue;
       }
       long consumed = CountingDeltaCalculator.delta(installation.getBaselineCounter(), current);
-      BigDecimal pct = BigDecimal.valueOf(consumed)
-          .multiply(BigDecimal.valueOf(100))
-          .divide(BigDecimal.valueOf(installation.getExpectedProductionCount()), 2, RoundingMode.HALF_UP);
+      BigDecimal pct = SparepartDerivation.consumedPercentage(
+          consumed, installation.getExpectedProductionCount());
       resultsByMachine
           .computeIfAbsent(machineId, ignored -> new HashMap<>())
           .put(installation.getId(), new EvaluationResult(current, consumed, pct));

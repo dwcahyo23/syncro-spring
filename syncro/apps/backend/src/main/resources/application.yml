@@ -121,6 +121,9 @@ syncro:
     enforced-paths: ${SYNCRO_AUTHZ_ENFORCED_PATHS:}
     # Ant patterns still allowed when OPA is unreachable (fail-deny everywhere else)
     degraded-allowlist: ${SYNCRO_AUTHZ_DEGRADED_ALLOWLIST:/api/v1/health,/actuator/**}
+    # Paths that bypass OPA entirely (DW-129): anonymous health/read probes stay 200 while
+    # OPA is healthy — the degraded-allowlist alone cannot express "always public"
+    always-public-paths: ${SYNCRO_AUTHZ_ALWAYS_PUBLIC_PATHS:/api/v1/health,/actuator/**}
     # Policy file used to derive the decision-log revision when OPA does not emit a bundle
     # revision; classpath: or file: resource (default: classpath:authz-policy.rego)
     policy-revision-fallback-path: ${SYNCRO_AUTHZ_POLICY_FILE:}

@@ -48,6 +48,8 @@ class DecisionLogServiceTest extends AbstractPostgresIntegrationTest {
     var userId = UUID.randomUUID();
     decisionLogs.record(UUID.randomUUID().toString(), "sha256:abc", true, false, userId,
         "POST /api/v1/machines", "endpoint");
+    // DW-132: persistence is asynchronous — wait for the buffer to drain before asserting.
+    decisionLogs.flush();
     entityManager.flush();
 
     var row = jdbcTemplate.queryForMap(
@@ -79,6 +81,7 @@ class DecisionLogServiceTest extends AbstractPostgresIntegrationTest {
         "GET /api/v1/machines", "endpoint");
     decisionLogs.record(UUID.randomUUID().toString(), "r2", false, false, userId,
         "POST /api/v1/machines", "endpoint");
+    decisionLogs.flush();
     entityManager.flush();
 
     var page = decisionLogs.list(0, 50);

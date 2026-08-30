@@ -12,6 +12,7 @@ import com.syncro.auth.application.JwtTokenService;
 import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.auth.infrastructure.AuthUserEntity;
 import com.syncro.auth.infrastructure.AuthUserRepository;
+import com.syncro.authz.application.DecisionLogService;
 import com.syncro.authz.infrastructure.OpaClient;
 import java.time.Instant;
 import java.util.UUID;
@@ -117,6 +118,9 @@ class AuthzEnforcementIntegrationTest {
   @Autowired
   private JdbcTemplate jdbcTemplate;
 
+  @Autowired
+  private DecisionLogService decisionLogs;
+
   @MockitoBean
   private OpaClient opaClient;
 
@@ -137,6 +141,8 @@ class AuthzEnforcementIntegrationTest {
                 """))
         .andExpect(status().isCreated());
 
+    // DW-132: decision persistence is asynchronous — wait for the buffer before asserting.
+    decisionLogs.flush();
     var row = latestDecision(user.getId());
     assertThat(row).isNotNull();
     assertThat(row[0]).isEqualTo(DECISION_ID_ALLOW);
@@ -167,6 +173,7 @@ class AuthzEnforcementIntegrationTest {
         .andExpect(jsonPath("$.code").value("FORBIDDEN"));
 
     assertThat(teamCount("Blocked Team")).isZero();
+    decisionLogs.flush();
     var row = latestDecision(user.getId());
     assertThat(row).isNotNull();
     assertThat(row[0]).isEqualTo(DECISION_ID_DENY);
@@ -190,6 +197,7 @@ class AuthzEnforcementIntegrationTest {
         .andExpect(jsonPath("$.code").value("FORBIDDEN"));
 
     assertThat(teamCount("Degraded Team")).isZero();
+    decisionLogs.flush();
     var row = latestDecision(user.getId());
     assertThat(row).isNotNull();
     assertThat(row[2]).isEqualTo("false");

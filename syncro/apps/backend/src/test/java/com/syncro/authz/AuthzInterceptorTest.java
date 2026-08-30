@@ -54,7 +54,7 @@ class AuthzInterceptorTest {
 
   private final AuthzProperties props = new AuthzProperties(
       List.of("/api/v1/secure/**", "/api/v1/health/**"),
-      List.of("/api/v1/health/**"), 30, null);
+      List.of("/api/v1/health/**"), 30, null, List.of());
 
   @Mock
   private com.syncro.authz.infrastructure.OpaClient opaClient;

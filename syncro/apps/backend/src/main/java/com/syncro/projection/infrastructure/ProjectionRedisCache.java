@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -28,6 +29,14 @@ public class ProjectionRedisCache {
   private final ObjectMapper objectMapper;
   private final Duration ttl;
 
+  /**
+   * Machines whose eviction failed (DW-124). An eviction that could not delete the key must
+   * not be silently followed by a read that serves the pre-message cached view — the 8-7
+   * procurement-risk alert would evaluate against stale telemetry. The signal lives here,
+   * not in Redis, because a failed eviction means Redis was unreachable at that moment.
+   */
+  private final Set<UUID> failedEvictions = ConcurrentHashMap.newKeySet();
+
   public ProjectionRedisCache(StringRedisTemplate redis,
       com.syncro.config.ProjectionProperties properties) {
     this.redis = redis;
@@ -42,6 +51,13 @@ public class ProjectionRedisCache {
   }
 
   public <T> Optional<T> get(UUID machineId, Class<T> type) {
+    // DW-124: a failed eviction means the stored view may predate the latest message; the next
+    // read must recompute (cache miss) instead of serving a stale entry. One-shot per failure.
+    if (failedEvictions.remove(machineId)) {
+      log.warn("projection_cache_serving_recompute machineId={} (previous eviction failed)",
+          machineId);
+      return Optional.empty();
+    }
     try {
       String json = redis.opsForValue().get(key(machineId));
       if (json == null) {
@@ -67,6 +83,7 @@ public class ProjectionRedisCache {
       redis.delete(key(machineId));
     } catch (Exception failure) {
       log.warn("projection_cache_evict_failed machineId={} error={}", machineId, failure.getMessage());
+      failedEvictions.add(machineId);
     }
   }
 

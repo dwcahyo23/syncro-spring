@@ -20,7 +20,8 @@ public record AuthzProperties(
     @NotNull List<String> enforcedPaths,
     @NotNull List<String> degradedAllowlist,
     int decisionLogRetentionDays,
-    String policyRevisionFallbackPath) {
+    String policyRevisionFallbackPath,
+    @NotNull List<String> alwaysPublicPaths) {
 
   /** Canonical constructor — null lists normalize onto safe defaults; explicit empty stays authoritative. */
   public AuthzProperties {
@@ -35,5 +36,10 @@ public record AuthzProperties(
     if (decisionLogRetentionDays <= 0) {
       decisionLogRetentionDays = 30;
     }
+    // Always-public paths bypass OPA entirely (DW-129): health/read probes must 200 even
+    // when OPA is healthy, not only when it is degraded.
+    alwaysPublicPaths = alwaysPublicPaths == null
+        ? List.of("/api/v1/health", "/actuator/**")
+        : List.copyOf(alwaysPublicPaths);
   }
 }

@@ -94,6 +94,19 @@ public class TelemetryStaleMachineService {
   private Optional<StaleMachineItem> toStaleItem(MachineService.MachineView machine) {
     LatestTelemetryDto.TelemetryData telemetry = telemetryQuery.latestTelemetry(
         machine.id(), machine.status());
+    // DW-70: a Redis outage must not masquerade as "machine never sent telemetry". When the
+    // read itself failed, surface it as a distinct evidence state instead of a false
+    // never-received fleet.
+    if (telemetry != null && telemetry.readFailure()) {
+      return Optional.of(new StaleMachineItem(
+          machine.id(),
+          machine.code(),
+          machine.plantCode(),
+          "READ_FAILURE",
+          "Latest telemetry state could not be read (Redis unavailable)",
+          null,
+          true));
+    }
     LatestTelemetryDto.FreshnessState state = telemetry == null
         ? LatestTelemetryDto.FreshnessState.OFFLINE
         : telemetry.freshnessState();
@@ -106,6 +119,7 @@ public class TelemetryStaleMachineService {
         machine.plantCode(),
         state.name(),
         state.label(),
-        telemetry == null ? null : telemetry.lastReceivedAt()));
+        telemetry == null ? null : telemetry.lastReceivedAt(),
+        false));
   }
 }

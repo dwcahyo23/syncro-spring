@@ -15,6 +15,8 @@ import java.util.UUID;
  * @param statusLabel     display label from {@link LatestTelemetryDto.FreshnessState#label()}
  * @param lastReceivedAt  instant of the machine's last accepted telemetry, or {@code null} when
  *                        the machine never sent telemetry (or its latest state could not be read)
+ * @param readFailure     true when the latest state could not be read because Redis is down
+ *                        (DW-70) — distinct from a machine that never sent telemetry
  */
 public record StaleMachineItem(
     UUID machineId,
@@ -22,5 +24,6 @@ public record StaleMachineItem(
     String plantCode,
     String freshnessState,
     String statusLabel,
-    Instant lastReceivedAt) {
+    Instant lastReceivedAt,
+    boolean readFailure) {
 }

@@ -59,7 +59,7 @@ class PolicyDecisionPointTest {
   @BeforeEach
   void setUp() {
     pdp = new PolicyDecisionPoint(opaClient,
-        new AuthzProperties(List.of(), List.of("/api/v1/health", "/actuator/**"), 30, null),
+        new AuthzProperties(List.of(), List.of("/api/v1/health", "/actuator/**"), 30, null, List.of()),
         operationalScopes, decisionLogs);
     // Default empty scope so evaluate() paths that carry an identity never see null scope
     Mockito.lenient().when(operationalScopes.derive(any()))
@@ -152,6 +152,35 @@ class PolicyDecisionPointTest {
     assertThat(decision.allowed()).isTrue();
     assertThat(decision.degraded()).isTrue();
     assertThat(decision.decisionId()).isNull();
+  }
+
+  @Test
+  @DisplayName("DW-129-PDP-017 always-public path passes even when OPA is healthy")
+  void alwaysPublicPathAllowsEvenWhenOpaHealthy() {
+    // A PDP whose AuthzProperties keeps the default always-public paths (health/actuator).
+    var pdpWithAlwaysPublic = new PolicyDecisionPoint(opaClient,
+        new AuthzProperties(List.of(), List.of(), 30, null, List.of("/api/v1/health", "/actuator/**")),
+        operationalScopes, decisionLogs);
+
+    var decision = pdpWithAlwaysPublic.evaluate(user, resource, "GET /actuator/health", "/actuator/health");
+
+    assertThat(decision.allowed()).isTrue();
+    assertThat(decision.degraded()).isFalse();
+    assertThat(decision.decisionId()).isNull();
+    org.mockito.Mockito.verifyNoInteractions(opaClient);
+  }
+
+  @Test
+  @DisplayName("DW-129-PDP-018 non-public path is not bypassed")
+  void nonPublicPathNotBypassed() {
+    when(opaClient.post(eq("allow"), any()))
+        .thenReturn(new OpaClient.Result(true, 200,
+            "{\"decision_id\":\"d1\",\"result\":false}", "d1", false));
+
+    var decision = pdp.evaluate(user, resource, "POST /api/v1/work-orders", "/api/v1/work-orders");
+
+    assertThat(decision.allowed()).isFalse();
+    assertThat(decision.degraded()).isFalse();
   }
 
   @Test

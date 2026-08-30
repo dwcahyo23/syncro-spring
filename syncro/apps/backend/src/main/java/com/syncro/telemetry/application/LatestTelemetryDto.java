@@ -16,7 +16,8 @@ public final class LatestTelemetryDto {
       Instant lastReceivedAt,
       FreshnessState freshnessState,
       Map<String, String> optionalFields,
-      boolean hasOptionalFields) {
+      boolean hasOptionalFields,
+      boolean readFailure) {
   }
 
   public enum FreshnessState {

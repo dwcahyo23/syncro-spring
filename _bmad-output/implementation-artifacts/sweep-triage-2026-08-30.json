@@ -1,0 +1,152 @@
+{
+  "workflow": "deferred-sweep-triage",
+  "open_ids": ["DW-26", "DW-46", "DW-47", "DW-48", "DW-69", "DW-70", "DW-71", "DW-72", "DW-73", "DW-74", "DW-76", "DW-78", "DW-79", "DW-80", "DW-92", "DW-112", "DW-114", "DW-123", "DW-124", "DW-125", "DW-126", "DW-127", "DW-128", "DW-129", "DW-130", "DW-132", "DW-133", "DW-134", "DW-135", "DW-136", "DW-137", "DW-138", "DW-139", "DW-140"],
+  "already_resolved": [
+    { "id": "DW-46", "evidence": "DbHealthIndicator.java:36,72-82 — acquireBounded() runs dataSource.getConnection() on a 2s-bounded Future; pool stall maps to DOWN POOL_ACQUIRE_TIMEOUT (commit 9b00be9)" },
+    { "id": "DW-47", "evidence": "application.yml:12-15 — client-level Redis (Lettuce) command timeout configured with DW-47 comment; RedisHealthIndicator ping now bounded (commit 9b00be9)" },
+    { "id": "DW-69", "evidence": "TelemetryIngestTracker.java:28-38 — recordAccepted sets lastAcceptedAt unconditionally (no now.isAfter guard); backward clock no longer pins freshness LIVE (commit 2b53221)" },
+    { "id": "DW-71", "evidence": "machine-hub by-id route + system-health-page.tsx links stale-machine rows via machineId (useGetMachine), not code (commit c6e88e6)" },
+    { "id": "DW-72", "evidence": "TelemetryDataQualityTracker.java:143-154 — currentMinute() CAS-clamps to monotonic lastMinute; backward NTP step stalls minute, counts freeze into current window (commit 2b53221)" },
+    { "id": "DW-123", "evidence": "common/LikePattern.java:15-32 — shared escape() consolidates the six copy-pasted LIKE-escape chains (commit c3bb741)" },
+    { "id": "DW-126", "evidence": "TeamExceptionHandler.java:98-102, SectionExceptionHandler.java:113-117 — OOLFE mapped to 409 CONCURRENT_MODIFICATION (commit 36e8fe0)" },
+    { "id": "DW-127", "evidence": "AbstractPostgresIntegrationTest.java:61-66 — static shared postgres:17-alpine container with withReuse(true); javadoc documents reuse across classes/runs" },
+    { "id": "DW-128", "evidence": "V68__audit_log_immutable_full_columns.sql — trigger recreated covering id, plant_id, and every column (commit f417541)" },
+    { "id": "DW-130", "evidence": "application.yml:110-112 — SYNCRO_OPA_CB_MIN_CALLS default lowered to 2 (DW-130 comment); OpaClient.java:58-63 builds the CB from these properties" },
+    { "id": "DW-134", "evidence": "WorkOrderIdGenerator.java:54-56 — derivePrefix uses YearMonth.now(clock.withZone(plantZone)); month rolls at plant-local midnight (commit 6d2da39)" },
+    { "id": "DW-135", "evidence": "WorkOrderExceptionHandler.java:219-223 — @ExceptionHandler(WorkorderIdExhaustedException.class) returns 503 WORKORDER_ID_EXHAUSTED; WorkOrderControllerTest.java:467 pins it" },
+    { "id": "DW-136", "evidence": "WorkOrderLockAndDerivationIntegrationTest.java:19-56 — findByParentIdForUpdate/findByIdForUpdate exercised against real Postgres (commit 83dd926)" },
+    { "id": "DW-137", "evidence": "JwtTokenService.java:102-108,140-145 — non-UUID subject fails closed to InvalidTokenException at the auth boundary, before any UUID.fromString call site (commit 6d2da39)" },
+    { "id": "DW-138", "evidence": "WorkOrderLockAndDerivationIntegrationTest.java:58-60+ — recomputeProcurementState derives ON_PROCUREMENT via real @Primary SparepartRequestReadinessPort (commit 83dd926)" },
+    { "id": "DW-140", "evidence": "WorkOrderEvidenceServiceIntegrationTest.java — real Postgres + mock Garage exercises key format, content-type, access gate, delete (commit 2cbf704)" }
+  ],
+  "bundles": [
+    {
+      "name": "seed-derivation-extraction",
+      "dw_ids": ["DW-73", "DW-74"],
+      "intent": "Make the pilot seed and fixtures verify against the real derivation logic instead of mirroring literals: extract the pure sparepart code/label derivation (bomPrefix/codePart/sparepartLabel) and the consumed-percentage math from SparepartService into a testable pure component, then have PilotSeedTest and PilotMqttPayloadFixtureTest cross-check the seed values (BF-08410GM1ELEPLCWEC000, 1000/0/90) against that component so algorithm drift fails CI instead of silently diverging."
+    },
+    {
+      "name": "projection-cache-freshness",
+      "dw_ids": ["DW-124"],
+      "intent": "Add a read-side freshness signal to the projection cache consumed by the 8-7 procurement-risk alert evaluation: ProjectionRedisCache.evictMachine (line 65-70) swallows eviction failures (logs projection_cache_evict_failed only) and SparepartProjectionService.cachedOrCompute does no staleness comparison, so a failed eviction lets the alert read a stale cached view. Make the cached entry carry a computedAt and have the alert path treat a stale entry as recompute, with a unit test proving a stale cached view is not served after eviction failure."
+    },
+    {
+      "name": "frontend-mobile-and-picker",
+      "dw_ids": ["DW-125", "DW-133"],
+      "intent": "Two frontend usability fixes: give decision-log-tab.tsx a card-based mobile variant mirroring audit-log-table.tsx (line 43 wraps the table in hidden md:block with no alternative, DW-133), and fix the teams machine-link picker so fleets beyond 200 machines can be linked — team-management.tsx:523-524 still hard-caps machineParams at limit: 200 and derives the linkable set from that single truncated page (DW-125); either a server-side search/paginated picker or at minimum a truncation indicator."
+    },
+    {
+      "name": "authz-decision-log-async",
+      "dw_ids": ["DW-132"],
+      "intent": "Decouple decision-log persistence from the enforced-request hot path: DecisionLogService.record (line 69-71) still does one synchronous repository.save() per enforcement decision, doubling DB round-trips and letting a slow DB trip the OPA breaker. Introduce an async/queue-backed or write-behind batch writer while preserving the fail-open semantics (never throw), with tests proving decisions still persist and failures are logged."
+    },
+    {
+      "name": "opa-public-probes",
+      "dw_ids": ["DW-129"],
+      "intent": "Make the OPA posture correct before enforcement goes live: the rego policy is strict default-deny with only a degraded-allowlist (application.yml:123), so anonymous health/read probes on enforced paths get 403 while OPA is healthy and 200 only when it is down. Add an always-public allowance (a rego rule or bypass list distinct from the degraded-allowlist) for health/read probes, with an OPA test proving probes pass while enforcement is healthy."
+    },
+    {
+      "name": "influx-legacy-bucket-plan",
+      "dw_ids": ["DW-114"],
+      "intent": "Handle the legacy integer-typed InfluxDB optional fields that will reject the first Double write after the DW-28 Double-coercion change (InfluxTelemetryWriter.java:51 now always doubleValue): document the dev/CI bucket-reset path and provide a rewrite/migration plan for production/preview buckets so the storage-contract change does not silently drop telemetry on existing buckets."
+    },
+    {
+      "name": "runbook-btreegist",
+      "dw_ids": ["DW-139"],
+      "intent": "Document the btree_gist extension prerequisite for managed PostgreSQL: V49__repair_sessions_mttr.sql:9 runs CREATE EXTENSION IF NOT EXISTS btree_gist (the first extension install in the chain) which requires a superuser pre-deployment grant on RDS/Cloud SQL/Supabase before Flyway runs. Add the prerequisite to the deploy runbook (or split the extension creation into a manual pre-deployment step) so managed deploys do not fail at V49."
+    }
+  ],
+  "blocked": [
+    { "id": "DW-48", "blocker": "Spring Integration MQTT 7.x adapter capability — mid-session disconnect only observable when the adapter exposes a connection-lost event; MqttConnectionStatus.java:42-48 still carries the DW-14 TODO" }
+  ],
+  "skip": [
+    { "id": "DW-76", "reason": "Documentation-only concern: spec credential text vs gitignored .env; the live password was already redacted per review and .env is version-controlled out of band by design — reconciliation is a docs chore, not a code defect" }
+  ],
+  "decisions": [
+    {
+      "id": "DW-26",
+      "question": "How should the 16-bit counter delta distinguish a genuine wrap from a counter reset/decrease/out-of-order delivery?",
+      "context": "CountingDeltaCalculator.java:11 treats any current < previous as a wrap via floorMod 65536, so a genuine counter reset permanently corrupts the delta chain. Distinguishing requires per-machine counter-type configuration or an ordering check; Story 3.9 payload timestamp/messageId now exists to support an ordering guard.",
+      "options": [
+        { "key": "1", "label": "Ordering-guard re-baseline", "effect": "build", "intent": "Add a per-machine counter-type config; when a decrease is detected with a valid payload timestamp ordering, treat it as a reset and re-baseline the delta chain with an audit note instead of a wrap delta." },
+        { "key": "2", "label": "Keep wrap-only", "effect": "close", "resolution": "Pilot machines are 16-bit PLC counters that only ever wrap; reset/re-provision is out of pilot scope and re-baselining could mask genuine device issues." },
+        { "key": "3", "label": "Keep open", "effect": "keep-open" }
+      ],
+      "recommendation": "2"
+    },
+    {
+      "id": "DW-70",
+      "question": "Should the latest-telemetry read API distinguish Redis read failure from never-received telemetry?",
+      "context": "LatestTelemetryQueryService.java:32-37 still returns null for both a Redis outage and an empty hash, so a Redis outage reports every ACTIVE machine as never-received OFFLINE evidence. Distinguishing requires extending the shared read API (outcome-distinguishing wrapper) also consumed by MachineController hydration.",
+      "options": [
+        { "key": "1", "label": "Outcome wrapper", "effect": "build", "intent": "Extend the read API to return an outcome (FOUND / NEVER_RECEIVED / READ_FAILURE) so the stale-machine panel shows a definitive Redis-down state instead of a false never-received fleet." },
+        { "key": "2", "label": "Accept mitigation", "effect": "close", "resolution": "A Redis outage already shows the Redis dependency card DOWN and degrades the overall banner; the false never-received state is transient and acceptable for the pilot." },
+        { "key": "3", "label": "Keep open", "effect": "keep-open" }
+      ],
+      "recommendation": "1"
+    },
+    {
+      "id": "DW-78",
+      "question": "What should be done about the plaintext MQTT credentials committed in infra/emqx/etc/auth-bootstrap.csv?",
+      "context": "auth-bootstrap.csv:2-3 still contains literal MQTT passwords for syncro_backend and device_GM1_BF-08410. Dev-environment pattern consistent with all infra files; production credential management is out of current scope.",
+      "options": [
+        { "key": "1", "label": "Env-injection + docs", "effect": "build", "intent": "Move the bootstrap credentials to env-injected values (docker-compose/env file) with .example placeholders committed and a README note; keep dev defaults documented." },
+        { "key": "2", "label": "Scoped-ignore + docs", "effect": "close", "resolution": "Keep dev credentials but add them to a scoped .gitignore and document rotation; consistent with the existing dev-infra pattern and the DW-75 precedent." },
+        { "key": "3", "label": "Keep dev-only as-is", "effect": "keep-open" }
+      ],
+      "recommendation": "2"
+    },
+    {
+      "id": "DW-79",
+      "question": "What should be done about the hardcoded SEED_SECRET in infra/emqx/etc/docker-entrypoint.sh?",
+      "context": "docker-entrypoint.sh:37 still hardcodes the administrator API key secret used for ACL seeding. Same dev-infra pattern; secret rotation and production secrets management out of current scope.",
+      "options": [
+        { "key": "1", "label": "Env-injected secret", "effect": "build", "intent": "Read SEED_SECRET from an environment variable with a committed .example default so the literal is not in source." },
+        { "key": "2", "label": "Scoped-ignore + docs", "effect": "close", "resolution": "Keep the dev default but document rotation and note the dev-only scope; consistent with the existing dev-infra pattern." },
+        { "key": "3", "label": "Keep dev-only as-is", "effect": "keep-open" }
+      ],
+      "recommendation": "2"
+    },
+    {
+      "id": "DW-80",
+      "question": "What should be done about the weak committed Erlang cluster cookie in infra/emqx/etc/emqx.conf?",
+      "context": "emqx.conf:7 still sets cookie = \"emqxsyncrodev\". Single-node dev setup; Erlang cluster security out of current scope.",
+      "options": [
+        { "key": "1", "label": "Env-injected cookie", "effect": "build", "intent": "Read the cookie from an environment variable with a committed dev-default placeholder so the value is not a fixed literal." },
+        { "key": "2", "label": "Document + keep", "effect": "close", "resolution": "Single-node dev setup; document that the cookie must be regenerated for any multi-node/clustered deployment." },
+        { "key": "3", "label": "Keep dev-only as-is", "effect": "keep-open" }
+      ],
+      "recommendation": "2"
+    },
+    {
+      "id": "DW-92",
+      "question": "Should EMQX Data Integration (InfluxDB/Redis bridges) offload the backend hot path, defer to the next epic, or be rejected?",
+      "context": "docker-compose.yml:69 runs emqx/emqx:6.2.2; community edition verified to support InfluxDB v3 and Redis bridges. Offloading the per-message InfluxDB/Redis writes would reduce backend hot-path IO, but requires a correct-course proposal and a bridge PoC before committing (business logic stays in Java).",
+      "options": [
+        { "key": "1", "label": "PoC then offload", "effect": "build", "intent": "Run a PoC (rule + InfluxDB v3 bridge to local InfluxDB on 8181, Redis bridge for latest state) with real traffic, then propose the correct-course offload preserving dedupe and quarantine semantics." },
+        { "key": "2", "label": "Defer to next epic", "effect": "close", "resolution": "workerThreads and cleanSession(false) are now wired (DW-91/93 done); revisit EMQX bridges when scale measurements justify the architecture change." },
+        { "key": "3", "label": "Reject", "effect": "close", "resolution": "Keep the backend as the single write path; EMQX bridges add config drift and operational risk not justified at pilot scale." },
+        { "key": "4", "label": "Keep open", "effect": "keep-open" }
+      ],
+      "recommendation": "2"
+    },
+    {
+      "id": "DW-112",
+      "question": "Should the WAHA disclaimer in pilot-validation.md be rewritten to reconcile with the transcribed 7-6 evidence, or should the evidence text change?",
+      "context": "The spec-mandated disclaimer says delivery is not claimed, but the transcribed 7-6 evidence says a message WAS delivered to a placeholder number before cancellation. The doc correctly implements the spec; the tension is spec-level and needs a human choice.",
+      "options": [
+        { "key": "1", "label": "Rewrite disclaimer", "effect": "build", "intent": "Amend pilot-validation.md to state delivery to a test/placeholder number was observed once, while still disclaiming production delivery guarantees." },
+        { "key": "2", "label": "Adjust evidence text", "effect": "build", "intent": "Amend the 7-6 evidence transcription to align with the disclaimer (delivery not asserted)." },
+        { "key": "3", "label": "Keep open", "effect": "keep-open" }
+      ],
+      "recommendation": "1"
+    }
+  ],
+  "escalations": [
+    {
+      "type": "ledger-id-collision",
+      "severity": "PREFERENCE",
+      "detail": "The ledger's 10-6 section (lines 1070-1089) reuses IDs DW-123/124/125/126 for four distinct report-service findings without status lines, colliding with the primary DW-123/124/125/126 entries. The orchestrator's ledger parser should treat the primary (status-bearing) entries as canonical and renumber the 10-6 orphan blocks (e.g. DW-141..144) to avoid future ambiguous sweeps."
+    }
+  ]
+}

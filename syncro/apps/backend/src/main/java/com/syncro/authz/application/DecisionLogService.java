@@ -6,6 +6,7 @@ import com.syncro.authz.domain.AuthzDecision;
 import com.syncro.authz.infrastructure.AuthzDecisionEntity;
 import com.syncro.authz.infrastructure.AuthzDecisionRepository;
 import com.syncro.config.AuthzProperties;
+import jakarta.annotation.PreDestroy;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -37,12 +38,19 @@ public class DecisionLogService {
   private final AuthzDecisionRepository repository;
   private final AuthzProperties authzProperties;
   private final Clock clock;
+  private final DecisionLogBuffer buffer;
 
   public DecisionLogService(AuthzDecisionRepository repository, AuthzProperties authzProperties,
       Clock clock) {
     this.repository = repository;
     this.authzProperties = authzProperties;
     this.clock = clock;
+    this.buffer = new DecisionLogBuffer(repository);
+  }
+
+  @PreDestroy
+  void shutdownBuffer() {
+    buffer.shutdown();
   }
 
   /**
@@ -60,24 +68,18 @@ public class DecisionLogService {
   }
 
   /**
-   * Persists one enforcement decision; never throws (fail-open on logging).
-   *
-   * <p>The action column is VARCHAR(255); a longer action (theoretically possible from an
-   * over-long request path) is truncated so the FR-164 audit row is never silently lost to
-   * a DataIntegrityViolationException.
+   * Queues one enforcement decision for asynchronous persistence (DW-132). Never throws:
+   * failures are logged and the caller (enforcement path) continues with its outcome
+   * untouched. The synchronous DB commit per decision is off the request hot path — a slow
+   * DB can no longer double the enforced request latency or trip the lowered OPA breaker.
    */
   public void record(AuthzDecision decision) {
-    try {
-      repository.save(new AuthzDecisionEntity(
-          new AuthzDecision(decision.decisionId(), decision.policyRevision(), decision.allowed(),
-              decision.degraded(), decision.userId(), truncateAction(decision.action()),
-              decision.resourceType(), decision.decidedAt())));
-    } catch (Exception failure) {
-      // Fail-open on logging: the enforcement outcome has already been decided (fail-deny
-      // on authz); a broken decision log must not turn an allow into a 500.
-      log.warn("[AUTHZ] Failed to persist decision {} for action {} — logging skipped",
-          decision.decisionId(), decision.action(), failure);
-    }
+    buffer.enqueue(decision);
+  }
+
+  /** Waits until all queued decisions are persisted; used by tests to observe rows deterministically. */
+  public void flush() {
+    buffer.flush();
   }
 
   /** Newest-first paged read view for the decision-log endpoint (SUPER_ADMIN/AUDITOR). */

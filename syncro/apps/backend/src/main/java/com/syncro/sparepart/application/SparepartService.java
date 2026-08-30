@@ -12,6 +12,7 @@ import com.syncro.common.LikePattern;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.projection.application.ProjectionCacheEvictionEvent;
+import com.syncro.sparepart.domain.SparepartDerivation;
 import com.syncro.sparepart.domain.SparepartTaxonomyDimension;
 import com.syncro.sparepart.infrastructure.SparepartEntity;
 import com.syncro.sparepart.infrastructure.SparepartRepository;
@@ -334,13 +335,12 @@ public class SparepartService {
   }
 
   private String bomPrefix(MachineEntity machine, TaxonomyRefs taxonomies) {
-    return machine.getCode() + machine.getPlant().getCode()
-        + codePart(taxonomies.category()) + codePart(taxonomies.kind()) + codePart(taxonomies.brand());
+    return SparepartDerivation.bomPrefix(machine.getCode(), machine.getPlant().getCode(),
+        taxonomies.category().getCode(), taxonomies.kind().getCode(), taxonomies.brand().getCode());
   }
 
   private String codePart(SparepartTaxonomyEntity taxonomy) {
-    var normalized = taxonomy.getCode().replaceAll("[^A-Za-z0-9]", "").toUpperCase(Locale.ROOT);
-    return normalized.length() <= 3 ? String.format(Locale.ROOT, "%-3s", normalized).replace(' ', '0') : normalized.substring(0, 3);
+    return SparepartDerivation.codePart(taxonomy.getCode());
   }
 
   private UUID requiredId(UUID id) {
@@ -428,8 +428,9 @@ public class SparepartService {
   }
 
   private String sparepartLabel(TaxonomyRefs taxonomies) {
-    return taxonomies.category().getName() + " · " + taxonomies.kind().getName() + " · "
-        + taxonomies.brand().getName() + " · " + taxonomies.type().getName();
+    return SparepartDerivation.sparepartLabel(
+        taxonomies.category().getName(), taxonomies.kind().getName(),
+        taxonomies.brand().getName(), taxonomies.type().getName());
   }
 
   private SparepartEntity save(SparepartEntity sparepart) {

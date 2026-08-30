@@ -40,9 +40,14 @@ export function DecisionLogTab() {
         />
       ) : null}
       {!decisions.isLoading && !decisions.isError && items.length > 0 ? (
-        <div className="hidden md:block">
-          <DecisionLogTable decisions={items} />
-        </div>
+        <>
+          <div className="hidden md:block">
+            <DecisionLogTable decisions={items} />
+          </div>
+          <div className="md:hidden">
+            <DecisionLogCards decisions={items} />
+          </div>
+        </>
       ) : null}
       {!decisions.isLoading && !decisions.isError && decisions.data?.data ? (
         <DataTablePagination
@@ -108,6 +113,35 @@ function DecisionLogTable({ decisions }: { readonly decisions: AuthzDecisionView
         ))}
       </TableBody>
     </Table>
+  );
+}
+
+function DecisionLogCards({ decisions }: { readonly decisions: AuthzDecisionView[] }) {
+  return (
+    <div className="space-y-2">
+      {decisions.map((decision) => (
+        <div key={decision.id ?? decision.decisionId ?? "unknown"} className="rounded-lg border p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-col gap-1">
+              <div className="flex flex-wrap items-center gap-2">
+                {decision.allowed ? <Badge variant="default">ALLOW</Badge> : <Badge variant="destructive">DENY</Badge>}
+                {decision.degraded ? <Badge variant="secondary">degraded</Badge> : null}
+              </div>
+              <p className="truncate text-sm" title={decision.action}>
+                {decision.action ?? "-"}
+              </p>
+              <p className="font-mono text-muted-foreground text-xs" title={decision.decisionId}>
+                {decision.decisionId ? `decision ${decision.decisionId}` : "decision -"}
+              </p>
+              <p className="font-mono text-muted-foreground text-xs">{formatDateTime(decision.decidedAt)}</p>
+            </div>
+          </div>
+          <p className="mt-2 truncate font-mono text-xs text-muted-foreground" title={decision.policyRevision}>
+            {decision.policyRevision ? `rev ${decision.policyRevision}` : "rev -"}
+          </p>
+        </div>
+      ))}
+    </div>
   );
 }
 

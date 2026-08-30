@@ -32,7 +32,10 @@ public class LatestTelemetryQueryService {
       redisData = redisWriter.readLatestAsMap(machineId);
     } catch (RuntimeException redisFailure) {
       log.warn("telemetry_latest_read_failed machineId={}", machineId, redisFailure);
-      return null;
+      // DW-70: return a marker entry so consumers can distinguish a Redis outage from a
+      // machine that never sent telemetry (empty hash).
+      return new LatestTelemetryDto.TelemetryData(machineId, false, null, null, null,
+          LatestTelemetryDto.FreshnessState.OFFLINE, Map.of(), false, true);
     }
     return parseTelemetryData(machineId, manualStatus, redisData);
   }
@@ -107,7 +110,8 @@ public class LatestTelemetryQueryService {
         lastReceivedAt,
         freshness,
         optionalFields,
-        !optionalFields.isEmpty());
+        !optionalFields.isEmpty(),
+        false);
   }
 
   private static Double parseDouble(String raw, UUID machineId) {

@@ -526,6 +526,10 @@ function MachineManager({
   );
   const machinesQuery = useListMachines(machineParams, { query: { enabled: canMutate } });
   const machines = machinesQuery.data?.data.items ?? [];
+  // DW-125: the picker is capped at limit: 200 — surface truncation truthfully so a fleet
+  // beyond one page is visible instead of silently unlinkable.
+  const totalMachines = machinesQuery.data?.data.totalElements ?? machines.length;
+  const isTruncated = totalMachines > machines.length;
   // Plant options come from the plants master list, not the (possibly truncated)
   // machine page — every plant stays filterable and no duplicate keys can occur.
   const plantsQuery = useListPlants({ query: { enabled: canMutate } });
@@ -577,6 +581,13 @@ function MachineManager({
             No linkable machines in this view — every listed machine is already linked, or none exist yet.
           </p>
         ) : (
+          <>
+          {isTruncated ? (
+            <p role="status" className="text-muted-foreground text-xs" aria-live="polite">
+              Showing the first {machines.length} of {totalMachines} machines — refine the plant filter to
+              reach machines beyond this page.
+            </p>
+          ) : null}
           <div className="space-y-2">
             <div className="grid gap-2">
               <Label htmlFor="team-machine-plant">Plant filter</Label>
@@ -615,6 +626,7 @@ function MachineManager({
               </div>
             </div>
           </div>
+          </>
         )
       ) : null}
       <div className="space-y-2">

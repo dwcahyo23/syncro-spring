@@ -331,9 +331,9 @@ class MachineControllerTest {
         "BF-08411", "JBF20", MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Active machine 2",
         Instant.parse("2026-05-27T00:00:00Z"), Instant.parse("2026-05-27T00:00:00Z"), List.of());
     var telemetryData = new LatestTelemetryDto.TelemetryData(machineId, true, 123.4, 1000L,
-        Instant.parse("2026-08-10T10:00:00Z"), LatestTelemetryDto.FreshnessState.ONLINE, Map.of(), false);
+        Instant.parse("2026-08-10T10:00:00Z"), LatestTelemetryDto.FreshnessState.ONLINE, Map.of(), false, false);
     var otherTelemetryData = new LatestTelemetryDto.TelemetryData(otherMachineId, false, 5.5, 42L,
-        Instant.parse("2026-08-10T09:00:00Z"), LatestTelemetryDto.FreshnessState.STALE, Map.of(), false);
+        Instant.parse("2026-08-10T09:00:00Z"), LatestTelemetryDto.FreshnessState.STALE, Map.of(), false, false);
     when(machines.list(user, plantId, null, null, null, 0, 100, "code,asc"))
         .thenReturn(new MachineListView(List.of(machineView, otherMachineView), 2, 0, 100, "code,asc"));
     when(telemetryQuery.latestTelemetryBatch(Map.of(
@@ -362,7 +362,7 @@ class MachineControllerTest {
         "BF-08410", "JBF19", MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Active machine",
         Instant.parse("2026-05-27T00:00:00Z"), Instant.parse("2026-05-27T00:00:00Z"), List.of());
     var telemetryData = new LatestTelemetryDto.TelemetryData(machineId, true, 123.4, 1000L,
-        Instant.parse("2026-08-10T10:00:00Z"), LatestTelemetryDto.FreshnessState.OFFLINE, Map.of(), false);
+        Instant.parse("2026-08-10T10:00:00Z"), LatestTelemetryDto.FreshnessState.OFFLINE, Map.of(), false, false);
     when(machines.get(user, machineId)).thenReturn(machineView);
     when(telemetryQuery.latestTelemetry(machineId, MachineStatus.ACTIVE)).thenReturn(telemetryData);
 

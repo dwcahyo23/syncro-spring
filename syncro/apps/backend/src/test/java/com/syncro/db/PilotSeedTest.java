@@ -2,6 +2,7 @@ package com.syncro.db;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.syncro.sparepart.domain.SparepartDerivation;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -184,6 +185,19 @@ class PilotSeedTest {
   }
 
   @Test
+  @DisplayName("[7.1] Canonical sparepart code/label match the live SparepartDerivation algorithm (DW-73)")
+  void seedSparepartCodeMatchesBackendDerivation() {
+    // Cross-check the seed's literal PILOT_SPAREPART_CODE and label against the pure
+    // derivation SparepartService now delegates to — algorithm drift (bomPrefix/codePart/
+    // sparepartLabel changes) must fail here, not silently diverge the seed.
+    String prefix = SparepartDerivation.bomPrefix(
+        "BF-08410", "GM1", "ELECTRIC", "PLC", "WECON");
+    assertThat(PILOT_SPAREPART_CODE).isEqualTo(prefix + "000");
+    assertThat(SparepartDerivation.sparepartLabel("Electric", "PLC", "Wecon", "LX5"))
+        .isEqualTo("Electric · PLC · Wecon · LX5");
+  }
+
+  @Test
   @DisplayName("[7.1] V32/V33 add optimistic-locking version columns defaulting to 0")
   void optimisticLockingVersionColumnsExistWithZeroDefault() {
     Map<String, Object> installationColumn = jdbc.queryForMap(
@@ -220,7 +234,7 @@ class PilotSeedTest {
     }
 
     assertThat(jdbc.queryForObject("SELECT count(*) FROM waha_templates", Long.class))
-        .isEqualTo(1L);
+        .isEqualTo(3L);
     assertThat(jdbc.queryForObject(
         "SELECT count(*) FROM waha_templates WHERE template_key = 'alert_notification'",
         Long.class))

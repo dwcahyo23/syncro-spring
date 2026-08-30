@@ -261,7 +261,9 @@ origin: code review of spec-3-5-calculate-production-count-delta-with-16-bit-wra
 location: CountingDeltaCalculator.java
 severity: high
 reason: `CountingDeltaCalculator` treats any `current < previous` as a 16-bit unsigned wrap (`delta = floorMod(current - previous, 65536)`). A genuine counter reset/re-provision or out-of-order/stale message permanently corrupts the delta chain. Distinguishing wrap from decrease/reset requires a per-machine counter-source configuration that does not exist in Phase 1. Revisit with counter-type configuration or an ordering check (Story 3.9 payload timestamp/messageId) before the delta chain feeds Epic 4.
-status: open
+decision: 2026-08-30 Keep wrap-only — pilot machines are 16-bit PLC counters that only ever wrap; reset/re-provision is out of pilot scope and re-baselining could mask genuine device issues.
+status: done 2026-08-30
+resolution: closed by human decision — keep wrap-only; revisit when a counter-reset scenario enters pilot scope
 
 ### DW-27: Redis latest-write failure after the InfluxDB point is persisted makes the next delta double-count the already-persisted span
 
@@ -434,7 +436,9 @@ origin: migrated from legacy ledger ("code review of 3-13-configure-mqtt-securit
 location: auth-bootstrap.csv:2-3
 severity: high
 reason: auth-bootstrap.csv:2-3 contains literal MQTT passwords for syncro_backend and device_BF-08410_GM1. Dev-environment pattern consistent with all other infra files; production credential management out of scope for story 3-13.
-status: open
+decision: 2026-08-30 Scoped-ignore + docs — keep dev credentials but add them to a scoped .gitignore and document rotation; consistent with the existing dev-infra pattern and the DW-75 precedent.
+status: done 2026-08-30
+resolution: closed by human decision — dev credentials stay but are gitignored and rotation documented
 
 ### DW-79: Hardcoded SEED_SECRET in docker-entrypoint.sh committed to git
 
@@ -442,7 +446,9 @@ origin: migrated from legacy ledger ("code review of 3-13-configure-mqtt-securit
 location: docker-entrypoint.sh:37
 severity: high
 reason: docker-entrypoint.sh:37 hardcodes the administrator API key secret. Same dev-infra pattern; secret rotation and production secrets management out of scope.
-status: open
+decision: 2026-08-30 Scoped-ignore + docs — keep the dev default but document rotation and note the dev-only scope; consistent with the existing dev-infra pattern.
+status: done 2026-08-30
+resolution: closed by human decision — dev secret stays but rotation documented and dev-only scope noted
 
 ### DW-80: Erlang cluster cookie is a weak committed value
 
@@ -450,7 +456,9 @@ origin: migrated from legacy ledger ("code review of 3-13-configure-mqtt-securit
 location: emqx.conf:4
 severity: medium
 reason: emqx.conf:4 sets cookie = "emqxsyncrodev". Single-node dev setup; Erlang cluster security out of scope.
-status: open
+decision: 2026-08-30 Document + keep — single-node dev setup; document that the cookie must be regenerated for any multi-node/clustered deployment.
+status: done 2026-08-30
+resolution: closed by human decision — cookie stays for single-node dev; regeneration documented for clustered deploys
 
 ### DW-81: ROUTING_FAILED jobs never re-queried for escalation retry
 
@@ -520,14 +528,16 @@ resolution: resolved by deferred-work bundle 6 — @Transactional removed from d
 origin: code review of spec-6-1-expose-dependency-health-checks (2026-08-21)
 location: syncro/apps/backend/src/main/java/com/syncro/health/DbHealthIndicator.java:33
 reason: matches Spring Boot's own DataSourceHealthIndicator behavior; a bounded acquire (e.g., Future.get(2s)) would require a non-pooled control connection.
-status: open
+status: done 2026-08-30
+resolution: resolved by commit 9b00be9 — DbHealthIndicator.acquireBounded() bounds pool getConnection to 2s; stall reports DOWN POOL_ACQUIRE_TIMEOUT
 
 ### DW-47: RedisHealthIndicator ping inherits Lettuce command timeout (60s)
 
 origin: code review of spec-6-1-expose-dependency-health-checks (2026-08-21)
 location: syncro/apps/backend/src/main/java/com/syncro/health/RedisHealthIndicator.java:31-32
 reason: same timeout profile as the replaced auto redisHealthContributor; setting a 2s command timeout requires client-level config.
-status: open
+status: done 2026-08-30
+resolution: resolved by commit 9b00be9 — client-level Lettuce command timeout configured (application.yml, DW-47 comment); Redis health ping bounded
 
 ### DW-48: MQTT mid-session broker outage not observable by health
 
@@ -578,8 +588,6 @@ origin: migrated from legacy ledger ("telemetry pipeline scale analysis for hund
 location: syncro/infra/docker-compose.yml:68
 severity: medium
 reason: `syncro/infra/docker-compose.yml:68` runs `emqx/emqx:6.2.2`. Verified via Management API (API key `syncro-acl-seed`): Rules Engine active (`$events/message_publish`, `$events/message_delivered`, etc.), and connector creation for `influxdb_api_v3` (plus redis/pgsql/mqtt/http/kafka bridge modules, 45 `emqx_bridge_*` libs) succeeds on community edition. This means the backend's per-message InfluxDB write (`InfluxTelemetryWriter`) and Redis latest-state write (`RedisLatestTelemetryWriter`) could move into EMQX rule bridges, dramatically reducing the backend hot path and improving scale for hundreds of machines/plant. Backend would then subscribe to a republished sink topic (e.g. `factory/+/+/processed`) and only do dedupe → counter state → sparepart evaluator → alerts. Note: business logic (sparepart evaluation, alert creation) stays in Java; this is an architecture-level change requiring a correct-course proposal and a PoC (rule + InfluxDB v3 bridge to local InfluxDB on 8181) before committing.
-status: open
-
 Mapping to Syncro backend offloading (feed the correct-course discussion):
 
 | Backend component today | EMQX alternative | Verdict |
@@ -592,6 +600,9 @@ Mapping to Syncro backend offloading (feed the correct-course discussion):
 | `SparepartLifetimeEvaluator` + alerts | n/a | Business logic — keep in backend |
 
 Caveats: every bridge/queue needs a PoC with real traffic; EMQX config changes live in `infra/emqx/etc/emqx.conf` + `docker-entrypoint.sh` and require container restart; InfluxDB bridge must reach InfluxDB via container network name (`influxdb:8181`), not `localhost`; dedupe (`SETNX`) and quarantine semantics must be preserved regardless of where validation/writing happens.
+decision: 2026-08-30 Defer to next epic — workerThreads and cleanSession(false) are now wired (DW-91/93 done); revisit EMQX bridges when scale measurements justify the architecture change.
+status: done 2026-08-30
+resolution: closed by human decision — defer EMQX Data Integration offload to a future epic; backend stays the single write path for now
 
 ### DW-93: `cleanSession=true` drops in-flight QoS-1 messages on reconnect — relevant at scale
 
@@ -688,42 +699,49 @@ location: TelemetryIngestTracker.java:30 (now.isAfter(lastAcceptedAt)) combined 
 severity: medium
 reason: TelemetryIngestTracker.recordAccepted() keeps lastAcceptedAt monotonic, so a backward NTP clock step leaves lastAcceptedAt in the "future" and freshness reports LIVE (clock-skew branch) until wall time catches up — masking a genuinely stalled ingest path. Fixing means either accepting an unconditional lastAcceptedAt = now (changes the shared tracker also consumed by the 6.4 ingest worker status) or surfacing skew as its own state — a shared-tracker decision, not this story's code.
 source_spec: _bmad-output/implementation-artifacts/spec-6-5-surface-latest-telemetry-freshness-in-health.md
-status: open
+status: done 2026-08-30
+resolution: resolved by commit 2b53221 — recordAccepted sets lastAcceptedAt unconditionally; backward clock no longer pins freshness LIVE
 
 ### DW-70: Stale-machine evidence cannot distinguish Redis read failure from never-received telemetry
 
 origin: Deferred from: code review of spec-6-6-link-health-failures-to-operational-evidence (2026-08-21)
 location: syncro/apps/backend/src/main/java/com/syncro/telemetry/application/TelemetryStaleMachineService.java + LatestTelemetryQueryService.java
 reason: LatestTelemetryQueryService returns null for read failure, empty Redis hash, and malformed receivedAt alike, so during a Redis outage every ACTIVE machine is reported as never-received OFFLINE evidence (whole fleet listed, "No telemetry received") — a definitive false state during exactly the incident the panel exists for. Fixing requires extending the shared read API (outcome-distinguishing wrapper) also consumed by MachineController hydration (6.4 surface) — a deliberate contract decision. Mitigation today: a Redis outage independently shows the Redis dependency card DOWN and degrades the overall banner.
-status: open
+decision: 2026-08-30 Outcome wrapper — extend the read API to return an outcome (FOUND / NEVER_RECEIVED / READ_FAILURE) so the stale-machine panel shows a definitive Redis-down state instead of a false never-received fleet.
+status: done 2026-08-30
+resolution: resolved by sweep bundle — TelemetryData.readFailure flag; stale-machine evidence surfaces READ_FAILURE state on Redis outage; MachineController hydration unchanged
 
 ### DW-71: Machine code is unique per plant only, so code-only deep links are ambiguous across plants
 
 origin: Deferred from: code review of spec-6-6-link-health-failures-to-operational-evidence (2026-08-21)
 location: syncro/apps/web/src/features/system-health/components/system-health-page.tsx (stale-machine list href) + syncro/apps/backend/src/main/java/com/syncro/machine/infrastructure/MachineRepository.java:69
 reason: Uniqueness is (plant_id, lower(code)) while the machine hub resolves codes globally via findByCodeIgnoreCase; with the same code in two plants, both stale-machine rows link to one URL and the hub throws IncorrectResultSizeDataAccessException. Pre-existing hub-resolution limitation (route /dashboard/master-data/machines/[machineCode] predates 6-6 and breaks for cross-plant duplicates from any entry point). Fix needs a by-id or plant-scoped resolution decision; Phase-1 pilot is single-plant (GM1). 6-6 patch mitigated determinism only (machineId sort tie-break, encodeURIComponent).
-status: open
+status: done 2026-08-30
+resolution: resolved by commit c6e88e6 — stale-machine links route by machineId via new /machines/by-id route; hub prefers useGetMachine when machineId present
 
 ### DW-72: Wall-clock jumps silently reset or mis-attribute windowed data-quality counts
 
 origin: Deferred from: code review of spec-6-7-implement-data-quality-panel-and-latency-indicator (2026-08-22)
 location: syncro/apps/backend/src/main/java/com/syncro/telemetry/application/TelemetryDataQualityTracker.java (currentMinute()/increment())
 reason: The minute-bucket ring is keyed on wall-clock epoch minutes. A backward NTP step re-tags buckets as time re-passes minutes (counts re-accumulate into fresh windows), and a forward jump larger than the ring leaves every bucket stale-tagged so all windowed counts read zero mid-run; the lock-free count() can also pair a reclaimed bucket's new count with the old minute across the four counters. Operator impact is a transient wrong panel during exactly the kind of host clock incident an NTP fix is. Fixing means a monotonic-minute guard (treat regression as full reset) plus a documented reset-on-jump policy — a cross-tracker decision (TelemetryIngestTracker has the mirror-image monotonic guard issue, DW-69). Mitigation: counts are observability-only, reset on restart by design, and the latency sample ages out with the window.
-status: open
+status: done 2026-08-30
+resolution: resolved by commit 2b53221 — currentMinute() CAS-clamped monotonic; backward step stalls counts into the current window
 
 ### DW-73: Pilot seed sparepart code/label cannot detect SparepartService algorithm drift
 
 origin: Deferred from: code review of spec-7-1-create-canonical-pilot-seed-data (2026-08-22)
 location: syncro/apps/backend/src/main/resources/db/seed/pilot-seed.sql + syncro/apps/backend/src/test/java/com/syncro/db/PilotSeedTest.java vs com.syncro.sparepart.application.SparepartService (bomPrefix/codePart/nextBomCode/sparepartLabel)
 reason: The canonical sparepart code `BF-08410GM1ELEPLCWEC000` and label `Electric · PLC · Wecon · LX5` exist as duplicated literals in the seed SQL, the test constant, and the test assertion; nothing cross-checks them against the live SparepartService algorithm. If bomPrefix/codePart/sparepartLabel ever changes (e.g. dash stripping, separator change), PilotSeedTest stays green while the seed silently diverges from backend-generated codes — defeating AC 7.1-3's "backend-exact generated code". Cross-checking requires invoking SparepartService from the hermetic JDBC test, which needs the Spring context (or extracted static helpers) the test deliberately avoids; the algorithm is also indirectly pinned by SparepartServiceIntegrationTest for other machines. Fix needs a decision: extract pure code/label derivation into a testable component or accept literal pinning.
-status: open
+status: done 2026-08-30
+resolution: resolved by sweep bundle — SparepartDerivation pure component extracted; PilotSeedTest cross-checks seed literal against live derivation; SparepartLifetimeEvaluator delegates to derived consumedPercentage
 
 ### DW-74: Fixture boundary math mirrors the evaluator; seed-linked constants are literals
 
 origin: Deferred from: code review of spec-7-2-provide-pilot-mqtt-payload-fixtures (2026-08-22)
 location: syncro/apps/backend/src/test/java/com/syncro/telemetry/application/PilotMqttPayloadFixtureTest.java vs com.syncro.sparepart/application SparepartLifetimeEvaluator + SparepartAlertService + db/seed/pilot-seed.sql
 reason: assertBoundaryMath delegates the counter delta to production CountingDeltaCalculator, but the percentage (x100, scale 2, HALF_UP) and the alert comparator semantics (fires at >=, SparepartAlertService.java:83) are a verified inline mirror because SparepartLifetimeEvaluator requires a MachineSparepartInstallationRepository and cannot run hermetically; BASELINE_COUNTER/EXPECTED_PRODUCTION_COUNT/THRESHOLD_PERCENTAGE are also literals copied from the pilot-seed.sql installation row. If the evaluator formula/rounding, the comparator direction, or the seed installation values (1000/0/90) change, PilotMqttPayloadFixtureTest stays green while the fixtures encode the wrong side of the real alert boundary. Fix requires a production refactor (extract a pure consumed-percentage function) or parsing the values from the seed file - both beyond an additive story scope. Same family as DW-73.
-status: open
+status: done 2026-08-30
+resolution: resolved by sweep bundle — SparepartDerivation.consumedPercentage extracted; PilotMqttPayloadFixtureTest uses the real function; SparepartLifetimeEvaluator delegates to it
 
 ### DW-75: Validated backend binary not reproducible from committed repo (JwtTokenService untracked)
 
@@ -739,7 +757,8 @@ resolution: resolved by deferred-work bundle 17 — JwtTokenService.java tracked
 origin: Deferred from: code review of spec-7-4-validate-telemetry-before-threshold-does-not-create-alert (2026-08-22)
 location: syncro/apps/backend/src/main/resources/application*.yml / syncro/.env (SYNCRO_AUTH_LOCAL_ADMIN_PASSWORD) + spec story boundaries (UI access section)
 reason: The story spec documents `admin@syncro.dev / syncro-admin-dev` as the UI access credential, but the live local stack runs a different password from `syncro/.env`, which is gitignored and version-controlled out of band. The dev recorded the deviation transparently (literal redacted per review finding) and the used credential is within the spec's allowed set, but spec text and live reality can silently drift for any future manual/UI verification, and (per DW-75 family) the spec text cannot be verified against source. Fix needs a decision: reconcile spec text with live defaults (documentation update) or make the seed/bootstrap own the credential deterministically. Deferred to the 7-7 documentation story; 7-4 itself will additionally redact the literal password per review patch.
-status: open
+status: skipped 2026-08-30
+resolution: skipped — documentation-only concern; reconciliation is a docs chore, not a code defect
 
 ### DW-103: No regression test protects V31 fix
 
@@ -828,7 +847,9 @@ origin: migrated from legacy ledger ("code review of spec-7-7-document-pilot-val
 location: syncro/docs/pilot-validation.md §6/§9
 severity: medium
 reason: WAHA disclaimer (pilot-validation.md §6/§9) contradicts the transcribed 7-6 evidence ("message WAS delivered to WhatsApp before cancellation" for a placeholder number). The disclaimer is spec-mandated (DW-88 / don't-claim-delivery constraint), so the doc correctly implements the spec; the tension needs spec-level resolution, not a doc fix.
-status: open
+decision: 2026-08-30 Rewrite disclaimer — amend pilot-validation.md to state delivery to a test/placeholder number was observed once, while still disclaiming production delivery guarantees.
+status: done 2026-08-30
+resolution: resolved by sweep bundle — pilot-validation.md §6 and SM-005 rewritten: 201-accepted placeholder send stated as observed, production delivery not asserted
 
 ### DW-114: Existing integer-typed InfluxDB optional fields will conflict on first Double write after DW-28 deploy
 
@@ -836,7 +857,8 @@ origin: review of spec-deferred-work-bundle, 2026-08-22
 location: InfluxTelemetryWriter.java, existing InfluxDB bucket
 severity: medium
 reason: Telemetry optional fields previously persisted as integer (Long) will now receive Double writes. InfluxDB rejects field-type changes within a measurement, so a bucket with `rpm=1200i` rejects the first `rpm=1200.0` point. The DW-28 decision explicitly changed the storage contract, but did not address existing data. Dev/CI buckets can be reset; production/preview needs a bucket rewrite or migration plan.
-status: open
+status: done 2026-08-30
+resolution: resolved by sweep bundle — migration plan documented in local-development.md (DW-114 section); dev/CI bucket reset path, production rewrite steps included
 
 ### DW-115: DW-28 Double coercion loses precision for integral optional fields above 2^53
 
@@ -923,7 +945,8 @@ resolution: resolved by deferred-work bundle 14 — prefix escaped (\ % _) befor
 source_spec: `_bmad-output/implementation-artifacts/spec-deferred-work-bundle-14.md`
 summary: The identical three-replace escape chain (\ -> \\, % -> \%, _ -> \_) now exists in SparepartService.nextBomCode, MachineService.normalizeSearch, MachineGroupService.normalizeSearch, AuditLogService.normalizeActor, and SparepartService bomCodeForUpdate-adjacent paths - drift hazard if one copy is later fixed or reordered.
 evidence: grep shows the same replace triple in four services; order (backslash first) is load-bearing and only documented at some sites.
-status: open
+status: done 2026-08-30
+resolution: resolved by commit c3bb741 — shared LikePattern.escape() consolidates the chains; drift hazard removed
 - source_spec: spec-8-1-add-garage-object-storage-and-backend-integration.md
   summary: Add an automated Testcontainers-based Garage integration test proving real S3 semantics (path-style addressing, region/credential acceptance, HeadBucket) before or with Story 8.4's image API.
   evidence: Review found all 8-1 tests mock S3Client/S3Presigner; correct wiring is the story's core deliverable but is only verified by one-off manual live-stack checks, so a regression (e.g. dropping pathStyleAccessEnabled) would keep CI green until manual testing.
@@ -952,49 +975,56 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-8-7-raise-procurement-risk-alert-within-lead-time-window.md`
   summary: TelemetryPersistenceService.persist evicts the per-machine projection cache before the 8-7 alert evaluation, but ProjectionRedisCache.evictMachine swallows Redis errors, so on eviction failure the subsequent cache.get returns the pre-message view and the alert is evaluated against stale telemetry with no staleness signal in the alert path.
   evidence: ProjectionRedisCache.evictMachine logs projection_cache_evict_failed and continues; 8-7's evaluateAndCreateProcurementRiskAlerts reads through the same cache with no freshness check; a successful stale read is not distinguishable from a fresh one.
-  status: open
+  status: done 2026-08-30
+  resolution: resolved by sweep bundle — ProjectionRedisCache tracks failedEvictions in-memory; next get() recomputes instead of serving stale entry
 
 ### DW-125: Teams machine-link picker hard-capped at limit 200
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-2-cross-plant-teams.md`
   summary: MachineManager fetches machines with `limit: 200` and derives both the linkable set and the plant filter from that single truncated page; fleets beyond 200 machines (or a plant whose machines fall outside page one) cannot be linked via UI and get no truncation indicator.
   evidence: team-management.tsx machineParams `{ plantId: ..., limit: 200 }` with plant options derived by iterating only the fetched items; proper fix is a server-side search/paginated picker shared across master-data dialogs.
-  status: open
+  status: done 2026-08-30
+  resolution: resolved by sweep bundle — truncation indicator added (aria-live) when totalMachines > fetched count; plant filter options already use the plants master list, not the truncated machine page
 
 ### DW-126: Optimistic-lock conflicts on teams surface as raw 500
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-2-cross-plant-teams.md`
   summary: TeamEntity carries `@Version`; concurrent PUT/DELETE of the same team raises ObjectOptimisticLockingFailureException which TeamExceptionHandler does not map, so lost-update races return 500 instead of 409/retry signal.
   evidence: TeamExceptionHandler maps domain exceptions only; sections/machines handlers share the same systemic gap — fix globally in one pass rather than per-module.
-  status: open
+  status: done 2026-08-30
+  resolution: resolved by commit 36e8fe0 — OOLFE mapped to 409 CONCURRENT_MODIFICATION in Team/Section handlers (machines/machine-groups already covered)
 
 ### DW-127: Combined Maven verification command flaky under Testcontainers context caching
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-2-cross-plant-teams.md`
   summary: Running multiple AbstractPostgresIntegrationTest classes in one surefire JVM fails later classes with connection-refused because the shared static container restarts on a new mapped port while the cached Spring context keeps the first port; each class passes individually.
   evidence: Story 9-2 Debug Log; pre-existing quirk also affects 9-1 integration suites. Fix belongs to test infra (reuse-friendly container lifecycle or per-class datasource), not to story code.
-  status: open
+  status: done 2026-08-30
+  resolution: already resolved — AbstractPostgresIntegrationTest.java:61-66 uses a static shared container with withReuse(true); port-stability quirk resolved by container reuse across classes
 
 ### DW-128: audit_log immutable-update trigger does not cover id and plant_id columns
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-3-opa-infrastructure.md`
   summary: V16's BEFORE UPDATE OF column list omitted id and plant_id; V44 faithfully recreated that list (plus decision_id), so UPDATE audit_log SET plant_id/id remains possible despite the immutability intent.
   evidence: V44__add_audit_decision_id.sql trigger column-for-column matches V16's original list; surfaced by Edge Case Hunter on 9-3. Fix = follow-up migration recreating the trigger to cover every column.
-  status: open
+  status: done 2026-08-30
+  resolution: resolved by commit f417541 (V68) — trigger recreated covering id, plant_id, and every column
 
 ### DW-129: Health/read posture under healthy OPA is inverted once enforced-paths include public probes
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-3-opa-infrastructure.md`
   summary: Rego grants only SUPER_ADMIN, so anonymous health probes on enforced paths get 403 while OPA is healthy and 200 only when it is down — the degraded-allowlist alone cannot express "always-public".
   evidence: Blind Hunter + Edge Case Hunter convergence on 9-3; harmless today (empty enforced-paths) but 9.5 must add an always-public allowance (rego rule or bypass list distinct from degraded-allowlist) before populating enforcement.
-  status: open
+  status: done 2026-08-30
+  resolution: resolved by sweep bundle — alwaysPublicPaths config (default /api/v1/health,/actuator/**) checked in PolicyDecisionPoint before OPA; test proves healthy OPA never contacted for these paths
 
 ### DW-130: Sparse traffic during an OPA hang pays full client timeout per request
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-3-opa-infrastructure.md`
   summary: With minimum-number-of-calls=5, low-volume periods never trip the circuit breaker, so a hung (not refusing) OPA yields sustained 5s stalls per authz call until volume accumulates.
   evidence: OpaClient mirrors WahaClient's R4j tuning (house pattern); consider lower min-calls or a failure-rate-based timeout budget for the opa breaker specifically when enforcement goes live in 9.5.
-  status: open
+  status: done 2026-08-30
+  resolution: already resolved — application.yml:110-112 lowers SYNCRO_OPA_CB_MIN_CALLS default to 2 (DW-130 comment); OpaClient builds the breaker from these properties
 
 ### DW-131: WAHA template mutation gate follows uniform SUPER_ADMIN || MANAGER_MAINTENANCE allow-list instead of legacy deny-list
 
@@ -1008,63 +1038,72 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-5-opa-enforcement-on-maintenance-endpoints.md`
   summary: Every PolicyDecisionPoint.evaluate() writes one authz_decisions row on the hot request path (its own transaction per record), doubling DB round-trips per enforced request and making a slow DB able to trip the lowered OPA breaker.
   evidence: DecisionLogService.record() → repository.save() (SimpleJpaRepository, one tx each), called synchronously from PDP.evaluate; surfaced by Blind Hunter on 9-5. Fix = async/queue-backed batch write or a write-behind buffer, revisit when enforcement traffic is measured.
-  status: open
+  status: done 2026-08-30
+  resolution: resolved by sweep bundle — DecisionLogBuffer enqueues decisions to a single-worker executor; persistence is off the request hot path, fail-open preserved
 
 ### DW-133: Decision-log tab renders an empty surface on small screens (no mobile card variant)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-5-opa-enforcement-on-maintenance-endpoints.md`
   summary: decision-log-tab.tsx wraps its table in `hidden md:block`; on mobile only the pagination renders, unlike the audit-log page which has both desktop table and card variants.
   evidence: Edge Case Hunter on 9-5. Fix = add a card-based mobile layout mirroring audit-log-table.tsx.
-  status: open
+  status: done 2026-08-30
+  resolution: resolved by sweep bundle — DecisionLogCards added for mobile (md:hidden); mirrors audit-log-table card pattern
 
 ### DW-134: Workorder month prefix derives from UTC clock, not the plant-local timezone
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-10-1-workorder-schema-and-categories.md`
   summary: WorkOrderIdGenerator derives WO-YYMM from Clock.systemUTC() (TimeConfig), so at a UTC+7 plant workorders created 00:00-07:00 local on the 1st carry the previous month's prefix.
   evidence: Blind Hunter on 10-1; ProjectionProperties already models plantTimezone, so the UTC derivation is inconsistent. Fix = derive prefix from YearMonth.now(clock.withZone(plantZoneId)) or document UTC semantics.
-  status: open
+  status: done 2026-08-30
+  resolution: resolved by commit 6d2da39 — WorkOrderIdGenerator.derivePrefix uses YearMonth.now(clock.withZone(plantZone)); month rolls at plant-local midnight
 
 ### DW-135: WorkorderIdExhaustedException has no @ExceptionHandler mapping until story 10-2
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-10-1-workorder-schema-and-categories.md`
   summary: nextId() throwing WorkorderIdExhaustedException surfaces as a generic Spring 500; no endpoint can trigger it yet (generator only exercised in tests).
   evidence: Edge Case Hunter on 10-1. Fix = add an @ExceptionHandler(WorkorderIdExhaustedException.class) returning 503 + code when 10-2 introduces the create-workorder endpoint.
-  status: open
+  status: done 2026-08-30
+  resolution: already resolved — WorkOrderExceptionHandler.java:219-223 maps WorkorderIdExhaustedException to 503 WORKORDER_ID_EXHAUSTED; WorkOrderControllerTest.java:467 pins it
 
 ### DW-136: New workorder lock finders are only exercised through Mockito stubs
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-10-3-status-lifecycle-and-on-procurement.md`
   summary: WorkOrderRepository.findByParentIdForUpdate / findByIdForUpdate (@Lock PESSIMISTIC_WRITE) have no Testcontainers-level test asserting real FOR UPDATE SQL or lock behavior.
   evidence: Blind Hunter on 10-3; 10-2 set the precedent of a migration test class, but DW-127 (multi-integration-class quirk) kept this story to mock-based tests. Fix = one integration test loading both finders against PostgreSQL when the DW-127 workaround is revisited.
-  status: open
+  status: done 2026-08-30
+  resolution: resolved by commit 83dd926 — WorkOrderLockAndDerivationIntegrationTest exercises both finders against real Postgres
 
 ### DW-137: Malformed JWT subject can 500 executor-gated mutations instead of 401/403
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-10-3-status-lifecycle-and-on-procurement.md`
   summary: WorkOrderService.isExecutor calls UUID.fromString(user.id()) which throws IllegalArgumentException on a non-UUID subject; transition() is the first executor-gated endpoint so the surface widened.
   evidence: Blind Hunter on 10-3; same pattern exists in create/assign since 10-2. Fix = parse defensively once at the auth boundary (or map IllegalArgumentException to 401) across all three methods together.
-  status: open
+  status: done 2026-08-30
+  resolution: resolved by commit 6d2da39 — JwtTokenService validates non-UUID subjects fail-closed to InvalidTokenException (401) at the auth boundary
 
 ### DW-138: Derived ON_PROCUREMENT enter-branch has no coverage against the shipped port bean
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-10-3-status-lifecycle-and-on-procurement.md`
   summary: recomputeProcurementState enter-to-ON_PROCUREMENT is unit-tested only via a fake SparepartRequestReadinessPort; the shipped NoopSparepartRequestReadinessPort makes derivation a structural no-op until Epic 12 swaps the bean.
   evidence: Blind Hunter on 10-3. Fix = when Epic 12 implements the port, add an application test wiring the real adapter plus its first request-transition event into recomputeProcurementState.
-  status: open
+  status: done 2026-08-30
+  resolution: resolved by commit 83dd926 — WorkOrderLockAndDerivationIntegrationTest wires the real @Primary SparepartRequestReadinessPort into recomputeProcurementState
 
 ### DW-139: V49 btree_gist extension needs superuser in managed PostgreSQL
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-10-4-repair-sessions-and-mttr.md`
   summary: V49 runs CREATE EXTENSION IF NOT EXISTS btree_gist (first extension install in the migration chain) for the gist EXCLUDE overlap constraint; local postgres:17-alpine applies it (migration test passes), but managed PostgreSQL (RDS/Cloud SQL/Supabase) requires a superuser pre-deployment grant before Flyway runs.
   evidence: Blind Hunter on 10-4. Fix = document the extension prerequisite in the deploy runbook, or split the extension creation into a manual pre-deployment step.
-  status: open
+  status: done 2026-08-30
+  resolution: resolved by sweep bundle — prerequisite documented in local-development.md (DW-139 section); superuser CREATE EXTENSION step before Flyway
 
 ### DW-140: WorkOrderEvidenceService has no Garage integration test
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-10-5-evidence-and-technical-drawings.md`
   summary: Evidence CRUD is covered by Mockito unit tests (WorkOrderEvidenceServiceTest) and a schema migration test, but no Spring slice/Testcontainers test exercises the real ObjectStorageService + PostgreSQL interaction (key format, content-type handling, FK behavior under rollback, store-succeeds-save-fails orphan window) — 8-4's SparepartImageServiceIntegrationTest is the precedent.
   evidence: Blind Hunter on 10-5. Fix = add WorkOrderEvidenceServiceIntegrationTest mirroring SparepartImageServiceIntegrationTest when evidence flows are exercised end-to-end.
-  status: open
+  status: done 2026-08-30
+  resolution: resolved by commit 2cbf704 — WorkOrderEvidenceServiceIntegrationTest exercises real Postgres + ObjectStorageService (key format, content-type, access gate, delete)
 
 
 ### DW-123: Report save full-row UPDATE can clobber concurrent status transition fields

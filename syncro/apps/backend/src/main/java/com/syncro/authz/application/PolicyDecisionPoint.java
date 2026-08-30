@@ -75,6 +75,12 @@ public class PolicyDecisionPoint {
    */
   public Decision evaluate(AuthenticatedUser user, OpaResource resource, String action,
       String requestPath) {
+    // DW-129: always-public paths bypass OPA entirely — health/read probes must stay 200
+    // while OPA is healthy, not only when it is down (the degraded-allowlist cannot express
+    // "always public"). Distinct from the degraded-allowlist: this is not a degraded decision.
+    if (requestPath != null && matchesAlwaysPublic(requestPath)) {
+      return new Decision(true, false, null);
+    }
     Decision decision;
     String revision = null;
     try {
@@ -150,6 +156,11 @@ public class PolicyDecisionPoint {
 
   boolean matchesAllowlist(String path) {
     return authzProperties.degradedAllowlist().stream()
+        .anyMatch(pattern -> pathMatcher.match(pattern, path));
+  }
+
+  boolean matchesAlwaysPublic(String path) {
+    return authzProperties.alwaysPublicPaths().stream()
         .anyMatch(pattern -> pathMatcher.match(pattern, path));
   }
 
