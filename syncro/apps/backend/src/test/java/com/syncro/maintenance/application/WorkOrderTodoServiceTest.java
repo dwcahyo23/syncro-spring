@@ -114,7 +114,7 @@ class WorkOrderTodoServiceTest {
   @DisplayName("10.7-SVC-002 P0 todo create on a terminal workorder is 400 WORKORDER_TERMINAL")
   void createTodoTerminalWorkorder() {
     var user = assignedTechnician();
-    var entity = entity(technicianId, WorkOrderStatus.DONE);
+    var entity = entity(technicianId, WorkOrderStatus.CLOSED);
     when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity));
 
     assertThatThrownBy(() -> service.create(user, WORKORDER_ID, new CreateTodoCommand("Fix", null, null)))
@@ -397,10 +397,9 @@ class WorkOrderTodoServiceTest {
     assertThat(items.getFirst().todos()).hasSize(1);
     assertThat(items.getFirst().todos().getFirst().title()).isEqualTo("Fix bearing");
     // Every non-terminal status key is present (even if empty).
-    assertThat(view.groups().get(WorkOrderStatus.DRAFT)).isEmpty();
     assertThat(view.groups().get(WorkOrderStatus.OPEN)).isEmpty();
-    assertThat(view.groups().get(WorkOrderStatus.ASSIGNED)).isEmpty();
-    assertThat(view.groups().get(WorkOrderStatus.ON_PROCUREMENT)).isEmpty();
+    assertThat(view.groups().get(WorkOrderStatus.PENDING_SPAREPART)).isEmpty();
+    assertThat(view.groups().get(WorkOrderStatus.PENDING_REVIEW)).isEmpty();
   }
 
   @Test
@@ -413,11 +412,10 @@ class WorkOrderTodoServiceTest {
 
     var view = service.kanban(user);
 
-    assertThat(view.groups().get(WorkOrderStatus.DRAFT)).isEmpty();
     assertThat(view.groups().get(WorkOrderStatus.OPEN)).isEmpty();
-    assertThat(view.groups().get(WorkOrderStatus.ASSIGNED)).isEmpty();
     assertThat(view.groups().get(WorkOrderStatus.IN_PROGRESS)).isEmpty();
-    assertThat(view.groups().get(WorkOrderStatus.ON_PROCUREMENT)).isEmpty();
+    assertThat(view.groups().get(WorkOrderStatus.PENDING_SPAREPART)).isEmpty();
+    assertThat(view.groups().get(WorkOrderStatus.PENDING_REVIEW)).isEmpty();
   }
 
   @Test

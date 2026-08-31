@@ -6,12 +6,13 @@ import com.syncro.audit.domain.AuditAction;
 import com.syncro.audit.domain.AuditEntityType;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.domain.ApplicationRole;
+import com.syncro.auth.infrastructure.AuthUserRepository;
+import com.syncro.auth.infrastructure.SignatureUseEntity;
+import com.syncro.auth.infrastructure.SignatureUseRepository;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.maintenance.infrastructure.db.WorkOrderEntity;
 import com.syncro.maintenance.infrastructure.db.WorkOrderRepository;
-import com.syncro.maintenance.infrastructure.db.WorkorderSignatureEntity;
-import com.syncro.maintenance.infrastructure.db.WorkorderSignatureRepository;
 import com.syncro.org.application.OperationalScope;
 import com.syncro.org.application.OperationalScopeService;
 import com.syncro.storage.application.ObjectStorageException;
@@ -27,34 +28,40 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Workorder signature approval (story 14-3, FR-175). An in-scope leader/SPV approves a
- * DONE/CLOSED workorder by uploading a signature image to Garage and recording the object
- * key + signer identity in the {@code workorder_signatures} table (V66). One signature per
- * workorder — the unique constraint on {@code work_order_id} surfaces as a 409 on duplicate
- * approve. The read gate is any-authenticated (print-report posture).
+ * PENDING_REVIEW/CLOSED workorder by uploading a signature image to Garage and recording
+ * the object key + signer identity in the {@code signature_uses} table with
+ * {@code subject_type='WORK_ORDER'} (blueprint I1/DP4, story 15-1 — replaces the legacy
+ * {@code workorder_signatures} table). One signature per workorder — the
+ * {@code uq_signature_uses_work_order} partial unique constraint surfaces as a 409 on
+ * duplicate approve. The read gate is any-authenticated (print-report posture).
  *
- * <p>Scope gate mirrors the workorder-report/evidence pattern: in-scope leader (SECTION_LEADER,
- * MAINTENANCE_LEADER, MANAGER_MAINTENANCE, SUPER_ADMIN) or assigned executor.
+ * <p>Scope gate mirrors the workorder-report/evidence pattern: in-scope leader
+ * (SECTION_LEADER, MAINTENANCE_LEADER, MANAGER_MAINTENANCE, SUPER_ADMIN) or assigned
+ * executor.
  */
 @Service
 public class WorkorderSignatureService {
 
-  private static final String SIGNATURE_PREFIX = "workorders/";
-  private static final String SIGNATURE_SUFFIX = "/signature/";
+  private static final String SIGNATURE_MODULE = "maintenance";
+  private static final String SUBJECT_TYPE_WORK_ORDER = "WORK_ORDER";
+  private static final String APPROVE_ACTION = "APPROVE_WORKORDER";
 
   private final WorkOrderRepository workOrders;
   private final MachineRepository machines;
-  private final WorkorderSignatureRepository signatures;
+  private final SignatureUseRepository signatureUses;
+  private final AuthUserRepository users;
   private final ObjectStorageService objectStorage;
   private final OperationalScopeService scopes;
   private final AuditLogWriter auditLog;
   private final Clock clock;
 
   public WorkorderSignatureService(WorkOrderRepository workOrders, MachineRepository machines,
-      WorkorderSignatureRepository signatures, ObjectStorageService objectStorage,
+      SignatureUseRepository signatureUses, AuthUserRepository users, ObjectStorageService objectStorage,
       OperationalScopeService scopes, AuditLogWriter auditLog, Clock clock) {
     this.workOrders = workOrders;
     this.machines = machines;
-    this.signatures = signatures;
+    this.signatureUses = signatureUses;
+    this.users = users;
     this.objectStorage = objectStorage;
     this.scopes = scopes;
     this.auditLog = auditLog;
@@ -62,11 +69,12 @@ public class WorkorderSignatureService {
   }
 
   /**
-   * Approves a DONE/CLOSED workorder by recording the signature. Gate: in-scope leader/SPV
-   * or SUPER_ADMIN. Returns the persisted signature entity for the controller to map.
+   * Approves a PENDING_REVIEW/CLOSED workorder by recording the signature use. Gate:
+   * in-scope leader/SPV or SUPER_ADMIN. Returns the persisted signature result for the
+   * controller to map.
    *
    * @throws SignatureForbiddenException      when the user is not authorized
-   * @throws WorkorderNotTerminalException    when the WO is not DONE or CLOSED
+   * @throws WorkorderNotTerminalException    when the WO is not PENDING_REVIEW or CLOSED
    * @throws SignatureAlreadyExistsException  when the WO already has a signature
    * @throws SignatureValidationException     when the object key or signer identity is invalid
    */
@@ -76,12 +84,12 @@ public class WorkorderSignatureService {
     var machine = loadMachine(entity);
     requireLeaderAccess(user, machine);
 
-    if (entity.getStatus() != com.syncro.maintenance.domain.workorder.WorkOrderStatus.DONE
+    if (entity.getStatus() != com.syncro.maintenance.domain.workorder.WorkOrderStatus.PENDING_REVIEW
         && entity.getStatus() != com.syncro.maintenance.domain.workorder.WorkOrderStatus.CLOSED) {
       throw new WorkorderNotTerminalException();
     }
 
-    if (signatures.existsByWorkOrderId(workOrderId)) {
+    if (signatureUses.existsBySubjectTypeAndSubjectId(SUBJECT_TYPE_WORK_ORDER, workOrderId)) {
       throw new SignatureAlreadyExistsException();
     }
 
@@ -89,14 +97,15 @@ public class WorkorderSignatureService {
     var signerIdentity = normalizeSignerIdentity(user, command.signerIdentity());
 
     var now = Instant.now(clock);
-    WorkorderSignatureEntity saved;
+    SignatureUseEntity saved;
     try {
-      saved = signatures.saveAndFlush(new WorkorderSignatureEntity(
-          UUID.randomUUID(), workOrderId, objectKey, signerIdentity,
-          UUID.fromString(user.id()), now, now, now));
+      saved = signatureUses.saveAndFlush(new SignatureUseEntity(
+          UUID.randomUUID(), UUID.fromString(user.id()), null,
+          SIGNATURE_MODULE, SUBJECT_TYPE_WORK_ORDER, workOrderId, APPROVE_ACTION, null,
+          null, objectKey, null, null, null, null, null, now, now));
     } catch (DataIntegrityViolationException exception) {
       // Concurrent duplicate approve: the pre-check passed but the unique constraint
-      // (uq_workorder_signatures_work_order) rejected the insert — surface as 409.
+      // (uq_signature_uses_work_order) rejected the insert — surface as 409.
       if (isUniqueWorkOrderViolation(exception)) {
         throw new SignatureAlreadyExistsException();
       }
@@ -105,19 +114,34 @@ public class WorkorderSignatureService {
 
     auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.WORKORDER_SIGNATURE,
         saved.getId(), workOrderId, machine.getPlant().getId(), null,
-        Map.<String, Object>of("signatureObjectKey", objectKey, "signerIdentity", signerIdentity), null));
+        Map.<String, Object>of("signatureObjectKey", objectKey, "signerIdentity", signerIdentity,
+            "subjectType", SUBJECT_TYPE_WORK_ORDER), null));
 
-    return new SignatureResult(saved.getId(), saved.getSignatureObjectKey(), saved.getSignerIdentity(),
-        saved.getSignedBy(), saved.getSignedAt());
+    return new SignatureResult(saved.getId(), saved.getSignatureObjectKey(), signerIdentity,
+        saved.getSignerId(), saved.getSignedAt());
   }
 
-  /** Reads the signature for a workorder, if present. Any authenticated user. */
+  /**
+   * Reads the signature for a workorder, if present. Any authenticated user. The signer
+   * identity (print block display) is resolved at read time from the signature use's
+   * signer — display_name falling back to login_identifier — because the blueprint
+   * signature_uses table carries no stored identity column (DP4, story 15-1).
+   */
   @Transactional(readOnly = true)
   public SignatureResult getSignature(String workOrderId) {
-    return signatures.findByWorkOrderId(workOrderId)
-        .map(e -> new SignatureResult(e.getId(), e.getSignatureObjectKey(), e.getSignerIdentity(),
-            e.getSignedBy(), e.getSignedAt()))
+    return signatureUses.findBySubjectTypeAndSubjectId(SUBJECT_TYPE_WORK_ORDER, workOrderId)
+        .map(this::toResult)
         .orElse(null);
+  }
+
+  private SignatureResult toResult(SignatureUseEntity entity) {
+    var identity = entity.getSignerId() == null ? null
+        : users.findById(entity.getSignerId())
+            .map(u -> u.getDisplayName() != null && !u.getDisplayName().isBlank()
+                ? u.getDisplayName() : u.getLoginIdentifier())
+            .orElse(null);
+    return new SignatureResult(entity.getId(), entity.getSignatureObjectKey(), identity,
+        entity.getSignerId(), entity.getSignedAt());
   }
 
   // -------------------------------------------------------------------------
@@ -164,7 +188,7 @@ public class WorkorderSignatureService {
     var cause = exception.getCause();
     while (cause != null) {
       if (cause instanceof org.hibernate.exception.ConstraintViolationException constraint
-          && "uq_workorder_signatures_work_order".equalsIgnoreCase(constraint.getConstraintName())) {
+          && "uq_signature_uses_work_order".equalsIgnoreCase(constraint.getConstraintName())) {
         return true;
       }
       cause = cause.getCause();

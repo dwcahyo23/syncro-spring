@@ -203,7 +203,7 @@ public class WorkOrderService {
     requireAssignRole(user);
     var entity = workOrders.findById(workOrderId).orElseThrow(WorkOrderNotFoundException::new);
     if (!SOURCE_INTERNAL.equals(entity.getSource())) {
-      // SYNCED workorders are owned by the sync module (FR-111); manual assignment would
+      // EXTERNAL workorders are owned by the sync module (FR-111); manual assignment would
       // diverge from the external sheet's lifecycle without a sync_version bump.
       throw new WorkorderForbiddenException();
     }
@@ -231,32 +231,29 @@ public class WorkOrderService {
     entity.assign(assignee, now);
     var saved = workOrders.saveAndFlush(entity);
 
-    statusHistory.saveAndFlush(historyRow(workOrderId, WorkOrderStatus.OPEN, WorkOrderStatus.ASSIGNED, user, now));
+    statusHistory.saveAndFlush(historyRow(workOrderId, WorkOrderStatus.OPEN, WorkOrderStatus.IN_PROGRESS, user, now));
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.WORK_ORDER,
         auditEntityId(workOrderId), workOrderId, machine.getPlant().getId(), previous, auditValues(saved), null));
     return WorkOrderMapper.toDomain(saved);
   }
 
   /**
-   * Manual status transition (FR-114, story 10.3). Valid edges come from the AD-4 table;
-   * the actor gate is executor (assigned TECHNICIAN/STAFF_MAINTENANCE) OR an in-scope
-   * leader for start/resume/complete, leader-only otherwise. Manual ON_PROCUREMENT
-   * placement/resume is blocked while a live non-READY sparepart request exists (AD-5),
-   * and {@code DONE → CLOSED} enforces the parent-close rule (FR-120/AD-3).
+   * Manual status transition (FR-114, story 10.3). Valid edges come from the AD-4 table
+   * (6-value set, story 15-1 remap); the actor gate is executor (assigned
+   * TECHNICIAN/STAFF_MAINTENANCE) OR an in-scope leader for start/resume/complete,
+   * leader-only otherwise. Manual PENDING_SPAREPART placement/resume is blocked while a
+   * live non-READY sparepart request exists (AD-5), and {@code PENDING_REVIEW → CLOSED}
+   * enforces the parent-close rule (FR-120/AD-3).
    */
   @Transactional
   public WorkOrder transition(AuthenticatedUser user, String workOrderId, TransitionWorkOrderCommand command) {
     var entity = workOrders.findByIdForUpdate(workOrderId).orElseThrow(WorkOrderNotFoundException::new);
     if (!SOURCE_INTERNAL.equals(entity.getSource())) {
-      // SYNCED workorders are owned by the sync module (FR-111); manual transitions would
+      // EXTERNAL workorders are owned by the sync module (FR-111); manual transitions would
       // diverge from the external sheet's lifecycle without a sync_version bump.
       throw new WorkorderForbiddenException();
     }
     var toStatus = command.toStatus();
-    if (toStatus == WorkOrderStatus.ASSIGNED) {
-      // OPEN → ASSIGNED is exclusive to POST /{id}/assign (10.2).
-      throw new InvalidStateTransitionException();
-    }
     var fromStatus = entity.getStatus();
     if (!WorkOrderStateMachine.can(fromStatus, toStatus)) {
       throw new InvalidStateTransitionException();
@@ -299,9 +296,10 @@ public class WorkOrderService {
   }
 
   /**
-   * Recomputes the derived ON_PROCUREMENT state (AD-5, story 10.3). Takes a row lock on
+   * Recomputes the derived PENDING_SPAREPART state (AD-5, story 10.3; value renamed from
+   * ON_PROCUREMENT by the blueprint, story 15-1). Takes a row lock on
    * the workorder (serializes per-workorder derivations), applies only when the current
-   * status is IN_PROGRESS or ON_PROCUREMENT, and writes a DERIVED/SYSTEM history row on
+   * status is IN_PROGRESS or PENDING_SPAREPART, and writes a DERIVED/SYSTEM history row on
    * every applied change. Idempotent: no history row when the state is unchanged. Epic 12
    * implements {@link SparepartRequestReadinessPort} and calls this on request transitions
    * — derivation is event-driven, never a poller.
@@ -310,16 +308,16 @@ public class WorkOrderService {
   public void recomputeProcurementState(String workOrderId) {
     var entity = workOrders.findByIdForUpdate(workOrderId).orElseThrow(WorkOrderNotFoundException::new);
     if (!SOURCE_INTERNAL.equals(entity.getSource())) {
-      // Derived transitions never touch SYNCED workorders (FR-111) — same invariant as
+      // Derived transitions never touch EXTERNAL workorders (FR-111) — same invariant as
       // the manual path, so a future Epic-12 recompute cannot diverge the external sheet.
       return;
     }
     var status = entity.getStatus();
-    if (status != WorkOrderStatus.IN_PROGRESS && status != WorkOrderStatus.ON_PROCUREMENT) {
+    if (status != WorkOrderStatus.IN_PROGRESS && status != WorkOrderStatus.PENDING_SPAREPART) {
       return;
     }
     var target = sparepartReadiness.hasLiveNonReadyRequest(workOrderId)
-        ? WorkOrderStatus.ON_PROCUREMENT
+        ? WorkOrderStatus.PENDING_SPAREPART
         : WorkOrderStatus.IN_PROGRESS;
     if (target == status) {
       return;
@@ -328,9 +326,9 @@ public class WorkOrderService {
     entity.transitionTo(target, now);
     workOrders.saveAndFlush(entity);
     statusHistory.saveAndFlush(derivedHistoryRow(workOrderId, status, target, now));
-    // Story 14-4 (FR-180): derived procurement transitions notify too — ON_PROCUREMENT
-    // enters procurement, IN_PROGRESS (from ON_PROCUREMENT) is the part-READY signal.
-    String eventType = target == WorkOrderStatus.ON_PROCUREMENT
+    // Story 14-4 (FR-180): derived procurement transitions notify too — PENDING_SPAREPART
+    // enters procurement, IN_PROGRESS (from PENDING_SPAREPART) is the part-READY signal.
+    String eventType = target == WorkOrderStatus.PENDING_SPAREPART
         ? WorkOrderLifecycleEvent.EVENT_ON_PROCUREMENT
         : WorkOrderLifecycleEvent.EVENT_PART_READY;
     events.publishEvent(new WorkOrderLifecycleEvent(workOrderId, eventType, target, traceId()));
@@ -342,7 +340,7 @@ public class WorkOrderService {
 
   /**
    * Starts a repair session (FR-115/AD-6, story 10.4). Sessions are local operational
-   * fields — never touching status or sync_version — so they are allowed on SYNCED
+   * fields — never touching status or sync_version — so they are allowed on EXTERNAL
    * workorders (AD-3 "preserved"), but the status gate (IN_PROGRESS) and the
    * executor/leader access gate still apply. The DB EXCLUDE constraint is the
    * authoritative backstop; the overlap pre-check gives a friendly 409 first. On the
@@ -374,7 +372,7 @@ public class WorkOrderService {
     if (entity.getResponseTimeMinutes() == null) {
       statusHistory.findFirstOpenTransitionedAt(workOrderId)
           .ifPresent(openedAt -> {
-            // Clamp at 0: a reopened workorder or SYNCED skew could put the OPEN history
+            // Clamp at 0: a reopened workorder or EXTERNAL skew could put the OPEN history
             // row after the first session start, which would persist a negative SLA.
             entity.setResponseTimeMinutes(Math.max(0, Duration.between(openedAt, now).toMinutes()));
             workOrders.saveAndFlush(entity);
@@ -422,12 +420,12 @@ public class WorkOrderService {
   }
 
   /**
-   * FR-115 DONE gate (additive on 10.3): an open session blocks DONE; with no completed
-   * session at all a non-blank documented reason is required. Non-blank reasons are
-   * persisted on the workorder and ride the audit {@code new_value} JSON.
+   * FR-115 completion gate (additive on 10.3): an open session blocks PENDING_REVIEW; with
+   * no completed session at all a non-blank documented reason is required. Non-blank
+   * reasons are persisted on the workorder and ride the audit {@code new_value} JSON.
    */
   private void enforceDoneGate(WorkOrderEntity entity, WorkOrderStatus toStatus, String reason) {
-    if (toStatus != WorkOrderStatus.DONE) {
+    if (toStatus != WorkOrderStatus.PENDING_REVIEW) {
       return;
     }
     if (repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull(entity.getId()).isPresent()) {
@@ -443,16 +441,16 @@ public class WorkOrderService {
   }
 
   /**
-   * FR-122 DONE gate (additive on 10.4): completing a Breakdown (01) workorder requires
-   * a stop-time reason — the downtime cause is source data for future MTBF/FMEA analysis.
-   * The category is resolved by code (codes are stored uppercase); a workorder with no
-   * category is treated as non-breakdown so the gate never blocks. Runs alongside
-   * {@code enforceDoneGate} at the same point — after the state-machine edge check,
-   * before the transition is persisted. CP/CPK is deliberately NOT gated here (FR-117:
-   * never mandatory on any category).
+   * FR-122 completion gate (additive on 10.4): completing a Breakdown (01) workorder
+   * requires a stop-time reason — the downtime cause is source data for future
+   * MTBF/FMEA analysis. The category is resolved by code (codes are stored uppercase);
+   * a workorder with no category is treated as non-breakdown so the gate never blocks.
+   * Runs alongside {@code enforceDoneGate} at the same point — after the state-machine
+   * edge check, before the transition is persisted. CP/CPK is deliberately NOT gated
+   * here (FR-117: never mandatory on any category).
    */
   private void enforceBreakdownStopTimeGate(WorkOrderEntity entity, WorkOrderStatus toStatus) {
-    if (toStatus != WorkOrderStatus.DONE || entity.getStopTimeReason() != null) {
+    if (toStatus != WorkOrderStatus.PENDING_REVIEW || entity.getStopTimeReason() != null) {
       return;
     }
     var category = entity.getCategoryId() != null
@@ -587,9 +585,10 @@ public class WorkOrderService {
 
   /**
    * Transition actor gate (FR-114). In-scope leaders may perform every valid manual
-   * transition; the assigned executor may only start (ASSIGNED→IN_PROGRESS), resume
-   * (ON_PROCUREMENT→IN_PROGRESS) and complete (IN_PROGRESS→DONE). The gate is
-   * authoritative — the rego only does role-level default-deny on the transition path.
+   * transition; the assigned executor may start (OPEN→IN_PROGRESS), resume
+   * (PENDING_SPAREPART→IN_PROGRESS) and complete (IN_PROGRESS→PENDING_REVIEW). The
+   * gate is authoritative — the rego only does role-level default-deny on the
+   * transition path.
    */
   private void requireTransitionAccess(AuthenticatedUser user, WorkOrderEntity entity,
       WorkOrderStatus fromStatus, WorkOrderStatus toStatus, MachineEntity machine) {
@@ -604,9 +603,9 @@ public class WorkOrderService {
 
   /** The three start/resume/complete transitions the assigned executor may perform. */
   private static boolean executorMay(WorkOrderStatus from, WorkOrderStatus to) {
-    return (from == WorkOrderStatus.ASSIGNED && to == WorkOrderStatus.IN_PROGRESS)
-        || (from == WorkOrderStatus.ON_PROCUREMENT && to == WorkOrderStatus.IN_PROGRESS)
-        || (from == WorkOrderStatus.IN_PROGRESS && to == WorkOrderStatus.DONE);
+    return (from == WorkOrderStatus.OPEN && to == WorkOrderStatus.IN_PROGRESS)
+        || (from == WorkOrderStatus.PENDING_SPAREPART && to == WorkOrderStatus.IN_PROGRESS)
+        || (from == WorkOrderStatus.IN_PROGRESS && to == WorkOrderStatus.PENDING_REVIEW);
   }
 
   private boolean isExecutor(AuthenticatedUser user, WorkOrderEntity entity) {
@@ -640,10 +639,10 @@ public class WorkOrderService {
     }
   }
 
-  /** Placement to ON_PROCUREMENT or resume to IN_PROGRESS both touch the request state. */
+  /** Placement to PENDING_SPAREPART or resume to IN_PROGRESS both touch the request state. */
   private static boolean isProcurementSensitive(WorkOrderStatus from, WorkOrderStatus to) {
-    return (from == WorkOrderStatus.IN_PROGRESS && to == WorkOrderStatus.ON_PROCUREMENT)
-        || (from == WorkOrderStatus.ON_PROCUREMENT && to == WorkOrderStatus.IN_PROGRESS);
+    return (from == WorkOrderStatus.IN_PROGRESS && to == WorkOrderStatus.PENDING_SPAREPART)
+        || (from == WorkOrderStatus.PENDING_SPAREPART && to == WorkOrderStatus.IN_PROGRESS);
   }
 
   /**
@@ -733,13 +732,13 @@ public class WorkOrderService {
 
   /**
    * Publishes a lifecycle event for the notification module (story 14-4, FR-180).
-   * Only INTERNAL workorders produce events; SYNCED workorders are excluded.
+   * Only INTERNAL workorders produce events; EXTERNAL workorders are excluded.
    */
   private void publishLifecycleEvent(String workOrderId, WorkOrderStatus toStatus, String traceId) {
     String eventType = switch (toStatus) {
       case IN_PROGRESS -> WorkOrderLifecycleEvent.EVENT_BREAKDOWN;
-      case ON_PROCUREMENT -> WorkOrderLifecycleEvent.EVENT_ON_PROCUREMENT;
-      case DONE -> WorkOrderLifecycleEvent.EVENT_DONE;
+      case PENDING_SPAREPART -> WorkOrderLifecycleEvent.EVENT_ON_PROCUREMENT;
+      case PENDING_REVIEW -> WorkOrderLifecycleEvent.EVENT_DONE;
       case CLOSED -> WorkOrderLifecycleEvent.EVENT_CLOSED;
       default -> null;
     };

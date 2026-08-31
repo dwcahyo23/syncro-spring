@@ -20,11 +20,12 @@ public interface WorkOrderStatusHistoryRepository extends JpaRepository<WorkOrde
   Optional<Instant> findFirstOpenTransitionedAt(@Param("workOrderId") String workOrderId);
 
   /**
-   * Story 14-2 (FR-173): derived woStopAt — the latest DONE transition timestamp.
-   * Returns empty if the workorder has never transitioned to DONE.
+   * Story 14-2 (FR-173): derived woStopAt — the latest PENDING_REVIEW transition
+   * timestamp (the legacy DONE value, remapped by story 15-1). Returns empty if the
+   * workorder has never transitioned to PENDING_REVIEW.
    */
   @Query("select max(h.transitionedAt) from WorkOrderStatusHistoryEntity h "
-      + "where h.workOrderId = :workOrderId and h.toStatus = 'DONE'")
+      + "where h.workOrderId = :workOrderId and h.toStatus = 'PENDING_REVIEW'")
   Optional<Instant> findLatestDoneTransitionedAt(@Param("workOrderId") String workOrderId);
 
   /**
@@ -34,7 +35,7 @@ public interface WorkOrderStatusHistoryRepository extends JpaRepository<WorkOrde
   @Query("""
       select h.workOrderId as workOrderId, max(h.transitionedAt) as latestTransitionedAt
       from WorkOrderStatusHistoryEntity h
-      where h.workOrderId in :workOrderIds and h.toStatus = 'DONE'
+      where h.workOrderId in :workOrderIds and h.toStatus = 'PENDING_REVIEW'
       group by h.workOrderId
       """)
   List<DoneTransitionProjection> findLatestDoneTransitionedAts(

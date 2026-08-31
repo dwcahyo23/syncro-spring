@@ -34,8 +34,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * Story 13-1/13-2 unit tests for {@link WorkorderImportService} — the single upsert entry
- * point for SYNCED workorders (FR-150/FR-151, FR-152/NFR-P2-9). Covers create, update,
- * idempotent re-sync, terminal-state protection, ON_PROCUREMENT preservation, and field
+ * point for EXTERNAL workorders (FR-150/FR-151, FR-152/NFR-P2-9). Covers create, update,
+ * idempotent re-sync, terminal-state protection, PENDING_SPAREPART preservation, and field
  * classification.
  */
 @ExtendWith(MockitoExtension.class)
@@ -84,7 +84,7 @@ class WorkorderImportServiceTest {
     verify(workOrders).saveAndFlush(captor.capture());
     var saved = captor.getValue();
     assertThat(saved.getId()).isEqualTo("EXT-00001");
-    assertThat(saved.getSource()).isEqualTo("SYNCED");
+    assertThat(saved.getSource()).isEqualTo("EXTERNAL");
     assertThat(saved.getStatus()).isEqualTo(WorkOrderStatus.OPEN);
     assertThat(saved.getMachineId()).isEqualTo(machineId);
     assertThat(saved.getCategoryId()).isEqualTo(categoryId);
@@ -112,7 +112,7 @@ class WorkorderImportServiceTest {
   @Test
   @DisplayName("13.1-IMP-002 P0 update: existing sheet_no updates fields, never duplicates")
   void updateExistingWorkorder() {
-    var existing = new WorkOrderEntity("EXT-00001", "SYNCED", null, WorkOrderStatus.OPEN,
+    var existing = new WorkOrderEntity("EXT-00001", "EXTERNAL", null, WorkOrderStatus.OPEN,
         categoryId, machineId, "old description", 0L, null, null, null,
         NOW.minusSeconds(3600), NOW.minusSeconds(3600));
     when(workOrders.findById("EXT-00001")).thenReturn(Optional.of(existing));
@@ -152,7 +152,7 @@ class WorkorderImportServiceTest {
   @Test
   @DisplayName("13.1-IMP-003 P0 idempotent re-sync: stale external row never regresses local state, no writes")
   void idempotentResyncStaleExternal() {
-    var existing = new WorkOrderEntity("EXT-00001", "SYNCED", null, WorkOrderStatus.OPEN,
+    var existing = new WorkOrderEntity("EXT-00001", "EXTERNAL", null, WorkOrderStatus.OPEN,
         categoryId, machineId, "description", 3L, null, null, null,
         NOW.minusSeconds(3600), NOW.minusSeconds(3600));
     when(workOrders.findById("EXT-00001")).thenReturn(Optional.of(existing));
@@ -171,7 +171,7 @@ class WorkorderImportServiceTest {
   @Test
   @DisplayName("13.1-IMP-004 P0 idempotent re-sync: newer external row updates fields and bumps sync_version")
   void idempotentResyncNewerExternal() {
-    var existing = new WorkOrderEntity("EXT-00001", "SYNCED", null, WorkOrderStatus.OPEN,
+    var existing = new WorkOrderEntity("EXT-00001", "EXTERNAL", null, WorkOrderStatus.OPEN,
         categoryId, machineId, "description", 3L, null, null, null,
         NOW.minusSeconds(3600), NOW.minusSeconds(3600));
     when(workOrders.findById("EXT-00001")).thenReturn(Optional.of(existing));
@@ -194,28 +194,29 @@ class WorkorderImportServiceTest {
   // =========================================================================
 
   @Test
-  @DisplayName("13.2-IMP-005 P0 terminal-state protection: DONE workorder is never regressed, quarantined")
-  void terminalStateProtectionDone() {
-    var existing = new WorkOrderEntity("EXT-00001", "SYNCED", null, WorkOrderStatus.DONE,
+  @DisplayName("13.2-IMP-005 P0 terminal-state protection: PENDING_REVIEW is non-terminal, newer row updates it")
+  void pendingReviewIsNotTerminal() {
+    var existing = new WorkOrderEntity("EXT-00001", "EXTERNAL", null, WorkOrderStatus.PENDING_REVIEW,
         categoryId, machineId, "done", 5L, null, null, null,
         NOW.minusSeconds(3600), NOW.minusSeconds(3600));
     when(workOrders.findById("EXT-00001")).thenReturn(Optional.of(existing));
+    when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    // Newer external row tries to set status to OPEN — rejected.
-    var result = service.upsert("EXT-00001", machineId, categoryId, WorkOrderStatus.OPEN,
-        "should-not-reopen", null, NOW.minusSeconds(7200), NOW);
+    // PENDING_REVIEW replaced DONE as the completion state and is NOT terminal under the
+    // 6-value set — only CLOSED/CANCELLED are. A newer external row updates it.
+    var result = service.upsert("EXT-00001", machineId, categoryId, WorkOrderStatus.CLOSED,
+        "approved", null, NOW.minusSeconds(7200), NOW);
 
-    assertThat(result.action()).isEqualTo(UpsertResult.Action.REJECTED);
-    assertThat(result.reason()).isEqualTo(UpsertResult.TERMINAL_STATE_PROTECTED);
-    verify(workOrders, never()).saveAndFlush(any());
-    verify(statusHistory, never()).saveAndFlush(any());
-    verify(auditLog, never()).recordSystem(any());
+    assertThat(result.action()).isEqualTo(UpsertResult.Action.UPDATED);
+    var captor = ArgumentCaptor.forClass(WorkOrderEntity.class);
+    verify(workOrders).saveAndFlush(captor.capture());
+    assertThat(captor.getValue().getStatus()).isEqualTo(WorkOrderStatus.CLOSED);
   }
 
   @Test
   @DisplayName("13.2-IMP-006 P0 terminal-state protection: CLOSED workorder is never regressed, quarantined")
   void terminalStateProtectionClosed() {
-    var existing = new WorkOrderEntity("EXT-00001", "SYNCED", null, WorkOrderStatus.CLOSED,
+    var existing = new WorkOrderEntity("EXT-00001", "EXTERNAL", null, WorkOrderStatus.CLOSED,
         categoryId, machineId, "closed", 5L, null, null, null,
         NOW.minusSeconds(3600), NOW.minusSeconds(3600));
     when(workOrders.findById("EXT-00001")).thenReturn(Optional.of(existing));
@@ -231,9 +232,9 @@ class WorkorderImportServiceTest {
   }
 
   @Test
-  @DisplayName("13.2-IMP-007 P0 ON_PROCUREMENT preservation: external status does not override derived state")
+  @DisplayName("13.2-IMP-007 P0 PENDING_SPAREPART preservation: external status does not override derived state")
   void onProcurementPreservation() {
-    var existing = new WorkOrderEntity("EXT-00001", "SYNCED", null, WorkOrderStatus.ON_PROCUREMENT,
+    var existing = new WorkOrderEntity("EXT-00001", "EXTERNAL", null, WorkOrderStatus.PENDING_SPAREPART,
         categoryId, machineId, "waiting for parts", 2L, null, null, null,
         NOW.minusSeconds(3600), NOW.minusSeconds(3600));
     when(workOrders.findById("EXT-00001")).thenReturn(Optional.of(existing));
@@ -250,24 +251,24 @@ class WorkorderImportServiceTest {
   }
 
   @Test
-  @DisplayName("13.2-IMP-008 P0 ON_PROCUREMENT: external ON_PROCUREMENT is allowed to proceed")
+  @DisplayName("13.2-IMP-008 P0 PENDING_SPAREPART: external PENDING_SPAREPART is allowed to proceed")
   void onProcurementToOnProcurementAllowed() {
-    var existing = new WorkOrderEntity("EXT-00001", "SYNCED", null, WorkOrderStatus.ON_PROCUREMENT,
+    var existing = new WorkOrderEntity("EXT-00001", "EXTERNAL", null, WorkOrderStatus.PENDING_SPAREPART,
         categoryId, machineId, "waiting for parts", 2L, null, null, null,
         NOW.minusSeconds(3600), NOW.minusSeconds(3600));
     when(workOrders.findById("EXT-00001")).thenReturn(Optional.of(existing));
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     // External says ON_PROCUREMENT too — same status, but other master fields may change.
-    var result = service.upsert("EXT-00001", machineId, categoryId, WorkOrderStatus.ON_PROCUREMENT,
+    var result = service.upsert("EXT-00001", machineId, categoryId, WorkOrderStatus.PENDING_SPAREPART,
         "updated description", null, NOW.minusSeconds(7200), NOW);
 
     assertThat(result.action()).isEqualTo(UpsertResult.Action.UPDATED);
-    // status stayed ON_PROCUREMENT, description updated (MASTER field).
+    // status stayed PENDING_SPAREPART, description updated (MASTER field).
     var captor = ArgumentCaptor.forClass(WorkOrderEntity.class);
     verify(workOrders).saveAndFlush(captor.capture());
     assertThat(captor.getValue().getDescription()).isEqualTo("updated description");
-    assertThat(captor.getValue().getStatus()).isEqualTo(WorkOrderStatus.ON_PROCUREMENT);
+    assertThat(captor.getValue().getStatus()).isEqualTo(WorkOrderStatus.PENDING_SPAREPART);
   }
 
   @Test
@@ -280,7 +281,7 @@ class WorkorderImportServiceTest {
     when(fieldClassification.isMaster("description")).thenReturn(false);
     when(fieldClassification.isMaster("parent_id")).thenReturn(false);
 
-    var existing = new WorkOrderEntity("EXT-00001", "SYNCED", null, WorkOrderStatus.IN_PROGRESS,
+    var existing = new WorkOrderEntity("EXT-00001", "EXTERNAL", null, WorkOrderStatus.IN_PROGRESS,
         categoryId, machineId, "local description", 2L, null, null, null,
         NOW.minusSeconds(3600), NOW.minusSeconds(3600));
     when(workOrders.findById("EXT-00001")).thenReturn(Optional.of(existing));
@@ -289,7 +290,7 @@ class WorkorderImportServiceTest {
     var newMachineId = UUID.randomUUID();
     var newCategoryId = UUID.randomUUID();
 
-    var result = service.upsert("EXT-00001", newMachineId, newCategoryId, WorkOrderStatus.DONE,
+    var result = service.upsert("EXT-00001", newMachineId, newCategoryId, WorkOrderStatus.PENDING_REVIEW,
         "external description", "EXT-PARENT", NOW.minusSeconds(7200), NOW);
 
     assertThat(result.action()).isEqualTo(UpsertResult.Action.UPDATED);
@@ -297,7 +298,7 @@ class WorkorderImportServiceTest {
     verify(workOrders).saveAndFlush(captor.capture());
     var saved = captor.getValue();
     // Status is MASTER — applied.
-    assertThat(saved.getStatus()).isEqualTo(WorkOrderStatus.DONE);
+    assertThat(saved.getStatus()).isEqualTo(WorkOrderStatus.PENDING_REVIEW);
     // All other fields are OPERATIONAL — preserved from local entity.
     assertThat(saved.getMachineId()).isEqualTo(machineId);
     assertThat(saved.getCategoryId()).isEqualTo(categoryId);

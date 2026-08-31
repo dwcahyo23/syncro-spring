@@ -16,6 +16,11 @@
   <properties>
     <java.version>25</java.version>
     <resilience4j.version>2.4.0</resilience4j.version>
+    <!-- flyway-maven-plugin datasource; overridden via env/DOTENV_MAVEN_CONFIG or
+         -D flags when running flyway:migrate (never hardcode credentials). -->
+    <syncro.flyway.url/>
+    <syncro.flyway.user/>
+    <syncro.flyway.password/>
   </properties>
   <dependencies>
     <dependency>
@@ -165,6 +170,21 @@
   </dependencies>
   <build>
     <plugins>
+      <plugin>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-maven-plugin</artifactId>
+        <configuration>
+          <!-- Story 15-1: docs reference `mvn flyway:migrate` against the local stack;
+               the datasource resolves from the same env contract the app uses
+               (syncro/.env exported by the operator or the wrapper script). -->
+          <url>${syncro.flyway.url}</url>
+          <user>${syncro.flyway.user}</user>
+          <password>${syncro.flyway.password}</password>
+          <locations>
+            <location>classpath:db/migration</location>
+          </locations>
+        </configuration>
+      </plugin>
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>

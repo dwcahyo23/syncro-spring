@@ -325,9 +325,9 @@ class WorkOrderServiceTest {
 
     var result = service.assign(user, "WO-2409-00001", new AssignWorkOrderCommand(assigneeId));
 
-    assertThat(result.status()).isEqualTo(WorkOrderStatus.ASSIGNED);
+    assertThat(result.status()).isEqualTo(WorkOrderStatus.IN_PROGRESS);
     assertThat(result.assignedTechnicianId()).isEqualTo(assigneeId);
-    verify(statusHistory).saveAndFlush(argThat(h -> "OPEN".equals(h.getFromStatus()) && "ASSIGNED".equals(h.getToStatus())));
+    verify(statusHistory).saveAndFlush(argThat(h -> "OPEN".equals(h.getFromStatus()) && "IN_PROGRESS".equals(h.getToStatus())));
     verify(auditLog).record(eq(user), argThat(r -> r.action() == AuditAction.UPDATE
         && r.entityType() == AuditEntityType.WORK_ORDER
         && r.entityLabel().equals("WO-2409-00001")));
@@ -337,7 +337,7 @@ class WorkOrderServiceTest {
   @DisplayName("10.2-SVC-015 P0 assigning a non-OPEN workorder throws InvalidStateTransitionException")
   void assignWrongState() {
     var user = user(ApplicationRole.SECTION_LEADER);
-    var entity = new WorkOrderEntity("WO-2409-00001", "INTERNAL", null, WorkOrderStatus.ASSIGNED, categoryId,
+    var entity = new WorkOrderEntity("WO-2409-00001", "INTERNAL", null, WorkOrderStatus.IN_PROGRESS, categoryId,
         machineId, "desc", 0, null, assigneeId, UUID.randomUUID(), NOW, NOW);
     when(workOrders.findById("WO-2409-00001")).thenReturn(Optional.of(entity));
     when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
@@ -441,7 +441,7 @@ class WorkOrderServiceTest {
     when(repairSessions.countByWorkOrderIdAndEndedAtIsNotNull("WO-2409-00001")).thenReturn(1L);
 
     assertThatThrownBy(() -> service.transition(user, "WO-2409-00001",
-        new WorkOrderService.TransitionWorkOrderCommand(WorkOrderStatus.DONE, null, null)))
+        new WorkOrderService.TransitionWorkOrderCommand(WorkOrderStatus.PENDING_REVIEW, null, null)))
         .isInstanceOf(StopTimeReasonRequiredException.class);
   }
 
@@ -458,9 +458,9 @@ class WorkOrderServiceTest {
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     var result = service.transition(user, "WO-2409-00001",
-        new WorkOrderService.TransitionWorkOrderCommand(WorkOrderStatus.DONE, null, null));
+        new WorkOrderService.TransitionWorkOrderCommand(WorkOrderStatus.PENDING_REVIEW, null, null));
 
-    assertThat(result.status()).isEqualTo(WorkOrderStatus.DONE);
+    assertThat(result.status()).isEqualTo(WorkOrderStatus.PENDING_REVIEW);
   }
 
   @Test
@@ -478,9 +478,9 @@ class WorkOrderServiceTest {
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     var result = service.transition(user, "WO-2409-00001",
-        new WorkOrderService.TransitionWorkOrderCommand(WorkOrderStatus.DONE, null, null));
+        new WorkOrderService.TransitionWorkOrderCommand(WorkOrderStatus.PENDING_REVIEW, null, null));
 
-    assertThat(result.status()).isEqualTo(WorkOrderStatus.DONE);
+    assertThat(result.status()).isEqualTo(WorkOrderStatus.PENDING_REVIEW);
   }
 
   // -------------------------------------------------------------------------

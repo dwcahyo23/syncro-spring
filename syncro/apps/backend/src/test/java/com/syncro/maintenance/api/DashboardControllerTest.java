@@ -104,7 +104,7 @@ class DashboardControllerTest {
     when(dashboards.workorderDashboard(eq(user), eq(plantId), eq(sectionId), eq(WorkOrderStatus.OPEN), eq("BRK")))
         .thenReturn(new DashboardDtos.WorkorderDashboardResponse(
             3L,
-            List.of(new DashboardDtos.StatusCount("OPEN", 2L), new DashboardDtos.StatusCount("DONE", 1L)),
+            List.of(new DashboardDtos.StatusCount("OPEN", 2L), new DashboardDtos.StatusCount("PENDING_REVIEW", 1L)),
             List.of(new DashboardDtos.CategoryCount("BRK", "Breakdown", 2L)),
             List.of()));
 

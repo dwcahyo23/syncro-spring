@@ -22,8 +22,8 @@ import com.syncro.org.application.DepartmentService.DuplicateDepartmentNameExcep
 import com.syncro.org.application.DepartmentService.LeaderValidationException;
 import com.syncro.org.application.DepartmentService.UserNotFoundException;
 import com.syncro.org.infrastructure.DepartmentEntity;
-import com.syncro.org.infrastructure.DepartmentMemberEntity;
-import com.syncro.org.infrastructure.DepartmentMemberRepository;
+import com.syncro.org.infrastructure.DepartmentUserEntity;
+import com.syncro.org.infrastructure.DepartmentUserRepository;
 import com.syncro.org.infrastructure.DepartmentRepository;
 import java.sql.SQLException;
 import java.time.Clock;
@@ -43,7 +43,7 @@ class DepartmentServiceTest {
   @Mock
   private DepartmentRepository departments;
   @Mock
-  private DepartmentMemberRepository members;
+  private DepartmentUserRepository members;
   @Mock
   private PlantRepository plants;
   @Mock
@@ -195,7 +195,7 @@ class DepartmentServiceTest {
     when(departments.findByIdWithPlant(departmentId)).thenReturn(Optional.of(department));
     when(members.countByDepartmentId(departmentId)).thenReturn(1L);
     when(users.existsById(userId1)).thenReturn(true);
-    when(members.saveAndFlush(any(DepartmentMemberEntity.class)))
+    when(members.saveAndFlush(any(DepartmentUserEntity.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
     var service = new DepartmentService(departments, members, plants, users, assignments, plantScopes, auditLog, clock);

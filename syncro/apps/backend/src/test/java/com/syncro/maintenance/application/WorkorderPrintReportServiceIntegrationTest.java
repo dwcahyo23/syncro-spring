@@ -15,10 +15,12 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Migration evidence for V66 (story 14-3): the workorder_signatures table with the
- * per-workorder unique constraint and the audit_log entity_type CHECK re-added with
- * WORKORDER_SIGNATURE. The JPA wiring is covered by the unit tests; this integration
- * verifies the schema-level invariants against the real Postgres container.
+ * Schema-level evidence re-anchored to the blueprint I1 tables (story 15-1, was V66):
+ * {@code signature_uses} with the per-workorder partial unique constraint
+ * {@code uq_signature_uses_work_order} (subject_type='WORK_ORDER') and the audit_log
+ * entity_type CHECK accepting WORKORDER_SIGNATURE. The JPA wiring is covered by the
+ * unit tests; this integration verifies the schema-level invariants against the real
+ * Postgres container.
  */
 class WorkorderPrintReportServiceIntegrationTest extends AbstractPostgresIntegrationTest {
 
@@ -29,41 +31,41 @@ class WorkorderPrintReportServiceIntegrationTest extends AbstractPostgresIntegra
   private static final AtomicInteger seedSeq = new AtomicInteger();
 
   @Test
-  @DisplayName("V66 creates the workorder_signatures table with the pinned columns")
-  void signaturesTableExistsWithPinnedColumns() {
+  @DisplayName("15.1 signature_uses carries the pinned columns")
+  void signatureUsesTableExistsWithPinnedColumns() {
     var columns = jdbc.queryForList("""
         SELECT column_name, is_nullable FROM information_schema.columns
-        WHERE table_schema = 'public' AND table_name = 'workorder_signatures'
+        WHERE table_schema = 'public' AND table_name = 'signature_uses'
         """);
     assertThat(columns).extracting(row -> row.get("column_name"))
-        .contains("id", "work_order_id", "signature_object_key", "signer_identity",
-            "signed_by", "signed_at", "created_at", "updated_at");
+        .contains("id", "signer_id", "signature_id", "module", "subject_type", "subject_id",
+            "action", "signature_object_key", "signed_at", "created_at");
   }
 
   @Test
-  @DisplayName("V66 enforces one signature per workorder")
+  @DisplayName("15.1 enforces one WORK_ORDER signature per subject id")
   void oneSignaturePerWorkorderEnforced() {
     var machineId = seedMachine();
     var woId = seedWorkOrder(machineId);
 
     jdbc.update("""
-        INSERT INTO workorder_signatures (id, work_order_id, signature_object_key, signer_identity,
-          signed_by, signed_at, created_at, updated_at)
-        VALUES (?,?,?,?,?,?,?,?)
-        """, UUID.randomUUID(), woId, "workorders/" + woId + "/signature/a.png", "Leader",
-        UUID.randomUUID(), TS, TS, TS);
+        INSERT INTO signature_uses (id, signer_id, module, subject_type, subject_id, action,
+          signature_object_key, signed_at, created_at)
+        VALUES (?,?,?,?,?,?,?,?,?)
+        """, UUID.randomUUID(), UUID.randomUUID(), "maintenance", "WORK_ORDER", woId,
+        "APPROVE_WORKORDER", "workorders/" + woId + "/signature/a.png", TS, TS);
 
     assertThatThrownBy(() -> jdbc.update("""
-        INSERT INTO workorder_signatures (id, work_order_id, signature_object_key, signer_identity,
-          signed_by, signed_at, created_at, updated_at)
-        VALUES (?,?,?,?,?,?,?,?)
-        """, UUID.randomUUID(), woId, "workorders/" + woId + "/signature/b.png", "Another Leader",
-        UUID.randomUUID(), TS, TS, TS))
+        INSERT INTO signature_uses (id, signer_id, module, subject_type, subject_id, action,
+          signature_object_key, signed_at, created_at)
+        VALUES (?,?,?,?,?,?,?,?,?)
+        """, UUID.randomUUID(), UUID.randomUUID(), "maintenance", "WORK_ORDER", woId,
+        "APPROVE_WORKORDER", "workorders/" + woId + "/signature/b.png", TS, TS))
         .isInstanceOf(DataIntegrityViolationException.class);
   }
 
   @Test
-  @DisplayName("V66 creates the singleton settings row")
+  @DisplayName("15.1 settings singleton row exists")
   void settingsRowExists() {
     assertThat(jdbc.queryForObject("SELECT count(*) FROM settings", Long.class)).isEqualTo(1L);
     var key = jdbc.queryForObject("SELECT logo_object_key FROM settings", String.class);
@@ -71,7 +73,7 @@ class WorkorderPrintReportServiceIntegrationTest extends AbstractPostgresIntegra
   }
 
   @Test
-  @DisplayName("V66 audit_log entity_type CHECK accepts WORKORDER_SIGNATURE")
+  @DisplayName("15.1 audit_log entity_type CHECK accepts WORKORDER_SIGNATURE")
   void auditEntityTypeAcceptsWorkorderSignature() {
     UUID actorId = UUID.randomUUID();
     UUID sigId = UUID.randomUUID();
@@ -91,7 +93,7 @@ class WorkorderPrintReportServiceIntegrationTest extends AbstractPostgresIntegra
   }
 
   @Test
-  @DisplayName("V66 audit_log entity_type CHECK still rejects unknown types")
+  @DisplayName("15.1 audit_log entity_type CHECK still rejects unknown types")
   void auditEntityTypeRejectsUnknown() {
     assertThatThrownBy(() -> jdbc.update("""
         INSERT INTO audit_log (id, actor_id, actor_name, action, entity_type, entity_id, entity_label,
@@ -123,7 +125,7 @@ class WorkorderPrintReportServiceIntegrationTest extends AbstractPostgresIntegra
     jdbc.update("""
         INSERT INTO work_orders (id, source, status, machine_id, sync_version, created_at, updated_at)
         VALUES (?,?,?,?,?,?,?)
-        """, woId, "INTERNAL", "DONE", machineId, 0L, TS, TS);
+        """, woId, "INTERNAL", "PENDING_REVIEW", machineId, 0L, TS, TS);
     return woId;
   }
 }

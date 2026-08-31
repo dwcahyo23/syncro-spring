@@ -22,6 +22,7 @@ import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.auth.infrastructure.JwtAuthenticationFilter;
 import com.syncro.config.SecurityConfig;
 import com.syncro.config.TimeConfig;
+import com.syncro.maintenance.application.WorkOrderAckService;
 import com.syncro.maintenance.application.WorkOrderEvidenceService;
 import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceCommand;
 import com.syncro.maintenance.application.WorkOrderEvidenceService.EvidenceAttachmentNotFoundException;
@@ -160,6 +161,9 @@ class WorkOrderControllerTest {
 
   @MockitoBean
   private WorkorderSignatureService signatures;
+
+  @MockitoBean
+  private WorkOrderAckService acks;
 
   @MockitoBean
   private JwtTokenService jwtTokenService;
@@ -400,7 +404,7 @@ class WorkOrderControllerTest {
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"assigneeUserId\":\"" + ASSIGNEE_ID + "\"}"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value("ASSIGNED"))
+        .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
         .andExpect(jsonPath("$.assignedTechnicianId").value(ASSIGNEE_ID.toString()));
   }
 
@@ -569,7 +573,7 @@ class WorkOrderControllerTest {
     mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
-        .content("{\"toStatus\":\"ON_PROCUREMENT\"}"))
+        .content("{\"toStatus\":\"PENDING_SPAREPART\"}"))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("FORBIDDEN"));
   }
@@ -599,7 +603,7 @@ class WorkOrderControllerTest {
     mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
-        .content("{\"toStatus\":\"ON_PROCUREMENT\"}"))
+        .content("{\"toStatus\":\"PENDING_SPAREPART\"}"))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value("PROCUREMENT_REQUEST_CONFLICT"));
   }
@@ -821,7 +825,7 @@ class WorkOrderControllerTest {
     mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
-        .content("{\"toStatus\":\"DONE\"}"))
+        .content("{\"toStatus\":\"PENDING_REVIEW\"}"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("DONE_WITHOUT_SESSION_REASON_REQUIRED"));
   }
@@ -1179,7 +1183,7 @@ class WorkOrderControllerTest {
     mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
             .with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
-            .content("{\"toStatus\":\"DONE\"}"))
+            .content("{\"toStatus\":\"PENDING_REVIEW\"}"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("STOP_TIME_REASON_REQUIRED"));
   }
@@ -1629,7 +1633,7 @@ class WorkOrderControllerTest {
   }
 
   private static WorkOrder assignedView() {
-    return new WorkOrder("WO-2409-00001", "INTERNAL", WorkOrderStatus.ASSIGNED, CATEGORY_ID, MACHINE_ID, "breakdown",
+    return new WorkOrder("WO-2409-00001", "INTERNAL", WorkOrderStatus.IN_PROGRESS, CATEGORY_ID, MACHINE_ID, "breakdown",
         null, ASSIGNEE_ID, UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"), Instant.parse("2026-08-26T00:00:00Z"),
         null, null, null, null, null, null, null, null, null, null, null, null, null, null);
   }
@@ -1648,7 +1652,7 @@ class WorkOrderControllerTest {
   @DisplayName("14.3-API-001 P0 print report returns the aggregate view")
   void printReportOk() throws Exception {
     var reportView = new WorkorderPrintReportView(
-        new PrintReportHeaderView("WO-2409-00001", "INTERNAL", "DONE", "01", "Breakdown",
+        new PrintReportHeaderView("WO-2409-00001", "INTERNAL", "PENDING_REVIEW", "01", "Breakdown",
             MACHINE_ID, "M-001", "Pump", "P01", "breakdown", ASSIGNEE_ID, "Tech", null, null, null),
         List.of(new PrintReportSessionView(UUID.randomUUID(), ASSIGNEE_ID, "diagnosis",
             Instant.parse("2026-08-26T00:00:00Z"), null, null)),

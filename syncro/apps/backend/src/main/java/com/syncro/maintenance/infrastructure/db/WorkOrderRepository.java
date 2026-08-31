@@ -33,7 +33,7 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrderEntity, Stri
 
   /**
    * Story 14-4 (FR-181): all INTERNAL workorders in the given status — used by the ack
-   * worker to find ack candidates. SYNCED workorders are excluded (internal-only events).
+   * worker to find ack candidates. EXTERNAL workorders are excluded (internal-only events).
    */
   @Query("select w from WorkOrderEntity w where w.source = 'INTERNAL' and w.status = :status")
   List<WorkOrderEntity> findAllNonSyncedByStatus(@Param("status") WorkOrderStatus status);
@@ -78,6 +78,7 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrderEntity, Stri
   /**
    * Story 10-8 single-query ratings-page read (FR-121/FR-124): every CLOSED workorder
    * visible in the derived scope (plant OR machine-group), LEFT JOINed with its category.
+   * (CLOSED remains the ratings gate under the 6-value status set — story 15-1.)
    * Mirrors {@link #findKanbanRows} (10.7) but filters on {@code status = CLOSED} — the
    * ratings page reuses the closed-workorder query, not a full list view (10-6 deferral).
    * {@code unrestricted} (SUPER_ADMIN) bypasses the scope filter.
@@ -300,14 +301,15 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrderEntity, Stri
   // -------------------------------------------------------------------------
 
   /**
-   * Stopped breakdown workorders (category code {@code 01}, status DONE or CLOSED) in
-   * scope within the rolling analytics window. The window predicate is keyed on the
-   * DERIVED stop time — the latest DONE transition from {@code work_order_status_history}
-   * (fallback {@code updatedAt} when no DONE row exists, the sync edge case) — matching
-   * the ordering key ({@code coalesce(max(h.transitionedAt), w.updatedAt)}). The LEFT
-   * JOIN + GROUP BY derives the stop time in SQL so the projection, the HAVING window
-   * predicate and the ORDER BY all use the same key. OPEN/IN_PROGRESS/ASSIGNED breakdown
-   * workorders are never counted as stops. {@code from}/{@code to} are the 30-day window
+   * Stopped breakdown workorders (category code {@code 01}, status PENDING_REVIEW or
+   * CLOSED) in scope within the rolling analytics window. The window predicate is keyed on
+   * the DERIVED stop time — the latest PENDING_REVIEW transition from
+   * {@code work_order_status_history} (fallback {@code updatedAt} when no PENDING_REVIEW
+   * row exists, the sync edge case) — matching the ordering key
+   * ({@code coalesce(max(h.transitionedAt), w.updatedAt)}). The LEFT JOIN + GROUP BY
+   * derives the stop time in SQL so the projection, the HAVING window predicate and the
+   * ORDER BY all use the same key. OPEN/IN_PROGRESS/PENDING_SPAREPART breakdown workorders
+   * are never counted as stops. {@code from}/{@code to} are the 30-day window
    * bounds computed from the injected {@code Clock}. Category target is nullable —
    * on-time % only counts rows where BOTH responseTimeMinutes and targetResponseMinutes
    * are present.
@@ -320,7 +322,7 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrderEntity, Stri
       from WorkOrderEntity w
       left join WorkOrderCategoryEntity c on c.id = w.categoryId
       join MachineEntity m on m.id = w.machineId
-      left join WorkOrderStatusHistoryEntity h on h.workOrderId = w.id and h.toStatus = 'DONE'
+      left join WorkOrderStatusHistoryEntity h on h.workOrderId = w.id and h.toStatus = 'PENDING_REVIEW'
       where c.code = :breakdownCode
         and w.status in :stoppedStatuses
         and (:unrestricted = true or m.plant.id in :plantIds or m.machineGroup.id in :groupIds)

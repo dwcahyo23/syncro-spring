@@ -11,7 +11,7 @@ import com.syncro.sparepart.request.application.SparepartRequestService.WorkOrde
 import com.syncro.sparepart.request.application.SparepartRequestService.InvalidRequestStateTransitionException;
 import com.syncro.sparepart.request.application.SparepartRequestService.SelfApprovalForbiddenException;
 import com.syncro.sparepart.request.application.SparepartRequestService.DuplicateMaterialCodeException;
-import com.syncro.sparepart.stock.application.SparepartStockService.NegativeStockRejectedException;
+import com.syncro.inventory.application.InventoryStockService.NegativeStockRejectedException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedHashMap;

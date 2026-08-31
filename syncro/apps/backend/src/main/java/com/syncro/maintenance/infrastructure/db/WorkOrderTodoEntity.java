@@ -22,7 +22,7 @@ public class WorkOrderTodoEntity {
   @Id
   private UUID id;
 
-  @Column(name = "workorder_id", nullable = false, length = 50)
+  @Column(name = "work_order_id", nullable = false, length = 50)
   private String workorderId;
 
   @Column(nullable = false, length = 200)

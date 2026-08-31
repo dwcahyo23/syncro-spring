@@ -40,9 +40,9 @@ import org.springframework.transaction.annotation.Transactional;
  * guard, cached compute (read cache, recompute, write cache), dedicated DTO assembly.
  *
  * <p>MTBF is fleet-in-scope and counts ONLY stopped breakdown WOs (category code {@code 01},
- * status DONE or CLOSED — the repository filters out OPEN/IN_PROGRESS/ASSIGNED rows). The
- * 30-day window is keyed on the derived {@code woStopAt} (DONE transition
- * {@code transitionedAt}, {@code updatedAt} fallback when no DONE row exists) — the same
+ * status PENDING_REVIEW or CLOSED — the repository filters out OPEN/IN_PROGRESS/PENDING_SPAREPART rows). The
+ * 30-day window is keyed on the derived {@code woStopAt} (PENDING_REVIEW transition
+ * {@code transitionedAt}, {@code updatedAt} fallback when no PENDING_REVIEW row exists) — the same
  * key the repository query uses. Fewer than 2 stopped breakdown WOs → explicit
  * INSUFFICIENT_DATA state.
  *
@@ -70,9 +70,9 @@ public class DashboardAnalyticsService {
   static final String TECHNICIAN_KPI_CACHE_KEY = "technician-kpi";
   static final long ANALYTICS_WINDOW_DAYS = 30L;
   static final String BREAKDOWN_CODE = "01";
-  static final Set<String> COMPLETED_STATUSES = Set.of("DONE", "CLOSED");
+  static final Set<String> COMPLETED_STATUSES = Set.of("PENDING_REVIEW", "CLOSED");
   static final Set<com.syncro.maintenance.domain.workorder.WorkOrderStatus> STOPPED_STATUSES =
-      EnumSet.of(com.syncro.maintenance.domain.workorder.WorkOrderStatus.DONE,
+      EnumSet.of(com.syncro.maintenance.domain.workorder.WorkOrderStatus.PENDING_REVIEW,
           com.syncro.maintenance.domain.workorder.WorkOrderStatus.CLOSED);
   static final double MINUTES_TO_HOURS = 60.0;
 
@@ -154,7 +154,7 @@ public class DashboardAnalyticsService {
       // Stale — recompute below.
     }
 
-    // Compute. The repository already filters to stopped breakdowns (DONE/CLOSED) and
+    // Compute. The repository already filters to stopped breakdowns (PENDING_REVIEW/CLOSED) and
     // keys the window on the derived stop time.
     var rows = workOrders.findStoppedBreakdownAnalyticsRows(
         BREAKDOWN_CODE, STOPPED_STATUSES, unrestricted, plantIds, groupIds, windowFrom, windowTo);
@@ -214,7 +214,7 @@ public class DashboardAnalyticsService {
   }
 
   /**
-   * MTTR = mean of per-WO mttrMinutes for completed breakdown WOs (status DONE or CLOSED)
+   * MTTR = mean of per-WO mttrMinutes for completed breakdown WOs (status PENDING_REVIEW or CLOSED)
    * that have a persisted mttrMinutes value. Returns INSUFFICIENT_DATA when no completed
    * breakdown WOs with mttrMinutes exist.
    */

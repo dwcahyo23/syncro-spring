@@ -226,7 +226,7 @@ class WorkOrderEvidenceServiceIntegrationTest {
         """, categoryId.toString());
     jdbc.update("""
         INSERT INTO work_orders (id, source, status, category_id, machine_id, description, created_at, updated_at, sync_version)
-        VALUES (?, 'INTERNAL', 'DONE', ?::uuid, ?::uuid, 'EVD evidence test', now(), now(), 1)
+        VALUES (?, 'INTERNAL', 'PENDING_REVIEW', ?::uuid, ?::uuid, 'EVD evidence test', now(), now(), 1)
         """, woId, categoryId.toString(), machineId.toString());
 
     return woId;

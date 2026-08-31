@@ -124,7 +124,7 @@ class NotificationDispatchServiceTest {
     assertThat(attemptCaptor.getValue().getStatus()).isEqualTo("FAILED");
 
     // Rate-limit key must NOT be acquired on a failed send
-    verify(rateLimiter, never()).acquire(any(), any());
+    verify(rateLimiter, never()).acquire(org.mockito.ArgumentMatchers.<java.util.UUID>any(), any());
   }
 
   // --- Failure at maxAttempts → EXHAUSTED ---
@@ -201,7 +201,7 @@ class NotificationDispatchServiceTest {
     // No WAHA call, no attempt record, no rate-limit acquire
     verify(wahaClient, never()).send(any(), any(), any());
     verify(attemptRepository, never()).save(any());
-    verify(rateLimiter, never()).acquire(any(), any());
+    verify(rateLimiter, never()).acquire(org.mockito.ArgumentMatchers.<java.util.UUID>any(), any());
   }
 
   @Test
@@ -230,7 +230,7 @@ class NotificationDispatchServiceTest {
         UUID.randomUUID(), RECIPIENT_PHONE,
         ALERT_ID + "::TECHNICIAN", TRACE_ID, null);
 
-    when(rateLimiter.isRateLimited(any(), any())).thenReturn(false);
+    when(rateLimiter.isRateLimited(org.mockito.ArgumentMatchers.<java.util.UUID>any(), any())).thenReturn(false);
     when(templateRenderer.render(ALERT_ID)).thenReturn(RENDERED_MSG);
     when(wahaClient.send(eq(RECIPIENT_PHONE), eq(RENDERED_MSG), eq(TRACE_ID)))
         .thenReturn(new WahaClient.Result(false, 0, WahaClient.CIRCUIT_OPEN_DETAIL));
@@ -252,7 +252,7 @@ class NotificationDispatchServiceTest {
         .isEqualTo(WahaClient.CIRCUIT_OPEN_DETAIL);
 
     // Rate-limit key must NOT be acquired when circuit is open
-    verify(rateLimiter, never()).acquire(any(), any());
+    verify(rateLimiter, never()).acquire(org.mockito.ArgumentMatchers.<java.util.UUID>any(), any());
   }
 
   @Test
@@ -263,7 +263,7 @@ class NotificationDispatchServiceTest {
         UUID.randomUUID(), RECIPIENT_PHONE,
         ALERT_ID + "::TECHNICIAN", TRACE_ID, null);
 
-    when(rateLimiter.isRateLimited(any(), any())).thenReturn(false);
+    when(rateLimiter.isRateLimited(org.mockito.ArgumentMatchers.<java.util.UUID>any(), any())).thenReturn(false);
     when(templateRenderer.render(ALERT_ID)).thenReturn(RENDERED_MSG);
     when(wahaClient.send(any(), any(), any()))
         .thenReturn(new WahaClient.Result(false, 0, WahaClient.CIRCUIT_OPEN_DETAIL));
@@ -286,7 +286,7 @@ class NotificationDispatchServiceTest {
         UUID.randomUUID(), RECIPIENT_PHONE,
         "SPAREPART_REQUEST:abc:ACK_WAITING:user-1", TRACE_ID, null, body);
 
-    when(rateLimiter.isRateLimited(any(), any())).thenReturn(false);
+    when(rateLimiter.isRateLimited(org.mockito.ArgumentMatchers.<java.util.UUID>any(), any())).thenReturn(false);
     when(wahaClient.send(eq(RECIPIENT_PHONE), eq(body), eq(TRACE_ID)))
         .thenReturn(new WahaClient.Result(true, 200, "OK"));
     when(jobRepository.save(any())).thenReturn(job);

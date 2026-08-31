@@ -27,7 +27,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Scheduled worker that computes net IN_PROGRESS time from work_order_status_history
- * (excluding ON_PROCUREMENT spans) and sends a WAHA message with an auto-login link to
+ * (excluding PENDING_SPAREPART spans) and sends a WAHA message with an auto-login link to
  * the PRODUCTION_LEADER when the threshold is exceeded (story 14-4, FR-181).
  *
  * <p>The threshold is configured via {@code escalation_configs} WORKORDER scope
@@ -84,7 +84,7 @@ public class WorkOrderAckWorker {
       return;
     }
 
-    // Find all IN_PROGRESS workorders (non-SYNCED) that are not already ack'd
+    // Find all IN_PROGRESS workorders (non-EXTERNAL) that are not already ack'd
     var candidates = workOrders.findAllNonSyncedByStatus(WorkOrderStatus.IN_PROGRESS);
     if (candidates.isEmpty()) {
       return;
@@ -108,11 +108,12 @@ public class WorkOrderAckWorker {
   }
 
   /**
-   * Computes net IN_PROGRESS minutes from status history, excluding ON_PROCUREMENT spans.
-   * Sums up every segment that starts with a transition to IN_PROGRESS and ends at the
-   * next transition (or now if still in progress). When a transition to ON_PROCUREMENT
-   * occurs, the IN_PROGRESS time before procurement is counted but the procurement period
-   * itself is excluded (the next IN_PROGRESS transition starts a fresh segment).
+   * Computes net IN_PROGRESS minutes from status history, excluding PENDING_SPAREPART
+   * spans. Sums up every segment that starts with a transition to IN_PROGRESS and ends at
+   * the next transition (or now if still in progress). When a transition to
+   * PENDING_SPAREPART occurs, the IN_PROGRESS time before procurement is counted but the
+   * procurement period itself is excluded (the next IN_PROGRESS transition starts a fresh
+   * segment).
    */
   long computeNetInProgressMinutes(String workOrderId, Instant now) {
     var history = statusHistory.findByWorkOrderIdOrderByTransitionedAtAsc(workOrderId);
@@ -125,7 +126,7 @@ public class WorkOrderAckWorker {
       String toStatus = row.getToStatus();
       if (WorkOrderStatus.IN_PROGRESS.name().equals(toStatus)) {
         segmentStart = row.getTransitionedAt();
-      } else if (WorkOrderStatus.ON_PROCUREMENT.name().equals(toStatus) && segmentStart != null) {
+      } else if (WorkOrderStatus.PENDING_SPAREPART.name().equals(toStatus) && segmentStart != null) {
         // Count the IN_PROGRESS time before procurement, then reset
         totalMinutes += Duration.between(segmentStart, row.getTransitionedAt()).toMinutes();
         segmentStart = null;

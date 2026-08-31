@@ -8,7 +8,7 @@ import com.syncro.auth.infrastructure.PlantRepository;
 import com.syncro.masterdata.infrastructure.MachineGroupEntity;
 import com.syncro.masterdata.infrastructure.MachineGroupRepository;
 import com.syncro.org.infrastructure.DepartmentEntity;
-import com.syncro.org.infrastructure.DepartmentMemberRepository;
+import com.syncro.org.infrastructure.DepartmentUserRepository;
 import com.syncro.org.infrastructure.DepartmentRepository;
 import com.syncro.org.infrastructure.SectionEntity;
 import com.syncro.org.infrastructure.SectionRepository;
@@ -31,7 +31,7 @@ public class OrganizationHierarchyService {
 
   private final PlantRepository plants;
   private final DepartmentRepository departments;
-  private final DepartmentMemberRepository departmentMembers;
+  private final DepartmentUserRepository departmentUsers;
   private final SectionRepository sections;
   private final MachineGroupRepository machineGroups;
   private final PlantScopeService plantScopes;
@@ -39,13 +39,13 @@ public class OrganizationHierarchyService {
   public OrganizationHierarchyService(
       PlantRepository plants,
       DepartmentRepository departments,
-      DepartmentMemberRepository departmentMembers,
+      DepartmentUserRepository departmentUsers,
       SectionRepository sections,
       MachineGroupRepository machineGroups,
       PlantScopeService plantScopes) {
     this.plants = plants;
     this.departments = departments;
-    this.departmentMembers = departmentMembers;
+    this.departmentUsers = departmentUsers;
     this.sections = sections;
     this.machineGroups = machineGroups;
     this.plantScopes = plantScopes;
@@ -89,7 +89,7 @@ public class OrganizationHierarchyService {
   }
 
   private DepartmentNode toDepartmentNode(DepartmentEntity department) {
-    var members = departmentMembers.findByDepartmentId(department.getId()).stream()
+    var members = departmentUsers.findByDepartmentId(department.getId()).stream()
         .map(m -> new HierarchyMember(m.getUserId()))
         .toList();
     return new DepartmentNode(

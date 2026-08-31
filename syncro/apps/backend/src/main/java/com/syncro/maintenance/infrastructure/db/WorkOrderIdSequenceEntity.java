@@ -7,7 +7,7 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 
 /**
- * Per-prefix sequence row for the WO-YYMM-XXXXX generator (story 10-1). One row per
+ * Per-prefix sequence row for the WO-YYMMXXXX generator (story 10-1/15-1). One row per
  * YYMM prefix; {@code nextId()} takes a pessimistic write lock on the row so monthly
  * sequences stay gapless under concurrency. A new month is a new prefix row.
  */

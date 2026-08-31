@@ -31,7 +31,8 @@
 --                   WhatsApp placeholders 6281234567801/02/03
 --
 -- Preconditions:
---   Flyway migrations V1..V30 must already be applied. Boot the backend once
+--   The fresh consolidated Flyway migration V1__orm_foundation_schema.sql (story
+--   15-1) must already be applied. Boot the backend once
 --   against the local stack or run `mvn -f syncro/apps/backend/pom.xml
 --   flyway:migrate` first. This file is NOT a Flyway migration and is NOT on
 --   spring.flyway.locations (which stays classpath:db/migration) - it is a
@@ -258,6 +259,32 @@ WHERE p.code = 'GM1'
   AND lower(sp.code) = 'bf-08410gm1eleplcwec000'
   AND NOT EXISTS (
     SELECT 1 FROM sparepart_price_entries pe WHERE pe.sparepart_id = sp.id
+  );
+
+-- 7.8 Default inventory location for GM1 (blueprint DP3): one location per plant
+--     ("GUDANG UTAMA") so the stock-balances API can resolve the plant's default
+--     store without a location UUID. Fixed UUID keeps natural-key stability.
+INSERT INTO inventory_locations (id, plant_id, code, name, description, is_active, created_at, updated_at)
+SELECT 'e2f1a3b4-c5d6-4e7f-8a9b-0c1d2e3f4a5b'::uuid, p.id, 'GUDANG-UTAMA', 'GUDANG UTAMA', 'Default plant store', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM plants p
+WHERE p.code = 'GM1'
+  AND NOT EXISTS (SELECT 1 FROM inventory_locations l WHERE l.plant_id = p.id AND lower(l.code) = 'gudang-utama');
+
+-- 7.9 Stock balance for the pilot sparepart at the default location (blueprint E2
+--     semantics: available/reserved/consumed/minimum_stock). Idempotent per
+--     (sparepart, location).
+INSERT INTO inventory_stock_balances (id, sparepart_id, location_id, available, reserved, consumed, minimum_stock, version, created_at, updated_at)
+SELECT 'f3a2b4c5-d6e7-4f8a-9b0c-1d2e3f4a5b6c'::uuid, sp.id, l.id, 25.00, 0.00, 0.00, 5.00, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM spareparts sp
+JOIN machines m ON m.id = sp.machine_id
+JOIN plants p ON p.id = m.plant_id
+JOIN inventory_locations l ON l.plant_id = p.id AND lower(l.code) = 'gudang-utama'
+WHERE p.code = 'GM1'
+  AND lower(m.code) = 'bf-08410'
+  AND lower(sp.code) = 'bf-08410gm1eleplcwec000'
+  AND NOT EXISTS (
+    SELECT 1 FROM inventory_stock_balances b
+    WHERE b.sparepart_id = sp.id AND b.location_id = l.id
   );
 
 -- 8. Plant assignments to GM1 for all three recipients (enables the 7-6

@@ -100,10 +100,10 @@ class DashboardAnalyticsServiceIntegrationTest extends AbstractPostgresIntegrati
   @DisplayName("14.2-ANALYTICS-001 P1 MTBF/MTTR with >=2 stopped breakdown WOs returns available values")
   void mtbfMttrWithEnoughData() {
     var admin = superAdmin();
-    seedStoppedBreakdownWo(chain.machine1Id(), "DONE", 120L, 60L, chain.breakdownCatId(),
+    seedStoppedBreakdownWo(chain.machine1Id(), "PENDING_REVIEW", 120L, 60L, chain.breakdownCatId(),
         Instant.parse("2026-08-20T10:00:00Z"));
     // Second breakdown WO — needed for MTBF (>=2).
-    seedStoppedBreakdownWo(chain.machine1Id(), "DONE", 180L, 45L, chain.breakdownCatId(),
+    seedStoppedBreakdownWo(chain.machine1Id(), "PENDING_REVIEW", 180L, 45L, chain.breakdownCatId(),
         Instant.parse("2026-08-22T10:00:00Z"));
 
     var result = analyticsService.mtbfMttr(admin, null);
@@ -122,7 +122,7 @@ class DashboardAnalyticsServiceIntegrationTest extends AbstractPostgresIntegrati
   @DisplayName("14.2-ANALYTICS-002 P1 MTBF insufficient when <2 stopped breakdown WOs")
   void mtbfInsufficientWithSingleStoppedBreakdown() {
     var admin = superAdmin();
-    seedStoppedBreakdownWo(chain.machine1Id(), "DONE", 120L, 60L, chain.breakdownCatId(),
+    seedStoppedBreakdownWo(chain.machine1Id(), "PENDING_REVIEW", 120L, 60L, chain.breakdownCatId(),
         Instant.parse("2026-08-20T10:00:00Z"));
 
     var result = analyticsService.mtbfMttr(admin, null);
@@ -153,9 +153,9 @@ class DashboardAnalyticsServiceIntegrationTest extends AbstractPostgresIntegrati
   void mttrInsufficientWithNoCompletedMttr() {
     var admin = superAdmin();
     // Two stopped breakdown WOs, but neither has mttrMinutes persisted.
-    seedStoppedBreakdownWo(chain.machine1Id(), "DONE", null, 60L, chain.breakdownCatId(),
+    seedStoppedBreakdownWo(chain.machine1Id(), "PENDING_REVIEW", null, 60L, chain.breakdownCatId(),
         Instant.parse("2026-08-20T10:00:00Z"));
-    seedStoppedBreakdownWo(chain.machine1Id(), "DONE", null, 45L, chain.breakdownCatId(),
+    seedStoppedBreakdownWo(chain.machine1Id(), "PENDING_REVIEW", null, 45L, chain.breakdownCatId(),
         Instant.parse("2026-08-22T10:00:00Z"));
 
     var result = analyticsService.mtbfMttr(admin, null);
@@ -197,12 +197,12 @@ class DashboardAnalyticsServiceIntegrationTest extends AbstractPostgresIntegrati
   void mtbfMttrPlantIdFiltersToPlant() {
     var admin = superAdmin();
     // Plant 1: two stopped breakdowns → MTBF available.
-    seedStoppedBreakdownWo(chain.machine1Id(), "DONE", 120L, 60L, chain.breakdownCatId(),
+    seedStoppedBreakdownWo(chain.machine1Id(), "PENDING_REVIEW", 120L, 60L, chain.breakdownCatId(),
         Instant.parse("2026-08-20T10:00:00Z"));
-    seedStoppedBreakdownWo(chain.machine1Id(), "DONE", 180L, 45L, chain.breakdownCatId(),
+    seedStoppedBreakdownWo(chain.machine1Id(), "PENDING_REVIEW", 180L, 45L, chain.breakdownCatId(),
         Instant.parse("2026-08-22T10:00:00Z"));
     // Plant 2: one stopped breakdown → MTBF insufficient on plant 1's view.
-    seedStoppedBreakdownWo(chain.machine2Id(), "DONE", 90L, 30L, chain.breakdownCatId(),
+    seedStoppedBreakdownWo(chain.machine2Id(), "PENDING_REVIEW", 90L, 30L, chain.breakdownCatId(),
         Instant.parse("2026-08-21T10:00:00Z"));
 
     var result = analyticsService.mtbfMttr(admin, chain.plant1Id());
@@ -222,20 +222,20 @@ class DashboardAnalyticsServiceIntegrationTest extends AbstractPostgresIntegrati
     // WO-A: updatedAt outside the 30-day window (60 days ago), DONE transition inside (8 days ago).
     // Its derived stop time is the DONE transition → inside the window → counted.
     var woA = "WO-STOP-A-" + seq.incrementAndGet();
-    seedWorkOrderRow(woA, chain.machine1Id(), "DONE", 120L, 60L, chain.breakdownCatId(),
+    seedWorkOrderRow(woA, chain.machine1Id(), "PENDING_REVIEW", 120L, 60L, chain.breakdownCatId(),
         now.minus(java.time.Duration.ofDays(60))); // updatedAt = 60 days ago
     seedDoneHistory(woA, now.minus(java.time.Duration.ofDays(8))); // DONE transition = 8 days ago
 
     // WO-B: updatedAt inside the window (5 days ago), DONE transition outside (60 days ago).
     // Its derived stop time is the DONE transition → outside the window → NOT counted.
     var woB = "WO-STOP-B-" + seq.incrementAndGet();
-    seedWorkOrderRow(woB, chain.machine1Id(), "DONE", 180L, 45L, chain.breakdownCatId(),
+    seedWorkOrderRow(woB, chain.machine1Id(), "PENDING_REVIEW", 180L, 45L, chain.breakdownCatId(),
         now.minus(java.time.Duration.ofDays(5))); // updatedAt = 5 days ago
     seedDoneHistory(woB, now.minus(java.time.Duration.ofDays(60))); // DONE transition = 60 days ago
 
     // WO-C: DONE with no history row → fallback to updatedAt (3 days ago) → inside window.
     var woC = "WO-STOP-C-" + seq.incrementAndGet();
-    seedWorkOrderRow(woC, chain.machine1Id(), "DONE", 240L, 30L, chain.breakdownCatId(),
+    seedWorkOrderRow(woC, chain.machine1Id(), "PENDING_REVIEW", 240L, 30L, chain.breakdownCatId(),
         now.minus(java.time.Duration.ofDays(3))); // no DONE history row
 
     var result = analyticsService.mtbfMttr(admin, null);
@@ -257,7 +257,7 @@ class DashboardAnalyticsServiceIntegrationTest extends AbstractPostgresIntegrati
     var admin = superAdmin();
     var techUser = persistTechUser("tech-a@syncro.dev");
     var techId = UUID.fromString(techUser.id());
-    var woId = seedStoppedBreakdownWo(chain.machine1Id(), "DONE", 120L, 60L, chain.breakdownCatId(),
+    var woId = seedStoppedBreakdownWo(chain.machine1Id(), "PENDING_REVIEW", 120L, 60L, chain.breakdownCatId(),
         Instant.parse("2026-08-20T10:00:00Z"));
     // Assign the technician to the workorder.
     jdbc.update("UPDATE work_orders SET assigned_technician_id = ? WHERE id = ?", techId, woId);
@@ -292,7 +292,7 @@ class DashboardAnalyticsServiceIntegrationTest extends AbstractPostgresIntegrati
     var admin = superAdmin();
     var techUser = persistTechUser("tech-b@syncro.dev");
     var techId = UUID.fromString(techUser.id());
-    var woId = seedStoppedBreakdownWo(chain.machine1Id(), "DONE", 120L, 60L, chain.breakdownCatId(),
+    var woId = seedStoppedBreakdownWo(chain.machine1Id(), "PENDING_REVIEW", 120L, 60L, chain.breakdownCatId(),
         Instant.parse("2026-08-20T10:00:00Z"));
     jdbc.update("UPDATE work_orders SET assigned_technician_id = ? WHERE id = ?", techId, woId);
 
@@ -335,11 +335,11 @@ class DashboardAnalyticsServiceIntegrationTest extends AbstractPostgresIntegrati
     var techUser = persistTechUser("tech-c@syncro.dev");
     var techId = UUID.fromString(techUser.id());
     // WO with both responseTime and target → on time.
-    var wo1 = seedStoppedBreakdownWo(chain.machine1Id(), "DONE", 120L, 30L, chain.breakdownCatId(),
+    var wo1 = seedStoppedBreakdownWo(chain.machine1Id(), "PENDING_REVIEW", 120L, 30L, chain.breakdownCatId(),
         Instant.parse("2026-08-20T10:00:00Z"));
     jdbc.update("UPDATE work_orders SET assigned_technician_id = ? WHERE id = ?", techId, wo1);
     // WO with responseTime but no target → excluded.
-    var wo2 = seedStoppedBreakdownWo(chain.machine1Id(), "DONE", 120L, 90L, chain.breakdownCatId(),
+    var wo2 = seedStoppedBreakdownWo(chain.machine1Id(), "PENDING_REVIEW", 120L, 90L, chain.breakdownCatId(),
         Instant.parse("2026-08-21T10:00:00Z"));
     // Remove the category association so targetResponseMinutes is null.
     jdbc.update("UPDATE work_orders SET assigned_technician_id = ?, category_id = NULL WHERE id = ?",
@@ -362,11 +362,11 @@ class DashboardAnalyticsServiceIntegrationTest extends AbstractPostgresIntegrati
     var techUser = persistTechUser("tech-d@syncro.dev");
     var techId = UUID.fromString(techUser.id());
     // Breakdown WO with mttrMinutes 120 → counts.
-    var wo1 = seedStoppedBreakdownWo(chain.machine1Id(), "DONE", 120L, 60L, chain.breakdownCatId(),
+    var wo1 = seedStoppedBreakdownWo(chain.machine1Id(), "PENDING_REVIEW", 120L, 60L, chain.breakdownCatId(),
         Instant.parse("2026-08-20T10:00:00Z"));
     jdbc.update("UPDATE work_orders SET assigned_technician_id = ? WHERE id = ?", techId, wo1);
     // Non-breakdown WO with mttrMinutes 60 → excluded from the MTTR average.
-    var wo2 = seedStoppedBreakdownWo(chain.machine1Id(), "DONE", 60L, 30L, chain.preventiveCatId(),
+    var wo2 = seedStoppedBreakdownWo(chain.machine1Id(), "PENDING_REVIEW", 60L, 30L, chain.preventiveCatId(),
         Instant.parse("2026-08-21T10:00:00Z"));
     jdbc.update("UPDATE work_orders SET assigned_technician_id = ? WHERE id = ?", techId, wo2);
 
@@ -388,7 +388,7 @@ class DashboardAnalyticsServiceIntegrationTest extends AbstractPostgresIntegrati
     var techUser = persistTechUser("tech-e@syncro.dev");
     var techId = UUID.fromString(techUser.id());
     // WO with NO assigned technician, but a completed repair session by the technician.
-    var woId = seedStoppedBreakdownWo(chain.machine1Id(), "DONE", 120L, 60L, chain.breakdownCatId(),
+    var woId = seedStoppedBreakdownWo(chain.machine1Id(), "PENDING_REVIEW", 120L, 60L, chain.breakdownCatId(),
         Instant.parse("2026-08-20T10:00:00Z"));
     jdbc.update("""
         INSERT INTO repair_sessions (id, work_order_id, technician_id, description, started_at, ended_at,
@@ -413,7 +413,7 @@ class DashboardAnalyticsServiceIntegrationTest extends AbstractPostgresIntegrati
     var admin = superAdmin();
     // A session technician UUID with no auth_users row.
     var ghostTechId = UUID.randomUUID();
-    var woId = seedStoppedBreakdownWo(chain.machine1Id(), "DONE", 120L, 60L, chain.breakdownCatId(),
+    var woId = seedStoppedBreakdownWo(chain.machine1Id(), "PENDING_REVIEW", 120L, 60L, chain.breakdownCatId(),
         Instant.parse("2026-08-20T10:00:00Z"));
     jdbc.update("""
         INSERT INTO repair_sessions (id, work_order_id, technician_id, description, started_at, ended_at,
@@ -435,7 +435,7 @@ class DashboardAnalyticsServiceIntegrationTest extends AbstractPostgresIntegrati
   // Seed helpers
   // ---------------------------------------------------------------------------
 
-  /** Seeds a stopped (DONE/CLOSED) breakdown WO with a DONE history row at the given stop time. */
+  /** Seeds a stopped (PENDING_REVIEW/CLOSED) breakdown WO with a PENDING_REVIEW history row at the given stop time. */
   private String seedStoppedBreakdownWo(UUID machineId, String status, Long mttr, Long responseTime,
       UUID catId, Instant stopAt) {
     int s = seq.incrementAndGet();
@@ -455,7 +455,7 @@ class DashboardAnalyticsServiceIntegrationTest extends AbstractPostgresIntegrati
         Timestamp.from(updatedAt), 1);
   }
 
-  /** Seeds a breakdown WO with a given status (no DONE history row). */
+  /** Seeds a breakdown WO with a given status (no PENDING_REVIEW history row). */
   private String seedBreakdownWoWithStatus(UUID machineId, String status, Long mttr, Long responseTime,
       UUID catId, Instant stopAt) {
     int s = seq.incrementAndGet();
@@ -468,7 +468,7 @@ class DashboardAnalyticsServiceIntegrationTest extends AbstractPostgresIntegrati
     jdbc.update("""
         INSERT INTO work_order_status_history (id, work_order_id, from_status, to_status, source, actor, transitioned_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, UUID.randomUUID(), workOrderId, "IN_PROGRESS", "DONE", "MANUAL", "SYSTEM",
+        """, UUID.randomUUID(), workOrderId, "IN_PROGRESS", "PENDING_REVIEW", "MANUAL", "SYSTEM",
         Timestamp.from(transitionedAt));
   }
 

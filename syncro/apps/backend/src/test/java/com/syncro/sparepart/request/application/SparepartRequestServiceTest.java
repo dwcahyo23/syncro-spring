@@ -90,7 +90,7 @@ class SparepartRequestServiceTest {
   @Mock
   private OperationalScopeService scopes;
   @Mock
-  private com.syncro.sparepart.stock.application.SparepartStockService stocks;
+  private com.syncro.inventory.application.InventoryStockService stocks;
   @Mock
   private com.syncro.sparepart.application.SparepartService sparepartService;
   @Mock
@@ -880,7 +880,7 @@ class SparepartRequestServiceTest {
     var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PICKED_UP, null));
 
     assertThat(result.status()).isEqualTo(SparepartRequestStatus.PICKED_UP);
-    verify(stocks).decrementOnPickup(eq("MC-0001"), eq(plantId), any(java.math.BigDecimal.class));
+    verify(stocks).consumeOnPickup(eq("MC-0001"), eq(plantId), any(java.math.BigDecimal.class));
   }
 
   @Test
@@ -894,7 +894,7 @@ class SparepartRequestServiceTest {
     stubScopedMachine(machineId, user);
     when(spareparts.findByMaterialCodeIgnoreCase("MC-0001"))
         .thenReturn(Optional.of(sparepartEntity("MC-0001")));
-    when(stocks.decrementOnPickup(any(), any(), any())).thenReturn(null);
+    when(stocks.consumeOnPickup(any(), any(), any())).thenReturn(null);
 
     var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PICKED_UP, null));
 
@@ -915,7 +915,7 @@ class SparepartRequestServiceTest {
     var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PICKED_UP, null));
 
     assertThat(result.status()).isEqualTo(SparepartRequestStatus.PICKED_UP);
-    verify(stocks, never()).decrementOnPickup(any(), any(), any());
+    verify(stocks, never()).consumeOnPickup(any(), any(), any());
   }
 
   @Test
@@ -935,7 +935,7 @@ class SparepartRequestServiceTest {
     var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PICKED_UP, null));
 
     assertThat(result.status()).isEqualTo(SparepartRequestStatus.PICKED_UP);
-    verify(stocks, never()).decrementOnPickup(any(), any(), any());
+    verify(stocks, never()).consumeOnPickup(any(), any(), any());
   }
 
   @Test
@@ -960,7 +960,7 @@ class SparepartRequestServiceTest {
     assertThat(result.sparepartId()).isEqualTo(sparepartId);
     verify(auditLog).record(eq(user), org.mockito.ArgumentMatchers.argThat(r ->
         r.action() == AuditAction.UPDATE && r.entityType() == AuditEntityType.SPAREPART_REQUEST));
-    verify(stocks, never()).decrementOnPickup(any(), any(), any());
+    verify(stocks, never()).consumeOnPickup(any(), any(), any());
   }
 
   @Test

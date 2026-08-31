@@ -22,11 +22,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Single upsert entry point for SYNCED workorders (AD-7/FR-150/FR-151, story 13-1/13-2).
+ * Single upsert entry point for EXTERNAL workorders (AD-7/FR-150/FR-151, story 13-1/13-2).
  *
  * <p>The sync module never writes {@code work_orders} via JPA — every external row
  * passes through {@link #upsert}. The maintenance module owns the workorder aggregate:
- * this service find-or-creates the entity with {@code source=SYNCED} and the external
+ * this service find-or-creates the entity with {@code source=EXTERNAL} and the external
  * {@code sheet_no} as id (no WO- prefix), writes a {@code SYNC}/{@code SYSTEM} status
  * history row, and records audit via {@link AuditLogWriter#recordSystem}. A re-sync of
  * an existing sheet_no updates fields and bumps {@code sync_version} — idempotent per
@@ -45,7 +45,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class WorkorderImportService {
 
-  static final String SOURCE_SYNCED = "SYNCED";
+  static final String SOURCE_EXTERNAL = "EXTERNAL";
   static final String HISTORY_SOURCE_SYNC = "SYNC";
   static final String SYSTEM_ACTOR = "SYSTEM";
 
@@ -97,15 +97,16 @@ public class WorkorderImportService {
         return UpsertResult.updated();
       }
 
-      // Terminal-state protection (NFR-P2-9): a DONE/CLOSED workorder is never regressed
+      // Terminal-state protection (NFR-P2-9): a CLOSED workorder is never regressed
       // by sync. Any newer external touch of a terminal workorder is quarantined.
-      if (fromStatus == WorkOrderStatus.DONE || fromStatus == WorkOrderStatus.CLOSED) {
+      if (fromStatus == WorkOrderStatus.CLOSED) {
         return UpsertResult.rejected(UpsertResult.TERMINAL_STATE_PROTECTED);
       }
 
-      // ON_PROCUREMENT is derived locally from live sparepart requests (AD-5); an
+      // PENDING_SPAREPART is derived locally from live sparepart requests (AD-5); an
       // external status never overrides it.
-      if (fromStatus == WorkOrderStatus.ON_PROCUREMENT && status != WorkOrderStatus.ON_PROCUREMENT) {
+      if (fromStatus == WorkOrderStatus.PENDING_SPAREPART
+          && status != WorkOrderStatus.PENDING_SPAREPART) {
         return UpsertResult.rejected(UpsertResult.ON_PROCUREMENT_PROTECTED);
       }
 
@@ -135,7 +136,7 @@ public class WorkorderImportService {
       return UpsertResult.updated();
     }
 
-    var created = new WorkOrderEntity(sheetNo, SOURCE_SYNCED, parentId, status, categoryId, machineId,
+    var created = new WorkOrderEntity(sheetNo, SOURCE_EXTERNAL, parentId, status, categoryId, machineId,
         description, 0L, null, null, null,
         externalCreatedAt != null ? externalCreatedAt : now,
         externalUpdatedAt != null ? externalUpdatedAt : now);

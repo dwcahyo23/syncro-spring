@@ -23,7 +23,7 @@ import com.syncro.sparepart.infrastructure.SparepartEntity;
 import com.syncro.sparepart.infrastructure.SparepartPriceEntryRepository;
 import com.syncro.sparepart.infrastructure.SparepartRepository;
 import com.syncro.sparepart.infrastructure.SparepartTaxonomyEntity;
-import com.syncro.sparepart.stock.application.SparepartStockService;
+import com.syncro.inventory.application.InventoryStockService;
 import com.syncro.sparepart.request.domain.SparepartRequest;
 import com.syncro.sparepart.request.domain.SparepartRequestStateMachine;
 import com.syncro.sparepart.request.domain.SparepartRequestStatus;
@@ -51,7 +51,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Sparepart request creation (FR-140/FR-143/FR-144, story 12-1) and state machine
  * (FR-141/FR-145/AD-5, story 12-2). Enforces the type rules, scopes, role gates, valid
- * transitions, MRE recording, and ON_PROCUREMENT recomputation via WorkOrderService.
+ * transitions, MRE recording, and PENDING_SPAREPART (derived procurement) recomputation via WorkOrderService.
  */
 @Service
 public class SparepartRequestService {
@@ -81,7 +81,7 @@ public class SparepartRequestService {
   private final AuditLogWriter auditLog;
   private final OperationalScopeService scopes;
   private final Clock clock;
-  private final SparepartStockService stocks;
+  private final InventoryStockService stocks;
   private final SparepartService sparepartService;
   private final SparepartPriceEntryService priceEntryService;
   private final SparepartImageService sparepartImages;
@@ -92,7 +92,7 @@ public class SparepartRequestService {
       SparepartRepository spareparts, SparepartPriceEntryRepository priceEntries,
       EscalationConfigService escalationConfigs, NotificationJobRepository notificationJobs,
       AuditLogWriter auditLog, OperationalScopeService scopes, Clock clock,
-      SparepartStockService stocks, SparepartService sparepartService,
+      InventoryStockService stocks, SparepartService sparepartService,
       SparepartPriceEntryService priceEntryService, SparepartImageService sparepartImages) {
     this.requests = requests;
     this.timelines = timelines;
@@ -191,7 +191,7 @@ public class SparepartRequestService {
    * leader OR inventory/stores for ACK/PROCESSING/READY/PURCHASE_REQUESTED/PART_RECEIVED;
    * workorder section leader or SUPER_ADMIN for PICKED_UP/CLOSED — requester may not
    * close their own unless also a leader, SoD spirit AD-16). Writes a timeline row +
-   * audit, then recomputes the workorder's derived ON_PROCUREMENT state (AD-5).
+   * audit, then recomputes the workorder's derived PENDING_SPAREPART state (AD-5).
    */
   @Transactional
   public SparepartRequest transition(AuthenticatedUser user, UUID requestId, TransitionCommand command) {
@@ -243,7 +243,7 @@ public class SparepartRequestService {
       var machineForStock = machine;
       var plantId = plantIdOf(machineForStock);
       if (materialCode != null && plantId != null && spareparts.findByMaterialCodeIgnoreCase(materialCode).isPresent()) {
-        stocks.decrementOnPickup(materialCode, plantId,
+        stocks.consumeOnPickup(materialCode, plantId,
             java.math.BigDecimal.valueOf(entity.getQuantity()));
       }
     }
@@ -435,7 +435,7 @@ public class SparepartRequestService {
    *       role AND be an in-scope leader for the request's machine. SUPER_ADMIN bypasses.</li>
    * </ol>
    * On success the internal {@link #transition} machinery runs (timeline, audit,
-   * ON_PROCUREMENT recompute, ack-stop).
+   * PENDING_SPAREPART recompute, ack-stop).
    */
   @Transactional
   public SparepartRequest approve(AuthenticatedUser user, UUID requestId, ApproveCommand command) {
@@ -809,9 +809,9 @@ public class SparepartRequestService {
 
   /**
    * AD-5: after a status-affecting request transition bound to a workorder, recompute
-   * the workorder's derived ON_PROCUREMENT state via the maintenance application service.
+   * the workorder's derived PENDING_SPAREPART state via the maintenance application service.
    * {@code recomputeProcurementState} is idempotent and only applies to
-   * IN_PROGRESS/ON_PROCUREMENT workorders, so calling it unconditionally is safe; it is a
+   * IN_PROGRESS/PENDING_SPAREPART workorders, so calling it unconditionally is safe; it is a
    * no-op otherwise. MRE does not change readiness and never reaches this path.
    */
   private void recomputeProcurement(SparepartRequestEntity entity) {

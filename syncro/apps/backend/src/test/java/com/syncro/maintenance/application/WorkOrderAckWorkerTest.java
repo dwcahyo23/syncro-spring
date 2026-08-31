@@ -84,20 +84,20 @@ class WorkOrderAckWorkerTest {
   }
 
   @Test
-  @DisplayName("14.4-ACK-001 computes net IN_PROGRESS minutes excluding ON_PROCUREMENT spans")
+  @DisplayName("14.4-ACK-001 computes net IN_PROGRESS minutes excluding PENDING_SPAREPART spans")
   void computesNetInProgressMinutesExcludingProcurement() {
     var t0 = NOW.minusSeconds(8 * 3600);
     var t1 = t0.plusSeconds(2 * 3600); // IN_PROGRESS
-    var t2 = t1.plusSeconds(2 * 3600); // ON_PROCUREMENT (excluded)
+    var t2 = t1.plusSeconds(2 * 3600); // PENDING_SPAREPART (excluded)
     var t3 = t2.plusSeconds(3 * 3600); // IN_PROGRESS again
-    var t4 = t3.plusSeconds(1 * 3600); // DONE
+    var t4 = t3.plusSeconds(1 * 3600); // PENDING_REVIEW
 
     when(statusHistory.findByWorkOrderIdOrderByTransitionedAtAsc(WORKORDER_ID)).thenReturn(List.of(
         new WorkOrderStatusHistoryEntity(UUID.randomUUID(), WORKORDER_ID, null, "OPEN", "MANUAL", "u", "t", t0),
-        new WorkOrderStatusHistoryEntity(UUID.randomUUID(), WORKORDER_ID, "ASSIGNED", "IN_PROGRESS", "MANUAL", "u", "t", t1),
-        new WorkOrderStatusHistoryEntity(UUID.randomUUID(), WORKORDER_ID, "IN_PROGRESS", "ON_PROCUREMENT", "DERIVED", "SYSTEM", "t", t2),
-        new WorkOrderStatusHistoryEntity(UUID.randomUUID(), WORKORDER_ID, "ON_PROCUREMENT", "IN_PROGRESS", "DERIVED", "SYSTEM", "t", t3),
-        new WorkOrderStatusHistoryEntity(UUID.randomUUID(), WORKORDER_ID, "IN_PROGRESS", "DONE", "MANUAL", "u", "t", t4)));
+        new WorkOrderStatusHistoryEntity(UUID.randomUUID(), WORKORDER_ID, "OPEN", "IN_PROGRESS", "MANUAL", "u", "t", t1),
+        new WorkOrderStatusHistoryEntity(UUID.randomUUID(), WORKORDER_ID, "IN_PROGRESS", "PENDING_SPAREPART", "DERIVED", "SYSTEM", "t", t2),
+        new WorkOrderStatusHistoryEntity(UUID.randomUUID(), WORKORDER_ID, "PENDING_SPAREPART", "IN_PROGRESS", "DERIVED", "SYSTEM", "t", t3),
+        new WorkOrderStatusHistoryEntity(UUID.randomUUID(), WORKORDER_ID, "IN_PROGRESS", "PENDING_REVIEW", "MANUAL", "u", "t", t4)));
 
     long minutes = worker.computeNetInProgressMinutes(WORKORDER_ID, NOW);
 
@@ -111,7 +111,7 @@ class WorkOrderAckWorkerTest {
     var t1 = NOW.minusSeconds(5 * 3600);
     when(statusHistory.findByWorkOrderIdOrderByTransitionedAtAsc(WORKORDER_ID)).thenReturn(List.of(
         new WorkOrderStatusHistoryEntity(UUID.randomUUID(), WORKORDER_ID, null, "OPEN", "MANUAL", "u", "t", t1.minusSeconds(3600)),
-        new WorkOrderStatusHistoryEntity(UUID.randomUUID(), WORKORDER_ID, "ASSIGNED", "IN_PROGRESS", "MANUAL", "u", "t", t1)));
+        new WorkOrderStatusHistoryEntity(UUID.randomUUID(), WORKORDER_ID, "OPEN", "IN_PROGRESS", "MANUAL", "u", "t", t1)));
 
     long minutes = worker.computeNetInProgressMinutes(WORKORDER_ID, NOW);
 
@@ -129,7 +129,7 @@ class WorkOrderAckWorkerTest {
     when(acks.existsByWorkOrderId(WORKORDER_ID)).thenReturn(false);
     when(statusHistory.findByWorkOrderIdOrderByTransitionedAtAsc(WORKORDER_ID)).thenReturn(List.of(
         new WorkOrderStatusHistoryEntity(UUID.randomUUID(), WORKORDER_ID, null, "OPEN", "MANUAL", "u", "t", t1.minusSeconds(3600)),
-        new WorkOrderStatusHistoryEntity(UUID.randomUUID(), WORKORDER_ID, "ASSIGNED", "IN_PROGRESS", "MANUAL", "u", "t", t1)));
+        new WorkOrderStatusHistoryEntity(UUID.randomUUID(), WORKORDER_ID, "OPEN", "IN_PROGRESS", "MANUAL", "u", "t", t1)));
     when(escalationConfigs.findByScope("WORKORDER", "ACK_WAITING"))
         .thenReturn(Optional.of(configEntity(480)));
     when(users.findAllByApplicationRoleInWithWhatsapp(any())).thenReturn(List.of(leaderWithWhatsapp()));
@@ -160,7 +160,7 @@ class WorkOrderAckWorkerTest {
     when(acks.existsByWorkOrderId(WORKORDER_ID)).thenReturn(false);
     when(statusHistory.findByWorkOrderIdOrderByTransitionedAtAsc(WORKORDER_ID)).thenReturn(List.of(
         new WorkOrderStatusHistoryEntity(UUID.randomUUID(), WORKORDER_ID, null, "OPEN", "MANUAL", "u", "t", t1.minusSeconds(3600)),
-        new WorkOrderStatusHistoryEntity(UUID.randomUUID(), WORKORDER_ID, "ASSIGNED", "IN_PROGRESS", "MANUAL", "u", "t", t1)));
+        new WorkOrderStatusHistoryEntity(UUID.randomUUID(), WORKORDER_ID, "OPEN", "IN_PROGRESS", "MANUAL", "u", "t", t1)));
     when(escalationConfigs.findByScope("WORKORDER", "ACK_WAITING"))
         .thenReturn(Optional.of(configEntity(480)));
 

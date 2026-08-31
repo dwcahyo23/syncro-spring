@@ -6,7 +6,7 @@ import java.util.UUID;
 
 /**
  * Application-level workorder value (AD-3/AD-4). The id is dual-source: an external
- * {@code sheet_no} (source SYNCED) or {@code WO-YYMM-XXXXX} (source INTERNAL).
+ * {@code sheet_no} (source EXTERNAL) or {@code WO-YYMMXXXX} (source INTERNAL).
  * Cross-aggregate references stay as plain ids — this record carries no JPA/Spring
  * state and is mapped to/from the persistence entity by {@code WorkOrderMapper}.
  *

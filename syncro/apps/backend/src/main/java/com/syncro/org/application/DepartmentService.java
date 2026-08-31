@@ -11,8 +11,8 @@ import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
 import com.syncro.auth.infrastructure.AuthUserRepository;
 import com.syncro.auth.infrastructure.PlantRepository;
 import com.syncro.org.infrastructure.DepartmentEntity;
-import com.syncro.org.infrastructure.DepartmentMemberEntity;
-import com.syncro.org.infrastructure.DepartmentMemberRepository;
+import com.syncro.org.infrastructure.DepartmentUserEntity;
+import com.syncro.org.infrastructure.DepartmentUserRepository;
 import com.syncro.org.infrastructure.DepartmentRepository;
 import java.time.Clock;
 import java.time.Instant;
@@ -30,16 +30,16 @@ import org.springframework.transaction.annotation.Transactional;
  * leaders must be active users with access to the same plant. Departments are
  * soft-inactivated — never hard-deleted — and deactivation is rejected while the
  * department still has members. Audit is the Phase 1 actor-correlated model
- * ({@code DEPARTMENT} / {@code DEPARTMENT_MEMBER} entity types).
+ * ({@code DEPARTMENT} / {@code DEPARTMENT_USER} entity types).
  */
 @Service
 public class DepartmentService {
 
   private static final String DEPARTMENT_NAME_UNIQUE_CONSTRAINT = "uq_departments_plant_name";
-  private static final String DEPARTMENT_MEMBER_UNIQUE_CONSTRAINT = "uq_department_members";
+  private static final String DEPARTMENT_MEMBER_UNIQUE_CONSTRAINT = "uq_department_users_department_user";
 
   private final DepartmentRepository departments;
-  private final DepartmentMemberRepository members;
+  private final DepartmentUserRepository members;
   private final PlantRepository plants;
   private final AuthUserRepository users;
   private final AuthUserPlantAssignmentRepository assignments;
@@ -49,7 +49,7 @@ public class DepartmentService {
 
   public DepartmentService(
       DepartmentRepository departments,
-      DepartmentMemberRepository members,
+      DepartmentUserRepository members,
       PlantRepository plants,
       AuthUserRepository users,
       AuthUserPlantAssignmentRepository assignments,
@@ -182,7 +182,7 @@ public class DepartmentService {
     var inserted = 0;
     for (var userId : uniqueUserIds) {
       members.saveAndFlush(
-          new DepartmentMemberEntity(UUID.randomUUID(), departmentId, userId, actorId, now));
+          new DepartmentUserEntity(UUID.randomUUID(), departmentId, userId, actorId, now));
       inserted++;
     }
     var current = new LinkedHashMap<String, Object>();

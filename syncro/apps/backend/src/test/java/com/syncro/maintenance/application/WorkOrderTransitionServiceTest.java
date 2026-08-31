@@ -109,17 +109,17 @@ class WorkOrderTransitionServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  @DisplayName("10.3-SVC-001 P0 ASSIGNED→IN_PROGRESS by the assigned TECHNICIAN succeeds with MANUAL history + audit")
+  @DisplayName("10.3-SVC-001 P0 OPEN→IN_PROGRESS by the assigned TECHNICIAN succeeds with MANUAL history + audit")
   void startByExecutor() {
     var user = assignedTechnician();
-    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.ASSIGNED, null, technicianId);
+    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.OPEN, null, technicianId);
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.IN_PROGRESS));
 
     assertThat(result.status()).isEqualTo(WorkOrderStatus.IN_PROGRESS);
-    verify(statusHistory).saveAndFlush(argThat(h -> "ASSIGNED".equals(h.getFromStatus())
+    verify(statusHistory).saveAndFlush(argThat(h -> "OPEN".equals(h.getFromStatus())
         && "IN_PROGRESS".equals(h.getToStatus()) && "MANUAL".equals(h.getSource())
         && user.id().equals(h.getActor())));
     verify(auditLog).record(eq(user), argThat(r -> r.action() == AuditAction.UPDATE
@@ -134,18 +134,18 @@ class WorkOrderTransitionServiceTest {
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.DONE));
+    var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.PENDING_REVIEW));
 
-    assertThat(result.status()).isEqualTo(WorkOrderStatus.DONE);
+    assertThat(result.status()).isEqualTo(WorkOrderStatus.PENDING_REVIEW);
     verify(statusHistory).saveAndFlush(argThat(h -> "IN_PROGRESS".equals(h.getFromStatus())
-        && "DONE".equals(h.getToStatus())));
+        && "PENDING_REVIEW".equals(h.getToStatus())));
   }
 
   @Test
   @DisplayName("10.3-SVC-003 P0 ON_PROCUREMENT→IN_PROGRESS by the assigned executor succeeds")
   void resumeByExecutor() {
     var user = assignedTechnician();
-    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.ON_PROCUREMENT, null, technicianId);
+    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.PENDING_SPAREPART, null, technicianId);
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
     when(sparepartReadiness.hasLiveNonReadyRequest(WORKORDER_ID)).thenReturn(false);
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -156,10 +156,10 @@ class WorkOrderTransitionServiceTest {
   }
 
   @Test
-  @DisplayName("10.3-SVC-004 P0 ASSIGNED→IN_PROGRESS by an in-scope MAINTENANCE_LEADER (plant scope) succeeds")
+  @DisplayName("10.3-SVC-004 P0 OPEN→IN_PROGRESS by an in-scope MAINTENANCE_LEADER (plant scope) succeeds")
   void startByPlantScopedLeader() {
     var user = user(ApplicationRole.MAINTENANCE_LEADER);
-    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.ASSIGNED, null, technicianId);
+    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.OPEN, null, technicianId);
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -179,9 +179,9 @@ class WorkOrderTransitionServiceTest {
     when(sparepartReadiness.hasLiveNonReadyRequest(WORKORDER_ID)).thenReturn(false);
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.ON_PROCUREMENT));
+    var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.PENDING_SPAREPART));
 
-    assertThat(result.status()).isEqualTo(WorkOrderStatus.ON_PROCUREMENT);
+    assertThat(result.status()).isEqualTo(WorkOrderStatus.PENDING_SPAREPART);
   }
 
   @Test
@@ -199,10 +199,10 @@ class WorkOrderTransitionServiceTest {
   }
 
   @Test
-  @DisplayName("10.3-SVC-007 P1 ASSIGNED→CANCELLED by an in-scope MAINTENANCE_LEADER succeeds")
-  void cancelAssignedByLeader() {
+  @DisplayName("10.3-SVC-007 P1 IN_PROGRESS→CANCELLED by an in-scope MAINTENANCE_LEADER succeeds")
+  void cancelInProgressByLeader() {
     var user = user(ApplicationRole.MAINTENANCE_LEADER);
-    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.ASSIGNED, null, technicianId);
+    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.IN_PROGRESS, null, technicianId);
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -213,23 +213,10 @@ class WorkOrderTransitionServiceTest {
   }
 
   @Test
-  @DisplayName("10.3-SVC-008 P2 DRAFT→OPEN by SUPER_ADMIN succeeds (machine edge, unreachable today)")
-  void draftToOpen() {
-    var user = user(ApplicationRole.SUPER_ADMIN);
-    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.DRAFT, null, null);
-    when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
-    when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
-
-    var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.OPEN));
-
-    assertThat(result.status()).isEqualTo(WorkOrderStatus.OPEN);
-  }
-
-  @Test
-  @DisplayName("10.3-SVC-009 P0 a STAFF_MAINTENANCE assignee may execute as executor")
+  @DisplayName("10.3-SVC-009 P0 a STAFF_MAINTENANCE assignee may start execution as executor")
   void staffAssigneeExecutes() {
     var user = new AuthenticatedUser(technicianId.toString(), "staff@syncro.dev", ApplicationRole.STAFF_MAINTENANCE);
-    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.ASSIGNED, null, technicianId);
+    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.OPEN, null, technicianId);
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -252,7 +239,7 @@ class WorkOrderTransitionServiceTest {
     when(repairSessions.countByWorkOrderIdAndEndedAtIsNotNull(WORKORDER_ID)).thenReturn(0L);
 
     assertThatThrownBy(() -> service.transition(user, WORKORDER_ID,
-        new TransitionWorkOrderCommand(WorkOrderStatus.DONE, "  ", null)))
+        new TransitionWorkOrderCommand(WorkOrderStatus.PENDING_REVIEW, "  ", null)))
         .isInstanceOf(DoneWithoutSessionReasonRequiredException.class);
   }
 
@@ -267,9 +254,9 @@ class WorkOrderTransitionServiceTest {
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     var result = service.transition(user, WORKORDER_ID,
-        new TransitionWorkOrderCommand(WorkOrderStatus.DONE, "  no technician available  ", null));
+        new TransitionWorkOrderCommand(WorkOrderStatus.PENDING_REVIEW, "  no technician available  ", null));
 
-    assertThat(result.status()).isEqualTo(WorkOrderStatus.DONE);
+    assertThat(result.status()).isEqualTo(WorkOrderStatus.PENDING_REVIEW);
     assertThat(result.doneReason()).isEqualTo("no technician available");
     verify(auditLog).record(eq(user), argThat(r -> r.newValue() != null
         && "no technician available".equals(r.newValue().get("doneReason"))));
@@ -285,7 +272,7 @@ class WorkOrderTransitionServiceTest {
     when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull(WORKORDER_ID)).thenReturn(Optional.of(open));
 
     assertThatThrownBy(() -> service.transition(user, WORKORDER_ID,
-        new TransitionWorkOrderCommand(WorkOrderStatus.DONE, "spare", null)))
+        new TransitionWorkOrderCommand(WorkOrderStatus.PENDING_REVIEW, "spare", null)))
         .isInstanceOf(SessionOpenConflictException.class);
   }
 
@@ -299,9 +286,9 @@ class WorkOrderTransitionServiceTest {
     when(repairSessions.countByWorkOrderIdAndEndedAtIsNotNull(WORKORDER_ID)).thenReturn(1L);
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.DONE));
+    var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.PENDING_REVIEW));
 
-    assertThat(result.status()).isEqualTo(WorkOrderStatus.DONE);
+    assertThat(result.status()).isEqualTo(WorkOrderStatus.PENDING_REVIEW);
     verify(workOrders).saveAndFlush(entity);
   }
 
@@ -319,7 +306,7 @@ class WorkOrderTransitionServiceTest {
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
     when(categories.findById(categoryId)).thenReturn(Optional.of(breakdownCategory));
 
-    assertThatThrownBy(() -> service.transition(user, WORKORDER_ID, command(WorkOrderStatus.DONE)))
+    assertThatThrownBy(() -> service.transition(user, WORKORDER_ID, command(WorkOrderStatus.PENDING_REVIEW)))
         .isInstanceOf(StopTimeReasonRequiredException.class);
     verify(workOrders, never()).saveAndFlush(any());
   }
@@ -334,9 +321,9 @@ class WorkOrderTransitionServiceTest {
     // No categories stub needed — the gate returns early when stopTimeReason is already set.
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.DONE));
+    var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.PENDING_REVIEW));
 
-    assertThat(result.status()).isEqualTo(WorkOrderStatus.DONE);
+    assertThat(result.status()).isEqualTo(WorkOrderStatus.PENDING_REVIEW);
     verify(auditLog).record(eq(user), argThat(r -> r.newValue() != null
         && "ELECTRIC".equals(r.newValue().get("stopTimeReason"))));
   }
@@ -352,9 +339,9 @@ class WorkOrderTransitionServiceTest {
     when(categories.findById(categoryId)).thenReturn(Optional.of(preventiveCategory));
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.DONE));
+    var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.PENDING_REVIEW));
 
-    assertThat(result.status()).isEqualTo(WorkOrderStatus.DONE);
+    assertThat(result.status()).isEqualTo(WorkOrderStatus.PENDING_REVIEW);
   }
 
   @Test
@@ -366,9 +353,9 @@ class WorkOrderTransitionServiceTest {
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.DONE));
+    var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.PENDING_REVIEW));
 
-    assertThat(result.status()).isEqualTo(WorkOrderStatus.DONE);
+    assertThat(result.status()).isEqualTo(WorkOrderStatus.PENDING_REVIEW);
   }
 
   @Test
@@ -382,9 +369,9 @@ class WorkOrderTransitionServiceTest {
     // proving CP/CPK absence is irrelevant.
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.DONE));
+    var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.PENDING_REVIEW));
 
-    assertThat(result.status()).isEqualTo(WorkOrderStatus.DONE);
+    assertThat(result.status()).isEqualTo(WorkOrderStatus.PENDING_REVIEW);
   }
 
   // -------------------------------------------------------------------------
@@ -392,10 +379,10 @@ class WorkOrderTransitionServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  @DisplayName("10.3-SVC-010 P0 OPEN→IN_PROGRESS throws InvalidStateTransitionException")
-  void invalidTransitionOpenToInProgress() {
+  @DisplayName("10.3-SVC-010 P0 PENDING_REVIEW→IN_PROGRESS throws InvalidStateTransitionException")
+  void invalidTransitionPendingReviewToInProgress() {
     var user = user(ApplicationRole.SECTION_LEADER);
-    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.OPEN, null, null);
+    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.PENDING_REVIEW, null, null);
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
 
     assertThatThrownBy(() -> service.transition(user, WORKORDER_ID, command(WorkOrderStatus.IN_PROGRESS)))
@@ -403,13 +390,13 @@ class WorkOrderTransitionServiceTest {
   }
 
   @Test
-  @DisplayName("10.3-SVC-011 P0 any→ASSIGNED is rejected — assignment is POST /{id}/assign")
-  void transitionToAssignedRejected() {
+  @DisplayName("10.3-SVC-011 P0 CLOSED→OPEN is rejected — terminal states have no outgoing edges")
+  void transitionFromClosedRejected() {
     var user = user(ApplicationRole.SECTION_LEADER);
-    var open = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.OPEN, null, null);
+    var open = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.CLOSED, null, null);
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(open));
 
-    assertThatThrownBy(() -> service.transition(user, WORKORDER_ID, command(WorkOrderStatus.ASSIGNED)))
+    assertThatThrownBy(() -> service.transition(user, WORKORDER_ID, command(WorkOrderStatus.IN_PROGRESS)))
         .isInstanceOf(InvalidStateTransitionException.class);
   }
 
@@ -417,7 +404,7 @@ class WorkOrderTransitionServiceTest {
   @DisplayName("10.3-SVC-012 P0 transitions out of a terminal state are rejected")
   void terminalStateHasNoOutgoingEdges() {
     var user = user(ApplicationRole.SUPER_ADMIN);
-    var done = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.DONE, null, null);
+    var done = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.CLOSED, null, null);
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(done));
 
     assertThatThrownBy(() -> service.transition(user, WORKORDER_ID, command(WorkOrderStatus.IN_PROGRESS)))
@@ -429,10 +416,10 @@ class WorkOrderTransitionServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  @DisplayName("10.3-SVC-013 P0 ASSIGNED→IN_PROGRESS by a different technician is forbidden")
+  @DisplayName("10.3-SVC-013 P0 OPEN→IN_PROGRESS by a different technician is forbidden")
   void notExecutorForbidden() {
     var user = new AuthenticatedUser(UUID.randomUUID().toString(), "other@syncro.dev", ApplicationRole.TECHNICIAN);
-    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.ASSIGNED, null, technicianId);
+    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.OPEN, null, technicianId);
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
 
     assertThatThrownBy(() -> service.transition(user, WORKORDER_ID, command(WorkOrderStatus.IN_PROGRESS)))
@@ -446,7 +433,7 @@ class WorkOrderTransitionServiceTest {
     var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.IN_PROGRESS, null, technicianId);
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
 
-    assertThatThrownBy(() -> service.transition(user, WORKORDER_ID, command(WorkOrderStatus.ON_PROCUREMENT)))
+    assertThatThrownBy(() -> service.transition(user, WORKORDER_ID, command(WorkOrderStatus.PENDING_SPAREPART)))
         .isInstanceOf(WorkorderForbiddenException.class);
   }
 
@@ -454,7 +441,7 @@ class WorkOrderTransitionServiceTest {
   @DisplayName("10.3-SVC-015 P0 DONE→CLOSED by the assigned technician is forbidden (leader-only)")
   void closeByTechnicianForbidden() {
     var user = assignedTechnician();
-    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.DONE, null, technicianId);
+    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.PENDING_REVIEW, null, technicianId);
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
 
     assertThatThrownBy(() -> service.transition(user, WORKORDER_ID, command(WorkOrderStatus.CLOSED)))
@@ -469,7 +456,7 @@ class WorkOrderTransitionServiceTest {
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(UUID.randomUUID()), Set.of(), Set.of()));
 
-    assertThatThrownBy(() -> service.transition(user, WORKORDER_ID, command(WorkOrderStatus.ON_PROCUREMENT)))
+    assertThatThrownBy(() -> service.transition(user, WORKORDER_ID, command(WorkOrderStatus.PENDING_SPAREPART)))
         .isInstanceOf(WorkorderForbiddenException.class);
   }
 
@@ -481,7 +468,7 @@ class WorkOrderTransitionServiceTest {
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(UUID.randomUUID()), Set.of()));
 
-    assertThatThrownBy(() -> service.transition(user, WORKORDER_ID, command(WorkOrderStatus.ON_PROCUREMENT)))
+    assertThatThrownBy(() -> service.transition(user, WORKORDER_ID, command(WorkOrderStatus.PENDING_SPAREPART)))
         .isInstanceOf(WorkorderForbiddenException.class);
   }
 
@@ -489,7 +476,7 @@ class WorkOrderTransitionServiceTest {
   @DisplayName("10.3-SVC-018 P0 manual transitions on SYNCED workorders are forbidden")
   void syncedWorkorderForbidden() {
     var user = assignedTechnician();
-    var entity = entity(WORKORDER_ID, "SYNCED", WorkOrderStatus.ASSIGNED, null, technicianId);
+    var entity = entity(WORKORDER_ID, "EXTERNAL", WorkOrderStatus.IN_PROGRESS, null, technicianId);
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
 
     assertThatThrownBy(() -> service.transition(user, WORKORDER_ID, command(WorkOrderStatus.IN_PROGRESS)))
@@ -519,7 +506,7 @@ class WorkOrderTransitionServiceTest {
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
     when(sparepartReadiness.hasLiveNonReadyRequest(WORKORDER_ID)).thenReturn(true);
 
-    assertThatThrownBy(() -> service.transition(user, WORKORDER_ID, command(WorkOrderStatus.ON_PROCUREMENT)))
+    assertThatThrownBy(() -> service.transition(user, WORKORDER_ID, command(WorkOrderStatus.PENDING_SPAREPART)))
         .isInstanceOf(ProcurementRequestConflictException.class);
   }
 
@@ -527,7 +514,7 @@ class WorkOrderTransitionServiceTest {
   @DisplayName("10.3-SVC-021 P1 manual resume from ON_PROCUREMENT with a live non-ready request is a conflict")
   void manualResumeConflict() {
     var user = user(ApplicationRole.MAINTENANCE_LEADER);
-    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.ON_PROCUREMENT, null, technicianId);
+    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.PENDING_SPAREPART, null, technicianId);
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
     when(sparepartReadiness.hasLiveNonReadyRequest(WORKORDER_ID)).thenReturn(true);
@@ -544,7 +531,7 @@ class WorkOrderTransitionServiceTest {
   @DisplayName("10.3-SVC-022 P0 closing a parent with a non-terminal child is blocked")
   void closeBlockedByOpenChild() {
     var user = user(ApplicationRole.MAINTENANCE_LEADER);
-    var parent = entity("WO-2409-PARENT", "INTERNAL", WorkOrderStatus.DONE, null, technicianId);
+    var parent = entity("WO-2409-PARENT", "INTERNAL", WorkOrderStatus.PENDING_REVIEW, null, technicianId);
     var child = entity("WO-2409-CHILD", "INTERNAL", WorkOrderStatus.OPEN, "WO-2409-PARENT", null);
     when(workOrders.findByIdForUpdate("WO-2409-PARENT")).thenReturn(Optional.of(parent));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
@@ -558,7 +545,7 @@ class WorkOrderTransitionServiceTest {
   @DisplayName("10.3-SVC-023 P0 closing a parent whose children are all CLOSED/CANCELLED succeeds")
   void closeWithTerminalChildren() {
     var user = user(ApplicationRole.MAINTENANCE_LEADER);
-    var parent = entity("WO-2409-PARENT", "INTERNAL", WorkOrderStatus.DONE, null, technicianId);
+    var parent = entity("WO-2409-PARENT", "INTERNAL", WorkOrderStatus.PENDING_REVIEW, null, technicianId);
     var closed = entity("WO-2409-C1", "INTERNAL", WorkOrderStatus.CLOSED, "WO-2409-PARENT", null);
     var cancelled = entity("WO-2409-C2", "INTERNAL", WorkOrderStatus.CANCELLED, "WO-2409-PARENT", null);
     when(workOrders.findByIdForUpdate("WO-2409-PARENT")).thenReturn(Optional.of(parent));
@@ -575,7 +562,7 @@ class WorkOrderTransitionServiceTest {
   @DisplayName("10.3-SVC-024 P0 SUPER_ADMIN may override a non-terminal child with an audit-logged reason")
   void closeOverrideBySuperAdmin() {
     var user = user(ApplicationRole.SUPER_ADMIN);
-    var parent = entity("WO-2409-PARENT", "INTERNAL", WorkOrderStatus.DONE, null, technicianId);
+    var parent = entity("WO-2409-PARENT", "INTERNAL", WorkOrderStatus.PENDING_REVIEW, null, technicianId);
     var child = entity("WO-2409-C1", "INTERNAL", WorkOrderStatus.OPEN, "WO-2409-PARENT", null);
     when(workOrders.findByIdForUpdate("WO-2409-PARENT")).thenReturn(Optional.of(parent));
     when(workOrders.findByParentIdForUpdate("WO-2409-PARENT")).thenReturn(List.of(child));
@@ -593,7 +580,7 @@ class WorkOrderTransitionServiceTest {
   @DisplayName("10.3-SVC-025 P0 an override-eligible actor without a reason gets 400 OVERRIDE_REASON_REQUIRED")
   void closeOverrideWithoutReason() {
     var user = user(ApplicationRole.MANAGER_MAINTENANCE);
-    var parent = entity("WO-2409-PARENT", "INTERNAL", WorkOrderStatus.DONE, null, technicianId);
+    var parent = entity("WO-2409-PARENT", "INTERNAL", WorkOrderStatus.PENDING_REVIEW, null, technicianId);
     var child = entity("WO-2409-C1", "INTERNAL", WorkOrderStatus.OPEN, "WO-2409-PARENT", null);
     when(workOrders.findByIdForUpdate("WO-2409-PARENT")).thenReturn(Optional.of(parent));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
@@ -608,8 +595,8 @@ class WorkOrderTransitionServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  @DisplayName("10.3-SVC-026 P0 recompute enters ON_PROCUREMENT with a DERIVED/SYSTEM history row")
-  void recomputeEntersOnProcurement() {
+  @DisplayName("10.3-SVC-026 P0 recompute enters PENDING_SPAREPART with a DERIVED/SYSTEM history row")
+  void recomputeEntersPendingSparepart() {
     var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.IN_PROGRESS, null, technicianId);
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
     when(sparepartReadiness.hasLiveNonReadyRequest(WORKORDER_ID)).thenReturn(true);
@@ -617,16 +604,16 @@ class WorkOrderTransitionServiceTest {
 
     service.recomputeProcurementState(WORKORDER_ID);
 
-    assertThat(entity.getStatus()).isEqualTo(WorkOrderStatus.ON_PROCUREMENT);
+    assertThat(entity.getStatus()).isEqualTo(WorkOrderStatus.PENDING_SPAREPART);
     verify(statusHistory).saveAndFlush(argThat(h -> "IN_PROGRESS".equals(h.getFromStatus())
-        && "ON_PROCUREMENT".equals(h.getToStatus()) && "DERIVED".equals(h.getSource())
+        && "PENDING_SPAREPART".equals(h.getToStatus()) && "DERIVED".equals(h.getSource())
         && "SYSTEM".equals(h.getActor())));
   }
 
   @Test
   @DisplayName("10.3-SVC-027 P0 recompute resumes IN_PROGRESS with a DERIVED/SYSTEM history row")
   void recomputeResumesInProgress() {
-    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.ON_PROCUREMENT, null, technicianId);
+    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.PENDING_SPAREPART, null, technicianId);
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
     when(sparepartReadiness.hasLiveNonReadyRequest(WORKORDER_ID)).thenReturn(false);
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -634,7 +621,7 @@ class WorkOrderTransitionServiceTest {
     service.recomputeProcurementState(WORKORDER_ID);
 
     assertThat(entity.getStatus()).isEqualTo(WorkOrderStatus.IN_PROGRESS);
-    verify(statusHistory).saveAndFlush(argThat(h -> "ON_PROCUREMENT".equals(h.getFromStatus())
+    verify(statusHistory).saveAndFlush(argThat(h -> "PENDING_SPAREPART".equals(h.getFromStatus())
         && "IN_PROGRESS".equals(h.getToStatus()) && "DERIVED".equals(h.getSource())
         && "SYSTEM".equals(h.getActor())));
   }
@@ -654,7 +641,7 @@ class WorkOrderTransitionServiceTest {
   }
 
   @Test
-  @DisplayName("10.3-SVC-029 P2 recompute ignores statuses outside IN_PROGRESS/ON_PROCUREMENT")
+  @DisplayName("10.3-SVC-029 P2 recompute ignores statuses outside IN_PROGRESS/PENDING_SPAREPART")
   void recomputeIgnoresOtherStatuses() {
     var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.OPEN, null, null);
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
@@ -680,32 +667,31 @@ class WorkOrderTransitionServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  @DisplayName("10.3-SVC-031 P1 the state machine exposes the AD-4 transition table")
+  @DisplayName("10.3-SVC-031 P1 the state machine exposes the AD-4 transition table (6-value set)")
   void stateMachineTable() {
-    assertThat(WorkOrderStateMachine.can(WorkOrderStatus.DRAFT, WorkOrderStatus.OPEN)).isTrue();
-    assertThat(WorkOrderStateMachine.can(WorkOrderStatus.OPEN, WorkOrderStatus.ASSIGNED)).isTrue();
-    assertThat(WorkOrderStateMachine.can(WorkOrderStatus.ASSIGNED, WorkOrderStatus.IN_PROGRESS)).isTrue();
-    assertThat(WorkOrderStateMachine.can(WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.ON_PROCUREMENT)).isTrue();
-    assertThat(WorkOrderStateMachine.can(WorkOrderStatus.ON_PROCUREMENT, WorkOrderStatus.IN_PROGRESS)).isTrue();
-    assertThat(WorkOrderStateMachine.can(WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.DONE)).isTrue();
-    assertThat(WorkOrderStateMachine.can(WorkOrderStatus.DONE, WorkOrderStatus.CLOSED)).isTrue();
+    assertThat(WorkOrderStateMachine.can(WorkOrderStatus.OPEN, WorkOrderStatus.IN_PROGRESS)).isTrue();
+    assertThat(WorkOrderStateMachine.can(WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.PENDING_SPAREPART)).isTrue();
+    assertThat(WorkOrderStateMachine.can(WorkOrderStatus.PENDING_SPAREPART, WorkOrderStatus.IN_PROGRESS)).isTrue();
+    assertThat(WorkOrderStateMachine.can(WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.PENDING_REVIEW)).isTrue();
+    assertThat(WorkOrderStateMachine.can(WorkOrderStatus.PENDING_REVIEW, WorkOrderStatus.CLOSED)).isTrue();
     assertThat(WorkOrderStateMachine.can(WorkOrderStatus.OPEN, WorkOrderStatus.CANCELLED)).isTrue();
-    assertThat(WorkOrderStateMachine.can(WorkOrderStatus.ASSIGNED, WorkOrderStatus.CANCELLED)).isTrue();
-    assertThat(WorkOrderStateMachine.can(WorkOrderStatus.OPEN, WorkOrderStatus.IN_PROGRESS)).isFalse();
+    assertThat(WorkOrderStateMachine.can(WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.CANCELLED)).isTrue();
+    assertThat(WorkOrderStateMachine.can(WorkOrderStatus.OPEN, WorkOrderStatus.PENDING_REVIEW)).isFalse();
     assertThat(WorkOrderStateMachine.can(WorkOrderStatus.CLOSED, WorkOrderStatus.OPEN)).isFalse();
     assertThat(WorkOrderStateMachine.can(WorkOrderStatus.CANCELLED, WorkOrderStatus.OPEN)).isFalse();
-    assertThat(WorkOrderStateMachine.can(WorkOrderStatus.DONE, WorkOrderStatus.IN_PROGRESS)).isFalse();
+    assertThat(WorkOrderStateMachine.can(WorkOrderStatus.PENDING_REVIEW, WorkOrderStatus.IN_PROGRESS)).isFalse();
+    assertThat(WorkOrderStateMachine.can(WorkOrderStatus.PENDING_SPAREPART, WorkOrderStatus.PENDING_REVIEW)).isFalse();
   }
 
   @Test
-  @DisplayName("10.3-SVC-032 P1 the state machine marks DONE/CLOSED/CANCELLED terminal")
+  @DisplayName("10.3-SVC-032 P1 the state machine marks CLOSED/CANCELLED terminal")
   void stateMachineTerminal() {
-    assertThat(WorkOrderStateMachine.isTerminal(WorkOrderStatus.DONE)).isTrue();
     assertThat(WorkOrderStateMachine.isTerminal(WorkOrderStatus.CLOSED)).isTrue();
     assertThat(WorkOrderStateMachine.isTerminal(WorkOrderStatus.CANCELLED)).isTrue();
     assertThat(WorkOrderStateMachine.isTerminal(WorkOrderStatus.OPEN)).isFalse();
     assertThat(WorkOrderStateMachine.isTerminal(WorkOrderStatus.IN_PROGRESS)).isFalse();
-    assertThat(WorkOrderStateMachine.isTerminal(WorkOrderStatus.ASSIGNED)).isFalse();
+    assertThat(WorkOrderStateMachine.isTerminal(WorkOrderStatus.PENDING_SPAREPART)).isFalse();
+    assertThat(WorkOrderStateMachine.isTerminal(WorkOrderStatus.PENDING_REVIEW)).isFalse();
   }
 
   // -------------------------------------------------------------------------

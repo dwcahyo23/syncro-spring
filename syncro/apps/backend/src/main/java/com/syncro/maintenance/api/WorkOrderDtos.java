@@ -121,7 +121,7 @@ public final class WorkOrderDtos {
   // -------------------------------------------------------------------------
 
   /**
-   * One list row (workorder-table story). The API exposes {@code id} (WO-YYMM-XXXXX /
+   * One list row (workorder-table story). The API exposes {@code id} (WO-YYMMXXXX /
    * sheet_no), machine {@code code · name}, plant {@code code}, category code/label and
    * the resolved technician name. Raw UUIDs ({@code assignedTechnicianId}) exist for
    * keys/actions but are never rendered by the UI (spec: no raw UUIDs leaked in cells).

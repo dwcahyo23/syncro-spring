@@ -26,7 +26,7 @@ import org.springframework.transaction.event.TransactionPhase;
  * <p>Resolves recipients per workorder: machine responsibility LEADER/SPV/MANAGER users
  * plus all INVENTORY_MAINTENANCE/STOREKEEPER users with a WhatsApp number. Enqueues one
  * notification job per recipient with idempotency key {@code WORKORDER:{woId}:{event}:{recipientUserId}}.
- * SYNCED workorders are excluded (internal-only events).
+ * EXTERNAL workorders are excluded (internal-only events).
  */
 @Service
 public class WorkOrderNotificationRoutingService {
@@ -64,7 +64,7 @@ public class WorkOrderNotificationRoutingService {
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void onWorkOrderLifecycleEvent(WorkOrderLifecycleEvent event) {
     try {
-      // SYNCED workorders are excluded — only INTERNAL events produce notifications
+      // EXTERNAL workorders are excluded — only INTERNAL events produce notifications
       var workOrderOpt = workOrders.findById(event.workOrderId());
       if (workOrderOpt.isEmpty()) {
         return;

@@ -34,22 +34,22 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Workorder todos & kanban (FR-119, story 10-7). Each todo is a local operational field
- * (AD-3 "preserved") — allowed on both SYNCED and INTERNAL workorders, never touches
+ * (AD-3 "preserved") — allowed on both EXTERNAL and INTERNAL workorders, never touches
  * status or sync_version. Mutations are gated on the same executor/leader access as
  * 10.4/10.5 (in-scope leader OR assigned executor) and blocked on terminal workorders
- * (DONE/CLOSED/CANCELLED). Reads (list todos, kanban) are any-authenticated — the
+ * (CLOSED/CANCELLED). Reads (list todos, kanban) are any-authenticated — the
  * workorder read posture.
  */
 @Service
 public class WorkOrderTodoService {
 
   private static final List<WorkOrderStatus> TERMINAL_STATUSES = List.of(
-      WorkOrderStatus.DONE, WorkOrderStatus.CLOSED, WorkOrderStatus.CANCELLED);
+      WorkOrderStatus.CLOSED, WorkOrderStatus.CANCELLED);
 
   /** Non-terminal statuses the kanban board groups by (design note: open workorders). */
   private static final List<WorkOrderStatus> KANBAN_STATUSES = List.of(
-      WorkOrderStatus.DRAFT, WorkOrderStatus.OPEN, WorkOrderStatus.ASSIGNED,
-      WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.ON_PROCUREMENT);
+      WorkOrderStatus.OPEN, WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.PENDING_SPAREPART,
+      WorkOrderStatus.PENDING_REVIEW);
 
   private final WorkOrderRepository workOrders;
   private final WorkOrderTodoRepository todos;
@@ -71,7 +71,7 @@ public class WorkOrderTodoService {
     this.clock = clock;
   }
 
-  /** Creates a todo on a non-terminal workorder (gate: executor/leader). */
+  /** Creates a todo on a non-terminal workorder (gate: executor/leader) */
   @Transactional
   public WorkOrderTodo create(AuthenticatedUser user, String workOrderId, CreateTodoCommand command) {
     var entity = loadWorkOrder(workOrderId);
@@ -92,7 +92,7 @@ public class WorkOrderTodoService {
     return WorkOrderMapper.toDomain(saved);
   }
 
-  /** Lists the workorder's todos ordered by sortOrder asc (any authenticated user). */
+  /** Lists the workorder's todos ordered by sortOrder asc (any authenticated user) */
   @Transactional(readOnly = true)
   public List<WorkOrderTodo> list(String workOrderId) {
     loadWorkOrder(workOrderId);
@@ -101,7 +101,7 @@ public class WorkOrderTodoService {
         .toList();
   }
 
-  /** Assigns (or changes) the todo's technician (gate: executor/leader). */
+  /** Assigns (or changes) the todo's technician (gate: executor/leader) */
   @Transactional
   public WorkOrderTodo assign(AuthenticatedUser user, String workOrderId, UUID todoId, UUID technicianId) {
     var entity = loadWorkOrder(workOrderId);
@@ -123,7 +123,7 @@ public class WorkOrderTodoService {
     return WorkOrderMapper.toDomain(saved);
   }
 
-  /** Marks a todo complete (gate: executor/leader OR the todo's assigned technician). */
+  /** Marks a todo complete (gate: executor/leader OR the todo's assigned technician) */
   @Transactional
   public WorkOrderTodo complete(AuthenticatedUser user, String workOrderId, UUID todoId) {
     var entity = loadWorkOrder(workOrderId);
@@ -147,7 +147,7 @@ public class WorkOrderTodoService {
     return WorkOrderMapper.toDomain(saved);
   }
 
-  /** Reorders a todo within its workorder (gate: executor/leader). */
+  /** Reorders a todo within its workorder (gate: executor/leader) */
   @Transactional
   public WorkOrderTodo reorder(AuthenticatedUser user, String workOrderId, UUID todoId, int sortOrder) {
     var entity = loadWorkOrder(workOrderId);
@@ -165,7 +165,7 @@ public class WorkOrderTodoService {
     return WorkOrderMapper.toDomain(saved);
   }
 
-  /** Deletes a todo (gate: executor/leader). */
+  /** Deletes a todo (gate: executor/leader) */
   @Transactional
   public void delete(AuthenticatedUser user, String workOrderId, UUID todoId) {
     var entity = loadWorkOrder(workOrderId);
@@ -181,11 +181,11 @@ public class WorkOrderTodoService {
   }
 
   /**
-   * Kanban read (GET /kanban, any authenticated user): scope-filtered workorders grouped
-   * by status with todos embedded. Single joined query (no N+1), grouped in application
-   * code. SUPER_ADMIN is unrestricted (derived scope plantIds is null); every other user
-   * sees only workorders whose machine plant OR machine group is in their derived scope.
-   */
+     Kanban read (GET /kanban, any authenticated user): scope-filtered workorders grouped
+     by status with todos embedded. Single joined query (no N+1), grouped in application
+     code. SUPER_ADMIN is unrestricted (derived scope plantIds is null); every other user
+     sees only workorders whose machine plant OR machine group is in their derived scope.
+    */
   @Transactional(readOnly = true)
   public KanbanView kanban(AuthenticatedUser user) {
     var scope = scopes.derive(user);
@@ -200,7 +200,7 @@ public class WorkOrderTodoService {
     return groupKanban(rows);
   }
 
-  /** Groups the flat query rows into status → workorder items (rows are contiguous per workorder). */
+  /** Groups the flat query rows into status → workorder items (rows are contiguous per workorder) */
   private KanbanView groupKanban(List<WorkOrderKanbanRow> rows) {
     var itemsByWorkorderId = new LinkedHashMap<String, WorkOrderKanbanItemBuilder>();
     for (var row : rows) {
@@ -238,7 +238,7 @@ public class WorkOrderTodoService {
     }
   }
 
-  /** Blank → null so a cleared field persists as NULL, not an empty string. */
+  /** Blank → null so a cleared field persists as NULL, not an empty string */
   private static String normalize(String value) {
     if (value == null || value.isBlank()) {
       return null;
@@ -270,16 +270,16 @@ public class WorkOrderTodoService {
   // PESSIMISTIC_WRITE query if ordering becomes correctness-critical.
 
   /**
-   * Terminal-state guard (FR-119): todos cannot be mutated on a DONE/CLOSED/CANCELLED
-   * workorder — same rationale as the status lifecycle terminal states.
-   */
+     Terminal-state guard (FR-119): todos cannot be mutated on a DONE/CLOSED/CANCELLED
+     workorder — same rationale as the status lifecycle terminal states.
+    */
   private void requireNonTerminal(WorkOrderEntity entity) {
     if (TERMINAL_STATUSES.contains(entity.getStatus())) {
       throw new WorkOrderTerminalException();
     }
   }
 
-  /** Assigning to a ghost user would create an invisible orphan assignment (FR-119). */
+  /** Assigning to a ghost user would create an invisible orphan assignment (FR-119) */
   private void requireTechnicianExists(UUID technicianId) {
     if (!users.findById(technicianId).isPresent()) {
       throw new TodoTechnicianNotFoundException();
@@ -287,11 +287,11 @@ public class WorkOrderTodoService {
   }
 
   /**
-   * Same gate as {@code WorkOrderService.requireSessionAccess} (10.4) and the
-   * evidence/report gates (10.5/10.6): in-scope leader OR assigned executor, both
-   * sources allowed — todos are local operational fields. Duplicated inline — the
-   * existing gates stay untouched.
-   */
+     Same gate as {@code WorkOrderService.requireSessionAccess} (10.4) and the
+     evidence/report gates (10.5/10.6): in-scope leader OR assigned executor, both
+     sources allowed — todos are local operational fields. Duplicated inline — the
+     existing gates stay untouched.
+    */
   private void requireAccess(AuthenticatedUser user, WorkOrderEntity entity, MachineEntity machine) {
     if (isInScopeLeader(user, machine) || isExecutor(user, entity)) {
       return;
@@ -352,7 +352,7 @@ public class WorkOrderTodoService {
   // Kanban grouping helpers
   // -------------------------------------------------------------------------
 
-  /** Mutable builder for one workorder's kanban item; rows are contiguous per workorder. */
+  /** Mutable builder for one workorder's kanban item; rows are contiguous per workorder */
   private static final class WorkOrderKanbanItemBuilder {
     private final WorkOrderEntity workOrder;
     private final String categoryCode;
@@ -378,12 +378,12 @@ public class WorkOrderTodoService {
   public record CreateTodoCommand(String title, String description, UUID assignedTechnicianId) {
   }
 
-  /** One kanban item: a workorder with its embedded todos (FR-119). */
+  /** One kanban item: a workorder with its embedded todos (FR-119) */
   public record WorkOrderKanbanItem(String id, WorkOrderStatus status, String categoryCode, UUID machineId,
       String description, UUID assignedTechnicianId, Instant createdAt, List<WorkOrderTodo> todos) {
   }
 
-  /** Kanban view: status → workorder items; every non-terminal status key is always present. */
+  /** Kanban view: status → workorder items; every non-terminal status key is always present */
   public record KanbanView(Map<WorkOrderStatus, List<WorkOrderKanbanItem>> groups) {
   }
 
@@ -414,11 +414,11 @@ public class WorkOrderTodoService {
   public static class TodoTechnicianNotFoundException extends RuntimeException {
   }
 
-  /** A todo is terminal (COMPLETED or CANCELLED) — further mutations are rejected. */
+  /** A todo is terminal (COMPLETED or CANCELLED) — further mutations are rejected */
   public static class TodoAlreadyCompletedException extends RuntimeException {
   }
 
-  /** Todos cannot be mutated on a DONE/CLOSED/CANCELLED workorder (FR-119). */
+  /** Todos cannot be mutated on a DONE/CLOSED/CANCELLED workorder (FR-119) */
   public static class WorkOrderTerminalException extends RuntimeException {
   }
 }

@@ -194,13 +194,25 @@ public class SyncBatchProcessor {
     return new RowOutcome(false, true, entry);
   }
 
-  /** External status strings map directly to the local lifecycle (e.g. OPEN/IN_PROGRESS/DONE/CLOSED). */
+  /**
+   * External status strings map to the local 6-value lifecycle (story 15-1 remap).
+   * Legacy external values are translated onto the new enum: ASSIGNED → IN_PROGRESS
+   * (assign-starts-execution), ON_PROCUREMENT → PENDING_SPAREPART, DONE →
+   * PENDING_REVIEW, DRAFT → OPEN; everything else maps by exact name.
+   */
   static WorkOrderStatus mapStatus(String externalStatus) {
     if (externalStatus == null) {
       return null;
     }
+    var normalized = externalStatus.trim().toUpperCase();
     try {
-      return WorkOrderStatus.valueOf(externalStatus.trim().toUpperCase());
+      return switch (normalized) {
+        case "DRAFT" -> WorkOrderStatus.OPEN;
+        case "ASSIGNED" -> WorkOrderStatus.IN_PROGRESS;
+        case "ON_PROCUREMENT" -> WorkOrderStatus.PENDING_SPAREPART;
+        case "DONE" -> WorkOrderStatus.PENDING_REVIEW;
+        default -> WorkOrderStatus.valueOf(normalized);
+      };
     } catch (IllegalArgumentException e) {
       return null;
     }

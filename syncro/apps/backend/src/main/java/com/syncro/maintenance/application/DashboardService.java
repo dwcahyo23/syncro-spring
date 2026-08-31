@@ -64,7 +64,7 @@ public class DashboardService {
 
   private static final int PREVENTIVE_UPCOMING_LIMIT = 50;
   private static final Set<WorkOrderStatus> TERMINAL_STATUSES = EnumSet.of(
-      WorkOrderStatus.DONE, WorkOrderStatus.CLOSED, WorkOrderStatus.CANCELLED);
+      WorkOrderStatus.CLOSED, WorkOrderStatus.CANCELLED);
   private static final UUID NO_PLANT = new UUID(0L, 0L);
   private static final UUID NO_SECTION = new UUID(0L, 0L);
   private static final String NO_STATUS = "";

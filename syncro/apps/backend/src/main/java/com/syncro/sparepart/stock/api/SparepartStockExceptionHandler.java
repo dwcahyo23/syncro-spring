@@ -1,12 +1,13 @@
 package com.syncro.sparepart.stock.api;
 
+import com.syncro.inventory.application.InventoryStockService.DefaultLocationNotFoundException;
+import com.syncro.inventory.application.InventoryStockService.InventoryStockForbiddenException;
+import com.syncro.inventory.application.InventoryStockService.InventoryStockValidationException;
+import com.syncro.inventory.application.InventoryStockService.NegativeStockRejectedException;
+import com.syncro.inventory.application.InventoryStockService.SparepartNotFoundException;
+import com.syncro.inventory.application.InventoryStockService.StockBalanceNotFoundException;
+import com.syncro.inventory.application.InventoryStockService.VersionConflictException;
 import com.syncro.sparepart.stock.api.SparepartStockDtos.ErrorResponse;
-import com.syncro.sparepart.stock.application.SparepartStockService.NegativeStockRejectedException;
-import com.syncro.sparepart.stock.application.SparepartStockService.SparepartStockForbiddenException;
-import com.syncro.sparepart.stock.application.SparepartStockService.SparepartStockNotFoundException;
-import com.syncro.sparepart.stock.application.SparepartStockService.SparepartStockValidationException;
-import com.syncro.sparepart.stock.application.SparepartStockService.SparepartNotFoundException;
-import com.syncro.sparepart.stock.application.SparepartStockService.VersionConflictException;
 import jakarta.validation.ConstraintViolationException;
 import java.time.Clock;
 import java.time.Instant;
@@ -80,19 +81,25 @@ public class SparepartStockExceptionHandler {
     return null;
   }
 
-  @ExceptionHandler(SparepartStockValidationException.class)
-  ResponseEntity<ErrorResponse> stockValidation(SparepartStockValidationException exception) {
+  @ExceptionHandler(InventoryStockValidationException.class)
+  ResponseEntity<ErrorResponse> stockValidation(InventoryStockValidationException exception) {
     return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", exception.getFieldErrors());
   }
 
-  @ExceptionHandler(SparepartStockForbiddenException.class)
+  @ExceptionHandler(InventoryStockForbiddenException.class)
   ResponseEntity<ErrorResponse> forbidden() {
     return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "You do not have permission to access this resource.", Map.of());
   }
 
-  @ExceptionHandler(SparepartStockNotFoundException.class)
+  @ExceptionHandler(StockBalanceNotFoundException.class)
   ResponseEntity<ErrorResponse> stockNotFound() {
-    return error(HttpStatus.NOT_FOUND, "STOCK_NOT_FOUND", "Stock row was not found.", Map.of());
+    return error(HttpStatus.NOT_FOUND, "STOCK_NOT_FOUND", "Stock balance was not found.", Map.of());
+  }
+
+  @ExceptionHandler(DefaultLocationNotFoundException.class)
+  ResponseEntity<ErrorResponse> defaultLocationNotFound() {
+    return error(HttpStatus.NOT_FOUND, "LOCATION_NOT_FOUND",
+        "The plant's default inventory location was not found.", Map.of());
   }
 
   @ExceptionHandler(SparepartNotFoundException.class)

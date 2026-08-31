@@ -11,7 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Internal workorder ID generator (AD-3): {@code WO-YYMM-XXXXX}. The prefix derives
+ * Internal workorder ID generator (AD-3): {@code WO-YYMMXXXX} (no dash after the
+ * month block, blueprint B2 id format). The prefix derives
  * from the plant timezone (DW-134) so the month rolls at plant-local midnight rather
  * than UTC midnight — a UTC+7 plant at 2024-10-01T00:00 local correctly gets {@code 2410},
  * not the prior month's prefix. The sequence restarts at 00001 per prefix.
@@ -48,7 +49,7 @@ public class WorkOrderIdGenerator {
     row.setLastSeq(nextSeq);
     row.setUpdatedAt(Instant.now(clock));
     sequences.saveAndFlush(row);
-    return "WO-%s-%05d".formatted(prefix, nextSeq);
+    return "WO-%s%04d".formatted(prefix, nextSeq);
   }
 
   private String derivePrefix() {

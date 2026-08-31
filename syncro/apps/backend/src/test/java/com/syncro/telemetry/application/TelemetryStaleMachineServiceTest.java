@@ -217,6 +217,6 @@ class TelemetryStaleMachineServiceTest {
 
   private static TelemetryData telemetry(Instant lastReceivedAt, FreshnessState state) {
     return new TelemetryData(UUID.randomUUID(), true, 1.0, 10L, lastReceivedAt, state,
-        Map.of(), false);
+        Map.of(), false, false);
   }
 }

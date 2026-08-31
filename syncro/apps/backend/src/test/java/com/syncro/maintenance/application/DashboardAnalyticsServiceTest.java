@@ -221,17 +221,17 @@ class DashboardAnalyticsServiceTest {
 
   private static WorkOrderAnalyticsRow rowDone(Instant stopAt, Long mttr) {
     return new WorkOrderAnalyticsRow(
-        "WO-" + stopAt, WorkOrderStatus.DONE, MACHINE_ID, PLANT_ID, null,
+        "WO-" + stopAt, WorkOrderStatus.PENDING_REVIEW, MACHINE_ID, PLANT_ID, null,
         mttr, null, "01", null, stopAt);
   }
 
   private static TechnicianKpiRow kpiRow(UUID techId, Long responseTime, Integer target) {
-    return new TechnicianKpiRow(techId, "WO-" + UUID.randomUUID(), WorkOrderStatus.DONE,
+    return new TechnicianKpiRow(techId, "WO-" + UUID.randomUUID(), WorkOrderStatus.PENDING_REVIEW,
         PLANT_ID, "01", null, responseTime, target);
   }
 
   private static TechnicianKpiRow mttrRow(UUID techId, String categoryCode, Long mttrMinutes) {
-    return new TechnicianKpiRow(techId, "WO-" + UUID.randomUUID(), WorkOrderStatus.DONE,
+    return new TechnicianKpiRow(techId, "WO-" + UUID.randomUUID(), WorkOrderStatus.PENDING_REVIEW,
         PLANT_ID, categoryCode, mttrMinutes, null, null);
   }
 }

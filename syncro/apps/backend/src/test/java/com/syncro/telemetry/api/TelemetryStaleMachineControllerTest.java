@@ -50,9 +50,9 @@ class TelemetryStaleMachineControllerTest {
         "2026-08-21T08:00:00Z",
         2,
         List.of(
-            new StaleMachineItem(machineId, "AA-01", "GM1", "OFFLINE", "offline", null),
+            new StaleMachineItem(machineId, "AA-01", "GM1", "OFFLINE", "offline", null, false),
             new StaleMachineItem(UUID.randomUUID(), "ZZ-01", "GM1", "STALE", "stale",
-                Instant.parse("2026-08-21T07:40:00Z")))));
+                Instant.parse("2026-08-21T07:40:00Z"), false))));
 
     mockMvc.perform(get("/api/v1/telemetry/stale-machines")
             .with(auth(user(ApplicationRole.SUPER_ADMIN))))

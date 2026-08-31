@@ -187,7 +187,7 @@ class WorkOrderRepairSessionServiceTest {
   @DisplayName("10.4-SVC-005 P0 start on a non-IN_PROGRESS workorder is rejected")
   void startNotInProgress() {
     var user = assignedTechnician();
-    var entity = entity(WorkOrderStatus.ASSIGNED);
+    var entity = entity(WorkOrderStatus.OPEN);
     when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
 
     assertThatThrownBy(() -> service.startSession(user, WORKORDER_ID, new StartSessionCommand("early")))
@@ -304,7 +304,7 @@ class WorkOrderRepairSessionServiceTest {
     when(repairSessions.countByWorkOrderIdAndEndedAtIsNotNull(WORKORDER_ID)).thenReturn(0L);
 
     assertThatThrownBy(() -> service.transition(user, WORKORDER_ID,
-        new TransitionWorkOrderCommand(WorkOrderStatus.DONE, "   ", null)))
+        new TransitionWorkOrderCommand(WorkOrderStatus.PENDING_REVIEW, "   ", null)))
         .isInstanceOf(DoneWithoutSessionReasonRequiredException.class);
   }
 
@@ -319,9 +319,9 @@ class WorkOrderRepairSessionServiceTest {
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     var result = service.transition(user, WORKORDER_ID,
-        new TransitionWorkOrderCommand(WorkOrderStatus.DONE, "waiting on part", null));
+        new TransitionWorkOrderCommand(WorkOrderStatus.PENDING_REVIEW, "waiting on part", null));
 
-    assertThat(result.status()).isEqualTo(WorkOrderStatus.DONE);
+    assertThat(result.status()).isEqualTo(WorkOrderStatus.PENDING_REVIEW);
     assertThat(result.doneReason()).isEqualTo("waiting on part");
     verify(auditLog).record(eq(user), argThat(r -> r.newValue() != null
         && "waiting on part".equals(r.newValue().get("doneReason"))));
@@ -337,7 +337,7 @@ class WorkOrderRepairSessionServiceTest {
     when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull(WORKORDER_ID)).thenReturn(Optional.of(open));
 
     assertThatThrownBy(() -> service.transition(user, WORKORDER_ID,
-        new TransitionWorkOrderCommand(WorkOrderStatus.DONE, "spare", null)))
+        new TransitionWorkOrderCommand(WorkOrderStatus.PENDING_REVIEW, "spare", null)))
         .isInstanceOf(SessionOpenConflictException.class);
   }
 

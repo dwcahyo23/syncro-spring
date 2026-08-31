@@ -135,11 +135,11 @@ class WorkOrderNotificationRoutingServiceTest {
   }
 
   @Test
-  @DisplayName("14.4-ROUTING-003 SYNCED_WO: no jobs created")
-  void syncedWorkOrderIsSkipped() {
-    var synced = new WorkOrderEntity(WORKORDER_ID, "SYNCED", null, WorkOrderStatus.IN_PROGRESS, null,
+  @DisplayName("14.4-ROUTING-003 EXTERNAL_WO: no jobs created")
+  void externalWorkOrderIsSkipped() {
+    var external = new WorkOrderEntity(WORKORDER_ID, "EXTERNAL", null, WorkOrderStatus.IN_PROGRESS, null,
         machineId, "desc", 1L, null, null, null, Instant.now(), Instant.now());
-    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(synced));
+    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(external));
 
     service.onWorkOrderLifecycleEvent(event());
 

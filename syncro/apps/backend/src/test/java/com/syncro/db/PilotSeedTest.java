@@ -263,6 +263,8 @@ class PilotSeedTest {
     expected.merge("sparepart_taxonomy", 3L, Long::sum);
     expected.merge("spareparts", 1L, Long::sum);
     expected.merge("machine_sparepart_installations", 1L, Long::sum);
+    expected.merge("inventory_locations", 1L, Long::sum);
+    expected.merge("inventory_stock_balances", 1L, Long::sum);
     expected.merge("auth_users", 3L, Long::sum);
     expected.merge("auth_user_plant_assignments", 3L, Long::sum);
     expected.merge("machine_responsibilities", 3L, Long::sum);
@@ -277,6 +279,8 @@ class PilotSeedTest {
     // Scenario: a machine stored with case-variant code, a pilot login that
     // pre-exists with a different UUID, and a pre-existing responsibility with
     // a different level for the same (machine, user).
+    jdbc.update("DELETE FROM inventory_stock_balances");
+    jdbc.update("DELETE FROM inventory_locations");
     jdbc.update("DELETE FROM machine_responsibilities");
     jdbc.update("DELETE FROM machine_sparepart_installations");
     jdbc.update("DELETE FROM sparepart_price_entries");
@@ -336,6 +340,8 @@ class PilotSeedTest {
 
     // Self-heal: tear the scenario down and re-seed so later/earlier test
     // methods always observe the canonical state, regardless of run order.
+    jdbc.update("DELETE FROM inventory_stock_balances");
+    jdbc.update("DELETE FROM inventory_locations");
     jdbc.update("DELETE FROM machine_responsibilities");
     jdbc.update("DELETE FROM machine_sparepart_installations");
     jdbc.update("DELETE FROM sparepart_price_entries");
@@ -383,6 +389,8 @@ class PilotSeedTest {
         "sparepart_taxonomy",
         "spareparts",
         "machine_sparepart_installations",
+        "inventory_locations",
+        "inventory_stock_balances",
         "auth_users",
         "auth_user_plant_assignments",
         "machine_responsibilities",

@@ -19,8 +19,8 @@ import com.syncro.maintenance.infrastructure.db.WorkOrderEntity;
 import com.syncro.maintenance.infrastructure.db.WorkOrderRepository;
 import com.syncro.maintenance.infrastructure.db.WorkorderAttachmentEntity;
 import com.syncro.maintenance.infrastructure.db.WorkorderAttachmentRepository;
-import com.syncro.maintenance.infrastructure.db.WorkorderSignatureEntity;
-import com.syncro.maintenance.infrastructure.db.WorkorderSignatureRepository;
+import com.syncro.auth.infrastructure.SignatureUseEntity;
+import com.syncro.auth.infrastructure.SignatureUseRepository;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.sparepart.request.domain.SparepartRequestStatus;
@@ -68,7 +68,7 @@ class WorkorderPrintReportServiceTest {
   @Mock
   private AuthUserRepository users;
   @Mock
-  private WorkorderSignatureRepository signatureRepository;
+  private SignatureUseRepository signatureRepository;
 
   private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
   private final UUID plantId = UUID.randomUUID();
@@ -83,7 +83,7 @@ class WorkorderPrintReportServiceTest {
   @BeforeEach
   void setUp() {
     signatureService = new WorkorderSignatureService(workOrders, machines, signatureRepository,
-        objectStorage, null, null, clock);
+        users, objectStorage, null, null, clock);
     service = new WorkorderPrintReportService(workOrders, categories, machines, sessions, attachments,
         sparepartRequests, signatureService, objectStorage, users);
     var plant = new com.syncro.auth.infrastructure.PlantEntity(plantId, "P01", "Plant", NOW, NOW);
@@ -104,7 +104,7 @@ class WorkorderPrintReportServiceTest {
   @Test
   @DisplayName("14.3-RPT-001 P0 report assembles header, sessions, narrative, cpk, evidence, parts and signature")
   void reportOk() {
-    var wo = entity(WorkOrderStatus.DONE);
+    var wo = entity(WorkOrderStatus.PENDING_REVIEW);
     when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(wo));
     when(categories.findById(categoryId)).thenReturn(Optional.of(
         new WorkOrderCategoryEntity(categoryId, "01", "Breakdown", UUID.randomUUID(), NOW, NOW)));
@@ -118,9 +118,14 @@ class WorkorderPrintReportServiceTest {
         new SparepartRequestEntity(UUID.randomUUID(), SparepartRequestType.SPAREPART, WORKORDER_ID, machineId,
             null, "MRE-001", (short) 2, null, null, null, SparepartRequestStatus.READY,
             technicianId, NOW, null, NOW, NOW)));
-    when(signatureRepository.findByWorkOrderId(WORKORDER_ID)).thenReturn(Optional.of(
-        new WorkorderSignatureEntity(UUID.randomUUID(), WORKORDER_ID,
-            "workorders/WO-2609-00001/signature/abc.png", "Leader", UUID.randomUUID(), NOW, NOW, NOW)));
+    var signerId = UUID.randomUUID();
+    when(signatureRepository.findBySubjectTypeAndSubjectId("WORK_ORDER", WORKORDER_ID)).thenReturn(Optional.of(
+        new SignatureUseEntity(UUID.randomUUID(), signerId, null, "maintenance", "WORK_ORDER",
+            WORKORDER_ID, "APPROVE_WORKORDER", null, null,
+            "workorders/WO-2609-00001/signature/abc.png", null, null, null, null, null, NOW, NOW)));
+    when(users.findById(signerId)).thenReturn(Optional.of(
+        new com.syncro.auth.infrastructure.AuthUserEntity(signerId, "leader@syncro.dev", "hash",
+            com.syncro.auth.domain.ApplicationRole.MAINTENANCE_LEADER, true, NOW, NOW)));
 
     var report = service.get(WORKORDER_ID);
 
@@ -136,18 +141,18 @@ class WorkorderPrintReportServiceTest {
     assertThat(report.parts()).hasSize(1);
     assertThat(report.parts().getFirst().materialCode()).isEqualTo("MRE-001");
     assertThat(report.signature()).isNotNull();
-    assertThat(report.signature().signerIdentity()).isEqualTo("Leader");
+    assertThat(report.signature().signerIdentity()).isEqualTo("leader@syncro.dev");
     assertThat(report.signature().signaturePresignedUrl()).isEqualTo("https://garage/presigned");
   }
 
   @Test
   @DisplayName("14.3-RPT-002 P0 report on a sparse workorder returns empty sections, no error")
   void reportSparse() {
-    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity(WorkOrderStatus.DONE)));
+    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity(WorkOrderStatus.PENDING_REVIEW)));
     when(sessions.findByWorkOrderIdOrderByStartedAtAsc(WORKORDER_ID)).thenReturn(List.of());
     when(attachments.findByWorkOrderIdOrderByCreatedAtAsc(WORKORDER_ID)).thenReturn(List.of());
     when(sparepartRequests.findByWorkOrderIdOrderByRequestedAtAsc(WORKORDER_ID)).thenReturn(List.of());
-    when(signatureRepository.findByWorkOrderId(WORKORDER_ID)).thenReturn(Optional.empty());
+    when(signatureRepository.findBySubjectTypeAndSubjectId("WORK_ORDER", WORKORDER_ID)).thenReturn(Optional.empty());
 
     var report = service.get(WORKORDER_ID);
 
@@ -173,13 +178,18 @@ class WorkorderPrintReportServiceTest {
   @Test
   @DisplayName("14.3-RPT-004 P0 signature block is null when presign returns null (deleted object)")
   void reportSignaturePresignNull() {
-    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity(WorkOrderStatus.DONE)));
+    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity(WorkOrderStatus.PENDING_REVIEW)));
     when(sessions.findByWorkOrderIdOrderByStartedAtAsc(WORKORDER_ID)).thenReturn(List.of());
     when(attachments.findByWorkOrderIdOrderByCreatedAtAsc(WORKORDER_ID)).thenReturn(List.of());
     when(sparepartRequests.findByWorkOrderIdOrderByRequestedAtAsc(WORKORDER_ID)).thenReturn(List.of());
-    when(signatureRepository.findByWorkOrderId(WORKORDER_ID)).thenReturn(Optional.of(
-        new com.syncro.maintenance.infrastructure.db.WorkorderSignatureEntity(UUID.randomUUID(), WORKORDER_ID,
-            "workorders/WO-2609-00001/signature/abc.png", "Leader", UUID.randomUUID(), NOW, NOW, NOW)));
+    var signerId = UUID.randomUUID();
+    when(signatureRepository.findBySubjectTypeAndSubjectId("WORK_ORDER", WORKORDER_ID)).thenReturn(Optional.of(
+        new SignatureUseEntity(UUID.randomUUID(), signerId, null, "maintenance", "WORK_ORDER",
+            WORKORDER_ID, "APPROVE_WORKORDER", null, null,
+            "workorders/WO-2609-00001/signature/abc.png", null, null, null, null, null, NOW, NOW)));
+    when(users.findById(signerId)).thenReturn(Optional.of(
+        new com.syncro.auth.infrastructure.AuthUserEntity(signerId, "leader@syncro.dev", "hash",
+            com.syncro.auth.domain.ApplicationRole.MAINTENANCE_LEADER, true, NOW, NOW)));
     // presign returns null — Garage object was deleted
     when(objectStorage.presignGetUrl("workorders/WO-2609-00001/signature/abc.png")).thenReturn(null);
 
@@ -191,13 +201,13 @@ class WorkorderPrintReportServiceTest {
   @Test
   @DisplayName("14.3-RPT-005 P0 storage failure for evidence presign surfaces PrintReportStorageException")
   void reportEvidenceStorageFailure() {
-    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity(WorkOrderStatus.DONE)));
+    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity(WorkOrderStatus.PENDING_REVIEW)));
     when(sessions.findByWorkOrderIdOrderByStartedAtAsc(WORKORDER_ID)).thenReturn(List.of());
     when(attachments.findByWorkOrderIdOrderByCreatedAtAsc(WORKORDER_ID)).thenReturn(List.of(
         new com.syncro.maintenance.infrastructure.db.WorkorderAttachmentEntity(UUID.randomUUID(), WORKORDER_ID,
             "photo.jpg", "image/jpeg", "workorders/key.jpg", 3, UUID.randomUUID(), NOW, null)));
     when(sparepartRequests.findByWorkOrderIdOrderByRequestedAtAsc(WORKORDER_ID)).thenReturn(List.of());
-    when(signatureRepository.findByWorkOrderId(WORKORDER_ID)).thenReturn(Optional.empty());
+    when(signatureRepository.findBySubjectTypeAndSubjectId("WORK_ORDER", WORKORDER_ID)).thenReturn(Optional.empty());
     when(objectStorage.presignGetUrl("workorders/key.jpg")).thenThrow(
         new com.syncro.storage.application.ObjectStorageException("garage down"));
 

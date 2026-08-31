@@ -13,7 +13,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * DW-136 + DW-138: real-Postgres coverage for the pessimistic lock finders and the
- * end-to-end derived ON_PROCUREMENT derivation wired to the real
+ * end-to-end derived PENDING_SPAREPART derivation wired to the real
  * {@code SparepartRequestReadinessService} ({@code @Primary} bean, not a mock).
  */
 class WorkOrderLockAndDerivationIntegrationTest extends AbstractPostgresIntegrationTest {
@@ -56,8 +56,8 @@ class WorkOrderLockAndDerivationIntegrationTest extends AbstractPostgresIntegrat
   }
 
   @Test
-  @DisplayName("DW-138 P0 recompute derives ON_PROCUREMENT via the real readiness port")
-  void recomputeDerivesOnProcurementWithRealPort() {
+  @DisplayName("DW-138 P0 recompute derives PENDING_SPAREPART via the real readiness port")
+  void recomputeDerivesPendingSparepartWithRealPort() {
     var chain = seedChain();
     seedLiveRequest(chain.workOrderId, chain.machineId);
 
@@ -65,11 +65,11 @@ class WorkOrderLockAndDerivationIntegrationTest extends AbstractPostgresIntegrat
 
     var status = jdbc.queryForObject(
         "SELECT status FROM work_orders WHERE id = ?", String.class, chain.workOrderId);
-    assertThat(status).isEqualTo("ON_PROCUREMENT");
+    assertThat(status).isEqualTo("PENDING_SPAREPART");
     // The DERIVED/SYSTEM history row is written (AD-5 evidence).
     var history = jdbc.queryForObject("""
         SELECT count(*) FROM work_order_status_history
-        WHERE work_order_id = ? AND to_status = 'ON_PROCUREMENT' AND source = 'DERIVED'
+        WHERE work_order_id = ? AND to_status = 'PENDING_SPAREPART' AND source = 'DERIVED'
         """, Integer.class, chain.workOrderId);
     assertThat(history).isEqualTo(1);
   }

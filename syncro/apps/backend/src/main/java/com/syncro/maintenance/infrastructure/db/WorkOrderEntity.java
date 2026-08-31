@@ -13,7 +13,7 @@ import java.util.UUID;
 
 /**
  * Persisted {@code work_orders} row (AD-3/AD-4). The dual-source id is the VARCHAR PK
- * (external sheet_no for SYNCED, WO-YYMM-XXXXX for INTERNAL); machine/category/created_by
+ * (external sheet_no for EXTERNAL, WO-YYMMXXXX for INTERNAL); machine/category/created_by
  * are plain UUID columns — no cross-aggregate JPA associations. Grown out of the 10-1
  * schema-only pass-through into a real persisted aggregate with the create/assign flow.
  */
@@ -196,14 +196,15 @@ public class WorkOrderEntity {
   }
 
   /**
-   * OPEN → ASSIGNED (FR-113): records the executing technician and bumps the timestamp.
-   */
+     OPEN → IN_PROGRESS (FR-113, blueprint AD-17 assign-starts-execution): records the
+     executing technician and bumps the timestamp.
+    */
   public void assign(UUID assignedTechnicianId, Instant updatedAt) {
     this.assignedTechnicianId = assignedTechnicianId;
-    transitionTo(WorkOrderStatus.ASSIGNED, updatedAt);
+    transitionTo(WorkOrderStatus.IN_PROGRESS, updatedAt);
   }
 
-  /** Applies a status transition (AD-4/10.3); validity is owned by the state machine. */
+  /** Applies a status transition (AD-4/10.3); validity is owned by the state machine */
   public void transitionTo(WorkOrderStatus status, Instant updatedAt) {
     this.status = status;
     this.updatedAt = updatedAt;
@@ -285,7 +286,7 @@ public class WorkOrderEntity {
     return stopTimeDetail;
   }
 
-  /** Applies the four-section report narrative + optional CP/CPK/FMEA/stop-time fields. */
+  /** Applies the four-section report narrative + optional CP/CPK/FMEA/stop-time fields */
   public void applyReport(String reportChronological, String reportAnalyze, String reportCorrective,
       String reportPreventive, BigDecimal cpCkLower, BigDecimal cpCkUpper, BigDecimal cpk,
       String fmeaFailureType, String stopTimeReason, String stopTimeDetail) {
@@ -302,13 +303,13 @@ public class WorkOrderEntity {
   }
 
   /**
-   * Applies external master fields on re-sync (AD-7/FR-151, story 13-1): status,
-   * machine/category binding, parent link and description take the external values;
-   * the external {@code updated_at} becomes the local {@code updated_at} so
-   * {@code sync_version} semantics stay consistent with the external row's freshness.
-   * Local operational fields (report, evidence, ratings, sessions) are never touched —
-   * field classification is story 13.2 (AD-8).
-   */
+     Applies external master fields on re-sync (AD-7/FR-151, story 13-1): status,
+     machine/category binding, parent link and description take the external values;
+     the external {@code updated_at} becomes the local {@code updated_at} so
+     {@code sync_version} semantics stay consistent with the external row's freshness.
+     Local operational fields (report, evidence, ratings, sessions) are never touched —
+     field classification is story 13.2 (AD-8).
+    */
   public void applySync(WorkOrderStatus status, UUID categoryId, UUID machineId, String description,
       String parentId, Instant updatedAt) {
     this.status = status;
@@ -319,7 +320,7 @@ public class WorkOrderEntity {
     this.updatedAt = updatedAt;
   }
 
-  /** Bumps the sync version counter on every external touch (story 13-1). */
+  /** Bumps the sync version counter on every external touch (story 13-1) */
   public void bumpSyncVersion() {
     this.syncVersion = this.syncVersion + 1L;
   }

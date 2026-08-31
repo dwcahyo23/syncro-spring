@@ -161,7 +161,7 @@ class DashboardServiceIntegrationTest extends AbstractPostgresIntegrationTest {
   void openWorkOrderCountExcludesTerminal() {
     var admin = new AuthenticatedUser(UUID.randomUUID().toString(), "admin@syncro.dev", ApplicationRole.SUPER_ADMIN);
     // Seed a DONE workorder on machine1 — should not be counted.
-    seedWorkOrder(chain.machine1Id(), "DONE");
+    seedWorkOrder(chain.machine1Id(), "PENDING_REVIEW");
 
     var result = dashboardService.machineDashboard(admin, null);
 
@@ -329,13 +329,13 @@ class DashboardServiceIntegrationTest extends AbstractPostgresIntegrationTest {
     entityManager.flush();
 
     // Seed a workorder on machine2.
-    seedWorkOrder(chain.machine2Id(), "ASSIGNED");
+    seedWorkOrder(chain.machine2Id(), "IN_PROGRESS");
 
     var result = dashboardService.workorderDashboard(tech, null, null, null, null);
 
     // Should see workorders from plant1 (via assignment) + machine2 (via team).
     assertThat(result.total()).isGreaterThanOrEqualTo(1);
-    // Open from plant1 + ASSIGNED from machine2.
+    // Open from plant1 + IN_PROGRESS from machine2.
     assertThat(result.byStatus()).hasSize(2);
   }
 

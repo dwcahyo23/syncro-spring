@@ -177,7 +177,7 @@ class SyncBatchProcessorTest {
     assertThat(result.rejected()).isZero();
     verify(importService).upsert("EXT-00001", MACHINE_ID, CATEGORY_ID, WorkOrderStatus.OPEN,
         "desc EXT-00001", null, NOW, NOW);
-    verify(importService).upsert("EXT-00002", MACHINE_ID, CATEGORY_ID, WorkOrderStatus.DONE,
+    verify(importService).upsert("EXT-00002", MACHINE_ID, CATEGORY_ID, WorkOrderStatus.PENDING_REVIEW,
         "desc EXT-00002", null, NOW, NOW);
     var captor = ArgumentCaptor.forClass(SyncWatermarkEntity.class);
     verify(watermarks).saveAndFlush(captor.capture());
@@ -197,7 +197,7 @@ class SyncBatchProcessorTest {
     });
     when(importService.upsert("EXT-00001", MACHINE_ID, CATEGORY_ID, WorkOrderStatus.OPEN,
         "desc EXT-00001", null, NOW, NOW)).thenReturn(UpsertResult.updated());
-    when(importService.upsert("EXT-00002", MACHINE_ID, CATEGORY_ID, WorkOrderStatus.DONE,
+    when(importService.upsert("EXT-00002", MACHINE_ID, CATEGORY_ID, WorkOrderStatus.PENDING_REVIEW,
         "desc EXT-00002", null, NOW, NOW)).thenThrow(new RuntimeException("constraint violation"));
 
     var batch = List.of(
@@ -222,7 +222,7 @@ class SyncBatchProcessorTest {
   @DisplayName("13.2-BP-006 P0 parent-close gate: child of CLOSED parent is quarantined, not upserted")
   void parentClosedRejectsChild() {
     // Parent exists and is CLOSED.
-    var parent = new WorkOrderEntity("PARENT-001", "SYNCED", null, WorkOrderStatus.CLOSED,
+    var parent = new WorkOrderEntity("PARENT-001", "EXTERNAL", null, WorkOrderStatus.CLOSED,
         CATEGORY_ID, MACHINE_ID, "parent", 0L, null, null, null, NOW, NOW);
     when(workOrders.findById("PARENT-001")).thenReturn(Optional.of(parent));
 
@@ -265,7 +265,7 @@ class SyncBatchProcessorTest {
   @Test
   @DisplayName("13.2-BP-008 P0 parent-close gate: child of non-CLOSED parent is allowed")
   void parentNotClosedAllowsChild() {
-    var parent = new WorkOrderEntity("PARENT-001", "SYNCED", null, WorkOrderStatus.IN_PROGRESS,
+    var parent = new WorkOrderEntity("PARENT-001", "EXTERNAL", null, WorkOrderStatus.IN_PROGRESS,
         CATEGORY_ID, MACHINE_ID, "parent", 0L, null, null, null, NOW, NOW);
     when(workOrders.findById("PARENT-001")).thenReturn(Optional.of(parent));
     var m = machine();
@@ -366,7 +366,7 @@ class SyncBatchProcessorTest {
     when(importService.upsert(eq("EXT-00003"), eq(MACHINE_ID), eq(CATEGORY_ID), any(),
         any(), any(), any(), any()))
         .thenReturn(UpsertResult.rejected(UpsertResult.TERMINAL_STATE_PROTECTED));
-    var closedParent = new WorkOrderEntity("PARENT-CLOSED", "SYNCED", null,
+    var closedParent = new WorkOrderEntity("PARENT-CLOSED", "EXTERNAL", null,
         WorkOrderStatus.CLOSED, CATEGORY_ID, MACHINE_ID, "parent", 0L, null, null, null, NOW, NOW);
     when(workOrders.findById("PARENT-CLOSED")).thenReturn(Optional.of(closedParent));
 
@@ -463,7 +463,7 @@ class SyncBatchProcessorTest {
   @DisplayName("13.1-BP-006 P0 mapStatus maps valid statuses, normalizes case, rejects unknown/null")
   void mapStatusDirect() {
     assertThat(SyncBatchProcessor.mapStatus("OPEN")).isEqualTo(WorkOrderStatus.OPEN);
-    assertThat(SyncBatchProcessor.mapStatus("DONE")).isEqualTo(WorkOrderStatus.DONE);
+    assertThat(SyncBatchProcessor.mapStatus("DONE")).isEqualTo(WorkOrderStatus.PENDING_REVIEW);
     assertThat(SyncBatchProcessor.mapStatus("CLOSED")).isEqualTo(WorkOrderStatus.CLOSED);
     assertThat(SyncBatchProcessor.mapStatus(" in_progress ")).isEqualTo(WorkOrderStatus.IN_PROGRESS);
     assertThat(SyncBatchProcessor.mapStatus("NOT_A_STATUS")).isNull();
