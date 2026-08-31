@@ -58,7 +58,18 @@ vi.mock("@/components/syncro/counter-rate-projection-card", () => ({
   ),
 }));
 
-let mockShiftConfig = {
+let mockShiftConfig: {
+  data: {
+    data: {
+      source: string;
+      inheritedFromGroup: boolean;
+      shifts: { shiftNumber: number; startTime?: string; endTime?: string }[];
+    };
+  } | null;
+  isLoading: boolean;
+  isError: boolean;
+  status: string;
+} = {
   data: {
     data: {
       source: "NONE" as string,
