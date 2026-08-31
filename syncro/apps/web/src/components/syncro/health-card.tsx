@@ -23,11 +23,11 @@ type HealthCardProps = {
 
 const SEVERITY_CONFIG: Record<HealthSeverity, { className: string; Icon: typeof CircleCheck }> = {
   SUCCESS: {
-    className: "border-transparent bg-emerald-600/15 text-emerald-700 dark:text-emerald-400",
+    className: "status-badge-healthy",
     Icon: CircleCheck,
   },
   WARNING: {
-    className: "border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-400",
+    className: "status-badge-warning",
     Icon: TriangleAlert,
   },
   CRITICAL: {

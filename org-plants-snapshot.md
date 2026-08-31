@@ -1,0 +1,136 @@
+- generic [active] [ref=f12e1]:
+  - generic [ref=f12e2]:
+    - generic [ref=f12e5]:
+      - list [ref=f12e7]:
+        - listitem [ref=f12e8]:
+          - link "Syncro" [ref=f12e9] [cursor=pointer]:
+            - /url: /operations-overview
+      - generic [ref=f12e14]:
+        - generic [ref=f12e51]:
+          - generic [ref=f12e52]: Operational
+          - list [ref=f12e54]:
+            - listitem [ref=f12e55]:
+              - link "Operations Overview" [ref=f12e56] [cursor=pointer]:
+                - /url: /operations-overview
+            - listitem [ref=f12e60]:
+              - link "Telemetry" [ref=f12e61] [cursor=pointer]:
+                - /url: /telemetry
+            - listitem [ref=f12e69]:
+              - link "Alerts" [ref=f12e70] [cursor=pointer]:
+                - /url: /alerts
+        - generic [ref=f12e75]:
+          - generic [ref=f12e76]: Dashboards
+          - list [ref=f12e78]:
+            - listitem [ref=f12e79]:
+              - link "Machine Dashboard" [ref=f12e80] [cursor=pointer]:
+                - /url: /machine-dashboard
+            - listitem [ref=f12e85]:
+              - link "Workorder Dashboard" [ref=f12e86] [cursor=pointer]:
+                - /url: /workorder-dashboard
+            - listitem [ref=f12e93]:
+              - link "Preventive Dashboard" [ref=f12e94] [cursor=pointer]:
+                - /url: /preventive-dashboard
+            - listitem [ref=f12e99]:
+              - link "Analytics" [ref=f12e100] [cursor=pointer]:
+                - /url: /analytics
+        - generic [ref=f12e104]:
+          - generic [ref=f12e105]: Maintenance
+          - list [ref=f12e107]:
+            - listitem [ref=f12e108]:
+              - link "Work Orders" [ref=f12e109] [cursor=pointer]:
+                - /url: /dashboard/workorders
+            - listitem [ref=f12e113]:
+              - link "Preventive" [ref=f12e114] [cursor=pointer]:
+                - /url: /dashboard/preventive
+            - listitem [ref=f12e119]:
+              - link "Sparepart Requests" [ref=f12e120] [cursor=pointer]:
+                - /url: /dashboard/sparepart-requests
+            - listitem [ref=f12e126]:
+              - link "Stock" [ref=f12e127] [cursor=pointer]:
+                - /url: /dashboard/stock
+        - generic [ref=f12e133]:
+          - generic [ref=f12e134]: Configuration
+          - list [ref=f12e136]:
+            - listitem [ref=f12e137]:
+              - button "Master Data" [expanded] [ref=f12e138]
+              - list [ref=f12e147]:
+                - listitem [ref=f12e148]:
+                  - link "Machines" [ref=f12e149] [cursor=pointer]:
+                    - /url: /master-data/machines
+                - listitem [ref=f12e151]:
+                  - link "Organization" [ref=f12e152] [cursor=pointer]:
+                    - /url: /master-data/organization
+                - listitem [ref=f12e154]:
+                  - link "Spareparts" [ref=f12e155] [cursor=pointer]:
+                    - /url: /master-data/spareparts
+            - listitem [ref=f12e157]:
+              - link "WAHA Templates" [ref=f12e158] [cursor=pointer]:
+                - /url: /waha-templates
+            - listitem [ref=f12e162]:
+              - link "Audit Log" [ref=f12e163] [cursor=pointer]:
+                - /url: /audit-log
+            - listitem [ref=f12e168]:
+              - link "System Health" [ref=f12e169] [cursor=pointer]:
+                - /url: /system-health
+            - listitem [ref=f12e174]:
+              - link "Settings" [ref=f12e175] [cursor=pointer]:
+                - /url: /settings
+      - list [ref=f12e180]:
+        - listitem [ref=f12e181]:
+          - button "A admin@syncro.dev Super Admin" [ref=f12e182]:
+            - generic [ref=f12e183]: A
+            - generic [ref=f12e185]:
+              - generic [ref=f12e186]: admin@syncro.dev
+              - generic [ref=f12e187]: Super Admin
+    - main [ref=f12e16]:
+      - generic [ref=f12e18]:
+        - generic [ref=f12e19]:
+          - button "Toggle Sidebar" [ref=f12e20]
+          - button "Search ⌘ J" [ref=f12e22]:
+            - text: Search
+            - generic [ref=f12e23]:
+              - generic [ref=f12e24]: ⌘
+              - text: J
+          - generic [ref=f12e25]:
+            - heading "Command Palette" [level=2] [ref=f12e26]
+            - paragraph [ref=f12e27]: Search for a command to run...
+        - generic [ref=f12e28]:
+          - button [ref=f12e29]
+          - 'button "Current theme: light. Click to cycle themes" [ref=f12e30]'
+          - button "Select plant scope" [ref=f12e192]:
+            - generic [ref=f12e193]: All Plants
+      - generic [ref=f12e196]:
+        - tablist [ref=f12e197]:
+          - tab "Departments" [ref=f12e198]
+          - tab "Users" [ref=f12e199]
+          - tab "Sections" [ref=f12e200]
+          - tab "Teams" [ref=f12e201]
+          - tab "Responsibility" [ref=f12e202]
+          - tab "Plants" [selected] [ref=f12e203]
+        - tabpanel "Plants" [ref=f12e204]:
+          - generic [ref=f12e206]:
+            - generic [ref=f12e207]:
+              - generic [ref=f12e208]: Plants
+              - generic [ref=f12e209]: Manage plant records used by machine setup and plant-scoped access.
+              - generic [ref=f12e210]:
+                - generic [ref=f12e211]: All plants
+                - button "Create plant" [ref=f12e212]
+            - table [ref=f12e215]:
+              - rowgroup [ref=f12e216]:
+                - row [ref=f12e217]:
+                  - columnheader "Code" [ref=f12e218]
+                  - columnheader "Name" [ref=f12e219]
+                  - columnheader "Created" [ref=f12e220]
+                  - columnheader "Actions" [ref=f12e221]
+              - rowgroup [ref=f12e222]:
+                - row [ref=f12e223]:
+                  - cell "GM1" [ref=f12e224]
+                  - cell "Plant GM1" [ref=f12e225]
+                  - cell "Aug 22, 2026, 2:34 AM" [ref=f12e226]
+                  - cell [ref=f12e227]:
+                    - generic [ref=f12e228]:
+                      - button "Edit" [ref=f12e229]
+                      - button "Delete" [ref=f12e230]
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=f12e47] [cursor=pointer]
+  - alert [ref=f12e231]

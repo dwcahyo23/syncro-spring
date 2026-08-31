@@ -46,8 +46,8 @@ export function SparepartStockPageContent() {
   const { data: plantItems } = useQuery<PlantOption[]>({
     queryKey: ["/api/v1/plants"],
     queryFn: async () => {
-      const res = await syncroFetch<{ data: PlantOption[] }>("/api/v1/plants", { method: "GET" });
-      return res.data ?? [];
+      const res = await syncroFetch<{ items: PlantOption[] }>("/api/v1/plants", { method: "GET" });
+      return res.items ?? [];
     },
     staleTime: 60_000,
   });

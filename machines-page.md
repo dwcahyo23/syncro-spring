@@ -1,0 +1,144 @@
+- generic [active] [ref=f16e1]:
+  - generic [ref=f16e2]:
+    - generic [ref=f16e5]:
+      - list [ref=f16e7]:
+        - listitem [ref=f16e8]:
+          - link "Syncro" [ref=f16e9] [cursor=pointer]:
+            - /url: /operations-overview
+      - generic [ref=f16e14]:
+        - generic [ref=f16e51]:
+          - generic [ref=f16e52]: Operational
+          - list [ref=f16e54]:
+            - listitem [ref=f16e55]:
+              - link "Operations Overview" [ref=f16e56] [cursor=pointer]:
+                - /url: /operations-overview
+            - listitem [ref=f16e60]:
+              - link "Telemetry" [ref=f16e61] [cursor=pointer]:
+                - /url: /telemetry
+            - listitem [ref=f16e69]:
+              - link "Alerts" [ref=f16e70] [cursor=pointer]:
+                - /url: /alerts
+        - generic [ref=f16e75]:
+          - generic [ref=f16e76]: Dashboards
+          - list [ref=f16e78]:
+            - listitem [ref=f16e79]:
+              - link "Machine Dashboard" [ref=f16e80] [cursor=pointer]:
+                - /url: /machine-dashboard
+            - listitem [ref=f16e85]:
+              - link "Workorder Dashboard" [ref=f16e86] [cursor=pointer]:
+                - /url: /workorder-dashboard
+            - listitem [ref=f16e93]:
+              - link "Preventive Dashboard" [ref=f16e94] [cursor=pointer]:
+                - /url: /preventive-dashboard
+            - listitem [ref=f16e99]:
+              - link "Analytics" [ref=f16e100] [cursor=pointer]:
+                - /url: /analytics
+        - generic [ref=f16e104]:
+          - generic [ref=f16e105]: Maintenance
+          - list [ref=f16e107]:
+            - listitem [ref=f16e108]:
+              - link "Work Orders" [ref=f16e109] [cursor=pointer]:
+                - /url: /dashboard/workorders
+            - listitem [ref=f16e113]:
+              - link "Preventive" [ref=f16e114] [cursor=pointer]:
+                - /url: /dashboard/preventive
+            - listitem [ref=f16e119]:
+              - link "Sparepart Requests" [ref=f16e120] [cursor=pointer]:
+                - /url: /dashboard/sparepart-requests
+            - listitem [ref=f16e126]:
+              - link "Stock" [ref=f16e127] [cursor=pointer]:
+                - /url: /dashboard/stock
+        - generic [ref=f16e133]:
+          - generic [ref=f16e134]: Configuration
+          - list [ref=f16e136]:
+            - listitem [ref=f16e137]:
+              - button "Master Data" [ref=f16e138]
+            - listitem [ref=f16e146]:
+              - link "WAHA Templates" [ref=f16e147] [cursor=pointer]:
+                - /url: /waha-templates
+            - listitem [ref=f16e151]:
+              - link "Audit Log" [ref=f16e152] [cursor=pointer]:
+                - /url: /audit-log
+            - listitem [ref=f16e157]:
+              - link "System Health" [ref=f16e158] [cursor=pointer]:
+                - /url: /system-health
+            - listitem [ref=f16e163]:
+              - link "Settings" [ref=f16e164] [cursor=pointer]:
+                - /url: /settings
+      - list [ref=f16e169]:
+        - listitem [ref=f16e170]:
+          - button "A admin@syncro.dev Super Admin" [ref=f16e171]:
+            - generic [ref=f16e172]: A
+            - generic [ref=f16e174]:
+              - generic [ref=f16e175]: admin@syncro.dev
+              - generic [ref=f16e176]: Super Admin
+    - main [ref=f16e16]:
+      - generic [ref=f16e18]:
+        - generic [ref=f16e19]:
+          - button "Toggle Sidebar" [ref=f16e20]
+          - button "Search ⌘ J" [ref=f16e22]:
+            - text: Search
+            - generic [ref=f16e23]:
+              - generic [ref=f16e24]: ⌘
+              - text: J
+          - generic [ref=f16e25]:
+            - heading "Command Palette" [level=2] [ref=f16e26]
+            - paragraph [ref=f16e27]: Search for a command to run...
+        - generic [ref=f16e28]:
+          - button [ref=f16e29]
+          - 'button "Current theme: light. Click to cycle themes" [ref=f16e30]'
+          - button "Select plant scope" [ref=f16e181]:
+            - generic [ref=f16e182]: All Plants
+      - generic [ref=f16e185]:
+        - tablist [ref=f16e186]:
+          - tab "Machine Groups" [selected] [ref=f16e187]
+          - tab "Machines" [ref=f16e188]
+          - tab "Installations" [ref=f16e189]
+        - tabpanel "Machine Groups" [ref=f16e190]:
+          - generic [ref=f16e192]:
+            - generic [ref=f16e193]:
+              - generic [ref=f16e194]: Machine Groups
+              - generic [ref=f16e195]: Manage plant-scoped process lines such as Forming.
+              - button "Create machine group" [ref=f16e197]
+            - generic [ref=f16e198]:
+              - generic [ref=f16e199]:
+                - combobox [ref=f16e200]:
+                  - generic: GM1 · Plant GM1
+                - textbox "Search groups" [ref=f16e201]
+              - table [ref=f16e203]:
+                - rowgroup [ref=f16e204]:
+                  - row [ref=f16e205]:
+                    - columnheader [ref=f16e206]:
+                      - button "Name" [ref=f16e208]
+                    - columnheader "Plant" [ref=f16e210]
+                    - columnheader "Section" [ref=f16e211]
+                    - columnheader [ref=f16e212]:
+                      - button "Created" [ref=f16e214]
+                    - columnheader "Actions" [ref=f16e217]
+                - rowgroup [ref=f16e218]:
+                  - row [ref=f16e219]:
+                    - cell "Forming" [ref=f16e220]
+                    - cell "GM1 · Plant GM1" [ref=f16e221]
+                    - cell "MACHINERY · Machinery" [ref=f16e222]
+                    - cell "Aug 22, 2026, 2:34 AM" [ref=f16e224]
+                    - cell [ref=f16e225]:
+                      - generic [ref=f16e226]:
+                        - button "Section" [ref=f16e227]
+                        - button "Edit" [ref=f16e228]
+                        - button "Delete" [ref=f16e229]
+              - generic [ref=f16e230]:
+                - generic [ref=f16e231]: Showing 1 to 1 of 1 items
+                - generic [ref=f16e232]:
+                  - generic [ref=f16e233]:
+                    - paragraph [ref=f16e234]: Rows per page
+                    - combobox [ref=f16e235]:
+                      - generic: "25"
+                  - generic [ref=f16e236]: Page 1 of 1
+                  - generic [ref=f16e237]:
+                    - button "Go to first page" [disabled]
+                    - button "Go to previous page" [disabled]
+                    - button "Go to next page" [disabled]
+                    - button "Go to last page" [disabled]
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=f16e47] [cursor=pointer]
+  - alert [ref=f16e238]

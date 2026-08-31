@@ -1,0 +1,142 @@
+- generic [ref=e1]:
+  - generic [ref=e33]:
+    - generic [ref=e36]:
+      - list [ref=e38]:
+        - listitem [ref=e39]:
+          - link "Syncro" [ref=e40] [cursor=pointer]:
+            - /url: /operations-overview
+      - generic [ref=e45]:
+        - generic [ref=e46]:
+          - generic [ref=e47]: Operational
+          - list [ref=e49]:
+            - listitem [ref=e50]:
+              - link "Operations Overview" [ref=e51] [cursor=pointer]:
+                - /url: /operations-overview
+            - listitem [ref=e55]:
+              - link "Telemetry" [expanded] [ref=e56] [cursor=pointer]:
+                - /url: /telemetry
+            - listitem [ref=e64]:
+              - link "Alerts" [ref=e65] [cursor=pointer]:
+                - /url: /alerts
+        - generic [ref=e70]:
+          - generic [ref=e71]: Dashboards
+          - list [ref=e73]:
+            - listitem [ref=e74]:
+              - link "Machine Dashboard" [ref=e75] [cursor=pointer]:
+                - /url: /machine-dashboard
+            - listitem [ref=e80]:
+              - link "Workorder Dashboard" [ref=e81] [cursor=pointer]:
+                - /url: /workorder-dashboard
+            - listitem [ref=e88]:
+              - link "Preventive Dashboard" [ref=e89] [cursor=pointer]:
+                - /url: /preventive-dashboard
+            - listitem [ref=e94]:
+              - link "Analytics" [ref=e95] [cursor=pointer]:
+                - /url: /analytics
+        - generic [ref=e99]:
+          - generic [ref=e100]: Maintenance
+          - list [ref=e102]:
+            - listitem [ref=e103]:
+              - link "Work Orders" [expanded] [ref=e104] [cursor=pointer]:
+                - /url: /dashboard/workorders
+            - listitem [ref=e108]:
+              - link "Preventive" [ref=e109] [cursor=pointer]:
+                - /url: /dashboard/preventive
+            - listitem [ref=e114]:
+              - link "Sparepart Requests" [ref=e115] [cursor=pointer]:
+                - /url: /dashboard/sparepart-requests
+            - listitem [ref=e121]:
+              - link "Stock" [ref=e122] [cursor=pointer]:
+                - /url: /dashboard/stock
+        - generic [ref=e128]:
+          - generic [ref=e129]: Configuration
+          - list [ref=e131]:
+            - listitem [ref=e132]:
+              - button "Master Data" [ref=e133]
+            - listitem [ref=e141]:
+              - link "WAHA Templates" [ref=e142] [cursor=pointer]:
+                - /url: /waha-templates
+            - listitem [ref=e146]:
+              - link "Audit Log" [ref=e147] [cursor=pointer]:
+                - /url: /audit-log
+            - listitem [ref=e152]:
+              - link "System Health" [ref=e153] [cursor=pointer]:
+                - /url: /system-health
+            - listitem [ref=e158]:
+              - link "Settings" [ref=e159] [cursor=pointer]:
+                - /url: /settings
+      - list [ref=e165]:
+        - listitem [ref=e166]:
+          - button "A admin@syncro.dev Super Admin" [ref=e167]:
+            - generic [ref=e168]: A
+            - generic [ref=e170]:
+              - generic [ref=e171]: admin@syncro.dev
+              - generic [ref=e172]: Super Admin
+    - main [ref=e177]:
+      - generic [ref=e179]:
+        - generic [ref=e180]:
+          - button "Toggle Sidebar" [ref=e181]
+          - button "Search ⌘ J" [ref=e183]:
+            - text: Search
+            - generic [ref=e184]:
+              - generic [ref=e185]: ⌘
+              - text: J
+          - generic [ref=e186]:
+            - heading "Command Palette" [level=2] [ref=e187]
+            - paragraph [ref=e188]: Search for a command to run...
+        - generic [ref=e189]:
+          - button [ref=e190]
+          - 'button "Current theme: light. Click to cycle themes" [ref=e191]'
+          - button "Select plant scope" [ref=e192]:
+            - generic [ref=e193]: All Plants
+      - generic [ref=e289]:
+        - generic [ref=e290]:
+          - generic [ref=e291]:
+            - heading "Work Orders" [level=1] [ref=e292]
+            - paragraph [ref=e293]: View, filter, and manage maintenance workorders.
+          - tablist [ref=e294]:
+            - tab "Table" [ref=e295]
+            - tab "Kanban" [active] [selected] [ref=e296]
+            - tab "Ratings" [ref=e297]
+            - tab "Ack Task List" [ref=e298]
+            - tab "Categories" [ref=e299]
+        - tabpanel "Kanban" [ref=e358]:
+          - generic [ref=e359]:
+            - region "Draft workorders" [ref=e360]:
+              - generic [ref=e361]:
+                - heading "Draft" [level=3] [ref=e362]
+                - generic [ref=e363]: "0"
+              - paragraph [ref=e365]: No workorders
+            - region "Open workorders" [ref=e366]:
+              - generic [ref=e367]:
+                - heading "Open" [level=3] [ref=e368]
+                - generic [ref=e369]: "1"
+              - generic [ref=e371]:
+                - generic [ref=e372]:
+                  - generic [ref=e373]:
+                    - generic [ref=e374]: WO-2608-00001
+                    - generic [ref=e375]: "01"
+                  - paragraph [ref=e376]: Breakdown fix demo
+                - generic [ref=e377]:
+                  - paragraph [ref=e378]: No todos
+                  - paragraph [ref=e379]: 0/0 done
+                  - button "Request part" [ref=e381]
+            - region "Assigned workorders" [ref=e382]:
+              - generic [ref=e383]:
+                - heading "Assigned" [level=3] [ref=e384]
+                - generic [ref=e385]: "0"
+              - paragraph [ref=e387]: No workorders
+            - region "In Progress workorders" [ref=e388]:
+              - generic [ref=e389]:
+                - heading "In Progress" [level=3] [ref=e390]
+                - generic [ref=e391]: "0"
+              - paragraph [ref=e393]: No workorders
+            - region "On Procurement workorders" [ref=e394]:
+              - generic [ref=e395]:
+                - heading "On Procurement" [level=3] [ref=e396]
+                - generic [ref=e397]: "0"
+              - paragraph [ref=e399]: No workorders
+          - status [ref=e400]
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e21] [cursor=pointer]
+  - alert [ref=e15]: Syncro - Industrial Maintenance Platform

@@ -85,7 +85,7 @@ export function CounterRateProjectionView({
         {!isLoading && hasKnownData ? (
           <>
             {!rateAvailable ? (
-              <p className="text-amber-700 text-xs dark:text-amber-400" role="status">
+              <p className="status-icon-warning text-xs" role="status">
                 {insufficientReasonText(data?.insufficientReason)}
               </p>
             ) : (
@@ -150,7 +150,7 @@ function InstallationRow({ projection }: { readonly projection: InstallationProj
         {projection.available ? (
           <Badge
             variant="outline"
-            className="border-transparent bg-emerald-600/15 text-emerald-700 dark:text-emerald-400"
+            className="status-badge-healthy"
           >
             Projected
           </Badge>

@@ -11,12 +11,12 @@ const STATE_CONFIG: Record<LatencyState, { className: string; Icon: typeof Circl
     label: "No data",
   },
   NORMAL: {
-    className: "border-emerald-600/40 bg-emerald-600/10 text-emerald-700 dark:text-emerald-400",
+    className: "status-badge-healthy",
     Icon: CircleCheck,
     label: "Normal",
   },
   ELEVATED: {
-    className: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+    className: "status-badge-warning",
     Icon: TriangleAlert,
     label: "Elevated",
   },

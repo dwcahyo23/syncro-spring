@@ -4,7 +4,7 @@ import { AlertCircle, CircleCheck, CircleDashed } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { AlertViewStatus } from "@/lib/api/generated/model";
+import type { AlertViewStatus } from "@/lib/api/generated/model";
 
 export type AlertStatus = AlertViewStatus;
 
@@ -19,19 +19,19 @@ const STATUS_CONFIG: Record<
   OPEN: {
     label: "Open",
     description: "Alert is open and requires attention.",
-    className: "border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-400",
+    className: "status-badge-warning",
     Icon: AlertCircle,
   },
   ACKNOWLEDGED: {
     label: "Acknowledged",
     description: "Alert has been acknowledged. Escalation is paused.",
-    className: "border-transparent bg-blue-500/15 text-blue-700 dark:text-blue-400",
+    className: "status-badge-info",
     Icon: CircleDashed,
   },
   RESOLVED: {
     label: "Resolved",
     description: "Alert has been resolved. No further action required.",
-    className: "border-transparent bg-emerald-600/15 text-emerald-700 dark:text-emerald-400",
+    className: "status-badge-healthy",
     Icon: CircleCheck,
   },
 };

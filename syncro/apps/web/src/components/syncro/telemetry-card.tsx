@@ -14,7 +14,7 @@ export function TelemetryCard({ telemetry }: TelemetryCardProps) {
         icon={<Activity aria-hidden="true" />}
         label="Running state"
         value={runningLabel}
-        valueClassName={telemetry.running ? "text-emerald-700 dark:text-emerald-400" : undefined}
+        valueClassName={telemetry.running ? "status-icon-healthy" : undefined}
       />
       <TelemetryMetric
         icon={<Gauge aria-hidden="true" />}

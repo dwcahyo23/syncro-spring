@@ -278,7 +278,7 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
               type="button"
               disabled={isAcknowledging}
               onClick={() => acknowledge({ alertId })}
-              className="rounded-md bg-blue-600 px-3 py-1.5 font-medium text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+              className="rounded-md bg-primary px-3 py-1.5 font-medium text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               aria-label="Acknowledge this alert"
             >
               {isAcknowledging ? "Acknowledging…" : "Acknowledge"}
@@ -289,7 +289,7 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
               type="button"
               disabled={isResolvingOverride}
               onClick={() => resolveOverride({ alertId })}
-              className="rounded-md bg-orange-600 px-3 py-1.5 font-medium text-sm text-white hover:bg-orange-700 disabled:opacity-50"
+              className="rounded-md bg-accent px-3 py-1.5 font-medium text-sm text-accent-foreground hover:bg-accent/90 disabled:opacity-50"
               aria-label="Resolve this alert directly (SUPER_ADMIN override)"
             >
               {isResolvingOverride ? "Resolving…" : "Resolve Override"}
@@ -300,7 +300,7 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
               type="button"
               disabled={isResolving}
               onClick={() => resolve({ alertId })}
-              className="rounded-md bg-emerald-600 px-3 py-1.5 font-medium text-sm text-white hover:bg-emerald-700 disabled:opacity-50"
+              className="rounded-md bg-secondary px-3 py-1.5 font-medium text-sm text-secondary-foreground hover:bg-secondary/90 disabled:opacity-50"
               aria-label="Resolve this alert"
             >
               {isResolving ? "Resolving…" : "Resolve"}
@@ -403,7 +403,7 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
       {/* Stale escalation banner */}
       {isStale ? (
         <div
-          className="rounded-md border border-amber-500/30 bg-amber-50 px-4 py-3 text-amber-800 text-sm dark:bg-amber-950/30 dark:text-amber-300"
+          className="status-banner-warning rounded-md border px-4 py-3 text-sm"
           role="status"
         >
           Next escalation pending — check worker status in System Health.

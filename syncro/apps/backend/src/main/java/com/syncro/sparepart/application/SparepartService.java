@@ -221,6 +221,32 @@ public class SparepartService {
     return toView(saved);
   }
 
+  /**
+   * DW-148: creates a sparepart with full taxonomy during the sparepart-request flow.
+   * Role gate is relaxed (the request's own authorization gates the actor). The
+   * sparepart entity is returned so the request service can reference it.
+   */
+  public SparepartEntity createForRequestEntity(AuthenticatedUser user, UUID machineId,
+      String materialCode, UUID categoryId, UUID brandId, UUID kindId, UUID typeId) {
+    var machine = resolveMachine(user, machineId);
+    var taxonomies = resolveTaxonomies(new SparepartCommand(machineId, categoryId, brandId, kindId, typeId));
+    rejectDuplicateIdentity(machine, taxonomies);
+    var generatedCode = nextBomCode(machine, taxonomies);
+    var name = sparepartLabel(taxonomies);
+    var now = Instant.now(clock);
+    var entity = new SparepartEntity(UUID.randomUUID(), generatedCode, name, machine,
+        taxonomies.category(), taxonomies.brand(), taxonomies.kind(), taxonomies.type(), now, now);
+    if (materialCode != null && !materialCode.isBlank()) {
+      entity.updateProcurement(materialCode, null, now);
+    }
+    var saved = save(entity);
+    auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.SPAREPART,
+        saved.getId(), saved.getCode(), machine.getPlant().getId(), null,
+        SparepartAuditValues.of(saved), null));
+    events.publishEvent(ProjectionCacheEvictionEvent.all());
+    return saved;
+  }
+
   /** Finds a taxonomy entry by dimension and code, or creates it if missing. */
   private SparepartTaxonomyEntity ensureTaxonomy(SparepartTaxonomyDimension dimension, String code,
       String name, SparepartTaxonomyEntity category) {

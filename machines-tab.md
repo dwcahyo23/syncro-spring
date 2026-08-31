@@ -1,0 +1,157 @@
+- generic [ref=f16e1]:
+  - generic [ref=f16e2]:
+    - generic [ref=f16e5]:
+      - list [ref=f16e7]:
+        - listitem [ref=f16e8]:
+          - link "Syncro" [ref=f16e9] [cursor=pointer]:
+            - /url: /operations-overview
+      - generic [ref=f16e14]:
+        - generic [ref=f16e51]:
+          - generic [ref=f16e52]: Operational
+          - list [ref=f16e54]:
+            - listitem [ref=f16e55]:
+              - link "Operations Overview" [ref=f16e56] [cursor=pointer]:
+                - /url: /operations-overview
+            - listitem [ref=f16e60]:
+              - link "Telemetry" [ref=f16e61] [cursor=pointer]:
+                - /url: /telemetry
+            - listitem [ref=f16e69]:
+              - link "Alerts" [ref=f16e70] [cursor=pointer]:
+                - /url: /alerts
+        - generic [ref=f16e75]:
+          - generic [ref=f16e76]: Dashboards
+          - list [ref=f16e78]:
+            - listitem [ref=f16e79]:
+              - link "Machine Dashboard" [ref=f16e80] [cursor=pointer]:
+                - /url: /machine-dashboard
+            - listitem [ref=f16e85]:
+              - link "Workorder Dashboard" [ref=f16e86] [cursor=pointer]:
+                - /url: /workorder-dashboard
+            - listitem [ref=f16e93]:
+              - link "Preventive Dashboard" [ref=f16e94] [cursor=pointer]:
+                - /url: /preventive-dashboard
+            - listitem [ref=f16e99]:
+              - link "Analytics" [ref=f16e100] [cursor=pointer]:
+                - /url: /analytics
+        - generic [ref=f16e104]:
+          - generic [ref=f16e105]: Maintenance
+          - list [ref=f16e107]:
+            - listitem [ref=f16e108]:
+              - link "Work Orders" [ref=f16e109] [cursor=pointer]:
+                - /url: /dashboard/workorders
+            - listitem [ref=f16e113]:
+              - link "Preventive" [ref=f16e114] [cursor=pointer]:
+                - /url: /dashboard/preventive
+            - listitem [ref=f16e119]:
+              - link "Sparepart Requests" [ref=f16e120] [cursor=pointer]:
+                - /url: /dashboard/sparepart-requests
+            - listitem [ref=f16e126]:
+              - link "Stock" [ref=f16e127] [cursor=pointer]:
+                - /url: /dashboard/stock
+        - generic [ref=f16e133]:
+          - generic [ref=f16e134]: Configuration
+          - list [ref=f16e136]:
+            - listitem [ref=f16e137]:
+              - button "Master Data" [ref=f16e138]
+            - listitem [ref=f16e146]:
+              - link "WAHA Templates" [ref=f16e147] [cursor=pointer]:
+                - /url: /waha-templates
+            - listitem [ref=f16e151]:
+              - link "Audit Log" [ref=f16e152] [cursor=pointer]:
+                - /url: /audit-log
+            - listitem [ref=f16e157]:
+              - link "System Health" [ref=f16e158] [cursor=pointer]:
+                - /url: /system-health
+            - listitem [ref=f16e163]:
+              - link "Settings" [ref=f16e164] [cursor=pointer]:
+                - /url: /settings
+      - list [ref=f16e169]:
+        - listitem [ref=f16e170]:
+          - button "A admin@syncro.dev Super Admin" [ref=f16e171]:
+            - generic [ref=f16e172]: A
+            - generic [ref=f16e174]:
+              - generic [ref=f16e175]: admin@syncro.dev
+              - generic [ref=f16e176]: Super Admin
+    - main [ref=f16e16]:
+      - generic [ref=f16e18]:
+        - generic [ref=f16e19]:
+          - button "Toggle Sidebar" [ref=f16e20]
+          - button "Search ⌘ J" [ref=f16e22]:
+            - text: Search
+            - generic [ref=f16e23]:
+              - generic [ref=f16e24]: ⌘
+              - text: J
+          - generic [ref=f16e25]:
+            - heading "Command Palette" [level=2] [ref=f16e26]
+            - paragraph [ref=f16e27]: Search for a command to run...
+        - generic [ref=f16e28]:
+          - button [ref=f16e29]
+          - 'button "Current theme: light. Click to cycle themes" [ref=f16e30]'
+          - button "Select plant scope" [ref=f16e181]:
+            - generic [ref=f16e182]: All Plants
+      - generic [ref=f16e185]:
+        - tablist [ref=f16e186]:
+          - tab "Machine Groups" [ref=f16e187]
+          - tab "Machines" [active] [selected] [ref=f16e188]
+          - tab "Installations" [ref=f16e189]
+        - tabpanel "Machines" [ref=f16e239]:
+          - generic [ref=f16e241]:
+            - generic [ref=f16e242]:
+              - generic [ref=f16e243]: Machines
+              - generic [ref=f16e244]: Manage registered machine master data and manual ACTIVE/INACTIVE status.
+              - button "Create machine" [ref=f16e246]
+            - generic [ref=f16e247]:
+              - generic [ref=f16e248]:
+                - combobox [ref=f16e249]:
+                  - generic: GM1 · Plant GM1
+                - textbox "Search machines" [ref=f16e250]
+                - combobox [ref=f16e251]:
+                  - generic: All groups
+                - combobox [ref=f16e252]:
+                  - generic: All statuses
+              - table [ref=f16e254]:
+                - rowgroup [ref=f16e255]:
+                  - row [ref=f16e256]:
+                    - columnheader [ref=f16e257]:
+                      - button "Code" [ref=f16e259]
+                    - columnheader [ref=f16e261]:
+                      - button "Name" [ref=f16e263]
+                    - columnheader "Plant" [ref=f16e266]
+                    - columnheader "Group" [ref=f16e267]
+                    - columnheader "Manual status" [ref=f16e268]
+                    - columnheader "Brand" [ref=f16e269]
+                    - columnheader [ref=f16e270]:
+                      - button "Installed" [ref=f16e272]
+                    - columnheader [ref=f16e275]:
+                      - button "Updated" [ref=f16e277]
+                    - columnheader "Actions" [ref=f16e280]
+                - rowgroup [ref=f16e281]:
+                  - row [ref=f16e282]:
+                    - cell "BF-08410" [ref=f16e283]
+                    - cell "JBF19" [ref=f16e284]
+                    - cell "GM1 · Plant GM1" [ref=f16e285]
+                    - cell "Forming" [ref=f16e286]
+                    - cell "Manual ACTIVE" [ref=f16e287]
+                    - cell "Juki" [ref=f16e289]
+                    - cell "May 27, 2026" [ref=f16e290]
+                    - cell "Aug 22, 2026, 2:34 AM" [ref=f16e291]
+                    - cell [ref=f16e292]:
+                      - generic [ref=f16e293]:
+                        - button "Edit" [ref=f16e294]
+                        - button "Delete" [ref=f16e295]
+              - generic [ref=f16e296]:
+                - generic [ref=f16e297]: Showing 1 to 1 of 1 items
+                - generic [ref=f16e298]:
+                  - generic [ref=f16e299]:
+                    - paragraph [ref=f16e300]: Rows per page
+                    - combobox [ref=f16e301]:
+                      - generic: "25"
+                  - generic [ref=f16e302]: Page 1 of 1
+                  - generic [ref=f16e303]:
+                    - button "Go to first page" [disabled]
+                    - button "Go to previous page" [disabled]
+                    - button "Go to next page" [disabled]
+                    - button "Go to last page" [disabled]
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=f16e47] [cursor=pointer]
+  - alert [ref=f16e238]

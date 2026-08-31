@@ -28,6 +28,14 @@ export const THEME_PRESET_OPTIONS = [
     },
   },
   {
+    label: "Industrial",
+    value: "industrial",
+    primary: {
+      light: "oklch(0.45 0.08 255)",
+      dark: "oklch(0.58 0.1 255)",
+    },
+  },
+  {
     label: "Soft Pop",
     value: "soft-pop",
     primary: {

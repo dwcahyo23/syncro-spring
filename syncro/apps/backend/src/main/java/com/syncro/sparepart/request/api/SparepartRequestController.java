@@ -73,7 +73,8 @@ public class SparepartRequestController {
       @Valid @RequestBody CreateSparepartRequestRequest request) {
     var command = new CreateRequestCommand(request.requestType(), request.workOrderId(), request.machineId(),
         request.sparepartId(), request.materialCode(), request.quantity(), request.estPriceId(),
-        request.estUnitPrice(), request.purchaseReferenceUrl(), request.notes());
+        request.estUnitPrice(), request.purchaseReferenceUrl(), request.notes(),
+        request.categoryId(), request.brandId(), request.kindId(), request.typeId());
     var created = service.create(user, command);
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(toView(created, user));

@@ -26,7 +26,12 @@ vi.mock("@/features/plant-scope/plant-scope-store", () => ({
   }),
 }));
 
-let mockQueryData: { total: number; byStatus: Array<{ status: string; count: number }>; byCategory: Array<{ categoryCode: string | null; categoryLabel: string | null; count: number }> } | null = null;
+let mockQueryData: {
+  total: number;
+  byStatus: Array<{ status: string; count: number }>;
+  byCategory: Array<{ categoryCode: string | null; categoryLabel: string | null; count: number }>;
+  byMonth: Array<{ month: number; openCount: number; closeCount: number }>;
+} | null = null;
 let mockIsLoading = false;
 let mockIsError = false;
 let mockIsFetching = false;
@@ -92,7 +97,7 @@ describe("WorkorderDashboardPageContent", () => {
   });
 
   it("renders empty state when no workorders", () => {
-    mockQueryData = { total: 0, byStatus: [], byCategory: [] };
+    mockQueryData = { total: 0, byStatus: [], byCategory: [], byMonth: [] };
     renderPage();
     expect(screen.getByText("No workorders in scope")).toBeTruthy();
   });
@@ -108,14 +113,19 @@ describe("WorkorderDashboardPageContent", () => {
         { categoryCode: "BRK", categoryLabel: "Breakdown", count: 3 },
         { categoryCode: "PM", categoryLabel: "Preventive", count: 2 },
       ],
+      byMonth: [
+        { month: 1, openCount: 1, closeCount: 1 },
+        { month: 2, openCount: 2, closeCount: 1 },
+      ],
     };
     renderPage();
     expect(screen.getByText("5")).toBeTruthy();
     expect(screen.getByText("Status · OPEN")).toBeTruthy();
-    // "3" appears in the KPI card and the by-status list.
+    // "3" appears in the KPI card and the by-status chart.
     expect(screen.getAllByText("3").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("Breakdown")).toBeTruthy();
-    expect(screen.getByText("Preventive")).toBeTruthy();
+    // Chart ticks repeat labels (axis + tooltip), so a single match is not guaranteed.
+    expect(screen.getAllByText("Breakdown").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Preventive").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders plant scope error state", () => {

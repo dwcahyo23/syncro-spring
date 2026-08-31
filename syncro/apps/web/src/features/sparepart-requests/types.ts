@@ -46,6 +46,11 @@ export interface CreateSparepartRequestRequest {
   estUnitPrice?: number | null;
   purchaseReferenceUrl?: string | null;
   notes?: string | null;
+  /** DW-148: taxonomy for immediate new-part creation when no BOM matches. */
+  categoryId?: string | null;
+  brandId?: string | null;
+  kindId?: string | null;
+  typeId?: string | null;
 }
 
 /** Story 12-2: status transition request (FR-141). */

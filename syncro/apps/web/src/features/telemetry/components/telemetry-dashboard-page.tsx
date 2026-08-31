@@ -162,10 +162,10 @@ function TelemetryBody({
       {isDataStale ? (
         <div
           aria-live="polite"
-          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2"
+          className="status-banner-warning flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2"
         >
           <p className="flex items-center gap-2 text-sm">
-            <TriangleAlertIcon aria-hidden="true" className="text-amber-600 dark:text-amber-400" />
+            <TriangleAlertIcon aria-hidden="true" className="status-icon-warning" />
             Last updated {formatMinutesAgo(now - lastUpdated)} ago. Automatic refresh may be delayed.
           </p>
           <Button size="sm" variant="outline" onClick={() => void telemetry.refetch()}>

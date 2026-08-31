@@ -1,0 +1,107 @@
+- generic [active] [ref=f13e1]:
+  - generic [ref=f13e2]:
+    - generic [ref=f13e5]:
+      - list [ref=f13e7]:
+        - listitem [ref=f13e8]:
+          - link "Syncro" [ref=f13e9] [cursor=pointer]:
+            - /url: /operations-overview
+      - generic [ref=f13e14]:
+        - generic [ref=f13e55]:
+          - generic [ref=f13e56]: Operational
+          - list [ref=f13e58]:
+            - listitem [ref=f13e59]:
+              - link "Operations Overview" [ref=f13e60] [cursor=pointer]:
+                - /url: /operations-overview
+            - listitem [ref=f13e64]:
+              - link "Telemetry" [ref=f13e65] [cursor=pointer]:
+                - /url: /telemetry
+            - listitem [ref=f13e73]:
+              - link "Alerts" [ref=f13e74] [cursor=pointer]:
+                - /url: /alerts
+        - generic [ref=f13e79]:
+          - generic [ref=f13e80]: Dashboards
+          - list [ref=f13e82]:
+            - listitem [ref=f13e83]:
+              - link "Machine Dashboard" [ref=f13e84] [cursor=pointer]:
+                - /url: /machine-dashboard
+            - listitem [ref=f13e89]:
+              - link "Workorder Dashboard" [ref=f13e90] [cursor=pointer]:
+                - /url: /workorder-dashboard
+            - listitem [ref=f13e97]:
+              - link "Preventive Dashboard" [ref=f13e98] [cursor=pointer]:
+                - /url: /preventive-dashboard
+            - listitem [ref=f13e103]:
+              - link "Analytics" [ref=f13e104] [cursor=pointer]:
+                - /url: /analytics
+        - generic [ref=f13e108]:
+          - generic [ref=f13e109]: Maintenance
+          - list [ref=f13e111]:
+            - listitem [ref=f13e112]:
+              - link "Work Orders" [ref=f13e113] [cursor=pointer]:
+                - /url: /dashboard/workorders
+            - listitem [ref=f13e117]:
+              - link "Preventive" [ref=f13e118] [cursor=pointer]:
+                - /url: /dashboard/preventive
+            - listitem [ref=f13e123]:
+              - link "Sparepart Requests" [ref=f13e124] [cursor=pointer]:
+                - /url: /dashboard/sparepart-requests
+            - listitem [ref=f13e130]:
+              - link "Stock" [ref=f13e131] [cursor=pointer]:
+                - /url: /dashboard/stock
+        - generic [ref=f13e137]:
+          - generic [ref=f13e138]: Configuration
+          - list [ref=f13e140]:
+            - listitem [ref=f13e141]:
+              - button "Master Data" [ref=f13e142]
+            - listitem [ref=f13e150]:
+              - link "WAHA Templates" [ref=f13e151] [cursor=pointer]:
+                - /url: /waha-templates
+            - listitem [ref=f13e155]:
+              - link "Audit Log" [ref=f13e156] [cursor=pointer]:
+                - /url: /audit-log
+            - listitem [ref=f13e161]:
+              - link "System Health" [ref=f13e162] [cursor=pointer]:
+                - /url: /system-health
+            - listitem [ref=f13e167]:
+              - link "Settings" [ref=f13e168] [cursor=pointer]:
+                - /url: /settings
+      - list [ref=f13e173]:
+        - listitem [ref=f13e174]:
+          - button "A admin@syncro.dev Super Admin" [ref=f13e175]:
+            - generic [ref=f13e176]: A
+            - generic [ref=f13e178]:
+              - generic [ref=f13e179]: admin@syncro.dev
+              - generic [ref=f13e180]: Super Admin
+    - main [ref=f13e16]:
+      - generic [ref=f13e18]:
+        - generic [ref=f13e19]:
+          - button "Toggle Sidebar" [ref=f13e20]
+          - button "Search ⌘ J" [ref=f13e22]:
+            - text: Search
+            - generic [ref=f13e23]:
+              - generic [ref=f13e24]: ⌘
+              - text: J
+          - generic [ref=f13e25]:
+            - heading "Command Palette" [level=2] [ref=f13e26]
+            - paragraph [ref=f13e27]: Search for a command to run...
+        - generic [ref=f13e28]:
+          - button [ref=f13e29]
+          - 'button "Current theme: light. Click to cycle themes" [ref=f13e30]'
+          - button "Select plant scope" [ref=f13e185]:
+            - generic [ref=f13e186]: All Plants
+      - main [ref=f13e32]:
+        - generic [ref=f13e33]:
+          - paragraph [ref=f13e34]: Syncro shell
+          - heading "Settings" [level=1] [ref=f13e35]
+          - paragraph [ref=f13e36]: Application preference and account settings shell.
+        - generic [ref=f13e37]:
+          - generic [ref=f13e38]:
+            - generic [ref=f13e39]: Module placeholder
+            - generic [ref=f13e40]: This route reserves the page composition shell. Backend-owned data, permissions, and domain rules arrive in later stories.
+          - list [ref=f13e42]:
+            - listitem [ref=f13e43]: Profile placeholder
+            - listitem [ref=f13e44]: Theme controls remain in header
+            - listitem [ref=f13e45]: Future auth settings
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=f13e51] [cursor=pointer]
+  - alert [ref=f13e188]

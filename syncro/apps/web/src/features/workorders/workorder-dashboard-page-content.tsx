@@ -3,11 +3,12 @@
 import { useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Wrench } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
 import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -59,7 +60,10 @@ export function WorkorderDashboardPageContent() {
   };
   const query = useWorkorderDashboard(params, isEnabled);
 
-  const { data: sectionsRes } = useListSections(undefined, { query: { enabled: isEnabled, staleTime: 60_000 } });
+  const { data: sectionsRes } = useListSections(
+    plantId ? { plantId } : undefined,
+    { query: { enabled: isEnabled && Boolean(plantId), staleTime: 60_000 } },
+  );
   const sections = sectionsRes?.data?.items ?? [];
 
   const { data: categoriesRes } = useQuery<CategoryOption[]>({
@@ -204,54 +208,85 @@ export function WorkorderDashboardPageContent() {
 
           <Card>
             <CardHeader>
-              <CardTitle>By status</CardTitle>
-              <CardDescription>Workorder count per lifecycle status.</CardDescription>
+              <CardTitle>Maintenance workorders</CardTitle>
+              <CardDescription>Open vs closed workorders per month (Jan – Dec, current year).</CardDescription>
             </CardHeader>
             <CardContent>
-              {data.byStatus.length === 0 ? (
-                <p className="text-muted-foreground text-sm">No status counts.</p>
+              {data.byMonth.length === 0 ? (
+                <p className="text-muted-foreground text-sm">No monthly counts.</p>
               ) : (
-                <ul className="divide-y">
-                  {data.byStatus.map((statusItem) => (
-                    <li key={statusItem.status} className="flex items-center justify-between gap-3 py-2">
-                      <span className="flex items-center gap-2">
-                        <Badge variant="outline">{statusItem.status}</Badge>
-                      </span>
-                      <span className="font-semibold tabular-nums">{statusItem.count}</span>
-                    </li>
-                  ))}
-                </ul>
+                <ChartContainer config={MONTHLY_CHART_CONFIG} className="h-80">
+                  <BarChart
+                    data={data.byMonth.map((m) => ({
+                      month: MONTH_LABELS[m.month - 1],
+                      Open: m.openCount,
+                      Close: m.closeCount,
+                    }))}
+                    margin={{ top: 16, right: 8, left: 0, bottom: 8 }}
+                  >
+                    <CartesianGrid vertical={false} />
+                    <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} interval={0} />
+                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={36} />
+                    <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+                    <ChartLegend content={<ChartLegendContent />} />
+                    <Bar dataKey="Open" fill="var(--color-open)" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Close" fill="var(--color-close)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ChartContainer>
               )}
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>By category</CardTitle>
-              <CardDescription>Workorder count per category.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {data.byCategory.length === 0 ? (
-                <p className="text-muted-foreground text-sm">No category counts.</p>
-              ) : (
-                <ul className="divide-y">
-                  {data.byCategory.map((category) => (
-                    <li
-                      key={category.categoryCode ?? "uncategorized"}
-                      className="flex items-center justify-between gap-3 py-2"
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>By status</CardTitle>
+                <CardDescription>Workorder count per lifecycle status.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {data.byStatus.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">No status counts.</p>
+                ) : (
+                  <ChartContainer config={STATUS_CHART_CONFIG} className="h-64">
+                    <BarChart data={data.byStatus}>
+                      <CartesianGrid vertical={false} />
+                      <XAxis dataKey="status" tickLine={false} axisLine={false} tickMargin={8} />
+                      <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={32} />
+                      <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+                      <Bar dataKey="count" fill="var(--color-count)" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ChartContainer>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>By category</CardTitle>
+                <CardDescription>Workorder count per category.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {data.byCategory.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">No category counts.</p>
+                ) : (
+                  <ChartContainer config={CATEGORY_CHART_CONFIG} className="h-64">
+                    <BarChart
+                      data={data.byCategory.map((category) => ({
+                        name: category.categoryLabel ?? category.categoryCode ?? "Uncategorized",
+                        count: category.count,
+                      }))}
                     >
-                      <span className="flex items-center gap-2">
-                        <Badge variant="secondary">
-                          {category.categoryLabel ?? category.categoryCode ?? "Uncategorized"}
-                        </Badge>
-                      </span>
-                      <span className="font-semibold tabular-nums">{category.count}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
+                      <CartesianGrid vertical={false} />
+                      <XAxis dataKey="name" tickLine={false} axisLine={false} tickMargin={8} />
+                      <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={32} />
+                      <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+                      <Bar dataKey="count" fill="var(--color-count)" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ChartContainer>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       )}
     </WorkorderDashboardShell>
@@ -270,6 +305,34 @@ function KpiCard({ label, value }: { label: string; value: number }) {
     </Card>
   );
 }
+
+const MONTH_LABELS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+const MONTHLY_CHART_CONFIG = {
+  Open: { label: "Open", color: "var(--chart-3)" },
+  Close: { label: "Close", color: "var(--chart-4)" },
+} as const;
+
+const STATUS_CHART_CONFIG = {
+  count: { label: "Workorders", color: "var(--chart-1)" },
+} as const;
+
+const CATEGORY_CHART_CONFIG = {
+  count: { label: "Workorders", color: "var(--chart-2)" },
+} as const;
 
 function WorkorderDashboardShell({ children }: { children: React.ReactNode }) {
   return (

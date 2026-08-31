@@ -19,7 +19,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useWorkorders } from "@/features/workorders/hooks/use-workorders";
 import type { WorkOrderListParams, WorkOrderListRow } from "@/features/workorders/types";
-import { useListMachines } from "@/lib/api/generated/syncro";
 
 const WORKORDER_STATUSES = [
   "DRAFT",
@@ -59,7 +58,7 @@ function endOfMonth(d: Date): Date {
 
 /**
  * Workorder table tab (workorder-table story): a server-paginated TanStack Table with a
- * month quick picker (prev/next arrows, no calendar date clicking), status/machine/search
+ * month quick picker (prev/next arrows, no calendar date clicking), status/category/search
  * filters and prev/next pagination. The month defaults to the current month and maps to
  * {@code from}/{@code to} month boundaries. Loading/empty/error states are handled to spec.
  */
@@ -71,7 +70,6 @@ export function WorkorderTable() {
   const [dateFrom, setDateFrom] = useState(() => isoDate(startOfMonth(new Date())));
   const [dateTo, setDateTo] = useState(() => isoDate(endOfMonth(new Date())));
   const [status, setStatus] = useState("");
-  const [machineId, setMachineId] = useState("");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -113,10 +111,6 @@ export function WorkorderTable() {
     setStatus(value === "all-statuses" ? "" : value);
     setPage(0);
   }, []);
-  const handleMachineChange = useCallback((value: string) => {
-    setMachineId(value === "all-machines" ? "" : value);
-    setPage(0);
-  }, []);
   const handleCategoryChange = useCallback((value: string) => {
     setCategoryCode(value === "all-categories" ? "" : value);
     setPage(0);
@@ -126,7 +120,6 @@ export function WorkorderTable() {
     from: dateFrom || undefined,
     to: dateTo || undefined,
     status: status || undefined,
-    machineId: machineId || undefined,
     categoryCode: categoryCode || undefined,
     search: debouncedSearch || undefined,
     page,
@@ -135,9 +128,6 @@ export function WorkorderTable() {
 
   const { data, isLoading, isError, refetch } = useWorkorders(params);
   const pageCount = data ? Math.ceil(data.total / PAGE_SIZE) : 0;
-
-  const { data: machinesRes } = useListMachines({ page: 0, size: 200 });
-  const machineItems = machinesRes?.data?.items ?? [];
 
   const columns = useMemo<ColumnDef<WorkOrderListRow>[]>(
     () => [
@@ -248,23 +238,6 @@ export function WorkorderTable() {
               {(categoriesRes ?? []).map((category) => (
                 <SelectItem key={category.code} value={category.code}>
                   {category.code} · {category.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-1">
-          <span className="font-medium text-muted-foreground text-xs">Machine</span>
-          <Select value={machineId || "all-machines"} onValueChange={handleMachineChange}>
-            <SelectTrigger className="w-52" aria-label="Machine">
-              <SelectValue placeholder="All machines" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all-machines">All machines</SelectItem>
-              {machineItems.map((machine) => (
-                <SelectItem key={machine.id} value={machine.id ?? ""}>
-                  {machine.code} · {machine.name} · {machine.plantCode}
                 </SelectItem>
               ))}
             </SelectContent>

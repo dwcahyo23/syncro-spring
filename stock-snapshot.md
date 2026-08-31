@@ -1,0 +1,69 @@
+- generic [ref=f1e1]:
+  - generic [active]:
+    - generic [ref=f1e61]:
+      - generic [ref=f1e62]:
+        - navigation [ref=f1e64]:
+          - button [disabled] [ref=f1e65]:
+            - img "previous" [ref=f1e66]
+          - generic [ref=f1e68]:
+            - generic [ref=f1e69]: 1/
+            - generic [ref=f1e70]: "1"
+          - button [disabled] [ref=f1e71]:
+            - img "next" [ref=f1e72]
+        - link "Next.js 16.3.0 (stale) Turbopack" [ref=f1e75] [cursor=pointer]:
+          - /url: https://nextjs.org/docs/messages/version-staleness
+          - generic "There is a newer version (16.3.3) available, upgrade recommended!" [ref=f1e78]: Next.js 16.3.0 (stale)
+          - generic [ref=f1e79]: Turbopack
+      - dialog "Runtime TypeError" [ref=f1e81]:
+        - generic [ref=f1e84]:
+          - generic [ref=f1e86]:
+            - generic [ref=f1e87]:
+              - generic [ref=f1e88]: Runtime TypeError
+              - generic [ref=f1e90]:
+                - button "Copy Error Info" [ref=f1e91] [cursor=pointer]
+                - button "No related documentation found" [disabled] [ref=f1e94]
+                - button "Attach Node.js inspector" [ref=f1e97] [cursor=pointer]
+            - generic [ref=f1e106]: (plantItems ?? []).filter is not a function
+          - generic [ref=f1e108]:
+            - generic [ref=f1e109]:
+              - paragraph [ref=f1e111]:
+                - generic [ref=f1e116]: src\app\(main)\dashboard\stock\page.tsx (8:10) @ StockPage
+                - button "Open in editor" [ref=f1e117] [cursor=pointer]
+              - generic [ref=f1e121]:
+                - generic [ref=f1e122]: 6 | */
+                - generic [ref=f1e123]: "7 | export default function StockPage() {"
+                - generic [ref=f1e124]: "> 8 | return <SparepartStockPageContent />;"
+                - generic [ref=f1e125]: "| ^"
+                - generic [ref=f1e126]: "9 | }"
+                - generic [ref=f1e127]: 10 |
+            - generic [ref=f1e128]:
+              - generic [ref=f1e129]:
+                - paragraph [ref=f1e130]:
+                  - text: Call Stack
+                  - generic [ref=f1e131]: "15"
+                - button "Show 13 ignore-listed frame(s)" [ref=f1e132] [cursor=pointer]
+              - generic [ref=f1e135]:
+                - generic [ref=f1e136]:
+                  - text: SparepartStockPageContent
+                  - button "Sourcemapping failed. Click to log cause of error." [ref=f1e137] [cursor=pointer]
+                - text: file:///E:/01%20DEV/SYNCRO-SPRING/syncro/apps/web/.next/dev/static/chunks/src_0kl4sq6._.js (1447:48)
+              - generic [ref=f1e140]:
+                - generic [ref=f1e141]:
+                  - text: StockPage
+                  - button "Open StockPage in editor" [ref=f1e142] [cursor=pointer]
+                - text: src\app\(main)\dashboard\stock\page.tsx (8:10)
+    - generic [ref=f1e54] [cursor=pointer]:
+      - button "Open Next.js Dev Tools" [ref=f1e55]
+      - generic [ref=f1e145]:
+        - button "Open issues overlay" [ref=f1e146]:
+          - generic [ref=f1e147]:
+            - generic [ref=f1e148]: "0"
+            - generic [ref=f1e149]: "1"
+          - generic [ref=f1e150]: Issue
+        - button "Collapse issues badge" [ref=f1e151]
+  - generic [ref=f1e155]:
+    - heading "This page couldn’t load" [level=1] [ref=f1e158]
+    - paragraph [ref=f1e159]: Reload to try again, or go back.
+    - generic [ref=f1e160]:
+      - button "Reload" [ref=f1e162] [cursor=pointer]
+      - button "Back" [ref=f1e163] [cursor=pointer]

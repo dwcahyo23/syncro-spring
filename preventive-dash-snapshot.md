@@ -1,0 +1,250 @@
+- generic [active] [ref=f6e1]:
+  - generic [ref=f6e2]:
+    - generic [ref=f6e5]:
+      - list [ref=f6e7]:
+        - listitem [ref=f6e8]:
+          - link "Syncro" [ref=f6e9] [cursor=pointer]:
+            - /url: /operations-overview
+      - generic [ref=f6e14]:
+        - generic [ref=f6e38]:
+          - generic [ref=f6e39]: Operational
+          - list [ref=f6e41]:
+            - listitem [ref=f6e42]:
+              - link "Operations Overview" [ref=f6e43] [cursor=pointer]:
+                - /url: /operations-overview
+            - listitem [ref=f6e47]:
+              - link "Telemetry" [ref=f6e48] [cursor=pointer]:
+                - /url: /telemetry
+            - listitem [ref=f6e56]:
+              - link "Alerts" [ref=f6e57] [cursor=pointer]:
+                - /url: /alerts
+        - generic [ref=f6e62]:
+          - generic [ref=f6e63]: Dashboards
+          - list [ref=f6e65]:
+            - listitem [ref=f6e66]:
+              - link "Machine Dashboard" [ref=f6e67] [cursor=pointer]:
+                - /url: /machine-dashboard
+            - listitem [ref=f6e72]:
+              - link "Workorder Dashboard" [ref=f6e73] [cursor=pointer]:
+                - /url: /workorder-dashboard
+            - listitem [ref=f6e80]:
+              - link "Preventive Dashboard" [ref=f6e81] [cursor=pointer]:
+                - /url: /preventive-dashboard
+            - listitem [ref=f6e86]:
+              - link "Analytics" [ref=f6e87] [cursor=pointer]:
+                - /url: /analytics
+        - generic [ref=f6e91]:
+          - generic [ref=f6e92]: Maintenance
+          - list [ref=f6e94]:
+            - listitem [ref=f6e95]:
+              - link "Work Orders" [ref=f6e96] [cursor=pointer]:
+                - /url: /dashboard/workorders
+            - listitem [ref=f6e100]:
+              - link "Preventive" [ref=f6e101] [cursor=pointer]:
+                - /url: /dashboard/preventive
+            - listitem [ref=f6e106]:
+              - link "Sparepart Requests" [ref=f6e107] [cursor=pointer]:
+                - /url: /dashboard/sparepart-requests
+            - listitem [ref=f6e113]:
+              - link "Stock" [ref=f6e114] [cursor=pointer]:
+                - /url: /dashboard/stock
+        - generic [ref=f6e120]:
+          - generic [ref=f6e121]: Configuration
+          - list [ref=f6e123]:
+            - listitem [ref=f6e124]:
+              - button "Master Data" [ref=f6e125]
+            - listitem [ref=f6e133]:
+              - link "WAHA Templates" [ref=f6e134] [cursor=pointer]:
+                - /url: /waha-templates
+            - listitem [ref=f6e138]:
+              - link "Audit Log" [ref=f6e139] [cursor=pointer]:
+                - /url: /audit-log
+            - listitem [ref=f6e144]:
+              - link "System Health" [ref=f6e145] [cursor=pointer]:
+                - /url: /system-health
+            - listitem [ref=f6e150]:
+              - link "Settings" [ref=f6e151] [cursor=pointer]:
+                - /url: /settings
+      - list [ref=f6e156]:
+        - listitem [ref=f6e157]:
+          - button "A admin@syncro.dev Super Admin" [ref=f6e158]:
+            - generic [ref=f6e159]: A
+            - generic [ref=f6e161]:
+              - generic [ref=f6e162]: admin@syncro.dev
+              - generic [ref=f6e163]: Super Admin
+    - main [ref=f6e16]:
+      - generic [ref=f6e18]:
+        - generic [ref=f6e19]:
+          - button "Toggle Sidebar" [ref=f6e20]
+          - button "Search ⌘ J" [ref=f6e22]:
+            - text: Search
+            - generic [ref=f6e23]:
+              - generic [ref=f6e24]: ⌘
+              - text: J
+          - generic [ref=f6e25]:
+            - heading "Command Palette" [level=2] [ref=f6e26]
+            - paragraph [ref=f6e27]: Search for a command to run...
+        - generic [ref=f6e28]:
+          - button [ref=f6e29]
+          - 'button "Current theme: light. Click to cycle themes" [ref=f6e30]'
+          - button "Select plant scope" [ref=f6e168]:
+            - generic [ref=f6e169]: All Plants
+      - main [ref=f6e32]:
+        - generic [ref=f6e33]:
+          - paragraph [ref=f6e34]: Syncro
+          - heading "Preventive Dashboard" [level=1] [ref=f6e35]
+          - paragraph [ref=f6e36]: Due and overdue preventive schedules, server-derived.
+        - generic [ref=f6e171]:
+          - paragraph [ref=f6e172]: Due and overdue preventive schedules, server-derived. Overdue is always labeled.
+          - button "Refresh" [ref=f6e173]
+        - generic [ref=f6e174]:
+          - generic [ref=f6e175]:
+            - generic [ref=f6e176]:
+              - generic [ref=f6e177]: Due
+              - paragraph [ref=f6e180]: "12"
+            - generic [ref=f6e181]:
+              - generic [ref=f6e182]: Overdue
+              - paragraph [ref=f6e185]: "0"
+            - generic [ref=f6e186]:
+              - generic [ref=f6e187]: Total Schedules
+              - paragraph [ref=f6e190]: "12"
+          - generic [ref=f6e191]:
+            - generic [ref=f6e192]:
+              - generic [ref=f6e193]: Upcoming schedules
+              - generic [ref=f6e194]: All schedules within scope, ordered by due date. Overdue items are marked.
+            - list [ref=f6e196]:
+              - listitem [ref=f6e197]:
+                - generic [ref=f6e198]:
+                  - generic [ref=f6e199]:
+                    - generic [ref=f6e200]: 2026-09-15
+                    - generic [ref=f6e201]: MECHANICAL
+                    - generic [ref=f6e202]: MONTHLY
+                  - paragraph [ref=f6e203]:
+                    - text: JBF19
+                    - generic [ref=f6e204]: (BF-08410)
+                    - text: · Monthly lube check
+                - generic [ref=f6e205]: SCHEDULED
+              - listitem [ref=f6e207]:
+                - generic [ref=f6e208]:
+                  - generic [ref=f6e209]:
+                    - generic [ref=f6e210]: 2026-10-15
+                    - generic [ref=f6e211]: MECHANICAL
+                    - generic [ref=f6e212]: MONTHLY
+                  - paragraph [ref=f6e213]:
+                    - text: JBF19
+                    - generic [ref=f6e214]: (BF-08410)
+                    - text: · Monthly lube check
+                - generic [ref=f6e215]: SCHEDULED
+              - listitem [ref=f6e217]:
+                - generic [ref=f6e218]:
+                  - generic [ref=f6e219]:
+                    - generic [ref=f6e220]: 2026-11-15
+                    - generic [ref=f6e221]: MECHANICAL
+                    - generic [ref=f6e222]: MONTHLY
+                  - paragraph [ref=f6e223]:
+                    - text: JBF19
+                    - generic [ref=f6e224]: (BF-08410)
+                    - text: · Monthly lube check
+                - generic [ref=f6e225]: SCHEDULED
+              - listitem [ref=f6e227]:
+                - generic [ref=f6e228]:
+                  - generic [ref=f6e229]:
+                    - generic [ref=f6e230]: 2026-12-15
+                    - generic [ref=f6e231]: MECHANICAL
+                    - generic [ref=f6e232]: MONTHLY
+                  - paragraph [ref=f6e233]:
+                    - text: JBF19
+                    - generic [ref=f6e234]: (BF-08410)
+                    - text: · Monthly lube check
+                - generic [ref=f6e235]: SCHEDULED
+              - listitem [ref=f6e237]:
+                - generic [ref=f6e238]:
+                  - generic [ref=f6e239]:
+                    - generic [ref=f6e240]: 2027-01-15
+                    - generic [ref=f6e241]: MECHANICAL
+                    - generic [ref=f6e242]: MONTHLY
+                  - paragraph [ref=f6e243]:
+                    - text: JBF19
+                    - generic [ref=f6e244]: (BF-08410)
+                    - text: · Monthly lube check
+                - generic [ref=f6e245]: SCHEDULED
+              - listitem [ref=f6e247]:
+                - generic [ref=f6e248]:
+                  - generic [ref=f6e249]:
+                    - generic [ref=f6e250]: 2027-02-15
+                    - generic [ref=f6e251]: MECHANICAL
+                    - generic [ref=f6e252]: MONTHLY
+                  - paragraph [ref=f6e253]:
+                    - text: JBF19
+                    - generic [ref=f6e254]: (BF-08410)
+                    - text: · Monthly lube check
+                - generic [ref=f6e255]: SCHEDULED
+              - listitem [ref=f6e257]:
+                - generic [ref=f6e258]:
+                  - generic [ref=f6e259]:
+                    - generic [ref=f6e260]: 2027-03-15
+                    - generic [ref=f6e261]: MECHANICAL
+                    - generic [ref=f6e262]: MONTHLY
+                  - paragraph [ref=f6e263]:
+                    - text: JBF19
+                    - generic [ref=f6e264]: (BF-08410)
+                    - text: · Monthly lube check
+                - generic [ref=f6e265]: SCHEDULED
+              - listitem [ref=f6e267]:
+                - generic [ref=f6e268]:
+                  - generic [ref=f6e269]:
+                    - generic [ref=f6e270]: 2027-04-15
+                    - generic [ref=f6e271]: MECHANICAL
+                    - generic [ref=f6e272]: MONTHLY
+                  - paragraph [ref=f6e273]:
+                    - text: JBF19
+                    - generic [ref=f6e274]: (BF-08410)
+                    - text: · Monthly lube check
+                - generic [ref=f6e275]: SCHEDULED
+              - listitem [ref=f6e277]:
+                - generic [ref=f6e278]:
+                  - generic [ref=f6e279]:
+                    - generic [ref=f6e280]: 2027-05-15
+                    - generic [ref=f6e281]: MECHANICAL
+                    - generic [ref=f6e282]: MONTHLY
+                  - paragraph [ref=f6e283]:
+                    - text: JBF19
+                    - generic [ref=f6e284]: (BF-08410)
+                    - text: · Monthly lube check
+                - generic [ref=f6e285]: SCHEDULED
+              - listitem [ref=f6e287]:
+                - generic [ref=f6e288]:
+                  - generic [ref=f6e289]:
+                    - generic [ref=f6e290]: 2027-06-15
+                    - generic [ref=f6e291]: MECHANICAL
+                    - generic [ref=f6e292]: MONTHLY
+                  - paragraph [ref=f6e293]:
+                    - text: JBF19
+                    - generic [ref=f6e294]: (BF-08410)
+                    - text: · Monthly lube check
+                - generic [ref=f6e295]: SCHEDULED
+              - listitem [ref=f6e297]:
+                - generic [ref=f6e298]:
+                  - generic [ref=f6e299]:
+                    - generic [ref=f6e300]: 2027-07-15
+                    - generic [ref=f6e301]: MECHANICAL
+                    - generic [ref=f6e302]: MONTHLY
+                  - paragraph [ref=f6e303]:
+                    - text: JBF19
+                    - generic [ref=f6e304]: (BF-08410)
+                    - text: · Monthly lube check
+                - generic [ref=f6e305]: SCHEDULED
+              - listitem [ref=f6e307]:
+                - generic [ref=f6e308]:
+                  - generic [ref=f6e309]:
+                    - generic [ref=f6e310]: 2027-08-15
+                    - generic [ref=f6e311]: MECHANICAL
+                    - generic [ref=f6e312]: MONTHLY
+                  - paragraph [ref=f6e313]:
+                    - text: JBF19
+                    - generic [ref=f6e314]: (BF-08410)
+                    - text: · Monthly lube check
+                - generic [ref=f6e315]: SCHEDULED
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=f6e322] [cursor=pointer]
+  - alert [ref=f6e326]

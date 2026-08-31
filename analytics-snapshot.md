@@ -1,0 +1,123 @@
+- generic [active] [ref=f7e1]:
+  - generic [ref=f7e2]:
+    - generic [ref=f7e5]:
+      - list [ref=f7e7]:
+        - listitem [ref=f7e8]:
+          - link "Syncro" [ref=f7e9] [cursor=pointer]:
+            - /url: /operations-overview
+      - generic [ref=f7e14]:
+        - generic [ref=f7e38]:
+          - generic [ref=f7e39]: Operational
+          - list [ref=f7e41]:
+            - listitem [ref=f7e42]:
+              - link "Operations Overview" [ref=f7e43] [cursor=pointer]:
+                - /url: /operations-overview
+            - listitem [ref=f7e47]:
+              - link "Telemetry" [ref=f7e48] [cursor=pointer]:
+                - /url: /telemetry
+            - listitem [ref=f7e56]:
+              - link "Alerts" [ref=f7e57] [cursor=pointer]:
+                - /url: /alerts
+        - generic [ref=f7e62]:
+          - generic [ref=f7e63]: Dashboards
+          - list [ref=f7e65]:
+            - listitem [ref=f7e66]:
+              - link "Machine Dashboard" [ref=f7e67] [cursor=pointer]:
+                - /url: /machine-dashboard
+            - listitem [ref=f7e72]:
+              - link "Workorder Dashboard" [ref=f7e73] [cursor=pointer]:
+                - /url: /workorder-dashboard
+            - listitem [ref=f7e80]:
+              - link "Preventive Dashboard" [ref=f7e81] [cursor=pointer]:
+                - /url: /preventive-dashboard
+            - listitem [ref=f7e86]:
+              - link "Analytics" [ref=f7e87] [cursor=pointer]:
+                - /url: /analytics
+        - generic [ref=f7e91]:
+          - generic [ref=f7e92]: Maintenance
+          - list [ref=f7e94]:
+            - listitem [ref=f7e95]:
+              - link "Work Orders" [ref=f7e96] [cursor=pointer]:
+                - /url: /dashboard/workorders
+            - listitem [ref=f7e100]:
+              - link "Preventive" [ref=f7e101] [cursor=pointer]:
+                - /url: /dashboard/preventive
+            - listitem [ref=f7e106]:
+              - link "Sparepart Requests" [ref=f7e107] [cursor=pointer]:
+                - /url: /dashboard/sparepart-requests
+            - listitem [ref=f7e113]:
+              - link "Stock" [ref=f7e114] [cursor=pointer]:
+                - /url: /dashboard/stock
+        - generic [ref=f7e120]:
+          - generic [ref=f7e121]: Configuration
+          - list [ref=f7e123]:
+            - listitem [ref=f7e124]:
+              - button "Master Data" [ref=f7e125]
+            - listitem [ref=f7e133]:
+              - link "WAHA Templates" [ref=f7e134] [cursor=pointer]:
+                - /url: /waha-templates
+            - listitem [ref=f7e138]:
+              - link "Audit Log" [ref=f7e139] [cursor=pointer]:
+                - /url: /audit-log
+            - listitem [ref=f7e144]:
+              - link "System Health" [ref=f7e145] [cursor=pointer]:
+                - /url: /system-health
+            - listitem [ref=f7e150]:
+              - link "Settings" [ref=f7e151] [cursor=pointer]:
+                - /url: /settings
+      - list [ref=f7e156]:
+        - listitem [ref=f7e157]:
+          - button "A admin@syncro.dev Super Admin" [ref=f7e158]:
+            - generic [ref=f7e159]: A
+            - generic [ref=f7e161]:
+              - generic [ref=f7e162]: admin@syncro.dev
+              - generic [ref=f7e163]: Super Admin
+    - main [ref=f7e16]:
+      - generic [ref=f7e18]:
+        - generic [ref=f7e19]:
+          - button "Toggle Sidebar" [ref=f7e20]
+          - button "Search ⌘ J" [ref=f7e22]:
+            - text: Search
+            - generic [ref=f7e23]:
+              - generic [ref=f7e24]: ⌘
+              - text: J
+          - generic [ref=f7e25]:
+            - heading "Command Palette" [level=2] [ref=f7e26]
+            - paragraph [ref=f7e27]: Search for a command to run...
+        - generic [ref=f7e28]:
+          - button [ref=f7e29]
+          - 'button "Current theme: light. Click to cycle themes" [ref=f7e30]'
+          - button "Select plant scope" [ref=f7e178]:
+            - generic [ref=f7e179]: All Plants
+      - main [ref=f7e32]:
+        - generic [ref=f7e33]:
+          - paragraph [ref=f7e34]: Syncro
+          - heading "Analytics" [level=1] [ref=f7e35]
+          - paragraph [ref=f7e36]: MTBF/MTTR reliability and technician KPIs, computed on the server.
+        - generic [ref=f7e181]:
+          - generic [ref=f7e182]:
+            - button "MTBF / MTTR" [pressed] [ref=f7e183]
+            - button "Technician KPI" [ref=f7e184]
+          - button "Refresh" [ref=f7e185]
+        - generic [ref=f7e186]:
+          - generic [ref=f7e187]:
+            - generic [ref=f7e188]:
+              - generic [ref=f7e189]: MTBF
+              - generic [ref=f7e194]:
+                - paragraph [ref=f7e195]: —
+                - generic "Insufficient data" [ref=f7e196]
+            - generic [ref=f7e197]:
+              - generic [ref=f7e198]: MTTR
+              - generic [ref=f7e202]:
+                - paragraph [ref=f7e203]: —
+                - generic "Insufficient data" [ref=f7e204]
+          - generic [ref=f7e205]:
+            - generic [ref=f7e206]:
+              - generic [ref=f7e207]: Reliability window
+              - generic [ref=f7e208]: Monthly rolling window keyed on the derived workorder stop time.
+            - generic [ref=f7e209]:
+              - paragraph [ref=f7e210]: "Window: 1 Aug 2026, 09:00 to 31 Aug 2026, 09:00"
+              - paragraph [ref=f7e211]: "Computed: 31 Aug 2026, 09:00"
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=f7e173] [cursor=pointer]
+  - alert [ref=f7e177]

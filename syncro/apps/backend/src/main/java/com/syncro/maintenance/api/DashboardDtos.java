@@ -68,7 +68,15 @@ public final class DashboardDtos {
   public record WorkorderDashboardResponse(
       long total,
       List<StatusCount> byStatus,
-      List<CategoryCount> byCategory) {
+      List<CategoryCount> byCategory,
+      List<MonthlyWorkorderCount> byMonth) {
+  }
+
+  /** DW-148: per-month Open/Close counts (month 1-12) for the Jan–Dec bar chart. */
+  public record MonthlyWorkorderCount(
+      int month,
+      long openCount,
+      long closeCount) {
   }
 
   // ---------------------------------------------------------------------------

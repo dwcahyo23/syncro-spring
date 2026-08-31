@@ -13,12 +13,12 @@ type Severity = "SUCCESS" | "WARNING" | "CRITICAL" | "NEUTRAL";
 
 const SEVERITY_BADGES: Record<Severity, { className: string; label: string; Icon: typeof CircleCheck }> = {
   SUCCESS: {
-    className: "border-transparent bg-emerald-600/15 text-emerald-700 dark:text-emerald-400",
+    className: "status-badge-healthy",
     label: "OK",
     Icon: CircleCheck,
   },
   WARNING: {
-    className: "border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-400",
+    className: "status-badge-warning",
     label: "Warning",
     Icon: TriangleAlert,
   },

@@ -1,0 +1,269 @@
+- generic [active] [ref=f14e1]:
+  - generic [ref=f14e2]:
+    - generic [ref=f14e5]:
+      - list [ref=f14e7]:
+        - listitem [ref=f14e8]:
+          - link "Syncro" [ref=f14e9] [cursor=pointer]:
+            - /url: /operations-overview
+      - generic [ref=f14e14]:
+        - generic [ref=f14e51]:
+          - generic [ref=f14e52]: Operational
+          - list [ref=f14e54]:
+            - listitem [ref=f14e55]:
+              - link "Operations Overview" [ref=f14e56] [cursor=pointer]:
+                - /url: /operations-overview
+            - listitem [ref=f14e60]:
+              - link "Telemetry" [ref=f14e61] [cursor=pointer]:
+                - /url: /telemetry
+            - listitem [ref=f14e69]:
+              - link "Alerts" [ref=f14e70] [cursor=pointer]:
+                - /url: /alerts
+        - generic [ref=f14e75]:
+          - generic [ref=f14e76]: Dashboards
+          - list [ref=f14e78]:
+            - listitem [ref=f14e79]:
+              - link "Machine Dashboard" [ref=f14e80] [cursor=pointer]:
+                - /url: /machine-dashboard
+            - listitem [ref=f14e85]:
+              - link "Workorder Dashboard" [ref=f14e86] [cursor=pointer]:
+                - /url: /workorder-dashboard
+            - listitem [ref=f14e93]:
+              - link "Preventive Dashboard" [ref=f14e94] [cursor=pointer]:
+                - /url: /preventive-dashboard
+            - listitem [ref=f14e99]:
+              - link "Analytics" [ref=f14e100] [cursor=pointer]:
+                - /url: /analytics
+        - generic [ref=f14e104]:
+          - generic [ref=f14e105]: Maintenance
+          - list [ref=f14e107]:
+            - listitem [ref=f14e108]:
+              - link "Work Orders" [ref=f14e109] [cursor=pointer]:
+                - /url: /dashboard/workorders
+            - listitem [ref=f14e113]:
+              - link "Preventive" [ref=f14e114] [cursor=pointer]:
+                - /url: /dashboard/preventive
+            - listitem [ref=f14e119]:
+              - link "Sparepart Requests" [ref=f14e120] [cursor=pointer]:
+                - /url: /dashboard/sparepart-requests
+            - listitem [ref=f14e126]:
+              - link "Stock" [ref=f14e127] [cursor=pointer]:
+                - /url: /dashboard/stock
+        - generic [ref=f14e133]:
+          - generic [ref=f14e134]: Configuration
+          - list [ref=f14e136]:
+            - listitem [ref=f14e137]:
+              - button "Master Data" [ref=f14e138]
+            - listitem [ref=f14e146]:
+              - link "WAHA Templates" [ref=f14e147] [cursor=pointer]:
+                - /url: /waha-templates
+            - listitem [ref=f14e151]:
+              - link "Audit Log" [ref=f14e152] [cursor=pointer]:
+                - /url: /audit-log
+            - listitem [ref=f14e157]:
+              - link "System Health" [ref=f14e158] [cursor=pointer]:
+                - /url: /system-health
+            - listitem [ref=f14e163]:
+              - link "Settings" [ref=f14e164] [cursor=pointer]:
+                - /url: /settings
+      - list [ref=f14e169]:
+        - listitem [ref=f14e170]:
+          - button "A admin@syncro.dev Super Admin" [ref=f14e171]:
+            - generic [ref=f14e172]: A
+            - generic [ref=f14e174]:
+              - generic [ref=f14e175]: admin@syncro.dev
+              - generic [ref=f14e176]: Super Admin
+    - main [ref=f14e16]:
+      - generic [ref=f14e18]:
+        - generic [ref=f14e19]:
+          - button "Toggle Sidebar" [ref=f14e20]
+          - button "Search ⌘ J" [ref=f14e22]:
+            - text: Search
+            - generic [ref=f14e23]:
+              - generic [ref=f14e24]: ⌘
+              - text: J
+          - generic [ref=f14e25]:
+            - heading "Command Palette" [level=2] [ref=f14e26]
+            - paragraph [ref=f14e27]: Search for a command to run...
+        - generic [ref=f14e28]:
+          - button [ref=f14e29]
+          - 'button "Current theme: light. Click to cycle themes" [ref=f14e30]'
+          - button "Select plant scope" [ref=f14e181]:
+            - generic [ref=f14e182]: All Plants
+      - generic [ref=f14e184]:
+        - generic [ref=f14e185]:
+          - generic [ref=f14e186]:
+            - generic [ref=f14e187]:
+              - heading "System Health" [level=1] [ref=f14e188]
+              - 'status "Telemetry latency: No data" [ref=f14e189]':
+                - generic [ref=f14e191]: Latency No data
+            - paragraph [ref=f14e192]: Dependency and worker diagnostics. Refreshes automatically every 30 seconds.
+          - button "Refresh" [ref=f14e193]
+        - generic [ref=f14e194]: One or more dependencies or workers are degraded or could not be verified. See cards below for details.
+        - region "Dependency health" [ref=f14e197]:
+          - heading "Dependencies" [level=2] [ref=f14e198]
+          - generic [ref=f14e199]:
+            - generic [ref=f14e200]:
+              - generic [ref=f14e201]:
+                - generic [ref=f14e202]:
+                  - generic [ref=f14e203]: PostgreSQL
+                  - 'generic "Status: Unknown" [ref=f14e204]': Unknown
+                - generic [ref=f14e205]: Primary relational store
+              - paragraph [ref=f14e207]: Unable to check PostgreSQL.
+            - generic [ref=f14e208]:
+              - generic [ref=f14e209]:
+                - generic [ref=f14e210]:
+                  - generic [ref=f14e211]: InfluxDB
+                  - 'generic "Status: Unknown" [ref=f14e212]': Unknown
+                - generic [ref=f14e213]: Telemetry history store
+              - paragraph [ref=f14e215]: Unable to check InfluxDB.
+            - generic [ref=f14e216]:
+              - generic [ref=f14e217]:
+                - generic [ref=f14e218]:
+                  - generic [ref=f14e219]: Redis
+                  - 'generic "Status: Unknown" [ref=f14e220]': Unknown
+                - generic [ref=f14e221]: Latest telemetry state cache
+              - paragraph [ref=f14e223]: Unable to check Redis.
+            - generic [ref=f14e224]:
+              - generic [ref=f14e225]:
+                - generic [ref=f14e226]:
+                  - generic [ref=f14e227]: MQTT / EMQX
+                  - 'generic "Status: Unknown" [ref=f14e228]': Unknown
+                - generic [ref=f14e229]: Telemetry ingest transport
+              - paragraph [ref=f14e231]: Unable to check MQTT / EMQX.
+            - generic [ref=f14e233]:
+              - generic [ref=f14e234]:
+                - generic [ref=f14e235]:
+                  - generic [ref=f14e236]: WAHA
+                  - 'generic "Status: Unknown" [ref=f14e237]': Unknown
+                - generic [ref=f14e238]: WhatsApp notification provider
+              - paragraph [ref=f14e240]: Unable to check WAHA.
+        - region "Worker health" [ref=f14e241]:
+          - heading "Workers" [level=2] [ref=f14e242]
+          - generic [ref=f14e243]:
+            - generic [ref=f14e244]:
+              - generic [ref=f14e245]:
+                - generic [ref=f14e246]:
+                  - generic [ref=f14e247]: Telemetry Ingest Worker
+                  - 'generic "Status: Running" [ref=f14e248]': Running
+                - generic [ref=f14e249]: MQTT telemetry ingest subscriber
+              - generic [ref=f14e250]:
+                - generic [ref=f14e251]:
+                  - generic [ref=f14e252]: Severity
+                  - generic [ref=f14e253]: Success
+                - generic [ref=f14e254]:
+                  - generic [ref=f14e255]: Reported at
+                  - generic [ref=f14e256]: Aug 31, 2026, 2:05 AM UTC
+                - generic [ref=f14e257]:
+                  - generic [ref=f14e258]: MQTT state
+                  - generic [ref=f14e259]: SUBSCRIBED
+                - generic [ref=f14e260]:
+                  - generic [ref=f14e261]: Queue depth
+                  - generic [ref=f14e262]: 0 / 1000
+                - generic [ref=f14e263]:
+                  - generic [ref=f14e264]: Accepted count
+                  - generic [ref=f14e265]: "0"
+                - generic [ref=f14e266]:
+                  - generic [ref=f14e267]: Last accepted
+                  - generic [ref=f14e268]: —
+                - generic [ref=f14e269]:
+                  - generic [ref=f14e270]: Stale since
+                  - generic [ref=f14e271]: —
+            - generic [ref=f14e273]:
+              - generic [ref=f14e274]:
+                - generic [ref=f14e275]:
+                  - generic [ref=f14e276]: Notification Worker
+                  - 'generic "Status: Running" [ref=f14e277]': Running
+                - generic [ref=f14e278]: WAHA notification dispatch worker
+              - generic [ref=f14e279]:
+                - generic [ref=f14e280]:
+                  - generic [ref=f14e281]: Severity
+                  - generic [ref=f14e282]: Success
+                - generic [ref=f14e283]:
+                  - generic [ref=f14e284]: Reported at
+                  - generic [ref=f14e285]: Aug 31, 2026, 2:05 AM UTC
+                - generic [ref=f14e286]:
+                  - generic [ref=f14e287]: Pending jobs
+                  - generic [ref=f14e288]: "0"
+                - generic [ref=f14e289]:
+                  - generic [ref=f14e290]: Recent failed
+                  - generic [ref=f14e291]: "0"
+                - generic [ref=f14e292]:
+                  - generic [ref=f14e293]: Last failure reason
+                  - generic [ref=f14e294]: —
+                - generic [ref=f14e295]:
+                  - generic [ref=f14e296]: Last successful send
+                  - generic [ref=f14e297]: —
+                - generic [ref=f14e298]:
+                  - generic [ref=f14e299]: Circuit state
+                  - generic [ref=f14e300]: CLOSED
+        - region "Data Quality" [ref=f14e301]:
+          - heading "Data Quality" [level=2] [ref=f14e302]
+          - generic [ref=f14e304]:
+            - generic [ref=f14e305]:
+              - generic [ref=f14e306]:
+                - generic [ref=f14e307]: Data Quality
+                - generic [ref=f14e308]:
+                  - generic [ref=f14e309]: Good
+                  - generic "OK" [ref=f14e310]
+              - generic [ref=f14e311]: Telemetry rejection, anomaly, and dead-letter metrics over the reporting window.
+            - generic [ref=f14e312]:
+              - generic [ref=f14e313]:
+                - generic [ref=f14e314]: Quarantined
+                - generic [ref=f14e315]:
+                  - generic [ref=f14e316]: "0"
+                  - generic "OK" [ref=f14e317]
+              - generic [ref=f14e318]:
+                - generic [ref=f14e319]: Rejection rate
+                - generic [ref=f14e320]:
+                  - generic [ref=f14e321]: 0.00%
+                  - generic "OK" [ref=f14e322]
+              - generic [ref=f14e323]:
+                - generic [ref=f14e324]: Anomalies
+                - generic [ref=f14e325]:
+                  - generic [ref=f14e326]: "0"
+                  - generic "OK" [ref=f14e327]
+              - generic [ref=f14e328]:
+                - generic [ref=f14e329]: Dead-letter
+                - generic [ref=f14e330]:
+                  - generic [ref=f14e331]: "0"
+                  - generic "OK" [ref=f14e332]
+              - generic [ref=f14e333]:
+                - generic [ref=f14e334]: Window
+                - generic [ref=f14e335]: last 1 hour
+              - link "View Quarantine Log" [ref=f14e336] [cursor=pointer]:
+                - /url: "#telemetry-quarantine-log"
+        - region "Telemetry Freshness" [ref=f14e341]:
+          - heading "Telemetry Freshness" [level=2] [ref=f14e342]
+          - generic [ref=f14e344]:
+            - generic [ref=f14e345]:
+              - generic [ref=f14e346]:
+                - generic [ref=f14e347]:
+                  - generic [ref=f14e348]: Telemetry Freshness
+                  - 'generic "Status: No data" [ref=f14e349]': No data
+                - generic [ref=f14e350]: Latest accepted telemetry from the ingest path
+              - generic [ref=f14e351]:
+                - generic [ref=f14e352]:
+                  - generic [ref=f14e353]: Severity
+                  - generic [ref=f14e354]: Neutral
+                - generic [ref=f14e355]:
+                  - generic [ref=f14e356]: Reason
+                  - generic [ref=f14e357]: No telemetry received. Verify MQTT configuration and machine setup.
+                - generic [ref=f14e358]:
+                  - generic [ref=f14e359]: Reported at
+                  - generic [ref=f14e360]: Aug 31, 2026, 2:05 AM UTC
+                - generic [ref=f14e361]:
+                  - generic [ref=f14e362]: Latest received
+                  - generic [ref=f14e363]: —
+                - generic [ref=f14e364]:
+                  - generic [ref=f14e365]: Stale since
+                  - generic [ref=f14e366]: —
+                - generic [ref=f14e367]:
+                  - generic [ref=f14e368]: Machines with stale telemetry
+                  - generic [ref=f14e369]: "1"
+            - button "Show stale machines (1)" [ref=f14e371]
+        - region "Telemetry quarantine log" [ref=f14e372]:
+          - heading "Telemetry Quarantine Log" [level=2] [ref=f14e373]
+          - generic [ref=f14e374]: No quarantined messages found.
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=f14e47] [cursor=pointer]
+  - alert [ref=f14e375]

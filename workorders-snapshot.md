@@ -1,0 +1,173 @@
+- generic [ref=e1]:
+  - generic [ref=e33]:
+    - generic [ref=e36]:
+      - list [ref=e38]:
+        - listitem [ref=e39]:
+          - link "Syncro" [ref=e40] [cursor=pointer]:
+            - /url: /operations-overview
+      - generic [ref=e45]:
+        - generic [ref=e46]:
+          - generic [ref=e47]: Operational
+          - list [ref=e49]:
+            - listitem [ref=e50]:
+              - link "Operations Overview" [ref=e51] [cursor=pointer]:
+                - /url: /operations-overview
+            - listitem [ref=e55]:
+              - link "Telemetry" [expanded] [ref=e56] [cursor=pointer]:
+                - /url: /telemetry
+            - listitem [ref=e64]:
+              - link "Alerts" [ref=e65] [cursor=pointer]:
+                - /url: /alerts
+        - generic [ref=e70]:
+          - generic [ref=e71]: Dashboards
+          - list [ref=e73]:
+            - listitem [ref=e74]:
+              - link "Machine Dashboard" [ref=e75] [cursor=pointer]:
+                - /url: /machine-dashboard
+            - listitem [ref=e80]:
+              - link "Workorder Dashboard" [ref=e81] [cursor=pointer]:
+                - /url: /workorder-dashboard
+            - listitem [ref=e88]:
+              - link "Preventive Dashboard" [ref=e89] [cursor=pointer]:
+                - /url: /preventive-dashboard
+            - listitem [ref=e94]:
+              - link "Analytics" [ref=e95] [cursor=pointer]:
+                - /url: /analytics
+        - generic [ref=e99]:
+          - generic [ref=e100]: Maintenance
+          - list [ref=e102]:
+            - listitem [ref=e103]:
+              - link "Work Orders" [expanded] [active] [ref=e104] [cursor=pointer]:
+                - /url: /dashboard/workorders
+            - listitem [ref=e108]:
+              - link "Preventive" [ref=e109] [cursor=pointer]:
+                - /url: /dashboard/preventive
+            - listitem [ref=e114]:
+              - link "Sparepart Requests" [ref=e115] [cursor=pointer]:
+                - /url: /dashboard/sparepart-requests
+            - listitem [ref=e121]:
+              - link "Stock" [ref=e122] [cursor=pointer]:
+                - /url: /dashboard/stock
+        - generic [ref=e128]:
+          - generic [ref=e129]: Configuration
+          - list [ref=e131]:
+            - listitem [ref=e132]:
+              - button "Master Data" [ref=e133]
+            - listitem [ref=e141]:
+              - link "WAHA Templates" [ref=e142] [cursor=pointer]:
+                - /url: /waha-templates
+            - listitem [ref=e146]:
+              - link "Audit Log" [ref=e147] [cursor=pointer]:
+                - /url: /audit-log
+            - listitem [ref=e152]:
+              - link "System Health" [ref=e153] [cursor=pointer]:
+                - /url: /system-health
+            - listitem [ref=e158]:
+              - link "Settings" [ref=e159] [cursor=pointer]:
+                - /url: /settings
+      - list [ref=e165]:
+        - listitem [ref=e166]:
+          - button "A admin@syncro.dev Super Admin" [ref=e167]:
+            - generic [ref=e168]: A
+            - generic [ref=e170]:
+              - generic [ref=e171]: admin@syncro.dev
+              - generic [ref=e172]: Super Admin
+    - main [ref=e177]:
+      - generic [ref=e179]:
+        - generic [ref=e180]:
+          - button "Toggle Sidebar" [ref=e181]
+          - button "Search ⌘ J" [ref=e183]:
+            - text: Search
+            - generic [ref=e184]:
+              - generic [ref=e185]: ⌘
+              - text: J
+          - generic [ref=e186]:
+            - heading "Command Palette" [level=2] [ref=e187]
+            - paragraph [ref=e188]: Search for a command to run...
+        - generic [ref=e189]:
+          - button [ref=e190]
+          - 'button "Current theme: light. Click to cycle themes" [ref=e191]'
+          - button "Select plant scope" [ref=e192]:
+            - generic [ref=e193]: All Plants
+      - generic [ref=e289]:
+        - generic [ref=e290]:
+          - generic [ref=e291]:
+            - heading "Work Orders" [level=1] [ref=e292]
+            - paragraph [ref=e293]: View, filter, and manage maintenance workorders.
+          - tablist [ref=e294]:
+            - tab "Table" [selected] [ref=e295]
+            - tab "Kanban" [ref=e296]
+            - tab "Ratings" [ref=e297]
+            - tab "Ack Task List" [ref=e298]
+            - tab "Categories" [ref=e299]
+        - tabpanel "Table" [ref=e301]:
+          - generic [ref=e302]:
+            - generic [ref=e303]:
+              - generic [ref=e304]:
+                - text: Month
+                - generic [ref=e305]:
+                  - button "Previous month" [ref=e306]
+                  - generic [ref=e307]: August 2026
+                  - button "Next month" [ref=e308]
+              - generic [ref=e309]:
+                - text: Status
+                - combobox "Status" [ref=e310]:
+                  - generic: All statuses
+              - generic [ref=e311]:
+                - text: Category
+                - combobox "Category" [ref=e312]:
+                  - generic: All categories
+              - generic [ref=e313]:
+                - text: Machine
+                - combobox "Machine" [ref=e314]:
+                  - generic: All machines
+              - generic [ref=e315]:
+                - text: Search
+                - textbox "Search workorders" [ref=e317]:
+                  - /placeholder: Search WO, machine, category...
+              - button "Refresh workorders" [ref=e318]
+            - generic [ref=e319]:
+              - table [ref=e321]:
+                - rowgroup [ref=e322]:
+                  - row [ref=e323]:
+                    - columnheader "WO No" [ref=e324]
+                    - columnheader "Status" [ref=e325]
+                    - columnheader "Machine" [ref=e326]
+                    - columnheader "Category" [ref=e327]
+                    - columnheader "Problem" [ref=e328]
+                    - columnheader "Plant" [ref=e329]
+                    - columnheader "Technician" [ref=e330]
+                    - columnheader "Created" [ref=e331]
+                    - columnheader "Actions" [ref=e332]
+                - rowgroup [ref=e333]:
+                  - row [ref=e334]:
+                    - cell "WO-2608-00001" [ref=e335]
+                    - cell "OPEN" [ref=e336]
+                    - cell "BF-08410 · JBF19" [ref=e338]
+                    - cell "01 · Breakdown" [ref=e339]
+                    - cell "Breakdown fix demo" [ref=e340]
+                    - cell "GM1" [ref=e342]
+                    - cell "-" [ref=e343]
+                    - cell "27 Aug 2026" [ref=e344]
+                    - cell [ref=e345]:
+                      - generic [ref=e346]:
+                        - button "Request part" [ref=e347]
+                        - button "Report" [ref=e348]
+                        - link "Print" [ref=e349] [cursor=pointer]:
+                          - /url: /dashboard/workorders/WO-2608-00001/print
+              - generic [ref=e350]:
+                - generic [ref=e351]: Showing 1 to 1 of 1 items
+                - generic [ref=e352]:
+                  - generic [ref=e353]:
+                    - paragraph [ref=e354]: Rows per page
+                    - combobox [ref=e355]:
+                      - generic: "20"
+                  - generic [ref=e356]: Page 1 of 1
+                  - generic [ref=e357]:
+                    - button "Go to first page" [disabled]
+                    - button "Go to previous page" [disabled]
+                    - button "Go to next page" [disabled]
+                    - button "Go to last page" [disabled]
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e21] [cursor=pointer]
+  - alert [ref=e15]: Syncro - Industrial Maintenance Platform

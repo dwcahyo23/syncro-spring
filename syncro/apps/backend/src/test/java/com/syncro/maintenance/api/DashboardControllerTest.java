@@ -105,7 +105,8 @@ class DashboardControllerTest {
         .thenReturn(new DashboardDtos.WorkorderDashboardResponse(
             3L,
             List.of(new DashboardDtos.StatusCount("OPEN", 2L), new DashboardDtos.StatusCount("DONE", 1L)),
-            List.of(new DashboardDtos.CategoryCount("BRK", "Breakdown", 2L))));
+            List.of(new DashboardDtos.CategoryCount("BRK", "Breakdown", 2L)),
+            List.of()));
 
     mockMvc.perform(get("/api/v1/dashboard/workorders")
         .param("plantId", plantId.toString())
@@ -126,7 +127,7 @@ class DashboardControllerTest {
   void workorderDashboardPassesNullFilters() throws Exception {
     var user = user(ApplicationRole.SUPER_ADMIN);
     when(dashboards.workorderDashboard(eq(user), eq(null), eq(null), eq(null), eq(null)))
-        .thenReturn(new DashboardDtos.WorkorderDashboardResponse(0L, List.of(), List.of()));
+        .thenReturn(new DashboardDtos.WorkorderDashboardResponse(0L, List.of(), List.of(), List.of()));
 
     mockMvc.perform(get("/api/v1/dashboard/workorders").with(auth(user)))
         .andExpect(status().isOk());

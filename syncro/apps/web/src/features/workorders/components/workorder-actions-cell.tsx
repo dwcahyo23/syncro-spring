@@ -25,11 +25,11 @@ export function WorkorderActionsCell({ workOrderId }: { workOrderId: string }) {
   const [reportOpen, setReportOpen] = useState(false);
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1.5">
       <RequestPartDialog workOrderId={workOrderId} />
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
         <DialogTrigger asChild>
-          <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs">
+          <Button type="button" variant="secondary" size="sm" className="h-7 px-2 text-xs">
             <FileTextIcon className="mr-1 size-3" />
             Report
           </Button>
@@ -39,7 +39,7 @@ export function WorkorderActionsCell({ workOrderId }: { workOrderId: string }) {
         </DialogContent>
       </Dialog>
       {/* Story 14-3: WYSIWYG print report route */}
-      <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" asChild>
+      <Button type="button" variant="secondary" size="sm" className="h-7 px-2 text-xs" asChild>
         <Link href={`/dashboard/workorders/${workOrderId}/print`}>
           <PrinterIcon className="mr-1 size-3" />
           Print

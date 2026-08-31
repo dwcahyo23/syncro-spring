@@ -4,6 +4,7 @@
 
 /* Theme preset styles: these override CSS variables based on the selected data-theme-preset */
 @import "../styles/presets/brutalist.css";
+@import "../styles/presets/industrial.css";
 @import "../styles/presets/soft-pop.css";
 @import "../styles/presets/tangerine.css";
 
@@ -72,11 +73,11 @@ These serve as the fallback; there is no separate default.css file. */
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --chart-1: oklch(0.45 0.08 255);
+  --chart-2: oklch(0.6 0.06 215);
+  --chart-3: oklch(0.6 0.12 175);
+  --chart-4: oklch(0.55 0.18 25);
+  --chart-5: oklch(0.5 0.1 290);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -112,11 +113,11 @@ These serve as the fallback; there is no separate default.css file. */
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --chart-1: oklch(0.58 0.1 255);
+  --chart-2: oklch(0.65 0.07 215);
+  --chart-3: oklch(0.65 0.12 175);
+  --chart-4: oklch(0.6 0.18 25);
+  --chart-5: oklch(0.55 0.1 290);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
@@ -175,6 +176,58 @@ These serve as the fallback; there is no separate default.css file. */
   html {
     @apply font-sans;
   }
+}
+
+@layer utilities {
+  /* Status palette tokens (industrial look): badge/banner surfaces that adapt to the
+     active theme preset. These replace ad-hoc tailwind color classes so alerts,
+     notifications and health banners stay in sync with the selected preset. */
+  .status-badge-healthy {
+    background: color-mix(in oklch, var(--syncro-status-healthy) 14%, transparent);
+    color: var(--syncro-status-healthy);
+    border-color: var(--syncro-status-healthy-border);
+  }
+  .status-badge-warning {
+    background: color-mix(in oklch, var(--syncro-status-warning) 14%, transparent);
+    color: var(--syncro-status-warning);
+    border-color: var(--syncro-status-warning-border);
+  }
+  .status-badge-critical {
+    background: color-mix(in oklch, var(--syncro-status-critical) 14%, transparent);
+    color: var(--syncro-status-critical);
+    border-color: var(--syncro-status-critical-border);
+  }
+  .status-badge-info {
+    background: color-mix(in oklch, var(--syncro-status-info) 14%, transparent);
+    color: var(--syncro-status-info);
+    border-color: var(--syncro-status-info-border);
+  }
+  .status-badge-neutral {
+    background: color-mix(in oklch, var(--syncro-status-neutral) 12%, transparent);
+    color: var(--syncro-status-neutral);
+    border-color: var(--syncro-status-neutral-border);
+  }
+
+  .status-banner-warning {
+    background: color-mix(in oklch, var(--syncro-status-warning) 10%, transparent);
+    border-color: color-mix(in oklch, var(--syncro-status-warning) 40%, transparent);
+    color: var(--syncro-status-warning);
+  }
+  .status-banner-healthy {
+    background: color-mix(in oklch, var(--syncro-status-healthy) 10%, transparent);
+    border-color: color-mix(in oklch, var(--syncro-status-healthy) 40%, transparent);
+    color: var(--syncro-status-healthy);
+  }
+  .status-banner-critical {
+    background: color-mix(in oklch, var(--syncro-status-critical) 10%, transparent);
+    border-color: color-mix(in oklch, var(--syncro-status-critical) 40%, transparent);
+    color: var(--syncro-status-critical);
+  }
+  .status-icon-healthy { color: var(--syncro-status-healthy); }
+  .status-icon-warning { color: var(--syncro-status-warning); }
+  .status-icon-critical { color: var(--syncro-status-critical); }
+  .status-icon-info { color: var(--syncro-status-info); }
+  .status-icon-neutral { color: var(--syncro-status-neutral); }
 }
 
 @layer utilities {

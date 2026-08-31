@@ -159,7 +159,20 @@ public class SparepartRequestService {
     var now = Instant.now(clock);
     var materialCode = normalizeMaterialCode(command.materialCode());
     var sparepart = resolveSparepart(materialCode, command.sparepartId(), command.requestType(), resolved.machineId());
-    var status = resolveStatus(command.requestType(), materialCode);
+    // DW-148: taxonomy supplied on a new SPAREPART creates the sparepart immediately (full
+    // taxonomy) instead of leaving a PENDING_COMPLETION shell for inventory to fill in.
+    if (sparepart == null && hasTaxonomy(command)
+        && command.requestType() == SparepartRequestType.SPAREPART) {
+      if (resolved.machineId() == null) {
+        throw new RequestValidationException(Map.of("categoryId", "Taxonomy requires a machine (workorder-bound request)."));
+      }
+      sparepart = sparepartService.createForRequestEntity(user, resolved.machineId(), materialCode,
+          command.categoryId(), command.brandId(), command.kindId(), command.typeId());
+      materialCode = sparepart.getMaterialCode();
+    }
+    // A resolved/created sparepart is ready immediately; only unknown parts wait for completion.
+    var status = sparepart != null ? SparepartRequestStatus.REQUESTED
+        : resolveStatus(command.requestType(), materialCode);
     validatePriceEntry(command.estPriceId());
     var entity = new SparepartRequestEntity(UUID.randomUUID(), command.requestType(), resolved.workOrderId(),
         resolved.machineId(), sparepart == null ? null : sparepart.getId(), materialCode, command.quantity().shortValue(),
@@ -620,6 +633,12 @@ public class SparepartRequestService {
       }
       case SPAREPART -> {
         if (command.machineId() == null) {
+          // Bound to a workorder: resolve the machine from the workorder (DW-148 UX).
+          if (command.workOrderId() != null) {
+            var workOrder = loadWorkOrder(command.workOrderId());
+            var machine = machine(workOrder.getMachineId());
+            return new ResolvedTarget(workOrder.getId(), machine.getId(), machine.getPlant().getId());
+          }
           throw new RequestValidationException(Map.of("requestType", "SPAREPART requires a machine."));
         }
         var machine = loadMachine(command.machineId());
@@ -993,7 +1012,20 @@ public class SparepartRequestService {
 
   public record CreateRequestCommand(SparepartRequestType requestType, String workOrderId, UUID machineId,
       UUID sparepartId, String materialCode, Integer quantity, UUID estPriceId, BigDecimal estUnitPrice,
-      String purchaseReferenceUrl, String notes) {
+      String purchaseReferenceUrl, String notes, UUID categoryId, UUID brandId, UUID kindId, UUID typeId) {
+    /** Legacy 10-arg factory (pre-DW-148) so pre-existing call sites stay source-compatible. */
+    public CreateRequestCommand(SparepartRequestType requestType, String workOrderId, UUID machineId,
+        UUID sparepartId, String materialCode, Integer quantity, UUID estPriceId, BigDecimal estUnitPrice,
+        String purchaseReferenceUrl, String notes) {
+      this(requestType, workOrderId, machineId, sparepartId, materialCode, quantity, estPriceId, estUnitPrice,
+          purchaseReferenceUrl, notes, null, null, null, null);
+    }
+  }
+
+  /** DW-148: true when at least one taxonomy id is present (new-part creation request). */
+  private static boolean hasTaxonomy(CreateRequestCommand command) {
+    return command.categoryId() != null || command.brandId() != null
+        || command.kindId() != null || command.typeId() != null;
   }
 
   /** Story 12-2 status transition command (FR-141). */

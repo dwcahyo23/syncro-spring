@@ -30,7 +30,11 @@ public final class SparepartRequestDtos {
       UUID estPriceId,
       @Digits(integer = 16, fraction = 2) BigDecimal estUnitPrice,
       @Size(max = 2048) String purchaseReferenceUrl,
-      @Size(max = 4000) String notes) {
+      @Size(max = 4000) String notes,
+      UUID categoryId,
+      UUID brandId,
+      UUID kindId,
+      UUID typeId) {
   }
 
   public record SparepartRequestView(UUID id, SparepartRequestType requestType, String workOrderId, UUID machineId,

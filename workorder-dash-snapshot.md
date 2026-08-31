@@ -1,0 +1,139 @@
+- generic [active] [ref=f5e1]:
+  - generic [ref=f5e2]:
+    - generic [ref=f5e5]:
+      - list [ref=f5e7]:
+        - listitem [ref=f5e8]:
+          - link "Syncro" [ref=f5e9] [cursor=pointer]:
+            - /url: /operations-overview
+      - generic [ref=f5e14]:
+        - generic [ref=f5e47]:
+          - generic [ref=f5e48]: Operational
+          - list [ref=f5e50]:
+            - listitem [ref=f5e51]:
+              - link "Operations Overview" [ref=f5e52] [cursor=pointer]:
+                - /url: /operations-overview
+            - listitem [ref=f5e56]:
+              - link "Telemetry" [ref=f5e57] [cursor=pointer]:
+                - /url: /telemetry
+            - listitem [ref=f5e65]:
+              - link "Alerts" [ref=f5e66] [cursor=pointer]:
+                - /url: /alerts
+        - generic [ref=f5e71]:
+          - generic [ref=f5e72]: Dashboards
+          - list [ref=f5e74]:
+            - listitem [ref=f5e75]:
+              - link "Machine Dashboard" [ref=f5e76] [cursor=pointer]:
+                - /url: /machine-dashboard
+            - listitem [ref=f5e81]:
+              - link "Workorder Dashboard" [ref=f5e82] [cursor=pointer]:
+                - /url: /workorder-dashboard
+            - listitem [ref=f5e89]:
+              - link "Preventive Dashboard" [ref=f5e90] [cursor=pointer]:
+                - /url: /preventive-dashboard
+            - listitem [ref=f5e95]:
+              - link "Analytics" [ref=f5e96] [cursor=pointer]:
+                - /url: /analytics
+        - generic [ref=f5e100]:
+          - generic [ref=f5e101]: Maintenance
+          - list [ref=f5e103]:
+            - listitem [ref=f5e104]:
+              - link "Work Orders" [ref=f5e105] [cursor=pointer]:
+                - /url: /dashboard/workorders
+            - listitem [ref=f5e109]:
+              - link "Preventive" [ref=f5e110] [cursor=pointer]:
+                - /url: /dashboard/preventive
+            - listitem [ref=f5e115]:
+              - link "Sparepart Requests" [ref=f5e116] [cursor=pointer]:
+                - /url: /dashboard/sparepart-requests
+            - listitem [ref=f5e122]:
+              - link "Stock" [ref=f5e123] [cursor=pointer]:
+                - /url: /dashboard/stock
+        - generic [ref=f5e129]:
+          - generic [ref=f5e130]: Configuration
+          - list [ref=f5e132]:
+            - listitem [ref=f5e133]:
+              - button "Master Data" [ref=f5e134]
+            - listitem [ref=f5e142]:
+              - link "WAHA Templates" [ref=f5e143] [cursor=pointer]:
+                - /url: /waha-templates
+            - listitem [ref=f5e147]:
+              - link "Audit Log" [ref=f5e148] [cursor=pointer]:
+                - /url: /audit-log
+            - listitem [ref=f5e153]:
+              - link "System Health" [ref=f5e154] [cursor=pointer]:
+                - /url: /system-health
+            - listitem [ref=f5e159]:
+              - link "Settings" [ref=f5e160] [cursor=pointer]:
+                - /url: /settings
+      - list [ref=f5e165]:
+        - listitem [ref=f5e166]:
+          - button "A admin@syncro.dev Super Admin" [ref=f5e167]:
+            - generic [ref=f5e168]: A
+            - generic [ref=f5e170]:
+              - generic [ref=f5e171]: admin@syncro.dev
+              - generic [ref=f5e172]: Super Admin
+    - main [ref=f5e16]:
+      - generic [ref=f5e18]:
+        - generic [ref=f5e19]:
+          - button "Toggle Sidebar" [ref=f5e20]
+          - button "Search ⌘ J" [ref=f5e22]:
+            - text: Search
+            - generic [ref=f5e23]:
+              - generic [ref=f5e24]: ⌘
+              - text: J
+          - generic [ref=f5e25]:
+            - heading "Command Palette" [level=2] [ref=f5e26]
+            - paragraph [ref=f5e27]: Search for a command to run...
+        - generic [ref=f5e28]:
+          - button [ref=f5e29]
+          - 'button "Current theme: light. Click to cycle themes" [ref=f5e30]'
+          - button "Select plant scope" [ref=f5e178]:
+            - generic [ref=f5e179]: All Plants
+      - main [ref=f5e32]:
+        - generic [ref=f5e33]:
+          - paragraph [ref=f5e34]: Syncro
+          - heading "Workorder Dashboard" [level=1] [ref=f5e35]
+          - paragraph [ref=f5e36]: Workorder distribution by status and category.
+        - generic [ref=f5e181]:
+          - generic [ref=f5e182]:
+            - generic [ref=f5e183]:
+              - generic [ref=f5e184]: Section
+              - combobox "Section" [ref=f5e185]:
+                - generic: All sections
+            - generic [ref=f5e186]:
+              - generic [ref=f5e187]: Status
+              - combobox "Status" [ref=f5e188]:
+                - generic: All statuses
+            - generic [ref=f5e189]:
+              - generic [ref=f5e190]: Category
+              - combobox "Category" [ref=f5e191]:
+                - generic: All categories
+            - button "Refresh" [ref=f5e192]
+          - paragraph [ref=f5e193]: Workorder distribution by status and category, computed on the server.
+        - generic [ref=f5e194]:
+          - generic [ref=f5e195]:
+            - generic [ref=f5e196]:
+              - generic [ref=f5e197]: Total workorders
+              - paragraph [ref=f5e200]: "1"
+            - generic [ref=f5e201]:
+              - generic [ref=f5e202]: Status · OPEN
+              - paragraph [ref=f5e205]: "1"
+          - generic [ref=f5e206]:
+            - generic [ref=f5e207]:
+              - generic [ref=f5e208]: By status
+              - generic [ref=f5e209]: Workorder count per lifecycle status.
+            - list [ref=f5e211]:
+              - listitem [ref=f5e212]:
+                - generic [ref=f5e213]: OPEN
+                - generic [ref=f5e215]: "1"
+          - generic [ref=f5e216]:
+            - generic [ref=f5e217]:
+              - generic [ref=f5e218]: By category
+              - generic [ref=f5e219]: Workorder count per category.
+            - list [ref=f5e221]:
+              - listitem [ref=f5e222]:
+                - generic [ref=f5e223]: Breakdown
+                - generic [ref=f5e225]: "1"
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=f5e43] [cursor=pointer]
+  - alert [ref=f5e177]

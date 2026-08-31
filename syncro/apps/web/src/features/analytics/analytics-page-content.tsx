@@ -162,7 +162,7 @@ export function AnalyticsPageContent() {
                     Computed: <span className="font-medium text-foreground">{formatDate(mtbfData.computedAt)}</span>
                   </p>
                   {mtbfData.stale && (
-                    <p className="flex items-center gap-2 text-amber-600 dark:text-amber-400" role="status">
+                    <p className="status-icon-warning flex items-center gap-2" role="status">
                       <Badge variant="outline">Stale</Badge>
                       Data may be out of date — refresh to recompute.
                     </p>
@@ -197,7 +197,7 @@ export function AnalyticsPageContent() {
           {/* Stale indicator renders regardless of list emptiness — the freshness signal
               is independent of whether any technicians matched. */}
           {!kpiQuery.isLoading && !kpiQuery.isError && kpiData?.stale && (
-            <p className="flex items-center gap-2 text-amber-600 dark:text-amber-400" role="status">
+            <p className="status-icon-warning flex items-center gap-2" role="status">
               <Badge variant="outline">Stale</Badge>
               Data may be out of date — refresh to recompute.
             </p>

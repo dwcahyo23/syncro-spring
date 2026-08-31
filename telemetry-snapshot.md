@@ -1,0 +1,122 @@
+- generic [ref=e1]:
+  - generic [ref=e33]:
+    - generic [ref=e36]:
+      - list [ref=e38]:
+        - listitem [ref=e39]:
+          - link "Syncro" [ref=e40] [cursor=pointer]:
+            - /url: /operations-overview
+      - generic [ref=e45]:
+        - generic [ref=e46]:
+          - generic [ref=e47]: Operational
+          - list [ref=e49]:
+            - listitem [ref=e50]:
+              - link "Operations Overview" [ref=e51] [cursor=pointer]:
+                - /url: /operations-overview
+            - listitem [ref=e55]:
+              - link "Telemetry" [expanded] [active] [ref=e56] [cursor=pointer]:
+                - /url: /telemetry
+            - listitem [ref=e64]:
+              - link "Alerts" [ref=e65] [cursor=pointer]:
+                - /url: /alerts
+        - generic [ref=e70]:
+          - generic [ref=e71]: Dashboards
+          - list [ref=e73]:
+            - listitem [ref=e74]:
+              - link "Machine Dashboard" [ref=e75] [cursor=pointer]:
+                - /url: /machine-dashboard
+            - listitem [ref=e80]:
+              - link "Workorder Dashboard" [ref=e81] [cursor=pointer]:
+                - /url: /workorder-dashboard
+            - listitem [ref=e88]:
+              - link "Preventive Dashboard" [ref=e89] [cursor=pointer]:
+                - /url: /preventive-dashboard
+            - listitem [ref=e94]:
+              - link "Analytics" [ref=e95] [cursor=pointer]:
+                - /url: /analytics
+        - generic [ref=e99]:
+          - generic [ref=e100]: Maintenance
+          - list [ref=e102]:
+            - listitem [ref=e103]:
+              - link "Work Orders" [ref=e104] [cursor=pointer]:
+                - /url: /dashboard/workorders
+            - listitem [ref=e108]:
+              - link "Preventive" [ref=e109] [cursor=pointer]:
+                - /url: /dashboard/preventive
+            - listitem [ref=e114]:
+              - link "Sparepart Requests" [ref=e115] [cursor=pointer]:
+                - /url: /dashboard/sparepart-requests
+            - listitem [ref=e121]:
+              - link "Stock" [ref=e122] [cursor=pointer]:
+                - /url: /dashboard/stock
+        - generic [ref=e128]:
+          - generic [ref=e129]: Configuration
+          - list [ref=e131]:
+            - listitem [ref=e132]:
+              - button "Master Data" [ref=e133]
+            - listitem [ref=e141]:
+              - link "WAHA Templates" [ref=e142] [cursor=pointer]:
+                - /url: /waha-templates
+            - listitem [ref=e146]:
+              - link "Audit Log" [ref=e147] [cursor=pointer]:
+                - /url: /audit-log
+            - listitem [ref=e152]:
+              - link "System Health" [ref=e153] [cursor=pointer]:
+                - /url: /system-health
+            - listitem [ref=e158]:
+              - link "Settings" [ref=e159] [cursor=pointer]:
+                - /url: /settings
+      - list [ref=e165]:
+        - listitem [ref=e166]:
+          - button "A admin@syncro.dev Super Admin" [ref=e167]:
+            - generic [ref=e168]: A
+            - generic [ref=e170]:
+              - generic [ref=e171]: admin@syncro.dev
+              - generic [ref=e172]: Super Admin
+    - main [ref=e177]:
+      - generic [ref=e179]:
+        - generic [ref=e180]:
+          - button "Toggle Sidebar" [ref=e181]
+          - button "Search ⌘ J" [ref=e183]:
+            - text: Search
+            - generic [ref=e184]:
+              - generic [ref=e185]: ⌘
+              - text: J
+          - generic [ref=e186]:
+            - heading "Command Palette" [level=2] [ref=e187]
+            - paragraph [ref=e188]: Search for a command to run...
+        - generic [ref=e189]:
+          - button [ref=e190]
+          - 'button "Current theme: light. Click to cycle themes" [ref=e191]'
+          - button "Select plant scope" [ref=e192]:
+            - generic [ref=e193]: All Plants
+      - generic [ref=e236]:
+        - generic [ref=e237]:
+          - generic [ref=e238]:
+            - heading "Telemetry" [level=1] [ref=e239]
+            - paragraph [ref=e240]: Latest machine state refreshed automatically every 30 seconds.
+          - button "Refresh" [ref=e266]
+        - generic [ref=e241]:
+          - generic [ref=e242]:
+            - generic [ref=e243]: Latest telemetry
+            - generic [ref=e244]: Telemetry freshness is separate from manual machine status. ONLINE means data within 5 minutes; STALE means no data for more than 15 minutes.
+          - generic [ref=e245]:
+            - generic [ref=e246]:
+              - generic [ref=e247]:
+                - generic [ref=e248]: Plant
+                - combobox "Plant" [ref=e249]:
+                  - generic: All plants
+              - paragraph [ref=e250]: 1 active machine
+            - list [ref=e268]:
+              - listitem [ref=e269]:
+                - generic "Telemetry for machine BF-08410" [ref=e270]:
+                  - generic [ref=e271]:
+                    - generic [ref=e272]:
+                      - generic [ref=e273]:
+                        - paragraph [ref=e274]: JBF19
+                        - 'generic "Manual status: Active" [ref=e275]': Active
+                      - paragraph [ref=e276]: BF-08410 · Forming
+                    - generic [ref=e277]: No data received
+                  - paragraph [ref=e280]: No data received yet for this machine.
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e21] [cursor=pointer]
+  - alert [ref=e15]: Telemetry

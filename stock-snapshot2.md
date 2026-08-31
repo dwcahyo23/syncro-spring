@@ -1,0 +1,104 @@
+- generic [active] [ref=f2e1]:
+  - generic [ref=f2e2]:
+    - generic [ref=f2e5]:
+      - list [ref=f2e7]:
+        - listitem [ref=f2e8]:
+          - link "Syncro" [ref=f2e9] [cursor=pointer]:
+            - /url: /operations-overview
+      - generic [ref=f2e14]:
+        - generic [ref=f2e59]:
+          - generic [ref=f2e60]: Operational
+          - list [ref=f2e62]:
+            - listitem [ref=f2e63]:
+              - link "Operations Overview" [ref=f2e64] [cursor=pointer]:
+                - /url: /operations-overview
+            - listitem [ref=f2e68]:
+              - link "Telemetry" [ref=f2e69] [cursor=pointer]:
+                - /url: /telemetry
+            - listitem [ref=f2e77]:
+              - link "Alerts" [ref=f2e78] [cursor=pointer]:
+                - /url: /alerts
+        - generic [ref=f2e83]:
+          - generic [ref=f2e84]: Dashboards
+          - list [ref=f2e86]:
+            - listitem [ref=f2e87]:
+              - link "Machine Dashboard" [ref=f2e88] [cursor=pointer]:
+                - /url: /machine-dashboard
+            - listitem [ref=f2e93]:
+              - link "Workorder Dashboard" [ref=f2e94] [cursor=pointer]:
+                - /url: /workorder-dashboard
+            - listitem [ref=f2e101]:
+              - link "Preventive Dashboard" [ref=f2e102] [cursor=pointer]:
+                - /url: /preventive-dashboard
+            - listitem [ref=f2e107]:
+              - link "Analytics" [ref=f2e108] [cursor=pointer]:
+                - /url: /analytics
+        - generic [ref=f2e112]:
+          - generic [ref=f2e113]: Maintenance
+          - list [ref=f2e115]:
+            - listitem [ref=f2e116]:
+              - link "Work Orders" [ref=f2e117] [cursor=pointer]:
+                - /url: /dashboard/workorders
+            - listitem [ref=f2e121]:
+              - link "Preventive" [ref=f2e122] [cursor=pointer]:
+                - /url: /dashboard/preventive
+            - listitem [ref=f2e127]:
+              - link "Sparepart Requests" [ref=f2e128] [cursor=pointer]:
+                - /url: /dashboard/sparepart-requests
+            - listitem [ref=f2e134]:
+              - link "Stock" [ref=f2e135] [cursor=pointer]:
+                - /url: /dashboard/stock
+        - generic [ref=f2e141]:
+          - generic [ref=f2e142]: Configuration
+          - list [ref=f2e144]:
+            - listitem [ref=f2e145]:
+              - button "Master Data" [ref=f2e146]
+            - listitem [ref=f2e154]:
+              - link "WAHA Templates" [ref=f2e155] [cursor=pointer]:
+                - /url: /waha-templates
+            - listitem [ref=f2e159]:
+              - link "Audit Log" [ref=f2e160] [cursor=pointer]:
+                - /url: /audit-log
+            - listitem [ref=f2e165]:
+              - link "System Health" [ref=f2e166] [cursor=pointer]:
+                - /url: /system-health
+            - listitem [ref=f2e171]:
+              - link "Settings" [ref=f2e172] [cursor=pointer]:
+                - /url: /settings
+      - list [ref=f2e177]:
+        - listitem [ref=f2e178]:
+          - button "A admin@syncro.dev Super Admin" [ref=f2e179]:
+            - generic [ref=f2e180]: A
+            - generic [ref=f2e182]:
+              - generic [ref=f2e183]: admin@syncro.dev
+              - generic [ref=f2e184]: Super Admin
+    - main [ref=f2e16]:
+      - generic [ref=f2e18]:
+        - generic [ref=f2e19]:
+          - button "Toggle Sidebar" [ref=f2e20]
+          - button "Search ⌘ J" [ref=f2e22]:
+            - text: Search
+            - generic [ref=f2e23]:
+              - generic [ref=f2e24]: ⌘
+              - text: J
+          - generic [ref=f2e25]:
+            - heading "Command Palette" [level=2] [ref=f2e26]
+            - paragraph [ref=f2e27]: Search for a command to run...
+        - generic [ref=f2e28]:
+          - button [ref=f2e29]
+          - 'button "Current theme: light. Click to cycle themes" [ref=f2e30]'
+          - button "Select plant scope" [ref=f2e189]:
+            - generic [ref=f2e190]: All Plants
+      - generic [ref=f2e32]:
+        - generic [ref=f2e33]:
+          - generic [ref=f2e34]:
+            - heading "Stock" [level=1] [ref=f2e35]
+            - paragraph [ref=f2e36]: Per-plant stock levels, reorder points and quantity recommendations.
+          - generic [ref=f2e37]:
+            - combobox [ref=f2e38]:
+              - generic: Select plant
+            - button "Refresh" [ref=f2e40]
+        - paragraph [ref=f2e49]: No stock rows for this plant.
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=f2e55] [cursor=pointer]
+  - alert [ref=f2e192]

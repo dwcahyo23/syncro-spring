@@ -32,7 +32,7 @@ export function StarRating({ value, onChange, readOnly = false, label }: StarRat
             aria-pressed={filled}
             tabIndex={readOnly ? -1 : 0}
             className={cn(
-              "rounded-sm p-0.5 text-amber-500 transition-colors",
+              "status-icon-warning rounded-sm p-0.5 transition-colors",
               !readOnly && "hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             )}
             onClick={() => onChange?.(star)}

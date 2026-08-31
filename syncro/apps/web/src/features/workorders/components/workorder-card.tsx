@@ -33,7 +33,7 @@ export function WorkOrderCard({ item }: WorkOrderCardProps) {
               return (
                 <li key={todo.id} className="flex items-start gap-1.5 text-xs">
                   {done ? (
-                    <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                    <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-chart-3" />
                   ) : (
                     <Circle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                   )}
@@ -45,7 +45,7 @@ export function WorkOrderCard({ item }: WorkOrderCardProps) {
         ) : (
           <p className="text-muted-foreground text-xs">No todos</p>
         )}
-        <p className="mt-2 text-[10px] text-muted-foreground">
+        <p className="mt-2 text-xs text-muted-foreground">
           {doneTodos}/{totalTodos} done
           {cancelledTodos > 0 ? ` · ${cancelledTodos} cancelled` : ""}
         </p>

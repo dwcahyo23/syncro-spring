@@ -263,6 +263,38 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrderEntity, Stri
       @Param("plantIds") Collection<UUID> plantIds,
       @Param("groupIds") Collection<UUID> groupIds);
 
+  /**
+   * DW-148: per-month open/close counts for the workorder dashboard's Jan–Dec bar chart.
+   * Open = non-terminal statuses, Close = terminal statuses (DONE/CLOSED/CANCELLED),
+   * bucketed by the workorder's {@code createdAt} month within the given year range.
+   */
+  @Query("""
+      select month(w.createdAt) as month, w.status as status, count(w) as count
+      from WorkOrderEntity w
+      left join WorkOrderCategoryEntity c on c.id = w.categoryId
+      join MachineEntity m on m.id = w.machineId
+      where (:unrestricted = true or m.plant.id in :plantIds or m.machineGroup.id in :groupIds)
+        and (:plantId = :noPlant or m.plant.id = :plantId)
+        and (:sectionId = :noSectionId or m.machineGroup.sectionId = :sectionId)
+        and (:status = '' or w.status = cast(:status as string))
+        and (:categoryCode = '' or c.code = :categoryCode)
+        and w.createdAt >= :from
+        and w.createdAt < :to
+      group by month(w.createdAt), w.status
+      """)
+  List<MonthlyStatusCountProjection> countMonthlyByStatusScoped(
+      @Param("unrestricted") boolean unrestricted,
+      @Param("plantIds") Collection<UUID> plantIds,
+      @Param("groupIds") Collection<UUID> groupIds,
+      @Param("plantId") UUID plantId,
+      @Param("noPlant") UUID noPlant,
+      @Param("sectionId") UUID sectionId,
+      @Param("noSectionId") UUID noSectionId,
+      @Param("status") String status,
+      @Param("categoryCode") String categoryCode,
+      @Param("from") Instant from,
+      @Param("to") Instant to);
+
   // -------------------------------------------------------------------------
   // Dashboard analytics (14-2, FR-173/FR-174)
   // -------------------------------------------------------------------------
@@ -379,6 +411,14 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrderEntity, Stri
 
   interface OpenByMachineProjection {
     UUID getMachineId();
+
+    long getCount();
+  }
+
+  interface MonthlyStatusCountProjection {
+    int getMonth();
+
+    WorkOrderStatus getStatus();
 
     long getCount();
   }

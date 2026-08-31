@@ -18,13 +18,13 @@ const TYPE_CONFIG: Partial<
   THRESHOLD_PERCENTAGE: {
     label: "Threshold",
     description: "Consumed lifetime reached the configured percentage threshold.",
-    className: "border-transparent bg-sky-500/15 text-sky-700 dark:text-sky-400",
+    className: "status-badge-info",
     Icon: Gauge,
   },
   PROCUREMENT_RISK: {
     label: "Procurement risk",
     description: "Projected depletion falls within the sparepart lead-time window.",
-    className: "border-transparent bg-orange-500/15 text-orange-700 dark:text-orange-400",
+    className: "status-badge-warning",
     Icon: AlertTriangle,
   },
 };

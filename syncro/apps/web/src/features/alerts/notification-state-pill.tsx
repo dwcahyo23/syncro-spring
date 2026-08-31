@@ -22,38 +22,38 @@ function getConfig(status: string | undefined): StatusConfig {
       return {
         label: "Pending",
         Icon: Clock,
-        className: "border-transparent bg-slate-500/15 text-slate-700 dark:text-slate-400",
+        className: "status-badge-neutral",
       };
     case "SENT":
     case "ESCALATED":
       return {
         label: "Sent",
         Icon: CheckCircle,
-        className: "border-transparent bg-emerald-600/15 text-emerald-700 dark:text-emerald-400",
+        className: "status-badge-healthy",
       };
     case "ROUTING_FAILED":
       return {
         label: "No recipient",
         Icon: AlertTriangle,
-        className: "border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-400",
+        className: "status-badge-warning",
       };
     case "EXHAUSTED":
       return {
         label: "Failed",
         Icon: XCircle,
-        className: "border-transparent bg-red-500/15 text-red-700 dark:text-red-400",
+        className: "status-badge-critical",
       };
     case "CANCELLED":
       return {
         label: "Stopped",
         Icon: StopCircle,
-        className: "border-transparent bg-slate-500/15 text-slate-500 dark:text-slate-500",
+        className: "status-badge-neutral opacity-70",
       };
     default:
       return {
         label: status ?? "UNKNOWN",
         Icon: Clock,
-        className: "border-transparent bg-slate-500/15 text-slate-700 dark:text-slate-400",
+        className: "status-badge-neutral",
       };
   }
 }

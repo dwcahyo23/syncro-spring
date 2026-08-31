@@ -270,12 +270,12 @@ function PayloadPreview({ payload }: { readonly payload: string }) {
 // ─── Reason badge ──────────────────────────────────────────────────────────────
 
 const REASON_VARIANT: Record<string, { label: string; className: string }> = {
-  malformed_topic: { label: "Malformed Topic", className: "border-orange-500/40 bg-orange-500/10 text-orange-700 dark:text-orange-400" },
-  inactive_machine: { label: "Inactive Machine", className: "border-yellow-500/40 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400" },
-  unparseable_payload: { label: "Unparseable", className: "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-400" },
-  missing_contract_field: { label: "Missing Field", className: "border-purple-500/40 bg-purple-500/10 text-purple-700 dark:text-purple-400" },
-  unsupported_schema_version: { label: "Bad Schema Version", className: "border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-400" },
-  machine_identity_mismatch: { label: "Identity Mismatch", className: "border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-400" },
+  malformed_topic: { label: "Malformed Topic", className: "status-badge-warning" },
+  inactive_machine: { label: "Inactive Machine", className: "status-badge-neutral" },
+  unparseable_payload: { label: "Unparseable", className: "status-badge-critical" },
+  missing_contract_field: { label: "Missing Field", className: "status-badge-info" },
+  unsupported_schema_version: { label: "Bad Schema Version", className: "status-badge-info" },
+  machine_identity_mismatch: { label: "Identity Mismatch", className: "status-badge-warning" },
 };
 
 function ReasonBadge({ reason }: { readonly reason: string }) {

@@ -22,10 +22,17 @@ export interface CategoryCount {
   count: number;
 }
 
+export interface MonthlyWorkorderCount {
+  month: number;
+  openCount: number;
+  closeCount: number;
+}
+
 export interface WorkorderDashboardResponse {
   total: number;
   byStatus: StatusCount[];
   byCategory: CategoryCount[];
+  byMonth: MonthlyWorkorderCount[];
 }
 
 export interface WorkorderDashboardParams {

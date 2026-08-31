@@ -11,6 +11,7 @@ import com.syncro.maintenance.api.DashboardDtos.CategoryCount;
 import com.syncro.maintenance.api.DashboardDtos.LifetimeRiskView;
 import com.syncro.maintenance.api.DashboardDtos.MachineDashboardResponse;
 import com.syncro.maintenance.api.DashboardDtos.MachineDashboardRow;
+import com.syncro.maintenance.api.DashboardDtos.MonthlyWorkorderCount;
 import com.syncro.maintenance.api.DashboardDtos.PreventiveDashboardResponse;
 import com.syncro.maintenance.api.DashboardDtos.PreventiveUpcomingRow;
 import com.syncro.maintenance.api.DashboardDtos.StatusCount;
@@ -249,7 +250,7 @@ public class DashboardService {
 
     // Empty-scope guard.
     if (!unrestricted && plantIds.isEmpty() && groupIds.isEmpty()) {
-      return new WorkorderDashboardResponse(0L, List.of(), List.of());
+      return new WorkorderDashboardResponse(0L, List.of(), List.of(), List.of());
     }
 
     var plantFilter = plantId == null ? NO_PLANT : plantId;
@@ -271,7 +272,46 @@ public class DashboardService {
     var byCategory = categoryRows.stream()
         .map(row -> new CategoryCount(row.getCategoryCode(), row.getCategoryLabel(), row.getCount()))
         .toList();
-    return new WorkorderDashboardResponse(total, byStatus, byCategory);
+    var byMonth = monthlyWorkorderCounts(user, plantFilter, sectionFilter, statusFilter, catFilter);
+    return new WorkorderDashboardResponse(total, byStatus, byCategory, byMonth);
+  }
+
+  /**
+   * DW-148: Jan–Dec Open/Close counts for the current calendar year. Open = non-terminal
+   * statuses, Close = DONE/CLOSED/CANCELLED. Months with no workorders are zero-filled so
+   * the chart renders all 12 bars.
+   */
+  private List<MonthlyWorkorderCount> monthlyWorkorderCounts(AuthenticatedUser user,
+      UUID plantFilter, UUID sectionFilter, String statusFilter, String catFilter) {
+    var scope = scopes.derive(user);
+    var unrestricted = scope.plantIds() == null;
+    var groupIds = mergeGroupIds(scope.machineGroupIds(), scope.activeTeamIds());
+    var plantIds = scope.plantIds() == null ? List.<UUID>of() : scope.plantIds();
+
+    var now = LocalDate.now(clock);
+    var from = now.withDayOfYear(1).atStartOfDay().atZone(java.time.ZoneOffset.UTC).toInstant();
+    var to = now.plusYears(1).withDayOfYear(1).atStartOfDay().atZone(java.time.ZoneOffset.UTC).toInstant();
+
+    var rows = workOrders.countMonthlyByStatusScoped(unrestricted, plantIds, groupIds,
+        plantFilter, NO_PLANT, sectionFilter, NO_SECTION, statusFilter, catFilter, from, to);
+
+    var open = new long[12];
+    var closed = new long[12];
+    for (var row : rows) {
+      if (row.getMonth() < 1 || row.getMonth() > 12) {
+        continue;
+      }
+      if (TERMINAL_STATUSES.contains(row.getStatus())) {
+        closed[row.getMonth() - 1] += row.getCount();
+      } else {
+        open[row.getMonth() - 1] += row.getCount();
+      }
+    }
+    var result = new ArrayList<MonthlyWorkorderCount>(12);
+    for (int i = 0; i < 12; i++) {
+      result.add(new MonthlyWorkorderCount(i + 1, open[i], closed[i]));
+    }
+    return result;
   }
 
   // ---------------------------------------------------------------------------

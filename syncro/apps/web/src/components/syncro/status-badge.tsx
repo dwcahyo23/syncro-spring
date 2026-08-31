@@ -15,13 +15,13 @@ const FRESHNESS_CONFIG: Record<
   ONLINE: {
     label: "Online",
     description: "Telemetry received within the last 5 minutes.",
-    className: "border-transparent bg-emerald-600/15 text-emerald-700 dark:text-emerald-400",
+    className: "status-badge-healthy",
     Icon: CircleCheck,
   },
   OFFLINE: {
     label: "Offline",
     description: "No telemetry for 5-15 minutes. Machine is still ACTIVE.",
-    className: "border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-400",
+    className: "status-badge-warning",
     Icon: CircleDashed,
   },
   STALE: {

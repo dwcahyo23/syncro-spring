@@ -172,7 +172,7 @@ export function SystemHealthPage() {
       {isDataStale ? (
         <div
           aria-live="polite"
-          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2"
+          className="status-banner-warning flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2"
         >
           <p className="text-sm">
             Last updated {formatMinutesAgo(now - lastUpdated)} ago. Automatic refresh may be delayed.
@@ -513,9 +513,9 @@ function OverallStatusBanner({ state }: { readonly state: BannerState }) {
     return (
       <div
         aria-live="polite"
-        className="flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm"
+        className="status-banner-healthy flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
       >
-        <CircleCheck aria-hidden="true" className="shrink-0 text-emerald-600 dark:text-emerald-400" />
+        <CircleCheck aria-hidden="true" className="status-icon-healthy shrink-0" />
         All systems operational.
       </div>
     );
@@ -524,9 +524,9 @@ function OverallStatusBanner({ state }: { readonly state: BannerState }) {
     return (
       <div
         aria-live="polite"
-        className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm"
+        className="status-banner-warning flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
       >
-        <TriangleAlert aria-hidden="true" className="shrink-0 text-amber-600 dark:text-amber-400" />
+        <TriangleAlert aria-hidden="true" className="status-icon-warning shrink-0" />
         One or more dependencies or workers are degraded or could not be verified. See cards below for details.
       </div>
     );

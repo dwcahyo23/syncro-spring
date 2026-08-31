@@ -92,8 +92,8 @@ export function MachineHubPageContent({ machineCode, machineId }: { machineCode?
   return (
     <div className="flex flex-col gap-6">
       {machine?.status === "INACTIVE" && (
-        <div className="flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4">
-          <AlertTriangle className="size-5 shrink-0 text-amber-600" aria-hidden="true" />
+        <div className="status-banner-warning flex items-start gap-3 rounded-lg border p-4">
+          <AlertTriangle className="status-icon-warning size-5 shrink-0" aria-hidden="true" />
           <p className="text-sm">This machine is currently INACTIVE. Telemetry messages are being rejected.</p>
         </div>
       )}
