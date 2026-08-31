@@ -271,7 +271,7 @@ export function RequestPartDialog({ workOrderId }: { workOrderId?: string | null
       }}
     >
       <DialogTrigger asChild>
-        <Button type="button" variant="secondary" size="sm" className="h-7 px-2 text-xs">
+        <Button type="button" variant="default" size="sm" className="h-7 px-2 text-xs">
           <PackageSearchIcon className="mr-1 size-3" />
           Request part
         </Button>
@@ -443,7 +443,7 @@ export function RequestPartDialog({ workOrderId }: { workOrderId?: string | null
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{item.materialCode ?? "New part"}</span>
-                          <Badge variant="outline" className="text-xs">
+                          <Badge className={`text-xs ${requestTypeClass(item.requestType)}`}>
                             {item.requestType}
                           </Badge>
                         </div>
@@ -560,4 +560,18 @@ function TaxonomySelect({
       </Select>
     </div>
   );
+}
+
+/** Request-type badge tint: sparepart = info, consumable = neutral, external service = warning. */
+function requestTypeClass(type: SparepartRequestType): string {
+  switch (type) {
+    case "SPAREPART":
+      return "status-badge-info";
+    case "CONSUMABLE":
+      return "status-badge-neutral";
+    case "SERVICE_EXTERNAL":
+      return "status-badge-warning";
+    default:
+      return "status-badge-neutral";
+  }
 }

@@ -39,7 +39,7 @@ export function WorkorderActionsCell({ workOrderId }: { workOrderId: string }) {
         </DialogContent>
       </Dialog>
       {/* Story 14-3: WYSIWYG print report route */}
-      <Button type="button" variant="secondary" size="sm" className="h-7 px-2 text-xs" asChild>
+      <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" asChild>
         <Link href={`/dashboard/workorders/${workOrderId}/print`}>
           <PrinterIcon className="mr-1 size-3" />
           Print

@@ -86,9 +86,9 @@ export function PreventiveDashboardPageContent() {
       {!query.isLoading && !query.isError && data && data.upcoming.length > 0 && (
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <KpiCard label="Due" value={data.dueCount} />
-            <KpiCard label="Overdue" value={data.overdueCount} />
-            <KpiCard label="Total Schedules" value={data.upcoming.length} />
+            <KpiCard label="Due" value={data.dueCount} tone="status-icon-info" />
+            <KpiCard label="Overdue" value={data.overdueCount} tone="status-icon-critical" />
+            <KpiCard label="Total Schedules" value={data.upcoming.length} tone="status-icon-neutral" />
           </div>
 
           <Card>
@@ -106,8 +106,8 @@ export function PreventiveDashboardPageContent() {
                     return (
                       <li
                         key={schedule.scheduleId}
-                        className={`flex items-center justify-between gap-3 py-3 ${
-                          isOverdue ? "bg-destructive/5" : ""
+                        className={`flex items-center justify-between gap-3 border-l-2 py-3 pl-3 ${
+                          isOverdue ? "border-destructive/60 bg-destructive/5" : "border-transparent"
                         }`}
                       >
                         <div className="flex min-w-0 flex-col gap-1">
@@ -128,6 +128,8 @@ export function PreventiveDashboardPageContent() {
                             <Badge variant="destructive" aria-label="Overdue schedule. Past due date.">
                               Overdue
                             </Badge>
+                          ) : schedule.derivedStatus === "SCHEDULED" ? (
+                            <Badge className="status-badge-warning">Due</Badge>
                           ) : (
                             <Badge variant="outline">{schedule.derivedStatus}</Badge>
                           )}
@@ -145,11 +147,14 @@ export function PreventiveDashboardPageContent() {
   );
 }
 
-function KpiCard({ label, value }: { label: string; value: number }) {
+function KpiCard({ label, value, tone = "status-icon-neutral" }: { label: string; value: number; tone?: string }) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="font-medium text-muted-foreground text-sm">{label}</CardTitle>
+        <CardTitle className="flex items-center gap-2 font-medium text-muted-foreground text-sm">
+          <span aria-hidden="true" className={`size-2 rounded-full ${tone}`} />
+          {label}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <p className="font-bold text-3xl tabular-nums">{value}</p>

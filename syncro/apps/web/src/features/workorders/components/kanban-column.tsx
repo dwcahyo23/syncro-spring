@@ -10,13 +10,17 @@ export interface KanbanColumnProps {
 }
 
 export function KanbanColumn({ title, status, items }: KanbanColumnProps) {
+  const dotClass = statusDotClass(status);
   return (
     <section
       aria-label={`${title} workorders`}
       className="flex min-h-64 w-72 shrink-0 flex-col rounded-lg bg-muted/40 p-3"
     >
       <header className="mb-3 flex items-center justify-between">
-        <h3 className="font-semibold text-sm">{title}</h3>
+        <h3 className="flex items-center gap-2 font-semibold text-sm">
+          <span aria-hidden="true" className={`size-2 rounded-full ${dotClass}`} />
+          {title}
+        </h3>
         <span className="rounded-full bg-background px-2 py-0.5 text-muted-foreground text-xs">{items.length}</span>
       </header>
       <div className="flex-1 space-y-2 overflow-y-auto" data-kanban-status={status}>
@@ -28,4 +32,23 @@ export function KanbanColumn({ title, status, items }: KanbanColumnProps) {
       </div>
     </section>
   );
+}
+
+function statusDotClass(status: string): string {
+  switch (status) {
+    case "OPEN":
+      return "status-icon-critical";
+    case "ASSIGNED":
+    case "IN_PROGRESS":
+      return "status-icon-warning";
+    case "ON_PROCUREMENT":
+      return "status-icon-info";
+    case "DONE":
+    case "CLOSED":
+      return "status-icon-healthy";
+    case "CANCELLED":
+      return "status-icon-neutral";
+    default:
+      return "status-icon-neutral";
+  }
 }

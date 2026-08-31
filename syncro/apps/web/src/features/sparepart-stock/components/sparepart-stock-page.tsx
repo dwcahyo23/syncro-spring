@@ -46,8 +46,8 @@ export function SparepartStockPageContent() {
   const { data: plantItems } = useQuery<PlantOption[]>({
     queryKey: ["/api/v1/plants"],
     queryFn: async () => {
-      const res = await syncroFetch<{ items: PlantOption[] }>("/api/v1/plants", { method: "GET" });
-      return res.items ?? [];
+      const res = await syncroFetch<{ data: { items: PlantOption[] } }>("/api/v1/plants", { method: "GET" });
+      return res.data?.items ?? [];
     },
     staleTime: 60_000,
   });
@@ -139,21 +139,34 @@ export function SparepartStockPageContent() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((row) => (
+              {items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((row) => {
+                const onHand = Number(row.stockOnHand);
+                const orderPoint = Number(row.orderPoint);
+                const pct = orderPoint > 0 ? Math.min((onHand / orderPoint) * 100, 100) : 100;
+                const isReorder = warningCodes.has(row.materialCode);
+                return (
                 <TableRow key={row.materialCode}>
                   <TableCell className="font-mono text-xs">{row.materialCode}</TableCell>
-                  <TableCell className="text-xs">{Number(row.stockOnHand).toLocaleString()}</TableCell>
-                  <TableCell className="text-xs">{Number(row.orderPoint).toLocaleString()}</TableCell>
+                  <TableCell className="text-xs">{onHand.toLocaleString()}</TableCell>
+                  <TableCell className="text-xs">{orderPoint.toLocaleString()}</TableCell>
                   <TableCell className="text-xs">{Number(row.orderQty).toLocaleString()}</TableCell>
                   <TableCell>
-                    {warningCodes.has(row.materialCode) ? (
-                      <Badge variant="destructive" className="flex items-center gap-1">
-                        <TriangleAlertIcon className="size-3" />
-                        Reorder
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline">OK</Badge>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {isReorder ? (
+                        <Badge variant="destructive" className="flex items-center gap-1">
+                          <TriangleAlertIcon className="size-3" />
+                          Reorder
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="status-icon-healthy">OK</Badge>
+                      )}
+                      <div className="hidden h-1.5 w-12 overflow-hidden rounded-full bg-muted sm:block" title={`${onHand} / ${orderPoint} OP`}>
+                        <div
+                          className={`h-full rounded-full transition-all ${isReorder ? "bg-destructive" : "bg-chart-3"}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <AdjustStockDialog
@@ -163,7 +176,8 @@ export function SparepartStockPageContent() {
                     />
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
           <DataTablePagination

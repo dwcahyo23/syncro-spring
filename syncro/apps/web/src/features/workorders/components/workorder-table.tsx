@@ -335,26 +335,27 @@ export function WorkorderTable() {
   );
 }
 
-/** Renders a workorder status as a coloured badge. */
+/** Renders a workorder status as a coloured badge (Open = red, in-flight = amber, procurement = blue, done = green). */
 function StatusBadge({ status }: { status: string }) {
-  return <Badge variant={statusVariant(status)}>{status}</Badge>;
+  return <Badge className={statusClass(status)}>{status}</Badge>;
 }
 
-function statusVariant(status: string): "default" | "secondary" | "destructive" | "outline" | "ghost" | "link" {
+function statusClass(status: string): string {
   switch (status) {
     case "OPEN":
+      return "status-badge-critical";
     case "ASSIGNED":
-      return "default";
     case "IN_PROGRESS":
+      return "status-badge-warning";
     case "ON_PROCUREMENT":
-      return "secondary";
+      return "status-badge-info";
     case "DONE":
     case "CLOSED":
-      return "outline";
+      return "status-badge-healthy";
     case "CANCELLED":
-      return "destructive";
+      return "status-badge-neutral";
     default:
-      return "ghost";
+      return "status-badge-neutral";
   }
 }
 

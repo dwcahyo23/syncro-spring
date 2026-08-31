@@ -90,7 +90,7 @@ export function DepartmentManagement() {
   }, [usersQuery.data]);
 
   const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGER_MAINTENANCE";
-  const items = departmentsQuery.data?.data.items ?? [];
+  const items = departmentsQuery.data?.data?.items ?? [];
   const isSaving = createDepartment.isPending || updateDepartment.isPending || deleteDepartment.isPending;
 
   function openCreateDialog() {

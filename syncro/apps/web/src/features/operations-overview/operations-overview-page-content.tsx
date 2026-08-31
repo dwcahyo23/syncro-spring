@@ -194,10 +194,10 @@ export function OperationsOverviewPageContent() {
             <CardContent className="p-0">
               <ul className="divide-y">
                 {openAlerts.map((item) => (
-                  <li key={item.id}>
+                  <li key={item.id} className={alertRowBorder(item.status ?? "")}>
                     <Link
                       href={`/alerts/${item.id}`}
-                      className="flex flex-col gap-1 px-4 py-3 hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
+                      className="flex flex-col gap-1 py-3 pr-4 pl-3 hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
                       aria-label={`Alert for ${item.sparepartName ?? item.sparepartCode} on ${item.machineCode}`}
                     >
                       <div className="flex items-center gap-3">
@@ -244,4 +244,18 @@ export function OperationsOverviewPageContent() {
       </section>
     </main>
   );
+}
+
+/** Alert row left-border tint matching the status badge. */
+function alertRowBorder(status: string): string {
+  switch (status) {
+    case "OPEN":
+      return "border-l-2 border-l-[var(--syncro-status-warning-border)]";
+    case "ACKNOWLEDGED":
+      return "border-l-2 border-l-[var(--syncro-status-info-border)]";
+    case "RESOLVED":
+      return "border-l-2 border-l-[var(--syncro-status-healthy-border)]";
+    default:
+      return "border-l-2 border-l-transparent";
+  }
 }

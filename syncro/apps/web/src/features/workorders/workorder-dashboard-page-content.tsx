@@ -200,9 +200,14 @@ export function WorkorderDashboardPageContent() {
       {!query.isLoading && !query.isError && data && data.total > 0 && (
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            <KpiCard label="Total workorders" value={data.total} />
+            <KpiCard label="Total workorders" value={data.total} tone="status-icon-info" />
             {data.byStatus.map((statusItem) => (
-              <KpiCard key={statusItem.status} label={`Status · ${statusItem.status}`} value={statusItem.count} />
+              <KpiCard
+                key={statusItem.status}
+                label={`Status · ${statusItem.status}`}
+                value={statusItem.count}
+                tone={kpiTone(statusItem.status)}
+              />
             ))}
           </div>
 
@@ -293,17 +298,39 @@ export function WorkorderDashboardPageContent() {
   );
 }
 
-function KpiCard({ label, value }: { label: string; value: number }) {
+function KpiCard({ label, value, tone = "neutral" }: { label: string; value: number; tone?: string }) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="font-medium text-muted-foreground text-sm">{label}</CardTitle>
+        <CardTitle className="flex items-center gap-2 font-medium text-muted-foreground text-sm">
+          <span aria-hidden="true" className={`size-2 rounded-full ${tone}`} />
+          {label}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <p className="font-bold text-3xl tabular-nums">{value}</p>
       </CardContent>
     </Card>
   );
+}
+
+function kpiTone(status: string): string {
+  switch (status) {
+    case "OPEN":
+      return "status-icon-critical";
+    case "ASSIGNED":
+    case "IN_PROGRESS":
+      return "status-icon-warning";
+    case "ON_PROCUREMENT":
+      return "status-icon-info";
+    case "DONE":
+    case "CLOSED":
+      return "status-icon-healthy";
+    case "CANCELLED":
+      return "status-icon-neutral";
+    default:
+      return "status-icon-neutral";
+  }
 }
 
 const MONTH_LABELS = [
@@ -322,8 +349,8 @@ const MONTH_LABELS = [
 ];
 
 const MONTHLY_CHART_CONFIG = {
-  Open: { label: "Open", color: "var(--chart-3)" },
-  Close: { label: "Close", color: "var(--chart-4)" },
+  Open: { label: "Open", color: "var(--chart-4)" },
+  Close: { label: "Close", color: "var(--chart-3)" },
 } as const;
 
 const STATUS_CHART_CONFIG = {

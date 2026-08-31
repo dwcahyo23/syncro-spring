@@ -160,7 +160,7 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
   );
 
   const history = notifData?.data;
-  const auditEntries = auditData?.data.items ?? undefined;
+  const auditEntries = auditData?.data?.items ?? undefined;
 
   // Force recompute stale banner every 60s so threshold crossing appears without manual refetch
   const [nowTick, setNowTick] = useState(() => Date.now());
