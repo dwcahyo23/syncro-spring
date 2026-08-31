@@ -17,7 +17,8 @@
     { "id": "DW-136", "evidence": "WorkOrderLockAndDerivationIntegrationTest.java:19-56 — findByParentIdForUpdate/findByIdForUpdate exercised against real Postgres (commit 83dd926)" },
     { "id": "DW-137", "evidence": "JwtTokenService.java:102-108,140-145 — non-UUID subject fails closed to InvalidTokenException at the auth boundary, before any UUID.fromString call site (commit 6d2da39)" },
     { "id": "DW-138", "evidence": "WorkOrderLockAndDerivationIntegrationTest.java:58-60+ — recomputeProcurementState derives ON_PROCUREMENT via real @Primary SparepartRequestReadinessPort (commit 83dd926)" },
-    { "id": "DW-140", "evidence": "WorkOrderEvidenceServiceIntegrationTest.java — real Postgres + mock Garage exercises key format, content-type, access gate, delete (commit 2cbf704)" }
+    { "id": "DW-140", "evidence": "WorkOrderEvidenceServiceIntegrationTest.java — real Postgres + mock Garage exercises key format, content-type, access gate, delete (commit 2cbf704)" },
+    { "id": "DW-48", "evidence": "MqttPahoMessageDrivenChannelAdapter.connectionLost() publishes MqttConnectionFailedEvent on every mid-session disconnect (verified against spring-integration-mqtt 7.0.4 bytecode); MqttConnectionStatus transitions to FAILED and recovers on next MqttSubscribedEvent. The DW-14 TODO comment was stale — removed." }
   ],
   "bundles": [
     {
@@ -56,9 +57,7 @@
       "intent": "Document the btree_gist extension prerequisite for managed PostgreSQL: V49__repair_sessions_mttr.sql:9 runs CREATE EXTENSION IF NOT EXISTS btree_gist (the first extension install in the chain) which requires a superuser pre-deployment grant on RDS/Cloud SQL/Supabase before Flyway runs. Add the prerequisite to the deploy runbook (or split the extension creation into a manual pre-deployment step) so managed deploys do not fail at V49."
     }
   ],
-  "blocked": [
-    { "id": "DW-48", "blocker": "Spring Integration MQTT 7.x adapter capability — mid-session disconnect only observable when the adapter exposes a connection-lost event; MqttConnectionStatus.java:42-48 still carries the DW-14 TODO" }
-  ],
+  "blocked": [],
   "skip": [
     { "id": "DW-76", "reason": "Documentation-only concern: spec credential text vs gitignored .env; the live password was already redacted per review and .env is version-controlled out of band by design — reconciliation is a docs chore, not a code defect" }
   ],

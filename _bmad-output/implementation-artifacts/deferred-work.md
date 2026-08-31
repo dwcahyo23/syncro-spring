@@ -544,7 +544,8 @@ resolution: resolved by commit 9b00be9 — client-level Lettuce command timeout 
 origin: code review of spec-6-1-expose-dependency-health-checks (2026-08-21)
 location: syncro/apps/backend/src/main/java/com/syncro/telemetry/infrastructure/MqttConnectionStatus.java:37-44
 reason: pre-existing DW-14 TODO — Spring Integration MQTT 7.x emits no mid-session disconnect event; revisit when a connection-lost callback is available.
-status: open
+status: done 2026-08-31
+resolution: already resolved — MqttPahoMessageDrivenChannelAdapter.connectionLost() publishes MqttConnectionFailedEvent on every mid-session disconnect (verified against spring-integration-mqtt 7.0.4 bytecode); the health indicator transitions to FAILED and heals on the next MqttSubscribedEvent from the automatic reconnect. TODO comment was stale; MqttConnectionStatus comment updated.
 
 ### DW-88: GOWS returns HTTP 500 "no LID found" for invalid recipients — trips WAHA circuit breaker
 
