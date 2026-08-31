@@ -55,10 +55,12 @@ function nextKey() {
  * Items sit in the cart until the user clicks "Send to warehouse" — no premature
  * submission. Unknown parts (no material code) start PENDING_COMPLETION per FR-144.
  */
-export function RequestPartDialog({ workOrderId }: { workOrderId?: string | null }) {
+export function RequestPartDialog({ workOrderId, open: controlledOpen, onOpenChange: controlledOnOpenChange }: { workOrderId?: string | null; open?: boolean; onOpenChange?: (open: boolean) => void }) {
   const createRequest = useCreateSparepartRequest();
   const createTaxonomy = useCreateSparepartTaxonomy();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = controlledOnOpenChange ?? setInternalOpen;
 
   // ── Cart state ──────────────────────────────────────────────────────
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -270,12 +272,14 @@ export function RequestPartDialog({ workOrderId }: { workOrderId?: string | null
         if (!next) resetAll();
       }}
     >
-      <DialogTrigger asChild>
-        <Button type="button" variant="default" size="sm" className="h-7 px-2 text-xs">
-          <PackageSearchIcon className="mr-1 size-3" />
-          Request part
-        </Button>
-      </DialogTrigger>
+      {controlledOpen === undefined && (
+        <DialogTrigger asChild>
+          <Button type="button" variant="default" size="sm" className="h-7 px-2 text-xs">
+            <PackageSearchIcon className="mr-1 size-3" />
+            Request part
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Request part</DialogTitle>

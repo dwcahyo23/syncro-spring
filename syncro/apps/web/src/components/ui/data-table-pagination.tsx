@@ -1,4 +1,4 @@
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, ChevronsLeftIcon, ChevronsRightIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -17,7 +17,7 @@ export function DataTablePagination({
   totalElements = 0,
   onPageChange,
   onSizeChange,
-  pageSizeOptions = [10, 25, 50, 100],
+  pageSizeOptions = [10, 15, 20, 50, 100],
 }: DataTablePaginationProps) {
   const pageCount = Math.ceil(totalElements / size);
   const startItem = totalElements === 0 ? 0 : page * size + 1;
@@ -62,7 +62,7 @@ export function DataTablePagination({
             disabled={page === 0}
           >
             <span className="sr-only">Go to first page</span>
-            <ChevronLeftIcon className="size-4" />
+            <ChevronsLeftIcon className="size-4" />
           </Button>
           <Button
             variant="outline"
@@ -89,7 +89,7 @@ export function DataTablePagination({
             disabled={page >= pageCount - 1 || pageCount === 0}
           >
             <span className="sr-only">Go to last page</span>
-            <ChevronRightIcon className="size-4" />
+            <ChevronsRightIcon className="size-4" />
           </Button>
         </div>
       </div>

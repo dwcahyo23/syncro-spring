@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useWorkorders } from "@/features/workorders/hooks/use-workorders";
+import { useListUsersMaster } from "@/features/organization/hooks/use-users";
 import type { WorkOrderListParams, WorkOrderListRow } from "@/features/workorders/types";
 
 const WORKORDER_STATUSES = [
@@ -36,7 +37,8 @@ interface CategoryOption {
   label: string;
 }
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE_OPTIONS = [10, 15, 20, 50, 100];
+const DEFAULT_PAGE_SIZE = 20;
 
 /** Local-date ISO string (yyyy-MM-dd) — never shifts the day across timezones. */
 function isoDate(d: Date): string {
@@ -73,6 +75,7 @@ export function WorkorderTable() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [categoryCode, setCategoryCode] = useState("");
 
   const { data: categoriesRes } = useQuery<CategoryOption[]>({
@@ -123,11 +126,23 @@ export function WorkorderTable() {
     categoryCode: categoryCode || undefined,
     search: debouncedSearch || undefined,
     page,
-    size: PAGE_SIZE,
+    size: pageSize,
   };
 
-  const { data, isLoading, isError, refetch } = useWorkorders(params);
-  const pageCount = data ? Math.ceil(data.total / PAGE_SIZE) : 0;
+  const { data, isLoading, isError, isFetching, refetch } = useWorkorders(params);
+  const pageCount = data ? Math.ceil(data.total / pageSize) : 0;
+
+  // User master is fetched ONCE per table (not per row) and shared with the
+  // assign dialogs via props — the /auth/users cache is already shared app-wide.
+  const { data: usersRes, isLoading: isLoadingUsers } = useListUsersMaster();
+  const assignableUsers = (usersRes?.data ?? []).filter(
+    (u) => u.applicationRole === "TECHNICIAN" || u.applicationRole === "STAFF_MAINTENANCE",
+  );
+
+  const handlePageSizeChange = useCallback((nextSize: number) => {
+    setPageSize(nextSize);
+    setPage(0);
+  }, []);
 
   const columns = useMemo<ColumnDef<WorkOrderListRow>[]>(
     () => [
@@ -182,7 +197,15 @@ export function WorkorderTable() {
       {
         id: "actions",
         header: "Actions",
-        cell: ({ row }) => <WorkorderActionsCell workOrderId={row.original.id} />,
+        cell: ({ row }) => (
+          <WorkorderActionsCell
+            workOrderId={row.original.id}
+            status={row.original.status}
+            assignedTechnicianName={row.original.assignedTechnicianName}
+            assignableUsers={assignableUsers}
+            isLoadingUsers={isLoadingUsers}
+          />
+        ),
       },
     ],
     [],
@@ -193,9 +216,9 @@ export function WorkorderTable() {
     columns,
     pageCount,
     manualPagination: true,
-    state: { pagination: { pageIndex: page, pageSize: PAGE_SIZE } },
+    state: { pagination: { pageIndex: page, pageSize } },
     onPaginationChange: (updater) => {
-      const next = typeof updater === "function" ? updater({ pageIndex: page, pageSize: PAGE_SIZE }) : updater;
+      const next = typeof updater === "function" ? updater({ pageIndex: page, pageSize }) : updater;
       setPage(next.pageIndex);
     },
     getCoreRowModel: getCoreRowModel(),
@@ -264,8 +287,10 @@ export function WorkorderTable() {
           size="sm"
           onClick={() => void refetch()}
           aria-label="Refresh workorders"
+          title="Refresh"
+          disabled={isFetching}
         >
-          <RefreshCwIcon className="size-4" />
+          <RefreshCwIcon className={isFetching ? "size-4 animate-spin" : "size-4"} />
         </Button>
       </div>
 
@@ -316,11 +341,11 @@ export function WorkorderTable() {
           </Table>
           <DataTablePagination
             page={page}
-            size={PAGE_SIZE}
+            size={pageSize}
             totalElements={data.total}
             onPageChange={setPage}
-            onSizeChange={() => setPage(0)}
-            pageSizeOptions={[PAGE_SIZE]}
+            onSizeChange={handlePageSizeChange}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
           />
         </div>
       ) : null}
