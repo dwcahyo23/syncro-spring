@@ -35,7 +35,9 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-25
-last_updated: 2026-08-29
+last_updated: 2026-08-31
+# updated: 2026-08-31 (2) Epic 18 Multi-Language (i18n) added — Indonesian/English UI via next-intl
+# updated: 2026-08-31 ORM maturation (Major) — schema redesigned from scratch per sprint-change-proposal-2026-08-31; Phase 2 epics re-planned
 # updated: 13-3 done (quarantine & observability); epic-13 in-progress
 # updated: 13-2 done (conflict resolution & field mapping); 13-1 done
 # updated: 13-1 done (sync pipeline foundation); epic-13 in-progress
@@ -150,8 +152,15 @@ development_status:
   8-7-raise-procurement-risk-alert-within-lead-time-window: done
   epic-8-retrospective: optional
 
-  # Epic 9: Org Structure & OPA Authorization Foundation
-  epic-9: in-progress
+  # -----------------------------------------------------------------------------
+  # PHASE 2 STATUS CORRECTION — 2026-08-31.
+  # Epics 9-14 are DONE (already implemented and verified). The ORM maturation
+  # (schema redesign per sprint-change-proposal-2026-08-31 / orm-target-blueprint)
+  # starts at Epic 15+ (story-driven, new stories). Existing story statuses retained.
+  # -----------------------------------------------------------------------------
+
+  # Epic 9: Org Structure & OPA Authorization Foundation — DONE
+  epic-9: done
   9-1-sections-foundation: done
   9-2-cross-plant-teams: done
   9-3-opa-infrastructure: done
@@ -159,8 +168,8 @@ development_status:
   9-5-opa-enforcement-on-maintenance-endpoints: done
   epic-9-retrospective: optional
 
-  # Epic 10: Workorder Execution
-  epic-10: in-progress
+  # Epic 10: Workorder Execution — DONE
+  epic-10: done
   10-1-workorder-schema-and-categories: done
   10-2-create-and-assign-workorders: done
   10-3-status-lifecycle-and-on-procurement: done
@@ -171,14 +180,14 @@ development_status:
   10-8-ratings: done
   epic-10-retrospective: optional
 
-  # Epic 11: Preventive Maintenance
-  epic-11: in-progress
+  # Epic 11: Preventive Maintenance — DONE
+  epic-11: done
   11-1-preventive-programs-and-schedules: done
   11-2-checklist-assessment-and-signature: done
   11-3-preventive-report-and-auto-workorder: done
   epic-11-retrospective: optional
 
-  # Epic 12: Sparepart Request & Inventory
+  # Epic 12: Sparepart Request & Inventory — DONE
   epic-12: done
   12-1-request-creation-and-types: done
   12-2-request-state-machine: done
@@ -186,17 +195,96 @@ development_status:
   12-4-stock-op-oq-and-new-item-completion: done
   epic-12-retrospective: optional
 
-  # Epic 13: External Sync & Hardening
-  epic-13: in-progress
+  # Epic 13: External Sync & Hardening — DONE
+  epic-13: done
   13-1-sync-pipeline-foundation: done
   13-2-conflict-resolution-and-field-mapping: done
   13-3-quarantine-and-observability: done
   epic-13-retrospective: optional
 
-  # Epic 14: Dashboards, Reports & Notifications
-  epic-14: backlog
-  14-1-machine-workorder-and-preventive-dashboards: backlog
-  14-2-mtbf-mttr-and-technician-kpi-dashboards: backlog
-  14-3-wysiwyg-print-reports-with-signature: backlog
-  14-4-waha-notifications-and-4-hour-acknowledgment: backlog
+  # Epic 14: Dashboards, Reports & Notifications — DONE
+  epic-14: done
+  14-1-machine-workorder-and-preventive-dashboards: done
+  14-2-mtbf-mttr-and-technician-kpi-dashboards: done
+  14-3-wysiwyg-print-reports-with-signature: done
+  14-4-waha-notifications-and-4-hour-acknowledgment: done
   epic-14-retrospective: optional
+
+  # -----------------------------------------------------------------------------
+  # ORM MATURATION (2026-08-31) — story-driven, starts at Epic 15.
+  # Blueprint: orm-target-blueprint-2026-08-31.md (modules A-I).
+  # Order: ORM Foundation first (schema reset) → org → workorder → sparepart/inventory
+  #        → PM → KPI → IATF → integration → i18n.
+  # -----------------------------------------------------------------------------
+
+  # Epic 15: ORM Foundation & Schema Reset
+  epic-15: backlog
+  15-1-orm-foundation-migration-set: backlog
+  15-2-base-entity-repository-conventions: backlog
+  epic-15-retrospective: optional
+
+  # Epic 16: Org & Identity Maturation
+  epic-16: backlog
+  16-1-department-machine-area: backlog
+  16-2-data-driven-roles: backlog
+  16-3-user-job-role-bindings: backlog
+  16-4-auth-user-extension-plant-calendar: backlog
+  16-5-opa-enrichment-role-mapping-ui: backlog
+  epic-16-retrospective: optional
+
+  # Epic 17: Workorder Execution Maturation
+  epic-17: backlog
+  17-1-work-assignments: backlog
+  17-2-work-logs: backlog
+  17-3-wo-id-format-status-lifecycle: backlog
+  17-4-work-log-ratings: backlog
+  17-5-workorder-quality-ratings: backlog
+  17-6-assign-work-dialog: backlog
+  epic-17-retrospective: optional
+
+  # Epic 18: Sparepart BOM & Inventory Maturation
+  epic-18: backlog
+  18-1-sparepart-bom-master: backlog
+  18-2-inventory-locations: backlog
+  18-3-inventory-stock-balances: backlog
+  18-4-inventory-transfers: backlog
+  18-5-inventory-reservations: backlog
+  epic-18-retrospective: optional
+
+  # Epic 19: Preventive PM Execution Model
+  epic-19: backlog
+  19-1-pm-frequencies-checksheets: backlog
+  19-2-pm-checklist-categories-items: backlog
+  19-3-pm-schedules-dates: backlog
+  19-4-pm-work-orders: backlog
+  19-5-pm-executions-items: backlog
+  epic-19-retrospective: optional
+
+  # Epic 20: KPI Materialization
+  epic-20: backlog
+  20-1-kpi-materialized-tables: backlog
+  20-2-kpi-targets-dashboard-consumption: backlog
+  epic-20-retrospective: optional
+
+  # Epic 21: IATF Compliance Module
+  epic-21: backlog
+  21-1-non-conformance-8d-reports: backlog
+  21-2-calibration-equipment-change-control: backlog
+  21-3-setup-baselines-lesson-learned: backlog
+  epic-21-retrospective: optional
+
+  # Epic 22: Integration, Webhook, Audit & Signature
+  epic-22: backlog
+  22-1-webhook-config-delivery-log: backlog
+  22-2-auth-login-audit-phone-verification: backlog
+  22-3-user-signatures-signature-use: backlog
+  22-4-whatsapp-message-log: backlog
+  epic-22-retrospective: optional
+
+  # Epic 23: Multi-Language (i18n)
+  epic-23: backlog
+  23-1-setup-next-intl-foundation: backlog
+  23-2-localize-frontend-ui: backlog
+  23-3-language-switcher-persistence: backlog
+  23-4-translation-completeness-quality: backlog
+  epic-23-retrospective: optional

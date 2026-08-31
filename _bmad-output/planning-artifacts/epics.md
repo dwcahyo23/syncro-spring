@@ -9,8 +9,9 @@ inputDocuments:
   - _bmad-output/planning-artifacts/research/technical-next-js-spring-boot-openjdk25-maven-mqtt-emqx-redis-postgresql-influxdb-research-2026-05-25.md
   - _bmad-output/planning-artifacts/prds/prd-Syncro-2026-08-24/prd.md
   - _bmad-output/planning-artifacts/architecture/architecture-Syncro-2026-08-24/ARCHITECTURE-SPINE.md
-revisedAt: 2026-08-24
-revisionReason: Phase 2 appended: Epics 9-14 (maintenance execution + OPA), 27 stories, FR-100..FR-181
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-31.md
+revisedAt: 2026-08-31
+revisionReason: ORM maturation redesign 2026-08-31: adopt syncro (Node/Prisma) blueprint — Epics 9-12 scope expanded, Epics 20-22 added (KPI materialization, IATF compliance, integration/webhook/audit/signature)
 ---
 
 # Syncro - Epic Breakdown
@@ -375,6 +376,34 @@ Maintenance teams gain procurement readiness data (material code, lead time, pri
 
 **Additional coverage:** AR-010, AR-014, AR-015, AR-016, AR-024, UX-DR-007, UX-DR-019, UX-DR-026
 
+---
+
+## Epic Redesign: ORM Maturation (2026-08-31)
+
+**Status:** Approved — see `_bmad-output/planning-artifacts/sprint-change-proposal-2026-08-31.md`.
+
+On 2026-08-31 the Correct Course + Brainstorming workflow approved a **major replan**: the syncro-spring ORM is redesigned from scratch to adopt the mature data model of the **SYNCRO (Node.js/Prisma)** blueprint, which is ~40 models ahead of syncro-spring.
+
+**Decisions**
+
+- **Blueprint adoption** — the Prisma schema from SYNCRO is the ORM target blueprint; **all modules A–I are adopted** (A core workorder/org schema, B org & identity, C rating, D/E sparepart & inventory, F preventive maintenance, G KPI, H IATF compliance, I integration/notification/signature).
+- **Schema redesigned from scratch** — the project is still in the development phase (all data is dummy seed; real data lives in a separate database), so Flyway is reset and rebuilt as one fresh V1.. migration set (replacing V1..V68); the database is reset and reseeded. No backward-compatibility migration burden.
+- **Epic scope impact** — Epics 9–12 scope is expanded (Phase 2 Epic List below) and three new epics are added: **Epic 20 (KPI materialization)**, **Epic 21 (IATF compliance)**, **Epic 22 (Integration, webhook, audit & signature)**. Epic 13 (Sync) adapts to the new WO structure and Epic 14 (Notification) gains WhatsAppMessageLog/webhook evidence via the same proposal. Redesigned stories are marked "(redesigned 2026-08-31)"; completed story content is preserved.
+- **Stakeholder addition** — a new requirement adds **Epic 23 (Multi-Language / i18n)**: Indonesian/English localization of the frontend using next-intl (locale routing /id /en, default id, language switcher, ICU MessageFormat). Frontend-only; the backend contract (codes/labels) is unaffected.
+- **OPA retained** — OPA stays the enforcement point; `subject.roles` is enriched with data-driven roles (application_role + job_title + system_roles via JobTitle/SystemRole/RolePermissionMapping).
+
+**Key model changes (target blueprint)**
+
+- Workorder: `work_assignments` (multi-technician, assigned_by/dropped_at/is_active), `work_logs` (backdate + stopped_reason), ID format `WO-YYMMXXXX` (no dash), 6-status lifecycle, `work_order_categories.requires_rating`
+- Rating: `work_log_ratings` + criteria/categories; `work_order_quality_ratings` + _technicians/_scores (per work-log, per technician)
+- Org: `departments`, `job_titles`, `system_roles`, `role_permission_mappings`, `menu_features`, `machine_areas`
+- Inventory: `inventory_locations`, `inventory_stock_balances`, `inventory_transfers`, `inventory_reservations`; sparepart master extended (hierarchy identity, BOM code/serial, review status)
+- PM: `pm_checksheets`, `pm_frequencies`, `pm_schedules`, `pm_schedule_dates`, `pm_work_orders`, `pm_executions`, `pm_execution_items`
+- KPI: `kpi_target`, `kpi_mtbf_monthly`, `kpi_mttr_monthly`, `kpi_mar_monthly`, `kpi_pm_completion_monthly`, `kpi_technician_monthly` (materialized)
+- IATF: `non_conformances`, `eight_d_reports`, `calibration_instruments`, `calibration_records`, `equipment_change_notices`, `machine_setup_baselines`, `lesson_learned`
+- Integration/evidence: `webhook_configs`, `webhook_delivery_logs`, `auth_login_audits`, `phone_verification_challenges`, `user_signatures`, `signature_uses`, `whatsapp_message_logs`
+
+**Reference:** full proposal (rationale, phasing, success criteria, FR/architecture impacts) in `_bmad-output/planning-artifacts/sprint-change-proposal-2026-08-31.md`.
 
 ## Epic 1: Platform Foundation, Local Infrastructure & Auth Access
 
@@ -1743,29 +1772,29 @@ NFR-P2-10: Frontend uses TanStack Table v9 for tabular main views.
 
 ---
 
-## Phase 2 Epic List (approved 2026-08-24)
+## Phase 2 Epic List (approved 2026-08-24; ORM redesign 2026-08-31)
 
-### Epic 9: Org Structure & OPA Authorization Foundation
+### Epic 9: Org Structure, Identity & OPA Authorization Foundation
 
-Users can configure org structure (sections, teams) and every access decision is enforced by OPA, establishing the authorization backbone for all maintenance features.
+Users can configure org structure (sections, teams), org identity (Department/JobTitle/SystemRole/MachineArea) with a data-driven role model, and every access decision is enforced by OPA, establishing the authorization backbone for all maintenance features. (Scope expanded 2026-08-31: Department/JobTitle/SystemRole/MachineArea + role data-driven model adopted from the syncro Prisma blueprint.)
 
 **FRs covered:** FR-100, FR-101, FR-102, FR-103, FR-104, FR-105, FR-160, FR-161, FR-162, FR-163, FR-164
 
 ### Epic 10: Workorder Execution
 
-Maintenance leaders and technicians can run breakdown/preventive workorders end-to-end: create, assign, delegate, status lifecycle (with ON_PROCUREMENT), multi repair sessions, evidence upload, parent-child chains, technician & maintenance ratings.
+Maintenance leaders and technicians can run breakdown/preventive workorders end-to-end: create, assign (multi-technician WorkAssignment), 6-status lifecycle, work logs with backdate, WO-YYMMXXXX IDs, evidence upload, parent-child chains, and ratings per work log/technician. (Scope expanded 2026-08-31: WorkAssignment multi-technician, WorkLog backdate + stopped_reason, format ID WO-YYMMXXXX, 6-status lifecycle, rating per work-log.)
 
 **FRs covered:** FR-110, FR-111, FR-112, FR-113, FR-114, FR-115, FR-116, FR-117, FR-118, FR-119, FR-120, FR-121, FR-122, FR-123, FR-124
 
 ### Epic 11: Preventive Maintenance
 
-Leaders and technicians can run monthly/annual preventive programs: define programs, generate schedules, complete checklists with assessment, signature approval, and WYSIWYG report printing.
+Leaders and technicians can run monthly/annual preventive programs on the PM checksheet/schedule/execution model: define programs, generate schedules and PM workorders, complete checklists with assessment, signature approval, and WYSIWYG report printing. (Scope expanded 2026-08-31: PM checksheet/schedule/execution model — pm_checksheets, pm_schedules, pm_work_orders, pm_executions, pm_execution_items.)
 
 **FRs covered:** FR-130, FR-131, FR-132, FR-133, FR-134
 
 ### Epic 12: Sparepart Request & Inventory
 
-Leaders request parts; storekeeper/inventory manage the request state machine, stock OP/OQ by material code, MRE recording, and escalation with WAHA notifications.
+Leaders request parts; storekeeper/inventory manage the request state machine, stock OP/OQ by material code, MRE recording, escalation with WAHA notifications, and inventory locations/transfers/reservations. (Scope expanded 2026-08-31: InventoryLocation/StockBalance/Transfer/Reservation adopted from the syncro Prisma blueprint.)
 
 **FRs covered:** FR-140, FR-141, FR-142, FR-143, FR-144, FR-145, FR-146, FR-147
 
@@ -1780,6 +1809,58 @@ Synced workorders from the internal system arrive reliably and safely: transacti
 Leaders see machine/workorder/preventive dashboards, MTBF/MTTR, technician KPI; print WYSIWYG reports with logo & signature; receive WAHA notifications per lifecycle step and the 4-hour ack with auto-login link.
 
 **FRs covered:** FR-170, FR-171, FR-172, FR-173, FR-174, FR-175, FR-180, FR-181
+
+### Epic 15: ORM Foundation & Schema Reset
+
+The syncro-spring ORM is redesigned from scratch following the syncro (Node/Prisma) blueprint: a fresh Flyway V1.. migration set scaffolds every new module package (com.syncro.org, inventory, kpi, compliance, integration) and creates the base schema, with the development-phase database reset and reseeded (AD-22). (New 2026-08-31 — foundation for the ORM maturation redesign; see sprint-change-proposal-2026-08-31.md.)
+
+**Scope added 2026-08-31:** fresh migration set, module package scaffold, entity/repository conventions (UUID PK, Instant UTC, snake_case, named uq_/idx_/ck_ constraints, JSONB). FR numbering pending the requirements pass (see sprint-change-proposal-2026-08-31.md).
+
+### Epic 16: Org & Identity Maturation
+
+Org structure and identity are matured on the blueprint's module A: departments with a department_users pivot, machine areas as optional physical locations on machines, data-driven roles (job_titles, system_roles, role_permission_mappings, menu_features, domain_contexts), user job/role bindings, an extended auth_users, plant working calendars, and OPA enrichment so subject.roles carries application_role + job_title + system_roles. (New 2026-08-31 — adopted from the syncro Prisma blueprint, module A; see sprint-change-proposal-2026-08-31.md.)
+
+**Scope added 2026-08-31:** `departments` extension, `department_users`, `machine_areas`, `job_titles`, `system_roles`, `role_permission_mappings`, `menu_features`, `domain_contexts`, `user_job_bindings`, `user_role_bindings`, `plant_working_calendars`, `plant_working_calendar_dates`. FR numbering pending the requirements pass (see sprint-change-proposal-2026-08-31.md).
+
+### Epic 17: Workorder Execution Maturation
+
+Workorder execution is matured on the blueprint's modules B+C: multi-technician work_assignments, per-assignment work_logs with backdate and stopped_reason, the WO-YYMMXXXX (no-dash) ID with the 6-status lifecycle, per-work-log ratings, multi-technician workorder quality ratings, and the frontend Assign & Work dialog mirroring the reference repair timeline. (New 2026-08-31 — adopted from the syncro Prisma blueprint, modules B+C; see sprint-change-proposal-2026-08-31.md.)
+
+**Scope added 2026-08-31:** `work_assignments`, `work_logs`, `work_log_rating_criteria`, `work_log_ratings`, `work_order_quality_ratings`, `work_order_quality_rating_technicians`, `work_order_quality_rating_scores`. FR numbering pending the requirements pass (see sprint-change-proposal-2026-08-31.md).
+
+### Epic 18: Sparepart BOM & Inventory Maturation
+
+Sparepart master is extended into a full BOM master (bom_code, hierarchy_identity_key, bom_serial, review_status) while the existing taxonomy is retained, and inventory is matured on the blueprint's modules D+E: inventory_locations, inventory_stock_balances replacing sparepart_stock, inventory_transfers, and inventory_reservations. (New 2026-08-31 — adopted from the syncro Prisma blueprint, modules D+E; see sprint-change-proposal-2026-08-31.md.)
+
+**Scope added 2026-08-31:** `spareparts` BOM columns, `inventory_locations`, `inventory_stock_balances`, `inventory_transfers`, `inventory_reservations`. FR numbering pending the requirements pass (see sprint-change-proposal-2026-08-31.md).
+
+### Epic 19: Preventive PM Execution Model
+
+Preventive maintenance is rebuilt on the blueprint's module F: pm_frequencies, pm_checksheets with revisioning and active checksheets, pm_checklist_categories/items with measurement or OK/NG inputs, pm_schedules with an approval workflow and pm_schedule_dates, pm_work_orders, and pm_executions/pm_execution_items with NG findings and SPV verification. (New 2026-08-31 — adopted from the syncro Prisma blueprint, module F; see sprint-change-proposal-2026-08-31.md.)
+
+**Scope added 2026-08-31:** `pm_frequencies`, `pm_checksheets`, `active_checksheets`, `pm_checklist_categories`, `pm_checklist_items`, `pm_schedules`, `pm_schedule_dates`, `pm_work_orders`, `pm_executions`, `pm_execution_items`. FR numbering pending the requirements pass (see sprint-change-proposal-2026-08-31.md).
+
+### Epic 20: KPI Materialization
+
+Monthly KPI tables materialize maintenance KPIs (MTBF, MTTR, MAR, PM completion, technician KPIs) from workorder, work-log, and rating data so dashboards read precomputed rows instead of computing on the fly. (New 2026-08-31 — adopted from the syncro Prisma blueprint, module G; see sprint-change-proposal-2026-08-31.md.)
+
+**Scope added 2026-08-31:** `kpi_target`, `kpi_mtbf_monthly`, `kpi_mttr_monthly`, `kpi_mar_monthly`, `kpi_pm_completion_monthly`, `kpi_technician_monthly`. FR numbering pending the requirements pass (see sprint-change-proposal-2026-08-31.md).
+
+### Epic 21: IATF Compliance Module
+
+Non-conformance, 8D reports, calibration instruments/records, equipment change notices, machine setup baselines, and lesson-learned records keep Syncro aligned with IATF quality requirements. (New 2026-08-31 — adopted from the syncro Prisma blueprint, module H; see sprint-change-proposal-2026-08-31.md.)
+
+**Scope added 2026-08-31:** `non_conformances`, `eight_d_reports`, `calibration_instruments`, `calibration_records`, `equipment_change_notices`, `machine_setup_baselines`, `lesson_learned`. FR numbering pending the requirements pass (see sprint-change-proposal-2026-08-31.md).
+
+### Epic 22: Integration, Webhook, Audit & Signature
+
+Outbound webhooks with delivery logs, login audit and phone verification, user signatures with signature-use tracking, and WhatsApp message logs complete the integration and evidence layer. (New 2026-08-31 — adopted from the syncro Prisma blueprint, module I; see sprint-change-proposal-2026-08-31.md.)
+
+**Scope added 2026-08-31:** `webhook_configs`, `webhook_delivery_logs`, `auth_login_audits`, `phone_verification_challenges`, `user_signatures`, `signature_uses`, `whatsapp_message_logs`. FR numbering pending the requirements pass (see sprint-change-proposal-2026-08-31.md).
+
+### Epic 23: Multi-Language (i18n)
+
+Indonesian/English localization for all frontend UI using next-intl; locale routing /id /en; default id; language switcher; ICU MessageFormat strings. (New 2026-08-31 — stakeholder addition.)
 
 ## Phase 2 FR Coverage Map
 
@@ -1835,12 +1916,18 @@ FR-174: Epic 14 - Technician KPI
 FR-175: Epic 14 - WYSIWYG print reports
 FR-180: Epic 14 - Notify lifecycle events
 FR-181: Epic 14 - 4-hour ack auto-login
+FR-183: Epic 23 - Multi-language UI (i18n)
+FR-184: Epic 23 - Locale-aware formatting
+FR-185: Epic 23 - Language preference persistence
+FR-146a: Epic 18 - Inventory locations & stock balances
+FR-146b: Epic 18 - Inventory transfers
+FR-146c: Epic 18 - Inventory reservations
 
 ---
 
-## Epic 9: Org Structure & OPA Authorization Foundation
+## Epic 9: Org Structure, Identity & OPA Authorization Foundation
 
-Users can configure org structure (sections, teams) and every access decision is enforced by OPA, establishing the authorization backbone for all maintenance features.
+Users can configure org structure (sections, teams), org identity (Department/JobTitle/SystemRole/MachineArea) with a data-driven role model, and every access decision is enforced by OPA, establishing the authorization backbone for all maintenance features. (Scope expanded 2026-08-31 — Department/JobTitle/SystemRole/MachineArea and the role data-driven model adopted from the syncro Prisma blueprint; see sprint-change-proposal-2026-08-31.md.)
 
 ### Story 9.1: Sections Foundation
 
@@ -1976,11 +2063,59 @@ So that server-side authorization is uniform and audit traceable.
 **FRs covered:** FR-160, FR-162, FR-164
 **NFRs covered:** NFR-P2-7
 
+### Story 9.6: Departments & Machine Areas (redesigned 2026-08-31)
+
+As a SUPER_ADMIN,
+I want departments and machine areas modeled as org identity tables,
+So that org structure beyond sections/teams matches the syncro blueprint.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** the new org tables are created
+**Then** `departments` stores the department master (name, code, active) used by users and job titles
+**And** `machine_areas` stores physical areas per plant (e.g. forming area) linked to machines/machine groups
+**And** both tables are seeded with dummy data consistent with the redesign
+
+**Given** a SUPER_ADMIN or MANAGER_MAINTENANCE manages departments/machine areas
+**When** a mutation is submitted
+**Then** mutations are OPA-authorized and audit-logged
+
+**FRs covered:** pending requirements pass
+**NFRs covered:** NFR-P2-3, NFR-P2-4
+**Additional:** sprint-change-proposal-2026-08-31.md §2.1, §4.1
+
+### Story 9.7: Job Titles, System Roles & Role Permission Mapping (redesigned 2026-08-31)
+
+As a SUPER_ADMIN,
+I want roles to be data-driven (JobTitle + SystemRole + RolePermissionMapping) instead of a rigid enum,
+So that role mapping is configurable in the UI and OPA input can carry enriched roles.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs
+**When** the new auth tables are created
+**Then** `job_titles`, `system_roles`, `role_permission_mappings`, and `menu_features` replace the rigid `ApplicationRole` enum as the role source
+**And** users carry application_role + job_title + system_roles
+
+**Given** OPA input is assembled for a user
+**When** their roles are resolved
+**Then** `subject.roles` = application_role + job_title + system_roles (data-driven, no enum hardcoding)
+**And** a SUPER_ADMIN role-mapping UI lets users be assigned job titles/system roles per user (sprint-change-proposal-2026-08-31.md §4.7)
+
+**Given** a role mapping is changed
+**When** the mutation is submitted
+**Then** it is audit-logged and takes effect on the next OPA decision without policy redeploy
+
+**FRs covered:** FR-002, FR-003, FR-160, FR-163
+**NFRs covered:** NFR-P2-1, NFR-P2-3
+**Additional:** sprint-change-proposal-2026-08-31.md §4.1, §4.8
+
 ---
 
 ## Epic 10: Workorder Execution
 
-Maintenance leaders and technicians can run breakdown/preventive workorders end-to-end: create, assign, delegate, status lifecycle (with ON_PROCUREMENT), multi repair sessions, evidence upload, parent-child chains, technician & maintenance ratings.
+Maintenance leaders and technicians can run breakdown/preventive workorders end-to-end: create, assign (multi-technician WorkAssignment), 6-status lifecycle, work logs with backdate, WO-YYMMXXXX IDs, evidence upload, parent-child chains, and ratings per work log/technician. (Scope expanded 2026-08-31 — WorkAssignment multi-technician, WorkLog backdate + stopped_reason, format ID WO-YYMMXXXX, 6-status lifecycle, rating per work-log; see sprint-change-proposal-2026-08-31.md.)
 
 ### Story 10.1: Workorder Schema & Categories
 
@@ -2004,6 +2139,7 @@ So that synced and internal workorders coexist without collision and categories 
 **When** it is created
 **Then** the format is WO-YYMM-XXXXX (5-digit, monthly reset) generated under transaction + row lock
 **And** concurrent creation does not produce duplicate IDs
+**And** (redesigned 2026-08-31) the format changes to `WO-YYMMXXXX` (no dash) — generated as `WO-%s%05d` (e.g. WO-260800001) — per sprint-change-proposal-2026-08-31.md §4.1
 
 **FRs covered:** FR-110, FR-111, FR-112
 **NFRs covered:** NFR-P2-3
@@ -2031,6 +2167,7 @@ So that breakdowns and planned work have an owner without the leader executing t
 **When** the assignment is submitted
 **Then** the workorder transitions OPEN → ASSIGNED
 **And** the system rejects assigning the section leader as executing technician of their own workorders with a machine-readable code (FR-113)
+**And** (redesigned 2026-08-31) the assignment is persisted as a `work_assignments` row (work_order_id, technician_id, assigned_by, assigned_at, is_active); multiple technicians can be active per workorder (multi-assignment replaces the single `assigned_technician_id`, sprint-change-proposal-2026-08-31.md §4.1)
 
 **FRs covered:** FR-110, FR-113
 **NFRs covered:** NFR-P2-3
@@ -2048,6 +2185,7 @@ So that waiting-for-part time is tracked correctly and invalid transitions are p
 **When** a status transition is requested
 **Then** the transition must be valid per `DRAFT → OPEN → ASSIGNED → IN_PROGRESS → ON_PROCUREMENT → IN_PROGRESS → DONE → CLOSED` (+ CANCELLED from OPEN/ASSIGNED)
 **And** invalid transitions return `INVALID_STATE_TRANSITION`
+**And** (redesigned 2026-08-31) the lifecycle is the 6-status set `OPEN, IN_PROGRESS, PENDING_SPAREPART, PENDING_REVIEW, CLOSED` (+ `CANCELLED`) adopted from the syncro blueprint (sprint-change-proposal-2026-08-31.md §4.1), replacing the previous 8-status chain
 
 **Given** a sparepart request on the workorder becomes non-READY
 **When** the request state changes
@@ -2079,6 +2217,7 @@ So that interrupted repairs (e.g. waiting for parts) accumulate correct working 
 **Then** the session (start/end, description, technicians) is persisted
 **And** a workorder may have multiple sessions without overlap
 **And** cumulative session duration equals the workorder MTTR (backend-computed, FR-115)
+**And** (redesigned 2026-08-31) sessions are stored as `work_logs` linked to a `work_assignment` (work_assignment_id FK) with free start/end (backdate supported, lower bound = workorder created_at) and a `stopped_reason` enum (sprint-change-proposal-2026-08-31.md §4.1)
 
 **Given** a workorder is being closed as DONE
 **When** it has no completed session
@@ -2167,6 +2306,7 @@ So that KPI dashboards reflect team performance and maintenance quality.
 **When** its section leader rates the executing technicians
 **Then** ratings use configurable dimensions rendered as 1–5 stars; dimensions are data configured by SUPER_ADMIN (AD-14)
 **And** only the workorder group's section leader can rate; ratings are immutable after submission (FR-121)
+**And** (redesigned 2026-08-31) technician ratings are stored per work-log in `work_log_ratings` (work_log_id, criterion_id, score, rated_by) with `work_log_rating_criteria` + `_criterion_categories`; workorder-level quality ratings use `work_order_quality_ratings` + `_technicians` + `_scores` (sprint-change-proposal-2026-08-31.md §4.2)
 
 **Given** a maintenance workorder is closed
 **When** the PRODUCTION_LEADER of the affected line rates it
@@ -2221,11 +2361,51 @@ So that category reference data is manageable in the UI, not only via API.
 **FRs covered:** FR-112
 **NFRs covered:** NFR-P2-10
 
+### Story 10.11: WorkAssignment & WorkLog Model (redesigned 2026-08-31)
+
+As a section leader and technician,
+I want multi-technician assignments and free-form work logs with backdate and stopped reasons,
+So that real repair work (many technicians, interrupted sessions, backdated entry) is modeled correctly.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** the workorder tables are rebuilt
+**Then** `work_assignments` stores work_order_id, technician_id, assigned_by, assigned_at, dropped_at, is_active — a workorder may have multiple active assignments
+**And** `work_logs` stores work_assignment_id, start_time, end_time, stopped_reason enum, and notes; start/end are free-form with backdate allowed (min = workorder created_at)
+**And** the Assign & Work dialog lets the leader pick multiple technicians and open a work log per assignment with a DateTimePicker (sprint-change-proposal-2026-08-31.md §4.7)
+
+**Given** a technician or leader creates/edits a work log
+**When** the mutation is submitted
+**Then** it is persisted, audit-logged, and feeds cumulative MTTR
+
+**FRs covered:** FR-113, FR-115, FR-122, FR-123
+**NFRs covered:** NFR-P2-2, NFR-P2-3
+**Additional:** sprint-change-proposal-2026-08-31.md §4.1
+
+### Story 10.12: Ratings per Work Log & Workorder Quality (redesigned 2026-08-31)
+
+As a section leader,
+I want ratings captured per work log per technician plus workorder-level quality ratings,
+So that KPI materialization has per-log evidence, not only per-WO aggregates.
+
+**Acceptance Criteria:**
+
+**Given** a work log exists on a closed workorder
+**When** its section leader rates it
+**Then** `work_log_ratings` stores work_log_id, criterion_id, score, rated_by (1–5 stars, configurable dimensions via criteria/categories)
+**And** workorder-level maintenance quality rating uses `work_order_quality_ratings` (+ technicians/scores) per sprint-change-proposal-2026-08-31.md §4.2
+**And** ratings are immutable after submission and audit-logged
+
+**FRs covered:** FR-121, FR-124
+**NFRs covered:** NFR-P2-2
+**Additional:** sprint-change-proposal-2026-08-31.md §4.2
+
 ---
 
 ## Epic 11: Preventive Maintenance
 
-Leaders and technicians can run monthly/annual preventive programs: define programs, generate schedules, complete checklists with assessment, signature approval, and WYSIWYG report printing.
+Leaders and technicians can run monthly/annual preventive programs on the PM checksheet/schedule/execution model: define programs, generate schedules and PM workorders, complete checklists with assessment, signature approval, and WYSIWYG report printing. (Scope expanded 2026-08-31 — pm_checksheets, pm_schedules, pm_work_orders, pm_executions, pm_execution_items; see sprint-change-proposal-2026-08-31.md.)
 
 ### Story 11.1: Preventive Programs & Schedules
 
@@ -2247,6 +2427,7 @@ So that routine maintenance runs on the calendar without requiring telemetry.
 **And** the next due date rolls forward from completion (floating interval)
 **And** a calendar view lists due/overdue items computed from the server clock
 **And** due/overdue items surface on the preventive dashboard (FR-172)
+**And** (redesigned 2026-08-31) programs/schedules are rebuilt as `pm_checksheets` + `pm_frequencies` + `pm_schedules` + `pm_schedule_dates` (sprint-change-proposal-2026-08-31.md §4.4)
 
 **FRs covered:** FR-130, FR-131
 **NFRs covered:** NFR-P2-3
@@ -2264,6 +2445,7 @@ So that performed checks are evidenced and approved.
 **When** a technician/staff completes the checklist
 **Then** the result is persisted with performed-by, timestamp, notes, and evidence (FR-132)
 **And** checklist items with assessment values (including LSL/USL bounds where applicable) are stored
+**And** (redesigned 2026-08-31) execution is stored as `pm_work_orders` + `pm_executions` + `pm_execution_items` (execution items carry the per-item results/assessment) (sprint-change-proposal-2026-08-31.md §4.4)
 
 **Given** a leader assesses the result
 **When** they approve
@@ -2291,6 +2473,7 @@ So that reports are presentable and preventive tasks enter the workorder flow.
 **When** the schedule period arrives
 **Then** an internal preventive workorder (category 02 Preventive) is created, linked back to the schedule (FR-134)
 **And** duplicate generation is prevented per schedule period (idempotent)
+**And** (redesigned 2026-08-31) the generated preventive workorder is a `pm_work_order` row linked to the schedule and to its execution, and flows through the new 6-status workorder lifecycle (sprint-change-proposal-2026-08-31.md §4.4)
 
 **FRs covered:** FR-133, FR-134
 **NFRs covered:** NFR-P2-10
@@ -2300,7 +2483,7 @@ So that reports are presentable and preventive tasks enter the workorder flow.
 
 ## Epic 12: Sparepart Request & Inventory
 
-Leaders request parts; storekeeper/inventory manage the request state machine, stock OP/OQ by material code, MRE recording, and escalation with WAHA notifications.
+Leaders request parts; storekeeper/inventory manage the request state machine, stock OP/OQ by material code, MRE recording, escalation with WAHA notifications, and inventory locations/transfers/reservations. (Scope expanded 2026-08-31 — InventoryLocation/StockBalance/Transfer/Reservation adopted from the syncro Prisma blueprint; see sprint-change-proposal-2026-08-31.md.)
 
 ### Story 12.1: Request Creation & Types
 
@@ -2393,6 +2576,7 @@ So that reorder warnings fire at the right time and unknown parts get properly r
 **Then** `sparepart_stock(material_code, plant_id, stock_on_hand, order_point, order_qty)` is unique per (material_code, plant_id) (FR-146)
 **And** a reorder warning fires when stock_on_hand <= order_point, recommending a purchase request of order_qty (business-rule signal; the PR action is OPA-authorized)
 **And** stock mutations use version optimistic lock + atomic conditional update; negative stock is rejected server-side (AD-11)
+**And** (redesigned 2026-08-31) stock is balanced per location through `inventory_stock_balances` on top of `inventory_locations`; `sparepart_stock` stock_on_hand is derived from the location balances (sprint-change-proposal-2026-08-31.md §4.3)
 
 **Given** INVENTORY_MAINTENANCE/STOREKEEPER completes a PENDING_COMPLETION request
 **When** they provide material code, image, and estimated price
@@ -2403,6 +2587,46 @@ So that reorder warnings fire at the right time and unknown parts get properly r
 **FRs covered:** FR-144, FR-146
 **NFRs covered:** NFR-P2-6
 **Additional:** AD-11
+
+### Story 12.5: Inventory Locations & Stock Balances (redesigned 2026-08-31)
+
+As an inventory/storekeeper,
+I want inventory locations with per-location stock balances,
+So that stock-on-hand is tracked per physical location, not only per plant/material.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** the inventory tables are created
+**Then** `inventory_locations` stores physical locations (name, code, plant, type) and `inventory_stock_balances` tracks quantity per (location, material/sparepart) with optimistic locking
+**And** aggregate stock-on-hand per material code per plant is derived from the location balances (no separate count to drift)
+**And** location/balance mutations are audit-logged and OPA-authorized
+
+**FRs covered:** FR-146
+**NFRs covered:** NFR-P2-6
+**Additional:** sprint-change-proposal-2026-08-31.md §4.3
+
+### Story 12.6: Inventory Transfers & Reservations (redesigned 2026-08-31)
+
+As an inventory/storekeeper,
+I want stock transfers between locations and reservations against planned work,
+So that movement and allocation of parts are traceable end-to-end.
+
+**Acceptance Criteria:**
+
+**Given** a storekeeper transfers stock between two locations
+**When** the transfer is submitted
+**Then** `inventory_transfers` records source/target location, material/sparepart, quantity, actor, timestamp, and status; both balances update atomically under lock (no negative stock)
+**And** transfer history is viewable and audit-logged
+
+**Given** a workorder or sparepart request needs allocated stock
+**When** a reservation is created
+**Then** `inventory_reservations` records the reserved quantity and prevents it from being transferred away while active
+**And** reservation release/fulfillment is recorded with actor and timestamp
+
+**FRs covered:** FR-141, FR-146
+**NFRs covered:** NFR-P2-6
+**Additional:** sprint-change-proposal-2026-08-31.md §4.3
 
 ---
 
@@ -2580,4 +2804,844 @@ So that the right people are reached in time without notification fatigue.
 **FRs covered:** FR-180, FR-181
 **NFRs covered:** NFR-P2-7
 **Additional:** AD-5, AD-9
+
+---
+
+## Epic 20: KPI Materialization
+
+Monthly KPI tables materialize maintenance KPIs (MTBF, MTTR, MAR, PM completion, technician KPIs) from workorder, work-log, and rating data so dashboards read precomputed rows instead of computing on the fly. (New 2026-08-31 — adopted from the syncro Prisma blueprint, module G; see sprint-change-proposal-2026-08-31.md.)
+
+### Story 20.1: KPI Materialized Tables (redesigned 2026-08-31)
+
+As a maintenance leader,
+I want monthly KPI values computed and stored in materialized KPI tables,
+So that dashboards render precomputed rows and stay fast as history grows.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** the KPI tables are created
+**Then** `kpi_target`, `kpi_mtbf_monthly`, `kpi_mttr_monthly`, `kpi_mar_monthly`, `kpi_pm_completion_monthly`, and `kpi_technician_monthly` exist per sprint-change-proposal-2026-08-31.md §4.5
+
+**Given** workorder/work-log/rating data is available for a closed period
+**When** the KPI job runs
+**Then** MTBF (woStopAt-ordered), MTTR (cumulative work-log durations), MAR, PM completion, and per-technician KPIs are computed backend-side and materialized per month (replacing on-the-fly calculation)
+**And** each row stores its computed values plus the source period and run evidence (traceId/timestamp)
+**And** recomputation is idempotent per month/scope and audit-logged
+
+**Given** a leader opens the MTBF/MTTR or technician KPI dashboard
+**When** the dashboard loads
+**Then** it reads the materialized monthly rows within scope (falls back to explicit insufficient-data state when a month has no row)
+
+**FRs covered:** FR-173, FR-174
+**NFRs covered:** NFR-P2-2
+**Additional:** sprint-change-proposal-2026-08-31.md §4.5
+
+### Story 20.2: KPI Targets & Dashboard Consumption (redesigned 2026-08-31)
+
+As a SUPER_ADMIN or MANAGER_MAINTENANCE,
+I want configurable KPI targets so materialized values can be compared against plan,
+So that leaders can tell at a glance whether actuals meet targets.
+
+**Acceptance Criteria:**
+
+**Given** `kpi_target` exists
+**When** a leader configures a target (per KPI, per scope, per period)
+**Then** it is stored and applied to the materialized monthly rows for comparison
+**And** the KPI dashboards show actual vs target with non-color-only status
+**And** target mutations are audit-logged
+
+**FRs covered:** FR-173, FR-174
+**NFRs covered:** NFR-P2-2
+**Additional:** sprint-change-proposal-2026-08-31.md §4.5
+
+---
+
+## Epic 21: IATF Compliance Module
+
+Non-conformance, 8D reports, calibration instruments/records, equipment change notices, machine setup baselines, and lesson-learned records keep Syncro aligned with IATF quality requirements. (New 2026-08-31 — adopted from the syncro Prisma blueprint, module H; see sprint-change-proposal-2026-08-31.md.)
+
+### Story 21.1: Non-Conformance & 8D Reports (redesigned 2026-08-31)
+
+As a quality/compliance user,
+I want to log non-conformances and drive 8D reports,
+So that quality issues are tracked to closure with evidence.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** the compliance tables are created
+**Then** `non_conformances` records NC identity, machine/workorder link, description, severity, status, and timestamps; `eight_d_reports` records the 8D workflow (D1–D8) linked to the NC per sprint-change-proposal-2026-08-31.md §4.5
+
+**Given** an authorized user creates/updates an NC or 8D report
+**When** the mutation is submitted
+**Then** it is persisted, OPA-authorized, and audit-logged
+**And** NC/8D can reference a workorder and its evidence
+
+**FRs covered:** pending requirements pass
+**NFRs covered:** NFR-P2-2
+**Additional:** sprint-change-proposal-2026-08-31.md §4.5
+
+### Story 21.2: Calibration & Equipment Change Control (redesigned 2026-08-31)
+
+As a compliance user,
+I want calibration instruments/records and equipment change notices managed,
+So that measurement and change control satisfy IATF audit needs.
+
+**Acceptance Criteria:**
+
+**Given** the compliance tables exist
+**When** calibration is managed
+**Then** `calibration_instruments` registers each instrument and `calibration_records` stores due dates and results per calibration event
+**And** overdue/upcoming calibration is visible within scope
+
+**Given** an equipment change is logged
+**When** an ECN is created
+**Then** `equipment_change_notices` records the change (machine, reason, approval, affected docs), linked to machine/workorder evidence
+**And** change notices are approval-tracked and audit-logged
+
+**FRs covered:** pending requirements pass
+**NFRs covered:** NFR-P2-2
+**Additional:** sprint-change-proposal-2026-08-31.md §4.5
+
+### Story 21.3: Setup Baselines & Lesson Learned (redesigned 2026-08-31)
+
+As a compliance user,
+I want machine setup baselines and lesson-learned records,
+So that setup standards and learning are captured for IATF continuous improvement.
+
+**Acceptance Criteria:**
+
+**Given** the compliance tables exist
+**When** a setup baseline is recorded
+**Then** `machine_setup_baselines` stores the machine setup standard (parameters, tolerances, references)
+**And** `lesson_learned` captures lessons tied to NC/8D/workorder events with evidence
+
+**Given** an authorized user creates/updates a baseline or lesson
+**When** the mutation is submitted
+**Then** it is OPA-authorized, audit-logged, and searchable within scope
+
+**FRs covered:** pending requirements pass
+**NFRs covered:** NFR-P2-2
+**Additional:** sprint-change-proposal-2026-08-31.md §4.5
+
+---
+
+## Epic 22: Integration, Webhook, Audit & Signature
+
+Outbound webhooks with delivery logs, login audit and phone verification, user signatures with signature-use tracking, and WhatsApp message logs complete the integration and evidence layer. (New 2026-08-31 — adopted from the syncro Prisma blueprint, module I; see sprint-change-proposal-2026-08-31.md.)
+
+### Story 22.1: Webhook Config & Delivery Log (redesigned 2026-08-31)
+
+As a SUPER_ADMIN,
+I want outbound webhooks with per-delivery logs,
+So that external systems are notified of Syncro events with observable delivery evidence.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** the integration tables are created
+**Then** `webhook_configs` stores endpoint, secret, event types, and active state; `webhook_delivery_logs` records each delivery attempt (status, response, timestamp, traceId) per sprint-change-proposal-2026-08-31.md §4.6
+
+**Given** an event with a matching webhook occurs
+**When** the webhook dispatcher runs
+**Then** a delivery job is queued with retry/backoff (Resilience4j pattern) and each attempt is logged
+**And** secrets are never logged; delivery failures are observable to SUPER_ADMIN
+
+**FRs covered:** pending requirements pass
+**NFRs covered:** NFR-P2-1
+**Additional:** sprint-change-proposal-2026-08-31.md §4.6
+
+### Story 22.2: Auth Login Audit & Phone Verification (redesigned 2026-08-31)
+
+As a SUPER_ADMIN,
+I want login events audited and phone verification challenges tracked,
+So that auth activity is traceable and phone-based flows (e.g. 4-hour ack auto-login) are verifiable.
+
+**Acceptance Criteria:**
+
+**Given** the auth tables exist
+**When** a login attempt occurs
+**Then** `auth_login_audits` records actor, timestamp, source, result, and traceId (no credentials)
+**And** `phone_verification_challenges` tracks phone-verification challenges (challenge, status, expiresAt) per sprint-change-proposal-2026-08-31.md §4.6
+
+**Given** an audit/verification record is queried
+**When** a SUPER_ADMIN/AUDITOR views it
+**Then** it is readable with filters and never exposes secrets
+
+**FRs covered:** FR-001, FR-181
+**NFRs covered:** NFR-P2-7
+**Additional:** sprint-change-proposal-2026-08-31.md §4.6
+
+### Story 22.3: User Signatures & Signature Use (redesigned 2026-08-31)
+
+As a SUPER_ADMIN,
+I want stored user signatures with per-use tracking,
+So that approvals (workorder close, preventive, reports) are evidenced by a reusable, tracked signature.
+
+**Acceptance Criteria:**
+
+**Given** the signature tables exist
+**When** a user stores their signature
+**Then** `user_signatures` stores the signature reference (image, signer identity, timestamp) and `signature_uses` records every use (target type/id, actor, timestamp) per sprint-change-proposal-2026-08-31.md §4.6
+**And** existing workorder_signatures behavior is extended to reference user_signatures + signature_uses
+
+**Given** an approval/close requires a signature
+**When** the signature is applied
+**Then** a signature_use row is written, audit-logged, and rendered in print output
+
+**FRs covered:** FR-132, FR-133, FR-175
+**NFRs covered:** NFR-P2-2
+**Additional:** sprint-change-proposal-2026-08-31.md §4.6 (resolves pending OQ-5)
+
+### Story 22.4: WhatsApp Message Log (redesigned 2026-08-31)
+
+As a SUPER_ADMIN,
+I want every WhatsApp message logged with delivery status,
+So that notification evidence (escalation, 4-hour ack, requests) is complete and diagnosable.
+
+**Acceptance Criteria:**
+
+**Given** the notification tables exist
+**When** a WAHA send is processed
+**Then** `whatsapp_message_logs` records recipient, template, rendered text reference, status, timestamps, and traceId per sprint-change-proposal-2026-08-31.md §4.6, complementing the existing notification_jobs/attempts
+**And** message logs respect the dedupe key (target_type+target_id+template+recipient) and the masking rules (no full phone numbers, no WAHA secrets)
+
+**FRs covered:** FR-180, FR-181
+**NFRs covered:** NFR-P2-7
+**Additional:** sprint-change-proposal-2026-08-31.md §4.6
+
+---
+
+## Epic 23: Multi-Language (i18n)
+
+### Epic 23 Overview
+
+As a plant operator or maintenance manager,
+I want the Syncro web application to support Indonesian and English,
+So that both local and international teams can use the system in their preferred language.
+
+### Epic 23 Stories
+
+#### Story 23.1: Setup next-intl foundation
+
+As a developer,
+I want next-intl configured with locale routing (/id, /en) and Indonesian as default,
+So that all pages can render localized strings.
+
+**Acceptance Criteria:**
+
+**Given** the frontend runs on Next.js App Router with no i18n library installed
+**When** the next-intl foundation is set up
+**Then** next-intl is installed and configured (getRequestConfig, middleware locale detection)
+**And** /id and /en routes serve the app with the correct locale
+**And** the default locale is id (Indonesian)
+**And** message catalogs (en.json, id.json) are structured by feature/module
+
+**FRs covered:** FR-183 (new) — multi-language UI
+**NFRs covered:** —
+**Additional:** —
+
+#### Story 23.2: Localize all frontend UI strings
+
+As a user,
+I want all labels, buttons, dialogs, tables, and dashboard text translated,
+So that the UI is fully usable in either language.
+
+**Acceptance Criteria:**
+
+**Given** the next-intl foundation exists
+**When** user-facing components render
+**Then** table (workorder, machine, sparepart), dialogs (Assign & Work, report, request part), kanban, and dashboard all use next-intl `t()` / `<Trans>`
+**And** no hardcoded user-facing strings remain in components (except ICU plurals/formatting)
+**And** date/number formatting uses locale-aware Intl (id-ID vs en-US)
+**And** status labels, error messages, and toasts are translated
+
+**FRs covered:** FR-183, FR-184 (new) — locale-aware formatting
+**NFRs covered:** —
+**Additional:** —
+
+#### Story 23.3: Language switcher & persistence
+
+As a user,
+I want a language switcher in the navbar and my choice remembered,
+So that I don't re-select my language on every visit.
+
+**Acceptance Criteria:**
+
+**Given** the app serves at least two locales
+**When** a user switches language in the top navbar (ID/EN toggle)
+**Then** the selection is persisted (cookie/localStorage) and applied on the next visit
+**And** switching locale re-renders all strings without a full page reload (or navigates to the /[locale] route)
+**And** the switcher is accessible from every page
+
+**FRs covered:** FR-183, FR-185 (new) — language preference persistence
+**NFRs covered:** —
+**Additional:** —
+
+#### Story 23.4: Translation completeness & quality
+
+As a product owner,
+I want translation coverage tracked and fallback handling,
+So that missing translations never show raw keys to users.
+
+**Acceptance Criteria:**
+
+**Given** message catalogs exist for id and en
+**When** a key is missing in the active locale
+**Then** the fallback locale (en) is used
+**And** tooling/script detects missing keys between en.json and id.json
+**And** CI check fails on missing translations (optional but preferred)
+
+**FRs covered:** FR-183
+**NFRs covered:** NFR-020 — translation completeness gate
+**Additional:** —
+
+### Epic 23 Notes
+
+- Library: next-intl (standard for Next.js App Router; ICU MessageFormat similar to ARB in .NET)
+- Locales: id (default), en
+- Backend is NOT affected (labels/statuses are display-only; backend codes remain the contract)
+
+---
+
+## Epic 15: ORM Foundation & Schema Reset
+
+The syncro-spring ORM is redesigned from scratch following the syncro (Node/Prisma) blueprint: a fresh Flyway V1.. migration set scaffolds every new module package (com.syncro.org, inventory, kpi, compliance, integration) and creates the base schema, with the development-phase database reset and reseeded (AD-22). (New 2026-08-31 — foundation for the ORM maturation redesign; see sprint-change-proposal-2026-08-31.md.)
+
+### Story 15.1: Fresh Flyway V1.. Migration Set & Schema Reset (redesigned 2026-08-31) [15-1-orm-foundation-migration-set]
+
+As a developer,
+I want the ORM rebuilt on a fresh Flyway V1.. migration set with all new module packages scaffolded,
+So that the database schema matches the syncro Prisma blueprint without backward-compatibility baggage.
+
+**Acceptance Criteria:**
+
+**Given** the ORM maturation redesign is approved (sprint-change-proposal-2026-08-31.md §4)
+**When** the migration set is rebuilt
+**Then** Flyway starts from a fresh V1__ migration, replacing the legacy V1..V68 set
+**And** all new module packages are scaffolded — com.syncro.org (Department, DepartmentUser, JobTitle, SystemRole, RolePermissionMapping, MenuFeature, DomainContext, UserJobBinding, UserRoleBinding, MachineArea, PlantWorkingCalendar), com.syncro.inventory (InventoryLocation, InventoryStockBalance, InventoryTransfer, InventoryReservation), com.syncro.kpi (KpiTarget, Kpi*Monthly, KpiAggregateRefreshLog), com.syncro.compliance (NonConformance, EightDReport, Calibration*, ECN, MachineSetupBaseline, LessonLearned, HistoricalMachineRecord), com.syncro.integration (WebhookConfig, WebhookDeliveryLog) per the orm-target-blueprint-2026-08-31.md Modul Package layout
+**And** the base schema is created with snake_case plural table names, snake_case columns, `{singular}_id` FK columns, and named constraints (uq_/idx_/ck_)
+
+**Given** the project is still in the development phase (all data is dummy seed; real data lives in a separate database)
+**When** the migration runs
+**Then** the development database is reset and reseeded (AD-22), and no real-data migration burden exists (sprint-change-proposal-2026-08-31.md §1.3)
+
+**FRs covered:** TBD (pending requirements pass — sprint-change-proposal-2026-08-31.md §4)
+**NFRs covered:** NFR-P2-3
+**Additional:** orm-target-blueprint-2026-08-31.md Konvensi Pemetaan; AD-22
+
+### Story 15.2: Base Entity & Repository Conventions (redesigned 2026-08-31) [15-2-base-entity-repository-conventions]
+
+As a developer,
+I want JPA entities and repositories for the new schema to follow one shared convention,
+So that the redesigned ORM stays consistent and maintainable across all module packages.
+
+**Acceptance Criteria:**
+
+**Given** the fresh V1.. schema exists
+**When** JPA entities are written for the new tables
+**Then** each entity uses a UUID primary key (except special entities such as work_orders that keep a VARCHAR PK) and stores timestamps as Instant UTC in TIMESTAMPTZ columns
+**And** columns are snake_case; enum columns use @Enumerated(EnumType.STRING) with uppercase values plus CHECK constraints
+**And** unique/index constraints are named uq_<table>_<cols> / idx_<table>_<cols> per the blueprint naming convention
+**And** cross-aggregate references (e.g. workorder → machine) use plain UUID columns per AD-3/AD-4 rather than eager relations
+
+**Given** a module package is scaffolded
+**When** repositories are written
+**Then** each aggregate uses JpaRepository + @Repository with named queries following the existing convention
+**And** JSONB/array columns use @JdbcTypeCode(SqlTypes.JSON); pivot tables are preferred over String[] relations
+
+**FRs covered:** TBD (pending requirements pass — sprint-change-proposal-2026-08-31.md §4)
+**NFRs covered:** NFR-P2-3
+**Additional:** orm-target-blueprint-2026-08-31.md Konvensi Pemetaan
+
+---
+
+## Epic 16: Org & Identity Maturation
+
+Org structure and identity are matured on the blueprint's module A: departments with a department_users pivot, machine areas as optional physical locations on machines, data-driven roles (job_titles, system_roles, role_permission_mappings, menu_features, domain_contexts), user job/role bindings, an extended auth_users, plant working calendars, and OPA enrichment so subject.roles carries application_role + job_title + system_roles. (New 2026-08-31 — adopted from the syncro Prisma blueprint, module A; see sprint-change-proposal-2026-08-31.md.)
+
+### Story 16.1: Department & MachineArea (redesigned 2026-08-31) [16-1-department-machine-area]
+
+As a SUPER_ADMIN,
+I want departments with a department_users pivot and machine areas as optional physical locations,
+So that org structure and machine physical layout are modeled explicitly.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** the org tables are created
+**Then** `departments` stores plant_id, name, spv_id/mg_id, and is_active with unique (plant_id, name) as `uq_departments_plant_name` per orm-target-blueprint-2026-08-31.md A2
+**And** `department_users` pivots department to user (assigned_by, assigned_at) with unique (department_id, user_id), adapting the existing department_members (A3)
+**And** `machine_areas` exists and `machines.area_id` is added as a nullable physical-location reference while `machine_groups` is retained as the machine category (A11; resolved decision point 1)
+
+**Given** an authorized user manages a department or machine area
+**When** the mutation is submitted
+**Then** it is persisted, OPA-authorized, and audit-logged
+
+**FRs covered:** FR-100, FR-101, FR-102
+**NFRs covered:** NFR-P2-2
+**Additional:** sprint-change-proposal-2026-08-31.md §4.1; orm-target-blueprint-2026-08-31.md A2/A3/A11
+
+### Story 16.2: JobTitle, SystemRole & RolePermissionMapping (redesigned 2026-08-31) [16-2-data-driven-roles]
+
+As a SUPER_ADMIN,
+I want a data-driven role model with job titles, system roles, and role-permission mappings,
+So that permissions are configuration data rather than a rigid enum.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** the role tables are created
+**Then** `job_titles` stores code (unique), name, description, binding_scope (NONE/PLANT/AREA), is_active, and default_system_role_id per orm-target-blueprint-2026-08-31.md A4
+**And** `system_roles` stores code (unique), name, level, and is_active (A5)
+**And** `role_permission_mappings` links system_role to menu_feature and optional domain_context with is_granted, unique (system_role_id, menu_feature_id, domain_id) (A6)
+**And** `menu_features` (code unique, e.g. cmms:wo:read) and `domain_contexts` (code unique: maintenance/production/inventory) exist (A7/A8)
+
+**Given** a SUPER_ADMIN or MANAGER_MAINTENANCE mutates role configuration
+**When** the mutation is submitted
+**Then** it is persisted, OPA-authorized, and audit-logged
+**And** permission decisions are derived from the mappings at decision time (no hardcoded role enum)
+
+**FRs covered:** FR-002, FR-003, FR-160, FR-161, FR-162
+**NFRs covered:** NFR-P2-2
+**Additional:** sprint-change-proposal-2026-08-31.md §4.1/§4.8; orm-target-blueprint-2026-08-31.md A4–A8
+
+### Story 16.3: UserJobBinding & UserRoleBinding (redesigned 2026-08-31) [16-3-user-job-role-bindings]
+
+As a SUPER_ADMIN,
+I want each user bound to one job title with optional role overrides,
+So that the effective role set is data-driven and per-user.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** the binding tables are created
+**Then** `user_job_bindings` links one user to one job_title (assigned_by, assigned_at) with unique (user_id) — 1 user = 1 job title per orm-target-blueprint-2026-08-31.md A9
+**And** `user_role_bindings` links a user to system roles with is_override, unique (user_id, system_role_id) (A10)
+
+**Given** a SUPER_ADMIN maps a user's job title or role override
+**When** the binding is submitted
+**Then** it is persisted, OPA-authorized, and audit-logged
+**And** a user's effective role set is derived from application_role + job_title default + role overrides
+
+**FRs covered:** FR-002, FR-003, FR-163
+**NFRs covered:** NFR-P2-2
+**Additional:** sprint-change-proposal-2026-08-31.md §4.8; orm-target-blueprint-2026-08-31.md A9/A10
+
+### Story 16.4: AuthUser Extension & Plant Working Calendar (redesigned 2026-08-31) [16-4-auth-user-extension-plant-calendar]
+
+As a SUPER_ADMIN,
+I want auth_users extended with verification/lockout fields and plant/department relations plus plant working calendars,
+So that identity state and calendar rules are modeled for auth hardening and scheduling.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** auth_users is extended
+**Then** `auth_users` gains phone_verified_at, force_password_change, failed_login_attempts, locked_at, and lock_reason plus plant_id/department_id relations per orm-target-blueprint-2026-08-31.md A13
+**And** `plant_working_calendars` stores plant_id, year, and workweek_mode (FIVE_DAY/SIX_DAY) with unique (plant_id, year), and `plant_working_calendar_dates` stores per-calendar dates with reasons, unique (working_calendar_id, date) (A12)
+
+**Given** a login attempt or calendar mutation occurs
+**When** the state changes
+**Then** verification/lockout fields are respected by auth and the working calendar drives shift-aware scheduling
+**And** mutations are audit-logged
+
+**FRs covered:** FR-104, FR-105
+**NFRs covered:** NFR-P2-7
+**Additional:** orm-target-blueprint-2026-08-31.md A12/A13
+
+### Story 16.5: OPA Enrichment & SUPER_ADMIN Role-Mapping UI (redesigned 2026-08-31) [16-5-opa-enrichment-role-mapping-ui]
+
+As a SUPER_ADMIN,
+I want subject.roles enriched with application_role + job_title + system_roles and a role-mapping UI,
+So that OPA enforces against the data-driven role model and role assignment is manageable in the UI.
+
+**Acceptance Criteria:**
+
+**Given** the data-driven role model exists
+**When** OPA input is built for a request
+**Then** subject.roles includes application_role plus the user's job_title and system_roles derived from the bindings (sprint-change-proposal-2026-08-31.md §4.8)
+**And** OPA remains the enforcement point; no permission check bypasses OPA
+
+**Given** a SUPER_ADMIN opens the role-mapping screen
+**When** they map a JobTitle/SystemRole to a user
+**Then** the UI (non-native shadcn/Radix selects and pickers) writes user_job_bindings/user_role_bindings via the backend and reflects the change in subsequent OPA decisions
+**And** the mapping mutation is audit-logged
+
+**FRs covered:** FR-160, FR-161, FR-162, FR-163, FR-164
+**NFRs covered:** NFR-P2-2, NFR-P2-10
+**Additional:** sprint-change-proposal-2026-08-31.md §4.7/§4.8
+
+---
+
+## Epic 17: Workorder Execution Maturation
+
+Workorder execution is matured on the blueprint's modules B+C: multi-technician work_assignments, per-assignment work_logs with backdate and stopped_reason, the WO-YYMMXXXX (no-dash) ID with the 6-status lifecycle, per-work-log ratings, multi-technician workorder quality ratings, and the frontend Assign & Work dialog mirroring the reference repair timeline. (New 2026-08-31 — adopted from the syncro Prisma blueprint, modules B+C; see sprint-change-proposal-2026-08-31.md.)
+
+### Story 17.1: Multi-Technician Work Assignments (redesigned 2026-08-31) [17-1-work-assignments]
+
+As a section leader,
+I want workorders assigned to multiple technicians with full assignment audit,
+So that real repair work is modeled per technician and reassignment is traceable.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** the workorder tables are rebuilt
+**Then** `work_assignments` stores work_order_id, technician_id, assigned_by, assigned_at, dropped_at, dropped_by, and is_active with parent_type enum (CORRECTIVE_WO) and unique (work_order_id, technician_id, assigned_at) as `uq_work_assignments_wo_tech_at` per orm-target-blueprint-2026-08-31.md B3 (AD-17)
+**And** a workorder may have multiple active assignments; the existing assigned_technician_id remains the lead technician (FR-113)
+
+**Given** a section leader assigns or drops a technician
+**When** the mutation is submitted
+**Then** a work_assignments row is created, or dropped (is_active=false + dropped_at) on drop, and audit-logged
+**And** dropping an assignment allows reassignment; the lead technician is not derived from a dropped row
+
+**FRs covered:** FR-113, FR-115
+**NFRs covered:** NFR-P2-2, NFR-P2-3
+**Additional:** sprint-change-proposal-2026-08-31.md §4.1; AD-17
+
+### Story 17.2: Work Logs per Assignment (redesigned 2026-08-31) [17-2-work-logs]
+
+As a technician,
+I want work logs recorded against my assignment with backdate and a stopped reason,
+So that interrupted repair time is captured accurately and feeds MTTR.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** work_logs is created
+**Then** `work_logs` stores work_assignment_id, work_order_id, technician_id, start_time, end_time, stopped_reason (WAITING_SPAREPART/SHIFT_END/COMPLETED/OTHER), activity_note (required), and completion_note per orm-target-blueprint-2026-08-31.md B4 (AD-18)
+**And** start/end may be backdated but never earlier than the workorder's created_at (earlier values are rejected)
+
+**Given** a technician or leader creates/edits a work log
+**When** the mutation is submitted
+**Then** it is persisted, audit-logged, and feeds cumulative MTTR
+**And** a workorder cannot reach CLOSED without a completed work log unless a documented reason is provided
+
+**FRs covered:** FR-115, FR-122
+**NFRs covered:** NFR-P2-2, NFR-P2-3
+**Additional:** sprint-change-proposal-2026-08-31.md §4.1; AD-18
+
+### Story 17.3: WO ID Format & 6-Status Lifecycle (redesigned 2026-08-31) [17-3-wo-id-format-status-lifecycle]
+
+As a maintenance leader,
+I want internal workorder IDs in WO-YYMMXXXX (no dash) and a 6-status lifecycle,
+So that IDs are compact and the lifecycle matches the blueprint.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** an internal workorder ID is generated
+**Then** the format is `WO-YYMMXXXX` (no dash) generated as `WO-%s%05d` (e.g. WO-260800001) under transaction + row lock per sprint-change-proposal-2026-08-31.md §4.1
+**And** concurrent creation does not produce duplicate IDs
+
+**Given** a workorder status transition is requested
+**When** the transition is submitted
+**Then** only the 6-status lifecycle is accepted — OPEN, IN_PROGRESS, PENDING_SPAREPART, PENDING_REVIEW, CLOSED plus CANCELLED (from OPEN or IN_PROGRESS only), replacing the 8-status chain
+**And** source remains EXTERNAL/INTERNAL only (no WHATSAPP/WEB/SYSTEM; resolved decision point 5)
+**And** each transition writes a work_order_status_history row and is audit-logged; invalid transitions return INVALID_STATE_TRANSITION
+
+**FRs covered:** FR-113, FR-114
+**NFRs covered:** NFR-P2-3
+**Additional:** sprint-change-proposal-2026-08-31.md §4.1; AD-3/AD-4; DP5
+
+### Story 17.4: Work Log Ratings (redesigned 2026-08-31) [17-4-work-log-ratings]
+
+As a section leader,
+I want work logs rated per configured criterion,
+So that technician performance is evidenced per log and feeds KPI materialization.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** the rating tables are created
+**Then** `work_log_rating_criteria` stores configurable criteria (name, min/max score 1–5, plant_id, sort_order) and `work_log_rating_criterion_categories` links criteria to WOCategories with unique (criterion_id, category_id) per orm-target-blueprint-2026-08-31.md C1
+**And** `work_log_ratings` stores work_log_id, criterion_id, score, rated_by, rated_at, remarks with unique (work_log_id, criterion_id) (C2)
+
+**Given** a work log exists on a closed workorder
+**When** its section leader rates it
+**Then** the rating is persisted (1–5 per criterion), immutable after submission, and audit-logged
+
+**FRs covered:** FR-121
+**NFRs covered:** NFR-P2-2
+**Additional:** sprint-change-proposal-2026-08-31.md §4.2
+
+### Story 17.5: Workorder Quality Rating Multi-Technician (redesigned 2026-08-31) [17-5-workorder-quality-ratings]
+
+As a production leader,
+I want workorder-level quality ratings spanning multiple technicians,
+So that maintenance quality is rated per workorder with per-technician scores.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** the quality rating tables are created
+**Then** `work_order_quality_ratings` stores work_order_id, status (PENDING/SUBMITTED/EXPIRED), due_at, submitted_at/by, and per-dimension scores with unique (work_order_id) per orm-target-blueprint-2026-08-31.md C4
+**And** `work_order_quality_rating_technicians` pivots each rating to its technicians (unique quality_rating_id + technician_id) and `work_order_quality_rating_scores` stores per-criterion scores (C5/C6)
+
+**Given** a maintenance workorder is closed
+**When** the PRODUCTION_LEADER of the affected line rates it
+**Then** the rating spans all technicians via the pivot with each technician's score recorded separately (FR-124)
+**And** one rating per workorder; immutable after submission; status becomes EXPIRED when due_at passes unsubmitted
+
+**FRs covered:** FR-124
+**NFRs covered:** NFR-P2-2
+**Additional:** sprint-change-proposal-2026-08-31.md §4.2
+
+### Story 17.6: Frontend Assign & Work Dialog (redesigned 2026-08-31) [17-6-assign-work-dialog]
+
+As a section leader,
+I want a table-first Assign & Work dialog with multi-technician selection and backdated work logs,
+So that assignment and time logging happen in one place mirroring the reference repair timeline.
+
+**Acceptance Criteria:**
+
+**Given** the workorder table is the hub
+**When** a leader opens Assign & Work from the Actions column
+**Then** the dialog (non-native shadcn/Radix selects and pickers) lets them pick multiple technicians and open a work log per assignment with a DateTimePicker that backdates but never before the workorder's created_at (sprint-change-proposal-2026-08-31.md §4.7)
+**And** each log requires an activity note and supports an optional stopped reason/completion note
+**And** the dialog renders assignment/work-log state from backend data — no client-side status invention
+
+**Given** the dialog is submitted
+**When** the mutation reaches the backend
+**Then** work_assignments/work_logs rows are persisted, audit-logged, and the table/kanban refresh
+
+**FRs covered:** FR-113, FR-115, FR-121, FR-124
+**NFRs covered:** NFR-P2-10
+**Additional:** sprint-change-proposal-2026-08-31.md §4.7
+
+---
+
+## Epic 18: Sparepart BOM & Inventory Maturation
+
+Sparepart master is extended into a full BOM master (bom_code, hierarchy_identity_key, bom_serial, review_status) while the existing taxonomy is retained, and inventory is matured on the blueprint's modules D+E: inventory_locations, inventory_stock_balances replacing sparepart_stock, inventory_transfers, and inventory_reservations. (New 2026-08-31 — adopted from the syncro Prisma blueprint, modules D+E; see sprint-change-proposal-2026-08-31.md.)
+
+### Story 18.1: Sparepart BOM Master Extension (redesigned 2026-08-31) [18-1-sparepart-bom-master]
+
+As an inventory or maintenance leader,
+I want spareparts extended with BOM master identity and review status,
+So that sparepart master data carries BOM hierarchy, versioning, and approval state.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** spareparts is rebuilt
+**Then** `spareparts` gains bom_code (unique), hierarchy_identity_key (unique), bom_serial, bom_code_version, review_status (PENDING_REVIEW/ACTIVE/REJECTED), and rejection_reason per orm-target-blueprint-2026-08-31.md D3
+**And** unique (machine_id, category_id, kind_id, bom_serial) as `uq_spareparts_machine_cat_kind_serial`
+**And** the existing sparepart_taxonomy (dimension CATEGORY) is retained — no new taxonomy table (resolved decision point 2)
+
+**Given** a sparepart is created or its BOM fields change
+**When** the mutation is submitted
+**Then** a PENDING_REVIEW sparepart becomes ACTIVE on approval or REJECTED with a reason, and the mutation is audit-logged
+**And** the BOM code rule is enforced (code excludes type; duplicate identity includes type)
+
+**FRs covered:** FR-144, FR-146
+**NFRs covered:** NFR-P2-2
+**Additional:** sprint-change-proposal-2026-08-31.md §4.3; DP2
+
+### Story 18.2: Inventory Locations (redesigned 2026-08-31) [18-2-inventory-locations]
+
+As an inventory maintenance user,
+I want named inventory locations per plant,
+So that stock is physically traceable to a store or workshop.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** inventory_locations is created
+**Then** `inventory_locations` stores plant_id, code, name, description, and is_active with unique (plant_id, code) per orm-target-blueprint-2026-08-31.md E1 (FR-146a)
+**And** seeding creates one default location per plant named "GUDANG UTAMA" (resolved decision point 3)
+
+**Given** an authorized user creates/updates/deactivates a location
+**When** the mutation is submitted
+**Then** it is persisted within scope (SUPER_ADMIN/MANAGER_MAINTENANCE/INVENTORY_MAINTENANCE) and audit-logged
+
+**FRs covered:** FR-146a
+**NFRs covered:** NFR-P2-2
+**Additional:** sprint-change-proposal-2026-08-31.md §4.3; DP3
+
+### Story 18.3: Inventory Stock Balances (redesigned 2026-08-31) [18-3-inventory-stock-balances]
+
+As an inventory maintenance user,
+I want per-location stock balances,
+So that stock on hand is reported per material code per location and reorder signals fire correctly.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** inventory_stock_balances is created
+**Then** `inventory_stock_balances` stores sparepart_master_id, location_id, available, reserved, consumed, and minimum_stock with unique (sparepart_master_id, location_id) per orm-target-blueprint-2026-08-31.md E2
+**And** it replaces the legacy sparepart_stock(material_code, plant_id) in the dev-phase DB reset (resolved decision point 3)
+
+**Given** stock is queried or mutated
+**When** a balance changes
+**Then** available is reported per material code per location and a reorder warning fires when available <= minimum_stock (FR-146)
+**And** stock mutations are audit-logged and kept atomically consistent with transfers/reservations
+
+**FRs covered:** FR-146, FR-146a
+**NFRs covered:** NFR-P2-2
+**Additional:** sprint-change-proposal-2026-08-31.md §4.3; DP3
+
+### Story 18.4: Inventory Transfers (redesigned 2026-08-31) [18-4-inventory-transfers]
+
+As an inventory maintenance user,
+I want stock transfers between locations with approval,
+So that moving parts between stores is controlled and atomic.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** inventory_transfers is created
+**Then** `inventory_transfers` stores sparepart_master_id, source/destination location, quantity, status (PENDING_APPROVAL/APPROVED/REJECTED), requested_by, reviewed_by, rejection_reason, and reviewed_at per orm-target-blueprint-2026-08-31.md E3
+
+**Given** a transfer is requested
+**When** it is approved
+**Then** the source location is debited and the destination credited atomically in one transaction (FR-146b)
+**And** transfers are rejected with a machine-readable code when source stock is insufficient
+**And** requester/reviewer separation is enforced and the transfer is audit-logged
+
+**FRs covered:** FR-146b
+**NFRs covered:** NFR-P2-2
+**Additional:** sprint-change-proposal-2026-08-31.md §4.3
+
+### Story 18.5: Inventory Reservations (redesigned 2026-08-31) [18-5-inventory-reservations]
+
+As an inventory maintenance user,
+I want stock reserved against workorders,
+So that reserved parts are held for the requesting workorder and not consumed elsewhere.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** inventory_reservations is created
+**Then** `inventory_reservations` stores sparepart_master_id, location_id, quantity, remaining_quantity, status (ACTIVE/CONSUMED/CANCELLED/EXPIRED), reference_type/reference_id, requested_by, consumed_by, and cancelled_by per orm-target-blueprint-2026-08-31.md E4
+
+**Given** a sparepart request reserves stock
+**When** the reservation is created
+**Then** available (not on-hand) stock at the location is reduced and reserved stock cannot be transferred away or consumed by another workorder (FR-146c)
+**And** the reservation is released on request CLOSED/PICKED_UP or explicit cancellation, and expires when the reference is no longer valid
+**And** reservations are audit-logged
+
+**FRs covered:** FR-146c
+**NFRs covered:** NFR-P2-2
+**Additional:** sprint-change-proposal-2026-08-31.md §4.3
+
+---
+
+## Epic 19: Preventive PM Execution Model
+
+Preventive maintenance is rebuilt on the blueprint's module F: pm_frequencies, pm_checksheets with revisioning and active checksheets, pm_checklist_categories/items with measurement or OK/NG inputs, pm_schedules with an approval workflow and pm_schedule_dates, pm_work_orders, and pm_executions/pm_execution_items with NG findings and SPV verification. (New 2026-08-31 — adopted from the syncro Prisma blueprint, module F; see sprint-change-proposal-2026-08-31.md.)
+
+### Story 19.1: PM Frequencies & Checksheets (redesigned 2026-08-31) [19-1-pm-frequencies-checksheets]
+
+As a staff maintenance or leader,
+I want preventive checksheets per machine/frequency with revision control,
+So that the active checklist per machine is versioned and approved.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** the PM foundation tables are created
+**Then** `pm_frequencies` stores code (unique), name, description, sort_order, and is_active per orm-target-blueprint-2026-08-31.md F1
+**And** `pm_checksheets` stores machine_id, frequency_id, revision_no, revision_reason, is_active, supersedes (self-FK), approved_by/approved_at, effective_date, and created_by with unique (machine_id, frequency_id, revision_no) (F2, replacing preventive_programs)
+**And** `active_checksheets` has composite PK (machine_id, frequency_id) pointing at the active checksheet (F3)
+
+**Given** a checksheet is revised
+**When** the revision is approved
+**Then** the new revision supersedes the old (self-FK) and the active_checksheets pointer flips to the new revision
+**And** only an approved revision becomes effective; mutations are audit-logged
+
+**FRs covered:** FR-130, FR-131
+**NFRs covered:** NFR-P2-3
+**Additional:** sprint-change-proposal-2026-08-31.md §4.4
+
+### Story 19.2: PM Checklist Categories & Items (redesigned 2026-08-31) [19-2-pm-checklist-categories-items]
+
+As a staff maintenance or leader,
+I want checklist items grouped by category with measurement or OK/NG inputs,
+So that the checksheet captures each check with its expected bounds and criticality.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** the checklist tables are created
+**Then** `pm_checklist_categories` groups checklist items and `pm_checklist_items` stores checksheet_id, category_id, sequence, parameter_text, check_method, input_type (MEASUREMENT/OK_NG), unit, lsl/nominal/usl, is_critical_flag, reference_document, and calibration_instrument_id per orm-target-blueprint-2026-08-31.md F4
+
+**Given** an authorized user defines or edits checklist items
+**When** the mutation is submitted
+**Then** items are persisted in sequence order, OPA-authorized, and audit-logged
+**And** critical items are flagged for NG escalation at execution time
+
+**FRs covered:** FR-132
+**NFRs covered:** NFR-P2-3
+**Additional:** sprint-change-proposal-2026-08-31.md §4.4
+
+### Story 19.3: PM Schedules & Schedule Dates (redesigned 2026-08-31) [19-3-pm-schedules-dates]
+
+As a staff maintenance or leader,
+I want PM schedules with an approval workflow and per-date status,
+So that planned preventive dates are approved and tracked against execution.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** the schedule tables are created
+**Then** `pm_schedules` stores plant_id, machine_id, checksheet_id + revision, frequency reference, year, status (DRAFT/PENDING_SPV_APPROVAL/PENDING_PRODUCTION_APPROVAL/APPROVED/ACTIVE), approval actors/timestamps, and warnings (JSONB) with unique (plant_id, machine_id, checksheet_id, year) per orm-target-blueprint-2026-08-31.md F5
+**And** `pm_schedule_dates` stores planned_date and status (SCHEDULED/EXECUTED/MISSED/RESCHEDULED) with unique (schedule_id, planned_date)
+
+**Given** a schedule is generated for a year
+**When** it moves through approval
+**Then** SPV and production approvals are sequential (DRAFT → PENDING_SPV_APPROVAL → PENDING_PRODUCTION_APPROVAL → APPROVED → ACTIVE) and audit-logged
+**And** due/overdue dates surface on the calendar/preventive dashboard from the server clock
+
+**FRs covered:** FR-130, FR-131, FR-172
+**NFRs covered:** NFR-P2-3
+**Additional:** sprint-change-proposal-2026-08-31.md §4.4; AD-12
+
+### Story 19.4: PM Work Orders (redesigned 2026-08-31) [19-4-pm-work-orders]
+
+As a leader,
+I want PM workorders generated from schedules with assignment and status,
+So that preventive tasks enter the workorder flow and are executable by technicians.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** pm_work_orders is created
+**Then** `pm_work_orders` stores machine_id, template_id, frequency reference, template_revision, status (SCHEDULED/ASSIGNED/IN_PROGRESS/COMPLETED/OVERDUE), assigned_technician_id, scheduled_date, started_at/completed_at, and certificate_url per orm-target-blueprint-2026-08-31.md F6
+
+**Given** a due schedule generates a PM workorder
+**When** the generation runs
+**Then** a pm_work_order row is created linked to the schedule (idempotent per schedule period) (FR-134)
+**And** assignment transitions SCHEDULED → ASSIGNED, execution transitions IN_PROGRESS → COMPLETED, and overdue dates transition to OVERDUE via the server clock
+**And** mutations are audit-logged
+
+**FRs covered:** FR-131, FR-134
+**NFRs covered:** NFR-P2-3
+**Additional:** sprint-change-proposal-2026-08-31.md §4.4; AD-12
+
+### Story 19.5: PM Executions & Execution Items (redesigned 2026-08-31) [19-5-pm-executions-items]
+
+As a technician and leader,
+I want PM execution recorded per item with NG findings and SPV verification,
+So that performed checks are evidenced with results and non-conforming items are blocked/followed up.
+
+**Acceptance Criteria:**
+
+**Given** the schema redesign migration runs (DB reset + reseed)
+**When** the execution tables are created
+**Then** `pm_executions` stores pm_wo_id (unique), schedule_date_id (unique), technician_id, spv_verifier_id, technician/spv signature refs and signed timestamps, started_at/completed_at, has_ng_items, ng_count, and finding_wo_id per orm-target-blueprint-2026-08-31.md F7
+**And** `pm_execution_items` stores per-item sequence, category_name, parameter_text, check_method, input_type, bounds, actual_value, is_ok, is_ng, ng_notes, ng_photo_url, is_blocked, blocking_wo_id, ng_resolution, and spv verification fields (F8)
+
+**Given** a technician completes the checklist
+**When** the execution is submitted
+**Then** each item result is persisted with actual values (MEASUREMENT) or OK/NG (OK_NG), and critical NG items are flagged and can create a finding workorder linked via finding_wo_id/blocking_wo_id (FR-132)
+**And** an SPV verifies the execution (signature + timestamp); executions with unresolved NG items cannot be closed
+**And** the schedule date is marked EXECUTED and the next due date rolls forward
+
+**FRs covered:** FR-132, FR-133
+**NFRs covered:** NFR-P2-2
+**Additional:** sprint-change-proposal-2026-08-31.md §4.4
+
 

@@ -47,7 +47,7 @@ Why it matters: without it, every repair is a paper trail and every part request
   - *Path:* opens the workorder → assigns a technician → technician logs repair sessions and requests a part → Eko approves the request → storekeeper marks ready → technician finishes → Eko reviews the report and closes.
   - *Climax:* the workorder moves to CLOSED with a complete report and evidence; MTTR recorded.
   - *Resolution:* technician's rating is recorded; the workorder contributes to MTBF/MTTR dashboards.
-  - *Edge case:* the part is not in stock — Eko sees the workorder enter ON_PROCUREMENT, gets WhatsApp updates, and the workorder resumes when the part arrives.
+  - *Edge case:* the part is not in stock — Eko sees the workorder enter PENDING_SPAREPART, gets WhatsApp updates, and the workorder resumes when the part arrives.
 
 - **UJ-2. Dayat (Workshop Leader) handles a workshop internal order.**
   - *Persona + context:* Pak Dayat, workshop leader; a machinery section discovered it needs a turned/milled piece.
@@ -86,7 +86,7 @@ Why it matters: without it, every repair is a paper trail and every part request
 
 - **Workorder (WO)** — a single maintenance job. Dual source: `SYNCED` (imported from the internal system, ID = external `sheet_no`) or `INTERNAL` (created in Syncro, ID = auto-generated `WO-YYMMxxxx`). Parent-child chains are allowed (e.g. machinery workorder → workshop child).
 - **WO Category** — classification with code (01 Breakdown, 02 Preventive, …). Leaders (section leader and above) may add categories.
-- **Repair Session** — a contiguous logged work period on a workorder (start/end, description, technicians). A workorder may have multiple sessions (e.g. split by waiting for a part). Cumulative session duration = workorder MTTR contribution.
+- **Work Log** — `[CHANGED 2026-08-31 — ORM maturation: "repair session" replaced by work log]` a contiguous logged work period (start/end, description) on a work assignment. A workorder has multiple work assignments, each with multiple work logs (e.g. split by waiting for a part). Start/end may be backdated (never before the workorder was created). Cumulative work-log duration = workorder MTTR contribution.
 - **MTTR** — Mean Time To Repair, cumulative sum of all repair-session durations for a workorder.
 - **MTBF** — Mean Time Between Failures, time between consecutive breakdown workorders (`woStopAt`-ordered) for a machine.
 - **Section** — organizational unit (`MACHINERY`, `UTILITY`, `WORKSHOP`) that owns machine groups. A section leader governs only their own machine group(s).
@@ -101,7 +101,7 @@ Why it matters: without it, every repair is a paper trail and every part request
 - **OPA** — Open Policy Agent, the policy engine authorizing every request.
 - **Allowed Actions** — the set of actions OPA returns for the current subject+resource; the frontend uses it to render menus/buttons, enforcement remains server-side.
 
-**Roles** (application role; operational scope is derived separately from machine responsibilities):
+**Roles** (application role; operational scope is derived separately from machine responsibilities). `[CHANGED 2026-08-31 — ORM maturation: the role model is now data-driven — job_titles, system_roles, role_permission_mappings, menu_features tables in addition to application_role; SUPER_ADMIN maps roles per user via the UI; OPA remains the enforcement point, with subject.roles enriched from application_role + job_title + system_role.]`
 
 - **SUPER_ADMIN** — full CRUD, all plants, all actions; manages users, sections, teams, policies, audit.
 - **MANAGER_MAINTENANCE** — global maintenance role across all plants; highest approval tier; break-glass override.
@@ -114,13 +114,27 @@ Why it matters: without it, every repair is a paper trail and every part request
 - **PRODUCTION_LEADER** — production-side login; raises breakdown workorders, acknowledges 4-hour acks via WA link, rates maintenance workorders.
 - **AUDITOR** — read-only across scope, views audit trail and OPA decision log.
 
-**Workorder lifecycle** (canonical state machine): `DRAFT → OPEN → ASSIGNED → IN_PROGRESS → ON_PROCUREMENT → IN_PROGRESS → DONE → CLOSED`, plus `CANCELLED` (from OPEN/ASSIGNED). `ON_PROCUREMENT` means waiting for part/procurement.
+**Workorder lifecycle** (canonical state machine): `OPEN → IN_PROGRESS → PENDING_SPAREPART → PENDING_REVIEW → CLOSED`. `CANCELLED` is allowed from `OPEN` or `IN_PROGRESS`. `PENDING_SPAREPART` (replaces `ON_PROCUREMENT`) means waiting for part/procurement.
 
 **Sparepart request lifecycle** (canonical state machine): `REQUESTED → ACKED → PROCESSING → [READY | PURCHASE_REQUESTED → PART_RECEIVED → READY] → PICKED_UP → CLOSED`.
 
 **MRE code** — manually entered reference number of an external purchase (e.g. `MRE26023xxxx`), recorded on the sparepart request timeline. Not auto-generated.
 
 ## 4. Features
+
+> **CHANGE NOTE — 2026-08-31 ORM Maturation (approved Sprint Change Proposal 2026-08-31)**
+>
+> This Phase 2 PRD is revised to reflect the approved **ORM maturation redesign**: the data schema is **redesigned from scratch following the syncro (Node/Prisma) blueprint** adopted into Syncro-Spring. Because the project is still in the development phase (all current data is seed dummy; real data lives in another database), the redesign ships as a **DB reset + reseed with a fresh migration set (V1..)** — no real data migration is required.
+>
+> Requirement changes landing in this PRD:
+> - **Workorders** — multi-technician assignment (`work_assignments`), work logs per assignment (start/end, backdate, stopped_reason), new 6-status lifecycle (`OPEN → IN_PROGRESS → PENDING_SPAREPART → PENDING_REVIEW → CLOSED`, plus `CANCELLED` from OPEN/IN_PROGRESS). *(FR-113, FR-114, FR-115)*
+> - **Ratings** — per-work-log ratings (`work_log_ratings` + criteria) and per-workorder quality ratings with multiple technicians (`work_order_quality_ratings` + `..._technicians`). *(FR-121, FR-124)*
+> - **Roles** — data-driven role model (`job_titles`, `system_roles`, `role_permission_mappings`, `menu_features`) in addition to `application_role`; SUPER_ADMIN maps roles per user via the UI; OPA remains the enforcement point. *(Glossary §3 Roles)*
+> - **Inventory (new)** — inventory locations, stock balances, transfers, and reservations. *(FR-144, FR-146)*
+> - **New modules adopted from the blueprint** — PM execution model (checksheets/schedules/workorders/executions), KPI monthly materialization, IATF compliance (NC/8D/calibration/ECN), and integration (webhook/audit/signature).
+> - **Multi-language UI (i18n)** — Indonesian (default)/English frontend via `next-intl` (ICU MessageFormat, similar to ARB in .NET); all user-facing UI localized. *(FR-183, FR-184, FR-185)*
+>
+> Only the FRs listed above are amended in place; all other FRs are unchanged. FR-183–FR-185 are new additions (see §4.9).
 
 ### 4.1 Org Structure & Sections
 
@@ -180,7 +194,7 @@ SUPER_ADMIN / MANAGER_MAINTENANCE can create expiry-dated cross-plant teams and 
 
 ### 4.2 Workorder Management
 
-**Description:** The core execution record. Workorders come from two sources: synced from the internal system (source `SYNCED`, ID = external `sheet_no`) or created internally (source `INTERNAL`, auto-generated `WO-YYMMxxxx`, safe under transaction+lock). Lifecycle: `DRAFT → OPEN → ASSIGNED → IN_PROGRESS → ON_PROCUREMENT → IN_PROGRESS → DONE → CLOSED`, plus `CANCELLED` from OPEN/ASSIGNED. `ON_PROCUREMENT` means "waiting for part/procurement": triggered when a sparepart request is not READY, and the workorder resumes IN_PROGRESS when the part is READY. A section leader does not execute workorders themselves — they delegate to technicians. Repair sessions capture work in multi-session flows. Evidence images (before/after) and technical drawings (PDF/JPEG/PNG) are stored in Garage. CP/CPK values and PDF are optional on all categories. FMEA tag, todo/kanban, status-by-leader, ratings, and machine history derive from the workorder. Realizes UJ-1, UJ-2, UJ-3, UJ-6.
+**Description:** The core execution record. Workorders come from two sources: synced from the internal system (source `SYNCED`, ID = external `sheet_no`) or created internally (source `INTERNAL`, auto-generated `WO-YYMMxxxx`, safe under transaction+lock). Lifecycle: `OPEN → IN_PROGRESS → PENDING_SPAREPART → PENDING_REVIEW → CLOSED`, plus `CANCELLED` from OPEN/IN_PROGRESS. `PENDING_SPAREPART` (replaces `ON_PROCUREMENT`) means "waiting for part/procurement": triggered when a sparepart request is not READY, and the workorder resumes IN_PROGRESS when the part is READY. A section leader does not execute workorders themselves — they delegate to technicians. Work is captured per assignment via work logs in multi-log flows. Evidence images (before/after) and technical drawings (PDF/JPEG/PNG) are stored in Garage. CP/CPK values and PDF are optional on all categories. FMEA tag, todo/kanban, status-by-leader, ratings, and machine history derive from the workorder. Realizes UJ-1, UJ-2, UJ-3, UJ-6.
 
 **Functional Requirements:**
 
@@ -212,28 +226,33 @@ Leaders (section leader and above) can create WO categories (code + label, e.g. 
 
 #### FR-113: Assign and delegate workorders
 
-A section leader can assign a workorder (own group) to a technician; a section leader cannot be assigned as the executing technician of their own workorders. `[ASSUMPTION: STAFF_MAINTENANCE may still execute if assigned.]`
+A section leader can assign a workorder (own group) to a technician. Assignment records the primary/lead technician (transition `OPEN → ASSIGNED`) **and** creates a work assignment (`work_assignments`: work_order_id, technician_id, assigned_by, assigned_at, dropped_at, is_active). A workorder can have **multiple work assignments** — one per technician. A section leader cannot be assigned as the executing technician of their own workorders. `[ASSUMPTION: STAFF_MAINTENANCE may still execute if assigned.]`
 
 **Consequences (testable):**
-- Assignment transitions OPEN → ASSIGNED.
+- First assignment transitions OPEN → ASSIGNED and creates a `work_assignments` row with the primary/lead technician.
+- Additional assignments create additional `work_assignments` rows for other technicians without re-transitioning status.
+- Dropping an assignment marks `is_active = false`/sets `dropped_at`; a workorder may be reassigned.
 - The system rejects assigning the section leader as executing technician with a machine-readable code.
 
 #### FR-114: Transition workorder status
 
-A technician can start/resume/complete their assigned workorder; a section leader can manage status (including placing/removing a workorder on ON_PROCUREMENT) within their scope; DONE → CLOSED is a leader action.
+A technician can start/resume/complete their assigned workorder; a section leader can manage status (including placing/removing a workorder on PENDING_SPAREPART) within their scope; PENDING_REVIEW → CLOSED is a leader action. Canonical lifecycle: `OPEN → IN_PROGRESS → PENDING_SPAREPART → PENDING_REVIEW → CLOSED`. `CANCELLED` is allowed from `OPEN` or `IN_PROGRESS` only. `[CHANGED 2026-08-31 — ORM maturation: 8-status lifecycle (ON_PROCUREMENT/DONE/CANCELLED-from-ASSIGNED) replaced by the 6-status lifecycle above.]`
 
 **Consequences (testable):**
 - Invalid transitions return `INVALID_STATE_TRANSITION` (state machine enforced server-side).
-- ON_PROCUREMENT is auto-set when an open sparepart request is not READY, and auto-resumed when the part becomes READY.
+- PENDING_SPAREPART is auto-set when an open sparepart request is not READY, and auto-resumed when the part becomes READY.
+- Cancelling a workorder is only accepted while it is OPEN or IN_PROGRESS; cancel is audit-logged with reason.
 - Each transition writes a `work_order_status_history` entry + audit.
 
-#### FR-115: Record multi repair sessions
+#### FR-115: Record work logs against work assignments
 
-A technician logs repair sessions (start/end, description); a workorder may have several sessions; cumulative duration feeds MTTR.
+A technician logs **work logs** (`work_logs`; `[CHANGED 2026-08-31 — ORM maturation: "repair sessions" replaced by work logs per assignment]`) with start/end and description **against a work assignment** (`work_logs.work_assignment_id`). A workorder has multiple work assignments, each with multiple work logs (e.g. split by waiting for a part). Start/end may be **backdated**, but never before the workorder was created. Cumulative work-log duration feeds MTTR.
 
 **Consequences (testable):**
-- Sessions cannot overlap in a way that double-counts; cumulative MTTR equals sum of session durations.
-- Workorder cannot be DONE with no completed session unless a documented reason is provided.
+- A work log always references an active work assignment of the logging technician.
+- Backdated start/end are accepted when not earlier than the workorder's creation timestamp; earlier values are rejected.
+- Work logs cannot overlap in a way that double-counts; cumulative MTTR equals sum of work-log durations.
+- Workorder cannot reach CLOSED with no completed work log unless a documented reason is provided.
 
 #### FR-116: Upload evidence and technical drawings
 
@@ -278,10 +297,11 @@ A parent workorder cannot be CLOSED while any child workorder is not CANCELLED/C
 
 #### FR-121: Rate technicians (by section leader)
 
-A section leader rates the technicians who executed a workorder in their scope using configurable dimensions rendered as 1–5 stars.
+A section leader rates the technicians who executed a workorder in their scope using configurable dimensions rendered as 1–5 stars. `[CHANGED 2026-08-31 — ORM maturation: ratings now also apply per work log — work_log_ratings (work_log_id, criterion_id, score, rated_by) with work_log_rating_criteria/category config — in addition to workorder-level technician ratings.]`
 
 **Consequences (testable):**
 - Rating dimensions are configurable — the set of dimensions is data, not code `[ASSUMPTION: SUPER_ADMIN or MANAGER_MAINTENANCE configures the default dimension set; see OQ-1]`.
+- A work log can carry its own rating (`work_log_ratings`) scored per configured criterion; ratings are bound to the work log and its technician.
 - Only the section leader of the workorder's group can rate; ratings are immutable after submission.
 - Rating feeds the technician KPI dashboard.
 
@@ -303,12 +323,13 @@ Each category may define a target response time; overrun is surfaced as a KPI.
 
 #### FR-124: Rate maintenance workorders (by production leader)
 
-A production leader rates the maintenance workorder after closure using configurable dimensions rendered as 1–5 stars; the rating is bound to the workorder, not to a technician.
+A production leader rates the maintenance workorder after closure using configurable dimensions rendered as 1–5 stars. `[CHANGED 2026-08-31 — ORM maturation: quality ratings now support **multiple technicians** per workorder via work_order_quality_ratings + work_order_quality_rating_technicians + ..._scores; the rating is bound to the workorder and captures per-technician scores.]`
 
 **Consequences (testable):**
 - Rating dimensions are configurable (shared dimension config with FR-121).
-- Only the PRODUCTION_LEADER of the affected line can rate; one rating per workorder; immutable after submission.
-- Rating feeds the maintenance-workorder quality view and is separate from technician ratings.
+- Only the PRODUCTION_LEADER of the affected line can rate; one rating entry per workorder; immutable after submission.
+- The rating spans all technicians on the workorder via `work_order_quality_rating_technicians`; each technician's score is recorded separately.
+- Rating feeds the maintenance-workorder quality view and is separate from per-work-log technician ratings.
 
 **Out of Scope:**
 - Aggregate production-side dashboards (deferred); only the rating input and per-workorder view in v1.
@@ -402,11 +423,12 @@ A request carries an optional purchase reference URL (e.g. Tokopedia link) visib
 
 #### FR-144: Complete new-item requests
 
-INVENTORY_MAINTENANCE/STOREKEEPER completes a PENDING_COMPLETION request with material code, image, and estimated price; material code links to the existing sparepart/material-code identity.
+INVENTORY_MAINTENANCE/STOREKEEPER completes a PENDING_COMPLETION request with material code, image, and estimated price; material code links to the existing sparepart/material-code identity. `[CHANGED 2026-08-31 — ORM maturation: completed parts can be stocked at an inventory location (FR-146).]`
 
 **Consequences (testable):**
 - Only inventory roles can complete; mutation is audit-logged.
 - Duplicate material code rejected (global uniqueness).
+- Completion may record the target inventory location; the stock balance is updated at that location.
 
 #### FR-145: Record MRE code
 
@@ -418,12 +440,39 @@ INVENTORY_MAINTENANCE records a manual MRE code on PURCHASE_REQUESTED requests; 
 
 #### FR-146: Track stock by material code with OP/OQ
 
-Optional per-plant stock record keyed by material code with stock_on_hand, order point (OP), order quantity (OQ); a reorder warning fires when stock_on_hand <= OP and recommends a purchase request of OQ.
+Optional per-plant stock record keyed by material code with stock_on_hand, order point (OP), order quantity (OQ); a reorder warning fires when stock_on_hand <= OP and recommends a purchase request of OQ. `[CHANGED 2026-08-31 — ORM maturation: inventory is extended with locations, transfers, and reservations.]`
 
 **Consequences (testable):**
 - Stock is keyed by material code (one code = one sparepart), not per-machine taxonomy.
 - Reorder warning is a business-rule signal; the resulting purchase request is authorized separately by OPA.
 - Stock mutation is audit-logged.
+
+#### FR-146a: Manage inventory locations
+
+Inventory stock is held at named **inventory locations** (`inventory_locations`, e.g. plant store, workshop store); stock balances (`inventory_stock_balances`) are tracked per location.
+
+**Consequences (testable):**
+- A location is created/read/updated/deactivated within scope (SUPER_ADMIN/MANAGER_MAINTENANCE/INVENTORY_MAINTENANCE).
+- Stock on hand is reported per material code per location.
+- Mutation is audit-logged.
+
+#### FR-146b: Transfer stock between locations
+
+Inventory personnel record **inventory transfers** (`inventory_transfers`) moving stock of a material code from a source to a target location.
+
+**Consequences (testable):**
+- A transfer debits the source location and credits the target location atomically.
+- Transfers are rejected when source stock is insufficient (machine-readable code).
+- Transfers are audit-logged with actor, quantities, and timestamps.
+
+#### FR-146c: Reserve stock for workorders
+
+A sparepart request can **reserve** stock (`inventory_reservations`) at a location against a workorder; reservations hold stock for the requesting workorder.
+
+**Consequences (testable):**
+- A reservation reduces available (not on-hand) stock at a location; reserved stock cannot be transferred away or consumed by another workorder.
+- Reservation is released on request CLOSED/PICKED_UP or when explicitly cancelled.
+- Reservations are audit-logged.
 
 #### FR-147: Escalate requests and notify via WAHA
 
@@ -612,6 +661,37 @@ When a workorder has been in IN_PROGRESS (net of ON_PROCUREMENT) for more than 4
 **Feature-specific NFRs:**
 - Notifications must be non-blocking to business logic (outbox pattern, no inline send).
 - WAHA credentials/phones must never be logged.
+
+### 4.9 Multi-Language Support (i18n)
+
+**Description:** The web frontend is fully localized in Indonesian (default) and English using `next-intl` with ICU MessageFormat strings (similar to ARB in .NET). All user-facing UI — tables, dialogs, kanban, dashboards, toasts, errors — is localized. Dates, numbers, and currencies render with locale-aware Intl formatting (id-ID vs en-US); the backend remains UTC/ISO with formatting display-only. The user's language choice persists across sessions. Realizes all user journeys (UJ-1…UJ-6). `[ADDED 2026-08-31 — stakeholder requirement added during the ORM maturation redesign.]`
+
+**Functional Requirements:**
+
+#### FR-183: Multi-language UI (Indonesian/English)
+
+The web frontend supports Indonesian (default) and English, using `next-intl` with ICU MessageFormat strings (similar to ARB in .NET). All user-facing UI (tables, dialogs, kanban, dashboards, toasts, errors) is localized.
+
+**Consequences (testable):**
+- All user-visible strings come from message catalogs (en.json, id.json), not hardcoded in components.
+- Missing keys fall back to English; never render raw keys.
+- Locale routing `/id` and `/en`.
+
+#### FR-184: Locale-aware formatting
+
+Dates, numbers, and currencies render with locale-aware Intl formatting (id-ID vs en-US).
+
+**Consequences (testable):**
+- Dates shown in the active locale format.
+- No locale-dependent logic in backend (backend stays UTC/ISO; formatting is display-only).
+
+#### FR-185: Language preference persistence
+
+The user's language choice persists across sessions.
+
+**Consequences (testable):**
+- Switcher in navbar; choice stored (cookie/localStorage).
+- Revisiting the app keeps the chosen language.
 
 ## 5. Non-Goals (Explicit)
 
