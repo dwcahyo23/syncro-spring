@@ -2,7 +2,7 @@
 title: 'Story 15-1: Fresh Flyway V1.. Migration Set & Schema Reset'
 type: 'refactor'
 created: '2026-08-31'
-status: 'in-progress'
+status: 'done'
 baseline_revision: 'e90588487ec10703023571b4f2b5e685244934ce'
 review_loop_iteration: 0
 followup_review_recommended: false
