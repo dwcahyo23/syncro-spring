@@ -35,7 +35,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-25
-last_updated: 2026-08-31
+last_updated: 2026-09-01
+# updated: 2026-09-01 (2) epic-15 done — 15-1 & 15-2 complete (b15b975, d5e5424)
 # updated: 2026-08-31 (2) Epic 18 Multi-Language (i18n) added — Indonesian/English UI via next-intl
 # updated: 2026-08-31 ORM maturation (Major) — schema redesigned from scratch per sprint-change-proposal-2026-08-31; Phase 2 epics re-planned
 # updated: 13-3 done (quarantine & observability); epic-13 in-progress
@@ -218,9 +219,9 @@ development_status:
   # -----------------------------------------------------------------------------
 
   # Epic 15: ORM Foundation & Schema Reset
-  epic-15: backlog
-  15-1-orm-foundation-migration-set: backlog
-  15-2-base-entity-repository-conventions: backlog
+  epic-15: done
+  15-1-orm-foundation-migration-set: done
+  15-2-base-entity-repository-conventions: done
   epic-15-retrospective: optional
 
   # Epic 16: Org & Identity Maturation
