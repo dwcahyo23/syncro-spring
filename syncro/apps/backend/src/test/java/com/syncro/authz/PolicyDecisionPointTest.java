@@ -16,6 +16,7 @@ import com.syncro.authz.application.OpaResource;
 import com.syncro.authz.application.PolicyDecisionPoint;
 import com.syncro.authz.infrastructure.OpaClient;
 import com.syncro.config.AuthzProperties;
+import com.syncro.org.application.EffectiveRoleReader;
 import com.syncro.org.application.OperationalScope;
 import com.syncro.org.application.OperationalScopeService;
 import java.util.List;
@@ -48,6 +49,9 @@ class PolicyDecisionPointTest {
   private OperationalScopeService operationalScopes;
 
   @Mock
+  private EffectiveRoleReader effectiveRoles;
+
+  @Mock
   private DecisionLogService decisionLogs;
 
   private PolicyDecisionPoint pdp;
@@ -60,7 +64,7 @@ class PolicyDecisionPointTest {
   void setUp() {
     pdp = new PolicyDecisionPoint(opaClient,
         new AuthzProperties(List.of(), List.of("/api/v1/health", "/actuator/**"), 30, null, List.of()),
-        operationalScopes, decisionLogs);
+        operationalScopes, effectiveRoles, decisionLogs);
     // Default empty scope so evaluate() paths that carry an identity never see null scope
     Mockito.lenient().when(operationalScopes.derive(any()))
         .thenReturn(new OperationalScope(Set.of(), Set.of(), Set.of()));
@@ -160,7 +164,7 @@ class PolicyDecisionPointTest {
     // A PDP whose AuthzProperties keeps the default always-public paths (health/actuator).
     var pdpWithAlwaysPublic = new PolicyDecisionPoint(opaClient,
         new AuthzProperties(List.of(), List.of(), 30, null, List.of("/api/v1/health", "/actuator/**")),
-        operationalScopes, decisionLogs);
+        operationalScopes, effectiveRoles, decisionLogs);
 
     var decision = pdpWithAlwaysPublic.evaluate(user, resource, "GET /actuator/health", "/actuator/health");
 
@@ -204,6 +208,8 @@ class PolicyDecisionPointTest {
     var teamGroupId = UUID.randomUUID();
     when(operationalScopes.derive(user)).thenReturn(
         new OperationalScope(Set.of(plantId), Set.of(groupId), Set.of(teamGroupId)));
+    when(effectiveRoles.read(UUID.fromString(user.id()), user.applicationRole()))
+        .thenReturn(List.of("MANAGER_MAINTENANCE"));
     when(opaClient.post(eq("allow"), any()))
         .thenReturn(new OpaClient.Result(true, 200, "{\"decision_id\":\"d1\",\"result\":true}", "d1", true));
 

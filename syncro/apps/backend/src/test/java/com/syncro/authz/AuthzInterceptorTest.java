@@ -19,6 +19,7 @@ import com.syncro.authz.application.OpaInput;
 import com.syncro.authz.application.PolicyDecisionPoint;
 import com.syncro.authz.infrastructure.AuthzInterceptor;
 import com.syncro.config.AuthzProperties;
+import com.syncro.org.application.EffectiveRoleReader;
 import com.syncro.org.application.OperationalScope;
 import com.syncro.org.application.OperationalScopeService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -63,6 +64,9 @@ class AuthzInterceptorTest {
   private OperationalScopeService operationalScopes;
 
   @Mock
+  private EffectiveRoleReader effectiveRoles;
+
+  @Mock
   private DecisionLogService decisionLogs;
 
   private PolicyDecisionPoint pdp;
@@ -71,7 +75,7 @@ class AuthzInterceptorTest {
 
   @BeforeEach
   void setUp() {
-    pdp = new PolicyDecisionPoint(opaClient, props, operationalScopes, decisionLogs);
+    pdp = new PolicyDecisionPoint(opaClient, props, operationalScopes, effectiveRoles, decisionLogs);
     Mockito.lenient().when(operationalScopes.derive(any(AuthenticatedUser.class)))
         .thenReturn(new OperationalScope(Set.of(), Set.of(), Set.of()));
     var interceptor = new AuthzInterceptor(pdp, props, new ObjectMapper(), Clock.systemUTC());

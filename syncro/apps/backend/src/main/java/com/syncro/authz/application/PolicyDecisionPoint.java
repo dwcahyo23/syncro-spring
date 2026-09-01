@@ -2,6 +2,7 @@ package com.syncro.authz.application;
 
 import com.syncro.authz.infrastructure.OpaClient;
 import com.syncro.config.AuthzProperties;
+import com.syncro.org.application.EffectiveRoleReader;
 import com.syncro.org.application.OperationalScope;
 import com.syncro.org.application.OperationalScopeService;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
@@ -50,16 +51,19 @@ public class PolicyDecisionPoint {
   private final OpaClient opa;
   private final AuthzProperties authzProperties;
   private final OperationalScopeService operationalScopes;
+  private final EffectiveRoleReader effectiveRoles;
   private final DecisionLogService decisionLogs;
   private final ResourceLoader resourceLoader;
   private final ObjectMapper objectMapper = new ObjectMapper();
   private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
   public PolicyDecisionPoint(OpaClient opa, AuthzProperties authzProperties,
-      OperationalScopeService operationalScopes, DecisionLogService decisionLogs) {
+      OperationalScopeService operationalScopes, EffectiveRoleReader effectiveRoles,
+      DecisionLogService decisionLogs) {
     this.opa = opa;
     this.authzProperties = authzProperties;
     this.operationalScopes = operationalScopes;
+    this.effectiveRoles = effectiveRoles;
     this.decisionLogs = decisionLogs;
     this.resourceLoader = new DefaultResourceLoader();
   }
@@ -168,7 +172,9 @@ public class PolicyDecisionPoint {
     var scope = user != null
         ? operationalScopes.derive(user)
         : new OperationalScope(null, Set.of(), Set.of());
-    var roles = user != null ? List.of(user.applicationRole().name()) : List.<String>of();
+    var roles = user != null
+        ? effectiveRoles.read(UUID.fromString(user.id()), user.applicationRole())
+        : List.<String>of();
     var subject = new OpaSubject(
         user != null ? user.id() : null,
         roles,

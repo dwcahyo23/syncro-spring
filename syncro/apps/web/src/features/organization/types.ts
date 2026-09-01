@@ -84,6 +84,46 @@ export interface SectionViewWithLeader {
   updatedAt: string;
 }
 
+/** System role (read-only config view, story 16-2). */
+export interface SystemRoleView {
+  id: string;
+  code: string;
+  name: string;
+  level: number;
+  active: boolean;
+  description: string | null;
+}
+
+export interface SystemRoleListResponse {
+  items: SystemRoleView[];
+}
+
+/** User job/role bindings (story 16-3/16-5). */
+export interface JobBindingView {
+  id: string;
+  jobTitleId: string;
+}
+
+export interface RoleBindingView {
+  id: string;
+  systemRoleId: string;
+  override: boolean;
+}
+
+export interface UserBindingsView {
+  job: JobBindingView | null;
+  roles: RoleBindingView[];
+}
+
+export interface SetJobRequest {
+  jobTitleId: string | null;
+}
+
+export interface AddRoleRequest {
+  systemRoleId: string;
+  isOverride: boolean;
+}
+
 /** Organization hierarchy read. */
 export interface OrganizationHierarchyView {
   plants: Array<{

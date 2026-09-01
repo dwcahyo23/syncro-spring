@@ -8,12 +8,14 @@ import { ResponsibilityManagement } from "@/features/master-data/responsibilitie
 import { SectionManagement } from "@/features/master-data/sections/section-management";
 import { TeamManagement } from "@/features/master-data/teams/team-management";
 import { DepartmentManagement } from "@/features/organization/components/department-management";
+import { RoleMapping } from "@/features/organization/components/role-mapping";
 import { UserManagement } from "@/features/organization/components/user-management";
 
-const TABS = ["departments", "users", "sections", "teams", "responsibility", "plants"] as const;
+const TABS = ["departments", "users", "roles", "sections", "teams", "responsibility", "plants"] as const;
 const TAB_LABELS: Record<(typeof TABS)[number], string> = {
   departments: "Departments",
   users: "Users",
+  roles: "Roles",
   sections: "Sections",
   teams: "Teams",
   responsibility: "Responsibility",
@@ -39,6 +41,9 @@ export function OrganizationTabsContent() {
       </TabsContent>
       <TabsContent value="users">
         <UserManagement />
+      </TabsContent>
+      <TabsContent value="roles">
+        <RoleMapping />
       </TabsContent>
       <TabsContent value="sections">
         <SectionManagement />
