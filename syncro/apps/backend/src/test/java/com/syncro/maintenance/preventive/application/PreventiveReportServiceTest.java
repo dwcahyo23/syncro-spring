@@ -100,7 +100,7 @@ class PreventiveReportServiceTest {
         new PreventiveScheduleAttachmentEntity(UUID.randomUUID(), scheduleId, "photo.jpg", "image/jpeg",
             "preventive/" + scheduleId + "/a/1.jpg", 3, staffId, NOW, null)));
     when(objectStorage.presignGetUrl(any())).thenReturn("https://garage/presigned");
-    var wo = new WorkOrderEntity("WO-2609-00001", "INTERNAL", null,
+    var wo = new WorkOrderEntity("WO-260900001", "INTERNAL", null,
         com.syncro.maintenance.domain.workorder.WorkOrderStatus.OPEN, UUID.randomUUID(), machineId,
         "Preventive: Monthly lube due 2026-09-15", 0L, null, null, null, NOW, NOW);
     when(workOrders.findByPreventiveScheduleId(scheduleId)).thenReturn(Optional.of(wo));
@@ -118,7 +118,7 @@ class PreventiveReportServiceTest {
     assertThat(report.evidence().getFirst().presignedUrl()).isEqualTo("https://garage/presigned");
     assertThat(report.signaturePresignedUrl()).isEqualTo("https://garage/presigned");
     assertThat(report.signerIdentity()).isEqualTo("Leader");
-    assertThat(report.workOrderId()).isEqualTo("WO-2609-00001");
+    assertThat(report.workOrderId()).isEqualTo("WO-260900001");
   }
 
   @Test

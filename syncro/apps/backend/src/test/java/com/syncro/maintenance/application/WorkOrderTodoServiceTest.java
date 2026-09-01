@@ -55,7 +55,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class WorkOrderTodoServiceTest {
 
   private static final Instant NOW = Instant.parse("2026-08-26T00:00:00Z");
-  private static final String WORKORDER_ID = "WO-2409-00001";
+  private static final String WORKORDER_ID = "WO-240900001";
 
   @Mock
   private WorkOrderRepository workOrders;
@@ -161,9 +161,9 @@ class WorkOrderTodoServiceTest {
   @DisplayName("10.7-SVC-006 P0 todo create on an unknown workorder is 404")
   void createTodoWorkOrderNotFound() {
     var user = assignedTechnician();
-    when(workOrders.findById("WO-2409-NADA")).thenReturn(Optional.empty());
+    when(workOrders.findById("WO-2409NADA")).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.create(user, "WO-2409-NADA", new CreateTodoCommand("Fix", null, null)))
+    assertThatThrownBy(() -> service.create(user, "WO-2409NADA", new CreateTodoCommand("Fix", null, null)))
         .isInstanceOf(TodoWorkOrderNotFoundException.class);
   }
 
@@ -190,9 +190,9 @@ class WorkOrderTodoServiceTest {
   @Test
   @DisplayName("10.7-SVC-008 P0 list on an unknown workorder is 404")
   void listTodosWorkOrderNotFound() {
-    when(workOrders.findById("WO-2409-NADA")).thenReturn(Optional.empty());
+    when(workOrders.findById("WO-2409NADA")).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.list("WO-2409-NADA"))
+    assertThatThrownBy(() -> service.list("WO-2409NADA"))
         .isInstanceOf(TodoWorkOrderNotFoundException.class);
   }
 

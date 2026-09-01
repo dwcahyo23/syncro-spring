@@ -197,14 +197,14 @@ class SparepartRequestServiceTest {
   void createServiceExternalOk() {
     var user = staffUser();
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
-    var workOrder = new WorkOrderEntity("WO-2609-00001", "INTERNAL", null, WorkOrderStatus.OPEN, null, machineId,
+    var workOrder = new WorkOrderEntity("WO-260900001", "INTERNAL", null, WorkOrderStatus.OPEN, null, machineId,
         "fix", 0L, null, null, null, NOW, NOW);
-    when(workOrders.findById("WO-2609-00001")).thenReturn(Optional.of(workOrder));
+    when(workOrders.findById("WO-260900001")).thenReturn(Optional.of(workOrder));
 
     var created = service.create(user, new CreateRequestCommand(SparepartRequestType.SERVICE_EXTERNAL,
-        "WO-2609-00001", null, null, null, 1, null, null, null, null));
+        "WO-260900001", null, null, null, 1, null, null, null, null));
 
-    assertThat(created.workOrderId()).isEqualTo("WO-2609-00001");
+    assertThat(created.workOrderId()).isEqualTo("WO-260900001");
     assertThat(created.status()).isEqualTo(SparepartRequestStatus.REQUESTED);
   }
 
@@ -281,16 +281,16 @@ class SparepartRequestServiceTest {
   void createConsumableWithWorkOrder() {
     var user = staffUser();
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
-    var workOrder = new WorkOrderEntity("WO-2609-00002", "INTERNAL", null, WorkOrderStatus.OPEN, null, machineId,
+    var workOrder = new WorkOrderEntity("WO-260900002", "INTERNAL", null, WorkOrderStatus.OPEN, null, machineId,
         "consumable", 0L, null, null, null, NOW, NOW);
-    when(workOrders.findById("WO-2609-00002")).thenReturn(Optional.of(workOrder));
+    when(workOrders.findById("WO-260900002")).thenReturn(Optional.of(workOrder));
     when(spareparts.findByMaterialCodeIgnoreCase("CONS-1"))
         .thenReturn(Optional.of(sparepartEntity("CONS-1")));
 
     var created = service.create(user, new CreateRequestCommand(SparepartRequestType.CONSUMABLE,
-        "WO-2609-00002", null, null, "CONS-1", 1, null, null, null, null));
+        "WO-260900002", null, null, "CONS-1", 1, null, null, null, null));
 
-    assertThat(created.workOrderId()).isEqualTo("WO-2609-00002");
+    assertThat(created.workOrderId()).isEqualTo("WO-260900002");
     assertThat(created.status()).isEqualTo(SparepartRequestStatus.REQUESTED);
   }
 
@@ -456,48 +456,48 @@ class SparepartRequestServiceTest {
   @DisplayName("12.2-SVC-004 P0 PROCESSING→READY recomputes procurement on a bound workorder")
   void readyOk() {
     var user = inventoryUser();
-    var entity = requestEntityBoundToWorkOrder(SparepartRequestStatus.PROCESSING, "WO-2609-00001");
+    var entity = requestEntityBoundToWorkOrder(SparepartRequestStatus.PROCESSING, "WO-260900001");
     var id = entity.getId();
     when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
-    stubBoundWorkOrder("WO-2609-00001");
+    stubBoundWorkOrder("WO-260900001");
     stubScopedMachine(machineId, user);
 
     var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.READY, null));
 
     assertThat(result.status()).isEqualTo(SparepartRequestStatus.READY);
-    verify(workOrderService).recomputeProcurementState("WO-2609-00001");
+    verify(workOrderService).recomputeProcurementState("WO-260900001");
   }
 
   @Test
   @DisplayName("12.2-SVC-005 P0 PROCESSING→PURCHASE_REQUESTED recomputes ON_PROCUREMENT")
   void purchaseOk() {
     var user = inventoryUser();
-    var entity = requestEntityBoundToWorkOrder(SparepartRequestStatus.PROCESSING, "WO-2609-00001");
+    var entity = requestEntityBoundToWorkOrder(SparepartRequestStatus.PROCESSING, "WO-260900001");
     var id = entity.getId();
     when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
-    stubBoundWorkOrder("WO-2609-00001");
+    stubBoundWorkOrder("WO-260900001");
     stubScopedMachine(machineId, user);
 
     var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PURCHASE_REQUESTED, null));
 
     assertThat(result.status()).isEqualTo(SparepartRequestStatus.PURCHASE_REQUESTED);
-    verify(workOrderService).recomputeProcurementState("WO-2609-00001");
+    verify(workOrderService).recomputeProcurementState("WO-260900001");
   }
 
   @Test
   @DisplayName("12.2-SVC-006 P0 PURCHASE_REQUESTED→PART_RECEIVED recomputes")
   void partReceivedOk() {
     var user = inventoryUser();
-    var entity = requestEntityBoundToWorkOrder(SparepartRequestStatus.PURCHASE_REQUESTED, "WO-2609-00001");
+    var entity = requestEntityBoundToWorkOrder(SparepartRequestStatus.PURCHASE_REQUESTED, "WO-260900001");
     var id = entity.getId();
     when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
-    stubBoundWorkOrder("WO-2609-00001");
+    stubBoundWorkOrder("WO-260900001");
     stubScopedMachine(machineId, user);
 
     var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PART_RECEIVED, null));
 
     assertThat(result.status()).isEqualTo(SparepartRequestStatus.PART_RECEIVED);
-    verify(workOrderService).recomputeProcurementState("WO-2609-00001");
+    verify(workOrderService).recomputeProcurementState("WO-260900001");
   }
 
   @Test
@@ -925,11 +925,11 @@ class SparepartRequestServiceTest {
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(), Set.of(groupId), Set.of()));
     // CONSUMABLE bound to a workorder resolves the workorder's machine (so pickup is
     // allowed), but the hook skips because the request type is not SPAREPART.
-    var entity = new SparepartRequestEntity(UUID.randomUUID(), SparepartRequestType.CONSUMABLE, "WO-2609-00001",
+    var entity = new SparepartRequestEntity(UUID.randomUUID(), SparepartRequestType.CONSUMABLE, "WO-260900001",
         null, null, "CONS-1", (short) 1, null, null, null, SparepartRequestStatus.READY, staffId, NOW, null, NOW, NOW);
     var id = entity.getId();
     when(requests.findByIdForUpdate(id)).thenReturn(Optional.of(entity));
-    stubBoundWorkOrder("WO-2609-00001");
+    stubBoundWorkOrder("WO-260900001");
     stubScopedMachine(machineId, user);
 
     var result = service.transition(user, id, new TransitionCommand(SparepartRequestStatus.PICKED_UP, null));

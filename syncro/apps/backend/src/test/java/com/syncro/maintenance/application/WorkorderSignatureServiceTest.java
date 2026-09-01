@@ -58,7 +58,7 @@ import org.mockito.quality.Strictness;
 class WorkorderSignatureServiceTest {
 
   private static final Instant NOW = Instant.parse("2026-08-28T00:00:00Z");
-  private static final String WORKORDER_ID = "WO-2609-00001";
+  private static final String WORKORDER_ID = "WO-260900001";
 
   @Mock
   private WorkOrderRepository workOrders;
@@ -117,7 +117,7 @@ class WorkorderSignatureServiceTest {
     when(signatureUses.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     var result = service.approve(user, WORKORDER_ID,
-        new ApproveSignatureCommand("workorders/WO-2609-00001/signature/abc.png", "Leader Name"));
+        new ApproveSignatureCommand("workorders/WO-260900001/signature/abc.png", "Leader Name"));
 
     assertThat(result.signerIdentity()).isEqualTo("Leader Name");
     assertThat(result.signedBy()).isEqualTo(leaderId);
@@ -140,7 +140,7 @@ class WorkorderSignatureServiceTest {
     when(signatureUses.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     var result = service.approve(user, WORKORDER_ID,
-        new ApproveSignatureCommand("workorders/WO-2609-00001/signature/abc.png", "  "));
+        new ApproveSignatureCommand("workorders/WO-260900001/signature/abc.png", "  "));
 
     assertThat(result.signerIdentity()).isEqualTo("leader@syncro.dev");
   }
@@ -152,7 +152,7 @@ class WorkorderSignatureServiceTest {
     when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity(WorkOrderStatus.PENDING_REVIEW)));
 
     assertThatThrownBy(() -> service.approve(user, WORKORDER_ID,
-        new ApproveSignatureCommand("workorders/WO-2609-00001/signature/abc.png", "x")))
+        new ApproveSignatureCommand("workorders/WO-260900001/signature/abc.png", "x")))
         .isInstanceOf(SignatureForbiddenException.class);
     verify(signatureUses, never()).saveAndFlush(any());
   }
@@ -165,7 +165,7 @@ class WorkorderSignatureServiceTest {
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
 
     assertThatThrownBy(() -> service.approve(user, WORKORDER_ID,
-        new ApproveSignatureCommand("workorders/WO-2609-00001/signature/abc.png", "x")))
+        new ApproveSignatureCommand("workorders/WO-260900001/signature/abc.png", "x")))
         .isInstanceOf(WorkorderNotTerminalException.class);
     verify(signatureUses, never()).saveAndFlush(any());
   }
@@ -179,7 +179,7 @@ class WorkorderSignatureServiceTest {
     when(signatureUses.existsBySubjectTypeAndSubjectId("WORK_ORDER", WORKORDER_ID)).thenReturn(true);
 
     assertThatThrownBy(() -> service.approve(user, WORKORDER_ID,
-        new ApproveSignatureCommand("workorders/WO-2609-00001/signature/abc.png", "x")))
+        new ApproveSignatureCommand("workorders/WO-260900001/signature/abc.png", "x")))
         .isInstanceOf(SignatureAlreadyExistsException.class);
     verify(signatureUses, never()).saveAndFlush(any());
   }
@@ -188,9 +188,9 @@ class WorkorderSignatureServiceTest {
   @DisplayName("14.3-SIG-006 P0 unknown workorder is 404")
   void approveNotFound() {
     var user = leader();
-    when(workOrders.findById("WO-2609-NADA")).thenReturn(Optional.empty());
+    when(workOrders.findById("WO-2609NADA")).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.approve(user, "WO-2609-NADA",
+    assertThatThrownBy(() -> service.approve(user, "WO-2609NADA",
         new ApproveSignatureCommand("key", "x")))
         .isInstanceOf(SignatureWorkOrderNotFoundException.class);
   }
@@ -207,7 +207,7 @@ class WorkorderSignatureServiceTest {
     when(signatureUses.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException("constraint", constraint));
 
     assertThatThrownBy(() -> service.approve(user, WORKORDER_ID,
-        new ApproveSignatureCommand("workorders/WO-2609-00001/signature/abc.png", "Leader")))
+        new ApproveSignatureCommand("workorders/WO-260900001/signature/abc.png", "Leader")))
         .isInstanceOf(SignatureAlreadyExistsException.class);
   }
 
@@ -248,7 +248,7 @@ class WorkorderSignatureServiceTest {
     when(signatureUses.existsBySubjectTypeAndSubjectId("WORK_ORDER", WORKORDER_ID)).thenReturn(false);
 
     assertThatThrownBy(() -> service.approve(user, WORKORDER_ID,
-        new ApproveSignatureCommand("workorders/WO-2609-00001/signature/abc.png", "n".repeat(201))))
+        new ApproveSignatureCommand("workorders/WO-260900001/signature/abc.png", "n".repeat(201))))
         .isInstanceOf(SignatureValidationException.class);
     verify(signatureUses, never()).saveAndFlush(any());
   }
@@ -264,7 +264,7 @@ class WorkorderSignatureServiceTest {
     when(signatureUses.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     var result = service.approve(user, WORKORDER_ID,
-        new ApproveSignatureCommand("workorders/WO-2609-00001/signature/abc.png", "Manager"));
+        new ApproveSignatureCommand("workorders/WO-260900001/signature/abc.png", "Manager"));
 
     assertThat(result.signerIdentity()).isEqualTo("Manager");
   }
@@ -274,17 +274,17 @@ class WorkorderSignatureServiceTest {
   void presignStorageFailure() {
     when(objectStorage.presignGetUrl(any())).thenThrow(new ObjectStorageException("garage down"));
 
-    assertThatThrownBy(() -> service.presignSignature("workorders/WO-2609-00001/signature/abc.png"))
+    assertThatThrownBy(() -> service.presignSignature("workorders/WO-260900001/signature/abc.png"))
         .isInstanceOf(SignatureStorageException.class);
   }
 
   @Test
   @DisplayName("14.3-SIG-011 P0 presign returns the URL for an existing object")
   void presignOk() {
-    when(objectStorage.presignGetUrl("workorders/WO-2609-00001/signature/abc.png"))
+    when(objectStorage.presignGetUrl("workorders/WO-260900001/signature/abc.png"))
         .thenReturn("https://garage/presigned");
 
-    assertThat(service.presignSignature("workorders/WO-2609-00001/signature/abc.png"))
+    assertThat(service.presignSignature("workorders/WO-260900001/signature/abc.png"))
         .isEqualTo("https://garage/presigned");
   }
 
@@ -294,7 +294,7 @@ class WorkorderSignatureServiceTest {
     var sigId = UUID.randomUUID();
     var entity = new SignatureUseEntity(sigId, leaderId, null, "maintenance", "WORK_ORDER",
         WORKORDER_ID, "APPROVE_WORKORDER", null, null,
-        "workorders/WO-2609-00001/signature/abc.png", null, null, null, null, null, NOW, NOW);
+        "workorders/WO-260900001/signature/abc.png", null, null, null, null, null, NOW, NOW);
     when(signatureUses.findBySubjectTypeAndSubjectId("WORK_ORDER", WORKORDER_ID))
         .thenReturn(Optional.of(entity));
     var signer = new com.syncro.auth.infrastructure.AuthUserEntity(leaderId, "leader@syncro.dev",
@@ -304,7 +304,7 @@ class WorkorderSignatureServiceTest {
     var result = service.getSignature(WORKORDER_ID);
 
     assertThat(result).isNotNull();
-    assertThat(result.signatureObjectKey()).isEqualTo("workorders/WO-2609-00001/signature/abc.png");
+    assertThat(result.signatureObjectKey()).isEqualTo("workorders/WO-260900001/signature/abc.png");
     assertThat(result.signedBy()).isEqualTo(leaderId);
     assertThat(result.signerIdentity()).isEqualTo("leader@syncro.dev");
   }

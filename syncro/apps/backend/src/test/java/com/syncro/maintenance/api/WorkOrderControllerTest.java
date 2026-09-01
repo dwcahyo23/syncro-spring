@@ -197,8 +197,8 @@ class WorkOrderControllerTest {
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"categoryCode\":\"01\",\"machineId\":\"" + MACHINE_ID + "\",\"description\":\"breakdown\"}"))
         .andExpect(status().isCreated())
-        .andExpect(header().string("Location", "/api/v1/workorders/WO-2409-00001"))
-        .andExpect(jsonPath("$.id").value("WO-2409-00001"))
+        .andExpect(header().string("Location", "/api/v1/workorders/WO-240900001"))
+        .andExpect(jsonPath("$.id").value("WO-240900001"))
         .andExpect(jsonPath("$.source").value("INTERNAL"))
         .andExpect(jsonPath("$.status").value("OPEN"))
         .andExpect(jsonPath("$.machineId").value(MACHINE_ID.toString()));
@@ -286,7 +286,7 @@ class WorkOrderControllerTest {
     mockMvc.perform(post("/api/v1/workorders")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
-        .content("{\"categoryCode\":\"01\",\"machineId\":\"" + MACHINE_ID + "\",\"parentId\":\"WO-2409-NADA\"}"))
+        .content("{\"categoryCode\":\"01\",\"machineId\":\"" + MACHINE_ID + "\",\"parentId\":\"WO-2409NADA\"}"))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("PARENT_NOT_FOUND"));
   }
@@ -295,7 +295,7 @@ class WorkOrderControllerTest {
   @DisplayName("LIST-API-001 P0 GET /api/v1/workorders returns the paginated envelope")
   void listReturnsPage() throws Exception {
     var user = user(ApplicationRole.STAFF_MAINTENANCE);
-    var item = new WorkOrderListView("WO-2608-00001", WorkOrderStatus.OPEN, "01", "Breakdown",
+    var item = new WorkOrderListView("WO-260800001", WorkOrderStatus.OPEN, "01", "Breakdown",
         "M-001", "Machine", "P01", ASSIGNEE_ID, "Tech User", "breakdown",
         Instant.parse("2026-08-26T00:00:00Z"), Instant.parse("2026-08-26T00:00:00Z"), null);
     when(lists.list(eq(user), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(20)))
@@ -306,7 +306,7 @@ class WorkOrderControllerTest {
             .param("size", "20")
             .with(auth(user)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.items[0].id").value("WO-2608-00001"))
+        .andExpect(jsonPath("$.items[0].id").value("WO-260800001"))
         .andExpect(jsonPath("$.items[0].status").value("OPEN"))
         .andExpect(jsonPath("$.items[0].categoryCode").value("01"))
         .andExpect(jsonPath("$.items[0].categoryLabel").value("Breakdown"))
@@ -409,10 +409,10 @@ class WorkOrderControllerTest {
   @DisplayName("10.2-API-008 P0 assign returns 200 with the ASSIGNED workorder")
   void assignReturnsOk() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
-    when(workOrders.assign(eq(user), eq("WO-2409-00001"), any(AssignWorkOrderCommand.class)))
+    when(workOrders.assign(eq(user), eq("WO-240900001"), any(AssignWorkOrderCommand.class)))
         .thenReturn(assignedView());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/assign", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/assign", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"assigneeUserId\":\"" + ASSIGNEE_ID + "\"}"))
@@ -425,9 +425,9 @@ class WorkOrderControllerTest {
   @DisplayName("10.2-API-009 P0 assigning a wrong-state workorder maps to 409 INVALID_STATE_TRANSITION")
   void assignInvalidState() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
-    doThrow(new InvalidStateTransitionException()).when(workOrders).assign(eq(user), eq("WO-2409-00001"), any());
+    doThrow(new InvalidStateTransitionException()).when(workOrders).assign(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/assign", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/assign", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"assigneeUserId\":\"" + ASSIGNEE_ID + "\"}"))
@@ -439,9 +439,9 @@ class WorkOrderControllerTest {
   @DisplayName("10.2-API-010 P0 SECTION_LEADER self-assignment maps to 409 SELF_ASSIGNMENT_FORBIDDEN")
   void assignSelf() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
-    doThrow(new SelfAssignmentForbiddenException()).when(workOrders).assign(eq(user), eq("WO-2409-00001"), any());
+    doThrow(new SelfAssignmentForbiddenException()).when(workOrders).assign(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/assign", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/assign", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"assigneeUserId\":\"" + ASSIGNEE_ID + "\"}"))
@@ -453,9 +453,9 @@ class WorkOrderControllerTest {
   @DisplayName("10.2-API-011 P0 unknown workorder maps to 404 WORKORDER_NOT_FOUND")
   void assignWorkOrderNotFound() throws Exception {
     var user = user(ApplicationRole.MANAGER_MAINTENANCE);
-    doThrow(new WorkOrderNotFoundException()).when(workOrders).assign(eq(user), eq("WO-2409-NADA"), any());
+    doThrow(new WorkOrderNotFoundException()).when(workOrders).assign(eq(user), eq("WO-2409NADA"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/assign", "WO-2409-NADA")
+    mockMvc.perform(post("/api/v1/workorders/{id}/assign", "WO-2409NADA")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"assigneeUserId\":\"" + ASSIGNEE_ID + "\"}"))
@@ -467,9 +467,9 @@ class WorkOrderControllerTest {
   @DisplayName("10.2-API-012 P0 unknown assignee maps to 404 USER_NOT_FOUND")
   void assignUserNotFound() throws Exception {
     var user = user(ApplicationRole.MANAGER_MAINTENANCE);
-    doThrow(new WorkOrderUserNotFoundException()).when(workOrders).assign(eq(user), eq("WO-2409-00001"), any());
+    doThrow(new WorkOrderUserNotFoundException()).when(workOrders).assign(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/assign", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/assign", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"assigneeUserId\":\"" + ASSIGNEE_ID + "\"}"))
@@ -487,16 +487,16 @@ class WorkOrderControllerTest {
   @DisplayName("17.1-API-001 P0 create assignment returns 201 with the assignment view")
   void createAssignmentReturnsCreated() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
-    when(workAssignments.assign(eq(user), eq("WO-2409-00001"), any(AssignWorkAssignmentCommand.class)))
+    when(workAssignments.assign(eq(user), eq("WO-240900001"), any(AssignWorkAssignmentCommand.class)))
         .thenReturn(assignmentView());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"technicianId\":\"" + ASSIGNEE_ID + "\"}"))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.id").value(ASSIGNMENT_ID.toString()))
-        .andExpect(jsonPath("$.workOrderId").value("WO-2409-00001"))
+        .andExpect(jsonPath("$.workOrderId").value("WO-240900001"))
         .andExpect(jsonPath("$.technicianId").value(ASSIGNEE_ID.toString()))
         .andExpect(jsonPath("$.isActive").value(true));
   }
@@ -506,7 +506,7 @@ class WorkOrderControllerTest {
   void createAssignmentMissingTechnician() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{}"))
@@ -520,9 +520,9 @@ class WorkOrderControllerTest {
   void createAssignmentDuplicate() throws Exception {
     var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new AssignmentAlreadyExistsException()).when(workAssignments)
-        .assign(eq(user), eq("WO-2409-00001"), any());
+        .assign(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"technicianId\":\"" + ASSIGNEE_ID + "\"}"))
@@ -535,9 +535,9 @@ class WorkOrderControllerTest {
   void createAssignmentForbidden() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
     doThrow(new WorkorderForbiddenException()).when(workAssignments)
-        .assign(eq(user), eq("WO-2409-00001"), any());
+        .assign(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"technicianId\":\"" + ASSIGNEE_ID + "\"}"))
@@ -550,9 +550,9 @@ class WorkOrderControllerTest {
   void createAssignmentWorkOrderNotFound() throws Exception {
     var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new WorkOrderNotFoundException()).when(workAssignments)
-        .assign(eq(user), eq("WO-2409-NADA"), any());
+        .assign(eq(user), eq("WO-2409NADA"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-2409-NADA")
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-2409NADA")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"technicianId\":\"" + ASSIGNEE_ID + "\"}"))
@@ -565,9 +565,9 @@ class WorkOrderControllerTest {
   void createAssignmentInvalidState() throws Exception {
     var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new InvalidStateTransitionException()).when(workAssignments)
-        .assign(eq(user), eq("WO-2409-00001"), any());
+        .assign(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"technicianId\":\"" + ASSIGNEE_ID + "\"}"))
@@ -580,9 +580,9 @@ class WorkOrderControllerTest {
   void createAssignmentSelf() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
     doThrow(new SelfAssignmentForbiddenException()).when(workAssignments)
-        .assign(eq(user), eq("WO-2409-00001"), any());
+        .assign(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"technicianId\":\"" + ASSIGNEE_ID + "\"}"))
@@ -595,9 +595,9 @@ class WorkOrderControllerTest {
   void createAssignmentUserNotFound() throws Exception {
     var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new WorkOrderUserNotFoundException()).when(workAssignments)
-        .assign(eq(user), eq("WO-2409-00001"), any());
+        .assign(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"technicianId\":\"" + ASSIGNEE_ID + "\"}"))
@@ -610,7 +610,7 @@ class WorkOrderControllerTest {
   void createAssignmentBadTechnicianUuid() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"technicianId\":\"not-a-uuid\"}"))
@@ -623,10 +623,10 @@ class WorkOrderControllerTest {
   @DisplayName("17.1-API-009 P0 drop assignment returns 200 with the inactive view")
   void dropAssignmentReturnsOk() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
-    when(workAssignments.drop(eq(user), eq("WO-2409-00001"), eq(ASSIGNMENT_ID)))
+    when(workAssignments.drop(eq(user), eq("WO-240900001"), eq(ASSIGNMENT_ID)))
         .thenReturn(droppedAssignmentView());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/assignments/{assignmentId}/drop", "WO-2409-00001", ASSIGNMENT_ID)
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments/{assignmentId}/drop", "WO-240900001", ASSIGNMENT_ID)
         .with(auth(user)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(ASSIGNMENT_ID.toString()))
@@ -639,9 +639,9 @@ class WorkOrderControllerTest {
   void dropAssignmentAlreadyDropped() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
     doThrow(new AssignmentAlreadyDroppedException()).when(workAssignments)
-        .drop(eq(user), eq("WO-2409-00001"), eq(ASSIGNMENT_ID));
+        .drop(eq(user), eq("WO-240900001"), eq(ASSIGNMENT_ID));
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/assignments/{assignmentId}/drop", "WO-2409-00001", ASSIGNMENT_ID)
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments/{assignmentId}/drop", "WO-240900001", ASSIGNMENT_ID)
         .with(auth(user)))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value("ASSIGNMENT_ALREADY_DROPPED"));
@@ -652,9 +652,9 @@ class WorkOrderControllerTest {
   void dropAssignmentNotFound() throws Exception {
     var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new WorkAssignmentNotFoundException()).when(workAssignments)
-        .drop(eq(user), eq("WO-2409-00001"), eq(ASSIGNMENT_ID));
+        .drop(eq(user), eq("WO-240900001"), eq(ASSIGNMENT_ID));
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/assignments/{assignmentId}/drop", "WO-2409-00001", ASSIGNMENT_ID)
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments/{assignmentId}/drop", "WO-240900001", ASSIGNMENT_ID)
         .with(auth(user)))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("ASSIGNMENT_NOT_FOUND"));
@@ -664,9 +664,9 @@ class WorkOrderControllerTest {
   @DisplayName("17.1-API-012 P0 list assignments returns 200 with the assignments for any authenticated user")
   void listAssignmentsReturnsOk() throws Exception {
     var user = user(ApplicationRole.AUDITOR);
-    when(workAssignments.list("WO-2409-00001")).thenReturn(List.of(assignmentDomain()));
+    when(workAssignments.list("WO-240900001")).thenReturn(List.of(assignmentDomain()));
 
-    mockMvc.perform(get("/api/v1/workorders/{id}/assignments", "WO-2409-00001")
+    mockMvc.perform(get("/api/v1/workorders/{id}/assignments", "WO-240900001")
         .with(auth(user)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].id").value(ASSIGNMENT_ID.toString()))
@@ -678,16 +678,16 @@ class WorkOrderControllerTest {
   @DisplayName("17.1-API-013 P0 list assignments on an unknown workorder maps to 404 WORKORDER_NOT_FOUND")
   void listAssignmentsNotFound() throws Exception {
     var user = user(ApplicationRole.AUDITOR);
-    when(workAssignments.list("WO-2409-NADA")).thenThrow(new WorkOrderNotFoundException());
+    when(workAssignments.list("WO-2409NADA")).thenThrow(new WorkOrderNotFoundException());
 
-    mockMvc.perform(get("/api/v1/workorders/{id}/assignments", "WO-2409-NADA")
+    mockMvc.perform(get("/api/v1/workorders/{id}/assignments", "WO-2409NADA")
         .with(auth(user)))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("WORKORDER_NOT_FOUND"));
   }
 
   private static WorkAssignmentView assignmentDomain() {
-    return new WorkAssignmentView(ASSIGNMENT_ID, "WO-2409-00001", ASSIGNEE_ID,
+    return new WorkAssignmentView(ASSIGNMENT_ID, "WO-240900001", ASSIGNEE_ID,
         UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"), null, null, true);
   }
 
@@ -696,7 +696,7 @@ class WorkOrderControllerTest {
   }
 
   private static WorkAssignmentView droppedAssignmentView() {
-    return new WorkAssignmentView(ASSIGNMENT_ID, "WO-2409-00001", ASSIGNEE_ID,
+    return new WorkAssignmentView(ASSIGNMENT_ID, "WO-240900001", ASSIGNEE_ID,
         UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"), Instant.parse("2026-08-26T01:00:00Z"),
         UUID.randomUUID(), false);
   }
@@ -742,7 +742,7 @@ class WorkOrderControllerTest {
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"categoryCode\":\"01\",\"machineId\":\"" + MACHINE_ID + "\"}"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.id").value("WO-2409-00001"));
+        .andExpect(jsonPath("$.id").value("WO-240900001"));
   }
 
   @Test
@@ -773,15 +773,15 @@ class WorkOrderControllerTest {
   @DisplayName("10.3-API-001 P0 transition returns 200 with the new status")
   void transitionReturnsOk() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
-    when(workOrders.transition(eq(user), eq("WO-2409-00001"), any(TransitionWorkOrderCommand.class)))
+    when(workOrders.transition(eq(user), eq("WO-240900001"), any(TransitionWorkOrderCommand.class)))
         .thenReturn(inProgressView());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"toStatus\":\"IN_PROGRESS\"}"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.id").value("WO-2409-00001"))
+        .andExpect(jsonPath("$.id").value("WO-240900001"))
         .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
   }
 
@@ -790,9 +790,9 @@ class WorkOrderControllerTest {
   void transitionInvalidState() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
     doThrow(new InvalidStateTransitionException()).when(workOrders)
-        .transition(eq(user), eq("WO-2409-00001"), any());
+        .transition(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"toStatus\":\"IN_PROGRESS\"}"))
@@ -805,9 +805,9 @@ class WorkOrderControllerTest {
   void transitionForbidden() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
     doThrow(new WorkorderForbiddenException()).when(workOrders)
-        .transition(eq(user), eq("WO-2409-00001"), any());
+        .transition(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"toStatus\":\"PENDING_SPAREPART\"}"))
@@ -820,9 +820,9 @@ class WorkOrderControllerTest {
   void transitionNotFound() throws Exception {
     var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new WorkOrderNotFoundException()).when(workOrders)
-        .transition(eq(user), eq("WO-2409-NADA"), any());
+        .transition(eq(user), eq("WO-2409NADA"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-NADA")
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409NADA")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"toStatus\":\"CLOSED\"}"))
@@ -835,9 +835,9 @@ class WorkOrderControllerTest {
   void transitionProcurementConflict() throws Exception {
     var user = user(ApplicationRole.MAINTENANCE_LEADER);
     doThrow(new ProcurementRequestConflictException()).when(workOrders)
-        .transition(eq(user), eq("WO-2409-00001"), any());
+        .transition(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"toStatus\":\"PENDING_SPAREPART\"}"))
@@ -850,9 +850,9 @@ class WorkOrderControllerTest {
   void transitionChildrenNotTerminal() throws Exception {
     var user = user(ApplicationRole.MAINTENANCE_LEADER);
     doThrow(new ChildrenNotTerminalException()).when(workOrders)
-        .transition(eq(user), eq("WO-2409-00001"), any());
+        .transition(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"toStatus\":\"CLOSED\"}"))
@@ -865,9 +865,9 @@ class WorkOrderControllerTest {
   void transitionOverrideReasonRequired() throws Exception {
     var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     doThrow(new OverrideReasonRequiredException()).when(workOrders)
-        .transition(eq(user), eq("WO-2409-00001"), any());
+        .transition(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"toStatus\":\"CLOSED\"}"))
@@ -880,7 +880,7 @@ class WorkOrderControllerTest {
   void transitionMissingToStatus() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{}"))
@@ -894,7 +894,7 @@ class WorkOrderControllerTest {
   void transitionUnknownStatus() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"toStatus\":\"NOT_A_STATUS\"}"))
@@ -906,16 +906,16 @@ class WorkOrderControllerTest {
   @DisplayName("10.3-API-010 P1 the override reason is forwarded to the service")
   void transitionForwardsOverrideReason() throws Exception {
     var user = user(ApplicationRole.SUPER_ADMIN);
-    when(workOrders.transition(eq(user), eq("WO-2409-00001"), any(TransitionWorkOrderCommand.class)))
+    when(workOrders.transition(eq(user), eq("WO-240900001"), any(TransitionWorkOrderCommand.class)))
         .thenReturn(closedView());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"toStatus\":\"CLOSED\",\"overrideReason\":\"expedite delivery\"}"));
 
     var captor = ArgumentCaptor.forClass(TransitionWorkOrderCommand.class);
-    org.mockito.Mockito.verify(workOrders).transition(eq(user), eq("WO-2409-00001"), captor.capture());
+    org.mockito.Mockito.verify(workOrders).transition(eq(user), eq("WO-240900001"), captor.capture());
     assertThat(captor.getValue().toStatus()).isEqualTo(WorkOrderStatus.CLOSED);
     assertThat(captor.getValue().overrideReason()).isEqualTo("expedite delivery");
   }
@@ -924,15 +924,15 @@ class WorkOrderControllerTest {
   @DisplayName("10.4-API-001 P0 start session returns 200 with the workorder and sessions")
   void startSessionReturnsOk() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
-    when(workOrders.startSession(eq(user), eq("WO-2409-00001"), any(StartSessionCommand.class)))
+    when(workOrders.startSession(eq(user), eq("WO-240900001"), any(StartSessionCommand.class)))
         .thenReturn(sessionsResult(inProgressView()));
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/sessions", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/sessions", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"description\":\"diagnosis\"}"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.workOrder.id").value("WO-2409-00001"))
+        .andExpect(jsonPath("$.workOrder.id").value("WO-240900001"))
         .andExpect(jsonPath("$.workOrder.status").value("IN_PROGRESS"))
         .andExpect(jsonPath("$.sessions[0].description").value("diagnosis"));
   }
@@ -941,13 +941,13 @@ class WorkOrderControllerTest {
   @DisplayName("10.4-API-002 P0 start session with a blank body still works (description optional)")
   void startSessionWithoutBody() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
-    when(workOrders.startSession(eq(user), eq("WO-2409-00001"), any(StartSessionCommand.class)))
+    when(workOrders.startSession(eq(user), eq("WO-240900001"), any(StartSessionCommand.class)))
         .thenReturn(sessionsResult(inProgressView()));
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/sessions", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/sessions", "WO-240900001")
         .with(auth(user)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.workOrder.id").value("WO-2409-00001"));
+        .andExpect(jsonPath("$.workOrder.id").value("WO-240900001"));
   }
 
   @Test
@@ -955,9 +955,9 @@ class WorkOrderControllerTest {
   void startSessionForbidden() throws Exception {
     var user = user(ApplicationRole.AUDITOR);
     doThrow(new WorkorderForbiddenException()).when(workOrders)
-        .startSession(eq(user), eq("WO-2409-00001"), any());
+        .startSession(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/sessions", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/sessions", "WO-240900001")
         .with(auth(user)))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.code").value("FORBIDDEN"));
@@ -968,9 +968,9 @@ class WorkOrderControllerTest {
   void startSessionAlreadyOpen() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
     doThrow(new SessionAlreadyOpenException()).when(workOrders)
-        .startSession(eq(user), eq("WO-2409-00001"), any());
+        .startSession(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/sessions", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/sessions", "WO-240900001")
         .with(auth(user)))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value("SESSION_ALREADY_OPEN"));
@@ -981,9 +981,9 @@ class WorkOrderControllerTest {
   void startSessionOverlap() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
     doThrow(new SessionOverlapException()).when(workOrders)
-        .startSession(eq(user), eq("WO-2409-00001"), any());
+        .startSession(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/sessions", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/sessions", "WO-240900001")
         .with(auth(user)))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value("SESSION_OVERLAP"));
@@ -994,9 +994,9 @@ class WorkOrderControllerTest {
   void startSessionNotInProgress() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
     doThrow(new WorkorderNotInProgressException()).when(workOrders)
-        .startSession(eq(user), eq("WO-2409-00001"), any());
+        .startSession(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/sessions", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/sessions", "WO-240900001")
         .with(auth(user)))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value("WORKORDER_NOT_IN_PROGRESS"));
@@ -1007,9 +1007,9 @@ class WorkOrderControllerTest {
   void startSessionNotFound() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
     doThrow(new WorkOrderNotFoundException()).when(workOrders)
-        .startSession(eq(user), eq("WO-2409-NADA"), any());
+        .startSession(eq(user), eq("WO-2409NADA"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/sessions", "WO-2409-NADA")
+    mockMvc.perform(post("/api/v1/workorders/{id}/sessions", "WO-2409NADA")
         .with(auth(user)))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("WORKORDER_NOT_FOUND"));
@@ -1019,22 +1019,22 @@ class WorkOrderControllerTest {
   @DisplayName("10.4-API-008 P0 stop session returns 200 with recomputed MTTR")
   void stopSessionReturnsOk() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
-    when(workOrders.stopSession(eq(user), eq("WO-2409-00001")))
+    when(workOrders.stopSession(eq(user), eq("WO-240900001")))
         .thenReturn(sessionsResult(inProgressView()));
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/sessions/stop", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/sessions/stop", "WO-240900001")
         .with(auth(user)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.workOrder.id").value("WO-2409-00001"));
+        .andExpect(jsonPath("$.workOrder.id").value("WO-240900001"));
   }
 
   @Test
   @DisplayName("10.4-API-009 P0 no open session maps to 409 NO_OPEN_SESSION")
   void stopSessionNoOpen() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
-    doThrow(new NoOpenSessionException()).when(workOrders).stopSession(eq(user), eq("WO-2409-00001"));
+    doThrow(new NoOpenSessionException()).when(workOrders).stopSession(eq(user), eq("WO-240900001"));
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/sessions/stop", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/sessions/stop", "WO-240900001")
         .with(auth(user)))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value("NO_OPEN_SESSION"));
@@ -1044,12 +1044,12 @@ class WorkOrderControllerTest {
   @DisplayName("10.4-API-010 P0 list sessions returns 200 for any authenticated user")
   void listSessionsReturnsOk() throws Exception {
     var user = user(ApplicationRole.STAFF_MAINTENANCE);
-    when(workOrders.listSessions("WO-2409-00001")).thenReturn(sessionsResult(inProgressView()));
+    when(workOrders.listSessions("WO-240900001")).thenReturn(sessionsResult(inProgressView()));
 
-    mockMvc.perform(get("/api/v1/workorders/{id}/sessions", "WO-2409-00001")
+    mockMvc.perform(get("/api/v1/workorders/{id}/sessions", "WO-240900001")
         .with(auth(user)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.sessions[0].workOrderId").value("WO-2409-00001"));
+        .andExpect(jsonPath("$.sessions[0].workOrderId").value("WO-240900001"));
   }
 
   @Test
@@ -1057,9 +1057,9 @@ class WorkOrderControllerTest {
   void doneWithoutSessionReasonRequired() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
     doThrow(new DoneWithoutSessionReasonRequiredException()).when(workOrders)
-        .transition(eq(user), eq("WO-2409-00001"), any());
+        .transition(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"toStatus\":\"PENDING_REVIEW\"}"))
@@ -1078,17 +1078,17 @@ class WorkOrderControllerTest {
   @DisplayName("10.5-API-001 P0 technician uploads an attachment and receives 200 with view")
   void uploadAttachmentReturnsOk() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
-    when(evidence.create(eq(user), eq("WO-2409-00001"), any(EvidenceCommand.class)))
+    when(evidence.create(eq(user), eq("WO-240900001"), any(EvidenceCommand.class)))
         .thenReturn(attachmentView());
 
-    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments", "WO-2409-00001")
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments", "WO-240900001")
             .file(new MockMultipartFile("data", "photo.jpg", "image/jpeg", new byte[] {1}))
             .param("filename", "photo.jpg")
             .param("contentType", "image/jpeg")
             .with(auth(user)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(ATTACHMENT_ID.toString()))
-        .andExpect(jsonPath("$.workOrderId").value("WO-2409-00001"))
+        .andExpect(jsonPath("$.workOrderId").value("WO-240900001"))
         .andExpect(jsonPath("$.filename").value("photo.jpg"))
         .andExpect(jsonPath("$.contentType").value("image/jpeg"))
         .andExpect(jsonPath("$.presignedUrl").value("https://presigned/key"));
@@ -1098,10 +1098,10 @@ class WorkOrderControllerTest {
   @DisplayName("10.5-API-002 P0 replace maps the PUT multipart and returns 200")
   void replaceAttachmentReturnsOk() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
-    when(evidence.replace(eq(user), eq("WO-2409-00001"), eq(ATTACHMENT_ID), any(EvidenceCommand.class)))
+    when(evidence.replace(eq(user), eq("WO-240900001"), eq(ATTACHMENT_ID), any(EvidenceCommand.class)))
         .thenReturn(attachmentView());
 
-    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments/{attachmentId}", "WO-2409-00001", ATTACHMENT_ID)
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments/{attachmentId}", "WO-240900001", ATTACHMENT_ID)
             .file(new MockMultipartFile("data", "new.pdf", "application/pdf", new byte[] {9}))
             .param("filename", "new.pdf")
             .param("contentType", "application/pdf")
@@ -1115,13 +1115,13 @@ class WorkOrderControllerTest {
   @DisplayName("10.5-API-003 P0 list returns 200 with attachments for any authenticated user")
   void listAttachmentsReturnsOk() throws Exception {
     var user = user(ApplicationRole.STAFF_MAINTENANCE);
-    when(evidence.list("WO-2409-00001"))
-        .thenReturn(new WorkorderAttachmentsView("WO-2409-00001", List.of(attachmentView())));
+    when(evidence.list("WO-240900001"))
+        .thenReturn(new WorkorderAttachmentsView("WO-240900001", List.of(attachmentView())));
 
-    mockMvc.perform(get("/api/v1/workorders/{id}/attachments", "WO-2409-00001")
+    mockMvc.perform(get("/api/v1/workorders/{id}/attachments", "WO-240900001")
             .with(auth(user)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.workOrderId").value("WO-2409-00001"))
+        .andExpect(jsonPath("$.workOrderId").value("WO-240900001"))
         .andExpect(jsonPath("$.attachments[0].filename").value("photo.jpg"));
   }
 
@@ -1129,9 +1129,9 @@ class WorkOrderControllerTest {
   @DisplayName("10.5-API-004 P0 get single returns 200 with view")
   void getAttachmentReturnsOk() throws Exception {
     var user = user(ApplicationRole.AUDITOR);
-    when(evidence.get("WO-2409-00001", ATTACHMENT_ID)).thenReturn(attachmentView());
+    when(evidence.get("WO-240900001", ATTACHMENT_ID)).thenReturn(attachmentView());
 
-    mockMvc.perform(get("/api/v1/workorders/{id}/attachments/{attachmentId}", "WO-2409-00001", ATTACHMENT_ID)
+    mockMvc.perform(get("/api/v1/workorders/{id}/attachments/{attachmentId}", "WO-240900001", ATTACHMENT_ID)
             .with(auth(user)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(ATTACHMENT_ID.toString()))
@@ -1143,7 +1143,7 @@ class WorkOrderControllerTest {
   void deleteAttachmentReturnsNoContent() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
 
-    mockMvc.perform(delete("/api/v1/workorders/{id}/attachments/{attachmentId}", "WO-2409-00001", ATTACHMENT_ID)
+    mockMvc.perform(delete("/api/v1/workorders/{id}/attachments/{attachmentId}", "WO-240900001", ATTACHMENT_ID)
             .with(auth(user)))
         .andExpect(status().isNoContent());
   }
@@ -1152,9 +1152,9 @@ class WorkOrderControllerTest {
   @DisplayName("10.5-API-006 P0 forbidden upload maps to 403 FORBIDDEN")
   void uploadForbidden() throws Exception {
     var user = user(ApplicationRole.AUDITOR);
-    doThrow(new EvidenceForbiddenException()).when(evidence).create(eq(user), eq("WO-2409-00001"), any());
+    doThrow(new EvidenceForbiddenException()).when(evidence).create(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments", "WO-2409-00001")
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments", "WO-240900001")
             .file(new MockMultipartFile("data", "photo.jpg", "image/jpeg", new byte[] {1}))
             .param("filename", "photo.jpg")
             .param("contentType", "image/jpeg")
@@ -1167,9 +1167,9 @@ class WorkOrderControllerTest {
   @DisplayName("10.5-API-007 P0 unknown workorder maps to 404 WORKORDER_NOT_FOUND")
   void uploadWorkOrderNotFound() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
-    doThrow(new EvidenceWorkOrderNotFoundException()).when(evidence).create(eq(user), eq("WO-2409-NADA"), any());
+    doThrow(new EvidenceWorkOrderNotFoundException()).when(evidence).create(eq(user), eq("WO-2409NADA"), any());
 
-    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments", "WO-2409-NADA")
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments", "WO-2409NADA")
             .file(new MockMultipartFile("data", "photo.jpg", "image/jpeg", new byte[] {1}))
             .param("filename", "photo.jpg")
             .param("contentType", "image/jpeg")
@@ -1183,9 +1183,9 @@ class WorkOrderControllerTest {
   void replaceAttachmentNotFound() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
     doThrow(new EvidenceAttachmentNotFoundException()).when(evidence)
-        .replace(eq(user), eq("WO-2409-00001"), eq(ATTACHMENT_ID), any());
+        .replace(eq(user), eq("WO-240900001"), eq(ATTACHMENT_ID), any());
 
-    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments/{attachmentId}", "WO-2409-00001", ATTACHMENT_ID)
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments/{attachmentId}", "WO-240900001", ATTACHMENT_ID)
             .file(new MockMultipartFile("data", "new.pdf", "application/pdf", new byte[] {9}))
             .param("filename", "new.pdf")
             .param("contentType", "application/pdf")
@@ -1200,9 +1200,9 @@ class WorkOrderControllerTest {
   void uploadValidationError() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
     doThrow(new ValidationException(Map.of("data", "Attachment file exceeds the maximum allowed size.")))
-        .when(evidence).create(eq(user), eq("WO-2409-00001"), any());
+        .when(evidence).create(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments", "WO-2409-00001")
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments", "WO-240900001")
             .file(new MockMultipartFile("data", "photo.jpg", "image/jpeg", new byte[] {1}))
             .param("filename", "photo.jpg")
             .param("contentType", "image/jpeg")
@@ -1217,9 +1217,9 @@ class WorkOrderControllerTest {
   void uploadStorageError() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
     doThrow(new StorageException(new RuntimeException("s3 down"))).when(evidence)
-        .create(eq(user), eq("WO-2409-00001"), any());
+        .create(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments", "WO-2409-00001")
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments", "WO-240900001")
             .file(new MockMultipartFile("data", "photo.jpg", "image/jpeg", new byte[] {1}))
             .param("filename", "photo.jpg")
             .param("contentType", "image/jpeg")
@@ -1233,7 +1233,7 @@ class WorkOrderControllerTest {
   void uploadMissingPart() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
 
-    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments", "WO-2409-00001")
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/attachments", "WO-240900001")
             .file(new MockMultipartFile("data", "photo.jpg", "image/jpeg", new byte[] {1}))
             .param("filename", "photo.jpg")
             .with(auth(user)))
@@ -1250,18 +1250,18 @@ class WorkOrderControllerTest {
   @DisplayName("10.6-API-001 P0 report save returns 200 with the report view")
   void saveReportReturnsOk() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
-    when(report.saveReport(eq(user), eq("WO-2409-00001"), any(SaveReportCommand.class)))
-        .thenReturn(new WorkOrderReportView("WO-2409-00001", "Repair log", "Diagnosis", "Fixed", "Preventive",
+    when(report.saveReport(eq(user), eq("WO-240900001"), any(SaveReportCommand.class)))
+        .thenReturn(new WorkOrderReportView("WO-240900001", "Repair log", "Diagnosis", "Fixed", "Preventive",
             null, null, new BigDecimal("1.5"), "https://presigned/cpk.pdf", "MECHANICAL", "MECHANICAL", null));
 
-    mockMvc.perform(put("/api/v1/workorders/{id}/report", "WO-2409-00001")
+    mockMvc.perform(put("/api/v1/workorders/{id}/report", "WO-240900001")
             .with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"reportChronological\":\"Repair log\",\"reportAnalyze\":\"Diagnosis\","
                 + "\"reportCorrective\":\"Fixed\",\"reportPreventive\":\"Preventive\","
                 + "\"cpk\":1.5,\"fmeaFailureType\":\"MECHANICAL\",\"stopTimeReason\":\"MECHANICAL\"}"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.workOrderId").value("WO-2409-00001"))
+        .andExpect(jsonPath("$.workOrderId").value("WO-240900001"))
         .andExpect(jsonPath("$.reportChronological").value("Repair log"))
         .andExpect(jsonPath("$.reportAnalyze").value("Diagnosis"))
         .andExpect(jsonPath("$.reportCorrective").value("Fixed"))
@@ -1276,9 +1276,9 @@ class WorkOrderControllerTest {
   void saveReportForbidden() throws Exception {
     var user = user(ApplicationRole.AUDITOR);
     doThrow(new ReportForbiddenException()).when(report)
-        .saveReport(eq(user), eq("WO-2409-00001"), any());
+        .saveReport(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(put("/api/v1/workorders/{id}/report", "WO-2409-00001")
+    mockMvc.perform(put("/api/v1/workorders/{id}/report", "WO-240900001")
             .with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"reportChronological\":\"Repair log\"}"))
@@ -1291,9 +1291,9 @@ class WorkOrderControllerTest {
   void saveReportNotFound() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
     doThrow(new ReportWorkOrderNotFoundException()).when(report)
-        .saveReport(eq(user), eq("WO-2409-NADA"), any());
+        .saveReport(eq(user), eq("WO-2409NADA"), any());
 
-    mockMvc.perform(put("/api/v1/workorders/{id}/report", "WO-2409-NADA")
+    mockMvc.perform(put("/api/v1/workorders/{id}/report", "WO-2409NADA")
             .with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"reportChronological\":\"Repair log\"}"))
@@ -1306,9 +1306,9 @@ class WorkOrderControllerTest {
   void saveReportValidationError() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
     doThrow(new WorkOrderReportValidationException(Map.of("cpk", "Capability index must not be negative.")))
-        .when(report).saveReport(eq(user), eq("WO-2409-00001"), any());
+        .when(report).saveReport(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(put("/api/v1/workorders/{id}/report", "WO-2409-00001")
+    mockMvc.perform(put("/api/v1/workorders/{id}/report", "WO-240900001")
             .with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"cpk\":-1.0}"))
@@ -1321,13 +1321,13 @@ class WorkOrderControllerTest {
   @DisplayName("10.6-API-005 P0 report read returns 200 for any authenticated user")
   void getReportReturnsOk() throws Exception {
     var user = user(ApplicationRole.AUDITOR);
-    when(report.getReport("WO-2409-00001"))
+    when(report.getReport("WO-240900001"))
         .thenReturn(reportView("Repair log", "Diagnosis", "Fixed", "Preventive"));
 
-    mockMvc.perform(get("/api/v1/workorders/{id}/report", "WO-2409-00001")
+    mockMvc.perform(get("/api/v1/workorders/{id}/report", "WO-240900001")
             .with(auth(user)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.workOrderId").value("WO-2409-00001"))
+        .andExpect(jsonPath("$.workOrderId").value("WO-240900001"))
         .andExpect(jsonPath("$.cpkPdfPresignedUrl").value("https://presigned/cpk.pdf"));
   }
 
@@ -1335,10 +1335,10 @@ class WorkOrderControllerTest {
   @DisplayName("10.6-API-005b P0 report read on an unknown workorder maps to 404 WORKORDER_NOT_FOUND")
   void getReportNotFound() throws Exception {
     var user = user(ApplicationRole.AUDITOR);
-    when(report.getReport("WO-2409-NADA"))
+    when(report.getReport("WO-2409NADA"))
         .thenThrow(new ReportWorkOrderNotFoundException());
 
-    mockMvc.perform(get("/api/v1/workorders/{id}/report", "WO-2409-NADA")
+    mockMvc.perform(get("/api/v1/workorders/{id}/report", "WO-2409NADA")
             .with(auth(user)))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("WORKORDER_NOT_FOUND"));
@@ -1348,28 +1348,28 @@ class WorkOrderControllerTest {
   @DisplayName("10.6-API-006 P0 CPK PDF upload returns 200 with the report view")
   void uploadCpkPdfReturnsOk() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
-    when(report.uploadCpkPdf(eq(user), eq("WO-2409-00001"), any(CpkPdfCommand.class)))
+    when(report.uploadCpkPdf(eq(user), eq("WO-240900001"), any(CpkPdfCommand.class)))
         .thenReturn(reportView("Repair log", "Diagnosis", "Fixed", "Preventive"));
 
-    mockMvc.perform(multipart("/api/v1/workorders/{id}/report/cpk", "WO-2409-00001")
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/report/cpk", "WO-240900001")
             .file(new MockMultipartFile("data", "capability.pdf", "application/pdf", new byte[] {1}))
             .param("filename", "capability.pdf")
             .param("contentType", "application/pdf")
             .with(auth(user))
             .with(request -> { request.setMethod("PUT"); return request; }))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.workOrderId").value("WO-2409-00001"));
+        .andExpect(jsonPath("$.workOrderId").value("WO-240900001"));
   }
 
   @Test
   @DisplayName("10.6-API-007 P0 CPK PDF delete returns 200 with the cleared view")
   void deleteCpkPdfReturnsOk() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
-    when(report.deleteCpkPdf(eq(user), eq("WO-2409-00001")))
-        .thenReturn(new WorkOrderReportView("WO-2409-00001", null, null, null, null,
+    when(report.deleteCpkPdf(eq(user), eq("WO-240900001")))
+        .thenReturn(new WorkOrderReportView("WO-240900001", null, null, null, null,
             null, null, null, null, null, null, null));
 
-    mockMvc.perform(delete("/api/v1/workorders/{id}/report/cpk", "WO-2409-00001")
+    mockMvc.perform(delete("/api/v1/workorders/{id}/report/cpk", "WO-240900001")
             .with(auth(user)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.cpkPdfPresignedUrl").doesNotExist());
@@ -1380,9 +1380,9 @@ class WorkOrderControllerTest {
   void uploadCpkForbidden() throws Exception {
     var user = user(ApplicationRole.AUDITOR);
     doThrow(new ReportForbiddenException()).when(report)
-        .uploadCpkPdf(eq(user), eq("WO-2409-00001"), any());
+        .uploadCpkPdf(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(multipart("/api/v1/workorders/{id}/report/cpk", "WO-2409-00001")
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/report/cpk", "WO-240900001")
             .file(new MockMultipartFile("data", "capability.pdf", "application/pdf", new byte[] {1}))
             .param("filename", "capability.pdf")
             .param("contentType", "application/pdf")
@@ -1397,9 +1397,9 @@ class WorkOrderControllerTest {
   void uploadCpkValidationError() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
     doThrow(new WorkOrderReportValidationException(Map.of("contentType", "Content type must be application/pdf.")))
-        .when(report).uploadCpkPdf(eq(user), eq("WO-2409-00001"), any());
+        .when(report).uploadCpkPdf(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(multipart("/api/v1/workorders/{id}/report/cpk", "WO-2409-00001")
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/report/cpk", "WO-240900001")
             .file(new MockMultipartFile("data", "capability.png", "image/png", new byte[] {1}))
             .param("filename", "capability.png")
             .param("contentType", "image/png")
@@ -1415,9 +1415,9 @@ class WorkOrderControllerTest {
   void doneWithoutStopTimeReason() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
     doThrow(new StopTimeReasonRequiredException()).when(workOrders)
-        .transition(eq(user), eq("WO-2409-00001"), any());
+        .transition(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/transition", "WO-240900001")
             .with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"toStatus\":\"PENDING_REVIEW\"}"))
@@ -1430,9 +1430,9 @@ class WorkOrderControllerTest {
   void uploadCpkStorageError() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
     doThrow(new WorkOrderReportService.StorageException(new RuntimeException("s3 down"))).when(report)
-        .uploadCpkPdf(eq(user), eq("WO-2409-00001"), any());
+        .uploadCpkPdf(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(multipart("/api/v1/workorders/{id}/report/cpk", "WO-2409-00001")
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/report/cpk", "WO-240900001")
             .file(new MockMultipartFile("data", "capability.pdf", "application/pdf", new byte[] {1}))
             .param("filename", "capability.pdf")
             .param("contentType", "application/pdf")
@@ -1447,7 +1447,7 @@ class WorkOrderControllerTest {
   void uploadCpkMissingPart() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
 
-    mockMvc.perform(multipart("/api/v1/workorders/{id}/report/cpk", "WO-2409-00001")
+    mockMvc.perform(multipart("/api/v1/workorders/{id}/report/cpk", "WO-240900001")
             .file(new MockMultipartFile("data", "capability.pdf", "application/pdf", new byte[] {1}))
             .param("filename", "capability.pdf")
             .with(auth(user))
@@ -1467,10 +1467,10 @@ class WorkOrderControllerTest {
   @DisplayName("10.7-API-001 P0 create todo returns 201 with the todo view")
   void createTodoReturnsOk() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
-    when(todos.create(eq(user), eq("WO-2409-00001"), any(CreateTodoCommand.class)))
+    when(todos.create(eq(user), eq("WO-240900001"), any(CreateTodoCommand.class)))
         .thenReturn(todoView());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/todos", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/todos", "WO-240900001")
             .with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"title\":\"Fix bearing\"}"))
@@ -1484,9 +1484,9 @@ class WorkOrderControllerTest {
   @DisplayName("10.7-API-002 P0 create todo on a terminal workorder maps to 400 WORKORDER_TERMINAL")
   void createTodoTerminal() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
-    doThrow(new WorkOrderTerminalException()).when(todos).create(eq(user), eq("WO-2409-00001"), any());
+    doThrow(new WorkOrderTerminalException()).when(todos).create(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/todos", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/todos", "WO-240900001")
             .with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"title\":\"Fix bearing\"}"))
@@ -1499,9 +1499,9 @@ class WorkOrderControllerTest {
   void createTodoBlankTitle() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
     doThrow(new WorkOrderTodoValidationException(Map.of("title", "Title must not be blank.")))
-        .when(todos).create(eq(user), eq("WO-2409-00001"), any());
+        .when(todos).create(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/todos", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/todos", "WO-240900001")
             .with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"title\":\"\"}"))
@@ -1514,9 +1514,9 @@ class WorkOrderControllerTest {
   @DisplayName("10.7-API-004 P0 list todos returns 200 for any authenticated user")
   void listTodosReturnsOk() throws Exception {
     var user = user(ApplicationRole.AUDITOR);
-    when(todos.list("WO-2409-00001")).thenReturn(List.of(todoDomain()));
+    when(todos.list("WO-240900001")).thenReturn(List.of(todoDomain()));
 
-    mockMvc.perform(get("/api/v1/workorders/{id}/todos", "WO-2409-00001")
+    mockMvc.perform(get("/api/v1/workorders/{id}/todos", "WO-240900001")
             .with(auth(user)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].id").value(TODO_ID.toString()))
@@ -1527,9 +1527,9 @@ class WorkOrderControllerTest {
   @DisplayName("10.7-API-005 P0 list todos on an unknown workorder maps to 404 WORKORDER_NOT_FOUND")
   void listTodosWorkOrderNotFound() throws Exception {
     var user = user(ApplicationRole.AUDITOR);
-    when(todos.list("WO-2409-NADA")).thenThrow(new TodoWorkOrderNotFoundException());
+    when(todos.list("WO-2409NADA")).thenThrow(new TodoWorkOrderNotFoundException());
 
-    mockMvc.perform(get("/api/v1/workorders/{id}/todos", "WO-2409-NADA")
+    mockMvc.perform(get("/api/v1/workorders/{id}/todos", "WO-2409NADA")
             .with(auth(user)))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("WORKORDER_NOT_FOUND"));
@@ -1540,10 +1540,10 @@ class WorkOrderControllerTest {
   void assignTodoReturnsOk() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
     var techId = UUID.randomUUID();
-    when(todos.assign(eq(user), eq("WO-2409-00001"), eq(TODO_ID), eq(techId)))
+    when(todos.assign(eq(user), eq("WO-240900001"), eq(TODO_ID), eq(techId)))
         .thenReturn(todoView());
 
-    mockMvc.perform(put("/api/v1/workorders/{id}/todos/{todoId}/assign", "WO-2409-00001", TODO_ID)
+    mockMvc.perform(put("/api/v1/workorders/{id}/todos/{todoId}/assign", "WO-240900001", TODO_ID)
             .with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"assignedTechnicianId\":\"" + techId + "\"}"))
@@ -1555,10 +1555,10 @@ class WorkOrderControllerTest {
   @DisplayName("10.7-API-007 P0 complete todo returns 200 with the COMPLETED view")
   void completeTodoReturnsOk() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
-    when(todos.complete(eq(user), eq("WO-2409-00001"), eq(TODO_ID)))
+    when(todos.complete(eq(user), eq("WO-240900001"), eq(TODO_ID)))
         .thenReturn(todoView());
 
-    mockMvc.perform(put("/api/v1/workorders/{id}/todos/{todoId}/complete", "WO-2409-00001", TODO_ID)
+    mockMvc.perform(put("/api/v1/workorders/{id}/todos/{todoId}/complete", "WO-240900001", TODO_ID)
             .with(auth(user)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(TODO_ID.toString()));
@@ -1568,10 +1568,10 @@ class WorkOrderControllerTest {
   @DisplayName("10.7-API-008 P0 reorder todo returns 200 with the updated view")
   void reorderTodoReturnsOk() throws Exception {
     var user = user(ApplicationRole.MANAGER_MAINTENANCE);
-    when(todos.reorder(eq(user), eq("WO-2409-00001"), eq(TODO_ID), eq(5)))
+    when(todos.reorder(eq(user), eq("WO-240900001"), eq(TODO_ID), eq(5)))
         .thenReturn(todoView());
 
-    mockMvc.perform(put("/api/v1/workorders/{id}/todos/{todoId}/reorder", "WO-2409-00001", TODO_ID)
+    mockMvc.perform(put("/api/v1/workorders/{id}/todos/{todoId}/reorder", "WO-240900001", TODO_ID)
             .with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"sortOrder\":5}"))
@@ -1584,7 +1584,7 @@ class WorkOrderControllerTest {
   void deleteTodoReturnsNoContent() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
 
-    mockMvc.perform(delete("/api/v1/workorders/{id}/todos/{todoId}", "WO-2409-00001", TODO_ID)
+    mockMvc.perform(delete("/api/v1/workorders/{id}/todos/{todoId}", "WO-240900001", TODO_ID)
             .with(auth(user)))
         .andExpect(status().isNoContent());
   }
@@ -1593,9 +1593,9 @@ class WorkOrderControllerTest {
   @DisplayName("10.7-API-010 P0 delete on an unknown todo maps to 404 TODO_NOT_FOUND")
   void deleteTodoNotFound() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
-    doThrow(new TodoNotFoundException()).when(todos).delete(eq(user), eq("WO-2409-00001"), eq(TODO_ID));
+    doThrow(new TodoNotFoundException()).when(todos).delete(eq(user), eq("WO-240900001"), eq(TODO_ID));
 
-    mockMvc.perform(delete("/api/v1/workorders/{id}/todos/{todoId}", "WO-2409-00001", TODO_ID)
+    mockMvc.perform(delete("/api/v1/workorders/{id}/todos/{todoId}", "WO-240900001", TODO_ID)
             .with(auth(user)))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("TODO_NOT_FOUND"));
@@ -1605,9 +1605,9 @@ class WorkOrderControllerTest {
   @DisplayName("10.7-API-011 P0 forbidden todo mutation maps to 403 FORBIDDEN")
   void createTodoForbidden() throws Exception {
     var user = user(ApplicationRole.AUDITOR);
-    doThrow(new TodoForbiddenException()).when(todos).create(eq(user), eq("WO-2409-00001"), any());
+    doThrow(new TodoForbiddenException()).when(todos).create(eq(user), eq("WO-240900001"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/todos", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/todos", "WO-240900001")
             .with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"title\":\"Fix bearing\"}"))
@@ -1633,9 +1633,9 @@ class WorkOrderControllerTest {
   @DisplayName("10.7-API-013 P0 create todo with unknown workorder maps to 404 WORKORDER_NOT_FOUND")
   void createTodoWorkOrderNotFound() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
-    doThrow(new TodoWorkOrderNotFoundException()).when(todos).create(eq(user), eq("WO-2409-NADA"), any());
+    doThrow(new TodoWorkOrderNotFoundException()).when(todos).create(eq(user), eq("WO-2409NADA"), any());
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/todos", "WO-2409-NADA")
+    mockMvc.perform(post("/api/v1/workorders/{id}/todos", "WO-2409NADA")
             .with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"title\":\"Fix bearing\"}"))
@@ -1654,10 +1654,10 @@ class WorkOrderControllerTest {
   void rateTechnicianReturnsCreated() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
     var rating = ratingView(RatingType.TECHNICIAN, RATED_USER_ID);
-    when(ratings.rateTechnician(eq(user), eq("WO-2409-00001"), any(UUID.class), any(Map.class)))
+    when(ratings.rateTechnician(eq(user), eq("WO-240900001"), any(UUID.class), any(Map.class)))
         .thenReturn(rating);
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/technician", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/technician", "WO-240900001")
             .with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"ratedUserId\":\"" + RATED_USER_ID + "\",\"scores\":{\"SPEED\":4,\"WORK_QUALITY\":5}}"))
@@ -1672,9 +1672,9 @@ class WorkOrderControllerTest {
   void rateTechnicianNotClosed() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
     doThrow(new WorkorderNotClosedException()).when(ratings)
-        .rateTechnician(eq(user), eq("WO-2409-00001"), any(UUID.class), any(Map.class));
+        .rateTechnician(eq(user), eq("WO-240900001"), any(UUID.class), any(Map.class));
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/technician", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/technician", "WO-240900001")
             .with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"ratedUserId\":\"" + RATED_USER_ID + "\",\"scores\":{\"SPEED\":4}}"))
@@ -1687,9 +1687,9 @@ class WorkOrderControllerTest {
   void rateTechnicianForbidden() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
     doThrow(new RatingForbiddenException()).when(ratings)
-        .rateTechnician(eq(user), eq("WO-2409-00001"), any(UUID.class), any(Map.class));
+        .rateTechnician(eq(user), eq("WO-240900001"), any(UUID.class), any(Map.class));
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/technician", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/technician", "WO-240900001")
             .with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"ratedUserId\":\"" + RATED_USER_ID + "\",\"scores\":{\"SPEED\":4}}"))
@@ -1702,9 +1702,9 @@ class WorkOrderControllerTest {
   void rateTechnicianUserNotFound() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
     doThrow(new RatedUserNotFoundException()).when(ratings)
-        .rateTechnician(eq(user), eq("WO-2409-00001"), any(UUID.class), any(Map.class));
+        .rateTechnician(eq(user), eq("WO-240900001"), any(UUID.class), any(Map.class));
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/technician", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/technician", "WO-240900001")
             .with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"ratedUserId\":\"" + RATED_USER_ID + "\",\"scores\":{\"SPEED\":4}}"))
@@ -1717,9 +1717,9 @@ class WorkOrderControllerTest {
   void rateTechnicianNotExecutor() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
     doThrow(new UserNotExecutorException()).when(ratings)
-        .rateTechnician(eq(user), eq("WO-2409-00001"), any(UUID.class), any(Map.class));
+        .rateTechnician(eq(user), eq("WO-240900001"), any(UUID.class), any(Map.class));
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/technician", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/technician", "WO-240900001")
             .with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"ratedUserId\":\"" + RATED_USER_ID + "\",\"scores\":{\"SPEED\":4}}"))
@@ -1732,9 +1732,9 @@ class WorkOrderControllerTest {
   void rateTechnicianDuplicate() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
     doThrow(new RatingAlreadyExistsException()).when(ratings)
-        .rateTechnician(eq(user), eq("WO-2409-00001"), any(UUID.class), any(Map.class));
+        .rateTechnician(eq(user), eq("WO-240900001"), any(UUID.class), any(Map.class));
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/technician", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/technician", "WO-240900001")
             .with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"ratedUserId\":\"" + RATED_USER_ID + "\",\"scores\":{\"SPEED\":4}}"))
@@ -1747,9 +1747,9 @@ class WorkOrderControllerTest {
   void rateTechnicianValidationError() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
     doThrow(new RatingValidationException(Map.of("scores.SPEED", "Score must be an integer between 1 and 5.")))
-        .when(ratings).rateTechnician(eq(user), eq("WO-2409-00001"), any(UUID.class), any(Map.class));
+        .when(ratings).rateTechnician(eq(user), eq("WO-240900001"), any(UUID.class), any(Map.class));
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/technician", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/technician", "WO-240900001")
             .with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"ratedUserId\":\"" + RATED_USER_ID + "\",\"scores\":{\"SPEED\":6}}"))
@@ -1763,10 +1763,10 @@ class WorkOrderControllerTest {
   void rateWorkorderReturnsCreated() throws Exception {
     var user = user(ApplicationRole.PRODUCTION_LEADER);
     var rating = ratingView(RatingType.WORKORDER, null);
-    when(ratings.rateWorkorder(eq(user), eq("WO-2409-00001"), any(Map.class)))
+    when(ratings.rateWorkorder(eq(user), eq("WO-240900001"), any(Map.class)))
         .thenReturn(rating);
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/workorder", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/workorder", "WO-240900001")
             .with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"scores\":{\"SPEED\":3}}"))
@@ -1780,9 +1780,9 @@ class WorkOrderControllerTest {
   void rateWorkorderNotFound() throws Exception {
     var user = user(ApplicationRole.PRODUCTION_LEADER);
     doThrow(new RatingWorkOrderNotFoundException()).when(ratings)
-        .rateWorkorder(eq(user), eq("WO-2409-NADA"), any(Map.class));
+        .rateWorkorder(eq(user), eq("WO-2409NADA"), any(Map.class));
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/workorder", "WO-2409-NADA")
+    mockMvc.perform(post("/api/v1/workorders/{id}/ratings/workorder", "WO-2409NADA")
             .with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"scores\":{\"SPEED\":3}}"))
@@ -1794,9 +1794,9 @@ class WorkOrderControllerTest {
   @DisplayName("10.8-API-010 P0 list ratings returns 200 with the ratings")
   void listRatingsReturnsOk() throws Exception {
     var user = user(ApplicationRole.AUDITOR);
-    when(ratings.listRatings("WO-2409-00001")).thenReturn(List.of(ratingDomain(RatingType.TECHNICIAN, RATED_USER_ID)));
+    when(ratings.listRatings("WO-240900001")).thenReturn(List.of(ratingDomain(RatingType.TECHNICIAN, RATED_USER_ID)));
 
-    mockMvc.perform(get("/api/v1/workorders/{id}/ratings", "WO-2409-00001")
+    mockMvc.perform(get("/api/v1/workorders/{id}/ratings", "WO-240900001")
             .with(auth(user)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].ratingType").value("TECHNICIAN"))
@@ -1807,7 +1807,7 @@ class WorkOrderControllerTest {
   @DisplayName("10.8-API-011 P0 ratings page returns 200 with rateable workorders")
   void ratingsPageReturnsOk() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
-    var item = new WorkOrderRatingService.RateableWorkorder("WO-2409-00001", "INTERNAL", WorkOrderStatus.CLOSED,
+    var item = new WorkOrderRatingService.RateableWorkorder("WO-240900001", "INTERNAL", WorkOrderStatus.CLOSED,
         "01", MACHINE_ID, "breakdown", ASSIGNEE_ID, Instant.parse("2026-08-26T00:00:00Z"),
         List.of(ASSIGNEE_ID));
     when(ratings.listRateableClosed(user)).thenReturn(List.of(item));
@@ -1815,12 +1815,12 @@ class WorkOrderControllerTest {
     mockMvc.perform(get("/api/v1/workorders/ratings")
             .with(auth(user)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$[0].id").value("WO-2409-00001"))
+        .andExpect(jsonPath("$[0].id").value("WO-240900001"))
         .andExpect(jsonPath("$[0].executorPool[0]").value(ASSIGNEE_ID.toString()));
   }
 
   private static WorkorderRating ratingDomain(RatingType ratingType, UUID ratedUserId) {
-    return new WorkorderRating(UUID.randomUUID(), "WO-2409-00001", ratingType, ratedUserId,
+    return new WorkorderRating(UUID.randomUUID(), "WO-240900001", ratingType, ratedUserId,
         UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"), Map.of("SPEED", 4));
   }
 
@@ -1830,12 +1830,12 @@ class WorkOrderControllerTest {
 
   private static WorkOrderReportView reportView(String chronological, String analyze, String corrective,
       String preventive) {
-    return new WorkOrderReportView("WO-2409-00001", chronological, analyze, corrective, preventive,
+    return new WorkOrderReportView("WO-240900001", chronological, analyze, corrective, preventive,
         null, null, null, "https://presigned/cpk.pdf", null, null, null);
   }
 
   private static WorkOrderTodo todoDomain() {
-    return new WorkOrderTodo(TODO_ID, "WO-2409-00001", "Fix bearing", null, null, TodoStatus.PENDING, 0,
+    return new WorkOrderTodo(TODO_ID, "WO-240900001", "Fix bearing", null, null, TodoStatus.PENDING, 0,
         UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"), Instant.parse("2026-08-26T00:00:00Z"), null);
   }
 
@@ -1844,40 +1844,40 @@ class WorkOrderControllerTest {
   }
 
   private static WorkorderAttachmentView attachmentView() {
-    return new WorkorderAttachmentView(ATTACHMENT_ID, "WO-2409-00001", "photo.jpg", "image/jpeg",
-        "workorders/WO-2409-00001/photo.jpg", 3, UPLOADER_ID, Instant.parse("2026-08-26T00:00:00Z"), null,
+    return new WorkorderAttachmentView(ATTACHMENT_ID, "WO-240900001", "photo.jpg", "image/jpeg",
+        "workorders/WO-240900001/photo.jpg", 3, UPLOADER_ID, Instant.parse("2026-08-26T00:00:00Z"), null,
         "https://presigned/key");
   }
 
   private static WorkOrder inProgressView() {
-    return new WorkOrder("WO-2409-00001", "INTERNAL", WorkOrderStatus.IN_PROGRESS, CATEGORY_ID, MACHINE_ID,
+    return new WorkOrder("WO-240900001", "INTERNAL", WorkOrderStatus.IN_PROGRESS, CATEGORY_ID, MACHINE_ID,
         "breakdown", null, ASSIGNEE_ID, UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"),
         Instant.parse("2026-08-26T00:00:00Z"), null, null, null, null, null, null, null, null, null, null, null,
         null, null, null);
   }
 
   private static WorkOrder closedView() {
-    return new WorkOrder("WO-2409-00001", "INTERNAL", WorkOrderStatus.CLOSED, CATEGORY_ID, MACHINE_ID,
+    return new WorkOrder("WO-240900001", "INTERNAL", WorkOrderStatus.CLOSED, CATEGORY_ID, MACHINE_ID,
         "breakdown", null, ASSIGNEE_ID, UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"),
         Instant.parse("2026-08-26T00:00:00Z"), null, null, null, null, null, null, null, null, null, null, null,
         null, null, null);
   }
 
   private static WorkOrder view() {
-    return new WorkOrder("WO-2409-00001", "INTERNAL", WorkOrderStatus.OPEN, CATEGORY_ID, MACHINE_ID, "breakdown",
+    return new WorkOrder("WO-240900001", "INTERNAL", WorkOrderStatus.OPEN, CATEGORY_ID, MACHINE_ID, "breakdown",
         null, null, UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"), Instant.parse("2026-08-26T00:00:00Z"),
         null, null, null, null, null, null, null, null, null, null, null, null, null, null);
   }
 
   private static WorkOrder assignedView() {
-    return new WorkOrder("WO-2409-00001", "INTERNAL", WorkOrderStatus.IN_PROGRESS, CATEGORY_ID, MACHINE_ID, "breakdown",
+    return new WorkOrder("WO-240900001", "INTERNAL", WorkOrderStatus.IN_PROGRESS, CATEGORY_ID, MACHINE_ID, "breakdown",
         null, ASSIGNEE_ID, UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"), Instant.parse("2026-08-26T00:00:00Z"),
         null, null, null, null, null, null, null, null, null, null, null, null, null, null);
   }
 
   private static RepairSessionsResult sessionsResult(WorkOrder workOrder) {
     return new RepairSessionsResult(workOrder, List.of(new RepairSession(
-        UUID.randomUUID(), "WO-2409-00001", ASSIGNEE_ID, "diagnosis",
+        UUID.randomUUID(), "WO-240900001", ASSIGNEE_ID, "diagnosis",
         Instant.parse("2026-08-26T00:00:00Z"), null, null)));
   }
 
@@ -1889,7 +1889,7 @@ class WorkOrderControllerTest {
   @DisplayName("14.3-API-001 P0 print report returns the aggregate view")
   void printReportOk() throws Exception {
     var reportView = new WorkorderPrintReportView(
-        new PrintReportHeaderView("WO-2409-00001", "INTERNAL", "PENDING_REVIEW", "01", "Breakdown",
+        new PrintReportHeaderView("WO-240900001", "INTERNAL", "PENDING_REVIEW", "01", "Breakdown",
             MACHINE_ID, "M-001", "Pump", "P01", "breakdown", ASSIGNEE_ID, "Tech", null, null, null),
         List.of(new PrintReportSessionView(UUID.randomUUID(), ASSIGNEE_ID, "diagnosis",
             Instant.parse("2026-08-26T00:00:00Z"), null, null)),
@@ -1899,12 +1899,12 @@ class WorkOrderControllerTest {
         List.of(new PrintReportPartView(UUID.randomUUID(), "MRE-001", (short) 2, "READY", null)),
         new PrintReportSignatureView("https://presigned/sig", "Leader", ASSIGNEE_ID,
             Instant.parse("2026-08-26T00:00:00Z")));
-    when(printReports.get("WO-2409-00001")).thenReturn(reportView);
+    when(printReports.get("WO-240900001")).thenReturn(reportView);
 
-    mockMvc.perform(get("/api/v1/workorders/{id}/print-report", "WO-2409-00001")
+    mockMvc.perform(get("/api/v1/workorders/{id}/print-report", "WO-240900001")
         .with(auth(user(ApplicationRole.TECHNICIAN))))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.header.id").value("WO-2409-00001"))
+        .andExpect(jsonPath("$.header.id").value("WO-240900001"))
         .andExpect(jsonPath("$.header.categoryCode").value("01"))
         .andExpect(jsonPath("$.sessions[0].description").value("diagnosis"))
         .andExpect(jsonPath("$.evidence[0].filename").value("photo.jpg"))
@@ -1915,9 +1915,9 @@ class WorkOrderControllerTest {
   @Test
   @DisplayName("14.3-API-002 P0 print report on an unknown workorder is 404")
   void printReportNotFound() throws Exception {
-    doThrow(new PrintReportWorkOrderNotFoundException()).when(printReports).get("WO-2409-NADA");
+    doThrow(new PrintReportWorkOrderNotFoundException()).when(printReports).get("WO-2409NADA");
 
-    mockMvc.perform(get("/api/v1/workorders/{id}/print-report", "WO-2409-NADA")
+    mockMvc.perform(get("/api/v1/workorders/{id}/print-report", "WO-2409NADA")
         .with(auth(user(ApplicationRole.TECHNICIAN))))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("WORKORDER_NOT_FOUND"));
@@ -1927,23 +1927,23 @@ class WorkOrderControllerTest {
   @DisplayName("14.3-API-003 P0 leader approves a DONE workorder")
   void approveOk() throws Exception {
     var user = user(ApplicationRole.MAINTENANCE_LEADER);
-    var result = new SignatureResult(UUID.randomUUID(), "workorders/WO-2409-00001/signature/abc.png",
+    var result = new SignatureResult(UUID.randomUUID(), "workorders/WO-240900001/signature/abc.png",
         "Leader", UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"));
-    when(signatures.approve(eq(user), eq("WO-2409-00001"), any(ApproveSignatureCommand.class))).thenReturn(result);
+    when(signatures.approve(eq(user), eq("WO-240900001"), any(ApproveSignatureCommand.class))).thenReturn(result);
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/approve", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/approve", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
-        .content("{\"signatureObjectKey\":\"workorders/WO-2409-00001/signature/abc.png\",\"signerIdentity\":\"Leader\"}"))
+        .content("{\"signatureObjectKey\":\"workorders/WO-240900001/signature/abc.png\",\"signerIdentity\":\"Leader\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.signerIdentity").value("Leader"))
-        .andExpect(jsonPath("$.signatureObjectKey").value("workorders/WO-2409-00001/signature/abc.png"));
+        .andExpect(jsonPath("$.signatureObjectKey").value("workorders/WO-240900001/signature/abc.png"));
   }
 
   @Test
   @DisplayName("14.3-API-004 P0 approve with a blank signature key is 400 VALIDATION_ERROR")
   void approveMissingKey() throws Exception {
-    mockMvc.perform(post("/api/v1/workorders/{id}/approve", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/approve", "WO-240900001")
         .with(auth(user(ApplicationRole.MAINTENANCE_LEADER)))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"signatureObjectKey\":\"\"}"))
@@ -1956,9 +1956,9 @@ class WorkOrderControllerTest {
   void approveForbidden() throws Exception {
     var user = user(ApplicationRole.AUDITOR);
     doThrow(new SignatureForbiddenException()).when(signatures)
-        .approve(eq(user), eq("WO-2409-00001"), any(ApproveSignatureCommand.class));
+        .approve(eq(user), eq("WO-240900001"), any(ApproveSignatureCommand.class));
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/approve", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/approve", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"signatureObjectKey\":\"key\"}"))
@@ -1971,9 +1971,9 @@ class WorkOrderControllerTest {
   void approveDuplicate() throws Exception {
     var user = user(ApplicationRole.SUPER_ADMIN);
     doThrow(new SignatureAlreadyExistsException()).when(signatures)
-        .approve(eq(user), eq("WO-2409-00001"), any(ApproveSignatureCommand.class));
+        .approve(eq(user), eq("WO-240900001"), any(ApproveSignatureCommand.class));
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/approve", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/approve", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"signatureObjectKey\":\"key\"}"))
@@ -1986,9 +1986,9 @@ class WorkOrderControllerTest {
   void approveNotTerminal() throws Exception {
     var user = user(ApplicationRole.SUPER_ADMIN);
     doThrow(new WorkorderNotTerminalException()).when(signatures)
-        .approve(eq(user), eq("WO-2409-00001"), any(ApproveSignatureCommand.class));
+        .approve(eq(user), eq("WO-240900001"), any(ApproveSignatureCommand.class));
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/approve", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/approve", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"signatureObjectKey\":\"key\"}"))
@@ -2001,9 +2001,9 @@ class WorkOrderControllerTest {
   void approveMachineNotFound() throws Exception {
     var user = user(ApplicationRole.SUPER_ADMIN);
     doThrow(new SignatureMachineNotFoundException()).when(signatures)
-        .approve(eq(user), eq("WO-2409-00001"), any(ApproveSignatureCommand.class));
+        .approve(eq(user), eq("WO-240900001"), any(ApproveSignatureCommand.class));
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/approve", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/approve", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"signatureObjectKey\":\"key\"}"))
@@ -2016,9 +2016,9 @@ class WorkOrderControllerTest {
   void approveValidationError() throws Exception {
     var user = user(ApplicationRole.SUPER_ADMIN);
     doThrow(new SignatureValidationException(java.util.Map.of("signerIdentity", "Signer identity must be at most 200 characters.")))
-        .when(signatures).approve(eq(user), eq("WO-2409-00001"), any(ApproveSignatureCommand.class));
+        .when(signatures).approve(eq(user), eq("WO-240900001"), any(ApproveSignatureCommand.class));
 
-    mockMvc.perform(post("/api/v1/workorders/{id}/approve", "WO-2409-00001")
+    mockMvc.perform(post("/api/v1/workorders/{id}/approve", "WO-240900001")
         .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"signatureObjectKey\":\"key\"}"))

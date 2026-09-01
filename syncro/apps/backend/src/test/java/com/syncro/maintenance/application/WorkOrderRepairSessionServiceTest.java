@@ -61,7 +61,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class WorkOrderRepairSessionServiceTest {
 
   private static final Instant NOW = Instant.parse("2026-08-26T00:00:00Z");
-  private static final String WORKORDER_ID = "WO-2409-00001";
+  private static final String WORKORDER_ID = "WO-240900001";
 
   @Mock
   private WorkOrderIdGenerator idGenerator;
@@ -212,9 +212,9 @@ class WorkOrderRepairSessionServiceTest {
   @DisplayName("10.4-SVC-007 P0 an unknown workorder is 404 WORKORDER_NOT_FOUND")
   void startNotFound() {
     var user = assignedTechnician();
-    when(workOrders.findByIdForUpdate("WO-2409-NADA")).thenReturn(Optional.empty());
+    when(workOrders.findByIdForUpdate("WO-2409NADA")).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.startSession(user, "WO-2409-NADA", new StartSessionCommand("x")))
+    assertThatThrownBy(() -> service.startSession(user, "WO-2409NADA", new StartSessionCommand("x")))
         .isInstanceOf(WorkOrderNotFoundException.class);
   }
 

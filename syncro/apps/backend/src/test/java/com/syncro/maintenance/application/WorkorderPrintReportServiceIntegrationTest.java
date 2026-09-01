@@ -121,7 +121,7 @@ class WorkorderPrintReportServiceIntegrationTest extends AbstractPostgresIntegra
   }
 
   private String seedWorkOrder(UUID machineId) {
-    var woId = "WO-2609-" + String.format("%05d", seedSeq.incrementAndGet());
+    var woId = "WO-2609" + String.format("%05d", seedSeq.incrementAndGet());
     jdbc.update("""
         INSERT INTO work_orders (id, source, status, machine_id, sync_version, created_at, updated_at)
         VALUES (?,?,?,?,?,?,?)

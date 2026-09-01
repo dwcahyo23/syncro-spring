@@ -63,7 +63,7 @@ import org.mockito.quality.Strictness;
 class WorkOrderRatingServiceTest {
 
   private static final Instant NOW = Instant.parse("2026-08-26T00:00:00Z");
-  private static final String WORKORDER_ID = "WO-2409-00001";
+  private static final String WORKORDER_ID = "WO-240900001";
 
   @Mock
   private WorkOrderRepository workOrders;

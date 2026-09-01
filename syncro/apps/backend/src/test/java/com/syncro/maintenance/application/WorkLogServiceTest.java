@@ -58,7 +58,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class WorkLogServiceTest {
 
   private static final Instant NOW = Instant.parse("2026-09-01T10:00:00Z");
-  private static final String WORKORDER_ID = "WO-2609-00001";
+  private static final String WORKORDER_ID = "WO-260900001";
 
   @Mock
   private WorkLogRepository workLogs;

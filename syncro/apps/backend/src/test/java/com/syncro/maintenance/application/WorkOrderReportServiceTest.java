@@ -55,7 +55,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class WorkOrderReportServiceTest {
 
   private static final Instant NOW = Instant.parse("2026-08-26T00:00:00Z");
-  private static final String WORKORDER_ID = "WO-2409-00001";
+  private static final String WORKORDER_ID = "WO-240900001";
 
   @Mock
   private WorkOrderRepository workOrders;
@@ -152,9 +152,9 @@ class WorkOrderReportServiceTest {
   @DisplayName("10.6-SVC-004 P0 report save on an unknown workorder is 404")
   void saveReportNotFound() {
     var user = assignedTechnician();
-    when(workOrders.findById("WO-2409-NADA")).thenReturn(Optional.empty());
+    when(workOrders.findById("WO-2409NADA")).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.saveReport(user, "WO-2409-NADA", reportCommand(null, null, null, null,
+    assertThatThrownBy(() -> service.saveReport(user, "WO-2409NADA", reportCommand(null, null, null, null,
         null, null, null, null, null, null)))
         .isInstanceOf(ReportWorkOrderNotFoundException.class);
   }
@@ -289,9 +289,9 @@ class WorkOrderReportServiceTest {
   @Test
   @DisplayName("10.6-SVC-013 P0 get on an unknown workorder is 404")
   void getReportNotFound() {
-    when(workOrders.findById("WO-2409-NADA")).thenReturn(Optional.empty());
+    when(workOrders.findById("WO-2409NADA")).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.getReport("WO-2409-NADA"))
+    assertThatThrownBy(() -> service.getReport("WO-2409NADA"))
         .isInstanceOf(ReportWorkOrderNotFoundException.class);
   }
 

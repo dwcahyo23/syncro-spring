@@ -230,15 +230,15 @@ class SparepartRequestEscalationServiceTest {
   @Test
   @DisplayName("12.3-ESC-007 P0 request bound to a workorder resolves the workorder's machine for recipients")
   void boundWorkOrderMachineResolution() {
-    var request = new SparepartRequestEntity(requestId, SparepartRequestType.SERVICE_EXTERNAL, "WO-2609-00001",
+    var request = new SparepartRequestEntity(requestId, SparepartRequestType.SERVICE_EXTERNAL, "WO-260900001",
         null, null, null, (short) 1, null, null, null, SparepartRequestStatus.REQUESTED, UUID.randomUUID(),
         NOW, null, NOW, NOW);
     when(requests.findStaleByStatusInAndUpdatedAtBefore(
         org.mockito.ArgumentMatchers.argThat(statuses -> statuses.contains(SparepartRequestStatus.REQUESTED)),
         any())).thenReturn(List.of(request));
-    var workOrder = new WorkOrderEntity("WO-2609-00001", "INTERNAL", null, WorkOrderStatus.OPEN, null, machineId,
+    var workOrder = new WorkOrderEntity("WO-260900001", "INTERNAL", null, WorkOrderStatus.OPEN, null, machineId,
         "fix", 0L, null, null, null, NOW, NOW);
-    when(workOrders.findById("WO-2609-00001")).thenReturn(Optional.of(workOrder));
+    when(workOrders.findById("WO-260900001")).thenReturn(Optional.of(workOrder));
     var responsibility = new MachineResponsibilityEntity(UUID.randomUUID(), machineId, leaderUserId,
         ResponsibilityLevel.LEADER, NOW, NOW);
     when(responsibilities.findFirstByMachineIdAndResponsibilityLevelOrderByCreatedAtAsc(machineId,

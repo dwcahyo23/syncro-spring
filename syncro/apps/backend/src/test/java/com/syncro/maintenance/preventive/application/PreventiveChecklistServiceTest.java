@@ -240,7 +240,7 @@ class PreventiveChecklistServiceTest {
     when(workOrders.existsByPreventiveScheduleId(scheduleId)).thenReturn(false);
     when(workOrders.createSystem(eq(machineId), eq(WorkOrderService.PREVENTIVE_CATEGORY_CODE),
         eq("Preventive: Monthly lube due 2026-09-15"), eq(scheduleId)))
-        .thenReturn("WO-2609-00001");
+        .thenReturn("WO-260900001");
 
     service.approve(user, scheduleId.toString(), new ApproveCommand("preventive/sig.png", "Leader", "ok"));
 

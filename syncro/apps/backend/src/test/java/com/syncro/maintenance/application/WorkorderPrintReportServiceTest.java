@@ -49,7 +49,7 @@ import org.mockito.quality.Strictness;
 class WorkorderPrintReportServiceTest {
 
   private static final Instant NOW = Instant.parse("2026-08-28T00:00:00Z");
-  private static final String WORKORDER_ID = "WO-2609-00001";
+  private static final String WORKORDER_ID = "WO-260900001";
 
   @Mock
   private WorkOrderRepository workOrders;
@@ -113,7 +113,7 @@ class WorkorderPrintReportServiceTest {
             NOW.minusSeconds(3600), NOW, 60L, NOW, NOW)));
     when(attachments.findByWorkOrderIdOrderByCreatedAtAsc(WORKORDER_ID)).thenReturn(List.of(
         new WorkorderAttachmentEntity(UUID.randomUUID(), WORKORDER_ID, "photo.jpg", "image/jpeg",
-            "workorders/WO-2609-00001/a/1.jpg", 3, technicianId, NOW, null)));
+            "workorders/WO-260900001/a/1.jpg", 3, technicianId, NOW, null)));
     when(sparepartRequests.findByWorkOrderIdOrderByRequestedAtAsc(WORKORDER_ID)).thenReturn(List.of(
         new SparepartRequestEntity(UUID.randomUUID(), SparepartRequestType.SPAREPART, WORKORDER_ID, machineId,
             null, "MRE-001", (short) 2, null, null, null, SparepartRequestStatus.READY,
@@ -122,7 +122,7 @@ class WorkorderPrintReportServiceTest {
     when(signatureRepository.findBySubjectTypeAndSubjectId("WORK_ORDER", WORKORDER_ID)).thenReturn(Optional.of(
         new SignatureUseEntity(UUID.randomUUID(), signerId, null, "maintenance", "WORK_ORDER",
             WORKORDER_ID, "APPROVE_WORKORDER", null, null,
-            "workorders/WO-2609-00001/signature/abc.png", null, null, null, null, null, NOW, NOW)));
+            "workorders/WO-260900001/signature/abc.png", null, null, null, null, null, NOW, NOW)));
     when(users.findById(signerId)).thenReturn(Optional.of(
         new com.syncro.auth.infrastructure.AuthUserEntity(signerId, "leader@syncro.dev", "hash",
             com.syncro.auth.domain.ApplicationRole.MAINTENANCE_LEADER, true, NOW, NOW)));
@@ -169,9 +169,9 @@ class WorkorderPrintReportServiceTest {
   @Test
   @DisplayName("14.3-RPT-003 P0 unknown workorder is PRINT_REPORT_NOT_FOUND")
   void reportNotFound() {
-    when(workOrders.findById("WO-2609-NADA")).thenReturn(Optional.empty());
+    when(workOrders.findById("WO-2609NADA")).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.get("WO-2609-NADA"))
+    assertThatThrownBy(() -> service.get("WO-2609NADA"))
         .isInstanceOf(PrintReportWorkOrderNotFoundException.class);
   }
 
@@ -186,12 +186,12 @@ class WorkorderPrintReportServiceTest {
     when(signatureRepository.findBySubjectTypeAndSubjectId("WORK_ORDER", WORKORDER_ID)).thenReturn(Optional.of(
         new SignatureUseEntity(UUID.randomUUID(), signerId, null, "maintenance", "WORK_ORDER",
             WORKORDER_ID, "APPROVE_WORKORDER", null, null,
-            "workorders/WO-2609-00001/signature/abc.png", null, null, null, null, null, NOW, NOW)));
+            "workorders/WO-260900001/signature/abc.png", null, null, null, null, null, NOW, NOW)));
     when(users.findById(signerId)).thenReturn(Optional.of(
         new com.syncro.auth.infrastructure.AuthUserEntity(signerId, "leader@syncro.dev", "hash",
             com.syncro.auth.domain.ApplicationRole.MAINTENANCE_LEADER, true, NOW, NOW)));
     // presign returns null — Garage object was deleted
-    when(objectStorage.presignGetUrl("workorders/WO-2609-00001/signature/abc.png")).thenReturn(null);
+    when(objectStorage.presignGetUrl("workorders/WO-260900001/signature/abc.png")).thenReturn(null);
 
     var report = service.get(WORKORDER_ID);
 

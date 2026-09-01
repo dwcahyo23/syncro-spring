@@ -34,7 +34,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class WorkOrderNotificationRoutingServiceTest {
 
-  private static final String WORKORDER_ID = "WO-2608-00001";
+  private static final String WORKORDER_ID = "WO-260800001";
   private static final String TRACE_ID = "trace-abc";
 
   @Mock

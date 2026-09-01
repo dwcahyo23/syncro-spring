@@ -69,14 +69,14 @@ class JwtTokenServiceTest {
         java.util.UUID.fromString("33333333-3333-3333-3333-333333333333"),
         "pl@syncro.dev", "hash", ApplicationRole.PRODUCTION_LEADER, true, NOW, NOW);
     var token = service.createToken(user, java.time.Duration.ofMinutes(15),
-        Map.of("typ", "AUTO_LOGIN", "wa", "6281234567890", "wo", "WO-2608-00001"));
+        Map.of("typ", "AUTO_LOGIN", "wa", "6281234567890", "wo", "WO-260800001"));
 
     var parsed = service.parseAutoLogin(token);
 
     assertThat(parsed.user().id()).isEqualTo("33333333-3333-3333-3333-333333333333");
     assertThat(parsed.user().applicationRole()).isEqualTo(ApplicationRole.PRODUCTION_LEADER);
     assertThat(parsed.whatsappNumber()).isEqualTo("6281234567890");
-    assertThat(parsed.workOrderId()).isEqualTo("WO-2608-00001");
+    assertThat(parsed.workOrderId()).isEqualTo("WO-260800001");
   }
 
   @Test
@@ -86,7 +86,7 @@ class JwtTokenServiceTest {
         java.util.UUID.fromString("44444444-4444-4444-4444-444444444444"),
         "pl@syncro.dev", "hash", ApplicationRole.PRODUCTION_LEADER, true, NOW, NOW);
     var token = service.createToken(user, java.time.Duration.ofMinutes(-1),
-        Map.of("typ", "AUTO_LOGIN", "wa", "6281234567890", "wo", "WO-2608-00001"));
+        Map.of("typ", "AUTO_LOGIN", "wa", "6281234567890", "wo", "WO-260800001"));
 
     assertThatThrownBy(() -> service.parseAutoLogin(token))
         .isInstanceOf(JwtTokenService.InvalidTokenException.class);
@@ -112,7 +112,7 @@ class JwtTokenServiceTest {
         java.util.UUID.fromString("66666666-6666-6666-6666-666666666666"),
         "pl@syncro.dev", "hash", ApplicationRole.PRODUCTION_LEADER, true, NOW, NOW);
     var token = service.createToken(user, java.time.Duration.ofMinutes(5),
-        Map.of("sub", "attacker", "typ", "AUTO_LOGIN", "wa", "6281234567890", "wo", "WO-2608-00001"));
+        Map.of("sub", "attacker", "typ", "AUTO_LOGIN", "wa", "6281234567890", "wo", "WO-260800001"));
 
     var parsed = service.parse(token);
     assertThat(parsed.id()).isEqualTo("66666666-6666-6666-6666-666666666666");
@@ -172,7 +172,7 @@ class JwtTokenServiceTest {
     payload.put("loginIdentifier", "malformed@syncro.dev");
     payload.put("role", ApplicationRole.PRODUCTION_LEADER.name());
     payload.put("wa", "6281234567890");
-    payload.put("wo", "WO-2608-00001");
+    payload.put("wo", "WO-260800001");
     payload.put("iat", NOW.getEpochSecond());
     payload.put("exp", NOW.plusSeconds(600).getEpochSecond());
     return mint(payload);

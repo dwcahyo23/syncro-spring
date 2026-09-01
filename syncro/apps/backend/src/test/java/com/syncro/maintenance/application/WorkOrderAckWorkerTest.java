@@ -40,7 +40,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class WorkOrderAckWorkerTest {
 
-  private static final String WORKORDER_ID = "WO-2608-00001";
+  private static final String WORKORDER_ID = "WO-260800001";
   private static final Instant NOW = Instant.parse("2026-08-29T12:00:00Z");
 
   @Mock

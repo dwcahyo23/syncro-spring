@@ -113,11 +113,11 @@ class WorkOrderIdGeneratorTest {
   }
 
   @Test
-  @DisplayName("10.1-GEN-001 P0 generated id matches WO-YYMM-XXXXX format")
+  @DisplayName("10.1-GEN-001 P0 generated id matches WO-YYMMXXXXX format (no dash)")
   void generatedIdMatchesFormat() {
     var id = generator.nextId();
-    assertThat(id).matches("^WO-\\d{4}-\\d{5}$");
-    assertThat(id).isEqualTo("WO-2409-00001");
+    assertThat(id).matches("^WO-\\d{9}$");
+    assertThat(id).isEqualTo("WO-240900001");
   }
 
   @Test
@@ -152,12 +152,12 @@ class WorkOrderIdGeneratorTest {
   @Test
   @DisplayName("10.1-GEN-003 P0 advancing the month resets the sequence to 00001")
   void monthRolloverResetsSequence() {
-    assertThat(generator.nextId()).isEqualTo("WO-2409-00001");
-    assertThat(generator.nextId()).isEqualTo("WO-2409-00002");
+    assertThat(generator.nextId()).isEqualTo("WO-240900001");
+    assertThat(generator.nextId()).isEqualTo("WO-240900002");
 
     testClock.setInstant(Instant.parse("2024-10-01T00:00:00Z"));
 
-    assertThat(generator.nextId()).isEqualTo("WO-2410-00001");
+    assertThat(generator.nextId()).isEqualTo("WO-241000001");
   }
 
   @Test
@@ -181,7 +181,7 @@ class WorkOrderIdGeneratorTest {
 
     var id = generator.nextId();
 
-    assertThat(id).isEqualTo("WO-2410-00001");
+    assertThat(id).isEqualTo("WO-241000001");
     var row = sequences.findById("2410").orElseThrow();
     assertThat(row.getLastSeq()).isEqualTo(1);
   }

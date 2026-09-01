@@ -118,7 +118,7 @@ class SparepartRequestControllerTest {
     mockMvc.perform(post("/api/v1/sparepart-requests")
             .with(auth(user))
             .contentType(MediaType.APPLICATION_JSON)
-            .content("{\"requestType\":\"SERVICE_EXTERNAL\",\"workOrderId\":\"WO-2609-99999\",\"quantity\":1}"))
+            .content("{\"requestType\":\"SERVICE_EXTERNAL\",\"workOrderId\":\"WO-260999999\",\"quantity\":1}"))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("WORKORDER_NOT_FOUND"));
   }

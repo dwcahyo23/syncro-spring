@@ -56,7 +56,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class WorkOrderEvidenceServiceTest {
 
   private static final Instant NOW = Instant.parse("2026-08-26T00:00:00Z");
-  private static final String WORKORDER_ID = "WO-2409-00001";
+  private static final String WORKORDER_ID = "WO-240900001";
 
   @Mock
   private WorkOrderRepository workOrders;
@@ -156,9 +156,9 @@ class WorkOrderEvidenceServiceTest {
   @DisplayName("10.5-SVC-004 P0 unknown workorder is 404")
   void createUnknownWorkOrder() {
     var user = assignedTechnician();
-    when(workOrders.findById("WO-2409-NADA")).thenReturn(Optional.empty());
+    when(workOrders.findById("WO-2409NADA")).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.create(user, "WO-2409-NADA",
+    assertThatThrownBy(() -> service.create(user, "WO-2409NADA",
         new EvidenceCommand("photo.jpg", "image/jpeg", new byte[] {1})))
         .isInstanceOf(EvidenceWorkOrderNotFoundException.class);
   }
@@ -383,9 +383,9 @@ class WorkOrderEvidenceServiceTest {
   @Test
   @DisplayName("10.5-SVC-015 P0 list on an unknown workorder is 404")
   void listUnknownWorkOrder() {
-    when(workOrders.findById("WO-2409-NADA")).thenReturn(Optional.empty());
+    when(workOrders.findById("WO-2409NADA")).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.list("WO-2409-NADA"))
+    assertThatThrownBy(() -> service.list("WO-2409NADA"))
         .isInstanceOf(EvidenceWorkOrderNotFoundException.class);
   }
 

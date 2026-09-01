@@ -119,12 +119,12 @@ class WorkOrderServiceTest {
     when(categories.findByCode("01")).thenReturn(Optional.of(category));
     when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(groupId), Set.of()));
-    when(idGenerator.nextId()).thenReturn("WO-2409-00001");
+    when(idGenerator.nextId()).thenReturn("WO-240900001");
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     var result = service.create(user, new CreateWorkOrderCommand("01", machineId, "desc", null, null));
 
-    assertThat(result.workorder().id()).isEqualTo("WO-2409-00001");
+    assertThat(result.workorder().id()).isEqualTo("WO-240900001");
     assertThat(result.workorder().source()).isEqualTo("INTERNAL");
     assertThat(result.workorder().status()).isEqualTo(WorkOrderStatus.OPEN);
     assertThat(result.workorder().machineId()).isEqualTo(machineId);
@@ -135,7 +135,7 @@ class WorkOrderServiceTest {
     verify(statusHistory).saveAndFlush(argThat(h -> h.getFromStatus() == null && "OPEN".equals(h.getToStatus())));
     verify(auditLog).record(eq(user), argThat(r -> r.action() == AuditAction.CREATE
         && r.entityType() == AuditEntityType.WORK_ORDER
-        && r.entityLabel().equals("WO-2409-00001")));
+        && r.entityLabel().equals("WO-240900001")));
   }
 
   @Test
@@ -143,14 +143,14 @@ class WorkOrderServiceTest {
   void createReplay() {
     var user = user(ApplicationRole.SECTION_LEADER);
     var userId = UUID.fromString(user.id());
-    var existing = new WorkOrderEntity("WO-2409-00001", "INTERNAL", null, WorkOrderStatus.OPEN, categoryId,
+    var existing = new WorkOrderEntity("WO-240900001", "INTERNAL", null, WorkOrderStatus.OPEN, categoryId,
         machineId, "desc", 0, "key-123", null, userId, NOW, NOW);
     when(workOrders.findByIdempotencyKeyAndCreatedByAndCreatedAtAfter("key-123", userId, NOW.minus(Duration.ofMinutes(5))))
         .thenReturn(Optional.of(existing));
 
     var result = service.create(user, new CreateWorkOrderCommand("01", machineId, "desc", null, "key-123"));
 
-    assertThat(result.workorder().id()).isEqualTo("WO-2409-00001");
+    assertThat(result.workorder().id()).isEqualTo("WO-240900001");
     assertThat(result.replay()).isTrue();
     verify(workOrders, never()).saveAndFlush(any());
     verify(statusHistory, never()).saveAndFlush(any());
@@ -166,12 +166,12 @@ class WorkOrderServiceTest {
     when(categories.findByCode("01")).thenReturn(Optional.of(category));
     when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(groupId), Set.of()));
-    when(idGenerator.nextId()).thenReturn("WO-2409-00002");
+    when(idGenerator.nextId()).thenReturn("WO-240900002");
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     var result = service.create(user, new CreateWorkOrderCommand("01", machineId, "desc", null, "key-123"));
 
-    assertThat(result.workorder().id()).isEqualTo("WO-2409-00002");
+    assertThat(result.workorder().id()).isEqualTo("WO-240900002");
   }
 
   @Test
@@ -193,12 +193,12 @@ class WorkOrderServiceTest {
     var user = user(ApplicationRole.PRODUCTION_LEADER);
     when(categories.findByCode("01")).thenReturn(Optional.of(category));
     when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
-    when(idGenerator.nextId()).thenReturn("WO-2409-00001");
+    when(idGenerator.nextId()).thenReturn("WO-240900001");
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     var result = service.create(user, new CreateWorkOrderCommand("01", machineId, "desc", null, null));
 
-    assertThat(result.workorder().id()).isEqualTo("WO-2409-00001");
+    assertThat(result.workorder().id()).isEqualTo("WO-240900001");
     verify(plantScopes).requirePlantAccess(user, plantId);
   }
 
@@ -228,20 +228,20 @@ class WorkOrderServiceTest {
   void createChildOk() {
     var user = user(ApplicationRole.SECTION_LEADER);
     var parentMachine = machineWithPlant(plantId, groupId, UUID.randomUUID());
-    var parent = new WorkOrderEntity("WO-2409-PARENT", "INTERNAL", null, WorkOrderStatus.OPEN, categoryId,
+    var parent = new WorkOrderEntity("WO-2409PARENT", "INTERNAL", null, WorkOrderStatus.OPEN, categoryId,
         parentMachine.getId(), "parent", 0, null, null, UUID.randomUUID(), NOW, NOW);
 
     when(categories.findByCode("01")).thenReturn(Optional.of(category));
     when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
-    when(workOrders.findById("WO-2409-PARENT")).thenReturn(Optional.of(parent));
+    when(workOrders.findById("WO-2409PARENT")).thenReturn(Optional.of(parent));
     when(machines.findByIdWithPlantAndGroup(parentMachine.getId())).thenReturn(Optional.of(parentMachine));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(groupId), Set.of()));
-    when(idGenerator.nextId()).thenReturn("WO-2409-00001");
+    when(idGenerator.nextId()).thenReturn("WO-240900001");
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    var result = service.create(user, new CreateWorkOrderCommand("01", machineId, "desc", "WO-2409-PARENT", null));
+    var result = service.create(user, new CreateWorkOrderCommand("01", machineId, "desc", "WO-2409PARENT", null));
 
-    assertThat(result.workorder().parentId()).isEqualTo("WO-2409-PARENT");
+    assertThat(result.workorder().parentId()).isEqualTo("WO-2409PARENT");
   }
 
   @Test
@@ -250,16 +250,16 @@ class WorkOrderServiceTest {
     var user = user(ApplicationRole.SECTION_LEADER);
     var otherGroupId = UUID.randomUUID();
     var parentMachine = machineWithPlant(plantId, otherGroupId, UUID.randomUUID());
-    var parent = new WorkOrderEntity("WO-2409-PARENT", "INTERNAL", null, WorkOrderStatus.OPEN, categoryId,
+    var parent = new WorkOrderEntity("WO-2409PARENT", "INTERNAL", null, WorkOrderStatus.OPEN, categoryId,
         parentMachine.getId(), "parent", 0, null, null, UUID.randomUUID(), NOW, NOW);
 
     when(categories.findByCode("01")).thenReturn(Optional.of(category));
     when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
-    when(workOrders.findById("WO-2409-PARENT")).thenReturn(Optional.of(parent));
+    when(workOrders.findById("WO-2409PARENT")).thenReturn(Optional.of(parent));
     when(machines.findByIdWithPlantAndGroup(parentMachine.getId())).thenReturn(Optional.of(parentMachine));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(groupId), Set.of()));
 
-    assertThatThrownBy(() -> service.create(user, new CreateWorkOrderCommand("01", machineId, "desc", "WO-2409-PARENT", null)))
+    assertThatThrownBy(() -> service.create(user, new CreateWorkOrderCommand("01", machineId, "desc", "WO-2409PARENT", null)))
         .isInstanceOf(WorkorderForbiddenException.class);
   }
 
@@ -291,9 +291,9 @@ class WorkOrderServiceTest {
     when(categories.findByCode("01")).thenReturn(Optional.of(category));
     when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(groupId), Set.of()));
-    when(workOrders.findById("WO-2409-NOPE")).thenReturn(Optional.empty());
+    when(workOrders.findById("WO-2409NOPE")).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.create(user, new CreateWorkOrderCommand("01", machineId, "desc", "WO-2409-NOPE", null)))
+    assertThatThrownBy(() -> service.create(user, new CreateWorkOrderCommand("01", machineId, "desc", "WO-2409NOPE", null)))
         .isInstanceOf(WorkOrderParentNotFoundException.class);
   }
 
@@ -318,35 +318,35 @@ class WorkOrderServiceTest {
   @DisplayName("10.2-SVC-014 P0 SECTION_LEADER assigns an OPEN workorder to a different user")
   void assignOk() {
     var user = user(ApplicationRole.SECTION_LEADER);
-    var entity = new WorkOrderEntity("WO-2409-00001", "INTERNAL", null, WorkOrderStatus.OPEN, categoryId,
+    var entity = new WorkOrderEntity("WO-240900001", "INTERNAL", null, WorkOrderStatus.OPEN, categoryId,
         machineId, "desc", 0, null, null, UUID.fromString(user.id()), NOW, NOW);
-    when(workOrders.findById("WO-2409-00001")).thenReturn(Optional.of(entity));
+    when(workOrders.findById("WO-240900001")).thenReturn(Optional.of(entity));
     when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(groupId), Set.of()));
     when(users.findById(assigneeId)).thenReturn(Optional.of(technician(assigneeId)));
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    var result = service.assign(user, "WO-2409-00001", new AssignWorkOrderCommand(assigneeId));
+    var result = service.assign(user, "WO-240900001", new AssignWorkOrderCommand(assigneeId));
 
     assertThat(result.status()).isEqualTo(WorkOrderStatus.IN_PROGRESS);
     assertThat(result.assignedTechnicianId()).isEqualTo(assigneeId);
     verify(statusHistory).saveAndFlush(argThat(h -> "OPEN".equals(h.getFromStatus()) && "IN_PROGRESS".equals(h.getToStatus())));
     verify(auditLog).record(eq(user), argThat(r -> r.action() == AuditAction.UPDATE
         && r.entityType() == AuditEntityType.WORK_ORDER
-        && r.entityLabel().equals("WO-2409-00001")));
+        && r.entityLabel().equals("WO-240900001")));
   }
 
   @Test
   @DisplayName("10.2-SVC-015 P0 assigning a non-OPEN workorder throws InvalidStateTransitionException")
   void assignWrongState() {
     var user = user(ApplicationRole.SECTION_LEADER);
-    var entity = new WorkOrderEntity("WO-2409-00001", "INTERNAL", null, WorkOrderStatus.IN_PROGRESS, categoryId,
+    var entity = new WorkOrderEntity("WO-240900001", "INTERNAL", null, WorkOrderStatus.IN_PROGRESS, categoryId,
         machineId, "desc", 0, null, assigneeId, UUID.randomUUID(), NOW, NOW);
-    when(workOrders.findById("WO-2409-00001")).thenReturn(Optional.of(entity));
+    when(workOrders.findById("WO-240900001")).thenReturn(Optional.of(entity));
     when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(groupId), Set.of()));
 
-    assertThatThrownBy(() -> service.assign(user, "WO-2409-00001", new AssignWorkOrderCommand(assigneeId)))
+    assertThatThrownBy(() -> service.assign(user, "WO-240900001", new AssignWorkOrderCommand(assigneeId)))
         .isInstanceOf(InvalidStateTransitionException.class);
   }
 
@@ -355,14 +355,14 @@ class WorkOrderServiceTest {
   void assignSelf() {
     var selfId = UUID.fromString("a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1");
     var user = new AuthenticatedUser(selfId.toString(), "leader@syncro.dev", ApplicationRole.SECTION_LEADER);
-    var entity = new WorkOrderEntity("WO-2409-00001", "INTERNAL", null, WorkOrderStatus.OPEN, categoryId,
+    var entity = new WorkOrderEntity("WO-240900001", "INTERNAL", null, WorkOrderStatus.OPEN, categoryId,
         machineId, "desc", 0, null, null, selfId, NOW, NOW);
-    when(workOrders.findById("WO-2409-00001")).thenReturn(Optional.of(entity));
+    when(workOrders.findById("WO-240900001")).thenReturn(Optional.of(entity));
     when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(groupId), Set.of()));
     when(users.findById(selfId)).thenReturn(Optional.of(technician(selfId)));
 
-    assertThatThrownBy(() -> service.assign(user, "WO-2409-00001", new AssignWorkOrderCommand(selfId)))
+    assertThatThrownBy(() -> service.assign(user, "WO-240900001", new AssignWorkOrderCommand(selfId)))
         .isInstanceOf(SelfAssignmentForbiddenException.class);
   }
 
@@ -370,9 +370,9 @@ class WorkOrderServiceTest {
   @DisplayName("10.2-SVC-017 P0 assigning an unknown workorder throws WorkOrderNotFoundException")
   void assignNotFound() {
     var user = user(ApplicationRole.MANAGER_MAINTENANCE);
-    when(workOrders.findById("WO-2409-NADA")).thenReturn(Optional.empty());
+    when(workOrders.findById("WO-2409NADA")).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.assign(user, "WO-2409-NADA", new AssignWorkOrderCommand(assigneeId)))
+    assertThatThrownBy(() -> service.assign(user, "WO-2409NADA", new AssignWorkOrderCommand(assigneeId)))
         .isInstanceOf(WorkOrderNotFoundException.class);
   }
 
@@ -380,14 +380,14 @@ class WorkOrderServiceTest {
   @DisplayName("10.2-SVC-018 P0 assigning with a non-existent user throws WorkOrderUserNotFoundException")
   void assignUserNotFound() {
     var user = user(ApplicationRole.MANAGER_MAINTENANCE);
-    var entity = new WorkOrderEntity("WO-2409-00001", "INTERNAL", null, WorkOrderStatus.OPEN, categoryId,
+    var entity = new WorkOrderEntity("WO-240900001", "INTERNAL", null, WorkOrderStatus.OPEN, categoryId,
         machineId, "desc", 0, null, null, UUID.randomUUID(), NOW, NOW);
-    when(workOrders.findById("WO-2409-00001")).thenReturn(Optional.of(entity));
+    when(workOrders.findById("WO-240900001")).thenReturn(Optional.of(entity));
     when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
     when(users.findById(assigneeId)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.assign(user, "WO-2409-00001", new AssignWorkOrderCommand(assigneeId)))
+    assertThatThrownBy(() -> service.assign(user, "WO-240900001", new AssignWorkOrderCommand(assigneeId)))
         .isInstanceOf(WorkOrderUserNotFoundException.class);
   }
 
@@ -396,7 +396,7 @@ class WorkOrderServiceTest {
   void assignStaffForbidden() {
     var user = user(ApplicationRole.STAFF_MAINTENANCE);
 
-    assertThatThrownBy(() -> service.assign(user, "WO-2409-00001", new AssignWorkOrderCommand(assigneeId)))
+    assertThatThrownBy(() -> service.assign(user, "WO-240900001", new AssignWorkOrderCommand(assigneeId)))
         .isInstanceOf(WorkorderForbiddenException.class);
   }
 
@@ -406,12 +406,12 @@ class WorkOrderServiceTest {
     var user = user(ApplicationRole.STAFF_MAINTENANCE);
     when(categories.findByCode("01")).thenReturn(Optional.of(category));
     when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
-    when(idGenerator.nextId()).thenReturn("WO-2409-00001");
+    when(idGenerator.nextId()).thenReturn("WO-240900001");
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     var result = service.create(user, new CreateWorkOrderCommand("01", machineId, "desc", null, null));
 
-    assertThat(result.workorder().id()).isEqualTo("WO-2409-00001");
+    assertThat(result.workorder().id()).isEqualTo("WO-240900001");
     verify(plantScopes).requirePlantAccess(user, plantId);
   }
 
@@ -436,14 +436,14 @@ class WorkOrderServiceTest {
   @DisplayName("10.6-SVC-100 P0 breakdown DONE without a stop-time reason is blocked")
   void breakdownDoneWithoutStopTimeReason() {
     var user = user(ApplicationRole.SUPER_ADMIN);
-    var entity = new WorkOrderEntity("WO-2409-00001", "INTERNAL", null, WorkOrderStatus.IN_PROGRESS, categoryId,
+    var entity = new WorkOrderEntity("WO-240900001", "INTERNAL", null, WorkOrderStatus.IN_PROGRESS, categoryId,
         machineId, "desc", 0, null, null, UUID.randomUUID(), NOW, NOW);
-    when(workOrders.findByIdForUpdate("WO-2409-00001")).thenReturn(Optional.of(entity));
+    when(workOrders.findByIdForUpdate("WO-240900001")).thenReturn(Optional.of(entity));
     when(categories.findById(categoryId)).thenReturn(Optional.of(category));
-    when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull("WO-2409-00001")).thenReturn(Optional.empty());
-    when(repairSessions.countByWorkOrderIdAndEndedAtIsNotNull("WO-2409-00001")).thenReturn(1L);
+    when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull("WO-240900001")).thenReturn(Optional.empty());
+    when(repairSessions.countByWorkOrderIdAndEndedAtIsNotNull("WO-240900001")).thenReturn(1L);
 
-    assertThatThrownBy(() -> service.transition(user, "WO-2409-00001",
+    assertThatThrownBy(() -> service.transition(user, "WO-240900001",
         new WorkOrderService.TransitionWorkOrderCommand(WorkOrderStatus.PENDING_REVIEW, null, null)))
         .isInstanceOf(StopTimeReasonRequiredException.class);
   }
@@ -452,15 +452,15 @@ class WorkOrderServiceTest {
   @DisplayName("10.6-SVC-101 P0 breakdown DONE with a stop-time reason proceeds")
   void breakdownDoneWithStopTimeReason() {
     var user = user(ApplicationRole.SUPER_ADMIN);
-    var entity = new WorkOrderEntity("WO-2409-00001", "INTERNAL", null, WorkOrderStatus.IN_PROGRESS, categoryId,
+    var entity = new WorkOrderEntity("WO-240900001", "INTERNAL", null, WorkOrderStatus.IN_PROGRESS, categoryId,
         machineId, "desc", 0, null, null, UUID.randomUUID(), NOW, NOW);
     entity.applyReport(null, null, null, null, null, null, null, null, "ELECTRIC", "Bearing worn");
-    when(workOrders.findByIdForUpdate("WO-2409-00001")).thenReturn(Optional.of(entity));
-    when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull("WO-2409-00001")).thenReturn(Optional.empty());
-    when(repairSessions.countByWorkOrderIdAndEndedAtIsNotNull("WO-2409-00001")).thenReturn(1L);
+    when(workOrders.findByIdForUpdate("WO-240900001")).thenReturn(Optional.of(entity));
+    when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull("WO-240900001")).thenReturn(Optional.empty());
+    when(repairSessions.countByWorkOrderIdAndEndedAtIsNotNull("WO-240900001")).thenReturn(1L);
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    var result = service.transition(user, "WO-2409-00001",
+    var result = service.transition(user, "WO-240900001",
         new WorkOrderService.TransitionWorkOrderCommand(WorkOrderStatus.PENDING_REVIEW, null, null));
 
     assertThat(result.status()).isEqualTo(WorkOrderStatus.PENDING_REVIEW);
@@ -471,16 +471,16 @@ class WorkOrderServiceTest {
   void nonBreakdownDoneWithoutStopTimeReason() {
     var user = user(ApplicationRole.SUPER_ADMIN);
     var preventiveCategoryId = UUID.randomUUID();
-    var entity = new WorkOrderEntity("WO-2409-00001", "INTERNAL", null, WorkOrderStatus.IN_PROGRESS,
+    var entity = new WorkOrderEntity("WO-240900001", "INTERNAL", null, WorkOrderStatus.IN_PROGRESS,
         preventiveCategoryId, machineId, "desc", 0, null, null, UUID.randomUUID(), NOW, NOW);
     var preventive = new WorkOrderCategoryEntity(preventiveCategoryId, "02", "Preventive", UUID.randomUUID(), NOW, NOW);
-    when(workOrders.findByIdForUpdate("WO-2409-00001")).thenReturn(Optional.of(entity));
+    when(workOrders.findByIdForUpdate("WO-240900001")).thenReturn(Optional.of(entity));
     when(categories.findById(preventiveCategoryId)).thenReturn(Optional.of(preventive));
-    when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull("WO-2409-00001")).thenReturn(Optional.empty());
-    when(repairSessions.countByWorkOrderIdAndEndedAtIsNotNull("WO-2409-00001")).thenReturn(1L);
+    when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull("WO-240900001")).thenReturn(Optional.empty());
+    when(repairSessions.countByWorkOrderIdAndEndedAtIsNotNull("WO-240900001")).thenReturn(1L);
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    var result = service.transition(user, "WO-2409-00001",
+    var result = service.transition(user, "WO-240900001",
         new WorkOrderService.TransitionWorkOrderCommand(WorkOrderStatus.PENDING_REVIEW, null, null));
 
     assertThat(result.status()).isEqualTo(WorkOrderStatus.PENDING_REVIEW);
@@ -511,12 +511,12 @@ class WorkOrderServiceTest {
     var scheduleId = UUID.randomUUID();
     when(categories.findByCode("02")).thenReturn(Optional.of(preventiveCategory));
     when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
-    when(idGenerator.nextId()).thenReturn("WO-2609-00001");
+    when(idGenerator.nextId()).thenReturn("WO-260900001");
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     var id = service.createSystem(machineId, "02", "Preventive: Monthly lube due 2026-09-15", scheduleId);
 
-    assertThat(id).isEqualTo("WO-2609-00001");
+    assertThat(id).isEqualTo("WO-260900001");
     var captor = ArgumentCaptor.forClass(WorkOrderEntity.class);
     verify(workOrders).saveAndFlush(captor.capture());
     assertThat(captor.getValue().getSource()).isEqualTo("INTERNAL");
@@ -525,7 +525,7 @@ class WorkOrderServiceTest {
     // SYSTEM history row: source DERIVED, actor SYSTEM.
     verify(statusHistory).saveAndFlush(argThat(row ->
         "SYSTEM".equals(row.getActor()) && "DERIVED".equals(row.getSource())
-            && "WO-2609-00001".equals(row.getWorkOrderId())));
+            && "WO-260900001".equals(row.getWorkOrderId())));
     // SYSTEM audit via recordSystem.
     verify(auditLog).recordSystem(argThat(r ->
         r.action() == AuditAction.CREATE && r.entityType() == AuditEntityType.WORK_ORDER));

@@ -60,7 +60,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class WorkOrderTransitionServiceTest {
 
   private static final Instant NOW = Instant.parse("2026-08-26T00:00:00Z");
-  private static final String WORKORDER_ID = "WO-2409-00001";
+  private static final String WORKORDER_ID = "WO-240900001";
 
   @Mock
   private WorkOrderIdGenerator idGenerator;
@@ -523,9 +523,9 @@ class WorkOrderTransitionServiceTest {
   @DisplayName("10.3-SVC-019 P0 an unknown workorder throws WorkOrderNotFoundException")
   void transitionNotFound() {
     var user = user(ApplicationRole.SUPER_ADMIN);
-    when(workOrders.findByIdForUpdate("WO-2409-NADA")).thenReturn(Optional.empty());
+    when(workOrders.findByIdForUpdate("WO-2409NADA")).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.transition(user, "WO-2409-NADA", command(WorkOrderStatus.OPEN)))
+    assertThatThrownBy(() -> service.transition(user, "WO-2409NADA", command(WorkOrderStatus.OPEN)))
         .isInstanceOf(WorkOrderNotFoundException.class);
   }
 
@@ -567,13 +567,13 @@ class WorkOrderTransitionServiceTest {
   @DisplayName("10.3-SVC-022 P0 closing a parent with a non-terminal child is blocked")
   void closeBlockedByOpenChild() {
     var user = user(ApplicationRole.MAINTENANCE_LEADER);
-    var parent = entity("WO-2409-PARENT", "INTERNAL", WorkOrderStatus.PENDING_REVIEW, null, technicianId);
-    var child = entity("WO-2409-CHILD", "INTERNAL", WorkOrderStatus.OPEN, "WO-2409-PARENT", null);
-    when(workOrders.findByIdForUpdate("WO-2409-PARENT")).thenReturn(Optional.of(parent));
+    var parent = entity("WO-2409PARENT", "INTERNAL", WorkOrderStatus.PENDING_REVIEW, null, technicianId);
+    var child = entity("WO-2409CHILD", "INTERNAL", WorkOrderStatus.OPEN, "WO-2409PARENT", null);
+    when(workOrders.findByIdForUpdate("WO-2409PARENT")).thenReturn(Optional.of(parent));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
-    when(workOrders.findByParentIdForUpdate("WO-2409-PARENT")).thenReturn(List.of(child));
+    when(workOrders.findByParentIdForUpdate("WO-2409PARENT")).thenReturn(List.of(child));
 
-    assertThatThrownBy(() -> service.transition(user, "WO-2409-PARENT", command(WorkOrderStatus.CLOSED)))
+    assertThatThrownBy(() -> service.transition(user, "WO-2409PARENT", command(WorkOrderStatus.CLOSED)))
         .isInstanceOf(ChildrenNotTerminalException.class);
   }
 
@@ -581,15 +581,15 @@ class WorkOrderTransitionServiceTest {
   @DisplayName("10.3-SVC-023 P0 closing a parent whose children are all CLOSED/CANCELLED succeeds")
   void closeWithTerminalChildren() {
     var user = user(ApplicationRole.MAINTENANCE_LEADER);
-    var parent = entity("WO-2409-PARENT", "INTERNAL", WorkOrderStatus.PENDING_REVIEW, null, technicianId);
-    var closed = entity("WO-2409-C1", "INTERNAL", WorkOrderStatus.CLOSED, "WO-2409-PARENT", null);
-    var cancelled = entity("WO-2409-C2", "INTERNAL", WorkOrderStatus.CANCELLED, "WO-2409-PARENT", null);
-    when(workOrders.findByIdForUpdate("WO-2409-PARENT")).thenReturn(Optional.of(parent));
+    var parent = entity("WO-2409PARENT", "INTERNAL", WorkOrderStatus.PENDING_REVIEW, null, technicianId);
+    var closed = entity("WO-2409C1", "INTERNAL", WorkOrderStatus.CLOSED, "WO-2409PARENT", null);
+    var cancelled = entity("WO-2409C2", "INTERNAL", WorkOrderStatus.CANCELLED, "WO-2409PARENT", null);
+    when(workOrders.findByIdForUpdate("WO-2409PARENT")).thenReturn(Optional.of(parent));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
-    when(workOrders.findByParentIdForUpdate("WO-2409-PARENT")).thenReturn(List.of(closed, cancelled));
+    when(workOrders.findByParentIdForUpdate("WO-2409PARENT")).thenReturn(List.of(closed, cancelled));
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    var result = service.transition(user, "WO-2409-PARENT", command(WorkOrderStatus.CLOSED));
+    var result = service.transition(user, "WO-2409PARENT", command(WorkOrderStatus.CLOSED));
 
     assertThat(result.status()).isEqualTo(WorkOrderStatus.CLOSED);
   }
@@ -598,13 +598,13 @@ class WorkOrderTransitionServiceTest {
   @DisplayName("10.3-SVC-024 P0 SUPER_ADMIN may override a non-terminal child with an audit-logged reason")
   void closeOverrideBySuperAdmin() {
     var user = user(ApplicationRole.SUPER_ADMIN);
-    var parent = entity("WO-2409-PARENT", "INTERNAL", WorkOrderStatus.PENDING_REVIEW, null, technicianId);
-    var child = entity("WO-2409-C1", "INTERNAL", WorkOrderStatus.OPEN, "WO-2409-PARENT", null);
-    when(workOrders.findByIdForUpdate("WO-2409-PARENT")).thenReturn(Optional.of(parent));
-    when(workOrders.findByParentIdForUpdate("WO-2409-PARENT")).thenReturn(List.of(child));
+    var parent = entity("WO-2409PARENT", "INTERNAL", WorkOrderStatus.PENDING_REVIEW, null, technicianId);
+    var child = entity("WO-2409C1", "INTERNAL", WorkOrderStatus.OPEN, "WO-2409PARENT", null);
+    when(workOrders.findByIdForUpdate("WO-2409PARENT")).thenReturn(Optional.of(parent));
+    when(workOrders.findByParentIdForUpdate("WO-2409PARENT")).thenReturn(List.of(child));
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    var result = service.transition(user, "WO-2409-PARENT",
+    var result = service.transition(user, "WO-2409PARENT",
         new TransitionWorkOrderCommand(WorkOrderStatus.CLOSED, null, "expedite delivery"));
 
     assertThat(result.status()).isEqualTo(WorkOrderStatus.CLOSED);
@@ -616,13 +616,13 @@ class WorkOrderTransitionServiceTest {
   @DisplayName("10.3-SVC-025 P0 an override-eligible actor without a reason gets 400 OVERRIDE_REASON_REQUIRED")
   void closeOverrideWithoutReason() {
     var user = user(ApplicationRole.MANAGER_MAINTENANCE);
-    var parent = entity("WO-2409-PARENT", "INTERNAL", WorkOrderStatus.PENDING_REVIEW, null, technicianId);
-    var child = entity("WO-2409-C1", "INTERNAL", WorkOrderStatus.OPEN, "WO-2409-PARENT", null);
-    when(workOrders.findByIdForUpdate("WO-2409-PARENT")).thenReturn(Optional.of(parent));
+    var parent = entity("WO-2409PARENT", "INTERNAL", WorkOrderStatus.PENDING_REVIEW, null, technicianId);
+    var child = entity("WO-2409C1", "INTERNAL", WorkOrderStatus.OPEN, "WO-2409PARENT", null);
+    when(workOrders.findByIdForUpdate("WO-2409PARENT")).thenReturn(Optional.of(parent));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
-    when(workOrders.findByParentIdForUpdate("WO-2409-PARENT")).thenReturn(List.of(child));
+    when(workOrders.findByParentIdForUpdate("WO-2409PARENT")).thenReturn(List.of(child));
 
-    assertThatThrownBy(() -> service.transition(user, "WO-2409-PARENT", command(WorkOrderStatus.CLOSED)))
+    assertThatThrownBy(() -> service.transition(user, "WO-2409PARENT", command(WorkOrderStatus.CLOSED)))
         .isInstanceOf(OverrideReasonRequiredException.class);
   }
 
@@ -692,9 +692,9 @@ class WorkOrderTransitionServiceTest {
   @Test
   @DisplayName("10.3-SVC-030 P0 recompute on an unknown workorder throws WorkOrderNotFoundException")
   void recomputeNotFound() {
-    when(workOrders.findByIdForUpdate("WO-2409-NADA")).thenReturn(Optional.empty());
+    when(workOrders.findByIdForUpdate("WO-2409NADA")).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.recomputeProcurementState("WO-2409-NADA"))
+    assertThatThrownBy(() -> service.recomputeProcurementState("WO-2409NADA"))
         .isInstanceOf(WorkOrderNotFoundException.class);
   }
 

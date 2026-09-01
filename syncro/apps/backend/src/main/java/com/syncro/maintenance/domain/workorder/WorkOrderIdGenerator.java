@@ -49,7 +49,7 @@ public class WorkOrderIdGenerator {
     row.setLastSeq(nextSeq);
     row.setUpdatedAt(Instant.now(clock));
     sequences.saveAndFlush(row);
-    return "WO-%s%04d".formatted(prefix, nextSeq);
+    return "WO-%s%05d".formatted(prefix, nextSeq);
   }
 
   private String derivePrefix() {

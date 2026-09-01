@@ -77,7 +77,7 @@ class WorkOrderListServiceTest {
     assertThat(result.page()).isZero();
     assertThat(result.size()).isEqualTo(20);
     assertThat(result.items()).hasSize(1);
-    assertThat(result.items().getFirst().id()).isEqualTo("WO-2608-00001");
+    assertThat(result.items().getFirst().id()).isEqualTo("WO-260800001");
     assertThat(result.items().getFirst().assignedTechnicianName()).isEqualTo("Tech User");
     assertThat(result.items().getFirst().machineCode()).isEqualTo("M-001");
     assertThat(result.items().getFirst().plantCode()).isEqualTo("P01");
@@ -266,7 +266,7 @@ class WorkOrderListServiceTest {
   void listTrimsDescription() {
     var user = scopedUser(ApplicationRole.TECHNICIAN);
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
-    var workOrder = new WorkOrderEntity("WO-2608-00001", "INTERNAL", null, WorkOrderStatus.OPEN, UUID.randomUUID(),
+    var workOrder = new WorkOrderEntity("WO-260800001", "INTERNAL", null, WorkOrderStatus.OPEN, UUID.randomUUID(),
         machineId, "  messy description  ", 0, null, technicianId, UUID.randomUUID(), NOW, NOW);
     var row = new WorkOrderListRow(workOrder, null, "M-001", "Machine", "P01");
     when(workOrders.findScopedPage(anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
@@ -284,7 +284,7 @@ class WorkOrderListServiceTest {
   // -------------------------------------------------------------------------
 
   private WorkOrderListRow listRow(UUID assignedTechnician, WorkOrderStatus status) {
-    var workOrder = new WorkOrderEntity("WO-2608-00001", "INTERNAL", null, status, UUID.randomUUID(),
+    var workOrder = new WorkOrderEntity("WO-260800001", "INTERNAL", null, status, UUID.randomUUID(),
         machineId, "desc", 0, null, assignedTechnician, UUID.randomUUID(), NOW, NOW);
     var category = new com.syncro.maintenance.infrastructure.db.WorkOrderCategoryEntity(
         UUID.randomUUID(), "01", "Breakdown", null, NOW, NOW);

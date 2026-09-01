@@ -109,11 +109,11 @@ class WahaTemplateRendererTest {
             WahaTemplate.WORKORDER_LIFECYCLE_KEY,
             "WO {workOrderId} mesin {machineCode} {eventLabel} ({status}) at {transitionedAt}", now, now)));
 
-    var body = renderer().renderWorkorderLifecycle("WO-2608-00001", "BF-08410", "IN_PROGRESS",
+    var body = renderer().renderWorkorderLifecycle("WO-260800001", "BF-08410", "IN_PROGRESS",
         "Mulai perbaikan", Instant.parse("2026-08-24T12:00:00Z"));
 
     assertThat(body)
-        .contains("WO WO-2608-00001")
+        .contains("WO WO-260800001")
         .contains("mesin BF-08410")
         .contains("Mulai perbaikan")
         .contains("IN_PROGRESS")
@@ -127,11 +127,11 @@ class WahaTemplateRendererTest {
             WahaTemplate.WORKORDER_ACK_KEY,
             "WO {workOrderId} mesin {machineCode} deadline {ackDeadline} link {ackLink}", now, now)));
 
-    var body = renderer().renderWorkorderAck("WO-2608-00001", "BF-08410",
+    var body = renderer().renderWorkorderAck("WO-260800001", "BF-08410",
         Instant.parse("2026-08-24T16:00:00Z"), "/dashboard/workorders/ack-task-list?token=abc");
 
     assertThat(body)
-        .contains("WO WO-2608-00001")
+        .contains("WO WO-260800001")
         .contains("mesin BF-08410")
         .contains("deadline 2026-08-24 23:00")
         .contains("link /dashboard/workorders/ack-task-list?token=abc");

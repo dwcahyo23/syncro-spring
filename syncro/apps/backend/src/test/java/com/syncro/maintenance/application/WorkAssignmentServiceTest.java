@@ -97,14 +97,14 @@ class WorkAssignmentServiceTest {
   void firstAssignmentTransitionsToInProgress() {
     var user = user(ApplicationRole.SECTION_LEADER);
     var entity = openEntity();
-    when(workOrders.findByIdForUpdate("WO-2409-00001")).thenReturn(Optional.of(entity));
+    when(workOrders.findByIdForUpdate("WO-240900001")).thenReturn(Optional.of(entity));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(groupId), Set.of()));
     when(users.findById(technicianId)).thenReturn(Optional.of(technician(technicianId)));
-    when(assignments.existsByWorkOrderIdAndTechnicianIdAndActiveTrue("WO-2409-00001", technicianId)).thenReturn(false);
+    when(assignments.existsByWorkOrderIdAndTechnicianIdAndActiveTrue("WO-240900001", technicianId)).thenReturn(false);
     when(assignments.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
     when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    var result = service.assign(user, "WO-2409-00001", new AssignWorkAssignmentCommand(technicianId));
+    var result = service.assign(user, "WO-240900001", new AssignWorkAssignmentCommand(technicianId));
 
     assertThat(result.isActive()).isTrue();
     assertThat(result.technicianId()).isEqualTo(technicianId);
@@ -115,25 +115,25 @@ class WorkAssignmentServiceTest {
     // one assignment CREATE audit + one transition UPDATE audit
     verify(auditLog).record(eq(user), argThat(r -> r.action() == AuditAction.CREATE
         && r.entityType() == AuditEntityType.WORK_ASSIGNMENT
-        && r.entityLabel().equals("WO-2409-00001")));
+        && r.entityLabel().equals("WO-240900001")));
     verify(auditLog).record(eq(user), argThat(r -> r.action() == AuditAction.UPDATE
         && r.entityType() == AuditEntityType.WORK_ORDER
-        && r.entityLabel().equals("WO-2409-00001")));
+        && r.entityLabel().equals("WO-240900001")));
   }
 
   @Test
   @DisplayName("17.1-SVC-002 P0 additional assignment on an IN_PROGRESS workorder does not transition")
   void additionalAssignmentNoTransition() {
     var user = user(ApplicationRole.MANAGER_MAINTENANCE);
-    var entity = new WorkOrderEntity("WO-2409-00001", "INTERNAL", null, WorkOrderStatus.IN_PROGRESS, UUID.randomUUID(),
+    var entity = new WorkOrderEntity("WO-240900001", "INTERNAL", null, WorkOrderStatus.IN_PROGRESS, UUID.randomUUID(),
         machineId, "desc", 0, null, technicianId, UUID.randomUUID(), NOW, NOW);
-    when(workOrders.findByIdForUpdate("WO-2409-00001")).thenReturn(Optional.of(entity));
+    when(workOrders.findByIdForUpdate("WO-240900001")).thenReturn(Optional.of(entity));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
     when(users.findById(secondTechnicianId)).thenReturn(Optional.of(technician(secondTechnicianId)));
-    when(assignments.existsByWorkOrderIdAndTechnicianIdAndActiveTrue("WO-2409-00001", secondTechnicianId)).thenReturn(false);
+    when(assignments.existsByWorkOrderIdAndTechnicianIdAndActiveTrue("WO-240900001", secondTechnicianId)).thenReturn(false);
     when(assignments.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    var result = service.assign(user, "WO-2409-00001", new AssignWorkAssignmentCommand(secondTechnicianId));
+    var result = service.assign(user, "WO-240900001", new AssignWorkAssignmentCommand(secondTechnicianId));
 
     assertThat(result.technicianId()).isEqualTo(secondTechnicianId);
     assertThat(entity.getStatus()).isEqualTo(WorkOrderStatus.IN_PROGRESS);
@@ -148,8 +148,8 @@ class WorkAssignmentServiceTest {
     var entity = openEntity();
     var assignmentId = UUID.randomUUID();
     var assignment = new WorkAssignmentEntity(assignmentId, WorkAssignmentParentType.CORRECTIVE_WO,
-        "WO-2409-00001", technicianId, UUID.randomUUID(), NOW, null, null, true, NOW, NOW);
-    when(workOrders.findByIdForUpdate("WO-2409-00001")).thenReturn(Optional.of(entity));
+        "WO-240900001", technicianId, UUID.randomUUID(), NOW, null, null, true, NOW, NOW);
+    when(workOrders.findByIdForUpdate("WO-240900001")).thenReturn(Optional.of(entity));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(groupId), Set.of()));
     when(assignments.findById(assignmentId)).thenReturn(Optional.of(assignment));
     // The @Modifying deactivateIfActive both updates the row and (in a mock) mutates the
@@ -159,7 +159,7 @@ class WorkAssignmentServiceTest {
       return 1;
     });
 
-    var result = service.drop(user, "WO-2409-00001", assignmentId);
+    var result = service.drop(user, "WO-240900001", assignmentId);
 
     assertThat(result.isActive()).isFalse();
     assertThat(result.droppedAt()).isEqualTo(NOW);
@@ -168,25 +168,25 @@ class WorkAssignmentServiceTest {
     assertThat(entity.getAssignedTechnicianId()).isNull();
     verify(auditLog).record(eq(user), argThat(r -> r.action() == AuditAction.UPDATE
         && r.entityType() == AuditEntityType.WORK_ASSIGNMENT
-        && r.entityLabel().equals("WO-2409-00001")));
+        && r.entityLabel().equals("WO-240900001")));
   }
 
   @Test
   @DisplayName("17.1-SVC-004 P0 duplicate assign maps the unique constraint to AssignmentAlreadyExistsException")
   void duplicateAssign() {
     var user = user(ApplicationRole.MANAGER_MAINTENANCE);
-    var entity = new WorkOrderEntity("WO-2409-00001", "INTERNAL", null, WorkOrderStatus.IN_PROGRESS, UUID.randomUUID(),
+    var entity = new WorkOrderEntity("WO-240900001", "INTERNAL", null, WorkOrderStatus.IN_PROGRESS, UUID.randomUUID(),
         machineId, "desc", 0, null, technicianId, UUID.randomUUID(), NOW, NOW);
-    when(workOrders.findByIdForUpdate("WO-2409-00001")).thenReturn(Optional.of(entity));
+    when(workOrders.findByIdForUpdate("WO-240900001")).thenReturn(Optional.of(entity));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
     when(users.findById(technicianId)).thenReturn(Optional.of(technician(technicianId)));
-    when(assignments.existsByWorkOrderIdAndTechnicianIdAndActiveTrue("WO-2409-00001", technicianId)).thenReturn(false);
+    when(assignments.existsByWorkOrderIdAndTechnicianIdAndActiveTrue("WO-240900001", technicianId)).thenReturn(false);
     org.mockito.Mockito.doThrow(new DataIntegrityViolationException("dup",
         new org.hibernate.exception.ConstraintViolationException("dup",
             new java.sql.SQLException("dup"), "uq_work_assignments_wo_tech_at")))
         .when(assignments).saveAndFlush(any());
 
-    assertThatThrownBy(() -> service.assign(user, "WO-2409-00001", new AssignWorkAssignmentCommand(technicianId)))
+    assertThatThrownBy(() -> service.assign(user, "WO-240900001", new AssignWorkAssignmentCommand(technicianId)))
         .isInstanceOf(AssignmentAlreadyExistsException.class);
   }
 
@@ -196,11 +196,11 @@ class WorkAssignmentServiceTest {
     var selfId = UUID.fromString("a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1");
     var user = new AuthenticatedUser(selfId.toString(), "leader@syncro.dev", ApplicationRole.SECTION_LEADER);
     var entity = openEntity();
-    when(workOrders.findByIdForUpdate("WO-2409-00001")).thenReturn(Optional.of(entity));
+    when(workOrders.findByIdForUpdate("WO-240900001")).thenReturn(Optional.of(entity));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(groupId), Set.of()));
     when(users.findById(selfId)).thenReturn(Optional.of(technician(selfId)));
 
-    assertThatThrownBy(() -> service.assign(user, "WO-2409-00001", new AssignWorkAssignmentCommand(selfId)))
+    assertThatThrownBy(() -> service.assign(user, "WO-240900001", new AssignWorkAssignmentCommand(selfId)))
         .isInstanceOf(SelfAssignmentForbiddenException.class);
     verify(assignments, never()).saveAndFlush(any());
   }
@@ -211,12 +211,12 @@ class WorkAssignmentServiceTest {
     var user = user(ApplicationRole.SECTION_LEADER);
     var auditorId = UUID.randomUUID();
     var entity = openEntity();
-    when(workOrders.findByIdForUpdate("WO-2409-00001")).thenReturn(Optional.of(entity));
+    when(workOrders.findByIdForUpdate("WO-240900001")).thenReturn(Optional.of(entity));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(groupId), Set.of()));
     when(users.findById(auditorId)).thenReturn(Optional.of(
         new AuthUserEntity(auditorId, "auditor@syncro.dev", "x", ApplicationRole.AUDITOR, true, NOW, NOW)));
 
-    assertThatThrownBy(() -> service.assign(user, "WO-2409-00001", new AssignWorkAssignmentCommand(auditorId)))
+    assertThatThrownBy(() -> service.assign(user, "WO-240900001", new AssignWorkAssignmentCommand(auditorId)))
         .isInstanceOf(WorkorderForbiddenException.class);
     verify(assignments, never()).saveAndFlush(any());
   }
@@ -237,11 +237,11 @@ class WorkAssignmentServiceTest {
   @DisplayName("17.1-SVC-008 P0 assign to CLOSED workorder throws InvalidStateTransitionException")
   void closedWorkorderRejected() {
     var user = user(ApplicationRole.SUPER_ADMIN);
-    var entity = new WorkOrderEntity("WO-2409-00001", "INTERNAL", null, WorkOrderStatus.CLOSED, UUID.randomUUID(),
+    var entity = new WorkOrderEntity("WO-240900001", "INTERNAL", null, WorkOrderStatus.CLOSED, UUID.randomUUID(),
         machineId, "desc", 0, null, technicianId, UUID.randomUUID(), NOW, NOW);
-    when(workOrders.findByIdForUpdate("WO-2409-00001")).thenReturn(Optional.of(entity));
+    when(workOrders.findByIdForUpdate("WO-240900001")).thenReturn(Optional.of(entity));
 
-    assertThatThrownBy(() -> service.assign(user, "WO-2409-00001", new AssignWorkAssignmentCommand(technicianId)))
+    assertThatThrownBy(() -> service.assign(user, "WO-240900001", new AssignWorkAssignmentCommand(technicianId)))
         .isInstanceOf(InvalidStateTransitionException.class);
   }
 
@@ -250,7 +250,7 @@ class WorkAssignmentServiceTest {
   void staffCannotAssign() {
     var user = user(ApplicationRole.STAFF_MAINTENANCE);
 
-    assertThatThrownBy(() -> service.assign(user, "WO-2409-00001", new AssignWorkAssignmentCommand(technicianId)))
+    assertThatThrownBy(() -> service.assign(user, "WO-240900001", new AssignWorkAssignmentCommand(technicianId)))
         .isInstanceOf(WorkorderForbiddenException.class);
   }
 
@@ -259,7 +259,7 @@ class WorkAssignmentServiceTest {
   void technicianCannotAssign() {
     var user = user(ApplicationRole.TECHNICIAN);
 
-    assertThatThrownBy(() -> service.assign(user, "WO-2409-00001", new AssignWorkAssignmentCommand(technicianId)))
+    assertThatThrownBy(() -> service.assign(user, "WO-240900001", new AssignWorkAssignmentCommand(technicianId)))
         .isInstanceOf(WorkorderForbiddenException.class);
   }
 
@@ -267,9 +267,9 @@ class WorkAssignmentServiceTest {
   @DisplayName("17.1-SVC-011 P0 unknown workorder throws WorkOrderNotFoundException")
   void unknownWorkorder() {
     var user = user(ApplicationRole.MANAGER_MAINTENANCE);
-    when(workOrders.findByIdForUpdate("WO-2409-NADA")).thenReturn(Optional.empty());
+    when(workOrders.findByIdForUpdate("WO-2409NADA")).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.assign(user, "WO-2409-NADA", new AssignWorkAssignmentCommand(technicianId)))
+    assertThatThrownBy(() -> service.assign(user, "WO-2409NADA", new AssignWorkAssignmentCommand(technicianId)))
         .isInstanceOf(WorkOrderNotFoundException.class);
   }
 
@@ -278,11 +278,11 @@ class WorkAssignmentServiceTest {
   void unknownAssignee() {
     var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var entity = openEntity();
-    when(workOrders.findByIdForUpdate("WO-2409-00001")).thenReturn(Optional.of(entity));
+    when(workOrders.findByIdForUpdate("WO-240900001")).thenReturn(Optional.of(entity));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
     when(users.findById(technicianId)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.assign(user, "WO-2409-00001", new AssignWorkAssignmentCommand(technicianId)))
+    assertThatThrownBy(() -> service.assign(user, "WO-240900001", new AssignWorkAssignmentCommand(technicianId)))
         .isInstanceOf(WorkOrderUserNotFoundException.class);
   }
 
@@ -292,10 +292,10 @@ class WorkAssignmentServiceTest {
     var user = user(ApplicationRole.SECTION_LEADER);
     var otherGroupId = UUID.randomUUID();
     var entity = openEntity();
-    when(workOrders.findByIdForUpdate("WO-2409-00001")).thenReturn(Optional.of(entity));
+    when(workOrders.findByIdForUpdate("WO-240900001")).thenReturn(Optional.of(entity));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(otherGroupId), Set.of()));
 
-    assertThatThrownBy(() -> service.assign(user, "WO-2409-00001", new AssignWorkAssignmentCommand(technicianId)))
+    assertThatThrownBy(() -> service.assign(user, "WO-240900001", new AssignWorkAssignmentCommand(technicianId)))
         .isInstanceOf(WorkorderForbiddenException.class);
   }
 
@@ -305,11 +305,11 @@ class WorkAssignmentServiceTest {
     var user = user(ApplicationRole.MANAGER_MAINTENANCE);
     var assignmentId = UUID.randomUUID();
     var entity = openEntity();
-    when(workOrders.findByIdForUpdate("WO-2409-00001")).thenReturn(Optional.of(entity));
+    when(workOrders.findByIdForUpdate("WO-240900001")).thenReturn(Optional.of(entity));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
     when(assignments.findById(assignmentId)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.drop(user, "WO-2409-00001", assignmentId))
+    assertThatThrownBy(() -> service.drop(user, "WO-240900001", assignmentId))
         .isInstanceOf(WorkAssignmentNotFoundException.class);
   }
 
@@ -320,14 +320,14 @@ class WorkAssignmentServiceTest {
     var assignmentId = UUID.randomUUID();
     var entity = openEntity();
     var assignment = new WorkAssignmentEntity(assignmentId, WorkAssignmentParentType.CORRECTIVE_WO,
-        "WO-2409-00001", technicianId, UUID.randomUUID(), NOW, NOW, UUID.randomUUID(), false, NOW, NOW);
-    when(workOrders.findByIdForUpdate("WO-2409-00001")).thenReturn(Optional.of(entity));
+        "WO-240900001", technicianId, UUID.randomUUID(), NOW, NOW, UUID.randomUUID(), false, NOW, NOW);
+    when(workOrders.findByIdForUpdate("WO-240900001")).thenReturn(Optional.of(entity));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
     when(assignments.findById(assignmentId)).thenReturn(Optional.of(assignment));
     // Already inactive: the atomic conditional update touches 0 rows.
     when(assignments.deactivateIfActive(assignmentId, UUID.fromString(user.id()), NOW)).thenReturn(0);
 
-    assertThatThrownBy(() -> service.drop(user, "WO-2409-00001", assignmentId))
+    assertThatThrownBy(() -> service.drop(user, "WO-240900001", assignmentId))
         .isInstanceOf(AssignmentAlreadyDroppedException.class);
     verify(assignments, never()).saveAndFlush(any());
   }
@@ -339,12 +339,12 @@ class WorkAssignmentServiceTest {
     var assignmentId = UUID.randomUUID();
     var entity = openEntity();
     var assignment = new WorkAssignmentEntity(assignmentId, WorkAssignmentParentType.CORRECTIVE_WO,
-        "WO-2409-OTHER", technicianId, UUID.randomUUID(), NOW, null, null, true, NOW, NOW);
-    when(workOrders.findByIdForUpdate("WO-2409-00001")).thenReturn(Optional.of(entity));
+        "WO-2409OTHER", technicianId, UUID.randomUUID(), NOW, null, null, true, NOW, NOW);
+    when(workOrders.findByIdForUpdate("WO-240900001")).thenReturn(Optional.of(entity));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
     when(assignments.findById(assignmentId)).thenReturn(Optional.of(assignment));
 
-    assertThatThrownBy(() -> service.drop(user, "WO-2409-00001", assignmentId))
+    assertThatThrownBy(() -> service.drop(user, "WO-240900001", assignmentId))
         .isInstanceOf(WorkAssignmentNotFoundException.class);
   }
 
@@ -352,13 +352,13 @@ class WorkAssignmentServiceTest {
   @DisplayName("17.1-SVC-017 P1 list returns assignments ordered by assignedAt asc")
   void listReturnsOrdered() {
     var first = new WorkAssignmentEntity(UUID.randomUUID(), WorkAssignmentParentType.CORRECTIVE_WO,
-        "WO-2409-00001", technicianId, UUID.randomUUID(), NOW, null, null, true, NOW, NOW);
+        "WO-240900001", technicianId, UUID.randomUUID(), NOW, null, null, true, NOW, NOW);
     var second = new WorkAssignmentEntity(UUID.randomUUID(), WorkAssignmentParentType.CORRECTIVE_WO,
-        "WO-2409-00001", secondTechnicianId, UUID.randomUUID(), NOW.plusSeconds(60), null, null, true, NOW, NOW);
-    when(workOrders.existsById("WO-2409-00001")).thenReturn(true);
-    when(assignments.findByWorkOrderIdOrderByAssignedAtAsc("WO-2409-00001")).thenReturn(List.of(first, second));
+        "WO-240900001", secondTechnicianId, UUID.randomUUID(), NOW.plusSeconds(60), null, null, true, NOW, NOW);
+    when(workOrders.existsById("WO-240900001")).thenReturn(true);
+    when(assignments.findByWorkOrderIdOrderByAssignedAtAsc("WO-240900001")).thenReturn(List.of(first, second));
 
-    var result = service.list("WO-2409-00001");
+    var result = service.list("WO-240900001");
 
     assertThat(result).hasSize(2);
     assertThat(result.get(0).technicianId()).isEqualTo(technicianId);
@@ -368,9 +368,9 @@ class WorkAssignmentServiceTest {
   @Test
   @DisplayName("17.1-SVC-018 P1 list on an unknown workorder throws WorkOrderNotFoundException")
   void listUnknownWorkorder() {
-    when(workOrders.existsById("WO-2409-NADA")).thenReturn(false);
+    when(workOrders.existsById("WO-2409NADA")).thenReturn(false);
 
-    assertThatThrownBy(() -> service.list("WO-2409-NADA"))
+    assertThatThrownBy(() -> service.list("WO-2409NADA"))
         .isInstanceOf(WorkOrderNotFoundException.class);
   }
 
@@ -378,14 +378,14 @@ class WorkAssignmentServiceTest {
   @DisplayName("17.1-SVC-019 P0 active-duplicate pre-check rejects a second active assignment for the same tech")
   void activeDuplicatePreCheck() {
     var user = user(ApplicationRole.MANAGER_MAINTENANCE);
-    var entity = new WorkOrderEntity("WO-2409-00001", "INTERNAL", null, WorkOrderStatus.IN_PROGRESS, UUID.randomUUID(),
+    var entity = new WorkOrderEntity("WO-240900001", "INTERNAL", null, WorkOrderStatus.IN_PROGRESS, UUID.randomUUID(),
         machineId, "desc", 0, null, technicianId, UUID.randomUUID(), NOW, NOW);
-    when(workOrders.findByIdForUpdate("WO-2409-00001")).thenReturn(Optional.of(entity));
+    when(workOrders.findByIdForUpdate("WO-240900001")).thenReturn(Optional.of(entity));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
     when(users.findById(technicianId)).thenReturn(Optional.of(technician(technicianId)));
-    when(assignments.existsByWorkOrderIdAndTechnicianIdAndActiveTrue("WO-2409-00001", technicianId)).thenReturn(true);
+    when(assignments.existsByWorkOrderIdAndTechnicianIdAndActiveTrue("WO-240900001", technicianId)).thenReturn(true);
 
-    assertThatThrownBy(() -> service.assign(user, "WO-2409-00001", new AssignWorkAssignmentCommand(technicianId)))
+    assertThatThrownBy(() -> service.assign(user, "WO-240900001", new AssignWorkAssignmentCommand(technicianId)))
         .isInstanceOf(AssignmentAlreadyExistsException.class);
     verify(assignments, never()).saveAndFlush(any());
   }
@@ -395,10 +395,10 @@ class WorkAssignmentServiceTest {
   void nullScopeCollectionsGuarded() {
     var user = user(ApplicationRole.SECTION_LEADER);
     var entity = openEntity();
-    when(workOrders.findByIdForUpdate("WO-2409-00001")).thenReturn(Optional.of(entity));
+    when(workOrders.findByIdForUpdate("WO-240900001")).thenReturn(Optional.of(entity));
     when(scopes.derive(user)).thenReturn(new OperationalScope(null, null, null));
 
-    assertThatThrownBy(() -> service.assign(user, "WO-2409-00001", new AssignWorkAssignmentCommand(technicianId)))
+    assertThatThrownBy(() -> service.assign(user, "WO-240900001", new AssignWorkAssignmentCommand(technicianId)))
         .isInstanceOf(WorkorderForbiddenException.class);
   }
 
@@ -408,12 +408,12 @@ class WorkAssignmentServiceTest {
     var user = user(ApplicationRole.SECTION_LEADER);
     var entity = openEntity();
     var inactiveId = UUID.randomUUID();
-    when(workOrders.findByIdForUpdate("WO-2409-00001")).thenReturn(Optional.of(entity));
+    when(workOrders.findByIdForUpdate("WO-240900001")).thenReturn(Optional.of(entity));
     when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(groupId), Set.of()));
     when(users.findById(inactiveId)).thenReturn(Optional.of(
         new AuthUserEntity(inactiveId, "inactive@syncro.dev", "x", ApplicationRole.TECHNICIAN, false, NOW, NOW)));
 
-    assertThatThrownBy(() -> service.assign(user, "WO-2409-00001", new AssignWorkAssignmentCommand(inactiveId)))
+    assertThatThrownBy(() -> service.assign(user, "WO-240900001", new AssignWorkAssignmentCommand(inactiveId)))
         .isInstanceOf(WorkorderForbiddenException.class);
     verify(assignments, never()).saveAndFlush(any());
   }
@@ -423,7 +423,7 @@ class WorkAssignmentServiceTest {
   // -------------------------------------------------------------------------
 
   private WorkOrderEntity openEntity() {
-    return new WorkOrderEntity("WO-2409-00001", "INTERNAL", null, WorkOrderStatus.OPEN, UUID.randomUUID(),
+    return new WorkOrderEntity("WO-240900001", "INTERNAL", null, WorkOrderStatus.OPEN, UUID.randomUUID(),
         machineId, "desc", 0, null, null, UUID.randomUUID(), NOW, NOW);
   }
 
