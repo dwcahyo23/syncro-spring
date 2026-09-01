@@ -8,4 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface WorkLogRepository extends JpaRepository<WorkLogEntity, UUID> {
 
   List<WorkLogEntity> findByWorkOrderIdOrderByStartTimeAsc(String workOrderId);
+
+  long countByWorkOrderIdAndEndTimeIsNotNull(String workOrderId);
+
+  List<WorkLogEntity> findByWorkOrderIdAndEndTimeIsNotNull(String workOrderId);
 }

@@ -48,6 +48,9 @@ import com.syncro.maintenance.application.WorkorderSignatureService.ApproveSigna
 import com.syncro.maintenance.application.WorkorderSignatureService.SignatureResult;
 import com.syncro.maintenance.application.WorkOrderTodoService;
 import com.syncro.maintenance.application.WorkOrderTodoService.CreateTodoCommand;
+import com.syncro.maintenance.application.WorkLogService;
+import com.syncro.maintenance.application.WorkLogService.CreateWorkLogCommand;
+import com.syncro.maintenance.application.WorkLogService.UpdateWorkLogCommand;
 import com.syncro.maintenance.domain.workorder.RepairSession;
 import com.syncro.maintenance.domain.workorder.WorkOrder;
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
@@ -97,12 +100,13 @@ public class WorkOrderController {
   private final WorkorderSignatureService signatures;
   private final WorkOrderAckService acks;
   private final WorkAssignmentService workAssignments;
+  private final WorkLogService workLogs;
 
   public WorkOrderController(WorkOrderService workOrders, WorkOrderEvidenceService evidence,
       WorkOrderReportService report, WorkOrderTodoService todos, WorkOrderRatingService ratings,
       WorkOrderListService lists, WorkorderPrintReportService printReports,
       WorkorderSignatureService signatures, WorkOrderAckService acks,
-      WorkAssignmentService workAssignments) {
+      WorkAssignmentService workAssignments, WorkLogService workLogs) {
     this.workOrders = workOrders;
     this.evidence = evidence;
     this.report = report;
@@ -113,6 +117,7 @@ public class WorkOrderController {
     this.signatures = signatures;
     this.acks = acks;
     this.workAssignments = workAssignments;
+    this.workLogs = workLogs;
   }
 
   /**
@@ -211,6 +216,62 @@ public class WorkOrderController {
       @Valid @RequestBody WorkOrderDtos.AssignWorkAssignmentRequest request) {
     var view = workAssignments.assign(user, id, new AssignWorkAssignmentCommand(request.technicianId()));
     return ResponseEntity.status(HttpStatus.CREATED).body(toAssignmentDto(view));
+  }
+
+  /**
+   * Creates a work log on an active assignment (17-2, blueprint B4, AD-18). Gate:
+   * executor (TECHNICIAN/STAFF_MAINTENANCE with an active assignment) OR in-scope
+   * leader; EXTERNAL workorders rejected. Backdate is allowed but never before the
+   * workorder's created_at. A completed log (end_time + stopped_reason) recomputes MTTR.
+   */
+  @Operation(operationId = "createWorkLog", summary = "Create a work log on an active assignment")
+  @ApiResponses({
+      @ApiResponse(responseCode = "201", description = "Work log created",
+          content = @Content(schema = @Schema(implementation = WorkOrderDtos.WorkLogView.class))),
+      @ApiResponse(responseCode = "400", description = "Backdate before workorder creation, or validation failed"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden (non-executor, non-leader, or EXTERNAL workorder)"),
+      @ApiResponse(responseCode = "404", description = "Workorder or assignment not found"),
+      @ApiResponse(responseCode = "409", description = "Assignment is not active on this workorder")
+  })
+  @PostMapping("/{id}/work-logs")
+  public ResponseEntity<WorkOrderDtos.WorkLogView> createWorkLog(
+      @AuthenticationPrincipal AuthenticatedUser user, @PathVariable String id,
+      @Valid @RequestBody WorkOrderDtos.CreateWorkLogRequest request) {
+    var view = workLogs.create(user, id, new CreateWorkLogCommand(request.workAssignmentId(),
+        request.startTime(), request.endTime(), request.stoppedReason(), request.activityNote(),
+        request.completionNote(), request.notes()));
+    return ResponseEntity.status(HttpStatus.CREATED).body(toWorkLogDto(view));
+  }
+
+  /** Updates a work log's mutable fields (gate: log owner executor OR in-scope leader). */
+  @Operation(operationId = "updateWorkLog", summary = "Update a work log")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Work log updated",
+          content = @Content(schema = @Schema(implementation = WorkOrderDtos.WorkLogView.class))),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden (not the log owner, or EXTERNAL workorder)"),
+      @ApiResponse(responseCode = "404", description = "Workorder or work log not found")
+  })
+  @PutMapping("/{id}/work-logs/{workLogId}")
+  public WorkOrderDtos.WorkLogView updateWorkLog(@AuthenticationPrincipal AuthenticatedUser user,
+      @PathVariable String id, @PathVariable UUID workLogId,
+      @Valid @RequestBody WorkOrderDtos.UpdateWorkLogRequest request) {
+    return toWorkLogDto(workLogs.update(user, id, workLogId, new UpdateWorkLogCommand(
+        request.endTime(), request.stoppedReason(), request.completionNote(), request.notes())));
+  }
+
+  /** Lists the workorder's work logs ordered by start_time asc (any authenticated user). */
+  @Operation(operationId = "listWorkLogs", summary = "List a workorder's work logs")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Work logs returned",
+          content = @Content(schema = @Schema(implementation = WorkOrderDtos.WorkLogView[].class))),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "404", description = "Workorder not found")
+  })
+  @GetMapping("/{id}/work-logs")
+  public List<WorkOrderDtos.WorkLogView> listWorkLogs(@PathVariable String id) {
+    return workLogs.list(id).stream().map(WorkOrderController::toWorkLogDto).toList();
   }
 
   /** Drops an active assignment (soft-deactivate; 17-1, AD-17). */
@@ -749,6 +810,12 @@ public class WorkOrderController {
   private static WorkOrderDtos.WorkorderSignatureView toSignatureDto(SignatureResult result) {
     return new WorkOrderDtos.WorkorderSignatureView(result.id(), result.signatureObjectKey(),
         result.signerIdentity(), result.signedBy(), result.signedAt());
+  }
+
+  private static WorkOrderDtos.WorkLogView toWorkLogDto(WorkLogService.WorkLogView view) {
+    return new WorkOrderDtos.WorkLogView(view.id(), view.workAssignmentId(), view.workOrderId(),
+        view.technicianId(), view.startTime(), view.endTime(), view.stoppedReason(),
+        view.activityNote(), view.completionNote(), view.notes(), view.createdAt(), view.updatedAt());
   }
 
   private static WorkOrderDtos.WorkAssignmentView toAssignmentDto(WorkAssignmentView view) {

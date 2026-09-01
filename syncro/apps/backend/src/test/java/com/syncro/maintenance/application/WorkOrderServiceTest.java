@@ -38,6 +38,7 @@ import com.syncro.maintenance.domain.workorder.WorkOrderIdGenerator;
 import com.syncro.maintenance.domain.workorder.WorkOrderIdGenerator.WorkorderIdExhaustedException;
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
 import com.syncro.maintenance.infrastructure.db.RepairSessionRepository;
+import com.syncro.maintenance.infrastructure.db.WorkLogRepository;
 import com.syncro.maintenance.infrastructure.db.WorkOrderCategoryEntity;
 import com.syncro.maintenance.infrastructure.db.WorkOrderCategoryRepository;
 import com.syncro.maintenance.infrastructure.db.WorkOrderEntity;
@@ -88,6 +89,8 @@ class WorkOrderServiceTest {
   private AuditLogWriter auditLog;
   @Mock
   private RepairSessionRepository repairSessions;
+  @Mock
+  private WorkLogRepository workLogs;
 
   private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
   private final UUID plantId = UUID.randomUUID();
@@ -103,7 +106,7 @@ class WorkOrderServiceTest {
   @BeforeEach
   void setUp() {
     service = new WorkOrderService(idGenerator, workOrders, statusHistory, categories, machines, users, scopes,
-        plantScopes, sparepartReadiness, auditLog, repairSessions, clock);
+        plantScopes, sparepartReadiness, auditLog, repairSessions, workLogs, clock);
     machine = machineWithPlant(plantId, groupId, machineId);
     lenient().when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
     category = new WorkOrderCategoryEntity(categoryId, "01", "Breakdown", UUID.randomUUID(), NOW, NOW);

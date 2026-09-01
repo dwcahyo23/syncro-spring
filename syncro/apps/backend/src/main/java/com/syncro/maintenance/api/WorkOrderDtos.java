@@ -3,6 +3,7 @@ package com.syncro.maintenance.api;
 import com.syncro.maintenance.domain.workorder.FmeaFailureType;
 import com.syncro.maintenance.domain.workorder.StopTimeReason;
 import com.syncro.maintenance.domain.workorder.TodoStatus;
+import com.syncro.maintenance.domain.workorder.WorkLogStoppedReason;
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
@@ -234,6 +235,50 @@ public final class WorkOrderDtos {
       Instant droppedAt,
       UUID droppedBy,
       boolean isActive) {
+  }
+
+  // -------------------------------------------------------------------------
+  // Work logs (17-2, blueprint B4, AD-18)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Create a work log on an active assignment (POST /{id}/work-logs). The technician
+   * is derived from the assignment — never taken from the request. {@code activityNote}
+   * is mandatory (the DB CHECK is the backstop); backdate is allowed but never before
+   * the workorder's {@code created_at} (service-enforced, AD-18).
+   */
+  public record CreateWorkLogRequest(
+      @NotNull UUID workAssignmentId,
+      @NotNull Instant startTime,
+      Instant endTime,
+      WorkLogStoppedReason stoppedReason,
+      @NotBlank @Size(max = 2000) String activityNote,
+      String completionNote,
+      String notes) {
+  }
+
+  /** Update a work log's mutable fields (PUT /{id}/work-logs/{workLogId}). */
+  public record UpdateWorkLogRequest(
+      Instant endTime,
+      WorkLogStoppedReason stoppedReason,
+      String completionNote,
+      String notes) {
+  }
+
+  /** Read model for a single work-log row. */
+  public record WorkLogView(
+      UUID id,
+      UUID workAssignmentId,
+      String workOrderId,
+      UUID technicianId,
+      Instant startTime,
+      Instant endTime,
+      WorkLogStoppedReason stoppedReason,
+      String activityNote,
+      String completionNote,
+      String notes,
+      Instant createdAt,
+      Instant updatedAt) {
   }
 
   /** The 4-hour ack landing task list. */

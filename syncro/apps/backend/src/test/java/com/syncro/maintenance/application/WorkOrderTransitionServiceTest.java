@@ -35,6 +35,7 @@ import com.syncro.maintenance.domain.workorder.WorkOrderStateMachine;
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
 import com.syncro.maintenance.infrastructure.db.RepairSessionEntity;
 import com.syncro.maintenance.infrastructure.db.RepairSessionRepository;
+import com.syncro.maintenance.infrastructure.db.WorkLogRepository;
 import com.syncro.maintenance.infrastructure.db.WorkOrderCategoryRepository;
 import com.syncro.maintenance.infrastructure.db.WorkOrderEntity;
 import com.syncro.maintenance.infrastructure.db.WorkOrderRepository;
@@ -83,6 +84,8 @@ class WorkOrderTransitionServiceTest {
   private AuditLogWriter auditLog;
   @Mock
   private RepairSessionRepository repairSessions;
+  @Mock
+  private WorkLogRepository workLogs;
 
   private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
   private final UUID plantId = UUID.randomUUID();
@@ -97,11 +100,12 @@ class WorkOrderTransitionServiceTest {
   @BeforeEach
   void setUp() {
     service = new WorkOrderService(idGenerator, workOrders, statusHistory, categories, machines, users, scopes,
-        plantScopes, sparepartReadiness, auditLog, repairSessions, clock);
+        plantScopes, sparepartReadiness, auditLog, repairSessions, workLogs, clock);
     machine = machineWithPlant(plantId, groupId, machineId);
     lenient().when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
     lenient().when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull(any())).thenReturn(Optional.empty());
     lenient().when(repairSessions.countByWorkOrderIdAndEndedAtIsNotNull(any())).thenReturn(1L);
+    lenient().when(workLogs.countByWorkOrderIdAndEndTimeIsNotNull(any())).thenReturn(0L);
   }
 
   // -------------------------------------------------------------------------
@@ -290,6 +294,38 @@ class WorkOrderTransitionServiceTest {
 
     assertThat(result.status()).isEqualTo(WorkOrderStatus.PENDING_REVIEW);
     verify(workOrders).saveAndFlush(entity);
+  }
+
+  @Test
+  @DisplayName("17.2-SVC-001 P0 IN_PROGRESS→DONE with a completed work log (no session, no reason) succeeds")
+  void doneWithCompletedWorkLog() {
+    var user = assignedTechnician();
+    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.IN_PROGRESS, null, technicianId);
+    when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
+    when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull(WORKORDER_ID)).thenReturn(Optional.empty());
+    when(repairSessions.countByWorkOrderIdAndEndedAtIsNotNull(WORKORDER_ID)).thenReturn(0L);
+    when(workLogs.countByWorkOrderIdAndEndTimeIsNotNull(WORKORDER_ID)).thenReturn(1L);
+    when(workOrders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    var result = service.transition(user, WORKORDER_ID, command(WorkOrderStatus.PENDING_REVIEW));
+
+    assertThat(result.status()).isEqualTo(WorkOrderStatus.PENDING_REVIEW);
+    verify(workOrders).saveAndFlush(entity);
+  }
+
+  @Test
+  @DisplayName("17.2-SVC-002 P0 IN_PROGRESS→DONE with no session AND no completed work log AND no reason is rejected")
+  void doneWithoutSessionOrWorkLogReasonRequired() {
+    var user = assignedTechnician();
+    var entity = entity(WORKORDER_ID, "INTERNAL", WorkOrderStatus.IN_PROGRESS, null, technicianId);
+    when(workOrders.findByIdForUpdate(WORKORDER_ID)).thenReturn(Optional.of(entity));
+    when(repairSessions.findFirstByWorkOrderIdAndEndedAtIsNull(WORKORDER_ID)).thenReturn(Optional.empty());
+    when(repairSessions.countByWorkOrderIdAndEndedAtIsNotNull(WORKORDER_ID)).thenReturn(0L);
+    when(workLogs.countByWorkOrderIdAndEndTimeIsNotNull(WORKORDER_ID)).thenReturn(0L);
+
+    assertThatThrownBy(() -> service.transition(user, WORKORDER_ID,
+        new TransitionWorkOrderCommand(WorkOrderStatus.PENDING_REVIEW, null, null)))
+        .isInstanceOf(DoneWithoutSessionReasonRequiredException.class);
   }
 
   // -------------------------------------------------------------------------

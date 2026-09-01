@@ -66,6 +66,7 @@ import com.syncro.maintenance.application.WorkAssignmentService.WorkAssignmentNo
 import com.syncro.maintenance.application.WorkAssignmentService.WorkAssignmentView;
 import com.syncro.maintenance.application.WorkAssignmentService.AssignmentAlreadyDroppedException;
 import com.syncro.maintenance.application.WorkAssignmentService.AssignmentAlreadyExistsException;
+import com.syncro.maintenance.application.WorkLogService;
 import com.syncro.maintenance.application.WorkOrderService;
 import com.syncro.maintenance.application.WorkOrderService.AssignWorkOrderCommand;
 import com.syncro.maintenance.application.WorkOrderService.BreakdownCategoryRequiredException;
@@ -173,6 +174,9 @@ class WorkOrderControllerTest {
 
   @MockitoBean
   private WorkAssignmentService workAssignments;
+
+  @MockitoBean
+  private WorkLogService workLogs;
 
   @MockitoBean
   private JwtTokenService jwtTokenService;

@@ -34,6 +34,7 @@ import com.syncro.maintenance.domain.workorder.WorkOrderIdGenerator;
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
 import com.syncro.maintenance.infrastructure.db.RepairSessionEntity;
 import com.syncro.maintenance.infrastructure.db.RepairSessionRepository;
+import com.syncro.maintenance.infrastructure.db.WorkLogRepository;
 import com.syncro.maintenance.infrastructure.db.WorkOrderCategoryRepository;
 import com.syncro.maintenance.infrastructure.db.WorkOrderEntity;
 import com.syncro.maintenance.infrastructure.db.WorkOrderRepository;
@@ -84,6 +85,8 @@ class WorkOrderRepairSessionServiceTest {
   private AuditLogWriter auditLog;
   @Mock
   private RepairSessionRepository repairSessions;
+  @Mock
+  private WorkLogRepository workLogs;
 
   private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
   private final UUID plantId = UUID.randomUUID();
@@ -98,7 +101,7 @@ class WorkOrderRepairSessionServiceTest {
   @BeforeEach
   void setUp() {
     service = new WorkOrderService(idGenerator, workOrders, statusHistory, categories, machines, users, scopes,
-        plantScopes, sparepartReadiness, auditLog, repairSessions, clock);
+        plantScopes, sparepartReadiness, auditLog, repairSessions, workLogs, clock);
     machine = machineWithPlant(plantId, groupId, machineId);
     lenient().when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
   }

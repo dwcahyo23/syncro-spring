@@ -198,6 +198,16 @@ workorder_rating_paths := {
   "/api/v1/workorders/*/ratings/workorder",
 }
 
+# Workorder work logs (story 17-2, blueprint B4, AD-18): the same executor + leadership
+# role set as sessions/ratings — work logs are per-assignment execution sessions recorded
+# by the assigned executor or an in-scope leader; scope is service-side. The create
+# (POST), update (PUT) and list (GET) endpoints are covered by the same path set. GET
+# also flows through generic read_allowed (any authenticated user).
+workorder_worklog_paths := {
+  "/api/v1/workorders/*/work-logs",
+  "/api/v1/workorders/*/work-logs/*",
+}
+
 # Rating dimension paths (story 10-8): mutations are SUPER_ADMIN-only; reads generic.
 # Listed separately from core_mutation_paths because they are not "core" — they are
 # workorder config but not in the Epic 9 core set.
@@ -669,6 +679,39 @@ mutation_allowed if {
   input.subject.roles[_] == "PRODUCTION_LEADER"
   is_mutation
   path_matches(workorder_rating_paths)
+}
+
+# Work logs (story 17-2): same five-role allow set as sessions/transitions — the
+# assigned executor or an in-scope leader may create/update work logs; scope is
+# service-side. Reads (GET) flow through generic read_allowed.
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(workorder_worklog_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(workorder_worklog_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(workorder_worklog_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STAFF_MAINTENANCE"
+  is_mutation
+  path_matches(workorder_worklog_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "TECHNICIAN"
+  is_mutation
+  path_matches(workorder_worklog_paths)
 }
 
 mutation_allowed if {

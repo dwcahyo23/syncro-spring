@@ -18,6 +18,7 @@ import com.syncro.maintenance.domain.workorder.WorkOrderStateMachine;
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
 import com.syncro.maintenance.infrastructure.db.RepairSessionEntity;
 import com.syncro.maintenance.infrastructure.db.RepairSessionRepository;
+import com.syncro.maintenance.infrastructure.db.WorkLogRepository;
 import com.syncro.maintenance.infrastructure.db.WorkOrderCategoryEntity;
 import com.syncro.maintenance.infrastructure.db.WorkOrderCategoryRepository;
 import com.syncro.maintenance.infrastructure.db.WorkOrderEntity;
@@ -82,6 +83,7 @@ public class WorkOrderService {
   private final SparepartRequestReadinessPort sparepartReadiness;
   private final AuditLogWriter auditLog;
   private final RepairSessionRepository repairSessions;
+  private final WorkLogRepository workLogs;
   private final ApplicationEventPublisher events;
   private final Clock clock;
 
@@ -89,9 +91,9 @@ public class WorkOrderService {
       WorkOrderStatusHistoryRepository statusHistory, WorkOrderCategoryRepository categories,
       MachineRepository machines, AuthUserRepository users, OperationalScopeService scopes,
       PlantScopeService plantScopes, SparepartRequestReadinessPort sparepartReadiness, AuditLogWriter auditLog,
-      RepairSessionRepository repairSessions, Clock clock) {
+      RepairSessionRepository repairSessions, WorkLogRepository workLogs, Clock clock) {
     this(idGenerator, workOrders, statusHistory, categories, machines, users, scopes, plantScopes,
-        sparepartReadiness, auditLog, repairSessions, event -> { }, clock);
+        sparepartReadiness, auditLog, repairSessions, workLogs, event -> { }, clock);
   }
 
   /** Story 14-4: publisher-injected variant; publishes lifecycle events after transitions. */
@@ -100,7 +102,8 @@ public class WorkOrderService {
       WorkOrderStatusHistoryRepository statusHistory, WorkOrderCategoryRepository categories,
       MachineRepository machines, AuthUserRepository users, OperationalScopeService scopes,
       PlantScopeService plantScopes, SparepartRequestReadinessPort sparepartReadiness, AuditLogWriter auditLog,
-      RepairSessionRepository repairSessions, ApplicationEventPublisher events, Clock clock) {
+      RepairSessionRepository repairSessions, WorkLogRepository workLogs, ApplicationEventPublisher events,
+      Clock clock) {
     this.idGenerator = idGenerator;
     this.workOrders = workOrders;
     this.statusHistory = statusHistory;
@@ -112,6 +115,7 @@ public class WorkOrderService {
     this.sparepartReadiness = sparepartReadiness;
     this.auditLog = auditLog;
     this.repairSessions = repairSessions;
+    this.workLogs = workLogs;
     this.events = events;
     this.clock = clock;
   }
@@ -420,9 +424,12 @@ public class WorkOrderService {
   }
 
   /**
-   * FR-115 completion gate (additive on 10.3): an open session blocks PENDING_REVIEW; with
-   * no completed session at all a non-blank documented reason is required. Non-blank
-   * reasons are persisted on the workorder and ride the audit {@code new_value} JSON.
+   * FR-115 completion gate (additive on 10.3, extended 17-2/AD-18): an open repair
+   * session OR an open (not yet ended) work log blocks PENDING_REVIEW; with no completed
+   * repair session AND no completed work log a non-blank documented reason is required.
+   * The legacy repair-session path is preserved exactly — a completed session alone
+   * still satisfies the gate. Non-blank reasons are persisted on the workorder and ride
+   * the audit {@code new_value} JSON.
    */
   private void enforceDoneGate(WorkOrderEntity entity, WorkOrderStatus toStatus, String reason) {
     if (toStatus != WorkOrderStatus.PENDING_REVIEW) {
@@ -432,7 +439,9 @@ public class WorkOrderService {
       throw new SessionOpenConflictException();
     }
     var hasCompletedSession = repairSessions.countByWorkOrderIdAndEndedAtIsNotNull(entity.getId()) > 0;
-    if (!hasCompletedSession && (reason == null || reason.isBlank())) {
+    // 17-2 (AD-18): a completed work log (end_time IS NOT NULL) also satisfies completion.
+    var hasCompletedWorkLog = workLogs.countByWorkOrderIdAndEndTimeIsNotNull(entity.getId()) > 0;
+    if (!hasCompletedSession && !hasCompletedWorkLog && (reason == null || reason.isBlank())) {
       throw new DoneWithoutSessionReasonRequiredException();
     }
     if (reason != null && !reason.isBlank()) {

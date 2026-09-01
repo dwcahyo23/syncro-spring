@@ -131,4 +131,14 @@ public class WorkLogEntity {
     this.stoppedReason = stoppedReason;
     this.updatedAt = updatedAt;
   }
+
+  /** Updates the log's mutable fields (story 17-2). */
+  public void update(Instant endTime, WorkLogStoppedReason stoppedReason, String completionNote,
+      String notes, Instant updatedAt) {
+    this.endTime = endTime;
+    this.stoppedReason = stoppedReason;
+    this.completionNote = completionNote;
+    this.notes = notes;
+    this.updatedAt = updatedAt;
+  }
 }

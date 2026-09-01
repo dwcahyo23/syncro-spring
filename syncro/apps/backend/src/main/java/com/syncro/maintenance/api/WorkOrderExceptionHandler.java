@@ -7,6 +7,11 @@ import com.syncro.maintenance.application.WorkOrderAckService.AckWorkOrderNotFou
 import com.syncro.maintenance.application.WorkAssignmentService.AssignmentAlreadyDroppedException;
 import com.syncro.maintenance.application.WorkAssignmentService.AssignmentAlreadyExistsException;
 import com.syncro.maintenance.application.WorkAssignmentService.WorkAssignmentNotFoundException;
+import com.syncro.maintenance.application.WorkLogService.WorkLogAssignmentInactiveException;
+import com.syncro.maintenance.application.WorkLogService.WorkLogAssignmentNotFoundException;
+import com.syncro.maintenance.application.WorkLogService.WorkLogBackdateBeforeWorkorderException;
+import com.syncro.maintenance.application.WorkLogService.WorkLogNotFoundException;
+import com.syncro.maintenance.application.WorkLogService.WorkLogValidationException;
 import com.syncro.maintenance.application.WorkOrderService.BreakdownCategoryRequiredException;
 import com.syncro.maintenance.application.WorkOrderService.ChildrenNotTerminalException;
 import com.syncro.maintenance.application.WorkOrderService.DoneWithoutSessionReasonRequiredException;
@@ -210,6 +215,41 @@ public class WorkOrderExceptionHandler {
   ResponseEntity<ErrorResponse> assignmentNotFound() {
     return error(HttpStatus.NOT_FOUND, "ASSIGNMENT_NOT_FOUND",
         "Assignment was not found.", Map.of());
+  }
+
+  // -------------------------------------------------------------------------
+  // Work logs (17-2, blueprint B4, AD-18)
+  // -------------------------------------------------------------------------
+
+  /** AD-18 backdate rule: a work log may not start before the workorder was created. */
+  @ExceptionHandler(WorkLogBackdateBeforeWorkorderException.class)
+  ResponseEntity<ErrorResponse> workLogBackdateBeforeWorkorder() {
+    return error(HttpStatus.BAD_REQUEST, "BACKDATE_BEFORE_WORKORDER",
+        "A work log cannot start before the workorder was created.", Map.of());
+  }
+
+  @ExceptionHandler(WorkLogNotFoundException.class)
+  ResponseEntity<ErrorResponse> workLogNotFound() {
+    return error(HttpStatus.NOT_FOUND, "WORKLOG_NOT_FOUND", "Work log was not found.", Map.of());
+  }
+
+  @ExceptionHandler(WorkLogAssignmentNotFoundException.class)
+  ResponseEntity<ErrorResponse> workLogAssignmentNotFound() {
+    return error(HttpStatus.NOT_FOUND, "ASSIGNMENT_NOT_FOUND",
+        "Assignment was not found on this workorder.", Map.of());
+  }
+
+  @ExceptionHandler(WorkLogAssignmentInactiveException.class)
+  ResponseEntity<ErrorResponse> workLogAssignmentInactive() {
+    return error(HttpStatus.CONFLICT, "WORKLOG_ASSIGNMENT_INACTIVE",
+        "Work logs can only be recorded against an active assignment.", Map.of());
+  }
+
+  /** Field-level validation (end before start, blank activity note). */
+  @ExceptionHandler(WorkLogValidationException.class)
+  ResponseEntity<ErrorResponse> workLogValidation(WorkLogValidationException exception) {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
+        exception.getFieldErrors());
   }
 
   @ExceptionHandler(InvalidStateTransitionException.class)
