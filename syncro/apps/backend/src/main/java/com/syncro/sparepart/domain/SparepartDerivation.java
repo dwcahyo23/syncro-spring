@@ -34,6 +34,19 @@ public final class SparepartDerivation {
         + codePart(categoryCode) + codePart(kindCode) + codePart(brandCode);
   }
 
+  /**
+   * BOM hierarchy identity key (Story 18-1): deterministic {@code machine|plant|category|kind|brand|type}
+   * join persisted in {@code spareparts.hierarchy_identity_key} (unique). Type is part of the key
+   * because the established rule is "code excludes type; duplicate identity includes type" — the
+   * BOM code/prefix above omits type (serial increments across types) while identity uniqueness
+   * (and therefore this key, backed by {@code uq_spareparts_hierarchy_identity_key}) must not
+   * collide across same-prefix/different-type spareparts.
+   */
+  public static String hierarchyIdentityKey(String machineCode, String plantCode,
+      String categoryCode, String kindCode, String brandCode, String typeCode) {
+    return machineCode + "|" + plantCode + "|" + categoryCode + "|" + kindCode + "|" + brandCode + "|" + typeCode;
+  }
+
   /** Display label: {@code Category · Kind · Brand · Type} name parts joined with " · ". */
   public static String sparepartLabel(String categoryName, String kindName,
       String brandName, String typeName) {

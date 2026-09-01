@@ -1,0 +1,1408 @@
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/api/SparepartController.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/api/SparepartController.java
+index 40fe3f5..d64f022 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/api/SparepartController.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/api/SparepartController.java
+@@ -1,6 +1,7 @@
+ package com.syncro.sparepart.api;
+ 
+ import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.sparepart.api.SparepartDtos.BomReviewRequest;
+ import com.syncro.sparepart.api.SparepartDtos.SparepartListResponse;
+ import com.syncro.sparepart.api.SparepartDtos.SparepartMachineRefView;
+ import com.syncro.sparepart.api.SparepartDtos.SparepartProcurementRequest;
+@@ -11,6 +12,7 @@ import com.syncro.sparepart.application.SparepartService;
+ import com.syncro.sparepart.application.SparepartService.SparepartCommand;
+ import com.syncro.sparepart.application.SparepartService.SparepartFilters;
+ import com.syncro.sparepart.application.SparepartService.SparepartProcurementCommand;
++import com.syncro.sparepart.domain.BomReviewStatus;
+ import io.swagger.v3.oas.annotations.Operation;
+ import io.swagger.v3.oas.annotations.media.Content;
+ import io.swagger.v3.oas.annotations.media.Schema;
+@@ -58,8 +60,9 @@ public class SparepartController {
+       @RequestParam(required = false) String search,
+       @RequestParam(required = false) String machineCode,
+       @RequestParam(required = false) UUID machineId,
++      @RequestParam(required = false) BomReviewStatus reviewStatus,
+       @PageableDefault(size = 200, sort = "code") Pageable pageable) {
+-    var filters = new SparepartFilters(categoryId, brandId, kindId, typeId, search, machineCode, machineId);
++    var filters = new SparepartFilters(categoryId, brandId, kindId, typeId, search, machineCode, machineId, reviewStatus);
+     var result = spareparts.list(user, filters, pageable);
+     return new SparepartListResponse(result.items().stream().map(this::toDto).toList(), result.totalElements(), result.page(), result.size(), result.sort());
+   }
+@@ -123,6 +126,35 @@ public class SparepartController {
+     return toDto(spareparts.patchProcurement(user, sparepartId, command));
+   }
+ 
++  @Operation(operationId = "approveSparepart", summary = "Approve a PENDING_REVIEW sparepart (BOM review)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Sparepart approved"),
++      @ApiResponse(responseCode = "400", description = "Invalid sparepart id"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Sparepart not found"),
++      @ApiResponse(responseCode = "409", description = "Sparepart is not PENDING_REVIEW")
++  })
++  @PostMapping("/{sparepartId}/approve")
++  public SparepartView approve(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID sparepartId) {
++    return toDto(spareparts.approve(user, sparepartId));
++  }
++
++  @Operation(operationId = "rejectSparepart", summary = "Reject a PENDING_REVIEW sparepart with a reason (BOM review)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Sparepart rejected"),
++      @ApiResponse(responseCode = "400", description = "Validation or invalid sparepart id"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Sparepart not found"),
++      @ApiResponse(responseCode = "409", description = "Sparepart is not PENDING_REVIEW")
++  })
++  @PostMapping("/{sparepartId}/reject")
++  public SparepartView reject(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID sparepartId,
++      @Valid @RequestBody BomReviewRequest request) {
++    return toDto(spareparts.reject(user, sparepartId, request.rejectionReason()));
++  }
++
+   @Operation(operationId = "deleteSparepart", summary = "Delete sparepart")
+   @ApiResponses({
+       @ApiResponse(responseCode = "204", description = "Sparepart deleted", content = @Content),
+@@ -153,6 +185,12 @@ public class SparepartController {
+         toDto(sparepart.type()),
+         sparepart.materialCode(),
+         sparepart.leadTimeHours(),
++        sparepart.hierarchyIdentityKey(),
++        sparepart.bomSerial(),
++        sparepart.bomCode(),
++        sparepart.bomCodeVersion(),
++        sparepart.reviewStatus(),
++        sparepart.rejectionReason(),
+         sparepart.createdAt(),
+         sparepart.updatedAt());
+   }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/api/SparepartDtos.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/api/SparepartDtos.java
+index d3a0db4..f3aae77 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/api/SparepartDtos.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/api/SparepartDtos.java
+@@ -1,6 +1,8 @@
+ package com.syncro.sparepart.api;
+ 
++import com.syncro.sparepart.domain.BomReviewStatus;
+ import jakarta.validation.constraints.Digits;
++import jakarta.validation.constraints.NotBlank;
+ import jakarta.validation.constraints.NotNull;
+ import jakarta.validation.constraints.Positive;
+ import jakarta.validation.constraints.Size;
+@@ -46,6 +48,13 @@ public final class SparepartDtos {
+       String name) {
+   }
+ 
++  /** BOM review request body (Story 18-1) — used by the reject endpoint; approve has no body. */
++  public record BomReviewRequest(
++      @NotBlank(message = "Rejection reason must not be blank.")
++      @Size(max = 2000, message = "Rejection reason must be at most 2000 characters.")
++      String rejectionReason) {
++  }
++
+   public record SparepartView(
+       UUID id,
+       String code,
+@@ -56,6 +65,12 @@ public final class SparepartDtos {
+       SparepartTaxonomyRefView type,
+       String materialCode,
+       BigDecimal leadTimeHours,
++      String hierarchyIdentityKey,
++      String bomSerial,
++      String bomCode,
++      Integer bomCodeVersion,
++      BomReviewStatus reviewStatus,
++      String rejectionReason,
+       Instant createdAt,
+       Instant updatedAt) {
+   }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/api/SparepartExceptionHandler.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/api/SparepartExceptionHandler.java
+index 1ad9f60..4b778e4 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/api/SparepartExceptionHandler.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/api/SparepartExceptionHandler.java
+@@ -7,6 +7,7 @@ import com.syncro.sparepart.application.SparepartService.SparepartDataIntegrityE
+ import com.syncro.sparepart.application.SparepartService.SparepartMachineNotFoundException;
+ import com.syncro.sparepart.application.SparepartService.SparepartMutationForbiddenException;
+ import com.syncro.sparepart.application.SparepartService.SparepartNotFoundException;
++import com.syncro.sparepart.application.SparepartService.SparepartReviewTransitionException;
+ import com.syncro.sparepart.application.SparepartService.SparepartTaxonomyDimensionMismatchException;
+ import com.syncro.sparepart.application.SparepartService.SparepartTaxonomyReferenceNotFoundException;
+ import com.syncro.sparepart.application.SparepartService.SparepartValidationException;
+@@ -94,6 +95,12 @@ public class SparepartExceptionHandler {
+     return error(HttpStatus.CONFLICT, "SPAREPART_DATA_INTEGRITY_VIOLATION", "Sparepart data conflicts with existing records.", Map.of());
+   }
+ 
++  @ExceptionHandler(SparepartReviewTransitionException.class)
++  ResponseEntity<ErrorResponse> invalidReviewTransition() {
++    return error(HttpStatus.CONFLICT, "INVALID_REVIEW_TRANSITION",
++        "Sparepart review transition is not allowed from the current review status.", Map.of());
++  }
++
+   @ExceptionHandler(SparepartMutationForbiddenException.class)
+   ResponseEntity<ErrorResponse> forbidden() {
+     return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "You do not have permission to access this resource.", Map.of());
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartAuditValues.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartAuditValues.java
+index 7764057..ce1ac2e 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartAuditValues.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartAuditValues.java
+@@ -20,6 +20,12 @@ public final class SparepartAuditValues {
+     values.put("materialCode", sparepart.getMaterialCode());
+     values.put("leadTimeHours", sparepart.getLeadTimeHours());
+     values.put("imageObjectKey", sparepart.getImageObjectKey());
++    values.put("hierarchyIdentityKey", sparepart.getHierarchyIdentityKey());
++    values.put("bomSerial", sparepart.getBomSerial());
++    values.put("bomCode", sparepart.getBomCode());
++    values.put("bomCodeVersion", sparepart.getBomCodeVersion());
++    values.put("reviewStatus", sparepart.getReviewStatus() == null ? null : sparepart.getReviewStatus().name());
++    values.put("rejectionReason", sparepart.getRejectionReason());
+     return values;
+   }
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartService.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartService.java
+index 26fb6ce..9dfef79 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartService.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartService.java
+@@ -12,6 +12,7 @@ import com.syncro.common.LikePattern;
+ import com.syncro.machine.infrastructure.MachineEntity;
+ import com.syncro.machine.infrastructure.MachineRepository;
+ import com.syncro.projection.application.ProjectionCacheEvictionEvent;
++import com.syncro.sparepart.domain.BomReviewStatus;
+ import com.syncro.sparepart.domain.SparepartDerivation;
+ import com.syncro.sparepart.domain.SparepartTaxonomyDimension;
+ import com.syncro.sparepart.infrastructure.SparepartEntity;
+@@ -36,6 +37,10 @@ public class SparepartService {
+   private static final int MAX_PAGE_SIZE = 200;
+   private static final String DUPLICATE_CODE_CONSTRAINT = "uq_spareparts_lower_code";
+   private static final String DUPLICATE_IDENTITY_CONSTRAINT = "uq_spareparts_machine_taxonomy_identity";
++  /** Story 18-1: BOM master uniqueness (partial indexes from V1). */
++  private static final String DUPLICATE_HIERARCHY_KEY_CONSTRAINT = "uq_spareparts_hierarchy_identity_key";
++  private static final String DUPLICATE_BOM_CODE_CONSTRAINT = "uq_spareparts_bom_code";
++  private static final String DUPLICATE_BOM_SERIAL_CONSTRAINT = "uq_spareparts_machine_cat_kind_serial";
+   private static final String DUPLICATE_MATERIAL_CODE_CONSTRAINT = "uq_spareparts_material_code";
+   /** V61 (story 12-4) adds a case-sensitive UNIQUE backing the stock FK; duplicate codes can surface under either name. */
+   private static final String DUPLICATE_MATERIAL_CODE_KEY_CONSTRAINT = "uq_spareparts_material_code_key";
+@@ -69,7 +74,7 @@ public class SparepartService {
+     validatePageable(pageable);
+     var search = normalizeSearch(filters.search());
+     var machineCode = normalizeSearch(filters.machineCode());
+-    var result = spareparts.search(filters.categoryId(), filters.brandId(), filters.kindId(), filters.typeId(), filters.machineId(), search, machineCode, pageable);
++    var result = spareparts.search(filters.categoryId(), filters.brandId(), filters.kindId(), filters.typeId(), filters.machineId(), search, machineCode, filters.reviewStatus(), pageable);
+     return new SparepartListView(result.stream().map(this::toView).toList(), result.getTotalElements(), pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort().toString());
+   }
+ 
+@@ -86,18 +91,9 @@ public class SparepartService {
+     var machine = resolveMachine(user, normalized.machineId());
+     var taxonomies = resolveTaxonomies(normalized);
+     rejectDuplicateIdentity(machine, taxonomies);
+-    var generatedCode = nextBomCode(machine, taxonomies);
+-    var saved = save(new SparepartEntity(
+-        UUID.randomUUID(),
+-        generatedCode,
+-        sparepartLabel(taxonomies),
+-        machine,
+-        taxonomies.category(),
+-        taxonomies.brand(),
+-        taxonomies.kind(),
+-        taxonomies.type(),
+-        now,
+-        now));
++    var entity = newSparepartWithBomIdentity(UUID.randomUUID(), machine, taxonomies, sparepartLabel(taxonomies),
++        hierarchyIdentityKey(machine, taxonomies), now);
++    var saved = save(entity);
+     auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.SPAREPART, saved.getId(), saved.getCode(),
+         machine.getPlant().getId(), null, SparepartAuditValues.of(saved), null));
+     return toView(saved);
+@@ -113,21 +109,77 @@ public class SparepartService {
+     var machine = resolveMachine(user, normalized.machineId());
+     var taxonomies = resolveTaxonomies(normalized);
+     rejectDuplicateIdentity(sparepartId, machine, taxonomies);
++    var now = Instant.now(clock);
++    var identity = bomIdentityForUpdate(sparepart, machine, taxonomies);
+     sparepart.update(
+-        bomCodeForUpdate(sparepart, machine, taxonomies),
++        identity.code(),
+         sparepartLabel(taxonomies),
+         machine,
+         taxonomies.category(),
+         taxonomies.brand(),
+         taxonomies.kind(),
+         taxonomies.type(),
+-        Instant.now(clock));
++        now);
++    sparepart.updateBomIdentity(hierarchyIdentityKey(machine, taxonomies),
++        identity.serial(), identity.code(), identity.version(), now);
++    if (identity.requeue()) {
++      sparepart.reopenForReview(now);
++    }
+     var saved = save(sparepart);
+     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.SPAREPART, sparepartId, entityLabel,
+         machine.getPlant().getId(), previous, SparepartAuditValues.of(saved), null));
+     return toView(saved);
+   }
+ 
++  /**
++   * Story 18-1: PENDING_REVIEW → ACTIVE. Terminal for this story (no re-open path); a target
++   * in any other review status fails with {@link SparepartReviewTransitionException} (409).
++   * The row is locked FOR UPDATE so concurrent reviews serialize on the precondition check
++   * (no {@code @Version} column exists on spareparts).
++   */
++  @Transactional
++  public SparepartView approve(AuthenticatedUser user, UUID sparepartId) {
++    requireMutationRole(user);
++    var sparepart = findForUpdate(sparepartId);
++    requireSparepartPlantAccess(user, sparepart);
++    if (sparepart.getReviewStatus() != BomReviewStatus.PENDING_REVIEW) {
++      throw new SparepartReviewTransitionException();
++    }
++    var entityLabel = sparepart.getCode();
++    var previous = SparepartAuditValues.of(sparepart);
++    sparepart.approve(Instant.now(clock));
++    var saved = save(sparepart);
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.SPAREPART, sparepartId, entityLabel,
++        saved.getMachine().getPlant().getId(), previous, SparepartAuditValues.of(saved), null));
++    return toView(saved);
++  }
++
++  /**
++   * Story 18-1: PENDING_REVIEW → REJECTED with a required reason. Terminal for this story;
++   * a blank reason fails validation (400) and a non-PENDING_REVIEW target fails with 409.
++   * Locked FOR UPDATE like {@link #approve}.
++   */
++  @Transactional
++  public SparepartView reject(AuthenticatedUser user, UUID sparepartId, String rejectionReason) {
++    requireMutationRole(user);
++    var reason = rejectionReason == null ? "" : rejectionReason.trim();
++    if (reason.isEmpty()) {
++      throw new SparepartValidationException();
++    }
++    var sparepart = findForUpdate(sparepartId);
++    requireSparepartPlantAccess(user, sparepart);
++    if (sparepart.getReviewStatus() != BomReviewStatus.PENDING_REVIEW) {
++      throw new SparepartReviewTransitionException();
++    }
++    var entityLabel = sparepart.getCode();
++    var previous = SparepartAuditValues.of(sparepart);
++    sparepart.reject(reason, Instant.now(clock));
++    var saved = save(sparepart);
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.SPAREPART, sparepartId, entityLabel,
++        saved.getMachine().getPlant().getId(), previous, SparepartAuditValues.of(saved), null));
++    return toView(saved);
++  }
++
+   @Transactional
+   public void delete(AuthenticatedUser user, UUID sparepartId) {
+     requireMutationRole(user);
+@@ -208,12 +260,13 @@ public class SparepartService {
+ 
+     var now = Instant.now(clock);
+     var name = "Part " + materialCode;
+-    var generatedCode = nextBomCode(machine, new TaxonomyRefs(electricCat, brand, kind, type));
+-    var saved = save(new SparepartEntity(UUID.randomUUID(), generatedCode, name, machine,
+-        electricCat, brand, kind, type, now, now));
++    // Completion-path placeholder taxonomy: no hierarchy identity key (see
++    // newSparepartWithBomIdentity) — two completions on one machine must not collide.
++    var entity = newSparepartWithBomIdentity(UUID.randomUUID(), machine,
++        new TaxonomyRefs(electricCat, brand, kind, type), name, null, now);
+     // Set the material code on the freshly created sparepart
+-    saved.updateProcurement(materialCode, null, now);
+-    saved = spareparts.saveAndFlush(saved);
++    entity.updateProcurement(materialCode, null, now);
++    var saved = save(entity);
+ 
+     auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.SPAREPART,
+         saved.getId(), saved.getCode(), machine.getPlant().getId(), null,
+@@ -231,11 +284,10 @@ public class SparepartService {
+     var machine = resolveMachine(user, machineId);
+     var taxonomies = resolveTaxonomies(new SparepartCommand(machineId, categoryId, brandId, kindId, typeId));
+     rejectDuplicateIdentity(machine, taxonomies);
+-    var generatedCode = nextBomCode(machine, taxonomies);
+     var name = sparepartLabel(taxonomies);
+     var now = Instant.now(clock);
+-    var entity = new SparepartEntity(UUID.randomUUID(), generatedCode, name, machine,
+-        taxonomies.category(), taxonomies.brand(), taxonomies.kind(), taxonomies.type(), now, now);
++    var entity = newSparepartWithBomIdentity(UUID.randomUUID(), machine, taxonomies, name,
++        hierarchyIdentityKey(machine, taxonomies), now);
+     if (materialCode != null && !materialCode.isBlank()) {
+       entity.updateProcurement(materialCode, null, now);
+     }
+@@ -262,6 +314,11 @@ public class SparepartService {
+     return spareparts.findById(sparepartId).orElseThrow(SparepartNotFoundException::new);
+   }
+ 
++  /** Locked read for review transitions — serializes concurrent approve/reject (Story 18-1). */
++  private SparepartEntity findForUpdate(UUID sparepartId) {
++    return spareparts.findByIdForUpdate(sparepartId).orElseThrow(SparepartNotFoundException::new);
++  }
++
+   private void requireMutationRole(AuthenticatedUser user) {
+     requireMutationRole(user, false);
+   }
+@@ -311,9 +368,57 @@ public class SparepartService {
+     }
+   }
+ 
+-  private String bomCodeForUpdate(SparepartEntity sparepart, MachineEntity machine, TaxonomyRefs taxonomies) {
++  /**
++   * Story 18-1: builds a fresh BOM master identity for a new sparepart — PENDING_REVIEW status
++   * (entity constructor default), derived hierarchy key, allocated serial, code = prefix+serial,
++   * version 1. {@code code} and {@code bom_code} coincide by design (design note: the operator
++   * identifier and the BOM code carry the same value).
++   *
++   * <p>{@code hierarchyIdentityKey} may be {@code null}: the request-completion path creates
++   * placeholder-taxonomy (ELECTRIC/GENERIC/GENERIC/GENERIC) spareparts whose identity is not a
++   * real BOM hierarchy, and a non-null key would collide on
++   * {@code uq_spareparts_hierarchy_identity_key} for every completion on the same machine. The
++   * partial unique index skips nulls, so null keys coexist; bom_serial/bom_code stay unique via
++   * the serial allocation.
++   */
++  private SparepartEntity newSparepartWithBomIdentity(UUID id, MachineEntity machine, TaxonomyRefs taxonomies,
++      String name, String hierarchyIdentityKey, Instant now) {
+     var prefix = bomPrefix(machine, taxonomies);
+-    return sparepart.getCode().startsWith(prefix) ? sparepart.getCode() : nextBomCode(prefix);
++    var serial = nextBomSerial(machine, taxonomies, prefix);
++    var code = prefix + serial;
++    var entity = new SparepartEntity(id, code, name, machine,
++        taxonomies.category(), taxonomies.brand(), taxonomies.kind(), taxonomies.type(), now, now);
++    entity.updateBomIdentity(hierarchyIdentityKey, serial, code, 1, now);
++    return entity;
++  }
++
++  /**
++   * Story 18-1: re-derives the BOM identity on update. Stable prefix keeps serial/code/version
++   * and leaves the review status untouched; a changed prefix (machine/category/kind/brand)
++   * allocates a fresh serial under the new prefix, bumps {@code bom_code_version}, and re-queues
++   * the sparepart for review ({@code requeue}). Legacy rows (null BOM fields, e.g. the pilot
++   * seed) are back-filled from the existing code without a version bump when the prefix is
++   * stable — but only when the code tail is a well-formed 3-digit serial; a malformed tail gets
++   * a fresh serial instead of a corrupt one.
++   */
++  private record BomIdentity(String code, String serial, int version, boolean requeue) {
++  }
++
++  private BomIdentity bomIdentityForUpdate(SparepartEntity sparepart, MachineEntity machine, TaxonomyRefs taxonomies) {
++    var prefix = bomPrefix(machine, taxonomies);
++    var currentVersion = sparepart.getBomCodeVersion() == null ? 1 : sparepart.getBomCodeVersion();
++    if (sparepart.getCode().startsWith(prefix)) {
++      var tail = sparepart.getCode().substring(prefix.length());
++      var serial = sparepart.getBomSerial() != null ? sparepart.getBomSerial() : tail;
++      if (sparepart.getBomSerial() == null && parseSeries(tail) < 0) {
++        // Legacy code with a non-numeric/short tail: back-fill a fresh serial, keep version.
++        var fresh = nextBomSerial(machine, taxonomies, prefix);
++        return new BomIdentity(prefix + fresh, fresh, currentVersion, false);
++      }
++      return new BomIdentity(sparepart.getCode(), serial, currentVersion, false);
++    }
++    var serial = nextBomSerial(machine, taxonomies, prefix);
++    return new BomIdentity(prefix + serial, serial, currentVersion + 1, true);
+   }
+ 
+   private void rejectDuplicateIdentity(MachineEntity machine, TaxonomyRefs taxonomies) {
+@@ -339,25 +444,52 @@ public class SparepartService {
+     }
+   }
+ 
+-  private String nextBomCode(MachineEntity machine, TaxonomyRefs taxonomies) {
+-    return nextBomCode(bomPrefix(machine, taxonomies));
+-  }
+-
+-  private String nextBomCode(String prefix) {
++  /**
++   * Allocates the next 3-digit BOM serial. The code series (per machine+plant+category+kind+brand
++   * prefix) keeps the established "code excludes type" increment, while the machine+category+kind
++   * serial space (backing {@code uq_spareparts_machine_cat_kind_serial}) is scanned too: two brands
++   * of the same kind share that DB uniqueness domain, so the next serial is the max of both series.
++   */
++  private String nextBomSerial(MachineEntity machine, TaxonomyRefs taxonomies, String prefix) {
+     // DW-121: machine codes may contain _ (and defensively %/\); escape them so the
+     // LIKE only matches this machine's own BOM series instead of wildcarding.
+     var escaped = LikePattern.escape(prefix);
+-    var maxSeries = spareparts.findCodesByEscapedPrefix(escaped).stream()
++    var maxCodeSeries = spareparts.findCodesByEscapedPrefix(escaped).stream()
+         .filter(code -> code.length() == prefix.length() + 3)
+         .map(code -> code.substring(prefix.length()))
+-        .filter(series -> series.chars().allMatch(Character::isDigit))
+-        .mapToInt(Integer::parseInt)
++        .mapToLong(SparepartService::parseSeries)
++        .max()
++        .orElse(-1L);
++    var maxKindSerial = spareparts.findBomSerialsByMachineCategoryKind(
++            machine.getId(), taxonomies.category().getId(), taxonomies.kind().getId()).stream()
++        .mapToLong(SparepartService::parseSeries)
+         .max()
+-        .orElse(-1);
+-    if (maxSeries >= 999) {
++        .orElse(-1L);
++    var next = Math.max(maxCodeSeries, maxKindSerial) + 1;
++    if (next > 999) {
+       throw new DuplicateSparepartException();
+     }
+-    return prefix + String.format(Locale.ROOT, "%03d", maxSeries + 1);
++    return String.format(Locale.ROOT, "%03d", next);
++  }
++
++  private static long parseSeries(String series) {
++    if (series.length() != 3 || !series.chars().allMatch(Character::isDigit)) {
++      return -1L;
++    }
++    return Long.parseLong(series);
++  }
++
++  /** Column bound: {@code spareparts.hierarchy_identity_key VARCHAR(255)}. */
++  private static final int MAX_HIERARCHY_KEY_LENGTH = 255;
++
++  private String hierarchyIdentityKey(MachineEntity machine, TaxonomyRefs taxonomies) {
++    var key = SparepartDerivation.hierarchyIdentityKey(machine.getCode(), machine.getPlant().getCode(),
++        taxonomies.category().getCode(), taxonomies.kind().getCode(), taxonomies.brand().getCode(),
++        taxonomies.type().getCode());
++    if (key.length() > MAX_HIERARCHY_KEY_LENGTH) {
++      throw new SparepartValidationException();
++    }
++    return key;
+   }
+ 
+   private String bomPrefix(MachineEntity machine, TaxonomyRefs taxonomies) {
+@@ -463,7 +595,8 @@ public class SparepartService {
+     try {
+       return spareparts.saveAndFlush(sparepart);
+     } catch (DataIntegrityViolationException exception) {
+-      if (isConstraintViolation(exception, DUPLICATE_CODE_CONSTRAINT, DUPLICATE_IDENTITY_CONSTRAINT)) {
++      if (isConstraintViolation(exception, DUPLICATE_CODE_CONSTRAINT, DUPLICATE_IDENTITY_CONSTRAINT,
++          DUPLICATE_HIERARCHY_KEY_CONSTRAINT, DUPLICATE_BOM_CODE_CONSTRAINT, DUPLICATE_BOM_SERIAL_CONSTRAINT)) {
+         throw new DuplicateSparepartException();
+       }
+       if (isConstraintViolation(exception, DUPLICATE_MATERIAL_CODE_CONSTRAINT,
+@@ -500,6 +633,12 @@ public class SparepartService {
+         toTaxonomyRef(sparepart.getType()),
+         sparepart.getMaterialCode(),
+         sparepart.getLeadTimeHours(),
++        sparepart.getHierarchyIdentityKey(),
++        sparepart.getBomSerial(),
++        sparepart.getBomCode(),
++        sparepart.getBomCodeVersion(),
++        sparepart.getReviewStatus(),
++        sparepart.getRejectionReason(),
+         sparepart.getCreatedAt(),
+         sparepart.getUpdatedAt());
+   }
+@@ -527,7 +666,7 @@ public class SparepartService {
+   public record SparepartProcurementCommand(String materialCode, BigDecimal leadTimeHours) {
+   }
+ 
+-  public record SparepartFilters(UUID categoryId, UUID brandId, UUID kindId, UUID typeId, String search, String machineCode, UUID machineId) {
++  public record SparepartFilters(UUID categoryId, UUID brandId, UUID kindId, UUID typeId, String search, String machineCode, UUID machineId, BomReviewStatus reviewStatus) {
+   }
+ 
+   public record SparepartListView(List<SparepartView> items, long totalElements, int page, int size, String sort) {
+@@ -549,6 +688,12 @@ public class SparepartService {
+       SparepartTaxonomyRefView type,
+       String materialCode,
+       BigDecimal leadTimeHours,
++      String hierarchyIdentityKey,
++      String bomSerial,
++      String bomCode,
++      Integer bomCodeVersion,
++      BomReviewStatus reviewStatus,
++      String rejectionReason,
+       Instant createdAt,
+       Instant updatedAt) {
+   }
+@@ -566,6 +711,10 @@ public class SparepartService {
+   public static class SparepartMutationForbiddenException extends RuntimeException {
+   }
+ 
++  /** Review transition attempted on a sparepart that is not PENDING_REVIEW (Story 18-1, 409). */
++  public static class SparepartReviewTransitionException extends RuntimeException {
++  }
++
+   public static class SparepartNotFoundException extends RuntimeException {
+   }
+ 
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/domain/BomReviewStatus.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/domain/BomReviewStatus.java
+new file mode 100644
+index 0000000..67ba618
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/domain/BomReviewStatus.java
+@@ -0,0 +1,12 @@
++package com.syncro.sparepart.domain;
++
++/**
++ * BOM master review lifecycle (Story 18-1). New spareparts start {@code PENDING_REVIEW};
++ * a privileged review transitions them once to {@code ACTIVE} (approved) or
++ * {@code REJECTED} (with a stored reason). Both terminal states are final for this story.
++ */
++public enum BomReviewStatus {
++  PENDING_REVIEW,
++  ACTIVE,
++  REJECTED
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/domain/SparepartDerivation.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/domain/SparepartDerivation.java
+index 1e41f53..cdd3889 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/domain/SparepartDerivation.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/domain/SparepartDerivation.java
+@@ -34,6 +34,19 @@ public final class SparepartDerivation {
+         + codePart(categoryCode) + codePart(kindCode) + codePart(brandCode);
+   }
+ 
++  /**
++   * BOM hierarchy identity key (Story 18-1): deterministic {@code machine|plant|category|kind|brand|type}
++   * join persisted in {@code spareparts.hierarchy_identity_key} (unique). Type is part of the key
++   * because the established rule is "code excludes type; duplicate identity includes type" — the
++   * BOM code/prefix above omits type (serial increments across types) while identity uniqueness
++   * (and therefore this key, backed by {@code uq_spareparts_hierarchy_identity_key}) must not
++   * collide across same-prefix/different-type spareparts.
++   */
++  public static String hierarchyIdentityKey(String machineCode, String plantCode,
++      String categoryCode, String kindCode, String brandCode, String typeCode) {
++    return machineCode + "|" + plantCode + "|" + categoryCode + "|" + kindCode + "|" + brandCode + "|" + typeCode;
++  }
++
+   /** Display label: {@code Category · Kind · Brand · Type} name parts joined with " · ". */
+   public static String sparepartLabel(String categoryName, String kindName,
+       String brandName, String typeName) {
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/infrastructure/SparepartEntity.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/infrastructure/SparepartEntity.java
+index d6f6907..c34a1fc 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/infrastructure/SparepartEntity.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/infrastructure/SparepartEntity.java
+@@ -1,8 +1,11 @@
+ package com.syncro.sparepart.infrastructure;
+ 
+ import com.syncro.machine.infrastructure.MachineEntity;
++import com.syncro.sparepart.domain.BomReviewStatus;
+ import jakarta.persistence.Column;
+ import jakarta.persistence.Entity;
++import jakarta.persistence.EnumType;
++import jakarta.persistence.Enumerated;
+ import jakarta.persistence.FetchType;
+ import jakarta.persistence.Id;
+ import jakarta.persistence.JoinColumn;
+@@ -44,6 +47,25 @@ public class SparepartEntity {
+   @JoinColumn(name = "type_id", nullable = false)
+   private SparepartTaxonomyEntity type;
+ 
++  @Column(name = "hierarchy_identity_key", length = 255)
++  private String hierarchyIdentityKey;
++
++  @Column(name = "bom_serial", length = 100)
++  private String bomSerial;
++
++  @Column(name = "bom_code", length = 100)
++  private String bomCode;
++
++  @Column(name = "bom_code_version")
++  private Integer bomCodeVersion;
++
++  @Enumerated(EnumType.STRING)
++  @Column(name = "review_status", nullable = false, length = 20)
++  private BomReviewStatus reviewStatus;
++
++  @Column(name = "rejection_reason")
++  private String rejectionReason;
++
+   @Column(name = "created_at", nullable = false)
+   private Instant createdAt;
+ 
+@@ -81,6 +103,7 @@ public class SparepartEntity {
+     this.brand = brand;
+     this.kind = kind;
+     this.type = type;
++    this.reviewStatus = BomReviewStatus.PENDING_REVIEW;
+     this.createdAt = createdAt;
+     this.updatedAt = updatedAt;
+   }
+@@ -137,6 +160,68 @@ public class SparepartEntity {
+     return imageObjectKey;
+   }
+ 
++  public String getHierarchyIdentityKey() {
++    return hierarchyIdentityKey;
++  }
++
++  public String getBomSerial() {
++    return bomSerial;
++  }
++
++  public String getBomCode() {
++    return bomCode;
++  }
++
++  public Integer getBomCodeVersion() {
++    return bomCodeVersion;
++  }
++
++  public BomReviewStatus getReviewStatus() {
++    return reviewStatus;
++  }
++
++  public String getRejectionReason() {
++    return rejectionReason;
++  }
++
++  /**
++   * Replaces the BOM master identity (Story 18-1). {@code bomCodeVersion} is owned by the
++   * caller: the service bumps it only when the derived code changes (prefix re-allocation).
++   */
++  public void updateBomIdentity(String hierarchyIdentityKey, String bomSerial, String bomCode,
++      Integer bomCodeVersion, Instant updatedAt) {
++    this.hierarchyIdentityKey = hierarchyIdentityKey;
++    this.bomSerial = bomSerial;
++    this.bomCode = bomCode;
++    this.bomCodeVersion = bomCodeVersion;
++    this.updatedAt = updatedAt;
++  }
++
++  /** PENDING_REVIEW → ACTIVE (terminal). The caller enforces the transition precondition. */
++  public void approve(Instant updatedAt) {
++    this.reviewStatus = BomReviewStatus.ACTIVE;
++    this.rejectionReason = null;
++    this.updatedAt = updatedAt;
++  }
++
++  /** PENDING_REVIEW → REJECTED with a required reason (terminal). */
++  public void reject(String rejectionReason, Instant updatedAt) {
++    this.reviewStatus = BomReviewStatus.REJECTED;
++    this.rejectionReason = rejectionReason;
++    this.updatedAt = updatedAt;
++  }
++
++  /**
++   * Re-queues for review (Story 18-1): a BOM identity change (prefix re-allocation) sends an
++   * already-reviewed sparepart back to PENDING_REVIEW and clears any prior rejection reason, so
++   * the new code is re-approved. Stable-prefix edits never call this.
++   */
++  public void reopenForReview(Instant updatedAt) {
++    this.reviewStatus = BomReviewStatus.PENDING_REVIEW;
++    this.rejectionReason = null;
++    this.updatedAt = updatedAt;
++  }
++
+   public void update(
+       String code,
+       String name,
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/infrastructure/SparepartRepository.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/infrastructure/SparepartRepository.java
+index 20741aa..463ff99 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/infrastructure/SparepartRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/infrastructure/SparepartRepository.java
+@@ -1,11 +1,14 @@
+ package com.syncro.sparepart.infrastructure;
+ 
++import com.syncro.sparepart.domain.BomReviewStatus;
++import jakarta.persistence.LockModeType;
+ import java.util.List;
+ import java.util.Optional;
+ import java.util.UUID;
+ import org.springframework.data.domain.Page;
+ import org.springframework.data.domain.Pageable;
+ import org.springframework.data.jpa.repository.JpaRepository;
++import org.springframework.data.jpa.repository.Lock;
+ import org.springframework.data.jpa.repository.Query;
+ import org.springframework.data.repository.query.Param;
+ 
+@@ -18,6 +21,34 @@ public interface SparepartRepository extends JpaRepository<SparepartEntity, UUID
+ 
+   boolean existsByMaterialCodeIgnoreCaseAndIdNot(String materialCode, UUID id);
+ 
++  /**
++   * Pessimistic row lock for review transitions (Story 18-1): serializes concurrent
++   * approve/reject on the same sparepart so the PENDING_REVIEW precondition cannot pass twice
++   * (check-then-act without {@code @Version} — the column does not exist in V1). Mirrors the
++   * {@code SparepartRequestRepository.findByIdForUpdate} pattern (AD-5).
++   */
++  @Lock(LockModeType.PESSIMISTIC_WRITE)
++  @Query("select s from SparepartEntity s where s.id = :id")
++  Optional<SparepartEntity> findByIdForUpdate(@Param("id") UUID id);
++
++  /**
++   * Existing BOM serials within one machine+category+kind space — the allocation domain of
++   * {@code uq_spareparts_machine_cat_kind_serial}. The code series alone (per brand prefix) can
++   * hand the same serial to two brands of the same kind, so the next serial is the max of both
++   * series. See {@code SparepartService.nextBomSerial}.
++   */
++  @Query("""
++      select sparepart.bomSerial from SparepartEntity sparepart
++      where sparepart.machine.id = :machineId
++        and sparepart.category.id = :categoryId
++        and sparepart.kind.id = :kindId
++        and sparepart.bomSerial is not null
++      """)
++  List<String> findBomSerialsByMachineCategoryKind(
++      @Param("machineId") UUID machineId,
++      @Param("categoryId") UUID categoryId,
++      @Param("kindId") UUID kindId);
++
+   @Query("""
+       select count(sparepart) from SparepartEntity sparepart
+       where sparepart.machine.plant.id in :plantIds
+@@ -80,6 +111,7 @@ public interface SparepartRepository extends JpaRepository<SparepartEntity, UUID
+         and (:typeId is null or type.id = :typeId)
+         and (:machineId is null or machine.id = :machineId)
+         and (:machineCode = '' or lower(machine.code) like concat('%', :machineCode, '%') escape '\\')
++        and (:reviewStatus is null or sparepart.reviewStatus = :reviewStatus)
+         and (:search = '' or lower(sparepart.code) like concat('%', :search, '%') escape '\\'
+           or lower(category.name) like concat('%', :search, '%') escape '\\'
+           or lower(kind.name) like concat('%', :search, '%') escape '\\'
+@@ -99,6 +131,7 @@ public interface SparepartRepository extends JpaRepository<SparepartEntity, UUID
+             and (:typeId is null or type.id = :typeId)
+             and (:machineId is null or machine.id = :machineId)
+             and (:machineCode = '' or lower(machine.code) like concat('%', :machineCode, '%') escape '\\')
++            and (:reviewStatus is null or sparepart.reviewStatus = :reviewStatus)
+             and (:search = '' or lower(sparepart.code) like concat('%', :search, '%') escape '\\'
+               or lower(category.name) like concat('%', :search, '%') escape '\\'
+               or lower(kind.name) like concat('%', :search, '%') escape '\\'
+@@ -113,5 +146,6 @@ public interface SparepartRepository extends JpaRepository<SparepartEntity, UUID
+       @Param("machineId") UUID machineId,
+       @Param("search") String search,
+       @Param("machineCode") String machineCode,
++      @Param("reviewStatus") BomReviewStatus reviewStatus,
+       Pageable pageable);
+ }
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/maintenance/api/WorkOrderControllerTest.java b/syncro/apps/backend/src/test/java/com/syncro/maintenance/api/WorkOrderControllerTest.java
+index 01a3426..44dd60a 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/maintenance/api/WorkOrderControllerTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/maintenance/api/WorkOrderControllerTest.java
+@@ -102,6 +102,7 @@ import com.syncro.maintenance.application.WorkOrderTodoService.TodoWorkOrderNotF
+ import com.syncro.maintenance.application.WorkOrderTodoService.WorkOrderKanbanItem;
+ import com.syncro.maintenance.application.WorkOrderTodoService.WorkOrderTerminalException;
+ import com.syncro.maintenance.application.WorkOrderTodoService.WorkOrderTodoValidationException;
++import com.syncro.maintenance.application.WorkOrderQualityRatingService;
+ import com.syncro.maintenance.application.WorkOrderRatingService;
+ import com.syncro.maintenance.application.WorkOrderRatingService.RatingForbiddenException;
+ import com.syncro.maintenance.application.WorkOrderRatingService.RatingWorkOrderNotFoundException;
+@@ -182,6 +183,9 @@ class WorkOrderControllerTest {
+   @MockitoBean
+   private WorkLogRatingService workLogRatings;
+ 
++  @MockitoBean
++  private WorkOrderQualityRatingService qualityRatings;
++
+   @MockitoBean
+   private JwtTokenService jwtTokenService;
+ 
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/sparepart/api/SparepartControllerTest.java b/syncro/apps/backend/src/test/java/com/syncro/sparepart/api/SparepartControllerTest.java
+index 51fcc66..9efa91e 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/sparepart/api/SparepartControllerTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/sparepart/api/SparepartControllerTest.java
+@@ -1,5 +1,6 @@
+ package com.syncro.sparepart.api;
+ 
++import static org.assertj.core.api.Assertions.assertThat;
+ import static org.mockito.ArgumentMatchers.any;
+ import static org.mockito.ArgumentMatchers.eq;
+ import static org.mockito.Mockito.doThrow;
+@@ -313,6 +314,126 @@ class SparepartControllerTest {
+         .andExpect(jsonPath("$.message").value("Sparepart data conflicts with existing records."));
+   }
+ 
++  // --- Story 18-1: BOM review endpoints ---
++
++  @Test
++  @DisplayName("18.1-API-001 P0 MANAGER_MAINTENANCE approves a sparepart and the view carries BOM fields")
++  void manageApprovesSparepart() throws Exception {
++    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
++    var sparepartId = UUID.randomUUID();
++    var approved = new SparepartView(
++        sparepartId, "PLC-WECON-LX5",
++        new SparepartMachineRefView(UUID.randomUUID(), "MCH-1", "Machine 1", UUID.randomUUID(), "PLANT-1", "Plant 1"),
++        new SparepartTaxonomyRefView(UUID.randomUUID(), "ELEC", "Electric"),
++        new SparepartTaxonomyRefView(UUID.randomUUID(), "WECON", "Wecon"),
++        new SparepartTaxonomyRefView(UUID.randomUUID(), "PLC", "PLC"),
++        new SparepartTaxonomyRefView(UUID.randomUUID(), "LX5", "LX5"),
++        null, null,
++        "MCH-1|PLANT-1|ELEC|PLC|WECON|LX5", "000", "PLC-WECON-LX5", 1,
++        com.syncro.sparepart.domain.BomReviewStatus.ACTIVE, null,
++        Instant.parse("2026-05-28T00:00:00Z"), Instant.parse("2026-08-24T00:00:00Z"));
++    when(spareparts.approve(eq(user), eq(sparepartId))).thenReturn(approved);
++
++    mockMvc.perform(post("/api/v1/spareparts/{sparepartId}/approve", sparepartId).with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.reviewStatus").value("ACTIVE"))
++        .andExpect(jsonPath("$.bomSerial").value("000"))
++        .andExpect(jsonPath("$.bomCode").value("PLC-WECON-LX5"))
++        .andExpect(jsonPath("$.bomCodeVersion").value(1))
++        .andExpect(jsonPath("$.hierarchyIdentityKey").value("MCH-1|PLANT-1|ELEC|PLC|WECON|LX5"))
++        .andExpect(jsonPath("$.rejectionReason").value(org.hamcrest.Matchers.nullValue()));
++  }
++
++  @Test
++  @DisplayName("18.1-API-002 P0 reject stores the reason; blank reason fails validation")
++  void rejectStoresReasonAndValidates() throws Exception {
++    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
++    var sparepartId = UUID.randomUUID();
++    var rejected = new SparepartView(
++        sparepartId, "PLC-WECON-LX5",
++        new SparepartMachineRefView(UUID.randomUUID(), "MCH-1", "Machine 1", UUID.randomUUID(), "PLANT-1", "Plant 1"),
++        new SparepartTaxonomyRefView(UUID.randomUUID(), "ELEC", "Electric"),
++        new SparepartTaxonomyRefView(UUID.randomUUID(), "WECON", "Wecon"),
++        new SparepartTaxonomyRefView(UUID.randomUUID(), "PLC", "PLC"),
++        new SparepartTaxonomyRefView(UUID.randomUUID(), "LX5", "LX5"),
++        null, null,
++        "MCH-1|PLANT-1|ELEC|PLC|WECON|LX5", "000", "PLC-WECON-LX5", 1,
++        com.syncro.sparepart.domain.BomReviewStatus.REJECTED, "obsolete",
++        Instant.parse("2026-05-28T00:00:00Z"), Instant.parse("2026-08-24T00:00:00Z"));
++    when(spareparts.reject(eq(user), eq(sparepartId), eq("obsolete"))).thenReturn(rejected);
++
++    mockMvc.perform(post("/api/v1/spareparts/{sparepartId}/reject", sparepartId).with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"rejectionReason\":\"obsolete\"}"))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.reviewStatus").value("REJECTED"))
++        .andExpect(jsonPath("$.rejectionReason").value("obsolete"));
++
++    mockMvc.perform(post("/api/v1/spareparts/{sparepartId}/reject", sparepartId).with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"rejectionReason\":\"  \"}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.rejectionReason").exists());
++  }
++
++  @Test
++  @DisplayName("18.1-API-003 P0 non-PENDING_REVIEW approve returns INVALID_REVIEW_TRANSITION 409")
++  void approveNonPendingReturnsConflict() throws Exception {
++    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
++    var sparepartId = UUID.randomUUID();
++    doThrow(new SparepartService.SparepartReviewTransitionException()).when(spareparts).approve(user, sparepartId);
++
++    mockMvc.perform(post("/api/v1/spareparts/{sparepartId}/approve", sparepartId).with(auth(user)))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("INVALID_REVIEW_TRANSITION"));
++  }
++
++  @Test
++  @DisplayName("18.1-API-004 P0 AUDITOR approve returns FORBIDDEN 403")
++  void viewerCannotApprove() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    var sparepartId = UUID.randomUUID();
++    doThrow(new SparepartMutationForbiddenException()).when(spareparts).approve(user, sparepartId);
++
++    mockMvc.perform(post("/api/v1/spareparts/{sparepartId}/approve", sparepartId).with(auth(user)))
++        .andExpect(status().isForbidden())
++        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
++  }
++
++  @Test
++  @DisplayName("18.1-API-005 P1 list accepts reviewStatus filter")
++  void listAcceptsReviewStatusFilter() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(spareparts.list(eq(user), any(), any())).thenReturn(new SparepartListView(List.of(), 0, 0, 200, "code: ASC"));
++
++    mockMvc.perform(get("/api/v1/spareparts").param("reviewStatus", "PENDING_REVIEW").with(auth(user)))
++        .andExpect(status().isOk());
++
++    var captor = org.mockito.ArgumentCaptor.forClass(com.syncro.sparepart.application.SparepartService.SparepartFilters.class);
++    org.mockito.Mockito.verify(spareparts).list(eq(user), captor.capture(), any());
++    assertThat(captor.getValue().reviewStatus()).isEqualTo(com.syncro.sparepart.domain.BomReviewStatus.PENDING_REVIEW);
++  }
++
++  @Test
++  @DisplayName("18.1-API-006 P1 approve/reject unknown sparepart id returns SPAREPART_NOT_FOUND 404")
++  void reviewUnknownSparepartReturnsNotFound() throws Exception {
++    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
++    var sparepartId = UUID.randomUUID();
++    doThrow(new SparepartNotFoundException()).when(spareparts).approve(user, sparepartId);
++    doThrow(new SparepartNotFoundException()).when(spareparts).reject(eq(user), eq(sparepartId), any());
++
++    mockMvc.perform(post("/api/v1/spareparts/{sparepartId}/approve", sparepartId).with(auth(user)))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("SPAREPART_NOT_FOUND"));
++
++    mockMvc.perform(post("/api/v1/spareparts/{sparepartId}/reject", sparepartId).with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"rejectionReason\":\"gone\"}"))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("SPAREPART_NOT_FOUND"));
++  }
++
+   private static String payload(UUID categoryId, UUID brandId, UUID kindId, UUID typeId) {
+     return """
+         {"machineId":"00000000-0000-0000-0000-000000000010","categoryId":"%s","brandId":"%s","kindId":"%s","typeId":"%s"}
+@@ -334,6 +455,8 @@ class SparepartControllerTest {
+         new SparepartTaxonomyRefView(UUID.randomUUID(), "PLC", "PLC"),
+         new SparepartTaxonomyRefView(UUID.randomUUID(), "LX5", "LX5"),
+         "MC-001", new java.math.BigDecimal("36.00"),
++        "MCH-1|PLANT-1|ELEC|PLC|WECON|LX5", "000", "PLC-WECON-LX5", 1,
++        com.syncro.sparepart.domain.BomReviewStatus.PENDING_REVIEW, null,
+         Instant.parse("2026-05-28T00:00:00Z"), Instant.parse("2026-08-24T00:00:00Z"));
+     when(spareparts.patchProcurement(eq(user), eq(sparepartId), any())).thenReturn(view);
+ 
+@@ -416,6 +539,12 @@ class SparepartControllerTest {
+         new SparepartTaxonomyRefView(typeId, "LX5", "LX5"),
+         null,
+         null,
++        "MCH-1|PLANT-1|ELEC|PLC|WECON|LX5",
++        "000",
++        "PLC-WECON-LX5",
++        1,
++        com.syncro.sparepart.domain.BomReviewStatus.PENDING_REVIEW,
++        null,
+         Instant.parse("2026-05-28T00:00:00Z"),
+         Instant.parse("2026-05-28T00:00:00Z"));
+   }
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/sparepart/application/SparepartServiceIntegrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/sparepart/application/SparepartServiceIntegrationTest.java
+index 67b1eec..8a994f1 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/sparepart/application/SparepartServiceIntegrationTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/sparepart/application/SparepartServiceIntegrationTest.java
+@@ -22,9 +22,12 @@ import com.syncro.sparepart.application.SparepartService.SparepartCommand;
+ import com.syncro.sparepart.application.SparepartService.SparepartFilters;
+ import com.syncro.sparepart.application.SparepartService.SparepartMutationForbiddenException;
+ import com.syncro.sparepart.application.SparepartService.SparepartNotFoundException;
++import com.syncro.sparepart.application.SparepartService.SparepartReviewTransitionException;
+ import com.syncro.sparepart.application.SparepartService.SparepartTaxonomyDimensionMismatchException;
+ import com.syncro.sparepart.application.SparepartService.SparepartTaxonomyReferenceNotFoundException;
+ import com.syncro.sparepart.application.SparepartService.SparepartValidationException;
++import com.syncro.sparepart.domain.BomReviewStatus;
++import com.syncro.sparepart.domain.SparepartDerivation;
+ import com.syncro.sparepart.domain.SparepartTaxonomyDimension;
+ import com.syncro.sparepart.infrastructure.SparepartRepository;
+ import com.syncro.sparepart.infrastructure.SparepartTaxonomyEntity;
+@@ -127,7 +130,7 @@ class SparepartServiceIntegrationTest extends AbstractPostgresIntegrationTest {
+     sparepartService.create(admin, command("RELAY-OMRON-MY2N", "Omron MY2N Relay", otherRefs));
+ 
+     var result = sparepartService.list(admin, new SparepartFilters(
+-        refs.category().getId(), refs.brand().getId(), refs.kind().getId(), refs.type().getId(), "lx5", null, null), PageRequest.of(0, 200));
++        refs.category().getId(), refs.brand().getId(), refs.kind().getId(), refs.type().getId(), "lx5", null, null, null), PageRequest.of(0, 200));
+ 
+     assertThat(result.items()).extracting(sparepart -> sparepart.id()).containsExactly(plc.id());
+   }
+@@ -143,7 +146,7 @@ class SparepartServiceIntegrationTest extends AbstractPostgresIntegrationTest {
+     var beta = sparepartService.create(admin, command("PLC-002", "Beta PLC", betaRefs));
+     sparepartService.create(admin, command("PLC-003", "Gamma PLC", gammaRefs));
+ 
+-    var result = sparepartService.list(admin, new SparepartFilters(null, null, null, null, null, null, null), PageRequest.of(1, 1));
++    var result = sparepartService.list(admin, new SparepartFilters(null, null, null, null, null, null, null, null), PageRequest.of(1, 1));
+ 
+     assertThat(result.items()).extracting(sparepart -> sparepart.id()).containsExactly(beta.id());
+     assertThat(result.totalElements()).isEqualTo(3);
+@@ -160,8 +163,8 @@ class SparepartServiceIntegrationTest extends AbstractPostgresIntegrationTest {
+     var literal = sparepartService.create(admin, command("PLC_10", "Percent 100% PLC", literalRefs));
+     sparepartService.create(admin, command("PLC-10", "Percent 1000 PLC", otherRefs));
+ 
+-    var underscore = sparepartService.list(admin, new SparepartFilters(null, null, null, null, "_", null, null), PageRequest.of(0, 200));
+-    var percent = sparepartService.list(admin, new SparepartFilters(null, null, null, null, "100%", null, null), PageRequest.of(0, 200));
++    var underscore = sparepartService.list(admin, new SparepartFilters(null, null, null, null, "_", null, null, null), PageRequest.of(0, 200));
++    var percent = sparepartService.list(admin, new SparepartFilters(null, null, null, null, "100%", null, null, null), PageRequest.of(0, 200));
+ 
+     assertThat(underscore.items()).isEmpty();
+     assertThat(percent.items()).extracting(sparepart -> sparepart.id()).containsExactly(literal.id());
+@@ -189,7 +192,7 @@ class SparepartServiceIntegrationTest extends AbstractPostgresIntegrationTest {
+     var refs = taxonomyRefs();
+     var created = sparepartService.create(admin, command("PLC-WECON-LX5", "Wecon LX5 PLC", refs));
+ 
+-    assertThat(sparepartService.list(viewer, new SparepartFilters(null, null, null, null, null, null, null), PageRequest.of(0, 200)).items()).extracting(sparepart -> sparepart.id()).containsExactly(created.id());
++    assertThat(sparepartService.list(viewer, new SparepartFilters(null, null, null, null, null, null, null, null), PageRequest.of(0, 200)).items()).extracting(sparepart -> sparepart.id()).containsExactly(created.id());
+     assertThatThrownBy(() -> sparepartService.create(viewer, command("PLC-WECON-LX5-B", "Wecon LX5 PLC Backup", refs)))
+         .isInstanceOf(SparepartMutationForbiddenException.class);
+   }
+@@ -373,6 +376,10 @@ class SparepartServiceIntegrationTest extends AbstractPostgresIntegrationTest {
+   private com.syncro.machine.infrastructure.MachineResponsibilityRepository responsibilities;
+   @Autowired
+   private com.syncro.audit.infrastructure.AuditLogRepository auditLogs;
++  @Autowired
++  private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
++  @Autowired
++  private jakarta.persistence.EntityManager entityManager;
+ 
+   @Test
+   @DisplayName("8.2-SVC-001 P0 LEADER-scoped MANAGER_MAINTENANCE patches procurement values; list and detail expose them")
+@@ -390,7 +397,7 @@ class SparepartServiceIntegrationTest extends AbstractPostgresIntegrationTest {
+     assertThat(patched.materialCode()).isEqualTo("MC-001");
+     assertThat(patched.leadTimeHours()).isEqualByComparingTo("36");
+     var listed = sparepartService.list(manageLeader,
+-        new SparepartFilters(null, null, null, null, null, null, null), PageRequest.of(0, 200));
++        new SparepartFilters(null, null, null, null, null, null, null, null), PageRequest.of(0, 200));
+     assertThat(listed.items()).extracting(SparepartService.SparepartView::materialCode).contains("MC-001");
+     var detail = sparepartService.get(manageLeader, created.id());
+     assertThat(detail.leadTimeHours()).isEqualByComparingTo("36");
+@@ -581,4 +588,319 @@ class SparepartServiceIntegrationTest extends AbstractPostgresIntegrationTest {
+   private long auditCountFor(UUID entityId) {
+     return auditLogs.findAll().stream().filter(entry -> entityId.equals(entry.getEntityId())).count();
+   }
++
++  // --- Story 18-1: BOM master identity and review lifecycle ---
++
++  @Test
++  @DisplayName("18.1-SVC-001 P0 create starts PENDING_REVIEW with derived BOM identity fields")
++  void createStartsPendingReviewWithDerivedBomIdentity() {
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var refs = taxonomyRefs();
++    var machine = machine();
++
++    var created = sparepartService.create(admin, command("IGNORED-1801", "Wecon LX5 PLC", machine, refs));
++
++    assertThat(created.reviewStatus()).isEqualTo(BomReviewStatus.PENDING_REVIEW);
++    assertThat(created.bomCodeVersion()).isEqualTo(1);
++    assertThat(created.bomSerial()).isEqualTo("000");
++    assertThat(created.bomCode()).isEqualTo("MCH-1PLANT-1ELEPLCWEC000");
++    assertThat(created.code()).isEqualTo(created.bomCode());
++    assertThat(created.rejectionReason()).isNull();
++    assertThat(created.hierarchyIdentityKey()).isEqualTo(SparepartDerivation.hierarchyIdentityKey(
++        "MCH-1", "PLANT-1", refs.category().getCode(), refs.kind().getCode(), refs.brand().getCode(), refs.type().getCode()));
++    var stored = spareparts.findById(created.id()).orElseThrow();
++    assertThat(stored.getReviewStatus()).isEqualTo(BomReviewStatus.PENDING_REVIEW);
++    assertThat(stored.getBomCode()).isEqualTo("MCH-1PLANT-1ELEPLCWEC000");
++    assertThat(stored.getHierarchyIdentityKey()).isEqualTo(created.hierarchyIdentityKey());
++  }
++
++  @Test
++  @DisplayName("18.1-SVC-002 P0 approve transitions PENDING_REVIEW to ACTIVE, clears reason, and audits")
++  void approveTransitionsToActiveAndAudits() throws Exception {
++    var manager = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "approve-1801@syncro.dev");
++    var machine = machine();
++    assign(manager, machine.getPlant());
++    var created = sparepartService.create(manager, command("IGNORED-1802", "Wecon LX5 PLC", machine, taxonomyRefs()));
++
++    var approved = sparepartService.approve(manager, created.id());
++
++    assertThat(approved.reviewStatus()).isEqualTo(BomReviewStatus.ACTIVE);
++    assertThat(approved.rejectionReason()).isNull();
++    var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
++    var entry = latestAuditEntryFor(created.id());
++    assertThat(entry.getAction()).isEqualTo(com.syncro.audit.domain.AuditAction.UPDATE);
++    assertThat(entry.getActorName()).isEqualTo("approve-1801@syncro.dev");
++    assertThat(mapper.readTree(entry.getPreviousValue()).get("reviewStatus").asText()).isEqualTo("PENDING_REVIEW");
++    assertThat(mapper.readTree(entry.getNewValue()).get("reviewStatus").asText()).isEqualTo("ACTIVE");
++  }
++
++  @Test
++  @DisplayName("18.1-SVC-003 P0 reject transitions to REJECTED with stored reason and audit")
++  void rejectStoresReasonAndAudits() throws Exception {
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var created = sparepartService.create(admin, command("IGNORED-1803", "Wecon LX5 PLC", taxonomyRefs()));
++
++    var rejected = sparepartService.reject(admin, created.id(), "Duplicate of existing LX5 module");
++
++    assertThat(rejected.reviewStatus()).isEqualTo(BomReviewStatus.REJECTED);
++    assertThat(rejected.rejectionReason()).isEqualTo("Duplicate of existing LX5 module");
++    var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
++    var entry = latestAuditEntryFor(created.id());
++    assertThat(mapper.readTree(entry.getNewValue()).get("reviewStatus").asText()).isEqualTo("REJECTED");
++    assertThat(mapper.readTree(entry.getNewValue()).get("rejectionReason").asText()).isEqualTo("Duplicate of existing LX5 module");
++  }
++
++  @Test
++  @DisplayName("18.1-SVC-004 P0 reject without a reason is a validation error with no transition")
++  void rejectWithoutReasonRejected() {
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var created = sparepartService.create(admin, command("IGNORED-1804", "Wecon LX5 PLC", taxonomyRefs()));
++
++    assertThatThrownBy(() -> sparepartService.reject(admin, created.id(), "   "))
++        .isInstanceOf(SparepartValidationException.class);
++    assertThat(spareparts.findById(created.id()).orElseThrow().getReviewStatus()).isEqualTo(BomReviewStatus.PENDING_REVIEW);
++  }
++
++  @Test
++  @DisplayName("18.1-SVC-005 P0 review transitions from non-PENDING_REVIEW targets are rejected")
++  void reviewTransitionFromTerminalStateRejected() {
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var approved = sparepartService.create(admin, command("IGNORED-1805A", "Wecon LX5 PLC",
++        taxonomyRefs("ELECTRIC", "Electric", "WECON", "Wecon", "PLC", "PLC", "LX5", "LX5")));
++    sparepartService.approve(admin, approved.id());
++    var rejected = sparepartService.create(admin, command("IGNORED-1805B", "Omron MY2N Relay",
++        taxonomyRefs("MECHANIC", "Mechanic", "OMRON", "Omron", "RELAY", "Relay", "MY2N", "MY2N")));
++    sparepartService.reject(admin, rejected.id(), "obsolete");
++
++    assertThatThrownBy(() -> sparepartService.approve(admin, approved.id()))
++        .isInstanceOf(SparepartReviewTransitionException.class);
++    assertThatThrownBy(() -> sparepartService.reject(admin, approved.id(), "second thought"))
++        .isInstanceOf(SparepartReviewTransitionException.class);
++    assertThatThrownBy(() -> sparepartService.approve(admin, rejected.id()))
++        .isInstanceOf(SparepartReviewTransitionException.class);
++  }
++
++  @Test
++  @DisplayName("18.1-SVC-006 P0 non-privileged roles cannot approve or reject")
++  void nonPrivilegedRolesCannotReview() {
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var created = sparepartService.create(admin, command("IGNORED-1806", "Wecon LX5 PLC", taxonomyRefs()));
++    var inventory = authenticatedUser(ApplicationRole.INVENTORY_MAINTENANCE);
++    var staff = authenticatedUser(ApplicationRole.STAFF_MAINTENANCE);
++    var technician = authenticatedUser(ApplicationRole.TECHNICIAN);
++
++    assertThatThrownBy(() -> sparepartService.approve(inventory, created.id()))
++        .isInstanceOf(SparepartMutationForbiddenException.class);
++    assertThatThrownBy(() -> sparepartService.reject(staff, created.id(), "nope"))
++        .isInstanceOf(SparepartMutationForbiddenException.class);
++    assertThatThrownBy(() -> sparepartService.approve(technician, created.id()))
++        .isInstanceOf(SparepartMutationForbiddenException.class);
++    assertThat(spareparts.findById(created.id()).orElseThrow().getReviewStatus()).isEqualTo(BomReviewStatus.PENDING_REVIEW);
++  }
++
++  @Test
++  @DisplayName("18.1-SVC-007 P0 duplicate full identity is rejected before BOM allocation")
++  void duplicateHierarchyIdentityRejected() {
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var refs = taxonomyRefs();
++    var machine = machine();
++    sparepartService.create(admin, command("IGNORED-1807A", "Wecon LX5 PLC", machine, refs));
++
++    assertThatThrownBy(() -> sparepartService.create(admin, command("IGNORED-1807B", "Wecon LX5 PLC again", machine, refs)))
++        .isInstanceOf(DuplicateSparepartException.class);
++  }
++
++  @Test
++  @DisplayName("18.1-SVC-008 P1 serial increments across same-prefix creates excluding type; bom fields track the code")
++  void bomIdentityFieldsIncrementAcrossSamePrefixTypes() {
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var refs = taxonomyRefs();
++    var machine = machine();
++    var lx7 = new TaxonomyRefs(
++        refs.category(),
++        refs.brand(),
++        refs.kind(),
++        taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.TYPE, "LX7", "LX7", refs.category(),
++            Instant.parse("2026-05-28T00:00:00Z"), Instant.parse("2026-05-28T00:00:00Z"))));
++
++    var first = sparepartService.create(admin, command("IGNORED-1808A", "Wecon LX5 PLC", machine, refs));
++    var second = sparepartService.create(admin, command("IGNORED-1808B", "Wecon LX7 PLC", machine, lx7));
++
++    assertThat(first.bomSerial()).isEqualTo("000");
++    assertThat(second.bomSerial()).isEqualTo("001");
++    assertThat(second.bomCode()).isEqualTo("MCH-1PLANT-1ELEPLCWEC001");
++    assertThat(first.hierarchyIdentityKey()).isNotEqualTo(second.hierarchyIdentityKey());
++    assertThat(first.bomCodeVersion()).isEqualTo(1);
++    assertThat(second.bomCodeVersion()).isEqualTo(1);
++  }
++
++  @Test
++  @DisplayName("18.1-SVC-009 P1 update with changed prefix re-derives code and bumps version; stable prefix keeps identity")
++  void updateWithChangedPrefixReDerivesCodeAndBumpsVersion() {
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var machine = machine();
++    var created = sparepartService.create(admin, command("IGNORED-1809A", "Wecon LX5 PLC", machine, taxonomyRefs()));
++
++    var samePrefix = sparepartService.update(admin, created.id(),
++        new SparepartCommand(machine.getId(), created.category().id(), created.brand().id(), created.kind().id(), created.type().id()));
++    assertThat(samePrefix.bomCode()).isEqualTo(created.bomCode());
++    assertThat(samePrefix.bomSerial()).isEqualTo("000");
++    assertThat(samePrefix.bomCodeVersion()).isEqualTo(1);
++
++    var omronKindPlc = taxonomyRefs("ELECTRIC", "Electric", "OMRON", "Omron", "PLC", "PLC", "LX5", "LX5");
++    var changedPrefix = sparepartService.update(admin, created.id(), command("IGNORED-1809B", "Omron LX5 PLC", machine, omronKindPlc));
++
++    var expectedPrefix = SparepartDerivation.bomPrefix("MCH-1", "PLANT-1", "ELECTRIC", "PLC", omronKindPlc.brand().getCode());
++    assertThat(changedPrefix.bomCodeVersion()).isEqualTo(2);
++    assertThat(changedPrefix.bomCode()).startsWith(expectedPrefix);
++    assertThat(changedPrefix.bomSerial()).isEqualTo("001");
++    assertThat(changedPrefix.code()).isEqualTo(changedPrefix.bomCode());
++    assertThat(changedPrefix.hierarchyIdentityKey()).endsWith("|" + omronKindPlc.type().getCode());
++  }
++
++  @Test
++  @DisplayName("18.1-SVC-010 P1 list filters by reviewStatus")
++  void listFiltersByReviewStatus() {
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var machine = machine();
++    var refs = taxonomyRefs();
++    var lx7 = new TaxonomyRefs(
++        refs.category(),
++        refs.brand(),
++        refs.kind(),
++        taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(), SparepartTaxonomyDimension.TYPE, "LX7", "LX7", refs.category(),
++            Instant.parse("2026-05-28T00:00:00Z"), Instant.parse("2026-05-28T00:00:00Z"))));
++    var pending = sparepartService.create(admin, command("IGNORED-1810A", "Wecon LX5 PLC", machine, refs));
++    var approved = sparepartService.create(admin, command("IGNORED-1810B", "Wecon LX7 PLC", machine, lx7));
++    sparepartService.approve(admin, approved.id());
++
++    var activeOnly = sparepartService.list(admin,
++        new SparepartFilters(null, null, null, null, null, null, null, BomReviewStatus.ACTIVE), PageRequest.of(0, 200));
++    var pendingOnly = sparepartService.list(admin,
++        new SparepartFilters(null, null, null, null, null, null, null, BomReviewStatus.PENDING_REVIEW), PageRequest.of(0, 200));
++
++    assertThat(activeOnly.items()).extracting(SparepartService.SparepartView::id).containsExactly(approved.id());
++    assertThat(pendingOnly.items()).extracting(SparepartService.SparepartView::id).containsExactly(pending.id());
++  }
++
++  @Test
++  @DisplayName("18.1-SVC-011 P0 two completions on one machine both succeed (null hierarchy key, no collision)")
++  void twoCompletionsOnSameMachineBothSucceed() {
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var machine = machine();
++    taxonomyRefs(); // ensures the ELECTRIC category the completion path requires exists
++
++    var first = sparepartService.createForCompletion(admin, machine.getId(), "MC-COMP-A");
++    var second = sparepartService.createForCompletion(admin, machine.getId(), "MC-COMP-B");
++
++    assertThat(first.reviewStatus()).isEqualTo(BomReviewStatus.PENDING_REVIEW);
++    assertThat(second.reviewStatus()).isEqualTo(BomReviewStatus.PENDING_REVIEW);
++    assertThat(first.hierarchyIdentityKey()).isNull();
++    assertThat(second.hierarchyIdentityKey()).isNull();
++    assertThat(first.bomSerial()).isEqualTo("000");
++    assertThat(second.bomSerial()).isEqualTo("001");
++    assertThat(first.bomCode()).isNotEqualTo(second.bomCode());
++  }
++
++  @Test
++  @DisplayName("18.1-SVC-012 P0 MANAGER_MAINTENANCE outside the sparepart plant cannot approve (masked 404)")
++  void managerOutsidePlantCannotApprove() {
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var outsider = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "outsider-approve@syncro.dev");
++    var created = sparepartService.create(admin, command("IGNORED-1812", "Wecon LX5 PLC", machine(), taxonomyRefs()));
++
++    assertThatThrownBy(() -> sparepartService.approve(outsider, created.id()))
++        .isInstanceOf(SparepartNotFoundException.class);
++    assertThat(spareparts.findById(created.id()).orElseThrow().getReviewStatus()).isEqualTo(BomReviewStatus.PENDING_REVIEW);
++  }
++
++  @Test
++  @DisplayName("18.1-SVC-013 P0 sequential double approve: second is INVALID_REVIEW_TRANSITION (row lock)")
++  void sequentialDoubleApproveRejected() {
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var created = sparepartService.create(admin, command("IGNORED-1813", "Wecon LX5 PLC", taxonomyRefs()));
++
++    var approved = sparepartService.approve(admin, created.id());
++    assertThat(approved.reviewStatus()).isEqualTo(BomReviewStatus.ACTIVE);
++
++    assertThatThrownBy(() -> sparepartService.approve(admin, created.id()))
++        .isInstanceOf(SparepartReviewTransitionException.class);
++  }
++
++  @Test
++  @DisplayName("18.1-SVC-014 P1 update that changes the prefix re-queues an approved sparepart for review")
++  void prefixChangeRequeuesApprovedSparepart() {
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var machine = machine();
++    var created = sparepartService.create(admin, command("IGNORED-1814A", "Wecon LX5 PLC", machine, taxonomyRefs()));
++    sparepartService.approve(admin, created.id());
++
++    var omronBrand = taxonomyRefs("ELECTRIC", "Electric", "OMRON", "Omron", "PLC", "PLC", "LX5", "LX5");
++    var updated = sparepartService.update(admin, created.id(), command("IGNORED-1814B", "Omron LX5 PLC", machine, omronBrand));
++
++    assertThat(updated.reviewStatus()).isEqualTo(BomReviewStatus.PENDING_REVIEW);
++    assertThat(updated.bomCodeVersion()).isEqualTo(2);
++    assertThat(updated.rejectionReason()).isNull();
++  }
++
++  @Test
++  @DisplayName("18.1-SVC-015 P1 legacy NULL-BOM row back-fills serial from code on stable-prefix update, version stays 1")
++  void legacyRowBackFillsSerialWithoutVersionBump() {
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var machine = machine();
++    var created = sparepartService.create(admin, command("IGNORED-1815", "Wecon LX5 PLC", machine, taxonomyRefs()));
++    // Simulate a pre-18-1 seed row: BOM columns cleared, review status ACTIVE (pilot-seed idiom).
++    jdbcTemplate.update("update spareparts set hierarchy_identity_key = null, bom_serial = null, "
++        + "bom_code = null, bom_code_version = null, review_status = 'ACTIVE' where id = ?", created.id());
++    entityManager.clear(); // drop the stale managed entity so update() reloads the seeded shape
++
++    var updated = sparepartService.update(admin, created.id(),
++        new SparepartCommand(machine.getId(), created.category().id(), created.brand().id(), created.kind().id(), created.type().id()));
++
++    assertThat(updated.bomSerial()).isEqualTo("000");
++    assertThat(updated.bomCode()).isEqualTo(created.code());
++    assertThat(updated.bomCodeVersion()).isEqualTo(1);
++    assertThat(updated.reviewStatus()).isEqualTo(BomReviewStatus.ACTIVE);
++    assertThat(updated.hierarchyIdentityKey()).isNotNull();
++  }
++
++  @Test
++  @DisplayName("18.1-SVC-016 P0 bom_code collision surfaces as DUPLICATE_SPAREPART via save() constraint mapping")
++  void bomCodeCollisionMapsToDuplicateSparepart() {
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var refs = taxonomyRefs();
++    var target = machine();
++    var landmineMachine = machineWithCode("MCH-9");
++    // Landmine: a sparepart on another machine whose bom_code equals what a fresh MCH-1 create
++    // will derive (code series empty → 000). Its own code differs, so only the BOM index collides.
++    var landmine = new com.syncro.sparepart.infrastructure.SparepartEntity(
++        UUID.randomUUID(), "OTHER-900000", "Landmine", landmineMachine,
++        refs.category(), refs.brand(), refs.kind(), refs.type(),
++        Instant.parse("2026-05-28T00:00:00Z"), Instant.parse("2026-05-28T00:00:00Z"));
++    landmine.updateBomIdentity(null, null, "MCH-1PLANT-1ELEPLCWEC000", 1, Instant.parse("2026-05-28T00:00:00Z"));
++    spareparts.saveAndFlush(landmine);
++
++    assertThatThrownBy(() -> sparepartService.create(admin, command("IGNORED-1816", "Wecon LX5 PLC", target, refs)))
++        .isInstanceOf(DuplicateSparepartException.class);
++  }
++
++  @Test
++  @DisplayName("18.1-SVC-017 P0 hierarchy_identity_key collision surfaces as DUPLICATE_SPAREPART via save()")
++  void hierarchyKeyCollisionMapsToDuplicateSparepart() {
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var refs = taxonomyRefs();
++    var target = machine();
++    var landmineMachine = machineWithCode("MCH-8");
++    var collidingKey = SparepartDerivation.hierarchyIdentityKey("MCH-1", "PLANT-1",
++        refs.category().getCode(), refs.kind().getCode(), refs.brand().getCode(), refs.type().getCode());
++    var landmine = new com.syncro.sparepart.infrastructure.SparepartEntity(
++        UUID.randomUUID(), "OTHER-800000", "Landmine", landmineMachine,
++        refs.category(), refs.brand(), refs.kind(), refs.type(),
++        Instant.parse("2026-05-28T00:00:00Z"), Instant.parse("2026-05-28T00:00:00Z"));
++    landmine.updateBomIdentity(collidingKey, null, "OTHER-800000", 1, Instant.parse("2026-05-28T00:00:00Z"));
++    spareparts.saveAndFlush(landmine);
++
++    assertThatThrownBy(() -> sparepartService.create(admin, command("IGNORED-1817", "Wecon LX5 PLC", target, refs)))
++        .isInstanceOf(DuplicateSparepartException.class);
++  }
+ }
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/application/SparepartRequestServiceTest.java b/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/application/SparepartRequestServiceTest.java
+index b288895..74e3027 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/application/SparepartRequestServiceTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/sparepart/request/application/SparepartRequestServiceTest.java
+@@ -950,7 +950,8 @@ class SparepartRequestServiceTest {
+     when(sparepartService.createForCompletion(user, machineId, "MC-NEW-001"))
+         .thenReturn(new com.syncro.sparepart.application.SparepartService.SparepartView(
+             sparepartId, "BOM-0099", machineRef(), catRef(), catRef(), catRef(), catRef(),
+-            "MC-NEW-001", null, NOW, NOW));
++            "MC-NEW-001", null, null, null, null, null,
++            com.syncro.sparepart.domain.BomReviewStatus.PENDING_REVIEW, null, NOW, NOW));
+ 
+     var result = service.complete(user, id,
+         new com.syncro.sparepart.request.application.SparepartRequestService.CompleteCommand(
+@@ -1047,7 +1048,8 @@ class SparepartRequestServiceTest {
+     when(sparepartService.createForCompletion(user, machineId, "MC-NEW-001"))
+         .thenReturn(new com.syncro.sparepart.application.SparepartService.SparepartView(
+             sparepartId, "BOM-0100", machineRef(), catRef(), catRef(), catRef(), catRef(),
+-            "MC-NEW-001", null, NOW, NOW));
++            "MC-NEW-001", null, null, null, null, null,
++            com.syncro.sparepart.domain.BomReviewStatus.PENDING_REVIEW, null, NOW, NOW));
+ 
+     var result = service.complete(user, id,
+         new com.syncro.sparepart.request.application.SparepartRequestService.CompleteCommand(
+@@ -1073,7 +1075,8 @@ class SparepartRequestServiceTest {
+     when(sparepartService.createForCompletion(user, machineId, "MC-NEW-002"))
+         .thenReturn(new com.syncro.sparepart.application.SparepartService.SparepartView(
+             sparepartId, "BOM-0101", machineRef(), catRef(), catRef(), catRef(), catRef(),
+-            "MC-NEW-002", null, NOW, NOW));
++            "MC-NEW-002", null, null, null, null, null,
++            com.syncro.sparepart.domain.BomReviewStatus.PENDING_REVIEW, null, NOW, NOW));
+     when(priceEntries.findById(priceEntryId)).thenReturn(Optional.of(priceEntry));
+ 
+     var result = service.complete(user, id,
+diff --git a/syncro/authz/policy/authz.rego b/syncro/authz/policy/authz.rego
+index 1e4f5c1..84dfc68 100644
+--- a/syncro/authz/policy/authz.rego
++++ b/syncro/authz/policy/authz.rego
+@@ -48,6 +48,8 @@ core_mutation_paths := {
+   "/api/v1/spareparts/*",
+   "/api/v1/spareparts/*/image",
+   "/api/v1/spareparts/*/price-entries",
++  "/api/v1/spareparts/*/approve",
++  "/api/v1/spareparts/*/reject",
+   "/api/v1/sparepart-taxonomies",
+   "/api/v1/sparepart-taxonomies/*",
+   "/api/v1/notification/templates",
+diff --git a/syncro/authz/policy/authz_test.rego b/syncro/authz/policy/authz_test.rego
+index 666ae93..6015c28 100644
+--- a/syncro/authz/policy/authz_test.rego
++++ b/syncro/authz/policy/authz_test.rego
+@@ -40,6 +40,20 @@ test_manager_core_mutation_delete_allowed if {
+   authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "DELETE /api/v1/spareparts/abc"}
+ }
+ 
++# Story 18-1: BOM review transitions are two-segment subpaths — `*` matches one
++# segment, so approve/reject need explicit core_mutation_paths entries.
++test_manager_sparepart_approve_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/spareparts/abc/approve"}
++}
++
++test_manager_sparepart_reject_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/spareparts/abc/reject"}
++}
++
++test_inventory_sparepart_approve_denied if {
++  not authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/spareparts/abc/approve"}
++}
++
+ test_manager_shift_config_mutation_allowed if {
+   authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/machine-groups/abc/shift-config"}
+ }

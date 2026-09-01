@@ -950,7 +950,8 @@ class SparepartRequestServiceTest {
     when(sparepartService.createForCompletion(user, machineId, "MC-NEW-001"))
         .thenReturn(new com.syncro.sparepart.application.SparepartService.SparepartView(
             sparepartId, "BOM-0099", machineRef(), catRef(), catRef(), catRef(), catRef(),
-            "MC-NEW-001", null, NOW, NOW));
+            "MC-NEW-001", null, null, null, null, null,
+            com.syncro.sparepart.domain.BomReviewStatus.PENDING_REVIEW, null, NOW, NOW));
 
     var result = service.complete(user, id,
         new com.syncro.sparepart.request.application.SparepartRequestService.CompleteCommand(
@@ -1047,7 +1048,8 @@ class SparepartRequestServiceTest {
     when(sparepartService.createForCompletion(user, machineId, "MC-NEW-001"))
         .thenReturn(new com.syncro.sparepart.application.SparepartService.SparepartView(
             sparepartId, "BOM-0100", machineRef(), catRef(), catRef(), catRef(), catRef(),
-            "MC-NEW-001", null, NOW, NOW));
+            "MC-NEW-001", null, null, null, null, null,
+            com.syncro.sparepart.domain.BomReviewStatus.PENDING_REVIEW, null, NOW, NOW));
 
     var result = service.complete(user, id,
         new com.syncro.sparepart.request.application.SparepartRequestService.CompleteCommand(
@@ -1073,7 +1075,8 @@ class SparepartRequestServiceTest {
     when(sparepartService.createForCompletion(user, machineId, "MC-NEW-002"))
         .thenReturn(new com.syncro.sparepart.application.SparepartService.SparepartView(
             sparepartId, "BOM-0101", machineRef(), catRef(), catRef(), catRef(), catRef(),
-            "MC-NEW-002", null, NOW, NOW));
+            "MC-NEW-002", null, null, null, null, null,
+            com.syncro.sparepart.domain.BomReviewStatus.PENDING_REVIEW, null, NOW, NOW));
     when(priceEntries.findById(priceEntryId)).thenReturn(Optional.of(priceEntry));
 
     var result = service.complete(user, id,

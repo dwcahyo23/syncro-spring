@@ -1143,3 +1143,29 @@ resolution: resolved by commit c3bb741 — shared LikePattern.escape() consolida
 - source_spec: none
   summary: Dialog consistency (standardize create/category/master-data dialog positioning/styling) + beautify all remaining menus.
   evidence: Split from the same intent; polish pass, independent deliverable.
+
+## Deferred from: code review of spec-18-1-sparepart-bom-master (2026-09-02)
+
+### DW-141: openapi.json snapshot not regenerated for 18-1 endpoints
+origin: code review pass 2 (acceptance-auditor), 2026-09-02
+location: syncro/apps/web/openapi.json
+reason: Project pattern — the committed snapshot was last refreshed at story 9-5; per-story regeneration is not the convention. The frontend story consuming approve/reject needs a contract-refresh chore.
+status: open
+
+### DW-142: full mvn test suite deferred to end-of-epic gate
+origin: code review pass 2 (verification-gap), 2026-09-02
+location: syncro/apps/backend
+reason: Each full run takes ~30 min (Testcontainers); 5 stories x 2 runs would dominate the loop. Targeted verification (155 tests) + the fixed WorkOrderControllerTest blocker cover the changed surface. Run once after 18-5.
+status: open
+
+### DW-143: INVALID_REVIEW_TRANSITION 409 carries no current reviewStatus
+origin: code review pass 2 (blind-hunter), 2026-09-02
+location: syncro/apps/backend/src/main/java/com/syncro/sparepart/api/SparepartExceptionHandler.java
+reason: The handler returns Map.of(); operators must GET the sparepart to learn whether it is ACTIVE or REJECTED. Cheap observability win for a follow-up.
+status: open
+
+### DW-144: derived sparepart code can exceed ck_spareparts_code_length<=64
+origin: code review pass 2 (blind-hunter), 2026-09-02
+location: syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartService.java
+reason: Pre-existing pattern — code = prefix + serial existed before 18-1; the change only mirrors it into bom_code. A long-code machine surfaces as 409 SPAREPART_DATA_INTEGRITY_VIOLATION rather than a clean 400.
+status: open

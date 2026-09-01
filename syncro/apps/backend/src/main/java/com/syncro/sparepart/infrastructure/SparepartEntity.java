@@ -1,8 +1,11 @@
 package com.syncro.sparepart.infrastructure;
 
 import com.syncro.machine.infrastructure.MachineEntity;
+import com.syncro.sparepart.domain.BomReviewStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
@@ -44,6 +47,25 @@ public class SparepartEntity {
   @JoinColumn(name = "type_id", nullable = false)
   private SparepartTaxonomyEntity type;
 
+  @Column(name = "hierarchy_identity_key", length = 255)
+  private String hierarchyIdentityKey;
+
+  @Column(name = "bom_serial", length = 100)
+  private String bomSerial;
+
+  @Column(name = "bom_code", length = 100)
+  private String bomCode;
+
+  @Column(name = "bom_code_version")
+  private Integer bomCodeVersion;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "review_status", nullable = false, length = 20)
+  private BomReviewStatus reviewStatus;
+
+  @Column(name = "rejection_reason")
+  private String rejectionReason;
+
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
@@ -81,6 +103,7 @@ public class SparepartEntity {
     this.brand = brand;
     this.kind = kind;
     this.type = type;
+    this.reviewStatus = BomReviewStatus.PENDING_REVIEW;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
   }
@@ -135,6 +158,68 @@ public class SparepartEntity {
 
   public String getImageObjectKey() {
     return imageObjectKey;
+  }
+
+  public String getHierarchyIdentityKey() {
+    return hierarchyIdentityKey;
+  }
+
+  public String getBomSerial() {
+    return bomSerial;
+  }
+
+  public String getBomCode() {
+    return bomCode;
+  }
+
+  public Integer getBomCodeVersion() {
+    return bomCodeVersion;
+  }
+
+  public BomReviewStatus getReviewStatus() {
+    return reviewStatus;
+  }
+
+  public String getRejectionReason() {
+    return rejectionReason;
+  }
+
+  /**
+   * Replaces the BOM master identity (Story 18-1). {@code bomCodeVersion} is owned by the
+   * caller: the service bumps it only when the derived code changes (prefix re-allocation).
+   */
+  public void updateBomIdentity(String hierarchyIdentityKey, String bomSerial, String bomCode,
+      Integer bomCodeVersion, Instant updatedAt) {
+    this.hierarchyIdentityKey = hierarchyIdentityKey;
+    this.bomSerial = bomSerial;
+    this.bomCode = bomCode;
+    this.bomCodeVersion = bomCodeVersion;
+    this.updatedAt = updatedAt;
+  }
+
+  /** PENDING_REVIEW → ACTIVE (terminal). The caller enforces the transition precondition. */
+  public void approve(Instant updatedAt) {
+    this.reviewStatus = BomReviewStatus.ACTIVE;
+    this.rejectionReason = null;
+    this.updatedAt = updatedAt;
+  }
+
+  /** PENDING_REVIEW → REJECTED with a required reason (terminal). */
+  public void reject(String rejectionReason, Instant updatedAt) {
+    this.reviewStatus = BomReviewStatus.REJECTED;
+    this.rejectionReason = rejectionReason;
+    this.updatedAt = updatedAt;
+  }
+
+  /**
+   * Re-queues for review (Story 18-1): a BOM identity change (prefix re-allocation) sends an
+   * already-reviewed sparepart back to PENDING_REVIEW and clears any prior rejection reason, so
+   * the new code is re-approved. Stable-prefix edits never call this.
+   */
+  public void reopenForReview(Instant updatedAt) {
+    this.reviewStatus = BomReviewStatus.PENDING_REVIEW;
+    this.rejectionReason = null;
+    this.updatedAt = updatedAt;
   }
 
   public void update(

@@ -40,6 +40,20 @@ test_manager_core_mutation_delete_allowed if {
   authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "DELETE /api/v1/spareparts/abc"}
 }
 
+# Story 18-1: BOM review transitions are two-segment subpaths — `*` matches one
+# segment, so approve/reject need explicit core_mutation_paths entries.
+test_manager_sparepart_approve_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/spareparts/abc/approve"}
+}
+
+test_manager_sparepart_reject_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/spareparts/abc/reject"}
+}
+
+test_inventory_sparepart_approve_denied if {
+  not authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/spareparts/abc/approve"}
+}
+
 test_manager_shift_config_mutation_allowed if {
   authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/machine-groups/abc/shift-config"}
 }

@@ -1,6 +1,8 @@
 package com.syncro.sparepart.api;
 
+import com.syncro.sparepart.domain.BomReviewStatus;
 import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
@@ -46,6 +48,13 @@ public final class SparepartDtos {
       String name) {
   }
 
+  /** BOM review request body (Story 18-1) — used by the reject endpoint; approve has no body. */
+  public record BomReviewRequest(
+      @NotBlank(message = "Rejection reason must not be blank.")
+      @Size(max = 2000, message = "Rejection reason must be at most 2000 characters.")
+      String rejectionReason) {
+  }
+
   public record SparepartView(
       UUID id,
       String code,
@@ -56,6 +65,12 @@ public final class SparepartDtos {
       SparepartTaxonomyRefView type,
       String materialCode,
       BigDecimal leadTimeHours,
+      String hierarchyIdentityKey,
+      String bomSerial,
+      String bomCode,
+      Integer bomCodeVersion,
+      BomReviewStatus reviewStatus,
+      String rejectionReason,
       Instant createdAt,
       Instant updatedAt) {
   }

@@ -7,6 +7,7 @@ import com.syncro.sparepart.application.SparepartService.SparepartDataIntegrityE
 import com.syncro.sparepart.application.SparepartService.SparepartMachineNotFoundException;
 import com.syncro.sparepart.application.SparepartService.SparepartMutationForbiddenException;
 import com.syncro.sparepart.application.SparepartService.SparepartNotFoundException;
+import com.syncro.sparepart.application.SparepartService.SparepartReviewTransitionException;
 import com.syncro.sparepart.application.SparepartService.SparepartTaxonomyDimensionMismatchException;
 import com.syncro.sparepart.application.SparepartService.SparepartTaxonomyReferenceNotFoundException;
 import com.syncro.sparepart.application.SparepartService.SparepartValidationException;
@@ -92,6 +93,12 @@ public class SparepartExceptionHandler {
   @ExceptionHandler(SparepartDataIntegrityException.class)
   ResponseEntity<ErrorResponse> sparepartDataIntegrity() {
     return error(HttpStatus.CONFLICT, "SPAREPART_DATA_INTEGRITY_VIOLATION", "Sparepart data conflicts with existing records.", Map.of());
+  }
+
+  @ExceptionHandler(SparepartReviewTransitionException.class)
+  ResponseEntity<ErrorResponse> invalidReviewTransition() {
+    return error(HttpStatus.CONFLICT, "INVALID_REVIEW_TRANSITION",
+        "Sparepart review transition is not allowed from the current review status.", Map.of());
   }
 
   @ExceptionHandler(SparepartMutationForbiddenException.class)

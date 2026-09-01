@@ -1,11 +1,14 @@
 package com.syncro.sparepart.infrastructure;
 
+import com.syncro.sparepart.domain.BomReviewStatus;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -17,6 +20,34 @@ public interface SparepartRepository extends JpaRepository<SparepartEntity, UUID
   boolean existsByCodeIgnoreCase(String code);
 
   boolean existsByMaterialCodeIgnoreCaseAndIdNot(String materialCode, UUID id);
+
+  /**
+   * Pessimistic row lock for review transitions (Story 18-1): serializes concurrent
+   * approve/reject on the same sparepart so the PENDING_REVIEW precondition cannot pass twice
+   * (check-then-act without {@code @Version} — the column does not exist in V1). Mirrors the
+   * {@code SparepartRequestRepository.findByIdForUpdate} pattern (AD-5).
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select s from SparepartEntity s where s.id = :id")
+  Optional<SparepartEntity> findByIdForUpdate(@Param("id") UUID id);
+
+  /**
+   * Existing BOM serials within one machine+category+kind space — the allocation domain of
+   * {@code uq_spareparts_machine_cat_kind_serial}. The code series alone (per brand prefix) can
+   * hand the same serial to two brands of the same kind, so the next serial is the max of both
+   * series. See {@code SparepartService.nextBomSerial}.
+   */
+  @Query("""
+      select sparepart.bomSerial from SparepartEntity sparepart
+      where sparepart.machine.id = :machineId
+        and sparepart.category.id = :categoryId
+        and sparepart.kind.id = :kindId
+        and sparepart.bomSerial is not null
+      """)
+  List<String> findBomSerialsByMachineCategoryKind(
+      @Param("machineId") UUID machineId,
+      @Param("categoryId") UUID categoryId,
+      @Param("kindId") UUID kindId);
 
   @Query("""
       select count(sparepart) from SparepartEntity sparepart
@@ -58,7 +89,7 @@ public interface SparepartRepository extends JpaRepository<SparepartEntity, UUID
 
   /**
    * {@param prefix} MUST already be LIKE-escaped by the caller (backslash, % and underscore)
-   * - the trailing wildcard is appended here. See SparepartService.nextBomCode.
+   * - the trailing wildcard is appended here. See SparepartService.nextBomSerial.
    */
   @Query("""
       select sparepart.code from SparepartEntity sparepart
@@ -80,6 +111,7 @@ public interface SparepartRepository extends JpaRepository<SparepartEntity, UUID
         and (:typeId is null or type.id = :typeId)
         and (:machineId is null or machine.id = :machineId)
         and (:machineCode = '' or lower(machine.code) like concat('%', :machineCode, '%') escape '\\')
+        and (:reviewStatus is null or sparepart.reviewStatus = :reviewStatus)
         and (:search = '' or lower(sparepart.code) like concat('%', :search, '%') escape '\\'
           or lower(category.name) like concat('%', :search, '%') escape '\\'
           or lower(kind.name) like concat('%', :search, '%') escape '\\'
@@ -99,6 +131,7 @@ public interface SparepartRepository extends JpaRepository<SparepartEntity, UUID
             and (:typeId is null or type.id = :typeId)
             and (:machineId is null or machine.id = :machineId)
             and (:machineCode = '' or lower(machine.code) like concat('%', :machineCode, '%') escape '\\')
+            and (:reviewStatus is null or sparepart.reviewStatus = :reviewStatus)
             and (:search = '' or lower(sparepart.code) like concat('%', :search, '%') escape '\\'
               or lower(category.name) like concat('%', :search, '%') escape '\\'
               or lower(kind.name) like concat('%', :search, '%') escape '\\'
@@ -113,5 +146,6 @@ public interface SparepartRepository extends JpaRepository<SparepartEntity, UUID
       @Param("machineId") UUID machineId,
       @Param("search") String search,
       @Param("machineCode") String machineCode,
+      @Param("reviewStatus") BomReviewStatus reviewStatus,
       Pageable pageable);
 }

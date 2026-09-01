@@ -48,6 +48,8 @@ core_mutation_paths := {
   "/api/v1/spareparts/*",
   "/api/v1/spareparts/*/image",
   "/api/v1/spareparts/*/price-entries",
+  "/api/v1/spareparts/*/approve",
+  "/api/v1/spareparts/*/reject",
   "/api/v1/sparepart-taxonomies",
   "/api/v1/sparepart-taxonomies/*",
   "/api/v1/notification/templates",

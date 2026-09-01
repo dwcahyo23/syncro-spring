@@ -102,6 +102,7 @@ import com.syncro.maintenance.application.WorkOrderTodoService.TodoWorkOrderNotF
 import com.syncro.maintenance.application.WorkOrderTodoService.WorkOrderKanbanItem;
 import com.syncro.maintenance.application.WorkOrderTodoService.WorkOrderTerminalException;
 import com.syncro.maintenance.application.WorkOrderTodoService.WorkOrderTodoValidationException;
+import com.syncro.maintenance.application.WorkOrderQualityRatingService;
 import com.syncro.maintenance.application.WorkOrderRatingService;
 import com.syncro.maintenance.application.WorkOrderRatingService.RatingForbiddenException;
 import com.syncro.maintenance.application.WorkOrderRatingService.RatingWorkOrderNotFoundException;
@@ -181,6 +182,9 @@ class WorkOrderControllerTest {
 
   @MockitoBean
   private WorkLogRatingService workLogRatings;
+
+  @MockitoBean
+  private WorkOrderQualityRatingService qualityRatings;
 
   @MockitoBean
   private JwtTokenService jwtTokenService;

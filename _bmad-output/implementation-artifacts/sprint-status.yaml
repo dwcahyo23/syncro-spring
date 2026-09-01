@@ -36,6 +36,7 @@
 
 generated: 2026-05-25
 last_updated: 2026-09-01
+# updated: 2026-09-01 (3) Epic 18 in-progress — 18-1 Sparepart BOM Master build started
 # updated: 2026-09-01 (2) epic-15 done — 15-1 & 15-2 complete (b15b975, d5e5424)
 # updated: 2026-08-31 (2) Epic 18 Multi-Language (i18n) added — Indonesian/English UI via next-intl
 # updated: 2026-08-31 ORM maturation (Major) — schema redesigned from scratch per sprint-change-proposal-2026-08-31; Phase 2 epics re-planned
@@ -244,12 +245,12 @@ development_status:
   epic-17-retrospective: optional
 
   # Epic 18: Sparepart BOM & Inventory Maturation
-  epic-18: backlog
-  18-1-sparepart-bom-master: backlog
-  18-2-inventory-locations: backlog
-  18-3-inventory-stock-balances: backlog
-  18-4-inventory-transfers: backlog
-  18-5-inventory-reservations: backlog
+  epic-18: in-progress
+  18-1-sparepart-bom-master: done
+  18-2-inventory-locations: ready-for-dev
+  18-3-inventory-stock-balances: ready-for-dev
+  18-4-inventory-transfers: ready-for-dev
+  18-5-inventory-reservations: ready-for-dev
   epic-18-retrospective: optional
 
   # Epic 19: Preventive PM Execution Model

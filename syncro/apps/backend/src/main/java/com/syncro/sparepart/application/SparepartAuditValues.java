@@ -20,6 +20,12 @@ public final class SparepartAuditValues {
     values.put("materialCode", sparepart.getMaterialCode());
     values.put("leadTimeHours", sparepart.getLeadTimeHours());
     values.put("imageObjectKey", sparepart.getImageObjectKey());
+    values.put("hierarchyIdentityKey", sparepart.getHierarchyIdentityKey());
+    values.put("bomSerial", sparepart.getBomSerial());
+    values.put("bomCode", sparepart.getBomCode());
+    values.put("bomCodeVersion", sparepart.getBomCodeVersion());
+    values.put("reviewStatus", sparepart.getReviewStatus() == null ? null : sparepart.getReviewStatus().name());
+    values.put("rejectionReason", sparepart.getRejectionReason());
     return values;
   }
 }

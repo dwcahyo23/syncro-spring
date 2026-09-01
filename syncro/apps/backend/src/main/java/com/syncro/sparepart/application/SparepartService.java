@@ -12,6 +12,7 @@ import com.syncro.common.LikePattern;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.projection.application.ProjectionCacheEvictionEvent;
+import com.syncro.sparepart.domain.BomReviewStatus;
 import com.syncro.sparepart.domain.SparepartDerivation;
 import com.syncro.sparepart.domain.SparepartTaxonomyDimension;
 import com.syncro.sparepart.infrastructure.SparepartEntity;
@@ -36,6 +37,10 @@ public class SparepartService {
   private static final int MAX_PAGE_SIZE = 200;
   private static final String DUPLICATE_CODE_CONSTRAINT = "uq_spareparts_lower_code";
   private static final String DUPLICATE_IDENTITY_CONSTRAINT = "uq_spareparts_machine_taxonomy_identity";
+  /** Story 18-1: BOM master uniqueness (partial indexes from V1). */
+  private static final String DUPLICATE_HIERARCHY_KEY_CONSTRAINT = "uq_spareparts_hierarchy_identity_key";
+  private static final String DUPLICATE_BOM_CODE_CONSTRAINT = "uq_spareparts_bom_code";
+  private static final String DUPLICATE_BOM_SERIAL_CONSTRAINT = "uq_spareparts_machine_cat_kind_serial";
   private static final String DUPLICATE_MATERIAL_CODE_CONSTRAINT = "uq_spareparts_material_code";
   /** V61 (story 12-4) adds a case-sensitive UNIQUE backing the stock FK; duplicate codes can surface under either name. */
   private static final String DUPLICATE_MATERIAL_CODE_KEY_CONSTRAINT = "uq_spareparts_material_code_key";
@@ -69,7 +74,7 @@ public class SparepartService {
     validatePageable(pageable);
     var search = normalizeSearch(filters.search());
     var machineCode = normalizeSearch(filters.machineCode());
-    var result = spareparts.search(filters.categoryId(), filters.brandId(), filters.kindId(), filters.typeId(), filters.machineId(), search, machineCode, pageable);
+    var result = spareparts.search(filters.categoryId(), filters.brandId(), filters.kindId(), filters.typeId(), filters.machineId(), search, machineCode, filters.reviewStatus(), pageable);
     return new SparepartListView(result.stream().map(this::toView).toList(), result.getTotalElements(), pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort().toString());
   }
 
@@ -86,18 +91,9 @@ public class SparepartService {
     var machine = resolveMachine(user, normalized.machineId());
     var taxonomies = resolveTaxonomies(normalized);
     rejectDuplicateIdentity(machine, taxonomies);
-    var generatedCode = nextBomCode(machine, taxonomies);
-    var saved = save(new SparepartEntity(
-        UUID.randomUUID(),
-        generatedCode,
-        sparepartLabel(taxonomies),
-        machine,
-        taxonomies.category(),
-        taxonomies.brand(),
-        taxonomies.kind(),
-        taxonomies.type(),
-        now,
-        now));
+    var entity = newSparepartWithBomIdentity(UUID.randomUUID(), machine, taxonomies, sparepartLabel(taxonomies),
+        hierarchyIdentityKey(machine, taxonomies), now);
+    var saved = save(entity);
     auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.SPAREPART, saved.getId(), saved.getCode(),
         machine.getPlant().getId(), null, SparepartAuditValues.of(saved), null));
     return toView(saved);
@@ -106,25 +102,83 @@ public class SparepartService {
   @Transactional
   public SparepartView update(AuthenticatedUser user, UUID sparepartId, SparepartCommand command) {
     requireMutationRole(user);
-    var sparepart = find(sparepartId);
+    // Locked read: a concurrent approve/reject must not interleave with a prefix-changing
+    // update (lost update — reopenForReview would overwrite a just-committed ACTIVE/REJECTED).
+    var sparepart = findForUpdate(sparepartId);
     var entityLabel = sparepart.getCode();
     var previous = SparepartAuditValues.of(sparepart);
     var normalized = normalize(command);
     var machine = resolveMachine(user, normalized.machineId());
     var taxonomies = resolveTaxonomies(normalized);
     rejectDuplicateIdentity(sparepartId, machine, taxonomies);
+    var now = Instant.now(clock);
+    var identity = bomIdentityForUpdate(sparepart, machine, taxonomies);
     sparepart.update(
-        bomCodeForUpdate(sparepart, machine, taxonomies),
+        identity.code(),
         sparepartLabel(taxonomies),
         machine,
         taxonomies.category(),
         taxonomies.brand(),
         taxonomies.kind(),
         taxonomies.type(),
-        Instant.now(clock));
+        now);
+    sparepart.updateBomIdentity(hierarchyIdentityKey(machine, taxonomies),
+        identity.serial(), identity.code(), identity.version(), now);
+    if (identity.requeue()) {
+      sparepart.reopenForReview(now);
+    }
     var saved = save(sparepart);
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.SPAREPART, sparepartId, entityLabel,
         machine.getPlant().getId(), previous, SparepartAuditValues.of(saved), null));
+    return toView(saved);
+  }
+
+  /**
+   * Story 18-1: PENDING_REVIEW → ACTIVE. Terminal for this story (no re-open path); a target
+   * in any other review status fails with {@link SparepartReviewTransitionException} (409).
+   * The row is locked FOR UPDATE so concurrent reviews serialize on the precondition check
+   * (no {@code @Version} column exists on spareparts).
+   */
+  @Transactional
+  public SparepartView approve(AuthenticatedUser user, UUID sparepartId) {
+    requireMutationRole(user);
+    var sparepart = findForUpdate(sparepartId);
+    requireSparepartPlantAccess(user, sparepart);
+    if (sparepart.getReviewStatus() != BomReviewStatus.PENDING_REVIEW) {
+      throw new SparepartReviewTransitionException();
+    }
+    var entityLabel = sparepart.getCode();
+    var previous = SparepartAuditValues.of(sparepart);
+    sparepart.approve(Instant.now(clock));
+    var saved = save(sparepart);
+    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.SPAREPART, sparepartId, entityLabel,
+        saved.getMachine().getPlant().getId(), previous, SparepartAuditValues.of(saved), null));
+    return toView(saved);
+  }
+
+  /**
+   * Story 18-1: PENDING_REVIEW → REJECTED with a required reason. Terminal for this story;
+   * a blank reason fails validation (400) and a non-PENDING_REVIEW target fails with 409.
+   * Locked FOR UPDATE like {@link #approve}.
+   */
+  @Transactional
+  public SparepartView reject(AuthenticatedUser user, UUID sparepartId, String rejectionReason) {
+    requireMutationRole(user);
+    var reason = rejectionReason == null ? "" : rejectionReason.trim();
+    if (reason.isEmpty()) {
+      throw new SparepartValidationException();
+    }
+    var sparepart = findForUpdate(sparepartId);
+    requireSparepartPlantAccess(user, sparepart);
+    if (sparepart.getReviewStatus() != BomReviewStatus.PENDING_REVIEW) {
+      throw new SparepartReviewTransitionException();
+    }
+    var entityLabel = sparepart.getCode();
+    var previous = SparepartAuditValues.of(sparepart);
+    sparepart.reject(reason, Instant.now(clock));
+    var saved = save(sparepart);
+    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.SPAREPART, sparepartId, entityLabel,
+        saved.getMachine().getPlant().getId(), previous, SparepartAuditValues.of(saved), null));
     return toView(saved);
   }
 
@@ -208,12 +262,13 @@ public class SparepartService {
 
     var now = Instant.now(clock);
     var name = "Part " + materialCode;
-    var generatedCode = nextBomCode(machine, new TaxonomyRefs(electricCat, brand, kind, type));
-    var saved = save(new SparepartEntity(UUID.randomUUID(), generatedCode, name, machine,
-        electricCat, brand, kind, type, now, now));
+    // Completion-path placeholder taxonomy: no hierarchy identity key (see
+    // newSparepartWithBomIdentity) — two completions on one machine must not collide.
+    var entity = newSparepartWithBomIdentity(UUID.randomUUID(), machine,
+        new TaxonomyRefs(electricCat, brand, kind, type), name, null, now);
     // Set the material code on the freshly created sparepart
-    saved.updateProcurement(materialCode, null, now);
-    saved = spareparts.saveAndFlush(saved);
+    entity.updateProcurement(materialCode, null, now);
+    var saved = save(entity);
 
     auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.SPAREPART,
         saved.getId(), saved.getCode(), machine.getPlant().getId(), null,
@@ -231,11 +286,10 @@ public class SparepartService {
     var machine = resolveMachine(user, machineId);
     var taxonomies = resolveTaxonomies(new SparepartCommand(machineId, categoryId, brandId, kindId, typeId));
     rejectDuplicateIdentity(machine, taxonomies);
-    var generatedCode = nextBomCode(machine, taxonomies);
     var name = sparepartLabel(taxonomies);
     var now = Instant.now(clock);
-    var entity = new SparepartEntity(UUID.randomUUID(), generatedCode, name, machine,
-        taxonomies.category(), taxonomies.brand(), taxonomies.kind(), taxonomies.type(), now, now);
+    var entity = newSparepartWithBomIdentity(UUID.randomUUID(), machine, taxonomies, name,
+        hierarchyIdentityKey(machine, taxonomies), now);
     if (materialCode != null && !materialCode.isBlank()) {
       entity.updateProcurement(materialCode, null, now);
     }
@@ -260,6 +314,11 @@ public class SparepartService {
 
   private SparepartEntity find(UUID sparepartId) {
     return spareparts.findById(sparepartId).orElseThrow(SparepartNotFoundException::new);
+  }
+
+  /** Locked read for review transitions — serializes concurrent approve/reject (Story 18-1). */
+  private SparepartEntity findForUpdate(UUID sparepartId) {
+    return spareparts.findByIdForUpdate(sparepartId).orElseThrow(SparepartNotFoundException::new);
   }
 
   private void requireMutationRole(AuthenticatedUser user) {
@@ -311,9 +370,60 @@ public class SparepartService {
     }
   }
 
-  private String bomCodeForUpdate(SparepartEntity sparepart, MachineEntity machine, TaxonomyRefs taxonomies) {
+  /**
+   * Story 18-1: builds a fresh BOM master identity for a new sparepart — PENDING_REVIEW status
+   * (entity constructor default), derived hierarchy key, allocated serial, code = prefix+serial,
+   * version 1. {@code code} and {@code bom_code} coincide by design (design note: the operator
+   * identifier and the BOM code carry the same value).
+   *
+   * <p>{@code hierarchyIdentityKey} may be {@code null}: the request-completion path creates
+   * placeholder-taxonomy (ELECTRIC/GENERIC/GENERIC/GENERIC) spareparts whose identity is not a
+   * real BOM hierarchy, and a non-null key would collide on
+   * {@code uq_spareparts_hierarchy_identity_key} for every completion on the same machine. The
+   * partial unique index skips nulls, so null keys coexist; bom_serial/bom_code stay unique via
+   * the serial allocation.
+   */
+  private SparepartEntity newSparepartWithBomIdentity(UUID id, MachineEntity machine, TaxonomyRefs taxonomies,
+      String name, String hierarchyIdentityKey, Instant now) {
     var prefix = bomPrefix(machine, taxonomies);
-    return sparepart.getCode().startsWith(prefix) ? sparepart.getCode() : nextBomCode(prefix);
+    var serial = nextBomSerial(machine, taxonomies, prefix);
+    var code = prefix + serial;
+    var entity = new SparepartEntity(id, code, name, machine,
+        taxonomies.category(), taxonomies.brand(), taxonomies.kind(), taxonomies.type(), now, now);
+    entity.updateBomIdentity(hierarchyIdentityKey, serial, code, 1, now);
+    return entity;
+  }
+
+  /**
+   * Story 18-1: re-derives the BOM identity on update. Stable prefix keeps serial/code/version
+   * and leaves the review status untouched; a changed prefix (machine/category/kind/brand)
+   * allocates a fresh serial under the new prefix, bumps {@code bom_code_version}, and re-queues
+   * the sparepart for review ({@code requeue}). Legacy rows (null BOM fields, e.g. the pilot
+   * seed) are back-filled from the existing code without a version bump when the prefix is
+   * stable — but only when the code tail is a well-formed 3-digit serial; a malformed tail gets
+   * a fresh serial instead of a corrupt one.
+   */
+  private record BomIdentity(String code, String serial, int version, boolean requeue) {
+  }
+
+  private BomIdentity bomIdentityForUpdate(SparepartEntity sparepart, MachineEntity machine, TaxonomyRefs taxonomies) {
+    var prefix = bomPrefix(machine, taxonomies);
+    var currentVersion = sparepart.getBomCodeVersion() == null ? 1 : sparepart.getBomCodeVersion();
+    // Case-insensitive: the code series scan (findCodesByEscapedPrefix) matches upper(code),
+    // so a stored code whose casing differs from the derived prefix must still count as
+    // stable — otherwise it would fake a prefix change (re-queue + version bump + re-allocation).
+    if (sparepart.getCode().regionMatches(true, 0, prefix, 0, prefix.length())) {
+      var tail = sparepart.getCode().substring(prefix.length());
+      var serial = sparepart.getBomSerial() != null ? sparepart.getBomSerial() : tail;
+      if (sparepart.getBomSerial() == null && parseSeries(tail) < 0) {
+        // Legacy code with a non-numeric/short tail: back-fill a fresh serial, keep version.
+        var fresh = nextBomSerial(machine, taxonomies, prefix);
+        return new BomIdentity(prefix + fresh, fresh, currentVersion, false);
+      }
+      return new BomIdentity(sparepart.getCode(), serial, currentVersion, false);
+    }
+    var serial = nextBomSerial(machine, taxonomies, prefix);
+    return new BomIdentity(prefix + serial, serial, currentVersion + 1, true);
   }
 
   private void rejectDuplicateIdentity(MachineEntity machine, TaxonomyRefs taxonomies) {
@@ -339,25 +449,52 @@ public class SparepartService {
     }
   }
 
-  private String nextBomCode(MachineEntity machine, TaxonomyRefs taxonomies) {
-    return nextBomCode(bomPrefix(machine, taxonomies));
-  }
-
-  private String nextBomCode(String prefix) {
+  /**
+   * Allocates the next 3-digit BOM serial. The code series (per machine+plant+category+kind+brand
+   * prefix) keeps the established "code excludes type" increment, while the machine+category+kind
+   * serial space (backing {@code uq_spareparts_machine_cat_kind_serial}) is scanned too: two brands
+   * of the same kind share that DB uniqueness domain, so the next serial is the max of both series.
+   */
+  private String nextBomSerial(MachineEntity machine, TaxonomyRefs taxonomies, String prefix) {
     // DW-121: machine codes may contain _ (and defensively %/\); escape them so the
     // LIKE only matches this machine's own BOM series instead of wildcarding.
     var escaped = LikePattern.escape(prefix);
-    var maxSeries = spareparts.findCodesByEscapedPrefix(escaped).stream()
+    var maxCodeSeries = spareparts.findCodesByEscapedPrefix(escaped).stream()
         .filter(code -> code.length() == prefix.length() + 3)
         .map(code -> code.substring(prefix.length()))
-        .filter(series -> series.chars().allMatch(Character::isDigit))
-        .mapToInt(Integer::parseInt)
+        .mapToLong(SparepartService::parseSeries)
         .max()
-        .orElse(-1);
-    if (maxSeries >= 999) {
+        .orElse(-1L);
+    var maxKindSerial = spareparts.findBomSerialsByMachineCategoryKind(
+            machine.getId(), taxonomies.category().getId(), taxonomies.kind().getId()).stream()
+        .mapToLong(SparepartService::parseSeries)
+        .max()
+        .orElse(-1L);
+    var next = Math.max(maxCodeSeries, maxKindSerial) + 1;
+    if (next > 999) {
       throw new DuplicateSparepartException();
     }
-    return prefix + String.format(Locale.ROOT, "%03d", maxSeries + 1);
+    return String.format(Locale.ROOT, "%03d", next);
+  }
+
+  private static long parseSeries(String series) {
+    if (series.length() != 3 || !series.chars().allMatch(Character::isDigit)) {
+      return -1L;
+    }
+    return Long.parseLong(series);
+  }
+
+  /** Column bound: {@code spareparts.hierarchy_identity_key VARCHAR(255)}. */
+  private static final int MAX_HIERARCHY_KEY_LENGTH = 255;
+
+  private String hierarchyIdentityKey(MachineEntity machine, TaxonomyRefs taxonomies) {
+    var key = SparepartDerivation.hierarchyIdentityKey(machine.getCode(), machine.getPlant().getCode(),
+        taxonomies.category().getCode(), taxonomies.kind().getCode(), taxonomies.brand().getCode(),
+        taxonomies.type().getCode());
+    if (key.length() > MAX_HIERARCHY_KEY_LENGTH) {
+      throw new SparepartValidationException();
+    }
+    return key;
   }
 
   private String bomPrefix(MachineEntity machine, TaxonomyRefs taxonomies) {
@@ -463,7 +600,8 @@ public class SparepartService {
     try {
       return spareparts.saveAndFlush(sparepart);
     } catch (DataIntegrityViolationException exception) {
-      if (isConstraintViolation(exception, DUPLICATE_CODE_CONSTRAINT, DUPLICATE_IDENTITY_CONSTRAINT)) {
+      if (isConstraintViolation(exception, DUPLICATE_CODE_CONSTRAINT, DUPLICATE_IDENTITY_CONSTRAINT,
+          DUPLICATE_HIERARCHY_KEY_CONSTRAINT, DUPLICATE_BOM_CODE_CONSTRAINT, DUPLICATE_BOM_SERIAL_CONSTRAINT)) {
         throw new DuplicateSparepartException();
       }
       if (isConstraintViolation(exception, DUPLICATE_MATERIAL_CODE_CONSTRAINT,
@@ -500,6 +638,12 @@ public class SparepartService {
         toTaxonomyRef(sparepart.getType()),
         sparepart.getMaterialCode(),
         sparepart.getLeadTimeHours(),
+        sparepart.getHierarchyIdentityKey(),
+        sparepart.getBomSerial(),
+        sparepart.getBomCode(),
+        sparepart.getBomCodeVersion(),
+        sparepart.getReviewStatus(),
+        sparepart.getRejectionReason(),
         sparepart.getCreatedAt(),
         sparepart.getUpdatedAt());
   }
@@ -527,7 +671,7 @@ public class SparepartService {
   public record SparepartProcurementCommand(String materialCode, BigDecimal leadTimeHours) {
   }
 
-  public record SparepartFilters(UUID categoryId, UUID brandId, UUID kindId, UUID typeId, String search, String machineCode, UUID machineId) {
+  public record SparepartFilters(UUID categoryId, UUID brandId, UUID kindId, UUID typeId, String search, String machineCode, UUID machineId, BomReviewStatus reviewStatus) {
   }
 
   public record SparepartListView(List<SparepartView> items, long totalElements, int page, int size, String sort) {
@@ -549,6 +693,12 @@ public class SparepartService {
       SparepartTaxonomyRefView type,
       String materialCode,
       BigDecimal leadTimeHours,
+      String hierarchyIdentityKey,
+      String bomSerial,
+      String bomCode,
+      Integer bomCodeVersion,
+      BomReviewStatus reviewStatus,
+      String rejectionReason,
       Instant createdAt,
       Instant updatedAt) {
   }
@@ -564,6 +714,10 @@ public class SparepartService {
   }
 
   public static class SparepartMutationForbiddenException extends RuntimeException {
+  }
+
+  /** Review transition attempted on a sparepart that is not PENDING_REVIEW (Story 18-1, 409). */
+  public static class SparepartReviewTransitionException extends RuntimeException {
   }
 
   public static class SparepartNotFoundException extends RuntimeException {

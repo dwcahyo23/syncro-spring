@@ -1,6 +1,7 @@
 package com.syncro.sparepart.api;
 
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
+import com.syncro.sparepart.api.SparepartDtos.BomReviewRequest;
 import com.syncro.sparepart.api.SparepartDtos.SparepartListResponse;
 import com.syncro.sparepart.api.SparepartDtos.SparepartMachineRefView;
 import com.syncro.sparepart.api.SparepartDtos.SparepartProcurementRequest;
@@ -11,6 +12,7 @@ import com.syncro.sparepart.application.SparepartService;
 import com.syncro.sparepart.application.SparepartService.SparepartCommand;
 import com.syncro.sparepart.application.SparepartService.SparepartFilters;
 import com.syncro.sparepart.application.SparepartService.SparepartProcurementCommand;
+import com.syncro.sparepart.domain.BomReviewStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -58,8 +60,9 @@ public class SparepartController {
       @RequestParam(required = false) String search,
       @RequestParam(required = false) String machineCode,
       @RequestParam(required = false) UUID machineId,
+      @RequestParam(required = false) BomReviewStatus reviewStatus,
       @PageableDefault(size = 200, sort = "code") Pageable pageable) {
-    var filters = new SparepartFilters(categoryId, brandId, kindId, typeId, search, machineCode, machineId);
+    var filters = new SparepartFilters(categoryId, brandId, kindId, typeId, search, machineCode, machineId, reviewStatus);
     var result = spareparts.list(user, filters, pageable);
     return new SparepartListResponse(result.items().stream().map(this::toDto).toList(), result.totalElements(), result.page(), result.size(), result.sort());
   }
@@ -123,6 +126,35 @@ public class SparepartController {
     return toDto(spareparts.patchProcurement(user, sparepartId, command));
   }
 
+  @Operation(operationId = "approveSparepart", summary = "Approve a PENDING_REVIEW sparepart (BOM review)")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Sparepart approved"),
+      @ApiResponse(responseCode = "400", description = "Invalid sparepart id"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Sparepart not found"),
+      @ApiResponse(responseCode = "409", description = "Sparepart is not PENDING_REVIEW")
+  })
+  @PostMapping("/{sparepartId}/approve")
+  public SparepartView approve(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID sparepartId) {
+    return toDto(spareparts.approve(user, sparepartId));
+  }
+
+  @Operation(operationId = "rejectSparepart", summary = "Reject a PENDING_REVIEW sparepart with a reason (BOM review)")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Sparepart rejected"),
+      @ApiResponse(responseCode = "400", description = "Validation or invalid sparepart id"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Sparepart not found"),
+      @ApiResponse(responseCode = "409", description = "Sparepart is not PENDING_REVIEW")
+  })
+  @PostMapping("/{sparepartId}/reject")
+  public SparepartView reject(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID sparepartId,
+      @Valid @RequestBody BomReviewRequest request) {
+    return toDto(spareparts.reject(user, sparepartId, request.rejectionReason()));
+  }
+
   @Operation(operationId = "deleteSparepart", summary = "Delete sparepart")
   @ApiResponses({
       @ApiResponse(responseCode = "204", description = "Sparepart deleted", content = @Content),
@@ -153,6 +185,12 @@ public class SparepartController {
         toDto(sparepart.type()),
         sparepart.materialCode(),
         sparepart.leadTimeHours(),
+        sparepart.hierarchyIdentityKey(),
+        sparepart.bomSerial(),
+        sparepart.bomCode(),
+        sparepart.bomCodeVersion(),
+        sparepart.reviewStatus(),
+        sparepart.rejectionReason(),
         sparepart.createdAt(),
         sparepart.updatedAt());
   }

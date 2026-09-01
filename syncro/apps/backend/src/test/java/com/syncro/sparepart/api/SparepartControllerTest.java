@@ -1,5 +1,6 @@
 package com.syncro.sparepart.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -313,6 +314,126 @@ class SparepartControllerTest {
         .andExpect(jsonPath("$.message").value("Sparepart data conflicts with existing records."));
   }
 
+  // --- Story 18-1: BOM review endpoints ---
+
+  @Test
+  @DisplayName("18.1-API-001 P0 MANAGER_MAINTENANCE approves a sparepart and the view carries BOM fields")
+  void manageApprovesSparepart() throws Exception {
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
+    var sparepartId = UUID.randomUUID();
+    var approved = new SparepartView(
+        sparepartId, "PLC-WECON-LX5",
+        new SparepartMachineRefView(UUID.randomUUID(), "MCH-1", "Machine 1", UUID.randomUUID(), "PLANT-1", "Plant 1"),
+        new SparepartTaxonomyRefView(UUID.randomUUID(), "ELEC", "Electric"),
+        new SparepartTaxonomyRefView(UUID.randomUUID(), "WECON", "Wecon"),
+        new SparepartTaxonomyRefView(UUID.randomUUID(), "PLC", "PLC"),
+        new SparepartTaxonomyRefView(UUID.randomUUID(), "LX5", "LX5"),
+        null, null,
+        "MCH-1|PLANT-1|ELEC|PLC|WECON|LX5", "000", "PLC-WECON-LX5", 1,
+        com.syncro.sparepart.domain.BomReviewStatus.ACTIVE, null,
+        Instant.parse("2026-05-28T00:00:00Z"), Instant.parse("2026-08-24T00:00:00Z"));
+    when(spareparts.approve(eq(user), eq(sparepartId))).thenReturn(approved);
+
+    mockMvc.perform(post("/api/v1/spareparts/{sparepartId}/approve", sparepartId).with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.reviewStatus").value("ACTIVE"))
+        .andExpect(jsonPath("$.bomSerial").value("000"))
+        .andExpect(jsonPath("$.bomCode").value("PLC-WECON-LX5"))
+        .andExpect(jsonPath("$.bomCodeVersion").value(1))
+        .andExpect(jsonPath("$.hierarchyIdentityKey").value("MCH-1|PLANT-1|ELEC|PLC|WECON|LX5"))
+        .andExpect(jsonPath("$.rejectionReason").value(org.hamcrest.Matchers.nullValue()));
+  }
+
+  @Test
+  @DisplayName("18.1-API-002 P0 reject stores the reason; blank reason fails validation")
+  void rejectStoresReasonAndValidates() throws Exception {
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
+    var sparepartId = UUID.randomUUID();
+    var rejected = new SparepartView(
+        sparepartId, "PLC-WECON-LX5",
+        new SparepartMachineRefView(UUID.randomUUID(), "MCH-1", "Machine 1", UUID.randomUUID(), "PLANT-1", "Plant 1"),
+        new SparepartTaxonomyRefView(UUID.randomUUID(), "ELEC", "Electric"),
+        new SparepartTaxonomyRefView(UUID.randomUUID(), "WECON", "Wecon"),
+        new SparepartTaxonomyRefView(UUID.randomUUID(), "PLC", "PLC"),
+        new SparepartTaxonomyRefView(UUID.randomUUID(), "LX5", "LX5"),
+        null, null,
+        "MCH-1|PLANT-1|ELEC|PLC|WECON|LX5", "000", "PLC-WECON-LX5", 1,
+        com.syncro.sparepart.domain.BomReviewStatus.REJECTED, "obsolete",
+        Instant.parse("2026-05-28T00:00:00Z"), Instant.parse("2026-08-24T00:00:00Z"));
+    when(spareparts.reject(eq(user), eq(sparepartId), eq("obsolete"))).thenReturn(rejected);
+
+    mockMvc.perform(post("/api/v1/spareparts/{sparepartId}/reject", sparepartId).with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"rejectionReason\":\"obsolete\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.reviewStatus").value("REJECTED"))
+        .andExpect(jsonPath("$.rejectionReason").value("obsolete"));
+
+    mockMvc.perform(post("/api/v1/spareparts/{sparepartId}/reject", sparepartId).with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"rejectionReason\":\"  \"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.fieldErrors.rejectionReason").exists());
+  }
+
+  @Test
+  @DisplayName("18.1-API-003 P0 non-PENDING_REVIEW approve returns INVALID_REVIEW_TRANSITION 409")
+  void approveNonPendingReturnsConflict() throws Exception {
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
+    var sparepartId = UUID.randomUUID();
+    doThrow(new SparepartService.SparepartReviewTransitionException()).when(spareparts).approve(user, sparepartId);
+
+    mockMvc.perform(post("/api/v1/spareparts/{sparepartId}/approve", sparepartId).with(auth(user)))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("INVALID_REVIEW_TRANSITION"));
+  }
+
+  @Test
+  @DisplayName("18.1-API-004 P0 AUDITOR approve returns FORBIDDEN 403")
+  void viewerCannotApprove() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    var sparepartId = UUID.randomUUID();
+    doThrow(new SparepartMutationForbiddenException()).when(spareparts).approve(user, sparepartId);
+
+    mockMvc.perform(post("/api/v1/spareparts/{sparepartId}/approve", sparepartId).with(auth(user)))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  @DisplayName("18.1-API-005 P1 list accepts reviewStatus filter")
+  void listAcceptsReviewStatusFilter() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    when(spareparts.list(eq(user), any(), any())).thenReturn(new SparepartListView(List.of(), 0, 0, 200, "code: ASC"));
+
+    mockMvc.perform(get("/api/v1/spareparts").param("reviewStatus", "PENDING_REVIEW").with(auth(user)))
+        .andExpect(status().isOk());
+
+    var captor = org.mockito.ArgumentCaptor.forClass(com.syncro.sparepart.application.SparepartService.SparepartFilters.class);
+    org.mockito.Mockito.verify(spareparts).list(eq(user), captor.capture(), any());
+    assertThat(captor.getValue().reviewStatus()).isEqualTo(com.syncro.sparepart.domain.BomReviewStatus.PENDING_REVIEW);
+  }
+
+  @Test
+  @DisplayName("18.1-API-006 P1 approve/reject unknown sparepart id returns SPAREPART_NOT_FOUND 404")
+  void reviewUnknownSparepartReturnsNotFound() throws Exception {
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
+    var sparepartId = UUID.randomUUID();
+    doThrow(new SparepartNotFoundException()).when(spareparts).approve(user, sparepartId);
+    doThrow(new SparepartNotFoundException()).when(spareparts).reject(eq(user), eq(sparepartId), any());
+
+    mockMvc.perform(post("/api/v1/spareparts/{sparepartId}/approve", sparepartId).with(auth(user)))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("SPAREPART_NOT_FOUND"));
+
+    mockMvc.perform(post("/api/v1/spareparts/{sparepartId}/reject", sparepartId).with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"rejectionReason\":\"gone\"}"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("SPAREPART_NOT_FOUND"));
+  }
+
   private static String payload(UUID categoryId, UUID brandId, UUID kindId, UUID typeId) {
     return """
         {"machineId":"00000000-0000-0000-0000-000000000010","categoryId":"%s","brandId":"%s","kindId":"%s","typeId":"%s"}
@@ -334,6 +455,8 @@ class SparepartControllerTest {
         new SparepartTaxonomyRefView(UUID.randomUUID(), "PLC", "PLC"),
         new SparepartTaxonomyRefView(UUID.randomUUID(), "LX5", "LX5"),
         "MC-001", new java.math.BigDecimal("36.00"),
+        "MCH-1|PLANT-1|ELEC|PLC|WECON|LX5", "000", "PLC-WECON-LX5", 1,
+        com.syncro.sparepart.domain.BomReviewStatus.PENDING_REVIEW, null,
         Instant.parse("2026-05-28T00:00:00Z"), Instant.parse("2026-08-24T00:00:00Z"));
     when(spareparts.patchProcurement(eq(user), eq(sparepartId), any())).thenReturn(view);
 
@@ -415,6 +538,12 @@ class SparepartControllerTest {
         new SparepartTaxonomyRefView(kindId, "PLC", "PLC"),
         new SparepartTaxonomyRefView(typeId, "LX5", "LX5"),
         null,
+        null,
+        "MCH-1|PLANT-1|ELEC|PLC|WECON|LX5",
+        "000",
+        "PLC-WECON-LX5",
+        1,
+        com.syncro.sparepart.domain.BomReviewStatus.PENDING_REVIEW,
         null,
         Instant.parse("2026-05-28T00:00:00Z"),
         Instant.parse("2026-05-28T00:00:00Z"));
