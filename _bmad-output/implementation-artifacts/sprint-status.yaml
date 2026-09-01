@@ -234,8 +234,8 @@ development_status:
   epic-16-retrospective: optional
 
   # Epic 17: Workorder Execution Maturation
-  epic-17: backlog
-  17-1-work-assignments: backlog
+  epic-17: in-progress
+  17-1-work-assignments: done
   17-2-work-logs: backlog
   17-3-wo-id-format-status-lifecycle: backlog
   17-4-work-log-ratings: backlog

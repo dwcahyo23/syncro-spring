@@ -216,6 +216,26 @@ public final class WorkOrderDtos {
   public record ClosedWorkorderEntryView(String id, WorkOrderStatus status, String description, boolean rated) {
   }
 
+  // -------------------------------------------------------------------------
+  // Work assignments (17-1, blueprint B3, AD-17)
+  // -------------------------------------------------------------------------
+
+  /** Assign a technician to a workorder (POST /{id}/assignments). */
+  public record AssignWorkAssignmentRequest(@NotNull UUID technicianId) {
+  }
+
+  /** Read model for a single work-assignment row. */
+  public record WorkAssignmentView(
+      UUID id,
+      String workOrderId,
+      UUID technicianId,
+      UUID assignedBy,
+      Instant assignedAt,
+      Instant droppedAt,
+      UUID droppedBy,
+      boolean isActive) {
+  }
+
   /** The 4-hour ack landing task list. */
   public record AckTaskListView(
       List<AckEntryView> acknowledged,

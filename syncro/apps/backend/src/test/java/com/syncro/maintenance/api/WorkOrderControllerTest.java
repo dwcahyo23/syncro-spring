@@ -60,6 +60,12 @@ import com.syncro.maintenance.application.WorkOrderReportService.ReportWorkOrder
 import com.syncro.maintenance.application.WorkOrderReportService.SaveReportCommand;
 import com.syncro.maintenance.application.WorkOrderReportService.WorkOrderReportValidationException;
 import com.syncro.maintenance.application.WorkOrderReportService.WorkOrderReportView;
+import com.syncro.maintenance.application.WorkAssignmentService;
+import com.syncro.maintenance.application.WorkAssignmentService.AssignWorkAssignmentCommand;
+import com.syncro.maintenance.application.WorkAssignmentService.WorkAssignmentNotFoundException;
+import com.syncro.maintenance.application.WorkAssignmentService.WorkAssignmentView;
+import com.syncro.maintenance.application.WorkAssignmentService.AssignmentAlreadyDroppedException;
+import com.syncro.maintenance.application.WorkAssignmentService.AssignmentAlreadyExistsException;
 import com.syncro.maintenance.application.WorkOrderService;
 import com.syncro.maintenance.application.WorkOrderService.AssignWorkOrderCommand;
 import com.syncro.maintenance.application.WorkOrderService.BreakdownCategoryRequiredException;
@@ -164,6 +170,9 @@ class WorkOrderControllerTest {
 
   @MockitoBean
   private WorkOrderAckService acks;
+
+  @MockitoBean
+  private WorkAssignmentService workAssignments;
 
   @MockitoBean
   private JwtTokenService jwtTokenService;
@@ -462,6 +471,230 @@ class WorkOrderControllerTest {
         .content("{\"assigneeUserId\":\"" + ASSIGNEE_ID + "\"}"))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+  }
+
+  // -------------------------------------------------------------------------
+  // Work assignments (17-1, FR-113 multi-tech)
+  // -------------------------------------------------------------------------
+
+  private static final UUID ASSIGNMENT_ID = UUID.fromString("88888888-8888-8888-8888-888888888888");
+
+  @Test
+  @DisplayName("17.1-API-001 P0 create assignment returns 201 with the assignment view")
+  void createAssignmentReturnsCreated() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+    when(workAssignments.assign(eq(user), eq("WO-2409-00001"), any(AssignWorkAssignmentCommand.class)))
+        .thenReturn(assignmentView());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"technicianId\":\"" + ASSIGNEE_ID + "\"}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.id").value(ASSIGNMENT_ID.toString()))
+        .andExpect(jsonPath("$.workOrderId").value("WO-2409-00001"))
+        .andExpect(jsonPath("$.technicianId").value(ASSIGNEE_ID.toString()))
+        .andExpect(jsonPath("$.isActive").value(true));
+  }
+
+  @Test
+  @DisplayName("17.1-API-002 P0 missing technicianId maps to 400 VALIDATION_ERROR")
+  void createAssignmentMissingTechnician() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.fieldErrors.technicianId").exists());
+  }
+
+  @Test
+  @DisplayName("17.1-API-003 P0 duplicate assignment maps to 409 ASSIGNMENT_ALREADY_EXISTS")
+  void createAssignmentDuplicate() throws Exception {
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
+    doThrow(new AssignmentAlreadyExistsException()).when(workAssignments)
+        .assign(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"technicianId\":\"" + ASSIGNEE_ID + "\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("ASSIGNMENT_ALREADY_EXISTS"));
+  }
+
+  @Test
+  @DisplayName("17.1-API-004 P0 forbidden assignment maps to 403 FORBIDDEN")
+  void createAssignmentForbidden() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    doThrow(new WorkorderForbiddenException()).when(workAssignments)
+        .assign(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"technicianId\":\"" + ASSIGNEE_ID + "\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  @DisplayName("17.1-API-005 P0 unknown workorder maps to 404 WORKORDER_NOT_FOUND")
+  void createAssignmentWorkOrderNotFound() throws Exception {
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
+    doThrow(new WorkOrderNotFoundException()).when(workAssignments)
+        .assign(eq(user), eq("WO-2409-NADA"), any());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-2409-NADA")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"technicianId\":\"" + ASSIGNEE_ID + "\"}"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("WORKORDER_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("17.1-API-006 P0 invalid state maps to 409 INVALID_STATE_TRANSITION")
+  void createAssignmentInvalidState() throws Exception {
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
+    doThrow(new InvalidStateTransitionException()).when(workAssignments)
+        .assign(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"technicianId\":\"" + ASSIGNEE_ID + "\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("INVALID_STATE_TRANSITION"));
+  }
+
+  @Test
+  @DisplayName("17.1-API-007 P0 self-assignment maps to 409 SELF_ASSIGNMENT_FORBIDDEN")
+  void createAssignmentSelf() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+    doThrow(new SelfAssignmentForbiddenException()).when(workAssignments)
+        .assign(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"technicianId\":\"" + ASSIGNEE_ID + "\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("SELF_ASSIGNMENT_FORBIDDEN"));
+  }
+
+  @Test
+  @DisplayName("17.1-API-008 P0 unknown assignee maps to 404 USER_NOT_FOUND")
+  void createAssignmentUserNotFound() throws Exception {
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
+    doThrow(new WorkOrderUserNotFoundException()).when(workAssignments)
+        .assign(eq(user), eq("WO-2409-00001"), any());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"technicianId\":\"" + ASSIGNEE_ID + "\"}"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("17.1-API-008b P1 a non-UUID technicianId maps to 400 VALIDATION_ERROR type-mismatch")
+  void createAssignmentBadTechnicianUuid() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments", "WO-2409-00001")
+        .with(auth(user))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"technicianId\":\"not-a-uuid\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.fieldErrors.technicianId").exists());
+  }
+
+  @Test
+  @DisplayName("17.1-API-009 P0 drop assignment returns 200 with the inactive view")
+  void dropAssignmentReturnsOk() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+    when(workAssignments.drop(eq(user), eq("WO-2409-00001"), eq(ASSIGNMENT_ID)))
+        .thenReturn(droppedAssignmentView());
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments/{assignmentId}/drop", "WO-2409-00001", ASSIGNMENT_ID)
+        .with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(ASSIGNMENT_ID.toString()))
+        .andExpect(jsonPath("$.isActive").value(false))
+        .andExpect(jsonPath("$.droppedAt").exists());
+  }
+
+  @Test
+  @DisplayName("17.1-API-010 P0 drop of an already-dropped assignment maps to 409 ASSIGNMENT_ALREADY_DROPPED")
+  void dropAssignmentAlreadyDropped() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+    doThrow(new AssignmentAlreadyDroppedException()).when(workAssignments)
+        .drop(eq(user), eq("WO-2409-00001"), eq(ASSIGNMENT_ID));
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments/{assignmentId}/drop", "WO-2409-00001", ASSIGNMENT_ID)
+        .with(auth(user)))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("ASSIGNMENT_ALREADY_DROPPED"));
+  }
+
+  @Test
+  @DisplayName("17.1-API-011 P0 drop of an unknown assignment maps to 404 ASSIGNMENT_NOT_FOUND")
+  void dropAssignmentNotFound() throws Exception {
+    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
+    doThrow(new WorkAssignmentNotFoundException()).when(workAssignments)
+        .drop(eq(user), eq("WO-2409-00001"), eq(ASSIGNMENT_ID));
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/assignments/{assignmentId}/drop", "WO-2409-00001", ASSIGNMENT_ID)
+        .with(auth(user)))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("ASSIGNMENT_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("17.1-API-012 P0 list assignments returns 200 with the assignments for any authenticated user")
+  void listAssignmentsReturnsOk() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    when(workAssignments.list("WO-2409-00001")).thenReturn(List.of(assignmentDomain()));
+
+    mockMvc.perform(get("/api/v1/workorders/{id}/assignments", "WO-2409-00001")
+        .with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].id").value(ASSIGNMENT_ID.toString()))
+        .andExpect(jsonPath("$[0].technicianId").value(ASSIGNEE_ID.toString()))
+        .andExpect(jsonPath("$[0].isActive").value(true));
+  }
+
+  @Test
+  @DisplayName("17.1-API-013 P0 list assignments on an unknown workorder maps to 404 WORKORDER_NOT_FOUND")
+  void listAssignmentsNotFound() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    when(workAssignments.list("WO-2409-NADA")).thenThrow(new WorkOrderNotFoundException());
+
+    mockMvc.perform(get("/api/v1/workorders/{id}/assignments", "WO-2409-NADA")
+        .with(auth(user)))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("WORKORDER_NOT_FOUND"));
+  }
+
+  private static WorkAssignmentView assignmentDomain() {
+    return new WorkAssignmentView(ASSIGNMENT_ID, "WO-2409-00001", ASSIGNEE_ID,
+        UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"), null, null, true);
+  }
+
+  private static WorkAssignmentView assignmentView() {
+    return assignmentDomain();
+  }
+
+  private static WorkAssignmentView droppedAssignmentView() {
+    return new WorkAssignmentView(ASSIGNMENT_ID, "WO-2409-00001", ASSIGNEE_ID,
+        UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"), Instant.parse("2026-08-26T01:00:00Z"),
+        UUID.randomUUID(), false);
   }
 
   @Test

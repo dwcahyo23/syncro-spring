@@ -4,6 +4,9 @@ import com.syncro.auth.application.PlantScopeService.PlantAccessDeniedException;
 import com.syncro.maintenance.api.WorkOrderDtos.ErrorResponse;
 import com.syncro.maintenance.application.WorkOrderAckService.AckAlreadyExistsException;
 import com.syncro.maintenance.application.WorkOrderAckService.AckWorkOrderNotFoundException;
+import com.syncro.maintenance.application.WorkAssignmentService.AssignmentAlreadyDroppedException;
+import com.syncro.maintenance.application.WorkAssignmentService.AssignmentAlreadyExistsException;
+import com.syncro.maintenance.application.WorkAssignmentService.WorkAssignmentNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.BreakdownCategoryRequiredException;
 import com.syncro.maintenance.application.WorkOrderService.ChildrenNotTerminalException;
 import com.syncro.maintenance.application.WorkOrderService.DoneWithoutSessionReasonRequiredException;
@@ -184,6 +187,29 @@ public class WorkOrderExceptionHandler {
   @ExceptionHandler(WorkOrderUserNotFoundException.class)
   ResponseEntity<ErrorResponse> userNotFound() {
     return error(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "Assignee was not found.", Map.of());
+  }
+
+  // -------------------------------------------------------------------------
+  // Work assignments (17-1, blueprint B3, AD-17)
+  // -------------------------------------------------------------------------
+
+  /** 409 on the uq_work_assignments_wo_tech_at unique-constraint friendly path. */
+  @ExceptionHandler(AssignmentAlreadyExistsException.class)
+  ResponseEntity<ErrorResponse> assignmentAlreadyExists() {
+    return error(HttpStatus.CONFLICT, "ASSIGNMENT_ALREADY_EXISTS",
+        "This technician is already assigned to this workorder at this time.", Map.of());
+  }
+
+  @ExceptionHandler(AssignmentAlreadyDroppedException.class)
+  ResponseEntity<ErrorResponse> assignmentAlreadyDropped() {
+    return error(HttpStatus.CONFLICT, "ASSIGNMENT_ALREADY_DROPPED",
+        "This assignment has already been dropped.", Map.of());
+  }
+
+  @ExceptionHandler(WorkAssignmentNotFoundException.class)
+  ResponseEntity<ErrorResponse> assignmentNotFound() {
+    return error(HttpStatus.NOT_FOUND, "ASSIGNMENT_NOT_FOUND",
+        "Assignment was not found.", Map.of());
   }
 
   @ExceptionHandler(InvalidStateTransitionException.class)

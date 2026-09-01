@@ -124,6 +124,16 @@ workorder_assign_paths := {
   "/api/v1/workorders/*/assign",
 }
 
+# Workorder multi-technician assignments (story 17-1, blueprint B3, AD-17):
+# the same four-role allow set as the single-tech assign path — SUPER_ADMIN,
+# MANAGER_MAINTENANCE, SECTION_LEADER, MAINTENANCE_LEADER. STAFF_MAINTENANCE
+# and TECHNICIAN cannot assign (FR-113 parity with WorkOrderService.requireAssignRole).
+# The drop endpoint uses the same coarse gate. Reads (GET) flow through read_allowed.
+workorder_assignment_paths := {
+  "/api/v1/workorders/*/assignments",
+  "/api/v1/workorders/*/assignments/*/drop",
+}
+
 # Workorder status transitions (story 10-3): the assigned executor (TECHNICIAN or
 # STAFF_MAINTENANCE) and the in-scope leadership may drive the lifecycle. Rego is
 # coarser than the service — it cannot see the body, the assignment or the scope — so
@@ -450,6 +460,26 @@ mutation_allowed if {
   input.subject.roles[_] == "MAINTENANCE_LEADER"
   is_mutation
   path_matches(workorder_assign_paths)
+}
+
+# Workorder assignments (17-1): four-role allow set mirroring workorder_assign_paths
+# (STAFF_MAINTENANCE and TECHNICIAN cannot assign — FR-113 parity).
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(workorder_assignment_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(workorder_assignment_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(workorder_assignment_paths)
 }
 
 # Transition: executor roles + leadership (10.3). STAFF_MAINTENANCE and TECHNICIAN are

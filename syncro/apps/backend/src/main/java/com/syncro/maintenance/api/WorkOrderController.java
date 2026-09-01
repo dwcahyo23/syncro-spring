@@ -30,6 +30,9 @@ import com.syncro.maintenance.application.WorkOrderListService.WorkOrderListView
 import com.syncro.maintenance.application.WorkOrderReportService;
 import com.syncro.maintenance.application.WorkOrderReportService.CpkPdfCommand;
 import com.syncro.maintenance.application.WorkOrderReportService.SaveReportCommand;
+import com.syncro.maintenance.application.WorkAssignmentService;
+import com.syncro.maintenance.application.WorkAssignmentService.AssignWorkAssignmentCommand;
+import com.syncro.maintenance.application.WorkAssignmentService.WorkAssignmentView;
 import com.syncro.maintenance.application.WorkOrderService;
 import com.syncro.maintenance.application.WorkOrderService.AssignWorkOrderCommand;
 import com.syncro.maintenance.application.WorkOrderService.CreateResult;
@@ -93,11 +96,13 @@ public class WorkOrderController {
   private final WorkorderPrintReportService printReports;
   private final WorkorderSignatureService signatures;
   private final WorkOrderAckService acks;
+  private final WorkAssignmentService workAssignments;
 
   public WorkOrderController(WorkOrderService workOrders, WorkOrderEvidenceService evidence,
       WorkOrderReportService report, WorkOrderTodoService todos, WorkOrderRatingService ratings,
       WorkOrderListService lists, WorkorderPrintReportService printReports,
-      WorkorderSignatureService signatures, WorkOrderAckService acks) {
+      WorkorderSignatureService signatures, WorkOrderAckService acks,
+      WorkAssignmentService workAssignments) {
     this.workOrders = workOrders;
     this.evidence = evidence;
     this.report = report;
@@ -107,6 +112,7 @@ public class WorkOrderController {
     this.printReports = printReports;
     this.signatures = signatures;
     this.acks = acks;
+    this.workAssignments = workAssignments;
   }
 
   /**
@@ -181,6 +187,59 @@ public class WorkOrderController {
   public WorkOrderView assign(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable String id,
       @Valid @RequestBody AssignWorkOrderRequest request) {
     return toDto(workOrders.assign(user, id, new AssignWorkOrderCommand(request.assigneeUserId())));
+  }
+
+  /**
+   * Assigns a technician to a workorder (17-1, FR-113 multi-tech). Gate: leadership
+   * roles with the same scope rules as {@code /assign}; EXTERNAL and terminal
+   * workorders are rejected. The first assignment on an OPEN workorder transitions
+   * it to IN_PROGRESS.
+   */
+  @Operation(operationId = "assignWorkAssignment", summary = "Assign a technician to a workorder (multi-technician)")
+  @ApiResponses({
+      @ApiResponse(responseCode = "201", description = "Assignment created",
+          content = @Content(schema = @Schema(implementation = WorkOrderDtos.WorkAssignmentView.class))),
+      @ApiResponse(responseCode = "400", description = "Validation or malformed JSON"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Workorder or assignee not found"),
+      @ApiResponse(responseCode = "409", description = "Duplicate assignment, invalid state, or self-assignment")
+  })
+  @PostMapping("/{id}/assignments")
+  public ResponseEntity<WorkOrderDtos.WorkAssignmentView> createAssignment(
+      @AuthenticationPrincipal AuthenticatedUser user, @PathVariable String id,
+      @Valid @RequestBody WorkOrderDtos.AssignWorkAssignmentRequest request) {
+    var view = workAssignments.assign(user, id, new AssignWorkAssignmentCommand(request.technicianId()));
+    return ResponseEntity.status(HttpStatus.CREATED).body(toAssignmentDto(view));
+  }
+
+  /** Drops an active assignment (soft-deactivate; 17-1, AD-17). */
+  @Operation(operationId = "dropWorkAssignment", summary = "Drop an active work assignment")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Assignment dropped",
+          content = @Content(schema = @Schema(implementation = WorkOrderDtos.WorkAssignmentView.class))),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Workorder or assignment not found"),
+      @ApiResponse(responseCode = "409", description = "Assignment already dropped")
+  })
+  @PostMapping("/{id}/assignments/{assignmentId}/drop")
+  public WorkOrderDtos.WorkAssignmentView dropAssignment(@AuthenticationPrincipal AuthenticatedUser user,
+      @PathVariable String id, @PathVariable UUID assignmentId) {
+    return toAssignmentDto(workAssignments.drop(user, id, assignmentId));
+  }
+
+  /** Lists the workorder's assignments ordered by assignedAt asc (any authenticated user). */
+  @Operation(operationId = "listWorkAssignments", summary = "List a workorder's assignments")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Assignments returned",
+          content = @Content(schema = @Schema(implementation = WorkOrderDtos.WorkAssignmentView[].class))),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "404", description = "Workorder not found")
+  })
+  @GetMapping("/{id}/assignments")
+  public List<WorkOrderDtos.WorkAssignmentView> listAssignments(@PathVariable String id) {
+    return workAssignments.list(id).stream().map(WorkOrderController::toAssignmentDto).toList();
   }
 
   @Operation(operationId = "transitionWorkOrder", summary = "Transition a workorder through its lifecycle")
@@ -690,6 +749,11 @@ public class WorkOrderController {
   private static WorkOrderDtos.WorkorderSignatureView toSignatureDto(SignatureResult result) {
     return new WorkOrderDtos.WorkorderSignatureView(result.id(), result.signatureObjectKey(),
         result.signerIdentity(), result.signedBy(), result.signedAt());
+  }
+
+  private static WorkOrderDtos.WorkAssignmentView toAssignmentDto(WorkAssignmentView view) {
+    return new WorkOrderDtos.WorkAssignmentView(view.id(), view.workOrderId(), view.technicianId(),
+        view.assignedBy(), view.assignedAt(), view.droppedAt(), view.droppedBy(), view.isActive());
   }
 
   private static TodoView toTodoDto(WorkOrderTodo todo) {

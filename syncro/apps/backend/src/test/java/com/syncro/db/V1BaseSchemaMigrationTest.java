@@ -48,17 +48,20 @@ class V1BaseSchemaMigrationTest {
   // -------------------------------------------------------------------------
 
   @Test
-  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2 additive migration")
+  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2/V3 additive migrations")
   void migrationsApplied() {
     var rows = jdbc.queryForList(
         "SELECT version, script, success FROM flyway_schema_history ORDER BY installed_rank");
-    assertThat(rows).hasSize(2);
+    assertThat(rows).hasSize(3);
     assertThat(rows.get(0).get("version")).isEqualTo("1");
     assertThat(rows.get(0).get("script")).isEqualTo("V1__orm_foundation_schema.sql");
     assertThat(rows.get(0).get("success")).isEqualTo(true);
     assertThat(rows.get(1).get("version")).isEqualTo("2");
     assertThat(rows.get(1).get("script")).isEqualTo("V2__auth_user_hardening.sql");
     assertThat(rows.get(1).get("success")).isEqualTo(true);
+    assertThat(rows.get(2).get("version")).isEqualTo("3");
+    assertThat(rows.get(2).get("script")).isEqualTo("V3__work_assignment_audit_type.sql");
+    assertThat(rows.get(2).get("success")).isEqualTo(true);
   }
 
   // -------------------------------------------------------------------------
@@ -321,6 +324,38 @@ class V1BaseSchemaMigrationTest {
     assertThat(def).contains("DEPARTMENT_USER", "INVENTORY_STOCK_BALANCE", "MACHINE_AREA",
         "SYSTEM_ROLE", "SIGNATURE_USE");
     assertThat(def).doesNotContain("DEPARTMENT_MEMBER");
+  }
+
+  /**
+   * Story 17-1: V3 extends the CHECK additively with WORK_ASSIGNMENT so
+   * {@code AuditEntityType.WORK_ASSIGNMENT} can be persisted. The value appears in
+   * the constraint definition after the V1/V2 set (V3 reapplies the full list).
+   */
+  @Test
+  @DisplayName("17.1-DB-001 P0 audit_log entity_type CHECK accepts WORK_ASSIGNMENT after V3")
+  void auditEntityTypeAcceptsWorkAssignment() {
+    var check = jdbc.queryForMap(
+        "SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint "
+            + "WHERE conname = 'ck_audit_log_entity_type'");
+    var def = (String) check.get("def");
+    assertThat(def).contains("WORK_ASSIGNMENT");
+    // every V1/V2 value survives the additive extension — a regression that drops
+    // prior values must fail.
+    assertThat(def).contains("WORK_ORDER", "REPAIR_SESSION", "WORKORDER_SIGNATURE",
+        "SPAREPART_STOCK", "SYNC_RUN", "SYNC_QUARANTINE",
+        "MACHINE_AREA", "USER_ROLE_BINDING", "PLANT_WORKING_CALENDAR",
+        "PLANT", "MACHINE_GROUP", "MACHINE", "SPAREPART_TAXONOMY",
+        "SPAREPART", "INSTALLATION", "RESPONSIBILITY", "ALERT",
+        "SPAREPART_PRICE_ENTRY", "SECTION", "TEAM", "WORK_ORDER_CATEGORY",
+        "WORKORDER_ATTACHMENT", "WORK_ORDER_TODO", "WORKORDER_RATING",
+        "RATING_DIMENSION", "PREVENTIVE_PROGRAM", "PREVENTIVE_SCHEDULE",
+        "PREVENTIVE_CHECKLIST", "PREVENTIVE_ATTACHMENT",
+        "SPAREPART_REQUEST", "DEPARTMENT", "DEPARTMENT_USER", "USER",
+        "INVENTORY_LOCATION", "INVENTORY_STOCK_BALANCE",
+        "INVENTORY_TRANSFER", "INVENTORY_RESERVATION",
+        "JOB_TITLE", "SYSTEM_ROLE", "ROLE_PERMISSION_MAPPING",
+        "MENU_FEATURE", "DOMAIN_CONTEXT", "USER_JOB_BINDING",
+        "SIGNATURE_USE", "WORKORDER_SIGNATURE");
   }
 
   // -------------------------------------------------------------------------
