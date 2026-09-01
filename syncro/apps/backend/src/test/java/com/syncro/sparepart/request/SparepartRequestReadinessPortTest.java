@@ -98,12 +98,12 @@ class SparepartRequestReadinessPortTest extends AbstractPostgresIntegrationTest 
   @Test
   @DisplayName("12.2-DB-015 P0 no requests on a workorder reports false")
   void noRequestsFalse() {
-    assertThat(readiness.hasLiveNonReadyRequest("WO-2609-" + (int) (Math.random() * 100000))).isFalse();
+    assertThat(readiness.hasLiveNonReadyRequest("WO-2609" + (int) (Math.random() * 100000))).isFalse();
   }
 
   private String ensureWorkOrder() {
     var machineId = ensureMachine();
-    var workOrderId = "WO-2609-" + (int) (Math.random() * 100000);
+    var workOrderId = "WO-2609" + (int) (Math.random() * 100000);
     jdbc.update("""
         INSERT INTO work_orders (id, source, status, machine_id, created_at, updated_at)
         VALUES (?, 'INTERNAL', 'OPEN', ?, ?, ?)
