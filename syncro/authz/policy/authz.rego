@@ -226,6 +226,8 @@ department_paths := {
   "/api/v1/departments",
   "/api/v1/departments/*",
   "/api/v1/departments/*/members",
+  "/api/v1/machine-areas",
+  "/api/v1/machine-areas/*",
 }
 
 section_leader_paths := {

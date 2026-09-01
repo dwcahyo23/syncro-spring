@@ -143,12 +143,20 @@ FROM plants p
 JOIN sections s ON s.plant_id = p.id AND s.code = 'MACHINERY'
 WHERE g.plant_id = p.id AND p.code = 'GM1' AND lower(g.name) = 'forming' AND g.section_id IS NULL;
 
+-- 2.75 Machine area (story 16-1): a physical location under GM1, referenced by BF-08410.
+INSERT INTO machine_areas (id, plant_id, code, name, description, is_active, created_at, updated_at)
+SELECT '9f8e7d6c-5b4a-4321-9876-fedcba654321'::uuid, p.id, 'FLOOR-1', 'Production Floor 1', 'Main production floor', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM plants p
+WHERE p.code = 'GM1'
+  AND NOT EXISTS (SELECT 1 FROM machine_areas a WHERE a.plant_id = p.id AND lower(a.name) = 'production floor 1');
+
 -- 3. Machine BF-08410 / JBF19 (one machine: code and name; V5 uniqueness is
 --    (plant_id, lower(code)) - guard and downstream resolution share it)
-INSERT INTO machines (id, plant_id, machine_group_id, code, name, status, brand, installed_at, notes, optional_telemetry_fields, created_at, updated_at)
-SELECT '6c1d78ce-615b-4965-ae27-12e400524ed2'::uuid, p.id, g.id, 'BF-08410', 'JBF19', 'ACTIVE', 'Juki', DATE '2026-05-27', NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+INSERT INTO machines (id, plant_id, machine_group_id, area_id, code, name, status, brand, installed_at, notes, optional_telemetry_fields, created_at, updated_at)
+SELECT '6c1d78ce-615b-4965-ae27-12e400524ed2'::uuid, p.id, g.id, a.id, 'BF-08410', 'JBF19', 'ACTIVE', 'Juki', DATE '2026-05-27', NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 FROM plants p
 JOIN machine_groups g ON g.plant_id = p.id AND lower(g.name) = 'forming'
+LEFT JOIN machine_areas a ON a.plant_id = p.id AND lower(a.name) = 'production floor 1'
 WHERE p.code = 'GM1'
   AND NOT EXISTS (SELECT 1 FROM machines m WHERE m.plant_id = p.id AND lower(m.code) = 'bf-08410');
 

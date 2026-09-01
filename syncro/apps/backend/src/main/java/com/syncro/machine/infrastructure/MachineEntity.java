@@ -33,6 +33,9 @@ public class MachineEntity {
   @JoinColumn(name = "machine_group_id", nullable = false)
   private MachineGroupEntity machineGroup;
 
+  @Column(name = "area_id")
+  private UUID areaId;
+
   @Column(nullable = false, length = 64)
   private String code;
 
@@ -65,12 +68,21 @@ public class MachineEntity {
   protected MachineEntity() {
   }
 
+  /** Legacy arity (pre-16-1): no physical area reference. */
   public MachineEntity(UUID id, PlantEntity plant, MachineGroupEntity machineGroup, String code, String name,
+      MachineStatus status, String brand, LocalDate installedAt, String notes, List<String> optionalTelemetryFields,
+      Instant createdAt, Instant updatedAt) {
+    this(id, plant, machineGroup, null, code, name, status, brand, installedAt, notes, optionalTelemetryFields,
+        createdAt, updatedAt);
+  }
+
+  public MachineEntity(UUID id, PlantEntity plant, MachineGroupEntity machineGroup, UUID areaId, String code, String name,
       MachineStatus status, String brand, LocalDate installedAt, String notes, List<String> optionalTelemetryFields,
       Instant createdAt, Instant updatedAt) {
     this.id = id;
     this.plant = plant;
     this.machineGroup = machineGroup;
+    this.areaId = areaId;
     this.code = code;
     this.name = name;
     this.status = status;
@@ -92,6 +104,10 @@ public class MachineEntity {
 
   public MachineGroupEntity getMachineGroup() {
     return machineGroup;
+  }
+
+  public UUID getAreaId() {
+    return areaId;
   }
 
   public String getCode() {
@@ -130,9 +146,10 @@ public class MachineEntity {
     return updatedAt;
   }
 
-  public void update(MachineGroupEntity machineGroup, String code, String name, MachineStatus status, String brand,
-      LocalDate installedAt, String notes, List<String> optionalTelemetryFields, Instant updatedAt) {
+  public void update(MachineGroupEntity machineGroup, UUID areaId, String code, String name, MachineStatus status,
+      String brand, LocalDate installedAt, String notes, List<String> optionalTelemetryFields, Instant updatedAt) {
     this.machineGroup = machineGroup;
+    this.areaId = areaId;
     this.code = code;
     this.name = name;
     this.status = status;

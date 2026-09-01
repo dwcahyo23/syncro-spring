@@ -11,6 +11,7 @@ public final class MachineAuditValues {
 
   public static Map<String, Object> of(MachineEntity machine) {
     var values = new HashMap<String, Object>();
+    values.put("areaId", machine.getAreaId() == null ? null : machine.getAreaId().toString());
     values.put("code", machine.getCode());
     values.put("name", machine.getName());
     values.put("status", machine.getStatus().name());

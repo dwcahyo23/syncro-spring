@@ -19,6 +19,7 @@ public final class MachineDtos {
   public record MachineRequest(
       @NotNull UUID plantId,
       @NotNull UUID machineGroupId,
+      UUID areaId,
       @NotBlank @Size(max = 64) @Pattern(regexp = "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$") String code,
       @Size(max = 255) String name,
       @NotNull MachineStatus status,
@@ -35,6 +36,7 @@ public final class MachineDtos {
       String plantName,
       UUID machineGroupId,
       String machineGroupName,
+      UUID areaId,
       String code,
       String name,
       MachineStatus status,

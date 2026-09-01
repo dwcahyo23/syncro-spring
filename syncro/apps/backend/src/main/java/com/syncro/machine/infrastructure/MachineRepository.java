@@ -80,6 +80,8 @@ public interface MachineRepository extends JpaRepository<MachineEntity, UUID> {
 
   long countByPlantIdIn(List<UUID> plantIds);
 
+  long countByAreaId(UUID areaId);
+
   @Query("""
       select distinct machine.machineGroup.id
       from MachineEntity machine

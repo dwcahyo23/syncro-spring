@@ -81,15 +81,24 @@ class PilotSeedTest {
     assertThat(group.get("section_code")).isEqualTo("MACHINERY");
 
     Map<String, Object> machine = jdbc.queryForMap(
-        "SELECT m.code, m.name, m.status, m.brand, g.name AS group_name "
+        "SELECT m.code, m.name, m.status, m.brand, g.name AS group_name, a.name AS area_name "
             + "FROM machines m "
             + "JOIN plants p ON p.id = m.plant_id "
             + "JOIN machine_groups g ON g.id = m.machine_group_id "
+            + "LEFT JOIN machine_areas a ON a.id = m.area_id "
             + "WHERE m.code = 'BF-08410' AND p.code = 'GM1'");
     assertThat(machine.get("name")).isEqualTo("JBF19");
     assertThat(machine.get("status")).isEqualTo("ACTIVE");
     assertThat(machine.get("brand")).isEqualTo("Juki");
     assertThat(machine.get("group_name")).isEqualTo("Forming");
+    assertThat(machine.get("area_name")).isEqualTo("Production Floor 1");
+
+    Map<String, Object> area = jdbc.queryForMap(
+        "SELECT a.code, a.name, p.code AS plant_code FROM machine_areas a "
+            + "JOIN plants p ON p.id = a.plant_id "
+            + "WHERE a.name = 'Production Floor 1'");
+    assertThat(area.get("code")).isEqualTo("FLOOR-1");
+    assertThat(area.get("plant_code")).isEqualTo("GM1");
 
     // The seed reuses the V13/V15 ELECTRIC category row instead of duplicating it
     Long electricCategories = jdbc.queryForObject(
@@ -259,6 +268,7 @@ class PilotSeedTest {
     expected.merge("plants", 1L, Long::sum);
     expected.merge("sections", 1L, Long::sum);
     expected.merge("machine_groups", 1L, Long::sum);
+    expected.merge("machine_areas", 1L, Long::sum);
     expected.merge("machines", 1L, Long::sum);
     expected.merge("sparepart_taxonomy", 3L, Long::sum);
     expected.merge("spareparts", 1L, Long::sum);
@@ -385,6 +395,7 @@ class PilotSeedTest {
         "plants",
         "sections",
         "machine_groups",
+        "machine_areas",
         "machines",
         "sparepart_taxonomy",
         "spareparts",

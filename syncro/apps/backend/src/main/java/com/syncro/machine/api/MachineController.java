@@ -149,14 +149,16 @@ public class MachineController {
   }
 
   private static MachineCommand command(MachineRequest request) {
-    return new MachineCommand(request.plantId(), request.machineGroupId(), request.code(), request.name(), request.status(),
-        request.brand(), request.installedAt(), request.notes(), request.optionalTelemetryFields());
+    return new MachineCommand(request.plantId(), request.machineGroupId(), request.areaId(), request.code(),
+        request.name(), request.status(), request.brand(), request.installedAt(), request.notes(),
+        request.optionalTelemetryFields());
   }
 
   private MachineView toDto(MachineService.MachineView machine) {
-    return new MachineView(machine.id(), machine.plantId(), machine.plantCode(), machine.plantName(), machine.machineGroupId(),
-        machine.machineGroupName(), machine.code(), machine.name(), machine.status(), machine.brand(), machine.installedAt(),
-        machine.notes(), machine.createdAt(), machine.updatedAt(), machine.optionalTelemetryFields(), null);
+    return new MachineView(machine.id(), machine.plantId(), machine.plantCode(), machine.plantName(),
+        machine.machineGroupId(), machine.machineGroupName(), machine.areaId(), machine.code(), machine.name(),
+        machine.status(), machine.brand(), machine.installedAt(), machine.notes(), machine.createdAt(),
+        machine.updatedAt(), machine.optionalTelemetryFields(), null);
   }
 
   private MachineView hydrateWithLatestTelemetry(MachineService.MachineView machine) {
@@ -165,8 +167,9 @@ public class MachineController {
 
   private MachineView hydrateWithLatestTelemetry(MachineService.MachineView machine,
       LatestTelemetryDto.TelemetryData telemetry) {
-    return new MachineView(machine.id(), machine.plantId(), machine.plantCode(), machine.plantName(), machine.machineGroupId(),
-        machine.machineGroupName(), machine.code(), machine.name(), machine.status(), machine.brand(), machine.installedAt(),
-        machine.notes(), machine.createdAt(), machine.updatedAt(), machine.optionalTelemetryFields(), telemetry);
+    return new MachineView(machine.id(), machine.plantId(), machine.plantCode(), machine.plantName(),
+        machine.machineGroupId(), machine.machineGroupName(), machine.areaId(), machine.code(), machine.name(),
+        machine.status(), machine.brand(), machine.installedAt(), machine.notes(), machine.createdAt(),
+        machine.updatedAt(), machine.optionalTelemetryFields(), telemetry);
   }
 }

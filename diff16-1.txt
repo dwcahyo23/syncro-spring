@@ -1,0 +1,516 @@
+warning: in the working copy of 'syncro/apps/backend/src/main/java/com/syncro/machine/api/MachineExceptionHandler.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'syncro/apps/backend/src/main/java/com/syncro/org/infrastructure/db/MachineAreaEntity.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'syncro/apps/backend/src/main/java/com/syncro/org/infrastructure/db/MachineAreaRepository.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'syncro/authz/policy/authz.rego', LF will be replaced by CRLF the next time Git touches it
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/machine/api/MachineController.java b/syncro/apps/backend/src/main/java/com/syncro/machine/api/MachineController.java
+index 82651e1..4b848fb 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/machine/api/MachineController.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/machine/api/MachineController.java
+@@ -149,14 +149,16 @@ public class MachineController {
+   }
+ 
+   private static MachineCommand command(MachineRequest request) {
+-    return new MachineCommand(request.plantId(), request.machineGroupId(), request.code(), request.name(), request.status(),
+-        request.brand(), request.installedAt(), request.notes(), request.optionalTelemetryFields());
++    return new MachineCommand(request.plantId(), request.machineGroupId(), request.areaId(), request.code(),
++        request.name(), request.status(), request.brand(), request.installedAt(), request.notes(),
++        request.optionalTelemetryFields());
+   }
+ 
+   private MachineView toDto(MachineService.MachineView machine) {
+-    return new MachineView(machine.id(), machine.plantId(), machine.plantCode(), machine.plantName(), machine.machineGroupId(),
+-        machine.machineGroupName(), machine.code(), machine.name(), machine.status(), machine.brand(), machine.installedAt(),
+-        machine.notes(), machine.createdAt(), machine.updatedAt(), machine.optionalTelemetryFields(), null);
++    return new MachineView(machine.id(), machine.plantId(), machine.plantCode(), machine.plantName(),
++        machine.machineGroupId(), machine.machineGroupName(), machine.areaId(), machine.code(), machine.name(),
++        machine.status(), machine.brand(), machine.installedAt(), machine.notes(), machine.createdAt(),
++        machine.updatedAt(), machine.optionalTelemetryFields(), null);
+   }
+ 
+   private MachineView hydrateWithLatestTelemetry(MachineService.MachineView machine) {
+@@ -165,8 +167,9 @@ public class MachineController {
+ 
+   private MachineView hydrateWithLatestTelemetry(MachineService.MachineView machine,
+       LatestTelemetryDto.TelemetryData telemetry) {
+-    return new MachineView(machine.id(), machine.plantId(), machine.plantCode(), machine.plantName(), machine.machineGroupId(),
+-        machine.machineGroupName(), machine.code(), machine.name(), machine.status(), machine.brand(), machine.installedAt(),
+-        machine.notes(), machine.createdAt(), machine.updatedAt(), machine.optionalTelemetryFields(), telemetry);
++    return new MachineView(machine.id(), machine.plantId(), machine.plantCode(), machine.plantName(),
++        machine.machineGroupId(), machine.machineGroupName(), machine.areaId(), machine.code(), machine.name(),
++        machine.status(), machine.brand(), machine.installedAt(), machine.notes(), machine.createdAt(),
++        machine.updatedAt(), machine.optionalTelemetryFields(), telemetry);
+   }
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/machine/api/MachineDtos.java b/syncro/apps/backend/src/main/java/com/syncro/machine/api/MachineDtos.java
+index 920b239..c8baf8e 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/machine/api/MachineDtos.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/machine/api/MachineDtos.java
+@@ -19,6 +19,7 @@ public final class MachineDtos {
+   public record MachineRequest(
+       @NotNull UUID plantId,
+       @NotNull UUID machineGroupId,
++      UUID areaId,
+       @NotBlank @Size(max = 64) @Pattern(regexp = "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$") String code,
+       @Size(max = 255) String name,
+       @NotNull MachineStatus status,
+@@ -35,6 +36,7 @@ public final class MachineDtos {
+       String plantName,
+       UUID machineGroupId,
+       String machineGroupName,
++      UUID areaId,
+       String code,
+       String name,
+       MachineStatus status,
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/machine/api/MachineExceptionHandler.java b/syncro/apps/backend/src/main/java/com/syncro/machine/api/MachineExceptionHandler.java
+index 0714369..b2444f5 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/machine/api/MachineExceptionHandler.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/machine/api/MachineExceptionHandler.java
+@@ -4,6 +4,8 @@ import com.syncro.auth.application.PlantScopeService.PlantAccessDeniedException;
+ import com.syncro.masterdata.api.PlantDtos.ErrorResponse;
+ import com.syncro.machine.application.MachineService.DuplicateMachineCodeException;
+ import com.syncro.machine.application.MachineResponsibilityService;
++import com.syncro.machine.application.MachineService.MachineAreaNotFoundForMachineException;
++import com.syncro.machine.application.MachineService.MachineAreaPlantMismatchException;
+ import com.syncro.machine.application.MachineService.MachineDataIntegrityException;
+ import com.syncro.machine.application.MachineService.MachineGroupNotFoundForMachineException;
+ import com.syncro.machine.application.MachineService.MachineGroupPlantMismatchException;
+@@ -82,6 +84,16 @@ public class MachineExceptionHandler {
+     return error(HttpStatus.BAD_REQUEST, "MACHINE_GROUP_PLANT_MISMATCH", "Machine group must belong to the machine plant.", Map.of());
+   }
+ 
++  @ExceptionHandler(MachineAreaNotFoundForMachineException.class)
++  ResponseEntity<ErrorResponse> machineAreaNotFound() {
++    return error(HttpStatus.NOT_FOUND, "MACHINE_AREA_NOT_FOUND", "Machine area was not found.", Map.of());
++  }
++
++  @ExceptionHandler(MachineAreaPlantMismatchException.class)
++  ResponseEntity<ErrorResponse> machineAreaPlantMismatch() {
++    return error(HttpStatus.BAD_REQUEST, "AREA_PLANT_MISMATCH", "Machine area must belong to the machine plant.", Map.of());
++  }
++
+   @ExceptionHandler(MachineDataIntegrityException.class)
+   ResponseEntity<ErrorResponse> machineDataIntegrity() {
+     return error(HttpStatus.CONFLICT, "MACHINE_DATA_INTEGRITY_VIOLATION", "Machine data conflicts with existing records.", Map.of());
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/machine/application/MachineAuditValues.java b/syncro/apps/backend/src/main/java/com/syncro/machine/application/MachineAuditValues.java
+index 57373f1..83986e4 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/machine/application/MachineAuditValues.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/machine/application/MachineAuditValues.java
+@@ -11,6 +11,7 @@ public final class MachineAuditValues {
+ 
+   public static Map<String, Object> of(MachineEntity machine) {
+     var values = new HashMap<String, Object>();
++    values.put("areaId", machine.getAreaId() == null ? null : machine.getAreaId().toString());
+     values.put("code", machine.getCode());
+     values.put("name", machine.getName());
+     values.put("status", machine.getStatus().name());
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/machine/application/MachineService.java b/syncro/apps/backend/src/main/java/com/syncro/machine/application/MachineService.java
+index 6a204e5..3f6003a 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/machine/application/MachineService.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/machine/application/MachineService.java
+@@ -15,6 +15,7 @@ import com.syncro.machine.infrastructure.MachineEntity;
+ import com.syncro.machine.infrastructure.MachineRepository;
+ import com.syncro.masterdata.infrastructure.MachineGroupRepository;
+ import com.syncro.org.application.OperationalScopeService;
++import com.syncro.org.infrastructure.db.MachineAreaRepository;
+ import java.time.Clock;
+ import java.time.Instant;
+ import java.time.LocalDate;
+@@ -49,6 +50,7 @@ public class MachineService {
+   private final MachineRepository machines;
+   private final PlantRepository plants;
+   private final MachineGroupRepository machineGroups;
++  private final MachineAreaRepository machineAreas;
+   private final PlantScopeService plantScopes;
+   private final AuthUserPlantAssignmentRepository assignments;
+   private final AuditLogWriter auditLog;
+@@ -56,11 +58,12 @@ public class MachineService {
+   private final Clock clock;
+ 
+   public MachineService(MachineRepository machines, PlantRepository plants, MachineGroupRepository machineGroups,
+-      PlantScopeService plantScopes, AuthUserPlantAssignmentRepository assignments, AuditLogWriter auditLog,
+-      OperationalScopeService operationalScopes, Clock clock) {
++      MachineAreaRepository machineAreas, PlantScopeService plantScopes, AuthUserPlantAssignmentRepository assignments,
++      AuditLogWriter auditLog, OperationalScopeService operationalScopes, Clock clock) {
+     this.machines = machines;
+     this.plants = plants;
+     this.machineGroups = machineGroups;
++    this.machineAreas = machineAreas;
+     this.plantScopes = plantScopes;
+     this.assignments = assignments;
+     this.auditLog = auditLog;
+@@ -162,10 +165,11 @@ public class MachineService {
+     if (machines.existsByPlantIdAndCodeIgnoreCase(command.plantId(), code)) {
+       throw new DuplicateMachineCodeException();
+     }
++    var areaId = validateArea(command.plantId(), command.areaId());
+     var now = Instant.now(clock);
+-    var machine = saveMachine(new MachineEntity(UUID.randomUUID(), plant, machineGroup, code, normalizeOptional(command.name()),
+-        command.status(), normalizeOptional(command.brand()), command.installedAt(), normalizeOptional(command.notes()),
+-        optionalTelemetryFields, now, now));
++    var machine = saveMachine(new MachineEntity(UUID.randomUUID(), plant, machineGroup, areaId, code,
++        normalizeOptional(command.name()), command.status(), normalizeOptional(command.brand()), command.installedAt(),
++        normalizeOptional(command.notes()), optionalTelemetryFields, now, now));
+     auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.MACHINE, machine.getId(), machine.getCode(),
+         command.plantId(), null, MachineAuditValues.of(machine), null));
+     return toView(machine);
+@@ -199,7 +203,8 @@ public class MachineService {
+     if (existing.isPresent() && !existing.get().getId().equals(machineId)) {
+       throw new DuplicateMachineCodeException();
+     }
+-    machine.update(machineGroup, code, normalizeOptional(command.name()), command.status(), normalizeOptional(command.brand()),
++    var areaId = validateArea(plantId, command.areaId());
++    machine.update(machineGroup, areaId, code, normalizeOptional(command.name()), command.status(), normalizeOptional(command.brand()),
+         command.installedAt(), normalizeOptional(command.notes()), optionalTelemetryFields, Instant.now(clock));
+     var saved = saveMachine(machine);
+     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.MACHINE, machineId, entityLabel, plantId,
+@@ -412,22 +417,44 @@ public class MachineService {
+     return trimmed.isEmpty() ? null : trimmed;
+   }
+ 
++  /**
++   * The machine's physical area must exist and belong to the same plant as the
++   * machine (mirrors the machine-group plant guard). Null clears the reference.
++   */
++  private UUID validateArea(UUID plantId, UUID areaId) {
++    if (areaId == null) {
++      return null;
++    }
++    var area = machineAreas.findById(areaId).orElseThrow(MachineAreaNotFoundForMachineException::new);
++    if (!area.getPlantId().equals(plantId)) {
++      throw new MachineAreaPlantMismatchException();
++    }
++    return areaId;
++  }
++
+   private MachineView toView(MachineEntity machine) {
+     var plant = machine.getPlant();
+     var machineGroup = machine.getMachineGroup();
+     return new MachineView(machine.getId(), plant.getId(), plant.getCode(), plant.getName(), machineGroup.getId(),
+-        machineGroup.getName(), machine.getCode(), machine.getName(), machine.getStatus(), machine.getBrand(),
+-        machine.getInstalledAt(), machine.getNotes(), machine.getCreatedAt(), machine.getUpdatedAt(),
++        machineGroup.getName(), machine.getAreaId(), machine.getCode(), machine.getName(), machine.getStatus(),
++        machine.getBrand(), machine.getInstalledAt(), machine.getNotes(), machine.getCreatedAt(), machine.getUpdatedAt(),
+         machine.getOptionalTelemetryFields() == null ? List.of() : machine.getOptionalTelemetryFields());
+   }
+ 
+-  public record MachineCommand(UUID plantId, UUID machineGroupId, String code, String name, MachineStatus status,
+-      String brand, LocalDate installedAt, String notes, List<String> optionalTelemetryFields) {
++  public record MachineCommand(UUID plantId, UUID machineGroupId, UUID areaId, String code, String name,
++      MachineStatus status, String brand, LocalDate installedAt, String notes, List<String> optionalTelemetryFields) {
++
++    /** Legacy arity (pre-16-1): no physical area reference. */
++    public MachineCommand(UUID plantId, UUID machineGroupId, String code, String name, MachineStatus status,
++        String brand, LocalDate installedAt, String notes, List<String> optionalTelemetryFields) {
++      this(plantId, machineGroupId, null, code, name, status, brand, installedAt, notes, optionalTelemetryFields);
++    }
+   }
+ 
+   public record MachineView(UUID id, UUID plantId, String plantCode, String plantName, UUID machineGroupId,
+-      String machineGroupName, String code, String name, MachineStatus status, String brand, LocalDate installedAt,
+-      String notes, Instant createdAt, Instant updatedAt, List<String> optionalTelemetryFields) {
++      String machineGroupName, UUID areaId, String code, String name, MachineStatus status, String brand,
++      LocalDate installedAt, String notes, Instant createdAt, Instant updatedAt,
++      List<String> optionalTelemetryFields) {
+   }
+ 
+   public record MachineListView(List<MachineView> items, long totalElements, int page, int size, String sort) {
+@@ -445,6 +472,12 @@ public class MachineService {
+   public static class MachineGroupPlantMismatchException extends RuntimeException {
+   }
+ 
++  public static class MachineAreaNotFoundForMachineException extends RuntimeException {
++  }
++
++  public static class MachineAreaPlantMismatchException extends RuntimeException {
++  }
++
+   public static class MachineMutationForbiddenException extends RuntimeException {
+   }
+ 
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/machine/infrastructure/MachineEntity.java b/syncro/apps/backend/src/main/java/com/syncro/machine/infrastructure/MachineEntity.java
+index 912ef35..cbd08a6 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/machine/infrastructure/MachineEntity.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/machine/infrastructure/MachineEntity.java
+@@ -33,6 +33,9 @@ public class MachineEntity {
+   @JoinColumn(name = "machine_group_id", nullable = false)
+   private MachineGroupEntity machineGroup;
+ 
++  @Column(name = "area_id")
++  private UUID areaId;
++
+   @Column(nullable = false, length = 64)
+   private String code;
+ 
+@@ -65,12 +68,21 @@ public class MachineEntity {
+   protected MachineEntity() {
+   }
+ 
++  /** Legacy arity (pre-16-1): no physical area reference. */
+   public MachineEntity(UUID id, PlantEntity plant, MachineGroupEntity machineGroup, String code, String name,
+       MachineStatus status, String brand, LocalDate installedAt, String notes, List<String> optionalTelemetryFields,
+       Instant createdAt, Instant updatedAt) {
++    this(id, plant, machineGroup, null, code, name, status, brand, installedAt, notes, optionalTelemetryFields,
++        createdAt, updatedAt);
++  }
++
++  public MachineEntity(UUID id, PlantEntity plant, MachineGroupEntity machineGroup, UUID areaId, String code, String name,
++      MachineStatus status, String brand, LocalDate installedAt, String notes, List<String> optionalTelemetryFields,
++      Instant createdAt, Instant updatedAt) {
+     this.id = id;
+     this.plant = plant;
+     this.machineGroup = machineGroup;
++    this.areaId = areaId;
+     this.code = code;
+     this.name = name;
+     this.status = status;
+@@ -94,6 +106,10 @@ public class MachineEntity {
+     return machineGroup;
+   }
+ 
++  public UUID getAreaId() {
++    return areaId;
++  }
++
+   public String getCode() {
+     return code;
+   }
+@@ -130,9 +146,10 @@ public class MachineEntity {
+     return updatedAt;
+   }
+ 
+-  public void update(MachineGroupEntity machineGroup, String code, String name, MachineStatus status, String brand,
+-      LocalDate installedAt, String notes, List<String> optionalTelemetryFields, Instant updatedAt) {
++  public void update(MachineGroupEntity machineGroup, UUID areaId, String code, String name, MachineStatus status,
++      String brand, LocalDate installedAt, String notes, List<String> optionalTelemetryFields, Instant updatedAt) {
+     this.machineGroup = machineGroup;
++    this.areaId = areaId;
+     this.code = code;
+     this.name = name;
+     this.status = status;
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/machine/infrastructure/MachineRepository.java b/syncro/apps/backend/src/main/java/com/syncro/machine/infrastructure/MachineRepository.java
+index cc51972..db57f76 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/machine/infrastructure/MachineRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/machine/infrastructure/MachineRepository.java
+@@ -80,6 +80,8 @@ public interface MachineRepository extends JpaRepository<MachineEntity, UUID> {
+ 
+   long countByPlantIdIn(List<UUID> plantIds);
+ 
++  long countByAreaId(UUID areaId);
++
+   @Query("""
+       select distinct machine.machineGroup.id
+       from MachineEntity machine
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/org/infrastructure/db/MachineAreaEntity.java b/syncro/apps/backend/src/main/java/com/syncro/org/infrastructure/db/MachineAreaEntity.java
+index d24a2fc..0d850c2 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/org/infrastructure/db/MachineAreaEntity.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/org/infrastructure/db/MachineAreaEntity.java
+@@ -56,6 +56,21 @@ public class MachineAreaEntity {
+     this.updatedAt = updatedAt;
+   }
+ 
++  public void update(String code, String name, String description, Boolean active, Instant updatedAt) {
++    this.code = code;
++    this.name = name;
++    this.description = description;
++    if (active != null) {
++      this.active = active;
++    }
++    this.updatedAt = updatedAt;
++  }
++
++  public void deactivate(Instant updatedAt) {
++    this.active = false;
++    this.updatedAt = updatedAt;
++  }
++
+   public UUID getId() {
+     return id;
+   }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/org/infrastructure/db/MachineAreaRepository.java b/syncro/apps/backend/src/main/java/com/syncro/org/infrastructure/db/MachineAreaRepository.java
+index 0239458..b6acca1 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/org/infrastructure/db/MachineAreaRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/org/infrastructure/db/MachineAreaRepository.java
+@@ -1,8 +1,24 @@
+ package com.syncro.org.infrastructure.db;
+ 
++import java.util.List;
++import java.util.Optional;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
++import org.springframework.data.jpa.repository.Query;
++import org.springframework.data.repository.query.Param;
+ 
+ /** Persistence for {@code machine_areas} (blueprint A11, story 15-2). */
+ public interface MachineAreaRepository extends JpaRepository<MachineAreaEntity, UUID> {
++
++  @Query("""
++      select a from MachineAreaEntity a
++      where a.plantId = :plantId
++        and (:activeOnly = false or a.active = true)
++      order by a.name asc
++      """)
++  List<MachineAreaEntity> findAllByPlantId(@Param("plantId") UUID plantId, @Param("activeOnly") boolean activeOnly);
++
++  Optional<MachineAreaEntity> findByPlantIdAndNameIgnoreCase(UUID plantId, String name);
++
++  Optional<MachineAreaEntity> findByPlantIdAndCodeIgnoreCase(UUID plantId, String code);
+ }
+diff --git a/syncro/apps/backend/src/main/resources/db/seed/pilot-seed.sql b/syncro/apps/backend/src/main/resources/db/seed/pilot-seed.sql
+index 72436d3..25950d1 100644
+--- a/syncro/apps/backend/src/main/resources/db/seed/pilot-seed.sql
++++ b/syncro/apps/backend/src/main/resources/db/seed/pilot-seed.sql
+@@ -143,12 +143,20 @@ FROM plants p
+ JOIN sections s ON s.plant_id = p.id AND s.code = 'MACHINERY'
+ WHERE g.plant_id = p.id AND p.code = 'GM1' AND lower(g.name) = 'forming' AND g.section_id IS NULL;
+ 
++-- 2.75 Machine area (story 16-1): a physical location under GM1, referenced by BF-08410.
++INSERT INTO machine_areas (id, plant_id, code, name, description, is_active, created_at, updated_at)
++SELECT '9f8e7d6c-5b4a-4321-9876-fedcba654321'::uuid, p.id, 'FLOOR-1', 'Production Floor 1', 'Main production floor', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
++FROM plants p
++WHERE p.code = 'GM1'
++  AND NOT EXISTS (SELECT 1 FROM machine_areas a WHERE a.plant_id = p.id AND lower(a.name) = 'production floor 1');
++
+ -- 3. Machine BF-08410 / JBF19 (one machine: code and name; V5 uniqueness is
+ --    (plant_id, lower(code)) - guard and downstream resolution share it)
+-INSERT INTO machines (id, plant_id, machine_group_id, code, name, status, brand, installed_at, notes, optional_telemetry_fields, created_at, updated_at)
+-SELECT '6c1d78ce-615b-4965-ae27-12e400524ed2'::uuid, p.id, g.id, 'BF-08410', 'JBF19', 'ACTIVE', 'Juki', DATE '2026-05-27', NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
++INSERT INTO machines (id, plant_id, machine_group_id, area_id, code, name, status, brand, installed_at, notes, optional_telemetry_fields, created_at, updated_at)
++SELECT '6c1d78ce-615b-4965-ae27-12e400524ed2'::uuid, p.id, g.id, a.id, 'BF-08410', 'JBF19', 'ACTIVE', 'Juki', DATE '2026-05-27', NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+ FROM plants p
+ JOIN machine_groups g ON g.plant_id = p.id AND lower(g.name) = 'forming'
++LEFT JOIN machine_areas a ON a.plant_id = p.id AND lower(a.name) = 'production floor 1'
+ WHERE p.code = 'GM1'
+   AND NOT EXISTS (SELECT 1 FROM machines m WHERE m.plant_id = p.id AND lower(m.code) = 'bf-08410');
+ 
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/db/PilotSeedTest.java b/syncro/apps/backend/src/test/java/com/syncro/db/PilotSeedTest.java
+index b8010be..2328b7a 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/db/PilotSeedTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/db/PilotSeedTest.java
+@@ -81,15 +81,24 @@ class PilotSeedTest {
+     assertThat(group.get("section_code")).isEqualTo("MACHINERY");
+ 
+     Map<String, Object> machine = jdbc.queryForMap(
+-        "SELECT m.code, m.name, m.status, m.brand, g.name AS group_name "
++        "SELECT m.code, m.name, m.status, m.brand, g.name AS group_name, a.name AS area_name "
+             + "FROM machines m "
+             + "JOIN plants p ON p.id = m.plant_id "
+             + "JOIN machine_groups g ON g.id = m.machine_group_id "
++            + "LEFT JOIN machine_areas a ON a.id = m.area_id "
+             + "WHERE m.code = 'BF-08410' AND p.code = 'GM1'");
+     assertThat(machine.get("name")).isEqualTo("JBF19");
+     assertThat(machine.get("status")).isEqualTo("ACTIVE");
+     assertThat(machine.get("brand")).isEqualTo("Juki");
+     assertThat(machine.get("group_name")).isEqualTo("Forming");
++    assertThat(machine.get("area_name")).isEqualTo("Production Floor 1");
++
++    Map<String, Object> area = jdbc.queryForMap(
++        "SELECT a.code, a.name, p.code AS plant_code FROM machine_areas a "
++            + "JOIN plants p ON p.id = a.plant_id "
++            + "WHERE a.name = 'Production Floor 1'");
++    assertThat(area.get("code")).isEqualTo("FLOOR-1");
++    assertThat(area.get("plant_code")).isEqualTo("GM1");
+ 
+     // The seed reuses the V13/V15 ELECTRIC category row instead of duplicating it
+     Long electricCategories = jdbc.queryForObject(
+@@ -259,6 +268,7 @@ class PilotSeedTest {
+     expected.merge("plants", 1L, Long::sum);
+     expected.merge("sections", 1L, Long::sum);
+     expected.merge("machine_groups", 1L, Long::sum);
++    expected.merge("machine_areas", 1L, Long::sum);
+     expected.merge("machines", 1L, Long::sum);
+     expected.merge("sparepart_taxonomy", 3L, Long::sum);
+     expected.merge("spareparts", 1L, Long::sum);
+@@ -385,6 +395,7 @@ class PilotSeedTest {
+         "plants",
+         "sections",
+         "machine_groups",
++        "machine_areas",
+         "machines",
+         "sparepart_taxonomy",
+         "spareparts",
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/machine/api/MachineControllerTest.java b/syncro/apps/backend/src/test/java/com/syncro/machine/api/MachineControllerTest.java
+index 15fefe2..c852234 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/machine/api/MachineControllerTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/machine/api/MachineControllerTest.java
+@@ -306,7 +306,7 @@ class MachineControllerTest {
+   }
+ 
+   private static MachineView view(UUID id, UUID plantId, UUID groupId) {
+-    return new MachineView(id, plantId, "GM1", "Plant GM1", groupId, "Forming", "BF-08410", "JBF19",
++    return new MachineView(id, plantId, "GM1", "Plant GM1", groupId, "Forming", null, "BF-08410", "JBF19",
+         MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Pilot machine",
+         Instant.parse("2026-05-27T00:00:00Z"), Instant.parse("2026-05-27T00:00:00Z"), List.of());
+   }
+@@ -325,10 +325,10 @@ class MachineControllerTest {
+     var machineId = UUID.randomUUID();
+     var otherMachineId = UUID.randomUUID();
+     var machineView = new MachineService.MachineView(machineId, plantId, "GM1", "Plant GM1", groupId, "Forming",
+-        "BF-08410", "JBF19", MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Active machine",
++        null, "BF-08410", "JBF19", MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Active machine",
+         Instant.parse("2026-05-27T00:00:00Z"), Instant.parse("2026-05-27T00:00:00Z"), List.of());
+     var otherMachineView = new MachineService.MachineView(otherMachineId, plantId, "GM1", "Plant GM1", groupId, "Forming",
+-        "BF-08411", "JBF20", MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Active machine 2",
++        null, "BF-08411", "JBF20", MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Active machine 2",
+         Instant.parse("2026-05-27T00:00:00Z"), Instant.parse("2026-05-27T00:00:00Z"), List.of());
+     var telemetryData = new LatestTelemetryDto.TelemetryData(machineId, true, 123.4, 1000L,
+         Instant.parse("2026-08-10T10:00:00Z"), LatestTelemetryDto.FreshnessState.ONLINE, Map.of(), false, false);
+@@ -359,7 +359,7 @@ class MachineControllerTest {
+     var user = user(ApplicationRole.SUPER_ADMIN);
+     var machineId = UUID.randomUUID();
+     var machineView = new MachineService.MachineView(machineId, UUID.randomUUID(), "GM1", "Plant GM1", UUID.randomUUID(), "Forming",
+-        "BF-08410", "JBF19", MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Active machine",
++        null, "BF-08410", "JBF19", MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Active machine",
+         Instant.parse("2026-05-27T00:00:00Z"), Instant.parse("2026-05-27T00:00:00Z"), List.of());
+     var telemetryData = new LatestTelemetryDto.TelemetryData(machineId, true, 123.4, 1000L,
+         Instant.parse("2026-08-10T10:00:00Z"), LatestTelemetryDto.FreshnessState.OFFLINE, Map.of(), false, false);
+@@ -380,7 +380,7 @@ class MachineControllerTest {
+     var groupId = UUID.randomUUID();
+     var machineId = UUID.randomUUID();
+     var machineView = new MachineService.MachineView(machineId, plantId, "GM1", "Plant GM1", groupId, "Forming",
+-        "BF-08410", "JBF19", MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Active machine",
++        null, "BF-08410", "JBF19", MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Active machine",
+         Instant.parse("2026-05-27T00:00:00Z"), Instant.parse("2026-05-27T00:00:00Z"), List.of());
+     when(machines.list(user, plantId, null, null, null, 0, 100, "code,asc"))
+         .thenReturn(new MachineListView(List.of(machineView), 1, 0, 100, "code,asc"));
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/machine/application/MachineServiceTest.java b/syncro/apps/backend/src/test/java/com/syncro/machine/application/MachineServiceTest.java
+index 6378729..6e4c7b9 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/machine/application/MachineServiceTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/machine/application/MachineServiceTest.java
+@@ -25,6 +25,7 @@ import com.syncro.masterdata.infrastructure.MachineGroupEntity;
+ import com.syncro.masterdata.infrastructure.MachineGroupRepository;
+ import com.syncro.org.application.OperationalScope;
+ import com.syncro.org.application.OperationalScopeService;
++import com.syncro.org.infrastructure.db.MachineAreaRepository;
+ import java.time.Clock;
+ import java.time.Instant;
+ import java.time.ZoneOffset;
+@@ -51,6 +52,7 @@ class MachineServiceTest {
+   @Mock private MachineRepository machines;
+   @Mock private PlantRepository plants;
+   @Mock private MachineGroupRepository machineGroups;
++  @Mock private MachineAreaRepository machineAreas;
+   @Mock private PlantScopeService plantScopes;
+   @Mock private AuthUserPlantAssignmentRepository assignments;
+   @Mock private AuditLogWriter auditLog;
+@@ -62,7 +64,7 @@ class MachineServiceTest {
+ 
+   @BeforeEach
+   void setup() {
+-    service = new MachineService(machines, plants, machineGroups, plantScopes, assignments, auditLog,
++    service = new MachineService(machines, plants, machineGroups, machineAreas, plantScopes, assignments, auditLog,
+         operationalScopes, clock);
+   }
+ 
+diff --git a/syncro/authz/policy/authz.rego b/syncro/authz/policy/authz.rego
+index 847c1f5..13e3f05 100644
+--- a/syncro/authz/policy/authz.rego
++++ b/syncro/authz/policy/authz.rego
+@@ -226,6 +226,8 @@ department_paths := {
+   "/api/v1/departments",
+   "/api/v1/departments/*",
+   "/api/v1/departments/*/members",
++  "/api/v1/machine-areas",
++  "/api/v1/machine-areas/*",
+ }
+ 
+ section_leader_paths := {

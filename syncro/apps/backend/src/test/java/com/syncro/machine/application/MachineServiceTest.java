@@ -25,6 +25,7 @@ import com.syncro.masterdata.infrastructure.MachineGroupEntity;
 import com.syncro.masterdata.infrastructure.MachineGroupRepository;
 import com.syncro.org.application.OperationalScope;
 import com.syncro.org.application.OperationalScopeService;
+import com.syncro.org.infrastructure.db.MachineAreaRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -51,6 +52,7 @@ class MachineServiceTest {
   @Mock private MachineRepository machines;
   @Mock private PlantRepository plants;
   @Mock private MachineGroupRepository machineGroups;
+  @Mock private MachineAreaRepository machineAreas;
   @Mock private PlantScopeService plantScopes;
   @Mock private AuthUserPlantAssignmentRepository assignments;
   @Mock private AuditLogWriter auditLog;
@@ -62,7 +64,7 @@ class MachineServiceTest {
 
   @BeforeEach
   void setup() {
-    service = new MachineService(machines, plants, machineGroups, plantScopes, assignments, auditLog,
+    service = new MachineService(machines, plants, machineGroups, machineAreas, plantScopes, assignments, auditLog,
         operationalScopes, clock);
   }
 

@@ -56,6 +56,21 @@ public class MachineAreaEntity {
     this.updatedAt = updatedAt;
   }
 
+  public void update(String code, String name, String description, Boolean active, Instant updatedAt) {
+    this.code = code;
+    this.name = name;
+    this.description = description;
+    if (active != null) {
+      this.active = active;
+    }
+    this.updatedAt = updatedAt;
+  }
+
+  public void deactivate(Instant updatedAt) {
+    this.active = false;
+    this.updatedAt = updatedAt;
+  }
+
   public UUID getId() {
     return id;
   }

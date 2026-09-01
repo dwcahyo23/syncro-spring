@@ -15,6 +15,7 @@ import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.masterdata.infrastructure.MachineGroupRepository;
 import com.syncro.org.application.OperationalScopeService;
+import com.syncro.org.infrastructure.db.MachineAreaRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -49,6 +50,7 @@ public class MachineService {
   private final MachineRepository machines;
   private final PlantRepository plants;
   private final MachineGroupRepository machineGroups;
+  private final MachineAreaRepository machineAreas;
   private final PlantScopeService plantScopes;
   private final AuthUserPlantAssignmentRepository assignments;
   private final AuditLogWriter auditLog;
@@ -56,11 +58,12 @@ public class MachineService {
   private final Clock clock;
 
   public MachineService(MachineRepository machines, PlantRepository plants, MachineGroupRepository machineGroups,
-      PlantScopeService plantScopes, AuthUserPlantAssignmentRepository assignments, AuditLogWriter auditLog,
-      OperationalScopeService operationalScopes, Clock clock) {
+      MachineAreaRepository machineAreas, PlantScopeService plantScopes, AuthUserPlantAssignmentRepository assignments,
+      AuditLogWriter auditLog, OperationalScopeService operationalScopes, Clock clock) {
     this.machines = machines;
     this.plants = plants;
     this.machineGroups = machineGroups;
+    this.machineAreas = machineAreas;
     this.plantScopes = plantScopes;
     this.assignments = assignments;
     this.auditLog = auditLog;
@@ -162,10 +165,11 @@ public class MachineService {
     if (machines.existsByPlantIdAndCodeIgnoreCase(command.plantId(), code)) {
       throw new DuplicateMachineCodeException();
     }
+    var areaId = validateArea(command.plantId(), command.areaId());
     var now = Instant.now(clock);
-    var machine = saveMachine(new MachineEntity(UUID.randomUUID(), plant, machineGroup, code, normalizeOptional(command.name()),
-        command.status(), normalizeOptional(command.brand()), command.installedAt(), normalizeOptional(command.notes()),
-        optionalTelemetryFields, now, now));
+    var machine = saveMachine(new MachineEntity(UUID.randomUUID(), plant, machineGroup, areaId, code,
+        normalizeOptional(command.name()), command.status(), normalizeOptional(command.brand()), command.installedAt(),
+        normalizeOptional(command.notes()), optionalTelemetryFields, now, now));
     auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.MACHINE, machine.getId(), machine.getCode(),
         command.plantId(), null, MachineAuditValues.of(machine), null));
     return toView(machine);
@@ -199,7 +203,8 @@ public class MachineService {
     if (existing.isPresent() && !existing.get().getId().equals(machineId)) {
       throw new DuplicateMachineCodeException();
     }
-    machine.update(machineGroup, code, normalizeOptional(command.name()), command.status(), normalizeOptional(command.brand()),
+    var areaId = validateArea(plantId, command.areaId());
+    machine.update(machineGroup, areaId, code, normalizeOptional(command.name()), command.status(), normalizeOptional(command.brand()),
         command.installedAt(), normalizeOptional(command.notes()), optionalTelemetryFields, Instant.now(clock));
     var saved = saveMachine(machine);
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.MACHINE, machineId, entityLabel, plantId,
@@ -412,22 +417,44 @@ public class MachineService {
     return trimmed.isEmpty() ? null : trimmed;
   }
 
+  /**
+   * The machine's physical area must exist and belong to the same plant as the
+   * machine (mirrors the machine-group plant guard). Null clears the reference.
+   */
+  private UUID validateArea(UUID plantId, UUID areaId) {
+    if (areaId == null) {
+      return null;
+    }
+    var area = machineAreas.findById(areaId).orElseThrow(MachineAreaNotFoundForMachineException::new);
+    if (!area.getPlantId().equals(plantId)) {
+      throw new MachineAreaPlantMismatchException();
+    }
+    return areaId;
+  }
+
   private MachineView toView(MachineEntity machine) {
     var plant = machine.getPlant();
     var machineGroup = machine.getMachineGroup();
     return new MachineView(machine.getId(), plant.getId(), plant.getCode(), plant.getName(), machineGroup.getId(),
-        machineGroup.getName(), machine.getCode(), machine.getName(), machine.getStatus(), machine.getBrand(),
-        machine.getInstalledAt(), machine.getNotes(), machine.getCreatedAt(), machine.getUpdatedAt(),
+        machineGroup.getName(), machine.getAreaId(), machine.getCode(), machine.getName(), machine.getStatus(),
+        machine.getBrand(), machine.getInstalledAt(), machine.getNotes(), machine.getCreatedAt(), machine.getUpdatedAt(),
         machine.getOptionalTelemetryFields() == null ? List.of() : machine.getOptionalTelemetryFields());
   }
 
-  public record MachineCommand(UUID plantId, UUID machineGroupId, String code, String name, MachineStatus status,
-      String brand, LocalDate installedAt, String notes, List<String> optionalTelemetryFields) {
+  public record MachineCommand(UUID plantId, UUID machineGroupId, UUID areaId, String code, String name,
+      MachineStatus status, String brand, LocalDate installedAt, String notes, List<String> optionalTelemetryFields) {
+
+    /** Legacy arity (pre-16-1): no physical area reference. */
+    public MachineCommand(UUID plantId, UUID machineGroupId, String code, String name, MachineStatus status,
+        String brand, LocalDate installedAt, String notes, List<String> optionalTelemetryFields) {
+      this(plantId, machineGroupId, null, code, name, status, brand, installedAt, notes, optionalTelemetryFields);
+    }
   }
 
   public record MachineView(UUID id, UUID plantId, String plantCode, String plantName, UUID machineGroupId,
-      String machineGroupName, String code, String name, MachineStatus status, String brand, LocalDate installedAt,
-      String notes, Instant createdAt, Instant updatedAt, List<String> optionalTelemetryFields) {
+      String machineGroupName, UUID areaId, String code, String name, MachineStatus status, String brand,
+      LocalDate installedAt, String notes, Instant createdAt, Instant updatedAt,
+      List<String> optionalTelemetryFields) {
   }
 
   public record MachineListView(List<MachineView> items, long totalElements, int page, int size, String sort) {
@@ -443,6 +470,12 @@ public class MachineService {
   }
 
   public static class MachineGroupPlantMismatchException extends RuntimeException {
+  }
+
+  public static class MachineAreaNotFoundForMachineException extends RuntimeException {
+  }
+
+  public static class MachineAreaPlantMismatchException extends RuntimeException {
   }
 
   public static class MachineMutationForbiddenException extends RuntimeException {

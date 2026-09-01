@@ -225,8 +225,8 @@ development_status:
   epic-15-retrospective: optional
 
   # Epic 16: Org & Identity Maturation
-  epic-16: backlog
-  16-1-department-machine-area: backlog
+  epic-16: in-progress
+  16-1-department-machine-area: done
   16-2-data-driven-roles: backlog
   16-3-user-job-role-bindings: backlog
   16-4-auth-user-extension-plant-calendar: backlog

@@ -306,7 +306,7 @@ class MachineControllerTest {
   }
 
   private static MachineView view(UUID id, UUID plantId, UUID groupId) {
-    return new MachineView(id, plantId, "GM1", "Plant GM1", groupId, "Forming", "BF-08410", "JBF19",
+    return new MachineView(id, plantId, "GM1", "Plant GM1", groupId, "Forming", null, "BF-08410", "JBF19",
         MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Pilot machine",
         Instant.parse("2026-05-27T00:00:00Z"), Instant.parse("2026-05-27T00:00:00Z"), List.of());
   }
@@ -325,10 +325,10 @@ class MachineControllerTest {
     var machineId = UUID.randomUUID();
     var otherMachineId = UUID.randomUUID();
     var machineView = new MachineService.MachineView(machineId, plantId, "GM1", "Plant GM1", groupId, "Forming",
-        "BF-08410", "JBF19", MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Active machine",
+        null, "BF-08410", "JBF19", MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Active machine",
         Instant.parse("2026-05-27T00:00:00Z"), Instant.parse("2026-05-27T00:00:00Z"), List.of());
     var otherMachineView = new MachineService.MachineView(otherMachineId, plantId, "GM1", "Plant GM1", groupId, "Forming",
-        "BF-08411", "JBF20", MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Active machine 2",
+        null, "BF-08411", "JBF20", MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Active machine 2",
         Instant.parse("2026-05-27T00:00:00Z"), Instant.parse("2026-05-27T00:00:00Z"), List.of());
     var telemetryData = new LatestTelemetryDto.TelemetryData(machineId, true, 123.4, 1000L,
         Instant.parse("2026-08-10T10:00:00Z"), LatestTelemetryDto.FreshnessState.ONLINE, Map.of(), false, false);
@@ -359,7 +359,7 @@ class MachineControllerTest {
     var user = user(ApplicationRole.SUPER_ADMIN);
     var machineId = UUID.randomUUID();
     var machineView = new MachineService.MachineView(machineId, UUID.randomUUID(), "GM1", "Plant GM1", UUID.randomUUID(), "Forming",
-        "BF-08410", "JBF19", MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Active machine",
+        null, "BF-08410", "JBF19", MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Active machine",
         Instant.parse("2026-05-27T00:00:00Z"), Instant.parse("2026-05-27T00:00:00Z"), List.of());
     var telemetryData = new LatestTelemetryDto.TelemetryData(machineId, true, 123.4, 1000L,
         Instant.parse("2026-08-10T10:00:00Z"), LatestTelemetryDto.FreshnessState.OFFLINE, Map.of(), false, false);
@@ -380,7 +380,7 @@ class MachineControllerTest {
     var groupId = UUID.randomUUID();
     var machineId = UUID.randomUUID();
     var machineView = new MachineService.MachineView(machineId, plantId, "GM1", "Plant GM1", groupId, "Forming",
-        "BF-08410", "JBF19", MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Active machine",
+        null, "BF-08410", "JBF19", MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"), "Active machine",
         Instant.parse("2026-05-27T00:00:00Z"), Instant.parse("2026-05-27T00:00:00Z"), List.of());
     when(machines.list(user, plantId, null, null, null, 0, 100, "code,asc"))
         .thenReturn(new MachineListView(List.of(machineView), 1, 0, 100, "code,asc"));

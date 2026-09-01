@@ -4,6 +4,8 @@ import com.syncro.auth.application.PlantScopeService.PlantAccessDeniedException;
 import com.syncro.masterdata.api.PlantDtos.ErrorResponse;
 import com.syncro.machine.application.MachineService.DuplicateMachineCodeException;
 import com.syncro.machine.application.MachineResponsibilityService;
+import com.syncro.machine.application.MachineService.MachineAreaNotFoundForMachineException;
+import com.syncro.machine.application.MachineService.MachineAreaPlantMismatchException;
 import com.syncro.machine.application.MachineService.MachineDataIntegrityException;
 import com.syncro.machine.application.MachineService.MachineGroupNotFoundForMachineException;
 import com.syncro.machine.application.MachineService.MachineGroupPlantMismatchException;
@@ -80,6 +82,16 @@ public class MachineExceptionHandler {
   @ExceptionHandler(MachineGroupPlantMismatchException.class)
   ResponseEntity<ErrorResponse> machineGroupPlantMismatch() {
     return error(HttpStatus.BAD_REQUEST, "MACHINE_GROUP_PLANT_MISMATCH", "Machine group must belong to the machine plant.", Map.of());
+  }
+
+  @ExceptionHandler(MachineAreaNotFoundForMachineException.class)
+  ResponseEntity<ErrorResponse> machineAreaNotFound() {
+    return error(HttpStatus.NOT_FOUND, "MACHINE_AREA_NOT_FOUND", "Machine area was not found.", Map.of());
+  }
+
+  @ExceptionHandler(MachineAreaPlantMismatchException.class)
+  ResponseEntity<ErrorResponse> machineAreaPlantMismatch() {
+    return error(HttpStatus.BAD_REQUEST, "AREA_PLANT_MISMATCH", "Machine area must belong to the machine plant.", Map.of());
   }
 
   @ExceptionHandler(MachineDataIntegrityException.class)
