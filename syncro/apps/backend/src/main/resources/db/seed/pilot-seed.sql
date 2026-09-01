@@ -324,6 +324,62 @@ WHERE p.code = 'GM1'
   AND lower(m.code) = 'bf-08410'
   AND NOT EXISTS (SELECT 1 FROM machine_responsibilities r WHERE r.machine_id = m.id AND r.user_id = u.id);
 
+-- 9.5 Job title bindings for pilot users (story 16-3): each pilot user gets a job title
+--     and a role binding so the data-driven role model is usable from the start.
+INSERT INTO job_titles (id, code, name, description, binding_scope, is_active, default_system_role_id, created_at, updated_at)
+SELECT gen_random_uuid(), 'TECHNICIAN', 'Technician', 'Melakukan perbaikan mesin', 'PLANT', TRUE, sr.id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM system_roles sr
+WHERE sr.code = 'TECHNICIAN'
+  AND NOT EXISTS (SELECT 1 FROM job_titles WHERE code = 'TECHNICIAN');
+
+INSERT INTO job_titles (id, code, name, description, binding_scope, is_active, default_system_role_id, created_at, updated_at)
+SELECT gen_random_uuid(), 'STAFF', 'Staff Maintenance', 'Staff pemeliharaan', 'PLANT', TRUE, sr.id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM system_roles sr
+WHERE sr.code = 'MAINTENANCE_MANAGER'
+  AND NOT EXISTS (SELECT 1 FROM job_titles WHERE code = 'STAFF');
+
+INSERT INTO job_titles (id, code, name, description, binding_scope, is_active, default_system_role_id, created_at, updated_at)
+SELECT gen_random_uuid(), 'LEADER', 'Section Leader', 'Kepala seksi perawatan', 'AREA', TRUE, sr.id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM system_roles sr
+WHERE sr.code = 'SECTION_LEADER'
+  AND NOT EXISTS (SELECT 1 FROM job_titles WHERE code = 'LEADER');
+
+INSERT INTO user_job_bindings (id, user_id, job_title_id, assigned_by, assigned_at)
+SELECT gen_random_uuid(), u.id, jt.id, u.id, CURRENT_TIMESTAMP
+FROM auth_users u, job_titles jt
+WHERE u.login_identifier = 'technician.gm1@syncro.dev' AND jt.code = 'TECHNICIAN'
+  AND NOT EXISTS (SELECT 1 FROM user_job_bindings b WHERE b.user_id = u.id);
+
+INSERT INTO user_job_bindings (id, user_id, job_title_id, assigned_by, assigned_at)
+SELECT gen_random_uuid(), u.id, jt.id, u.id, CURRENT_TIMESTAMP
+FROM auth_users u, job_titles jt
+WHERE u.login_identifier = 'staff.gm1@syncro.dev' AND jt.code = 'STAFF'
+  AND NOT EXISTS (SELECT 1 FROM user_job_bindings b WHERE b.user_id = u.id);
+
+INSERT INTO user_job_bindings (id, user_id, job_title_id, assigned_by, assigned_at)
+SELECT gen_random_uuid(), u.id, jt.id, u.id, CURRENT_TIMESTAMP
+FROM auth_users u, job_titles jt
+WHERE u.login_identifier = 'leader.gm1@syncro.dev' AND jt.code = 'LEADER'
+  AND NOT EXISTS (SELECT 1 FROM user_job_bindings b WHERE b.user_id = u.id);
+
+INSERT INTO user_role_bindings (id, user_id, system_role_id, is_override, assigned_by, assigned_at)
+SELECT gen_random_uuid(), u.id, sr.id, FALSE, u.id, CURRENT_TIMESTAMP
+FROM auth_users u, system_roles sr
+WHERE u.login_identifier = 'technician.gm1@syncro.dev' AND sr.code = 'TECHNICIAN'
+  AND NOT EXISTS (SELECT 1 FROM user_role_bindings b WHERE b.user_id = u.id AND b.system_role_id = sr.id);
+
+INSERT INTO user_role_bindings (id, user_id, system_role_id, is_override, assigned_by, assigned_at)
+SELECT gen_random_uuid(), u.id, sr.id, FALSE, u.id, CURRENT_TIMESTAMP
+FROM auth_users u, system_roles sr
+WHERE u.login_identifier = 'staff.gm1@syncro.dev' AND sr.code = 'MAINTENANCE_MANAGER'
+  AND NOT EXISTS (SELECT 1 FROM user_role_bindings b WHERE b.user_id = u.id AND b.system_role_id = sr.id);
+
+INSERT INTO user_role_bindings (id, user_id, system_role_id, is_override, assigned_by, assigned_at)
+SELECT gen_random_uuid(), u.id, sr.id, FALSE, u.id, CURRENT_TIMESTAMP
+FROM auth_users u, system_roles sr
+WHERE u.login_identifier = 'leader.gm1@syncro.dev' AND sr.code = 'SECTION_LEADER'
+  AND NOT EXISTS (SELECT 1 FROM user_role_bindings b WHERE b.user_id = u.id AND b.system_role_id = sr.id);
+
 INSERT INTO machine_responsibilities (id, machine_id, user_id, level, created_at, updated_at)
 SELECT '48b87048-9f8b-4fbb-a59c-a5994a0dab5a'::uuid, m.id, u.id, 'LEADER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 FROM machines m

@@ -289,6 +289,9 @@ class PilotSeedTest {
     expected.merge("system_roles", 5L, Long::sum);
     expected.merge("menu_features", 9L, Long::sum);
     expected.merge("domain_contexts", 3L, Long::sum);
+    expected.merge("job_titles", 3L, Long::sum);
+    expected.merge("user_job_bindings", 3L, Long::sum);
+    expected.merge("user_role_bindings", 3L, Long::sum);
     expected.merge("auth_users", 3L, Long::sum);
     expected.merge("auth_user_plant_assignments", 3L, Long::sum);
     expected.merge("machine_responsibilities", 3L, Long::sum);
@@ -422,6 +425,9 @@ class PilotSeedTest {
         "system_roles",
         "menu_features",
         "domain_contexts",
+        "job_titles",
+        "user_job_bindings",
+        "user_role_bindings",
         "waha_templates",
         "audit_log")) {
       counts.put(table, jdbc.queryForObject("SELECT count(*) FROM " + table, Long.class));

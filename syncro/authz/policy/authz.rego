@@ -238,6 +238,11 @@ section_leader_paths := {
 
 user_management_paths := {
   "/api/v1/auth/users/*",
+  "/api/v1/user-bindings",
+  "/api/v1/user-bindings/*",
+  "/api/v1/user-bindings/*/job",
+  "/api/v1/user-bindings/*/roles",
+  "/api/v1/user-bindings/*/roles/*",
 }
 
 # Telemetry + notification-worker + sync-observability endpoints are SUPER_ADMIN-only
