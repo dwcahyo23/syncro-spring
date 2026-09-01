@@ -48,6 +48,21 @@ public class AuthUserEntity {
   @Column(name = "department_id")
   private UUID departmentId;
 
+  @Column(name = "phone_verified_at")
+  private Instant phoneVerifiedAt;
+
+  @Column(name = "force_password_change", nullable = false)
+  private boolean forcePasswordChange = false;
+
+  @Column(name = "failed_login_attempts", nullable = false)
+  private int failedLoginAttempts = 0;
+
+  @Column(name = "locked_at")
+  private Instant lockedAt;
+
+  @Column(name = "lock_reason", length = 255)
+  private String lockReason;
+
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
@@ -76,6 +91,22 @@ public class AuthUserEntity {
     this.jobTitleId = jobTitleId;
     this.departmentId = departmentId;
     this.updatedAt = updatedAt;
+  }
+
+  public void recordLoginFailure(int maxAttempts) {
+    this.failedLoginAttempts++;
+    if (this.failedLoginAttempts >= maxAttempts) {
+      this.lockedAt = Instant.now();
+      this.lockReason = "Too many failed login attempts";
+    }
+    this.updatedAt = Instant.now();
+  }
+
+  public void resetLoginFailures() {
+    this.failedLoginAttempts = 0;
+    this.lockedAt = null;
+    this.lockReason = null;
+    this.updatedAt = Instant.now();
   }
 
   public UUID getId() {
@@ -120,6 +151,26 @@ public class AuthUserEntity {
 
   public UUID getDepartmentId() {
     return departmentId;
+  }
+
+  public Instant getPhoneVerifiedAt() {
+    return phoneVerifiedAt;
+  }
+
+  public boolean isForcePasswordChange() {
+    return forcePasswordChange;
+  }
+
+  public int getFailedLoginAttempts() {
+    return failedLoginAttempts;
+  }
+
+  public Instant getLockedAt() {
+    return lockedAt;
+  }
+
+  public String getLockReason() {
+    return lockReason;
   }
 
   public Instant getCreatedAt() {

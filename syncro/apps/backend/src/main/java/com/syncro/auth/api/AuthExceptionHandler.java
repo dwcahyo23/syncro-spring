@@ -1,6 +1,7 @@
 package com.syncro.auth.api;
 
 import com.syncro.auth.api.AuthDtos.ErrorResponse;
+import com.syncro.auth.application.AuthService.AccountLockedException;
 import com.syncro.auth.application.AuthService.BadCredentialsException;
 import com.syncro.auth.application.AuthService.DuplicateUserIdentifierException;
 import com.syncro.auth.application.AuthService.UserDataIntegrityException;
@@ -27,6 +28,11 @@ public class AuthExceptionHandler {
   @ExceptionHandler(BadCredentialsException.class)
   ResponseEntity<ErrorResponse> badCredentials() {
     return error(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Invalid login credentials.");
+  }
+
+  @ExceptionHandler(AccountLockedException.class)
+  ResponseEntity<ErrorResponse> accountLocked() {
+    return error(HttpStatus.LOCKED, "ACCOUNT_LOCKED", "Account is locked due to too many failed login attempts.");
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)

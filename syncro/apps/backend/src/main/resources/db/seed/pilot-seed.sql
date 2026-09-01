@@ -460,4 +460,11 @@ INSERT INTO domain_contexts (id, code, name, created_at, updated_at)
 SELECT gen_random_uuid(), 'inventory', 'Inventory', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 WHERE NOT EXISTS (SELECT 1 FROM domain_contexts WHERE code = 'inventory');
 
+-- 11. Plant working calendar for GM1, current year (story 16-4)
+INSERT INTO plant_working_calendars (id, plant_id, year, workweek_mode, created_at, updated_at)
+SELECT gen_random_uuid(), p.id, EXTRACT(YEAR FROM CURRENT_TIMESTAMP)::int, 'FIVE_DAY', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM plants p
+WHERE p.code = 'GM1'
+  AND NOT EXISTS (SELECT 1 FROM plant_working_calendars c WHERE c.plant_id = p.id AND c.year = EXTRACT(YEAR FROM CURRENT_TIMESTAMP)::int);
+
 COMMIT;

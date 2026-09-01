@@ -14,7 +14,9 @@ public final class AuthDtos {
   }
 
   public record AuthUserView(String id, String loginIdentifier, String displayName, String nik, String phoneNumber,
-      ApplicationRole applicationRole, boolean enabled, UUID jobTitleId, UUID departmentId) {
+      ApplicationRole applicationRole, boolean enabled, UUID jobTitleId, UUID departmentId,
+      boolean forcePasswordChange, int failedLoginAttempts, String lockedAt, String lockReason,
+      String phoneVerifiedAt) {
   }
 
   public record UpdateUserRequest(

@@ -42,19 +42,35 @@ public class AuthService {
     this.clock = clock;
   }
 
-  @Transactional(readOnly = true)
+  private static final int MAX_FAILED_LOGIN_ATTEMPTS = 5;
+
+  @Transactional
   public LoginResponse login(String loginIdentifier, String password) {
     var user = users.findByLoginIdentifierIgnoreCase(loginIdentifier.trim());
     var passwordHash = user.map(candidate -> candidate.getPasswordHash()).orElse(DUMMY_PASSWORD_HASH);
     var passwordMatches = passwordEncoder.matches(password, passwordHash);
-    var authenticatedUser = user
-        .filter(candidate -> passwordMatches && candidate.isEnabled())
-        .orElseThrow(BadCredentialsException::new);
-    return new LoginResponse(
-        "Bearer",
-        tokens.createToken(authenticatedUser),
-        tokens.expiresInSeconds(),
-        toView(authenticatedUser));
+
+    if (user.isPresent()) {
+      var candidate = user.get();
+      if (candidate.getLockedAt() != null) {
+        throw new AccountLockedException();
+      }
+      if (!passwordMatches || !candidate.isEnabled()) {
+        candidate.recordLoginFailure(MAX_FAILED_LOGIN_ATTEMPTS);
+        users.save(candidate);
+        throw new BadCredentialsException();
+      }
+      candidate.resetLoginFailures();
+      users.save(candidate);
+      var authenticatedUser = candidate;
+      return new LoginResponse(
+          "Bearer",
+          tokens.createToken(authenticatedUser),
+          tokens.expiresInSeconds(),
+          toView(authenticatedUser));
+    }
+    // Unknown user: burn a dummy hash comparison and fail without side effects.
+    throw new BadCredentialsException();
   }
 
   public AuthUserView currentUser(JwtTokenService.AuthenticatedUser user) {
@@ -147,7 +163,12 @@ public class AuthService {
         user.getApplicationRole(),
         user.isEnabled(),
         user.getJobTitleId(),
-        user.getDepartmentId());
+        user.getDepartmentId(),
+        user.isForcePasswordChange(),
+        user.getFailedLoginAttempts(),
+        user.getLockedAt() == null ? null : user.getLockedAt().toString(),
+        user.getLockReason(),
+        user.getPhoneVerifiedAt() == null ? null : user.getPhoneVerifiedAt().toString());
   }
 
   public record UpdateUserCommand(String displayName, String nik, String phoneNumber, UUID jobTitleId,
@@ -155,6 +176,9 @@ public class AuthService {
   }
 
   public static class BadCredentialsException extends RuntimeException {
+  }
+
+  public static class AccountLockedException extends RuntimeException {
   }
 
   public static class UserNotFoundException extends RuntimeException {

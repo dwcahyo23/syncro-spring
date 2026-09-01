@@ -111,6 +111,12 @@ class PilotSeedTest {
         "SELECT count(*) FROM domain_contexts WHERE code IN ('maintenance','production','inventory')",
         Long.class)).isEqualTo(3L);
 
+    // Story 16-4: GM1 working calendar for the current year
+    assertThat(jdbc.queryForObject(
+        "SELECT count(*) FROM plant_working_calendars c JOIN plants p ON p.id = c.plant_id "
+            + "WHERE p.code = 'GM1' AND c.year = EXTRACT(YEAR FROM CURRENT_TIMESTAMP)::int",
+        Long.class)).isEqualTo(1L);
+
     // The seed reuses the V13/V15 ELECTRIC category row instead of duplicating it
     Long electricCategories = jdbc.queryForObject(
         "SELECT count(*) FROM sparepart_taxonomy WHERE dimension = 'CATEGORY' AND name = 'Electric'",
@@ -292,6 +298,7 @@ class PilotSeedTest {
     expected.merge("job_titles", 3L, Long::sum);
     expected.merge("user_job_bindings", 3L, Long::sum);
     expected.merge("user_role_bindings", 3L, Long::sum);
+    expected.merge("plant_working_calendars", 1L, Long::sum);
     expected.merge("auth_users", 3L, Long::sum);
     expected.merge("auth_user_plant_assignments", 3L, Long::sum);
     expected.merge("machine_responsibilities", 3L, Long::sum);
@@ -428,6 +435,7 @@ class PilotSeedTest {
         "job_titles",
         "user_job_bindings",
         "user_role_bindings",
+        "plant_working_calendars",
         "waha_templates",
         "audit_log")) {
       counts.put(table, jdbc.queryForObject("SELECT count(*) FROM " + table, Long.class));

@@ -230,6 +230,10 @@ department_paths := {
   "/api/v1/machine-areas/*",
   "/api/v1/job-titles",
   "/api/v1/job-titles/*",
+  "/api/v1/plant-working-calendars",
+  "/api/v1/plant-working-calendars/*",
+  "/api/v1/plant-working-calendars/*/dates",
+  "/api/v1/plant-working-calendars/*/dates/*",
 }
 
 section_leader_paths := {

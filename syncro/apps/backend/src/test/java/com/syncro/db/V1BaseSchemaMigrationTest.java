@@ -48,19 +48,30 @@ class V1BaseSchemaMigrationTest {
   // -------------------------------------------------------------------------
 
   @Test
-  @DisplayName("15.1-DB-001 P0 flyway_schema_history has exactly one successful V1 row")
-  void exactlyOneMigrationApplied() {
+  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2 additive migration")
+  void migrationsApplied() {
     var rows = jdbc.queryForList(
         "SELECT version, script, success FROM flyway_schema_history ORDER BY installed_rank");
-    assertThat(rows).hasSize(1);
-    assertThat(rows.getFirst().get("version")).isEqualTo("1");
-    assertThat(rows.getFirst().get("script")).isEqualTo("V1__orm_foundation_schema.sql");
-    assertThat(rows.getFirst().get("success")).isEqualTo(true);
+    assertThat(rows).hasSize(2);
+    assertThat(rows.get(0).get("version")).isEqualTo("1");
+    assertThat(rows.get(0).get("script")).isEqualTo("V1__orm_foundation_schema.sql");
+    assertThat(rows.get(0).get("success")).isEqualTo(true);
+    assertThat(rows.get(1).get("version")).isEqualTo("2");
+    assertThat(rows.get(1).get("script")).isEqualTo("V2__auth_user_hardening.sql");
+    assertThat(rows.get(1).get("success")).isEqualTo(true);
   }
 
   // -------------------------------------------------------------------------
   // AC: adapted legacy tables
   // -------------------------------------------------------------------------
+
+  @Test
+  @DisplayName("16.4-DB-001 P0 V2 adds auth hardening columns to auth_users")
+  void authUserHardeningColumns() {
+    var columns = columnNames("auth_users");
+    assertThat(columns).contains("phone_verified_at", "force_password_change", "failed_login_attempts",
+        "locked_at", "lock_reason");
+  }
 
   @Test
   @DisplayName("15.1-DB-002 P0 work_orders status CHECK carries exactly the 6 blueprint values")

@@ -159,7 +159,7 @@ class AuthControllerTest {
   }
 
   private static AuthUserView userView(String id, ApplicationRole role) {
-    return new AuthUserView(id, "admin@syncro.dev", null, null, null, role, true, null, null);
+    return new AuthUserView(id, "admin@syncro.dev", null, null, null, role, true, null, null, false, 0, null, null, null);
   }
 }
 
