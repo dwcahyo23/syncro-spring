@@ -769,6 +769,74 @@ test_anonymous_worklog_criterion_denied if {
   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/workorders/work-log-rating-criteria"}
 }
 
+# -- Workorder quality ratings & criteria (story 17-5, blueprint C4-C6, FR-124):
+#    same five-role allow set as workorder_rating_paths; TECHNICIAN/AUDITOR denied;
+#    reads any-authenticated -----------------------------------------------------
+
+test_manager_workorder_quality_rating_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/workorders/WO-2409-00001/quality-rating"}
+}
+
+test_section_leader_workorder_quality_rating_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/workorders/WO-2409-00001/quality-rating"}
+}
+
+test_maintenance_leader_workorder_quality_rating_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/workorders/WO-2409-00001/quality-rating"}
+}
+
+test_staff_workorder_quality_rating_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/workorders/WO-2409-00001/quality-rating"}
+}
+
+test_production_leader_workorder_quality_rating_allowed if {
+  authz.allow with input as {"subject": {"roles": ["PRODUCTION_LEADER"], "userId": "u8"}, "action": "POST /api/v1/workorders/WO-2409-00001/quality-rating"}
+}
+
+test_super_admin_workorder_quality_rating_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/workorders/WO-2409-00001/quality-rating"}
+}
+
+test_technician_workorder_quality_rating_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/workorders/WO-2409-00001/quality-rating"}
+}
+
+test_auditor_workorder_quality_rating_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/workorders/WO-2409-00001/quality-rating"}
+}
+
+test_inventory_workorder_quality_rating_denied if {
+  not authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/workorders/WO-2409-00001/quality-rating"}
+}
+
+test_storekeeper_workorder_quality_rating_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "POST /api/v1/workorders/WO-2409-00001/quality-rating"}
+}
+
+test_anonymous_workorder_quality_rating_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/workorders/WO-2409-00001/quality-rating"}
+}
+
+test_auditor_workorder_quality_rating_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/workorders/WO-2409-00001/quality-rating"}
+}
+
+test_technician_workorder_quality_rating_criteria_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "GET /api/v1/workorders/quality-rating-criteria"}
+}
+
+test_auditor_workorder_quality_rating_criteria_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/workorders/quality-rating-criteria"}
+}
+
+test_manager_workorder_quality_rating_criteria_mutation_denied if {
+  not authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/workorders/quality-rating-criteria"}
+}
+
+test_anonymous_workorder_quality_rating_criteria_read_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "GET /api/v1/workorders/quality-rating-criteria"}
+}
+
 # -- Preventive programs & schedules (story 11-1): four-role mutation allow set
 #    (MANAGER_MAINTENANCE, SECTION_LEADER, MAINTENANCE_LEADER, STAFF_MAINTENANCE);
 #    TECHNICIAN/AUDITOR denied; schedule reads any-authenticated ------------------

@@ -8,4 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface WorkOrderQualityRatingRepository extends JpaRepository<WorkOrderQualityRatingEntity, UUID> {
 
   Optional<WorkOrderQualityRatingEntity> findByWorkOrderId(String workOrderId);
+
+  boolean existsByWorkOrderId(String workOrderId);
 }

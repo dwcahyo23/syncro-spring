@@ -13,6 +13,14 @@ import com.syncro.maintenance.application.WorkLogService.WorkLogBackdateBeforeWo
 import com.syncro.maintenance.application.WorkLogService.WorkLogNotFoundException;
 import com.syncro.maintenance.application.WorkLogService.WorkLogValidationException;
 import com.syncro.maintenance.application.WorkLogRatingService.WorkLogRatingAlreadyExistsException;
+import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingAlreadyExistsException;
+import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingForbiddenException;
+import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingMachineNotFoundException;
+import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingNotClosedException;
+import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingNotFoundException;
+import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingUserNotExecutorException;
+import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingValidationException;
+import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingWorkOrderNotFoundException;
 import com.syncro.maintenance.application.WorkLogRatingService.WorkLogRatingCriterionInUseException;
 import com.syncro.maintenance.application.WorkLogRatingService.WorkLogRatingCriterionNotFoundException;
 import com.syncro.maintenance.application.WorkLogRatingService.WorkLogRatingForbiddenException;
@@ -168,7 +176,8 @@ public class WorkOrderExceptionHandler {
 
   @ExceptionHandler({WorkorderForbiddenException.class, EvidenceForbiddenException.class,
       ReportForbiddenException.class, TodoForbiddenException.class, PlantAccessDeniedException.class,
-      RatingForbiddenException.class, WorkLogRatingForbiddenException.class})
+      RatingForbiddenException.class, WorkLogRatingForbiddenException.class,
+      QualityRatingForbiddenException.class})
   ResponseEntity<ErrorResponse> forbidden() {
     return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "You do not have permission to access this resource.", Map.of());
   }
@@ -315,6 +324,50 @@ public class WorkOrderExceptionHandler {
   ResponseEntity<ErrorResponse> workLogRatingCriterionInUse() {
     return error(HttpStatus.BAD_REQUEST, "CRITERION_IN_USE",
         "A work-log rating criterion referenced by existing ratings cannot be deleted.", Map.of());
+  }
+
+  // -------------------------------------------------------------------------
+  // Workorder quality ratings (17-5, FR-124)
+  // -------------------------------------------------------------------------
+
+  @ExceptionHandler(QualityRatingWorkOrderNotFoundException.class)
+  ResponseEntity<ErrorResponse> qualityRatingWorkOrderNotFound() {
+    return error(HttpStatus.NOT_FOUND, "WORKORDER_NOT_FOUND", "Workorder was not found.", Map.of());
+  }
+
+  @ExceptionHandler(QualityRatingMachineNotFoundException.class)
+  ResponseEntity<ErrorResponse> qualityRatingMachineNotFound() {
+    return error(HttpStatus.NOT_FOUND, "MACHINE_NOT_FOUND", "Machine was not found.", Map.of());
+  }
+
+  @ExceptionHandler(QualityRatingNotFoundException.class)
+  ResponseEntity<ErrorResponse> qualityRatingNotFound() {
+    return error(HttpStatus.NOT_FOUND, "QUALITY_RATING_NOT_FOUND",
+        "Workorder quality rating was not found.", Map.of());
+  }
+
+  @ExceptionHandler(QualityRatingNotClosedException.class)
+  ResponseEntity<ErrorResponse> qualityRatingNotClosed() {
+    return error(HttpStatus.BAD_REQUEST, "RATING_WORKORDER_NOT_CLOSED",
+        "Only closed workorders can be rated.", Map.of());
+  }
+
+  @ExceptionHandler(QualityRatingAlreadyExistsException.class)
+  ResponseEntity<ErrorResponse> qualityRatingAlreadyExists() {
+    return error(HttpStatus.CONFLICT, "RATING_ALREADY_EXISTS",
+        "A quality rating already exists for this workorder.", Map.of());
+  }
+
+  @ExceptionHandler(QualityRatingUserNotExecutorException.class)
+  ResponseEntity<ErrorResponse> qualityRatingUserNotExecutor() {
+    return error(HttpStatus.BAD_REQUEST, "RATING_USER_NOT_EXECUTOR",
+        "The rated technician must have executed the workorder.", Map.of());
+  }
+
+  @ExceptionHandler(QualityRatingValidationException.class)
+  ResponseEntity<ErrorResponse> qualityRatingValidation(QualityRatingValidationException exception) {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
+        exception.getFieldErrors());
   }
 
   @ExceptionHandler(InvalidStateTransitionException.class)

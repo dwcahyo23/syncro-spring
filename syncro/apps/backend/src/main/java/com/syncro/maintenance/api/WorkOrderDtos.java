@@ -5,6 +5,7 @@ import com.syncro.maintenance.domain.workorder.StopTimeReason;
 import com.syncro.maintenance.domain.workorder.TodoStatus;
 import com.syncro.maintenance.domain.workorder.WorkLogStoppedReason;
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
+import com.syncro.maintenance.domain.workorder.WorkRatingStatus;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -351,5 +352,56 @@ public final class WorkOrderDtos {
       int sortOrder,
       Instant createdAt,
       Instant updatedAt) {
+  }
+
+  // -------------------------------------------------------------------------
+  // Workorder quality ratings (17-5, blueprint C4-C6, FR-124)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Submit a workorder quality rating body (FR-124). The PRODUCTION_LEADER of the
+   * affected line rates a CLOSED maintenance workorder with per-criterion scores and
+   * per-technician scores via the pivot; the three headline scores are the legacy
+   * cleanliness/tidiness/speed columns. One rating per workorder, immutable after
+   * submission.
+   */
+  public record SubmitQualityRatingRequest(
+      @NotNull @Size(min = 1) List<UUID> technicianIds,
+      @NotNull Map<UUID, Integer> scores,
+      @Min(1) @Max(5) Integer cleanlinessScore,
+      @Min(1) @Max(5) Integer tidinessScore,
+      @Min(1) @Max(5) Integer speedScore) {
+  }
+
+  /** Read model for a per-criterion score of a workorder quality rating. */
+  public record QualityRatingScoreView(UUID criterionId, String criterionName, int score) {
+  }
+
+  /** Read model for a workorder quality rating with its scores and technicians. */
+  public record QualityRatingView(
+      UUID id,
+      String workOrderId,
+      WorkRatingStatus status,
+      Integer cleanlinessScore,
+      Integer tidinessScore,
+      Integer speedScore,
+      Instant dueAt,
+      Instant submittedAt,
+      UUID submittedBy,
+      String remarks,
+      List<QualityRatingScoreView> scores,
+      List<UUID> technicianIds) {
+  }
+
+  /** Read model for one workorder rating criterion row (C3). */
+  public record WorkOrderRatingCriterionView(
+      UUID id,
+      String name,
+      String description,
+      int minScore,
+      int maxScore,
+      UUID plantId,
+      boolean active,
+      int sortOrder) {
   }
 }

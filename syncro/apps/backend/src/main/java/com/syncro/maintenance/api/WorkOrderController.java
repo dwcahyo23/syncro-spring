@@ -54,6 +54,8 @@ import com.syncro.maintenance.application.WorkLogService.UpdateWorkLogCommand;
 import com.syncro.maintenance.application.WorkLogRatingService;
 import com.syncro.maintenance.application.WorkLogRatingService.CreateCriterionCommand;
 import com.syncro.maintenance.application.WorkLogRatingService.UpdateCriterionCommand;
+import com.syncro.maintenance.application.WorkOrderQualityRatingService;
+import com.syncro.maintenance.application.WorkOrderQualityRatingService.SubmitQualityRatingCommand;
 import com.syncro.maintenance.domain.workorder.RepairSession;
 import com.syncro.maintenance.domain.workorder.WorkOrder;
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
@@ -105,12 +107,14 @@ public class WorkOrderController {
   private final WorkAssignmentService workAssignments;
   private final WorkLogService workLogs;
   private final WorkLogRatingService workLogRatings;
+  private final WorkOrderQualityRatingService qualityRatings;
 
   public WorkOrderController(WorkOrderService workOrders, WorkOrderEvidenceService evidence,
       WorkOrderReportService report, WorkOrderTodoService todos, WorkOrderRatingService ratings,
       WorkOrderListService lists, WorkorderPrintReportService printReports,
       WorkorderSignatureService signatures, WorkOrderAckService acks,
-      WorkAssignmentService workAssignments, WorkLogService workLogs, WorkLogRatingService workLogRatings) {
+      WorkAssignmentService workAssignments, WorkLogService workLogs, WorkLogRatingService workLogRatings,
+      WorkOrderQualityRatingService qualityRatings) {
     this.workOrders = workOrders;
     this.evidence = evidence;
     this.report = report;
@@ -123,6 +127,7 @@ public class WorkOrderController {
     this.workAssignments = workAssignments;
     this.workLogs = workLogs;
     this.workLogRatings = workLogRatings;
+    this.qualityRatings = qualityRatings;
   }
 
   /**
@@ -393,6 +398,61 @@ public class WorkOrderController {
   public List<WorkOrderDtos.WorkLogRatingCriterionView> listWorkLogRatingCriteria() {
     return workLogRatings.listCriteria().stream()
         .map(WorkOrderController::toWorkLogRatingCriterionDto).toList();
+  }
+
+  // -------------------------------------------------------------------------
+  // Workorder quality ratings (17-5, blueprint C4-C6, FR-124)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Submits a workorder quality rating (FR-124). The PRODUCTION_LEADER of the affected
+   * line rates a CLOSED maintenance workorder; one rating per workorder, immutable after
+   * submission.
+   */
+  @Operation(operationId = "submitWorkOrderQualityRating", summary = "Submit a workorder quality rating (PRODUCTION_LEADER)")
+  @ApiResponses({
+      @ApiResponse(responseCode = "201", description = "Rating submitted",
+          content = @Content(schema = @Schema(implementation = WorkOrderDtos.QualityRatingView.class))),
+      @ApiResponse(responseCode = "400", description = "Workorder not closed or validation failed"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden — PRODUCTION_LEADER with plant access only"),
+      @ApiResponse(responseCode = "404", description = "Workorder or machine not found"),
+      @ApiResponse(responseCode = "409", description = "Rating already exists")
+  })
+  @PostMapping("/{id}/quality-rating")
+  public ResponseEntity<WorkOrderDtos.QualityRatingView> submitQualityRating(
+      @AuthenticationPrincipal AuthenticatedUser user, @PathVariable String id,
+      @Valid @RequestBody WorkOrderDtos.SubmitQualityRatingRequest request) {
+    var view = qualityRatings.submit(user, id,
+        new SubmitQualityRatingCommand(request.technicianIds(), request.scores(),
+            request.cleanlinessScore(), request.tidinessScore(), request.speedScore()));
+    return ResponseEntity.status(HttpStatus.CREATED).body(toQualityRatingDto(view));
+  }
+
+  /** Gets the current workorder quality rating, expiring PENDING ones past due (any authenticated user). */
+  @Operation(operationId = "getWorkOrderQualityRating", summary = "Get a workorder's quality rating (expires past-due PENDING)")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Rating returned",
+          content = @Content(schema = @Schema(implementation = WorkOrderDtos.QualityRatingView.class))),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "404", description = "Workorder or rating not found")
+  })
+  @GetMapping("/{id}/quality-rating")
+  public WorkOrderDtos.QualityRatingView getQualityRating(@PathVariable String id) {
+    return toQualityRatingDto(qualityRatings.get(id));
+  }
+
+  /** Lists workorder rating criteria ordered by sortOrder (any authenticated user). */
+  @Operation(operationId = "listWorkOrderRatingCriteria", summary = "List workorder quality rating criteria ordered by sortOrder")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Criteria returned",
+          content = @Content(schema = @Schema(implementation = WorkOrderDtos.WorkOrderRatingCriterionView.class))),
+      @ApiResponse(responseCode = "401", description = "Authentication required")
+  })
+  @GetMapping("/quality-rating-criteria")
+  public List<WorkOrderDtos.WorkOrderRatingCriterionView> listWorkOrderRatingCriteria() {
+    return qualityRatings.listCriteria().stream()
+        .map(WorkOrderController::toWorkOrderRatingCriterionDto).toList();
   }
 
   /** Drops an active assignment (soft-deactivate; 17-1, AD-17). */
@@ -949,6 +1009,22 @@ public class WorkOrderController {
     return new WorkOrderDtos.WorkLogRatingCriterionView(view.id(), view.name(), view.description(),
         view.minScore(), view.maxScore(), view.plantId(), view.active(), view.sortOrder(),
         view.createdAt(), view.updatedAt());
+  }
+
+  private static WorkOrderDtos.QualityRatingView toQualityRatingDto(
+      WorkOrderQualityRatingService.QualityRatingView view) {
+    var scoreViews = view.scores().stream()
+        .map(s -> new WorkOrderDtos.QualityRatingScoreView(s.criterionId(), s.criterionName(), s.score()))
+        .toList();
+    return new WorkOrderDtos.QualityRatingView(view.id(), view.workOrderId(), view.status(),
+        view.cleanlinessScore(), view.tidinessScore(), view.speedScore(), view.dueAt(),
+        view.submittedAt(), view.submittedBy(), view.remarks(), scoreViews, view.technicianIds());
+  }
+
+  private static WorkOrderDtos.WorkOrderRatingCriterionView toWorkOrderRatingCriterionDto(
+      WorkOrderQualityRatingService.WorkOrderRatingCriterionView view) {
+    return new WorkOrderDtos.WorkOrderRatingCriterionView(view.id(), view.name(), view.description(),
+        view.minScore(), view.maxScore(), view.plantId(), view.active(), view.sortOrder());
   }
 
   private static WorkOrderDtos.WorkAssignmentView toAssignmentDto(WorkAssignmentView view) {

@@ -138,4 +138,13 @@ public class WorkOrderQualityRatingEntity {
     this.status = WorkRatingStatus.SUBMITTED;
     this.updatedAt = updatedAt;
   }
+
+  /** Expiry transition (C4): marks the rating as EXPIRED when due_at passes unsubmitted. */
+  public void setStatus(WorkRatingStatus status) {
+    this.status = status;
+  }
+
+  public void setUpdatedAt(Instant updatedAt) {
+    this.updatedAt = updatedAt;
+  }
 }

@@ -235,6 +235,26 @@ workorder_worklog_criterion_paths := {
   "/api/v1/workorders/work-log-rating-criteria/*",
 }
 
+# Workorder quality ratings & criteria (story 17-5, blueprint C4-C6, FR-124): the same
+# five-role allow set as workorder_rating_paths (MANAGER_MAINTENANCE, SECTION_LEADER,
+# MAINTENANCE_LEADER, STAFF_MAINTENANCE, PRODUCTION_LEADER) — the service gate is
+# authoritative for who-can-rate (PRODUCTION_LEADER of the affected line for submission,
+# SUPER_ADMIN exempt). TECHNICIAN is the ratee, not a rater, and stays default-deny on
+# these paths. Reads (GET) flow through generic read_allowed (any authenticated user).
+workorder_quality_rating_paths := {
+  "/api/v1/workorders/*/quality-rating",
+}
+
+# Workorder quality rating criterion paths (story 17-5, blueprint C3, AD-14): mutations
+# are SUPER_ADMIN-only (the super_admin top-level bypass handles it, so no non-admin role
+# matches this set — default-deny for everyone else); the criteria list (GET
+# /quality-rating-criteria) is a pure read flowing through generic read_allowed. Mirrors
+# workorder_worklog_criterion_paths exactly.
+workorder_quality_criterion_paths := {
+  "/api/v1/workorders/quality-rating-criteria",
+  "/api/v1/workorders/quality-rating-criteria/*",
+}
+
 # Preventive programs & schedules (story 11-1): program mutations are allowed for the
 # four-role set (MANAGER_MAINTENANCE, SECTION_LEADER, MAINTENANCE_LEADER,
 # STAFF_MAINTENANCE) — the service gate is authoritative for scope (section leader needs
@@ -736,6 +756,40 @@ mutation_allowed if {
 # Work-log rating criteria (story 17-4): no non-admin role matches — mutations are
 # SUPER_ADMIN-only (the super_admin top-level bypass handles it); default-deny for
 # everyone else. Mirrors rating_dimension_paths.
+
+# Workorder quality ratings & criteria (story 17-5): same five-role allow set as
+# workorder_rating_paths — the service gate is authoritative for who-can-rate
+# (PRODUCTION_LEADER of the affected line; SUPER_ADMIN exempt). Reads (GET) flow
+# through generic read_allowed.
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(workorder_quality_rating_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(workorder_quality_rating_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(workorder_quality_rating_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STAFF_MAINTENANCE"
+  is_mutation
+  path_matches(workorder_quality_rating_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "PRODUCTION_LEADER"
+  is_mutation
+  path_matches(workorder_quality_rating_paths)
+}
 
 # Work logs (story 17-2): same five-role allow set as sessions/transitions — the
 # assigned executor or an in-scope leader may create/update work logs; scope is
