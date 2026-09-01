@@ -333,4 +333,75 @@ WHERE p.code = 'GM1'
   AND lower(m.code) = 'bf-08410'
   AND NOT EXISTS (SELECT 1 FROM machine_responsibilities r WHERE r.machine_id = m.id AND r.user_id = u.id);
 
+-- 10. Baseline system roles, menu features, domain contexts, and role-permission mappings
+--     (story 16-2: data-driven role model). These are initial configuration data — the
+--     SUPER_ADMIN role-mapping UI (16-5) will allow editing them.
+INSERT INTO system_roles (id, code, name, level, is_active, description, created_at, updated_at)
+SELECT gen_random_uuid(), 'ADMIN', 'Administrator', 100, TRUE, 'Full system access', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM system_roles WHERE code = 'ADMIN');
+
+INSERT INTO system_roles (id, code, name, level, is_active, description, created_at, updated_at)
+SELECT gen_random_uuid(), 'MAINTENANCE_MANAGER', 'Maintenance Manager', 80, TRUE, 'Manages maintenance operations', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM system_roles WHERE code = 'MAINTENANCE_MANAGER');
+
+INSERT INTO system_roles (id, code, name, level, is_active, description, created_at, updated_at)
+SELECT gen_random_uuid(), 'SECTION_LEADER', 'Section Leader', 60, TRUE, 'Leads a machine section', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM system_roles WHERE code = 'SECTION_LEADER');
+
+INSERT INTO system_roles (id, code, name, level, is_active, description, created_at, updated_at)
+SELECT gen_random_uuid(), 'TECHNICIAN', 'Technician', 40, TRUE, 'Performs maintenance work', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM system_roles WHERE code = 'TECHNICIAN');
+
+INSERT INTO system_roles (id, code, name, level, is_active, description, created_at, updated_at)
+SELECT gen_random_uuid(), 'VIEWER', 'Viewer', 20, TRUE, 'Read-only access', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM system_roles WHERE code = 'VIEWER');
+
+INSERT INTO menu_features (id, code, module, name, is_active, created_at, updated_at)
+SELECT gen_random_uuid(), 'cmms:dashboard:read', 'cmms', 'View Dashboard', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM menu_features WHERE code = 'cmms:dashboard:read');
+
+INSERT INTO menu_features (id, code, module, name, is_active, created_at, updated_at)
+SELECT gen_random_uuid(), 'cmms:wo:read', 'cmms', 'View Work Orders', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM menu_features WHERE code = 'cmms:wo:read');
+
+INSERT INTO menu_features (id, code, module, name, is_active, created_at, updated_at)
+SELECT gen_random_uuid(), 'cmms:wo:write', 'cmms', 'Create/Edit Work Orders', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM menu_features WHERE code = 'cmms:wo:write');
+
+INSERT INTO menu_features (id, code, module, name, is_active, created_at, updated_at)
+SELECT gen_random_uuid(), 'cmms:master-data:read', 'cmms', 'View Master Data', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM menu_features WHERE code = 'cmms:master-data:read');
+
+INSERT INTO menu_features (id, code, module, name, is_active, created_at, updated_at)
+SELECT gen_random_uuid(), 'cmms:master-data:write', 'cmms', 'Create/Edit Master Data', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM menu_features WHERE code = 'cmms:master-data:write');
+
+INSERT INTO menu_features (id, code, module, name, is_active, created_at, updated_at)
+SELECT gen_random_uuid(), 'admin:users:read', 'admin', 'View Users', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM menu_features WHERE code = 'admin:users:read');
+
+INSERT INTO menu_features (id, code, module, name, is_active, created_at, updated_at)
+SELECT gen_random_uuid(), 'admin:users:write', 'admin', 'Create/Edit Users', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM menu_features WHERE code = 'admin:users:write');
+
+INSERT INTO menu_features (id, code, module, name, is_active, created_at, updated_at)
+SELECT gen_random_uuid(), 'admin:roles:read', 'admin', 'View Role Configuration', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM menu_features WHERE code = 'admin:roles:read');
+
+INSERT INTO menu_features (id, code, module, name, is_active, created_at, updated_at)
+SELECT gen_random_uuid(), 'admin:roles:write', 'admin', 'Edit Role Configuration', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM menu_features WHERE code = 'admin:roles:write');
+
+INSERT INTO domain_contexts (id, code, name, created_at, updated_at)
+SELECT gen_random_uuid(), 'maintenance', 'Maintenance', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM domain_contexts WHERE code = 'maintenance');
+
+INSERT INTO domain_contexts (id, code, name, created_at, updated_at)
+SELECT gen_random_uuid(), 'production', 'Production', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM domain_contexts WHERE code = 'production');
+
+INSERT INTO domain_contexts (id, code, name, created_at, updated_at)
+SELECT gen_random_uuid(), 'inventory', 'Inventory', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM domain_contexts WHERE code = 'inventory');
+
 COMMIT;

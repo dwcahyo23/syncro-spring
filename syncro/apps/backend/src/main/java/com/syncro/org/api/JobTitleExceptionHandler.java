@@ -3,6 +3,7 @@ package com.syncro.org.api;
 import com.syncro.org.application.JobTitleService.DuplicateJobTitleCodeException;
 import com.syncro.org.application.JobTitleService.JobTitleDataIntegrityException;
 import com.syncro.org.application.JobTitleService.JobTitleMutationForbiddenException;
+import com.syncro.org.application.JobTitleService.JobTitleNotFoundException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -54,6 +55,11 @@ public class JobTitleExceptionHandler {
   @ExceptionHandler(JobTitleMutationForbiddenException.class)
   ResponseEntity<ErrorResponse> forbidden() {
     return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "You do not have permission to access this resource.", Map.of());
+  }
+
+  @ExceptionHandler(JobTitleNotFoundException.class)
+  ResponseEntity<ErrorResponse> notFound() {
+    return error(HttpStatus.NOT_FOUND, "JOB_TITLE_NOT_FOUND", "Job title was not found.", Map.of());
   }
 
   @ExceptionHandler(JobTitleDataIntegrityException.class)

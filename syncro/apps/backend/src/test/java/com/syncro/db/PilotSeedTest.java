@@ -100,6 +100,17 @@ class PilotSeedTest {
     assertThat(area.get("code")).isEqualTo("FLOOR-1");
     assertThat(area.get("plant_code")).isEqualTo("GM1");
 
+    // Story 16-2 baseline role configuration data
+    assertThat(jdbc.queryForObject(
+        "SELECT count(*) FROM system_roles WHERE code IN ('ADMIN','MAINTENANCE_MANAGER','SECTION_LEADER','TECHNICIAN','VIEWER')",
+        Long.class)).isEqualTo(5L);
+    assertThat(jdbc.queryForObject(
+        "SELECT count(*) FROM menu_features WHERE code LIKE 'cmms:%' OR code LIKE 'admin:%'",
+        Long.class)).isEqualTo(9L);
+    assertThat(jdbc.queryForObject(
+        "SELECT count(*) FROM domain_contexts WHERE code IN ('maintenance','production','inventory')",
+        Long.class)).isEqualTo(3L);
+
     // The seed reuses the V13/V15 ELECTRIC category row instead of duplicating it
     Long electricCategories = jdbc.queryForObject(
         "SELECT count(*) FROM sparepart_taxonomy WHERE dimension = 'CATEGORY' AND name = 'Electric'",
@@ -275,6 +286,9 @@ class PilotSeedTest {
     expected.merge("machine_sparepart_installations", 1L, Long::sum);
     expected.merge("inventory_locations", 1L, Long::sum);
     expected.merge("inventory_stock_balances", 1L, Long::sum);
+    expected.merge("system_roles", 5L, Long::sum);
+    expected.merge("menu_features", 9L, Long::sum);
+    expected.merge("domain_contexts", 3L, Long::sum);
     expected.merge("auth_users", 3L, Long::sum);
     expected.merge("auth_user_plant_assignments", 3L, Long::sum);
     expected.merge("machine_responsibilities", 3L, Long::sum);
@@ -405,6 +419,9 @@ class PilotSeedTest {
         "auth_users",
         "auth_user_plant_assignments",
         "machine_responsibilities",
+        "system_roles",
+        "menu_features",
+        "domain_contexts",
         "waha_templates",
         "audit_log")) {
       counts.put(table, jdbc.queryForObject("SELECT count(*) FROM " + table, Long.class));

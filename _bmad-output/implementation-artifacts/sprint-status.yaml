@@ -227,7 +227,7 @@ development_status:
   # Epic 16: Org & Identity Maturation
   epic-16: in-progress
   16-1-department-machine-area: done
-  16-2-data-driven-roles: backlog
+  16-2-data-driven-roles: done
   16-3-user-job-role-bindings: backlog
   16-4-auth-user-extension-plant-calendar: backlog
   16-5-opa-enrichment-role-mapping-ui: backlog
