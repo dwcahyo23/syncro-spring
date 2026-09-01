@@ -122,6 +122,16 @@ sparepart_stock_paths := {
   "/api/v1/sparepart-stock/*/adjust",
 }
 
+# Inventory locations (story 18-2, blueprint E1): location lifecycle mutations for
+# MANAGER_MAINTENANCE/INVENTORY_MAINTENANCE (SUPER_ADMIN via the generic bypass;
+# STOREKEEPER deliberately NOT granted). The surface is list/create at the collection
+# path and get/update at /{id} — a single `*` matches one segment, so no deeper
+# subpaths exist. Reads (GET) flow through generic read_allowed.
+inventory_location_paths := {
+  "/api/v1/inventory-locations",
+  "/api/v1/inventory-locations/*",
+}
+
 workorder_assign_paths := {
   "/api/v1/workorders/*/assign",
 }
@@ -492,6 +502,21 @@ mutation_allowed if {
   input.subject.roles[_] == "STOREKEEPER"
   is_mutation
   path_matches(sparepart_stock_paths)
+}
+
+# Inventory location mutations (story 18-2): MANAGER_MAINTENANCE/INVENTORY_MAINTENANCE
+# (SUPER_ADMIN via the generic bypass). STOREKEEPER/TECHNICIAN stay default-deny on
+# these paths — the service gate is authoritative for plant scope.
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(inventory_location_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "INVENTORY_MAINTENANCE"
+  is_mutation
+  path_matches(inventory_location_paths)
 }
 
 # Assign: leadership roles only (STAFF_MAINTENANCE and PRODUCTION_LEADER excluded).

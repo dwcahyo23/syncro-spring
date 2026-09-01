@@ -1169,3 +1169,9 @@ origin: code review pass 2 (blind-hunter), 2026-09-02
 location: syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartService.java
 reason: Pre-existing pattern — code = prefix + serial existed before 18-1; the change only mirrors it into bom_code. A long-code machine surfaces as 409 SPAREPART_DATA_INTEGRITY_VIOLATION rather than a clean 400.
 status: open
+
+### DW-145: FR-161 allowed-actions *.write mirror not extended for inventory roles
+origin: code review of spec-18-2-inventory-locations (blind-hunter), 2026-09-02
+location: syncro/authz/policy/authz.rego (actions set, ~lines 955-975)
+reason: The actions set grants *.write only to MANAGER/SECTION_LEADER/MAINTENANCE_LEADER; INVENTORY_MAINTENANCE now mutates inventory-locations (and sparepart-stock) but has no mirror entry, so the menu/permission projection disagrees with enforcement. Pre-existing pattern (also true for sparepart-stock); needs one focused pass across all inventory roles.
+status: open

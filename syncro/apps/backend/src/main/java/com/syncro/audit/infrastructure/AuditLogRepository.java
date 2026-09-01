@@ -11,6 +11,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface AuditLogRepository extends JpaRepository<AuditLogEntity, UUID> {
+  /** Audit trail for one entity, oldest first (story 18-2 test evidence). */
+  List<AuditLogEntity> findByEntityIdOrderByCreatedAtAsc(UUID entityId);
+
   @Query("""
       select entry from AuditLogEntity entry
       where (:entityType is null or entry.entityType = :entityType)

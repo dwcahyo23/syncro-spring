@@ -55,6 +55,21 @@ public class InventoryLocationEntity {
     this.updatedAt = updatedAt;
   }
 
+  /**
+   * Full PUT replacement of the editable columns (story 18-2). Encapsulated so the
+   * lifecycle stays in one place: {@code id}, {@code plantId} and {@code createdAt}
+   * are immutable, and there is no generic setter for {@code active}. Deactivation is
+   * an {@code active=false} update, not a separate transition.
+   */
+  public void update(String code, String name, String description, boolean active,
+      Instant updatedAt) {
+    this.code = code;
+    this.name = name;
+    this.description = description;
+    this.active = active;
+    this.updatedAt = updatedAt;
+  }
+
   public UUID getId() {
     return id;
   }

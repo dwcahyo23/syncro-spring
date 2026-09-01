@@ -1,0 +1,1430 @@
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryLocationController.java b/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryLocationController.java
+new file mode 100644
+index 0000000..0e08ed0
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryLocationController.java
+@@ -0,0 +1,120 @@
++package com.syncro.inventory.api;
++
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.inventory.api.InventoryLocationDtos.CreateInventoryLocationRequest;
++import com.syncro.inventory.api.InventoryLocationDtos.InventoryLocationListView;
++import com.syncro.inventory.api.InventoryLocationDtos.InventoryLocationView;
++import com.syncro.inventory.api.InventoryLocationDtos.UpdateInventoryLocationRequest;
++import com.syncro.inventory.application.InventoryLocationService;
++import com.syncro.inventory.application.InventoryLocationService.CreateLocationCommand;
++import com.syncro.inventory.application.InventoryLocationService.UpdateLocationCommand;
++import io.swagger.v3.oas.annotations.Operation;
++import io.swagger.v3.oas.annotations.responses.ApiResponse;
++import io.swagger.v3.oas.annotations.responses.ApiResponses;
++import jakarta.validation.Valid;
++import java.util.UUID;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.security.core.annotation.AuthenticationPrincipal;
++import org.springframework.validation.annotation.Validated;
++import org.springframework.web.bind.annotation.GetMapping;
++import org.springframework.web.bind.annotation.PathVariable;
++import org.springframework.web.bind.annotation.PostMapping;
++import org.springframework.web.bind.annotation.PutMapping;
++import org.springframework.web.bind.annotation.RequestBody;
++import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RequestParam;
++import org.springframework.web.bind.annotation.RestController;
++
++/**
++ * Inventory-locations REST surface (story 18-2). List requires {@code plantId} with
++ * an optional {@code activeOnly} filter; create returns 201; update is a full PUT
++ * over code/name/description with an optional isActive flag. NO delete endpoint —
++ * RESTRICT FKs from balances/transfers/reservations make deactivation the lifecycle
++ * end. Permission and uniqueness decisions live in the service; the controller only
++ * binds, delegates and maps.
++ */
++@Validated
++@RestController
++@RequestMapping("/api/v1/inventory-locations")
++public class InventoryLocationController {
++
++  private final InventoryLocationService service;
++
++  public InventoryLocationController(InventoryLocationService service) {
++    this.service = service;
++  }
++
++  @Operation(operationId = "listInventoryLocations",
++      summary = "List inventory locations for a plant (optional activeOnly filter)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Locations returned"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "PLANT_NOT_FOUND")
++  })
++  @GetMapping
++  public InventoryLocationListView list(@AuthenticationPrincipal AuthenticatedUser user,
++      @RequestParam UUID plantId,
++      @RequestParam(defaultValue = "false") boolean activeOnly) {
++    var items = service.list(user, plantId, activeOnly).stream()
++        .map(InventoryLocationController::toView)
++        .toList();
++    return new InventoryLocationListView(items);
++  }
++
++  @Operation(operationId = "getInventoryLocation", summary = "Get one inventory location by id")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Location returned"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "INVENTORY_LOCATION_NOT_FOUND")
++  })
++  @GetMapping("/{id}")
++  public InventoryLocationView get(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id) {
++    return toView(service.get(user, id));
++  }
++
++  @Operation(operationId = "createInventoryLocation",
++      summary = "Create an inventory location (is_active=true, audit CREATE)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "201", description = "Location created"),
++      @ApiResponse(responseCode = "400", description = "VALIDATION_ERROR"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "PLANT_NOT_FOUND"),
++      @ApiResponse(responseCode = "409", description = "DUPLICATE_LOCATION")
++  })
++  @PostMapping
++  public ResponseEntity<InventoryLocationView> create(@AuthenticationPrincipal AuthenticatedUser user,
++      @Valid @RequestBody CreateInventoryLocationRequest request) {
++    var created = service.create(user, new CreateLocationCommand(request.plantId(),
++        request.code(), request.name(), request.description()));
++    return ResponseEntity.status(HttpStatus.CREATED).body(toView(created));
++  }
++
++  @Operation(operationId = "updateInventoryLocation",
++      summary = "Update an inventory location (rename / description / activate-deactivate, audit UPDATE)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Location updated"),
++      @ApiResponse(responseCode = "400", description = "VALIDATION_ERROR"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "INVENTORY_LOCATION_NOT_FOUND"),
++      @ApiResponse(responseCode = "409", description = "DUPLICATE_LOCATION")
++  })
++  @PutMapping("/{id}")
++  public InventoryLocationView update(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id, @Valid @RequestBody UpdateInventoryLocationRequest request) {
++    return toView(service.update(user, id,
++        new UpdateLocationCommand(request.code(), request.name(), request.description(),
++            request.isActive())));
++  }
++
++  private static InventoryLocationView toView(InventoryLocationService.LocationView location) {
++    return new InventoryLocationView(location.id(), location.plantId(), location.code(),
++        location.name(), location.description(), location.active(), location.createdAt(),
++        location.updatedAt());
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryLocationDtos.java b/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryLocationDtos.java
+new file mode 100644
+index 0000000..43c3e68
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryLocationDtos.java
+@@ -0,0 +1,63 @@
++package com.syncro.inventory.api;
++
++import io.swagger.v3.oas.annotations.media.Schema;
++import jakarta.validation.constraints.NotBlank;
++import jakarta.validation.constraints.NotNull;
++import jakarta.validation.constraints.Size;
++import java.time.Instant;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++
++/**
++ * Request/response records for the inventory-locations API (story 18-2). camelCase
++ * JSON; UUID ids are opaque. There is no delete request — deactivation is the
++ * lifecycle end (PUT {@code isActive=false}).
++ */
++public final class InventoryLocationDtos {
++  private InventoryLocationDtos() {
++  }
++
++  /** POST /api/v1/inventory-locations. */
++  @Schema(description = "Create a named inventory location for a plant")
++  public record CreateInventoryLocationRequest(
++      @NotNull UUID plantId,
++      @NotBlank @Size(max = 64) String code,
++      @NotBlank @Size(max = 255) String name,
++      @Size(max = 1000) String description) {
++  }
++
++  /**
++   * PUT /api/v1/inventory-locations/{id} — replaceable fields; an absent
++   * code/name/description keeps its current value and an absent {@code isActive}
++   * keeps the current flag, so a deactivate-only body is just
++   * {@code {"isActive": false}} (story 18-2 matrix). Provided code/name must not be
++   * blank.
++   */
++  @Schema(description = "Update an inventory location (rename / description / activate-deactivate)")
++  public record UpdateInventoryLocationRequest(
++      @Size(min = 1, max = 64) String code,
++      @Size(min = 1, max = 255) String name,
++      @Size(max = 1000) String description,
++      Boolean isActive) {
++  }
++
++  /** Location read model. */
++  public record InventoryLocationView(
++      UUID id,
++      UUID plantId,
++      String code,
++      String name,
++      String description,
++      boolean isActive,
++      Instant createdAt,
++      Instant updatedAt) {
++  }
++
++  public record InventoryLocationListView(List<InventoryLocationView> items) {
++  }
++
++  public record ErrorResponse(String code, String message, Map<String, String> fieldErrors,
++      String timestamp, String traceId) {
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryLocationExceptionHandler.java b/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryLocationExceptionHandler.java
+new file mode 100644
+index 0000000..fd4941a
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryLocationExceptionHandler.java
+@@ -0,0 +1,116 @@
++package com.syncro.inventory.api;
++
++import com.syncro.inventory.api.InventoryLocationDtos.ErrorResponse;
++import com.syncro.inventory.application.InventoryLocationService.DuplicateLocationException;
++import com.syncro.inventory.application.InventoryLocationService.InventoryLocationForbiddenException;
++import com.syncro.inventory.application.InventoryLocationService.InventoryLocationNotFoundException;
++import com.syncro.inventory.application.InventoryLocationService.InventoryLocationValidationException;
++import com.syncro.inventory.application.InventoryLocationService.PlantNotFoundForLocationException;
++import jakarta.validation.ConstraintViolationException;
++import java.time.Clock;
++import java.time.Instant;
++import java.util.LinkedHashMap;
++import java.util.Map;
++import java.util.UUID;
++import org.springframework.core.Ordered;
++import org.springframework.core.annotation.Order;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.http.converter.HttpMessageNotReadableException;
++import org.springframework.web.bind.MethodArgumentNotValidException;
++import org.springframework.web.bind.annotation.ExceptionHandler;
++import org.springframework.web.bind.annotation.RequestParam;
++import org.springframework.web.bind.annotation.RestControllerAdvice;
++import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
++import org.springframework.web.bind.MissingServletRequestParameterException;
++
++/**
++ * Error mapping for the inventory-locations API (story 18-2). One stable shape
++ * (code/message/fieldErrors/timestamp/traceId) — machine-readable codes:
++ * DUPLICATE_LOCATION (409), INVENTORY_LOCATION_NOT_FOUND (404), PLANT_NOT_FOUND (404),
++ * FORBIDDEN (403), VALIDATION_ERROR (400).
++ */
++@Order(Ordered.HIGHEST_PRECEDENCE)
++@RestControllerAdvice(assignableTypes = InventoryLocationController.class)
++public class InventoryLocationExceptionHandler {
++
++  private final Clock clock;
++
++  public InventoryLocationExceptionHandler(Clock clock) {
++    this.clock = clock;
++  }
++
++  @ExceptionHandler(MethodArgumentNotValidException.class)
++  ResponseEntity<ErrorResponse> validationError(MethodArgumentNotValidException exception) {
++    var fieldErrors = new LinkedHashMap<String, String>();
++    for (var error : exception.getBindingResult().getFieldErrors()) {
++      fieldErrors.putIfAbsent(error.getField(), "Invalid value.");
++    }
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", fieldErrors);
++  }
++
++  @ExceptionHandler(ConstraintViolationException.class)
++  ResponseEntity<ErrorResponse> constraintViolation(ConstraintViolationException exception) {
++    var fieldErrors = new LinkedHashMap<String, String>();
++    for (var violation : exception.getConstraintViolations()) {
++      fieldErrors.putIfAbsent(violation.getPropertyPath().toString(), violation.getMessage());
++    }
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", fieldErrors);
++  }
++
++  @ExceptionHandler(InventoryLocationValidationException.class)
++  ResponseEntity<ErrorResponse> locationValidation(InventoryLocationValidationException exception) {
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
++        exception.getFieldErrors());
++  }
++
++  @ExceptionHandler(HttpMessageNotReadableException.class)
++  ResponseEntity<ErrorResponse> malformedJson() {
++    return error(HttpStatus.BAD_REQUEST, "MALFORMED_JSON", "Request body is malformed.", Map.of());
++  }
++
++  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
++  ResponseEntity<ErrorResponse> invalidPathValue(MethodArgumentTypeMismatchException exception) {
++    if (exception.getParameter() != null
++        && exception.getParameter().hasParameterAnnotation(RequestParam.class)) {
++      return error(HttpStatus.BAD_REQUEST, "INVALID_QUERY_VALUE", "Query value is invalid.", Map.of());
++    }
++    return error(HttpStatus.BAD_REQUEST, "INVALID_PATH_VALUE", "Path value is invalid.", Map.of());
++  }
++
++  @ExceptionHandler(MissingServletRequestParameterException.class)
++  ResponseEntity<ErrorResponse> missingParameter(MissingServletRequestParameterException exception) {
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
++        Map.of(exception.getParameterName(), "Invalid value."));
++  }
++
++  @ExceptionHandler(InventoryLocationForbiddenException.class)
++  ResponseEntity<ErrorResponse> forbidden() {
++    return error(HttpStatus.FORBIDDEN, "FORBIDDEN",
++        "You do not have permission to access this resource.", Map.of());
++  }
++
++  @ExceptionHandler(InventoryLocationNotFoundException.class)
++  ResponseEntity<ErrorResponse> locationNotFound() {
++    return error(HttpStatus.NOT_FOUND, "INVENTORY_LOCATION_NOT_FOUND",
++        "Inventory location was not found.", Map.of());
++  }
++
++  @ExceptionHandler(PlantNotFoundForLocationException.class)
++  ResponseEntity<ErrorResponse> plantNotFound() {
++    return error(HttpStatus.NOT_FOUND, "PLANT_NOT_FOUND", "Plant was not found.", Map.of());
++  }
++
++  @ExceptionHandler(DuplicateLocationException.class)
++  ResponseEntity<ErrorResponse> duplicateLocation() {
++    return error(HttpStatus.CONFLICT, "DUPLICATE_LOCATION",
++        "An inventory location with this code already exists for the plant.", Map.of());
++  }
++
++  private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message,
++      Map<String, String> fieldErrors) {
++    return ResponseEntity.status(status)
++        .body(new ErrorResponse(code, message, fieldErrors, Instant.now(clock).toString(),
++            UUID.randomUUID().toString()));
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/inventory/application/InventoryLocationService.java b/syncro/apps/backend/src/main/java/com/syncro/inventory/application/InventoryLocationService.java
+new file mode 100644
+index 0000000..5469aab
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/inventory/application/InventoryLocationService.java
+@@ -0,0 +1,273 @@
++package com.syncro.inventory.application;
++
++import com.syncro.audit.application.AuditLogWriter;
++import com.syncro.audit.application.AuditRecord;
++import com.syncro.audit.domain.AuditAction;
++import com.syncro.audit.domain.AuditEntityType;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
++import com.syncro.auth.infrastructure.PlantRepository;
++import com.syncro.inventory.infrastructure.db.InventoryLocationEntity;
++import com.syncro.inventory.infrastructure.db.InventoryLocationRepository;
++import java.time.Clock;
++import java.time.Instant;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++import org.springframework.dao.DataIntegrityViolationException;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++
++/**
++ * Inventory-location lifecycle service (blueprint E1, story 18-2). Named per-plant
++ * storage locations: create, update (rename / description / activate-deactivate),
++ * list and get. There is deliberately NO delete — balances, transfers and
++ * reservations reference locations with RESTRICT FKs, so deactivation is the
++ * lifecycle end.
++ *
++ * <p>Gates (epic-18 AC): mutations require SUPER_ADMIN/MANAGER_MAINTENANCE/
++ * INVENTORY_MAINTENANCE with the target plant in the user's assignment scope
++ * (SUPER_ADMIN exempt) — STOREKEEPER is deliberately NOT granted location
++ * management. Reads require a plant assignment (or SUPER_ADMIN). The gate idiom
++ * mirrors {@link InventoryStockService}. Every mutation writes an audit record
++ * ({@link AuditEntityType#INVENTORY_LOCATION}) with previous + new values.
++ *
++ * <p>Uniqueness: (plant, code) case-insensitive pre-check plus the
++ * {@code uq_inventory_locations_plant_code} constraint as the race backstop, both
++ * surfacing as 409 DUPLICATE_LOCATION. The seeded default location ("GUDANG-UTAMA")
++ * stays resolvable by {@link InventoryStockService}; deactivating it is allowed
++ * (soft) but the code lookup itself is untouched.
++ */
++@Service
++public class InventoryLocationService {
++
++  private static final String LOCATION_CODE_UNIQUE_CONSTRAINT = "uq_inventory_locations_plant_code";
++
++  private final InventoryLocationRepository locations;
++  private final PlantRepository plants;
++  private final AuthUserPlantAssignmentRepository assignments;
++  private final AuditLogWriter auditLog;
++  private final Clock clock;
++
++  public InventoryLocationService(InventoryLocationRepository locations, PlantRepository plants,
++      AuthUserPlantAssignmentRepository assignments, AuditLogWriter auditLog, Clock clock) {
++    this.locations = locations;
++    this.plants = plants;
++    this.assignments = assignments;
++    this.auditLog = auditLog;
++    this.clock = clock;
++  }
++
++  /** POST — create an active location; (plant, code) must be unused (case-insensitive). */
++  @Transactional
++  public LocationView create(AuthenticatedUser user, CreateLocationCommand command) {
++    requireMutationAccess(user, command.plantId());
++    var plant = plants.findById(command.plantId())
++        .orElseThrow(PlantNotFoundForLocationException::new);
++    var code = requireText(command.code(), "code", 64);
++    var name = requireText(command.name(), "name", 255);
++    var description = normalizeOptional(command.description(), "description", 1000);
++    if (locations.findByPlantIdAndCodeIgnoreCase(plant.getId(), code).isPresent()) {
++      throw new DuplicateLocationException();
++    }
++    var now = Instant.now(clock);
++    var saved = save(new InventoryLocationEntity(UUID.randomUUID(), plant.getId(), code, name,
++        description, true, now, now));
++    auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.INVENTORY_LOCATION,
++        saved.getId(), entityLabel(saved, plant.getCode()), plant.getId(), null,
++        locationValues(saved), null));
++    return toView(saved);
++  }
++
++  /**
++   * PUT — provided fields are replaced, absent fields keep their current value
++   * (InventoryStockService.update idiom), so {@code {"isActive": false}} alone is a
++   * valid deactivation. Unknown id → 404; a code already used by another location in
++   * the plant → 409 DUPLICATE_LOCATION.
++   */
++  @Transactional
++  public LocationView update(AuthenticatedUser user, UUID locationId,
++      UpdateLocationCommand command) {
++    var location = locations.findById(locationId)
++        .orElseThrow(InventoryLocationNotFoundException::new);
++    requireMutationAccess(user, location.getPlantId());
++    var plant = plants.findById(location.getPlantId())
++        .orElseThrow(PlantNotFoundForLocationException::new);
++    var code = command.code() != null ? requireText(command.code(), "code", 64) : location.getCode();
++    var name = command.name() != null ? requireText(command.name(), "name", 255) : location.getName();
++    var description = command.description() != null
++        ? normalizeOptional(command.description(), "description", 1000)
++        : location.getDescription();
++    if (locations.existsByPlantIdAndCodeIgnoreCaseAndIdNot(location.getPlantId(), code, locationId)) {
++      throw new DuplicateLocationException();
++    }
++    var previous = locationValues(location);
++    var now = Instant.now(clock);
++    location.update(code, name, description,
++        command.active() != null ? command.active() : location.isActive(), now);
++    var saved = save(location);
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.INVENTORY_LOCATION,
++        saved.getId(), entityLabel(saved, plant.getCode()), saved.getPlantId(), previous,
++        locationValues(saved), null));
++    return toView(saved);
++  }
++
++  /** GET list — only the requested plant, ordered by name; activeOnly filters is_active. */
++  @Transactional(readOnly = true)
++  public List<LocationView> list(AuthenticatedUser user, UUID plantId, boolean activeOnly) {
++    requireReadAccess(user, plantId);
++    if (!plants.existsById(plantId)) {
++      throw new PlantNotFoundForLocationException();
++    }
++    var result = activeOnly
++        ? locations.findAllByPlantIdAndActiveTrueOrderByNameAsc(plantId)
++        : locations.findAllByPlantIdOrderByNameAsc(plantId);
++    return result.stream().map(InventoryLocationService::toView).toList();
++  }
++
++  /** GET one — read gate applies to the location's plant. */
++  @Transactional(readOnly = true)
++  public LocationView get(AuthenticatedUser user, UUID locationId) {
++    var location = locations.findById(locationId)
++        .orElseThrow(InventoryLocationNotFoundException::new);
++    requireReadAccess(user, location.getPlantId());
++    return toView(location);
++  }
++
++  // -------------------------------------------------------------------------
++  // Gates (InventoryStockService idiom)
++  // -------------------------------------------------------------------------
++
++  private void requireMutationAccess(AuthenticatedUser user, UUID plantId) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    if (user.applicationRole() != ApplicationRole.MANAGER_MAINTENANCE
++        && user.applicationRole() != ApplicationRole.INVENTORY_MAINTENANCE) {
++      throw new InventoryLocationForbiddenException();
++    }
++    if (!plantAssigned(user, plantId)) {
++      throw new InventoryLocationForbiddenException();
++    }
++  }
++
++  private void requireReadAccess(AuthenticatedUser user, UUID plantId) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    if (!plantAssigned(user, plantId)) {
++      throw new InventoryLocationForbiddenException();
++    }
++  }
++
++  private boolean plantAssigned(AuthenticatedUser user, UUID plantId) {
++    return assignments.findByAuthUserId(UUID.fromString(user.id())).stream()
++        .anyMatch(assignment -> assignment.getPlantId().equals(plantId));
++  }
++
++  // -------------------------------------------------------------------------
++  // Helpers
++  // -------------------------------------------------------------------------
++
++  /** Race backstop: the plain UNIQUE (plant_id, code) maps to DUPLICATE_LOCATION. */
++  private InventoryLocationEntity save(InventoryLocationEntity location) {
++    try {
++      return locations.saveAndFlush(location);
++    } catch (DataIntegrityViolationException exception) {
++      var message = String.valueOf(exception.getMostSpecificCause().getMessage()).toLowerCase();
++      if (message.contains(LOCATION_CODE_UNIQUE_CONSTRAINT)) {
++        throw new DuplicateLocationException();
++      }
++      throw exception;
++    }
++  }
++
++  private static String requireText(String value, String field, int maxLength) {
++    var trimmed = value == null ? "" : value.trim();
++    if (trimmed.isEmpty()) {
++      throw new InventoryLocationValidationException(
++          Map.of(field, field + " must not be blank."));
++    }
++    if (trimmed.length() > maxLength) {
++      throw new InventoryLocationValidationException(
++          Map.of(field, field + " must be at most " + maxLength + " characters."));
++    }
++    return trimmed;
++  }
++
++  private static String normalizeOptional(String value, String field, int maxLength) {
++    if (value == null) {
++      return null;
++    }
++    var trimmed = value.trim();
++    if (trimmed.length() > maxLength) {
++      throw new InventoryLocationValidationException(
++          Map.of(field, field + " must be at most " + maxLength + " characters."));
++    }
++    return trimmed.isEmpty() ? null : trimmed;
++  }
++
++  private static String entityLabel(InventoryLocationEntity location, String plantCode) {
++    return location.getCode() + " @" + plantCode;
++  }
++
++  private static Map<String, Object> locationValues(InventoryLocationEntity location) {
++    var values = new LinkedHashMap<String, Object>();
++    values.put("plantId", location.getPlantId().toString());
++    values.put("code", location.getCode());
++    values.put("name", location.getName());
++    values.put("description", location.getDescription());
++    values.put("active", location.isActive());
++    return values;
++  }
++
++  private static LocationView toView(InventoryLocationEntity location) {
++    return new LocationView(location.getId(), location.getPlantId(), location.getCode(),
++        location.getName(), location.getDescription(), location.isActive(),
++        location.getCreatedAt(), location.getUpdatedAt());
++  }
++
++  /** POST command. */
++  public record CreateLocationCommand(UUID plantId, String code, String name, String description) {
++  }
++
++  /** PUT command — active null keeps the current flag (partial lifecycle toggle). */
++  public record UpdateLocationCommand(String code, String name, String description, Boolean active) {
++  }
++
++  /** Service read model (the api layer maps it to the response DTO). */
++  public record LocationView(UUID id, UUID plantId, String code, String name, String description,
++      boolean active, Instant createdAt, Instant updatedAt) {
++  }
++
++  /** (plant, code) already used — pre-check or DB constraint backstop → 409. */
++  public static class DuplicateLocationException extends RuntimeException {
++  }
++
++  /** Unknown location id → 404 INVENTORY_LOCATION_NOT_FOUND. */
++  public static class InventoryLocationNotFoundException extends RuntimeException {
++  }
++
++  /** Role/plant-scope rejection → 403 FORBIDDEN. */
++  public static class InventoryLocationForbiddenException extends RuntimeException {
++  }
++
++  /** Unknown plant (create/list) → 404 PLANT_NOT_FOUND. */
++  public static class PlantNotFoundForLocationException extends RuntimeException {
++  }
++
++  /** Blank/over-long fields → 400 VALIDATION_ERROR with field errors. */
++  public static class InventoryLocationValidationException extends RuntimeException {
++    private final Map<String, String> fieldErrors;
++
++    public InventoryLocationValidationException(Map<String, String> fieldErrors) {
++      this.fieldErrors = new LinkedHashMap<>(fieldErrors);
++    }
++
++    public Map<String, String> getFieldErrors() {
++      return fieldErrors;
++    }
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/inventory/infrastructure/db/InventoryLocationEntity.java b/syncro/apps/backend/src/main/java/com/syncro/inventory/infrastructure/db/InventoryLocationEntity.java
+index c8d68fb..921f6b8 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/inventory/infrastructure/db/InventoryLocationEntity.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/inventory/infrastructure/db/InventoryLocationEntity.java
+@@ -55,6 +55,26 @@ public class InventoryLocationEntity {
+     this.updatedAt = updatedAt;
+   }
+ 
++  /**
++   * Full PUT replacement of the editable columns (story 18-2). Encapsulated so the
++   * lifecycle stays in one place: {@code id}, {@code plantId} and {@code createdAt}
++   * are immutable, and there is no generic setter for {@code active}.
++   */
++  public void update(String code, String name, String description, boolean active,
++      Instant updatedAt) {
++    this.code = code;
++    this.name = name;
++    this.description = description;
++    this.active = active;
++    this.updatedAt = updatedAt;
++  }
++
++  /** Soft lifecycle end (story 18-2): deactivation, never a hard delete. */
++  public void deactivate(Instant updatedAt) {
++    this.active = false;
++    this.updatedAt = updatedAt;
++  }
++
+   public UUID getId() {
+     return id;
+   }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/inventory/infrastructure/db/InventoryLocationRepository.java b/syncro/apps/backend/src/main/java/com/syncro/inventory/infrastructure/db/InventoryLocationRepository.java
+index ff44698..08c9dbb 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/inventory/infrastructure/db/InventoryLocationRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/inventory/infrastructure/db/InventoryLocationRepository.java
+@@ -1,5 +1,6 @@
+ package com.syncro.inventory.infrastructure.db;
+ 
++import java.util.List;
+ import java.util.Optional;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
+@@ -12,4 +13,13 @@ public interface InventoryLocationRepository extends JpaRepository<InventoryLoca
+   Optional<InventoryLocationEntity> findByPlantIdAndCodeIgnoreCase(UUID plantId, String code);
+ 
+   Optional<InventoryLocationEntity> findFirstByPlantIdAndActiveTrueOrderByNameAsc(UUID plantId);
++
++  /** Case-insensitive duplicate pre-check for PUT (story 18-2), excluding the row itself. */
++  boolean existsByPlantIdAndCodeIgnoreCaseAndIdNot(UUID plantId, String code, UUID id);
++
++  /** Plant list ordered by name (story 18-2). */
++  List<InventoryLocationEntity> findAllByPlantIdOrderByNameAsc(UUID plantId);
++
++  /** Active-only plant list ordered by name (story 18-2, {@code activeOnly=true}). */
++  List<InventoryLocationEntity> findAllByPlantIdAndActiveTrueOrderByNameAsc(UUID plantId);
+ }
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/inventory/api/InventoryLocationControllerTest.java b/syncro/apps/backend/src/test/java/com/syncro/inventory/api/InventoryLocationControllerTest.java
+new file mode 100644
+index 0000000..8e6361e
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/inventory/api/InventoryLocationControllerTest.java
+@@ -0,0 +1,237 @@
++package com.syncro.inventory.api;
++
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.eq;
++import static org.mockito.Mockito.doThrow;
++import static org.mockito.Mockito.when;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
++
++import com.syncro.TestJsonConfig;
++import com.syncro.auth.application.JwtTokenService;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.JwtAuthenticationFilter;
++import com.syncro.config.SecurityConfig;
++import com.syncro.config.TimeConfig;
++import com.syncro.inventory.application.InventoryLocationService;
++import com.syncro.inventory.application.InventoryLocationService.CreateLocationCommand;
++import com.syncro.inventory.application.InventoryLocationService.DuplicateLocationException;
++import com.syncro.inventory.application.InventoryLocationService.InventoryLocationForbiddenException;
++import com.syncro.inventory.application.InventoryLocationService.InventoryLocationNotFoundException;
++import com.syncro.inventory.application.InventoryLocationService.LocationView;
++import com.syncro.inventory.application.InventoryLocationService.PlantNotFoundForLocationException;
++import com.syncro.inventory.application.InventoryLocationService.UpdateLocationCommand;
++import java.time.Instant;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
++import org.springframework.context.annotation.Import;
++import org.springframework.http.MediaType;
++import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
++import org.springframework.security.core.authority.SimpleGrantedAuthority;
++import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
++import org.springframework.test.context.bean.override.mockito.MockitoBean;
++import org.springframework.test.web.servlet.MockMvc;
++import org.springframework.test.web.servlet.request.RequestPostProcessor;
++
++/**
++ * Story 18-2: inventory-locations API contract — DTO shape (camelCase, isActive),
++ * status codes and machine-readable error codes per the spec matrix.
++ */
++@WebMvcTest(InventoryLocationController.class)
++@Import({SecurityConfig.class, InventoryLocationExceptionHandler.class, JwtAuthenticationFilter.class,
++    TimeConfig.class, TestJsonConfig.class})
++class InventoryLocationControllerTest {
++
++  @Autowired
++  private MockMvc mockMvc;
++
++  @MockitoBean
++  private InventoryLocationService service;
++
++  @MockitoBean
++  private JwtTokenService jwtTokenService;
++
++  private static final UUID PLANT_ID = UUID.fromString("88888888-8888-8888-8888-888888888888");
++  private static final UUID LOCATION_ID = UUID.fromString("77777777-7777-7777-7777-777777777777");
++  private static final Instant NOW = Instant.parse("2026-09-01T00:00:00Z");
++
++  @Test
++  @DisplayName("18.2-API-001 P0 create returns 201 with the camelCase view")
++  void createReturnsCreated() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    when(service.create(eq(user), any(CreateLocationCommand.class))).thenReturn(locationView(true));
++
++    mockMvc.perform(post("/api/v1/inventory-locations")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"plantId\":\"" + PLANT_ID + "\",\"code\":\"WS-01\",\"name\":\"Workshop 01\","
++                + "\"description\":\"Forming workshop\"}"))
++        .andExpect(status().isCreated())
++        .andExpect(jsonPath("$.id").value(LOCATION_ID.toString()))
++        .andExpect(jsonPath("$.plantId").value(PLANT_ID.toString()))
++        .andExpect(jsonPath("$.code").value("WS-01"))
++        .andExpect(jsonPath("$.name").value("Workshop 01"))
++        .andExpect(jsonPath("$.isActive").value(true));
++  }
++
++  @Test
++  @DisplayName("18.2-API-002 P0 blank code maps to 400 VALIDATION_ERROR with fieldErrors")
++  void createBlankCode() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++
++    mockMvc.perform(post("/api/v1/inventory-locations")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"plantId\":\"" + PLANT_ID + "\",\"code\":\"\",\"name\":\"Workshop\"}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.code").exists());
++  }
++
++  @Test
++  @DisplayName("18.2-API-003 P0 duplicate code maps to 409 DUPLICATE_LOCATION")
++  void createDuplicate() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    when(service.create(eq(user), any(CreateLocationCommand.class)))
++        .thenThrow(new DuplicateLocationException());
++
++    mockMvc.perform(post("/api/v1/inventory-locations")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"plantId\":\"" + PLANT_ID + "\",\"code\":\"WS-01\",\"name\":\"Workshop\"}"))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("DUPLICATE_LOCATION"));
++  }
++
++  @Test
++  @DisplayName("18.2-API-004 P0 wrong role mutation maps to 403 FORBIDDEN")
++  void createForbidden() throws Exception {
++    var user = user(ApplicationRole.STOREKEEPER);
++    doThrow(new InventoryLocationForbiddenException())
++        .when(service).create(eq(user), any(CreateLocationCommand.class));
++
++    mockMvc.perform(post("/api/v1/inventory-locations")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"plantId\":\"" + PLANT_ID + "\",\"code\":\"WS-01\",\"name\":\"Workshop\"}"))
++        .andExpect(status().isForbidden())
++        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
++  }
++
++  @Test
++  @DisplayName("18.2-API-005 P0 unknown plant on create maps to 404 PLANT_NOT_FOUND")
++  void createUnknownPlant() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    when(service.create(eq(user), any(CreateLocationCommand.class)))
++        .thenThrow(new PlantNotFoundForLocationException());
++
++    mockMvc.perform(post("/api/v1/inventory-locations")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"plantId\":\"" + PLANT_ID + "\",\"code\":\"WS-01\",\"name\":\"Workshop\"}"))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("PLANT_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("18.2-API-006 P0 deactivate-only PUT returns 200 with isActive=false")
++  void updateDeactivates() throws Exception {
++    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
++    when(service.update(eq(user), eq(LOCATION_ID), any(UpdateLocationCommand.class)))
++        .thenReturn(locationView(false));
++
++    mockMvc.perform(put("/api/v1/inventory-locations/{id}", LOCATION_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"isActive\":false}"))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.isActive").value(false))
++        .andExpect(jsonPath("$.code").value("WS-01"));
++  }
++
++  @Test
++  @DisplayName("18.2-API-007 P0 unknown id on PUT maps to 404 INVENTORY_LOCATION_NOT_FOUND")
++  void updateNotFound() throws Exception {
++    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
++    doThrow(new InventoryLocationNotFoundException())
++        .when(service).update(eq(user), eq(LOCATION_ID), any(UpdateLocationCommand.class));
++
++    mockMvc.perform(put("/api/v1/inventory-locations/{id}", LOCATION_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"name\":\"Renamed\"}"))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("INVENTORY_LOCATION_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("18.2-API-008 P0 list passes plantId + activeOnly and returns the items envelope")
++  void listReturnsRows() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(service.list(eq(user), eq(PLANT_ID), eq(true))).thenReturn(List.of(locationView(true)));
++
++    mockMvc.perform(get("/api/v1/inventory-locations")
++            .with(auth(user))
++            .param("plantId", PLANT_ID.toString())
++            .param("activeOnly", "true"))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.items[0].code").value("WS-01"))
++        .andExpect(jsonPath("$.items[0].isActive").value(true));
++  }
++
++  @Test
++  @DisplayName("18.2-API-009 P0 list without plantId maps to 400 VALIDATION_ERROR")
++  void listRequiresPlantId() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++
++    mockMvc.perform(get("/api/v1/inventory-locations")
++            .with(auth(user)))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
++  }
++
++  @Test
++  @DisplayName("18.2-API-010 P0 get by id returns the view")
++  void getByIdReturnsView() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    when(service.get(eq(user), eq(LOCATION_ID))).thenReturn(locationView(true));
++
++    mockMvc.perform(get("/api/v1/inventory-locations/{id}", LOCATION_ID)
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.id").value(LOCATION_ID.toString()));
++  }
++
++  @Test
++  @DisplayName("18.2-API-011 P0 unauthenticated requests are rejected with 401")
++  void unauthenticatedRejected() throws Exception {
++    mockMvc.perform(get("/api/v1/inventory-locations").param("plantId", PLANT_ID.toString()))
++        .andExpect(status().isUnauthorized())
++        .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
++  }
++
++  private static LocationView locationView(boolean active) {
++    return new LocationView(LOCATION_ID, PLANT_ID, "WS-01", "Workshop 01", "Forming workshop",
++        active, NOW, NOW);
++  }
++
++  private static AuthenticatedUser user(ApplicationRole role) {
++    return new AuthenticatedUser(UUID.randomUUID().toString(), role.name().toLowerCase() + "@syncro.dev", role);
++  }
++
++  private static RequestPostProcessor auth(AuthenticatedUser user) {
++    return SecurityMockMvcRequestPostProcessors.authentication(new UsernamePasswordAuthenticationToken(
++        user,
++        null,
++        List.of(new SimpleGrantedAuthority("ROLE_" + user.applicationRole().name()))));
++  }
++}
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/inventory/application/InventoryLocationServiceIntegrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/inventory/application/InventoryLocationServiceIntegrationTest.java
+new file mode 100644
+index 0000000..fc27301
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/inventory/application/InventoryLocationServiceIntegrationTest.java
+@@ -0,0 +1,424 @@
++package com.syncro.inventory.application;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.api.Assertions.assertThatThrownBy;
++
++import com.fasterxml.jackson.databind.ObjectMapper;
++import com.syncro.AbstractPostgresIntegrationTest;
++import com.syncro.audit.domain.AuditAction;
++import com.syncro.audit.domain.AuditEntityType;
++import com.syncro.audit.infrastructure.AuditLogEntity;
++import com.syncro.audit.infrastructure.AuditLogRepository;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.AuthUserEntity;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentEntity;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
++import com.syncro.auth.infrastructure.AuthUserRepository;
++import com.syncro.auth.infrastructure.PlantEntity;
++import com.syncro.auth.infrastructure.PlantRepository;
++import com.syncro.inventory.application.InventoryLocationService.CreateLocationCommand;
++import com.syncro.inventory.application.InventoryLocationService.DuplicateLocationException;
++import com.syncro.inventory.application.InventoryLocationService.InventoryLocationForbiddenException;
++import com.syncro.inventory.application.InventoryLocationService.InventoryLocationNotFoundException;
++import com.syncro.inventory.application.InventoryLocationService.InventoryLocationValidationException;
++import com.syncro.inventory.application.InventoryLocationService.PlantNotFoundForLocationException;
++import com.syncro.inventory.application.InventoryLocationService.UpdateLocationCommand;
++import com.syncro.inventory.infrastructure.db.InventoryLocationEntity;
++import com.syncro.inventory.infrastructure.db.InventoryLocationRepository;
++import java.time.Instant;
++import java.util.List;
++import java.util.UUID;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.dao.DataIntegrityViolationException;
++import org.springframework.data.domain.Sort;
++import org.springframework.security.crypto.password.PasswordEncoder;
++
++/**
++ * Story 18-2: inventory-location lifecycle against a real Postgres (Testcontainers).
++ * Covers every row of the spec's I/O matrix: create + audit, case-insensitive
++ * duplicate per plant, same code in another plant, update + audit previous/new,
++ * default-location deactivation, wrong-role and out-of-scope 403, list ordering and
++ * activeOnly filtering, unknown plant 404, and the DB unique constraint as the race
++ * backstop.
++ */
++class InventoryLocationServiceIntegrationTest extends AbstractPostgresIntegrationTest {
++
++  private static final Instant NOW = Instant.parse("2026-09-01T00:00:00Z");
++  private static final String DEFAULT_LOCATION_CODE = "GUDANG-UTAMA";
++
++  @Autowired
++  private InventoryLocationService service;
++
++  @Autowired
++  private InventoryLocationRepository locations;
++
++  @Autowired
++  private PlantRepository plants;
++
++  @Autowired
++  private AuthUserRepository users;
++
++  @Autowired
++  private AuthUserPlantAssignmentRepository assignments;
++
++  @Autowired
++  private AuditLogRepository auditLogs;
++
++  @Autowired
++  private PasswordEncoder passwordEncoder;
++
++  private final ObjectMapper mapper = new ObjectMapper();
++
++  // --- Create ----------------------------------------------------------------
++
++  @Test
++  @DisplayName("18.2-SVC-001 P0 INVENTORY_MAINTENANCE in scope creates an active location and audits CREATE")
++  void createPersistsActiveLocationAndAudits() throws Exception {
++    var plant = plant("LOC-P1");
++    var user = persistedUser(ApplicationRole.INVENTORY_MAINTENANCE, "loc-create@syncro.dev");
++    assign(user, plant);
++
++    var created = service.create(user, new CreateLocationCommand(plant.getId(), "WS-01", "Workshop 01",
++        "  Workshop for forming machines  "));
++
++    assertThat(created.id()).isNotNull();
++    assertThat(created.plantId()).isEqualTo(plant.getId());
++    assertThat(created.code()).isEqualTo("WS-01");
++    assertThat(created.name()).isEqualTo("Workshop 01");
++    assertThat(created.description()).isEqualTo("Workshop for forming machines");
++    assertThat(created.active()).isTrue();
++    var stored = locations.findById(created.id()).orElseThrow();
++    assertThat(stored.isActive()).isTrue();
++    var entry = latestAuditEntryFor(created.id());
++    assertThat(entry.getAction()).isEqualTo(AuditAction.CREATE);
++    assertThat(entry.getEntityType()).isEqualTo(AuditEntityType.INVENTORY_LOCATION);
++    assertThat(entry.getPlantId()).isEqualTo(plant.getId());
++    assertThat(entry.getEntityLabel()).isEqualTo("WS-01 @LOC-P1");
++    assertThat(entry.getPreviousValue()).isNull();
++    assertThat(mapper.readTree(entry.getNewValue()).get("code").asText()).isEqualTo("WS-01");
++    assertThat(mapper.readTree(entry.getNewValue()).get("active").asBoolean()).isTrue();
++  }
++
++  @Test
++  @DisplayName("18.2-SVC-002 P0 MANAGER_MAINTENANCE in scope may create; SUPER_ADMIN bypasses scope")
++  void managerAndSuperAdminMayCreate() {
++    var plant = plant("LOC-P2");
++    var manager = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "loc-manager@syncro.dev");
++    assign(manager, plant);
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++
++    assertThat(service.create(manager, new CreateLocationCommand(plant.getId(), "ST-A", "Store A", null)).active())
++        .isTrue();
++    assertThat(service.create(admin, new CreateLocationCommand(plant.getId(), "ST-B", "Store B", null)).active())
++        .isTrue();
++  }
++
++  @Test
++  @DisplayName("18.2-SVC-003 P0 blank code or name is a validation error with no row persisted")
++  void blankCodeOrNameRejected() {
++    var plant = plant("LOC-P3");
++    var user = persistedUser(ApplicationRole.INVENTORY_MAINTENANCE, "loc-blank@syncro.dev");
++    assign(user, plant);
++
++    assertThatThrownBy(() -> service.create(user, new CreateLocationCommand(plant.getId(), "   ", "Name", null)))
++        .isInstanceOf(InventoryLocationValidationException.class);
++    assertThatThrownBy(() -> service.create(user, new CreateLocationCommand(plant.getId(), "CODE-1", "", null)))
++        .isInstanceOf(InventoryLocationValidationException.class);
++    assertThat(locations.findAllByPlantIdOrderByNameAsc(plant.getId())).isEmpty();
++  }
++
++  @Test
++  @DisplayName("18.2-SVC-004 P0 unknown plant on create → PLANT_NOT_FOUND")
++  void createUnknownPlantRejected() {
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++
++    assertThatThrownBy(() -> service.create(admin, new CreateLocationCommand(UUID.randomUUID(), "X-1", "X", null)))
++        .isInstanceOf(PlantNotFoundForLocationException.class);
++  }
++
++  // --- Duplicate -------------------------------------------------------------
++
++  @Test
++  @DisplayName("18.2-SVC-005 P0 duplicate (plant, code) case-insensitively → DUPLICATE_LOCATION")
++  void duplicateCodePerPlantRejectedCaseInsensitively() {
++    var plant = plant("LOC-P4");
++    var user = persistedUser(ApplicationRole.INVENTORY_MAINTENANCE, "loc-dup@syncro.dev");
++    assign(user, plant);
++    service.create(user, new CreateLocationCommand(plant.getId(), "GUDANG-B", "Store B", null));
++
++    assertThatThrownBy(() -> service.create(user, new CreateLocationCommand(plant.getId(), "gudang-b", "Other", null)))
++        .isInstanceOf(DuplicateLocationException.class);
++    assertThatThrownBy(() -> service.create(user, new CreateLocationCommand(plant.getId(), " GUDANG-B ", "Other", null)))
++        .isInstanceOf(DuplicateLocationException.class);
++  }
++
++  @Test
++  @DisplayName("18.2-SVC-006 P0 the same code in a different plant succeeds (uniqueness is per-plant)")
++  void sameCodeDifferentPlantSucceeds() {
++    var first = plant("LOC-P5A");
++    var second = plant("LOC-P5B");
++    var user = persistedUser(ApplicationRole.INVENTORY_MAINTENANCE, "loc-multi@syncro.dev");
++    assign(user, first);
++    assign(user, second);
++
++    var a = service.create(user, new CreateLocationCommand(first.getId(), "SHARED-1", "Store A", null));
++    var b = service.create(user, new CreateLocationCommand(second.getId(), "SHARED-1", "Store B", null));
++
++    assertThat(a.id()).isNotEqualTo(b.id());
++    assertThat(b.plantId()).isEqualTo(second.getId());
++  }
++
++  @Test
++  @DisplayName("18.2-SVC-007 P0 uq_inventory_locations_plant_code is the race backstop for concurrent inserts")
++  void dbConstraintBackstopsRace() {
++    var plant = plant("LOC-P6");
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    service.create(admin, new CreateLocationCommand(plant.getId(), "RACE-1", "First", null));
++
++    // Bypass the service pre-check exactly like a concurrent transaction would:
++    // the plain UNIQUE (plant_id, code) must reject the second row.
++    assertThatThrownBy(() -> locations.saveAndFlush(new InventoryLocationEntity(
++        UUID.randomUUID(), plant.getId(), "RACE-1", "Second", null, true, NOW, NOW)))
++        .isInstanceOf(DataIntegrityViolationException.class)
++        .hasMessageContaining("uq_inventory_locations_plant_code");
++  }
++
++  // --- Update ----------------------------------------------------------------
++
++  @Test
++  @DisplayName("18.2-SVC-008 P0 MANAGER_MAINTENANCE renames and audits UPDATE with previous+new values")
++  void updateRenamesAndAuditsPreviousAndNew() throws Exception {
++    var plant = plant("LOC-P7");
++    var manager = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "loc-update@syncro.dev");
++    assign(manager, plant);
++    var created = service.create(manager, new CreateLocationCommand(plant.getId(), "OLD-CODE", "Old Name", "Old desc"));
++
++    var updated = service.update(manager, created.id(),
++        new UpdateLocationCommand("NEW-CODE", "New Name", "New desc", null));
++
++    assertThat(updated.id()).isEqualTo(created.id());
++    assertThat(updated.code()).isEqualTo("NEW-CODE");
++    assertThat(updated.name()).isEqualTo("New Name");
++    assertThat(updated.description()).isEqualTo("New desc");
++    assertThat(updated.active()).isTrue();
++    var entry = latestAuditEntryFor(created.id());
++    assertThat(entry.getAction()).isEqualTo(AuditAction.UPDATE);
++    assertThat(entry.getEntityType()).isEqualTo(AuditEntityType.INVENTORY_LOCATION);
++    var previous = mapper.readTree(entry.getPreviousValue());
++    var newValue = mapper.readTree(entry.getNewValue());
++    assertThat(previous.get("code").asText()).isEqualTo("OLD-CODE");
++    assertThat(previous.get("name").asText()).isEqualTo("Old Name");
++    assertThat(newValue.get("code").asText()).isEqualTo("NEW-CODE");
++    assertThat(newValue.get("name").asText()).isEqualTo("New Name");
++  }
++
++  @Test
++  @DisplayName("18.2-SVC-009 P0 isActive-only PUT deactivates and keeps code/name (partial update)")
++  void isActiveOnlyUpdateKeepsOtherFields() {
++    var plant = plant("LOC-P8");
++    var user = persistedUser(ApplicationRole.INVENTORY_MAINTENANCE, "loc-toggle@syncro.dev");
++    assign(user, plant);
++    var created = service.create(user, new CreateLocationCommand(plant.getId(), "TOGGLE-1", "Toggle Store", "desc"));
++
++    var deactivated = service.update(user, created.id(), new UpdateLocationCommand(null, null, null, false));
++    var reactivated = service.update(user, created.id(), new UpdateLocationCommand(null, null, null, true));
++
++    assertThat(deactivated.active()).isFalse();
++    assertThat(deactivated.code()).isEqualTo("TOGGLE-1");
++    assertThat(deactivated.name()).isEqualTo("Toggle Store");
++    assertThat(deactivated.description()).isEqualTo("desc");
++    assertThat(reactivated.active()).isTrue();
++  }
++
++  @Test
++  @DisplayName("18.2-SVC-010 P0 deactivating the default GUDANG-UTAMA location is allowed (soft) and audited")
++  void deactivateDefaultLocationAllowed() {
++    var plant = plant("LOC-P9");
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var defaultLocation = service.create(admin,
++        new CreateLocationCommand(plant.getId(), DEFAULT_LOCATION_CODE, "GUDANG UTAMA", "Default plant store"));
++
++    var deactivated = service.update(admin, defaultLocation.id(),
++        new UpdateLocationCommand(null, null, null, false));
++
++    assertThat(deactivated.active()).isFalse();
++    assertThat(locations.findById(defaultLocation.id())).isPresent();
++    var entry = latestAuditEntryFor(defaultLocation.id());
++    assertThat(entry.getAction()).isEqualTo(AuditAction.UPDATE);
++    assertThat(entry.getNewValue()).contains("\"active\":false");
++  }
++
++  @Test
++  @DisplayName("18.2-SVC-011 P0 update of an unknown id → INVENTORY_LOCATION_NOT_FOUND")
++  void updateUnknownIdRejected() {
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++
++    assertThatThrownBy(() -> service.update(admin, UUID.randomUUID(),
++        new UpdateLocationCommand("ANY", "Any", null, null)))
++        .isInstanceOf(InventoryLocationNotFoundException.class);
++  }
++
++  @Test
++  @DisplayName("18.2-SVC-012 P1 update renaming onto another location's code (any case) → DUPLICATE_LOCATION")
++  void updateRenameOntoExistingCodeRejected() {
++    var plant = plant("LOC-P10");
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var taken = service.create(admin, new CreateLocationCommand(plant.getId(), "TAKEN-1", "Taken", null));
++    var other = service.create(admin, new CreateLocationCommand(plant.getId(), "OTHER-1", "Other", null));
++
++    assertThatThrownBy(() -> service.update(admin, other.id(),
++        new UpdateLocationCommand("taken-1", "Other", null, null)))
++        .isInstanceOf(DuplicateLocationException.class);
++    assertThat(locations.findById(taken.id())).isPresent();
++  }
++
++  @Test
++  @DisplayName("18.2-SVC-013 P1 update keeping its own code (any case) succeeds — IdNot excludes self")
++  void updateKeepingOwnCodeSucceeds() {
++    var plant = plant("LOC-P11");
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var created = service.create(admin, new CreateLocationCommand(plant.getId(), "SELF-1", "Self", null));
++
++    var updated = service.update(admin, created.id(),
++        new UpdateLocationCommand("self-1", "Self Renamed", null, null));
++
++    assertThat(updated.code()).isEqualTo("self-1");
++    assertThat(updated.name()).isEqualTo("Self Renamed");
++  }
++
++  // --- Gates -----------------------------------------------------------------
++
++  @Test
++  @DisplayName("18.2-SVC-014 P0 STOREKEEPER/STAFF_MAINTENANCE/TECHNICIAN cannot mutate locations (403)")
++  void storekeeperAndOthersCannotMutate() {
++    var plant = plant("LOC-P12");
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var created = service.create(admin, new CreateLocationCommand(plant.getId(), "GATE-1", "Gate Store", null));
++    for (var role : List.of(ApplicationRole.STOREKEEPER, ApplicationRole.STAFF_MAINTENANCE,
++        ApplicationRole.TECHNICIAN, ApplicationRole.AUDITOR)) {
++      var user = persistedUser(role, "loc-gate-" + role.name().toLowerCase() + "@syncro.dev");
++      assign(user, plant);
++
++      assertThatThrownBy(() -> service.create(user, new CreateLocationCommand(plant.getId(), "GATE-X", "X", null)))
++          .as(role + " must not create locations")
++          .isInstanceOf(InventoryLocationForbiddenException.class);
++      assertThatThrownBy(() -> service.update(user, created.id(), new UpdateLocationCommand(null, null, null, false)))
++          .as(role + " must not update locations")
++          .isInstanceOf(InventoryLocationForbiddenException.class);
++    }
++    assertThat(locations.findById(created.id()).orElseThrow().isActive()).isTrue();
++  }
++
++  @Test
++  @DisplayName("18.2-SVC-015 P0 INVENTORY_MAINTENANCE outside the plant scope cannot mutate (403)")
++  void outOfScopePlantMutationRejected() {
++    var home = plant("LOC-P13A");
++    var foreign = plant("LOC-P13B");
++    var outsider = persistedUser(ApplicationRole.INVENTORY_MAINTENANCE, "loc-outsider@syncro.dev");
++    assign(outsider, home);
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var foreignLocation = service.create(admin, new CreateLocationCommand(foreign.getId(), "FOREIGN-1", "Foreign", null));
++
++    assertThatThrownBy(() -> service.create(outsider, new CreateLocationCommand(foreign.getId(), "NOPE", "Nope", null)))
++        .isInstanceOf(InventoryLocationForbiddenException.class);
++    assertThatThrownBy(() -> service.update(outsider, foreignLocation.id(),
++        new UpdateLocationCommand(null, "Hijacked", null, null)))
++        .isInstanceOf(InventoryLocationForbiddenException.class);
++    assertThat(locations.findById(foreignLocation.id()).orElseThrow().getName()).isEqualTo("Foreign");
++  }
++
++  @Test
++  @DisplayName("18.2-SVC-016 P0 reads succeed for any assigned user (STOREKEEPER included) and deny outsiders")
++  void readsFollowPlantAssignment() {
++    var plant = plant("LOC-P14");
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var created = service.create(admin, new CreateLocationCommand(plant.getId(), "READ-1", "Read Store", null));
++    var storekeeper = persistedUser(ApplicationRole.STOREKEEPER, "loc-reader@syncro.dev");
++    assign(storekeeper, plant);
++    var outsider = persistedUser(ApplicationRole.INVENTORY_MAINTENANCE, "loc-outsider-read@syncro.dev");
++    assign(outsider, plant("LOC-P14B"));
++
++    assertThat(service.list(storekeeper, plant.getId(), false)).extracting("id").containsExactly(created.id());
++    assertThat(service.get(storekeeper, created.id()).code()).isEqualTo("READ-1");
++    assertThat(service.get(admin, created.id()).id()).isEqualTo(created.id());
++    assertThatThrownBy(() -> service.list(outsider, plant.getId(), false))
++        .isInstanceOf(InventoryLocationForbiddenException.class);
++    assertThatThrownBy(() -> service.get(outsider, created.id()))
++        .isInstanceOf(InventoryLocationForbiddenException.class);
++  }
++
++  // --- List / get --------------------------------------------------------------
++
++  @Test
++  @DisplayName("18.2-SVC-017 P0 list returns only the plant's locations ordered by name; activeOnly filters")
++  void listIsPlantScopedOrderedAndFilterable() {
++    var plant = plant("LOC-P15");
++    var other = plant("LOC-P15B");
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++    var zulu = service.create(admin, new CreateLocationCommand(plant.getId(), "Z-1", "Zulu Store", null));
++    var alpha = service.create(admin, new CreateLocationCommand(plant.getId(), "A-1", "Alpha Store", null));
++    var mike = service.create(admin, new CreateLocationCommand(plant.getId(), "M-1", "Mike Store", null));
++    var bravo = service.create(admin, new CreateLocationCommand(plant.getId(), "B-1", "Bravo Store", null));
++    service.create(admin, new CreateLocationCommand(other.getId(), "O-1", "Aardvark Other", null));
++    service.update(admin, mike.id(), new UpdateLocationCommand(null, null, null, false));
++
++    var all = service.list(admin, plant.getId(), false);
++    var activeOnly = service.list(admin, plant.getId(), true);
++
++    assertThat(all).hasSize(4);
++    assertThat(all).extracting("id").containsExactly(alpha.id(), bravo.id(), mike.id(), zulu.id());
++    assertThat(all).extracting("name").containsExactly("Alpha Store", "Bravo Store", "Mike Store", "Zulu Store");
++    assertThat(activeOnly).hasSize(3);
++    assertThat(activeOnly).extracting("name").containsExactly("Alpha Store", "Bravo Store", "Zulu Store");
++    assertThat(activeOnly).extracting("id").doesNotContain(mike.id());
++  }
++
++  @Test
++  @DisplayName("18.2-SVC-018 P0 list for an unknown plant → PLANT_NOT_FOUND")
++  void listUnknownPlantRejected() {
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++
++    assertThatThrownBy(() -> service.list(admin, UUID.randomUUID(), false))
++        .isInstanceOf(PlantNotFoundForLocationException.class);
++  }
++
++  @Test
++  @DisplayName("18.2-SVC-019 P1 get of an unknown id → INVENTORY_LOCATION_NOT_FOUND")
++  void getUnknownIdRejected() {
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++
++    assertThatThrownBy(() -> service.get(admin, UUID.randomUUID()))
++        .isInstanceOf(InventoryLocationNotFoundException.class);
++  }
++
++  // --- helpers -----------------------------------------------------------------
++
++  private PlantEntity plant(String code) {
++    return plants.findByCodeIgnoreCase(code)
++        .orElseGet(() -> plants.saveAndFlush(new PlantEntity(UUID.randomUUID(), code, "Plant " + code, NOW, NOW)));
++  }
++
++  private AuthenticatedUser persistedUser(ApplicationRole role, String loginIdentifier) {
++    var user = users.saveAndFlush(new AuthUserEntity(UUID.randomUUID(), loginIdentifier,
++        passwordEncoder.encode("syncro-test-password"), role, true, NOW, NOW));
++    return new AuthenticatedUser(user.getId().toString(), user.getLoginIdentifier(), role);
++  }
++
++  private void assign(AuthenticatedUser user, PlantEntity plant) {
++    assignments.saveAndFlush(new AuthUserPlantAssignmentEntity(UUID.fromString(user.id()), plant.getId(), NOW));
++  }
++
++  private static AuthenticatedUser authenticatedUser(ApplicationRole role) {
++    return new AuthenticatedUser(UUID.randomUUID().toString(), role.name().toLowerCase() + "@syncro.dev", role);
++  }
++
++  private AuditLogEntity latestAuditEntryFor(UUID entityId) {
++    return auditLogs.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
++        .filter(entry -> entityId.equals(entry.getEntityId()))
++        .findFirst()
++        .orElseThrow();
++  }
++}
+diff --git a/syncro/authz/policy/authz.rego b/syncro/authz/policy/authz.rego
+index 84dfc68..5780847 100644
+--- a/syncro/authz/policy/authz.rego
++++ b/syncro/authz/policy/authz.rego
+@@ -122,6 +122,16 @@ sparepart_stock_paths := {
+   "/api/v1/sparepart-stock/*/adjust",
+ }
+ 
++# Inventory locations (story 18-2, blueprint E1): location lifecycle mutations for
++# MANAGER_MAINTENANCE/INVENTORY_MAINTENANCE (SUPER_ADMIN via the generic bypass;
++# STOREKEEPER deliberately NOT granted). The surface is list/create at the collection
++# path and get/update at /{id} — a single `*` matches one segment, so no deeper
++# subpaths exist. Reads (GET) flow through generic read_allowed.
++inventory_location_paths := {
++  "/api/v1/inventory-locations",
++  "/api/v1/inventory-locations/*",
++}
++
+ workorder_assign_paths := {
+   "/api/v1/workorders/*/assign",
+ }
+@@ -494,6 +504,21 @@ mutation_allowed if {
+   path_matches(sparepart_stock_paths)
+ }
+ 
++# Inventory location mutations (story 18-2): MANAGER_MAINTENANCE/INVENTORY_MAINTENANCE
++# (SUPER_ADMIN via the generic bypass). STOREKEEPER/TECHNICIAN stay default-deny on
++# these paths — the service gate is authoritative for plant scope.
++mutation_allowed if {
++  input.subject.roles[_] == "MANAGER_MAINTENANCE"
++  is_mutation
++  path_matches(inventory_location_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "INVENTORY_MAINTENANCE"
++  is_mutation
++  path_matches(inventory_location_paths)
++}
++
+ # Assign: leadership roles only (STAFF_MAINTENANCE and PRODUCTION_LEADER excluded).
+ mutation_allowed if {
+   input.subject.roles[_] == "MANAGER_MAINTENANCE"
+diff --git a/syncro/authz/policy/authz_test.rego b/syncro/authz/policy/authz_test.rego
+index 6015c28..80e7625 100644
+--- a/syncro/authz/policy/authz_test.rego
++++ b/syncro/authz/policy/authz_test.rego
+@@ -1128,6 +1128,57 @@ test_anonymous_sparepart_stock_denied if {
+   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/sparepart-stock"}
+ }
+ 
++# -- Inventory locations (story 18-2, blueprint E1): MANAGER_MAINTENANCE/
++#    INVENTORY_MAINTENANCE mutations; STOREKEEPER/TECHNICIAN denied; reads any-auth --
++
++test_manager_inventory_location_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/inventory-locations"}
++}
++
++test_manager_inventory_location_update_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "PUT /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_inventory_inventory_location_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/inventory-locations"}
++}
++
++test_inventory_inventory_location_update_allowed if {
++  authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "PUT /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_super_admin_inventory_location_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/inventory-locations"}
++}
++
++test_storekeeper_inventory_location_create_denied if {
++  not authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "POST /api/v1/inventory-locations"}
++}
++
++test_storekeeper_inventory_location_update_denied if {
++  not authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "PUT /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_technician_inventory_location_create_denied if {
++  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/inventory-locations"}
++}
++
++test_technician_inventory_location_update_denied if {
++  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "PUT /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_auditor_inventory_location_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/inventory-locations?plantId=7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_auditor_inventory_location_get_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_anonymous_inventory_location_denied if {
++  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/inventory-locations"}
++}
++
+ # -- Org maintenance (spec-org-maintenance-model): departments, section leader,
+ #    user master — MANAGER_MAINTENANCE + SUPER_ADMIN mutate; others denied -------
+ 

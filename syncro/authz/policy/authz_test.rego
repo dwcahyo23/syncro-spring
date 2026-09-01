@@ -1128,6 +1128,57 @@ test_anonymous_sparepart_stock_denied if {
   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/sparepart-stock"}
 }
 
+# -- Inventory locations (story 18-2, blueprint E1): MANAGER_MAINTENANCE/
+#    INVENTORY_MAINTENANCE mutations; STOREKEEPER/TECHNICIAN denied; reads any-auth --
+
+test_manager_inventory_location_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/inventory-locations"}
+}
+
+test_manager_inventory_location_update_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "PUT /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_inventory_inventory_location_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/inventory-locations"}
+}
+
+test_inventory_inventory_location_update_allowed if {
+  authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "PUT /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_super_admin_inventory_location_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/inventory-locations"}
+}
+
+test_storekeeper_inventory_location_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "POST /api/v1/inventory-locations"}
+}
+
+test_storekeeper_inventory_location_update_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "PUT /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_technician_inventory_location_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/inventory-locations"}
+}
+
+test_technician_inventory_location_update_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "PUT /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_auditor_inventory_location_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/inventory-locations?plantId=7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_auditor_inventory_location_get_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_anonymous_inventory_location_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/inventory-locations"}
+}
+
 # -- Org maintenance (spec-org-maintenance-model): departments, section leader,
 #    user master — MANAGER_MAINTENANCE + SUPER_ADMIN mutate; others denied -------
 
