@@ -234,13 +234,13 @@ development_status:
   epic-16-retrospective: optional
 
   # Epic 17: Workorder Execution Maturation
-  epic-17: in-progress
+  epic-17: done
   17-1-work-assignments: done
   17-2-work-logs: done
   17-3-wo-id-format-status-lifecycle: done
   17-4-work-log-ratings: done
   17-5-workorder-quality-ratings: done
-  17-6-assign-work-dialog: backlog
+  17-6-assign-work-dialog: done
   epic-17-retrospective: optional
 
   # Epic 18: Sparepart BOM & Inventory Maturation

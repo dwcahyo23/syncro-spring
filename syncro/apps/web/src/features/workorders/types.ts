@@ -179,3 +179,49 @@ export interface AckView {
   acknowledgedBy: string;
   acknowledgedAt: string;
 }
+
+// ---------------------------------------------------------------------------
+// Work assignments (17-1, blueprint B3, AD-17)
+// ---------------------------------------------------------------------------
+
+export interface WorkAssignmentView {
+  id: string;
+  workOrderId: string;
+  technicianId: string;
+  assignedBy: string;
+  assignedAt: string;
+  droppedAt: string | null;
+  droppedBy: string | null;
+  isActive: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Work logs (17-2, blueprint B4, AD-18)
+// ---------------------------------------------------------------------------
+
+export type WorkLogStoppedReason = "WAITING_SPAREPART" | "SHIFT_END" | "COMPLETED" | "OTHER";
+
+export interface CreateWorkLogRequest {
+  workAssignmentId: string;
+  startTime: string;
+  endTime: string | null;
+  stoppedReason: WorkLogStoppedReason | null;
+  activityNote: string;
+  completionNote?: string;
+  notes?: string;
+}
+
+export interface WorkLogView {
+  id: string;
+  workAssignmentId: string | null;
+  workOrderId: string;
+  technicianId: string;
+  startTime: string;
+  endTime: string | null;
+  stoppedReason: WorkLogStoppedReason | null;
+  activityNote: string;
+  completionNote: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

@@ -204,6 +204,7 @@ export function WorkorderTable() {
             assignedTechnicianName={row.original.assignedTechnicianName}
             assignableUsers={assignableUsers}
             isLoadingUsers={isLoadingUsers}
+            createdAt={row.original.createdAt}
           />
         ),
       },
