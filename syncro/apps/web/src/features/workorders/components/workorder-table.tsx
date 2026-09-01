@@ -8,8 +8,6 @@ import { format } from "date-fns";
 import { RefreshCwIcon, SearchIcon, TriangleAlertIcon } from "lucide-react";
 
 import { MonthPicker } from "@/components/month-picker";
-import { WorkorderActionsCell } from "@/features/workorders/components/workorder-actions-cell";
-import { syncroFetch } from "@/lib/api/orval-mutator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
@@ -17,9 +15,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useWorkorders } from "@/features/workorders/hooks/use-workorders";
 import { useListUsersMaster } from "@/features/organization/hooks/use-users";
+import { WorkorderActionsCell } from "@/features/workorders/components/workorder-actions-cell";
+import { useWorkorders } from "@/features/workorders/hooks/use-workorders";
 import type { WorkOrderListParams, WorkOrderListRow } from "@/features/workorders/types";
+import { syncroFetch } from "@/lib/api/orval-mutator";
 
 const WORKORDER_STATUSES = [
   "DRAFT",

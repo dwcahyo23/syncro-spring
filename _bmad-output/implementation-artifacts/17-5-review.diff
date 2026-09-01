@@ -1,0 +1,1836 @@
+diff --git a/_bmad-output/implementation-artifacts/spec-17-5-workorder-quality-ratings.md b/_bmad-output/implementation-artifacts/spec-17-5-workorder-quality-ratings.md
+new file mode 100644
+index 0000000..4b79d79
+--- /dev/null
++++ b/_bmad-output/implementation-artifacts/spec-17-5-workorder-quality-ratings.md
+@@ -0,0 +1,132 @@
++---
++title: 'Story 17-5: Workorder Quality Rating Multi-Technician'
++type: 'feature'
++created: '2026-09-01'
++status: 'done'
++review_loop_iteration: 0
++followup_review_recommended: false
++baseline_revision: '717c548'
++context:
++  - '_bmad-output/project-context.md'
++  - '_bmad-output/implementation-artifacts/epic-17-context.md'
++  - '_bmad-output/planning-artifacts/orm-target-blueprint-2026-08-31.md'
++warnings: []
++deferred: []
++---
++
++<intent-contract>
++
++## Intent
++
++**Problem:** The dedicated workorder-quality-rating tables (`work_order_quality_ratings` + `_technicians` + `_scores`, blueprint C4-C6) exist from 15-2 but have no service/API/OPA layer. The legacy `workorder_ratings` (10-8) is a separate, non-per-criterion model. The PRODUCTION_LEADER has no way to rate maintenance quality per workorder spanning multiple technicians with per-technician scores.
++
++**Approach:** Build `WorkOrderQualityRatingService` over the C4-C6 tables: a PENDING rating row is created when a maintenance workorder closes (or lazily on first submit), the PRODUCTION_LEADER of the affected line submits it with per-dimension scores + per-technician scores via the pivot, one rating per workorder (unique), immutable after submission, and status becomes EXPIRED when `due_at` passes unsubmitted (recomputed on read).
++
++## Boundaries & Constraints
++
++**Always:**
++- Schema/entities/repos exist (15-2) — reuse; do not alter.
++- One rating per workorder: `uq_work_order_quality_ratings_work_order` (unique work_order_id) backstops.
++- Rating lifecycle: PENDING → SUBMITTED (via `submit()` method on entity), EXPIRED when `due_at` passes unsubmitted (computed on read, persisted when observed).
++- Rater gate: PRODUCTION_LEADER with plant access to the workorder's machine (SUPER_ADMIN exempt) — mirror `WorkOrderRatingService.requireProductionLeaderGate`.
++- Rated workorder must be CLOSED (same as 10-8 legacy).
++- Per-criterion scores validated against `work_order_rating_criteria.min_score/max_score`; per-technician scores stored via `work_order_quality_rating_technicians` pivot, technician ids derived from the workorder's executor pool (assigned technician + active assignments + repair-session technicians).
++- Every mutation audit-logged with `AuditEntityType.WORK_ORDER_QUALITY_RATING` (add to BOTH Java enum and V6 additive CHECK migration).
++- `AuditEntityType` needs `WORK_ORDER_QUALITY_RATING` added — same pattern as V3/V4/V5.
++- OPA: add `workorder_quality_rating_paths` mirroring `workorder_rating_paths` (MANAGER_MAINTENANCE, SECTION_LEADER, MAINTENANCE_LEADER, STAFF_MAINTENANCE, PRODUCTION_LEADER).
++- Criteria are the existing `work_order_rating_criteria` (C3) — list reads only (SUPER_ADMIN CRUD is out of scope here; 17-4 covered the work-log criteria analog).
++
++**Block If:**
++- The audit CHECK extension cannot be done as an additive migration → HALT blocked.
++
++**Never:**
++- No schema changes to existing tables.
++- No hard deletion of ratings; ratings immutable after submission.
++- No bypassing OPA; no new dependencies.
++- Do not touch the legacy `workorder_ratings`/`rating_dimensions` flow (10-8 stays as-is).
++
++## I/O & Edge-Case Matrix
++
++| Scenario | Input / State | Expected Output / Behavior | Error Handling |
++|----------|--------------|---------------------------|----------------|
++| Submit rating on CLOSED WO | PRODUCTION_LEADER with plant access, scores + technician ids | quality rating row SUBMITTED; pivot + score rows persisted; audit CREATE | no error |
++| Workorder not CLOSED | workorder in IN_PROGRESS | rejected | `RATING_WORKORDER_NOT_CLOSED` |
++| Non-production-leader rater | SECTION_LEADER submits | rejected | `FORBIDDEN` |
++| Duplicate rating | rating already SUBMITTED | rejected | `RATING_ALREADY_EXISTS` |
++| Score out of range | score > criterion max_score | rejected | `VALIDATION_ERROR` fieldErrors |
++| Unknown technician | technician not in executor pool | rejected | `RATING_USER_NOT_EXECUTOR` |
++| EXPIRED rating | due_at passed, unsubmitted | status EXPIRED on read | no error |
++| List rating | any authenticated user | rating with scores + technicians | no error |
++
++</intent-contract>
++
++## Code Map
++
++### Existing (reuse, do not modify unless listed)
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderQualityRatingEntity.java` -- entity with `submit()` (15-2)
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderQualityRatingTechnicianEntity.java` -- pivot (15-2)
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderQualityRatingScoreEntity.java` -- score (15-2)
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderQualityRatingRepository.java` -- `findByWorkOrderId`
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderQualityRatingTechnicianRepository.java` -- JPA repo
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderQualityRatingScoreRepository.java` -- JPA repo
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderRatingCriterionRepository.java` -- JPA repo (add findAllByOrderBySortOrderAsc)
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/domain/workorder/WorkRatingStatus.java` -- enum (15-2)
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/application/WorkOrderRatingService.java` -- pattern to mirror (gates, validation, audit, executor pool)
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/application/WorkOrderService.java` -- `isExecutor`, `requireTransitionAccess` patterns; active-assignment lookups via WorkAssignmentRepository
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkAssignmentRepository.java` -- active assignment finder
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/api/WorkOrderController.java` -- add quality-rating endpoints
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/api/WorkOrderDtos.java` -- add records
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/api/WorkOrderExceptionHandler.java` -- map new exceptions
++- `syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java` -- add WORK_ORDER_QUALITY_RATING
++- `syncro/apps/backend/src/main/resources/db/migration/V1__orm_foundation_schema.sql` -- audit CHECK (baseline, do not edit)
++- `syncro/authz/policy/authz.rego` -- workorder_rating_paths + role blocks
++- `syncro/authz/policy/authz_test.rego` -- mirror tests
++
++### To create/modify
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/application/WorkOrderQualityRatingService.java` -- NEW: submit, get, expire-on-read
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/api/WorkOrderDtos.java` -- add request/view records
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/api/WorkOrderController.java` -- add endpoints
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/api/WorkOrderExceptionHandler.java` -- map new exceptions
++- `syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java` -- add WORK_ORDER_QUALITY_RATING
++- `syncro/apps/backend/src/main/resources/db/migration/V6__work_order_quality_rating_audit_type.sql` -- NEW additive migration
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderRatingCriterionRepository.java` -- add findAllByOrderBySortOrderAsc
++- `syncro/authz/policy/authz.rego` -- add workorder_quality_rating_paths
++- `syncro/authz/policy/authz_test.rego` -- mirror tests
++- `syncro/apps/backend/src/test/java/com/syncro/maintenance/application/WorkOrderQualityRatingServiceTest.java` -- NEW unit tests
++- `syncro/apps/backend/src/test/java/com/syncro/maintenance/application/WorkOrderQualityRatingServiceIntegrationTest.java` -- NEW real-DB tests
++- `syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java` -- extend CHECK assertion
++
++## Tasks & Acceptance
++
++**Execution:**
++- `WorkOrderQualityRatingService.java` -- submit/get/expire-on-read -- core use cases
++- `WorkOrderDtos.java` -- add records -- API contract
++- `WorkOrderController.java` -- add endpoints -- expose the service
++- `WorkOrderExceptionHandler.java` -- map new exceptions -- stable error codes
++- `AuditEntityType.java` -- add WORK_ORDER_QUALITY_RATING -- audit label
++- `V6__work_order_quality_rating_audit_type.sql` -- extend audit CHECK -- schema/entity parity
++- `WorkOrderRatingCriterionRepository.java` -- add finder -- criteria reads
++- `authz.rego` -- add path set + role blocks -- OPA enforcement
++- `authz_test.rego` -- add tests -- OPA parity
++- `WorkOrderQualityRatingServiceTest.java` -- unit tests -- edge cases
++- `WorkOrderQualityRatingServiceIntegrationTest.java` -- real-DB tests -- persisted AC verification
++- `V1BaseSchemaMigrationTest.java` -- extend CHECK assertion -- migration test
++
++**Acceptance Criteria:**
++- Given a CLOSED maintenance workorder, when the PRODUCTION_LEADER of the affected line submits a quality rating with per-criterion scores and per-technician scores, then one `work_order_quality_ratings` row is persisted as SUBMITTED, pivot + score rows are created, and the rating is audit-logged.
++- Given a workorder that is not CLOSED, when a rating is attempted, then it is rejected with RATING_WORKORDER_NOT_CLOSED.
++- Given a rating already exists (unique work_order_id), when a second is attempted, then it is rejected with RATING_ALREADY_EXISTS.
++- Given a `due_at` that has passed with no submission, when the rating is read, then its status is EXPIRED.
++- Given a technician not in the executor pool, when scored, then it is rejected with RATING_USER_NOT_EXECUTOR.
++- Given a NON-PRODUCTION_LEADER submits, when attempted, then it is rejected with FORBIDDEN.
++
++## Verification
++
++**Commands:**
++- `cd syncro/apps/backend && mvn -q test -Dtest=WorkOrderQualityRatingServiceTest,WorkOrderQualityRatingServiceIntegrationTest,V1BaseSchemaMigrationTest` -- expected: all pass
++- `cd syncro/apps/backend && mvn -q test` -- expected: full backend suite green (V1-V6 apply cleanly)
++- OPA tests -- expected: all pass
++
++**Manual checks (if no CLI):**
++- Confirm V6 migration is additive-only (drop/re-add CHECK preserving all prior values)
++- Confirm AuditEntityType.WORK_ORDER_QUALITY_RATING matches SQL CHECK
+\ No newline at end of file
+diff --git a/_bmad-output/implementation-artifacts/sprint-status.yaml b/_bmad-output/implementation-artifacts/sprint-status.yaml
+index d7189d9..35b9bfa 100644
+--- a/_bmad-output/implementation-artifacts/sprint-status.yaml
++++ b/_bmad-output/implementation-artifacts/sprint-status.yaml
+@@ -239,7 +239,7 @@ development_status:
+   17-2-work-logs: done
+   17-3-wo-id-format-status-lifecycle: done
+   17-4-work-log-ratings: done
+-  17-5-workorder-quality-ratings: backlog
++  17-5-workorder-quality-ratings: done
+   17-6-assign-work-dialog: backlog
+   epic-17-retrospective: optional
+ 
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java b/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
+index ace0226..b1c678d 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
+@@ -55,5 +55,6 @@ public enum AuditEntityType {
+   WORKORDER_SIGNATURE,
+   WORK_ASSIGNMENT,
+   WORK_LOG,
+-  WORK_LOG_RATING
++  WORK_LOG_RATING,
++  WORK_ORDER_QUALITY_RATING
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/api/WorkOrderController.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/api/WorkOrderController.java
+index d95deec..42d4f95 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/api/WorkOrderController.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/api/WorkOrderController.java
+@@ -54,6 +54,8 @@ import com.syncro.maintenance.application.WorkLogService.UpdateWorkLogCommand;
+ import com.syncro.maintenance.application.WorkLogRatingService;
+ import com.syncro.maintenance.application.WorkLogRatingService.CreateCriterionCommand;
+ import com.syncro.maintenance.application.WorkLogRatingService.UpdateCriterionCommand;
++import com.syncro.maintenance.application.WorkOrderQualityRatingService;
++import com.syncro.maintenance.application.WorkOrderQualityRatingService.SubmitQualityRatingCommand;
+ import com.syncro.maintenance.domain.workorder.RepairSession;
+ import com.syncro.maintenance.domain.workorder.WorkOrder;
+ import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
+@@ -105,12 +107,14 @@ public class WorkOrderController {
+   private final WorkAssignmentService workAssignments;
+   private final WorkLogService workLogs;
+   private final WorkLogRatingService workLogRatings;
++  private final WorkOrderQualityRatingService qualityRatings;
+ 
+   public WorkOrderController(WorkOrderService workOrders, WorkOrderEvidenceService evidence,
+       WorkOrderReportService report, WorkOrderTodoService todos, WorkOrderRatingService ratings,
+       WorkOrderListService lists, WorkorderPrintReportService printReports,
+       WorkorderSignatureService signatures, WorkOrderAckService acks,
+-      WorkAssignmentService workAssignments, WorkLogService workLogs, WorkLogRatingService workLogRatings) {
++      WorkAssignmentService workAssignments, WorkLogService workLogs, WorkLogRatingService workLogRatings,
++      WorkOrderQualityRatingService qualityRatings) {
+     this.workOrders = workOrders;
+     this.evidence = evidence;
+     this.report = report;
+@@ -123,6 +127,7 @@ public class WorkOrderController {
+     this.workAssignments = workAssignments;
+     this.workLogs = workLogs;
+     this.workLogRatings = workLogRatings;
++    this.qualityRatings = qualityRatings;
+   }
+ 
+   /**
+@@ -395,6 +400,61 @@ public class WorkOrderController {
+         .map(WorkOrderController::toWorkLogRatingCriterionDto).toList();
+   }
+ 
++  // -------------------------------------------------------------------------
++  // Workorder quality ratings (17-5, blueprint C4-C6, FR-124)
++  // -------------------------------------------------------------------------
++
++  /**
++   * Submits a workorder quality rating (FR-124). The PRODUCTION_LEADER of the affected
++   * line rates a CLOSED maintenance workorder; one rating per workorder, immutable after
++   * submission.
++   */
++  @Operation(operationId = "submitWorkOrderQualityRating", summary = "Submit a workorder quality rating (PRODUCTION_LEADER)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "201", description = "Rating submitted",
++          content = @Content(schema = @Schema(implementation = WorkOrderDtos.QualityRatingView.class))),
++      @ApiResponse(responseCode = "400", description = "Workorder not closed or validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden — PRODUCTION_LEADER with plant access only"),
++      @ApiResponse(responseCode = "404", description = "Workorder or machine not found"),
++      @ApiResponse(responseCode = "409", description = "Rating already exists")
++  })
++  @PostMapping("/{id}/quality-rating")
++  public ResponseEntity<WorkOrderDtos.QualityRatingView> submitQualityRating(
++      @AuthenticationPrincipal AuthenticatedUser user, @PathVariable String id,
++      @Valid @RequestBody WorkOrderDtos.SubmitQualityRatingRequest request) {
++    var view = qualityRatings.submit(user, id,
++        new SubmitQualityRatingCommand(request.technicianIds(), request.scores(),
++            request.cleanlinessScore(), request.tidinessScore(), request.speedScore()));
++    return ResponseEntity.status(HttpStatus.CREATED).body(toQualityRatingDto(view));
++  }
++
++  /** Gets the current workorder quality rating, expiring PENDING ones past due (any authenticated user). */
++  @Operation(operationId = "getWorkOrderQualityRating", summary = "Get a workorder's quality rating (expires past-due PENDING)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Rating returned",
++          content = @Content(schema = @Schema(implementation = WorkOrderDtos.QualityRatingView.class))),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "404", description = "Workorder or rating not found")
++  })
++  @GetMapping("/{id}/quality-rating")
++  public WorkOrderDtos.QualityRatingView getQualityRating(@PathVariable String id) {
++    return toQualityRatingDto(qualityRatings.get(id));
++  }
++
++  /** Lists workorder rating criteria ordered by sortOrder (any authenticated user). */
++  @Operation(operationId = "listWorkOrderRatingCriteria", summary = "List workorder quality rating criteria ordered by sortOrder")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Criteria returned",
++          content = @Content(schema = @Schema(implementation = WorkOrderDtos.WorkOrderRatingCriterionView.class))),
++      @ApiResponse(responseCode = "401", description = "Authentication required")
++  })
++  @GetMapping("/quality-rating-criteria")
++  public List<WorkOrderDtos.WorkOrderRatingCriterionView> listWorkOrderRatingCriteria() {
++    return qualityRatings.listCriteria().stream()
++        .map(WorkOrderController::toWorkOrderRatingCriterionDto).toList();
++  }
++
+   /** Drops an active assignment (soft-deactivate; 17-1, AD-17). */
+   @Operation(operationId = "dropWorkAssignment", summary = "Drop an active work assignment")
+   @ApiResponses({
+@@ -951,6 +1011,22 @@ public class WorkOrderController {
+         view.createdAt(), view.updatedAt());
+   }
+ 
++  private static WorkOrderDtos.QualityRatingView toQualityRatingDto(
++      WorkOrderQualityRatingService.QualityRatingView view) {
++    var scoreViews = view.scores().stream()
++        .map(s -> new WorkOrderDtos.QualityRatingScoreView(s.criterionId(), s.criterionName(), s.score()))
++        .toList();
++    return new WorkOrderDtos.QualityRatingView(view.id(), view.workOrderId(), view.status(),
++        view.cleanlinessScore(), view.tidinessScore(), view.speedScore(), view.dueAt(),
++        view.submittedAt(), view.submittedBy(), view.remarks(), scoreViews, view.technicianIds());
++  }
++
++  private static WorkOrderDtos.WorkOrderRatingCriterionView toWorkOrderRatingCriterionDto(
++      WorkOrderQualityRatingService.WorkOrderRatingCriterionView view) {
++    return new WorkOrderDtos.WorkOrderRatingCriterionView(view.id(), view.name(), view.description(),
++        view.minScore(), view.maxScore(), view.plantId(), view.active(), view.sortOrder());
++  }
++
+   private static WorkOrderDtos.WorkAssignmentView toAssignmentDto(WorkAssignmentView view) {
+     return new WorkOrderDtos.WorkAssignmentView(view.id(), view.workOrderId(), view.technicianId(),
+         view.assignedBy(), view.assignedAt(), view.droppedAt(), view.droppedBy(), view.isActive());
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/api/WorkOrderDtos.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/api/WorkOrderDtos.java
+index 6debc92..df436fc 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/api/WorkOrderDtos.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/api/WorkOrderDtos.java
+@@ -5,6 +5,7 @@ import com.syncro.maintenance.domain.workorder.StopTimeReason;
+ import com.syncro.maintenance.domain.workorder.TodoStatus;
+ import com.syncro.maintenance.domain.workorder.WorkLogStoppedReason;
+ import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
++import com.syncro.maintenance.domain.workorder.WorkRatingStatus;
+ import jakarta.validation.constraints.DecimalMin;
+ import jakarta.validation.constraints.Max;
+ import jakarta.validation.constraints.Min;
+@@ -352,4 +353,55 @@ public final class WorkOrderDtos {
+       Instant createdAt,
+       Instant updatedAt) {
+   }
++
++  // -------------------------------------------------------------------------
++  // Workorder quality ratings (17-5, blueprint C4-C6, FR-124)
++  // -------------------------------------------------------------------------
++
++  /**
++   * Submit a workorder quality rating body (FR-124). The PRODUCTION_LEADER of the
++   * affected line rates a CLOSED maintenance workorder with per-criterion scores and
++   * per-technician scores via the pivot; the three headline scores are the legacy
++   * cleanliness/tidiness/speed columns. One rating per workorder, immutable after
++   * submission.
++   */
++  public record SubmitQualityRatingRequest(
++      @NotNull @Size(min = 1) List<UUID> technicianIds,
++      @NotNull Map<UUID, Integer> scores,
++      @Min(1) @Max(5) Integer cleanlinessScore,
++      @Min(1) @Max(5) Integer tidinessScore,
++      @Min(1) @Max(5) Integer speedScore) {
++  }
++
++  /** Read model for a per-criterion score of a workorder quality rating. */
++  public record QualityRatingScoreView(UUID criterionId, String criterionName, int score) {
++  }
++
++  /** Read model for a workorder quality rating with its scores and technicians. */
++  public record QualityRatingView(
++      UUID id,
++      String workOrderId,
++      WorkRatingStatus status,
++      Integer cleanlinessScore,
++      Integer tidinessScore,
++      Integer speedScore,
++      Instant dueAt,
++      Instant submittedAt,
++      UUID submittedBy,
++      String remarks,
++      List<QualityRatingScoreView> scores,
++      List<UUID> technicianIds) {
++  }
++
++  /** Read model for one workorder rating criterion row (C3). */
++  public record WorkOrderRatingCriterionView(
++      UUID id,
++      String name,
++      String description,
++      int minScore,
++      int maxScore,
++      UUID plantId,
++      boolean active,
++      int sortOrder) {
++  }
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/api/WorkOrderExceptionHandler.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/api/WorkOrderExceptionHandler.java
+index 1187038..cba6d49 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/api/WorkOrderExceptionHandler.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/api/WorkOrderExceptionHandler.java
+@@ -13,6 +13,14 @@ import com.syncro.maintenance.application.WorkLogService.WorkLogBackdateBeforeWo
+ import com.syncro.maintenance.application.WorkLogService.WorkLogNotFoundException;
+ import com.syncro.maintenance.application.WorkLogService.WorkLogValidationException;
+ import com.syncro.maintenance.application.WorkLogRatingService.WorkLogRatingAlreadyExistsException;
++import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingAlreadyExistsException;
++import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingForbiddenException;
++import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingMachineNotFoundException;
++import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingNotClosedException;
++import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingNotFoundException;
++import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingUserNotExecutorException;
++import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingValidationException;
++import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingWorkOrderNotFoundException;
+ import com.syncro.maintenance.application.WorkLogRatingService.WorkLogRatingCriterionInUseException;
+ import com.syncro.maintenance.application.WorkLogRatingService.WorkLogRatingCriterionNotFoundException;
+ import com.syncro.maintenance.application.WorkLogRatingService.WorkLogRatingForbiddenException;
+@@ -168,7 +176,8 @@ public class WorkOrderExceptionHandler {
+ 
+   @ExceptionHandler({WorkorderForbiddenException.class, EvidenceForbiddenException.class,
+       ReportForbiddenException.class, TodoForbiddenException.class, PlantAccessDeniedException.class,
+-      RatingForbiddenException.class, WorkLogRatingForbiddenException.class})
++      RatingForbiddenException.class, WorkLogRatingForbiddenException.class,
++      QualityRatingForbiddenException.class})
+   ResponseEntity<ErrorResponse> forbidden() {
+     return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "You do not have permission to access this resource.", Map.of());
+   }
+@@ -317,6 +326,50 @@ public class WorkOrderExceptionHandler {
+         "A work-log rating criterion referenced by existing ratings cannot be deleted.", Map.of());
+   }
+ 
++  // -------------------------------------------------------------------------
++  // Workorder quality ratings (17-5, FR-124)
++  // -------------------------------------------------------------------------
++
++  @ExceptionHandler(QualityRatingWorkOrderNotFoundException.class)
++  ResponseEntity<ErrorResponse> qualityRatingWorkOrderNotFound() {
++    return error(HttpStatus.NOT_FOUND, "WORKORDER_NOT_FOUND", "Workorder was not found.", Map.of());
++  }
++
++  @ExceptionHandler(QualityRatingMachineNotFoundException.class)
++  ResponseEntity<ErrorResponse> qualityRatingMachineNotFound() {
++    return error(HttpStatus.NOT_FOUND, "MACHINE_NOT_FOUND", "Machine was not found.", Map.of());
++  }
++
++  @ExceptionHandler(QualityRatingNotFoundException.class)
++  ResponseEntity<ErrorResponse> qualityRatingNotFound() {
++    return error(HttpStatus.NOT_FOUND, "QUALITY_RATING_NOT_FOUND",
++        "Workorder quality rating was not found.", Map.of());
++  }
++
++  @ExceptionHandler(QualityRatingNotClosedException.class)
++  ResponseEntity<ErrorResponse> qualityRatingNotClosed() {
++    return error(HttpStatus.BAD_REQUEST, "RATING_WORKORDER_NOT_CLOSED",
++        "Only closed workorders can be rated.", Map.of());
++  }
++
++  @ExceptionHandler(QualityRatingAlreadyExistsException.class)
++  ResponseEntity<ErrorResponse> qualityRatingAlreadyExists() {
++    return error(HttpStatus.CONFLICT, "RATING_ALREADY_EXISTS",
++        "A quality rating already exists for this workorder.", Map.of());
++  }
++
++  @ExceptionHandler(QualityRatingUserNotExecutorException.class)
++  ResponseEntity<ErrorResponse> qualityRatingUserNotExecutor() {
++    return error(HttpStatus.BAD_REQUEST, "RATING_USER_NOT_EXECUTOR",
++        "The rated technician must have executed the workorder.", Map.of());
++  }
++
++  @ExceptionHandler(QualityRatingValidationException.class)
++  ResponseEntity<ErrorResponse> qualityRatingValidation(QualityRatingValidationException exception) {
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
++        exception.getFieldErrors());
++  }
++
+   @ExceptionHandler(InvalidStateTransitionException.class)
+   ResponseEntity<ErrorResponse> invalidStateTransition() {
+     return error(HttpStatus.CONFLICT, "INVALID_STATE_TRANSITION",
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/application/WorkOrderQualityRatingService.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/application/WorkOrderQualityRatingService.java
+new file mode 100644
+index 0000000..41e3ffb
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/application/WorkOrderQualityRatingService.java
+@@ -0,0 +1,385 @@
++package com.syncro.maintenance.application;
++
++import com.syncro.audit.application.AuditLogWriter;
++import com.syncro.audit.application.AuditRecord;
++import com.syncro.audit.domain.AuditAction;
++import com.syncro.audit.domain.AuditEntityType;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.application.PlantScopeService;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
++import com.syncro.maintenance.domain.workorder.WorkRatingStatus;
++import com.syncro.maintenance.infrastructure.db.WorkAssignmentRepository;
++import com.syncro.maintenance.infrastructure.db.WorkOrderEntity;
++import com.syncro.maintenance.infrastructure.db.WorkOrderQualityRatingEntity;
++import com.syncro.maintenance.infrastructure.db.WorkOrderQualityRatingRepository;
++import com.syncro.maintenance.infrastructure.db.WorkOrderQualityRatingScoreEntity;
++import com.syncro.maintenance.infrastructure.db.WorkOrderQualityRatingScoreRepository;
++import com.syncro.maintenance.infrastructure.db.WorkOrderQualityRatingTechnicianEntity;
++import com.syncro.maintenance.infrastructure.db.WorkOrderQualityRatingTechnicianRepository;
++import com.syncro.maintenance.infrastructure.db.WorkOrderRatingCriterionEntity;
++import com.syncro.maintenance.infrastructure.db.WorkOrderRatingCriterionRepository;
++import com.syncro.maintenance.infrastructure.db.WorkOrderRepository;
++import com.syncro.machine.infrastructure.MachineEntity;
++import com.syncro.machine.infrastructure.MachineRepository;
++import com.syncro.org.application.OperationalScopeService;
++import java.time.Clock;
++import java.time.Instant;
++import java.util.ArrayList;
++import java.util.HashMap;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++
++/**
++ * Workorder quality ratings (FR-124, blueprint C4-C6, story 17-5). After a maintenance
++ * workorder is CLOSED, the PRODUCTION_LEADER of the affected line rates workorder quality
++ * with per-dimension scores and per-technician scores via the pivot. One rating per
++ * workorder ({@code uq_work_order_quality_ratings_work_order}); immutable after submission.
++ * Unsubmitted ratings become EXPIRED when {@code due_at} passes.
++ */
++@Service
++public class WorkOrderQualityRatingService {
++
++  private final WorkOrderRepository workOrders;
++  private final WorkOrderQualityRatingRepository ratings;
++  private final WorkOrderQualityRatingTechnicianRepository technicianPivots;
++  private final WorkOrderQualityRatingScoreRepository scoreRows;
++  private final WorkOrderRatingCriterionRepository criteria;
++  private final MachineRepository machines;
++  private final PlantScopeService plantScope;
++  private final OperationalScopeService scopes;
++  private final AuditLogWriter auditLog;
++  private final WorkAssignmentRepository assignments;
++  private final Clock clock;
++
++  public WorkOrderQualityRatingService(WorkOrderRepository workOrders,
++      WorkOrderQualityRatingRepository ratings,
++      WorkOrderQualityRatingTechnicianRepository technicianPivots,
++      WorkOrderQualityRatingScoreRepository scoreRows,
++      WorkOrderRatingCriterionRepository criteria,
++      MachineRepository machines, PlantScopeService plantScope,
++      OperationalScopeService scopes, AuditLogWriter auditLog,
++      WorkAssignmentRepository assignments, Clock clock) {
++    this.workOrders = workOrders;
++    this.ratings = ratings;
++    this.technicianPivots = technicianPivots;
++    this.scoreRows = scoreRows;
++    this.criteria = criteria;
++    this.machines = machines;
++    this.plantScope = plantScope;
++    this.scopes = scopes;
++    this.auditLog = auditLog;
++    this.assignments = assignments;
++    this.clock = clock;
++  }
++
++  /**
++   * Submits a quality rating for a CLOSED workorder (FR-124). Creates a PENDING rating
++   * row if none exists, then submits it with per-criterion scores and per-technician
++   * scores. One rating per workorder; immutable after submission.
++   */
++  @Transactional
++  public QualityRatingView submit(AuthenticatedUser user, String workOrderId,
++      SubmitQualityRatingCommand command) {
++    var entity = loadWorkOrder(workOrderId);
++    var machine = loadMachine(entity);
++    requireClosed(entity);
++    requireProductionLeaderGate(user, machine);
++
++    if (ratings.existsByWorkOrderId(workOrderId)) {
++      throw new QualityRatingAlreadyExistsException();
++    }
++    var now = Instant.now(clock);
++    var raterId = UUID.fromString(user.id());
++
++    var validated = validateScores(command.scores());
++    var technicianIds = validateTechnicians(workOrderId, command.technicianIds());
++
++    var rating = new WorkOrderQualityRatingEntity(UUID.randomUUID(), workOrderId,
++        WorkRatingStatus.PENDING, null, null, null, null, null, null, null, now, now);
++    rating.submit(command.cleanlinessScore(), command.tidinessScore(), command.speedScore(),
++        raterId, now, now);
++    var saved = ratings.saveAndFlush(rating);
++
++    var savedTechs = new ArrayList<WorkOrderQualityRatingTechnicianEntity>();
++    for (var techId : technicianIds) {
++      var pivot = new WorkOrderQualityRatingTechnicianEntity(UUID.randomUUID(),
++          saved.getId(), null, techId);
++      savedTechs.add(technicianPivots.saveAndFlush(pivot));
++    }
++
++    var savedScores = new ArrayList<WorkOrderQualityRatingScoreEntity>();
++    for (var entry : validated.scores().entrySet()) {
++      var score = new WorkOrderQualityRatingScoreEntity(UUID.randomUUID(),
++          saved.getId(), entry.getKey(), entry.getValue());
++      savedScores.add(scoreRows.saveAndFlush(score));
++    }
++
++    auditLog.record(user, new AuditRecord(AuditAction.CREATE,
++        AuditEntityType.WORK_ORDER_QUALITY_RATING,
++        saved.getId(), workOrderId, machine.getPlant().getId(), null,
++        ratingValues(saved, savedScores, savedTechs), null));
++    return toView(saved, savedScores, savedTechs, validated.criteria());
++  }
++
++  /**
++   * Gets the current quality rating for a workorder (any authenticated user).
++   * If the rating is PENDING and due_at has passed, transitions it to EXPIRED
++   * and persists the change.
++   */
++  @Transactional
++  public QualityRatingView get(String workOrderId) {
++    loadWorkOrder(workOrderId);
++    var rating = ratings.findByWorkOrderId(workOrderId)
++        .orElseThrow(QualityRatingNotFoundException::new);
++    expireIfPastDue(rating);
++    var scores = scoreRows.findByQualityRatingId(rating.getId());
++    var techs = technicianPivots.findByQualityRatingId(rating.getId());
++    var allCriteria = criteria.findAll();
++    return toView(rating, scores, techs, allCriteria);
++  }
++
++  /** Checks whether a quality rating exists for the workorder (read-only). */
++  @Transactional(readOnly = true)
++  public boolean exists(String workOrderId) {
++    return ratings.existsByWorkOrderId(workOrderId);
++  }
++
++  /** Lists active quality rating criteria ordered by sort_order (any authenticated user). */
++  @Transactional(readOnly = true)
++  public List<WorkOrderRatingCriterionView> listCriteria() {
++    return criteria.findAllByOrderBySortOrderAsc().stream()
++        .map(this::toCriterionView)
++        .toList();
++  }
++
++  // -------------------------------------------------------------------------
++  // Gates
++  // -------------------------------------------------------------------------
++
++  private void requireClosed(WorkOrderEntity entity) {
++    if (entity.getStatus() != WorkOrderStatus.CLOSED) {
++      throw new QualityRatingNotClosedException();
++    }
++  }
++
++  /** FR-124: the rater must be PRODUCTION_LEADER with plant access (SUPER_ADMIN exempt). */
++  private void requireProductionLeaderGate(AuthenticatedUser user, MachineEntity machine) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    if (user.applicationRole() != ApplicationRole.PRODUCTION_LEADER
++        || !plantScope.canAccessPlant(user, machine.getPlant().getId())) {
++      throw new QualityRatingForbiddenException();
++    }
++  }
++
++  // -------------------------------------------------------------------------
++  // Validation
++  // -------------------------------------------------------------------------
++
++  /**
++   * Validates per-criterion scores against the criterion's min/max range.
++   * Every key must be an existing criterion; every value must be within range.
++   */
++  private ValidatedScores validateScores(Map<UUID, Integer> requestedScores) {
++    var fieldErrors = new LinkedHashMap<String, String>();
++    if (requestedScores == null || requestedScores.isEmpty()) {
++      fieldErrors.put("scores", "At least one criterion score is required.");
++      throw new QualityRatingValidationException(fieldErrors);
++    }
++    var allCriteria = criteria.findAll();
++    var criterionById = new HashMap<UUID, WorkOrderRatingCriterionEntity>();
++    for (var c : allCriteria) {
++      criterionById.put(c.getId(), c);
++    }
++    var validated = new LinkedHashMap<UUID, Integer>();
++    for (var entry : requestedScores.entrySet()) {
++      var criterion = criterionById.get(entry.getKey());
++      if (criterion == null) {
++        fieldErrors.put("scores." + entry.getKey(), "Unknown criterion.");
++        continue;
++      }
++      var value = entry.getValue();
++      if (value == null || value < criterion.getMinScore() || value > criterion.getMaxScore()) {
++        fieldErrors.put("scores." + entry.getKey(),
++            "Score must be between " + criterion.getMinScore() + " and " + criterion.getMaxScore() + ".");
++        continue;
++      }
++      validated.put(criterion.getId(), value);
++    }
++    if (!fieldErrors.isEmpty()) {
++      throw new QualityRatingValidationException(fieldErrors);
++    }
++    return new ValidatedScores(validated, allCriteria);
++  }
++
++  /** Validated criterion-id → score map plus the loaded criterion set (avoids a re-query). */
++  private record ValidatedScores(Map<UUID, Integer> scores, List<WorkOrderRatingCriterionEntity> criteria) {
++  }
++
++  /**
++   * Validates that every technician id is in the workorder's executor pool
++   * (assigned technician + active assignments + repair-session technicians).
++   */
++  private List<UUID> validateTechnicians(String workOrderId, List<UUID> technicianIds) {
++    if (technicianIds == null || technicianIds.isEmpty()) {
++      throw new QualityRatingValidationException(
++          Map.of("technicianIds", "At least one technician is required."));
++    }
++    var pool = executorPool(workOrderId);
++    var deduped = new ArrayList<UUID>();
++    for (var techId : technicianIds) {
++      if (!pool.contains(techId)) {
++        throw new QualityRatingUserNotExecutorException();
++      }
++      if (!deduped.contains(techId)) {
++        deduped.add(techId);
++      }
++    }
++    return deduped;
++  }
++
++  /** Executor pool: assigned technician + active assignment technicians + repair-session technicians. */
++  private List<UUID> executorPool(String workOrderId) {
++    var pool = new ArrayList<UUID>();
++    var entity = workOrders.findById(workOrderId).orElse(null);
++    if (entity == null) return pool;
++    if (entity.getAssignedTechnicianId() != null) {
++      pool.add(entity.getAssignedTechnicianId());
++    }
++    for (var a : assignments.findByWorkOrderIdOrderByAssignedAtAsc(workOrderId)) {
++      if (a.isActive() && !pool.contains(a.getTechnicianId())) {
++        pool.add(a.getTechnicianId());
++      }
++    }
++    for (var id : workOrders.findSessionTechnicianIds(workOrderId)) {
++      if (!pool.contains(id)) {
++        pool.add(id);
++      }
++    }
++    return pool;
++  }
++
++  // -------------------------------------------------------------------------
++  // Expiry
++  // -------------------------------------------------------------------------
++
++  private void expireIfPastDue(WorkOrderQualityRatingEntity rating) {
++    if (rating.getStatus() == WorkRatingStatus.PENDING
++        && rating.getDueAt() != null
++        && rating.getDueAt().isBefore(Instant.now(clock))) {
++      rating.setStatus(WorkRatingStatus.EXPIRED);
++      rating.setUpdatedAt(Instant.now(clock));
++      ratings.saveAndFlush(rating);
++    }
++  }
++
++  // -------------------------------------------------------------------------
++  // Helpers
++  // -------------------------------------------------------------------------
++
++  private WorkOrderEntity loadWorkOrder(String workOrderId) {
++    return workOrders.findById(workOrderId).orElseThrow(QualityRatingWorkOrderNotFoundException::new);
++  }
++
++  private MachineEntity loadMachine(WorkOrderEntity workOrder) {
++    return machines.findByIdWithPlantAndGroup(workOrder.getMachineId())
++        .orElseThrow(QualityRatingMachineNotFoundException::new);
++  }
++
++  private Map<String, Object> ratingValues(WorkOrderQualityRatingEntity rating,
++      List<WorkOrderQualityRatingScoreEntity> scores,
++      List<WorkOrderQualityRatingTechnicianEntity> techs) {
++    var values = new LinkedHashMap<String, Object>();
++    values.put("id", rating.getId());
++    values.put("workOrderId", rating.getWorkOrderId());
++    values.put("status", rating.getStatus().name());
++    values.put("cleanlinessScore", rating.getCleanlinessScore());
++    values.put("tidinessScore", rating.getTidinessScore());
++    values.put("speedScore", rating.getSpeedScore());
++    values.put("submittedBy", rating.getSubmittedBy());
++    values.put("submittedAt", rating.getSubmittedAt() != null ? rating.getSubmittedAt().toString() : null);
++    values.put("technicians", techs.stream().map(t -> t.getTechnicianId().toString()).toList());
++    var scoreMap = new LinkedHashMap<UUID, Integer>();
++    for (var s : scores) {
++      scoreMap.put(s.getCriterionId(), s.getScore());
++    }
++    values.put("scores", scoreMap);
++    return values;
++  }
++
++  private QualityRatingView toView(WorkOrderQualityRatingEntity rating,
++      List<WorkOrderQualityRatingScoreEntity> scoreEntities,
++      List<WorkOrderQualityRatingTechnicianEntity> techEntities,
++      List<WorkOrderRatingCriterionEntity> allCriteria) {
++    var nameById = new HashMap<UUID, String>();
++    for (var c : allCriteria) {
++      nameById.put(c.getId(), c.getName());
++    }
++    var scoreViews = new ArrayList<ScoreView>();
++    for (var s : scoreEntities) {
++      scoreViews.add(new ScoreView(s.getCriterionId(), nameById.get(s.getCriterionId()), s.getScore()));
++    }
++    var techIds = techEntities.stream().map(t -> t.getTechnicianId()).toList();
++    return new QualityRatingView(rating.getId(), rating.getWorkOrderId(), rating.getStatus(),
++        rating.getCleanlinessScore(), rating.getTidinessScore(), rating.getSpeedScore(),
++        rating.getDueAt(), rating.getSubmittedAt(), rating.getSubmittedBy(),
++        rating.getRemarks(), scoreViews, techIds);
++  }
++
++  private WorkOrderRatingCriterionView toCriterionView(WorkOrderRatingCriterionEntity criterion) {
++    return new WorkOrderRatingCriterionView(criterion.getId(), criterion.getName(),
++        criterion.getDescription(), criterion.getMinScore(), criterion.getMaxScore(),
++        criterion.getPlantId(), criterion.isActive(), criterion.getSortOrder());
++  }
++
++  // -------------------------------------------------------------------------
++  // Commands & views
++  // -------------------------------------------------------------------------
++
++  public record SubmitQualityRatingCommand(
++      List<UUID> technicianIds,
++      Map<UUID, Integer> scores,
++      Integer cleanlinessScore,
++      Integer tidinessScore,
++      Integer speedScore) {
++  }
++
++  public record QualityRatingView(UUID id, String workOrderId, WorkRatingStatus status,
++      Integer cleanlinessScore, Integer tidinessScore, Integer speedScore,
++      Instant dueAt, Instant submittedAt, UUID submittedBy, String remarks,
++      List<ScoreView> scores, List<UUID> technicianIds) {
++  }
++
++  public record ScoreView(UUID criterionId, String criterionName, int score) {
++  }
++
++  public record WorkOrderRatingCriterionView(UUID id, String name, String description,
++      int minScore, int maxScore, UUID plantId, boolean active, int sortOrder) {
++  }
++
++  // -------------------------------------------------------------------------
++  // Exceptions
++  // -------------------------------------------------------------------------
++
++  public static class QualityRatingForbiddenException extends RuntimeException {}
++  public static class QualityRatingWorkOrderNotFoundException extends RuntimeException {}
++  public static class QualityRatingMachineNotFoundException extends RuntimeException {}
++  public static class QualityRatingNotClosedException extends RuntimeException {}
++  public static class QualityRatingAlreadyExistsException extends RuntimeException {}
++  public static class QualityRatingNotFoundException extends RuntimeException {}
++  public static class QualityRatingUserNotExecutorException extends RuntimeException {}
++
++  public static class QualityRatingValidationException extends RuntimeException {
++    private final Map<String, String> fieldErrors;
++    public QualityRatingValidationException(Map<String, String> fieldErrors) {
++      this.fieldErrors = new HashMap<>(fieldErrors);
++    }
++    public Map<String, String> getFieldErrors() { return fieldErrors; }
++  }
++}
+\ No newline at end of file
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderQualityRatingEntity.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderQualityRatingEntity.java
+index 6770161..ea145fb 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderQualityRatingEntity.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderQualityRatingEntity.java
+@@ -138,4 +138,13 @@ public class WorkOrderQualityRatingEntity {
+     this.status = WorkRatingStatus.SUBMITTED;
+     this.updatedAt = updatedAt;
+   }
++
++  /** Expiry transition (C4): marks the rating as EXPIRED when due_at passes unsubmitted. */
++  public void setStatus(WorkRatingStatus status) {
++    this.status = status;
++  }
++
++  public void setUpdatedAt(Instant updatedAt) {
++    this.updatedAt = updatedAt;
++  }
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderQualityRatingRepository.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderQualityRatingRepository.java
+index 9163e3b..0a83669 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderQualityRatingRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderQualityRatingRepository.java
+@@ -8,4 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
+ public interface WorkOrderQualityRatingRepository extends JpaRepository<WorkOrderQualityRatingEntity, UUID> {
+ 
+   Optional<WorkOrderQualityRatingEntity> findByWorkOrderId(String workOrderId);
++
++  boolean existsByWorkOrderId(String workOrderId);
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderQualityRatingScoreRepository.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderQualityRatingScoreRepository.java
+index 76a1ef8..1d4be30 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderQualityRatingScoreRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderQualityRatingScoreRepository.java
+@@ -1,9 +1,14 @@
+ package com.syncro.maintenance.infrastructure.db;
+ 
++import java.util.List;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
+ 
+ /** Persistence for {@code work_order_quality_rating_scores} (blueprint C6, story 15-2). */
+ public interface WorkOrderQualityRatingScoreRepository
+     extends JpaRepository<WorkOrderQualityRatingScoreEntity, UUID> {
++
++  List<WorkOrderQualityRatingScoreEntity> findByQualityRatingId(UUID qualityRatingId);
++
++  boolean existsByCriterionId(UUID criterionId);
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderQualityRatingTechnicianRepository.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderQualityRatingTechnicianRepository.java
+index 6d9c8e7..0d2cd74 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderQualityRatingTechnicianRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderQualityRatingTechnicianRepository.java
+@@ -1,9 +1,12 @@
+ package com.syncro.maintenance.infrastructure.db;
+ 
++import java.util.List;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
+ 
+ /** Persistence for {@code work_order_quality_rating_technicians} (blueprint C5, story 15-2). */
+ public interface WorkOrderQualityRatingTechnicianRepository
+     extends JpaRepository<WorkOrderQualityRatingTechnicianEntity, UUID> {
++
++  List<WorkOrderQualityRatingTechnicianEntity> findByQualityRatingId(UUID qualityRatingId);
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderRatingCriterionRepository.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderRatingCriterionRepository.java
+index fef5f98..8f6fe88 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderRatingCriterionRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderRatingCriterionRepository.java
+@@ -1,8 +1,11 @@
+ package com.syncro.maintenance.infrastructure.db;
+ 
++import java.util.List;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
+ 
+ /** Persistence for {@code work_order_rating_criteria} (blueprint C3, story 15-2). */
+ public interface WorkOrderRatingCriterionRepository extends JpaRepository<WorkOrderRatingCriterionEntity, UUID> {
++
++  List<WorkOrderRatingCriterionEntity> findAllByOrderBySortOrderAsc();
+ }
+diff --git a/syncro/apps/backend/src/main/resources/db/migration/V6__work_order_quality_rating_audit_type.sql b/syncro/apps/backend/src/main/resources/db/migration/V6__work_order_quality_rating_audit_type.sql
+new file mode 100644
+index 0000000..7337e97
+--- /dev/null
++++ b/syncro/apps/backend/src/main/resources/db/migration/V6__work_order_quality_rating_audit_type.sql
+@@ -0,0 +1,29 @@
++-- ============================================================================
++-- V6: Workorder quality rating audit label (story 17-5, blueprint C4)
++-- Additive-only migration extending the ck_audit_log_entity_type CHECK with
++-- WORK_ORDER_QUALITY_RATING that AuditEntityType.WORK_ORDER_QUALITY_RATING
++-- writes (the doc comment on that enum requires the Java enum and the SQL CHECK
++-- to move together in one change).
++-- ============================================================================
++
++ALTER TABLE audit_log
++  DROP CONSTRAINT ck_audit_log_entity_type;
++
++ALTER TABLE audit_log
++  ADD CONSTRAINT ck_audit_log_entity_type CHECK (entity_type IN
++    ('PLANT', 'MACHINE_GROUP', 'MACHINE', 'SPAREPART_TAXONOMY',
++     'SPAREPART', 'INSTALLATION', 'RESPONSIBILITY', 'ALERT',
++     'SPAREPART_PRICE_ENTRY', 'SECTION', 'TEAM', 'WORK_ORDER_CATEGORY',
++     'WORK_ORDER', 'REPAIR_SESSION', 'WORKORDER_ATTACHMENT',
++     'WORK_ORDER_TODO', 'WORKORDER_RATING', 'RATING_DIMENSION',
++     'PREVENTIVE_PROGRAM', 'PREVENTIVE_SCHEDULE',
++     'PREVENTIVE_CHECKLIST', 'PREVENTIVE_ATTACHMENT',
++     'SPAREPART_REQUEST', 'DEPARTMENT', 'DEPARTMENT_USER', 'USER',
++     'INVENTORY_LOCATION', 'INVENTORY_STOCK_BALANCE',
++     'INVENTORY_TRANSFER', 'INVENTORY_RESERVATION',
++     'MACHINE_AREA', 'JOB_TITLE', 'SYSTEM_ROLE', 'ROLE_PERMISSION_MAPPING',
++     'MENU_FEATURE', 'DOMAIN_CONTEXT', 'USER_JOB_BINDING', 'USER_ROLE_BINDING',
++     'PLANT_WORKING_CALENDAR', 'SIGNATURE_USE',
++     'SPAREPART_STOCK', 'SYNC_RUN', 'SYNC_QUARANTINE', 'WORKORDER_SIGNATURE',
++     'WORK_ASSIGNMENT', 'WORK_LOG', 'WORK_LOG_RATING',
++     'WORK_ORDER_QUALITY_RATING'));
+\ No newline at end of file
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
+index 021c150..2f394b8 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
+@@ -48,11 +48,11 @@ class V1BaseSchemaMigrationTest {
+   // -------------------------------------------------------------------------
+ 
+   @Test
+-  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2/V3/V4/V5 additive migrations")
++  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2/V3/V4/V5/V6 additive migrations")
+   void migrationsApplied() {
+     var rows = jdbc.queryForList(
+         "SELECT version, script, success FROM flyway_schema_history ORDER BY installed_rank");
+-    assertThat(rows).hasSize(5);
++    assertThat(rows).hasSize(6);
+     assertThat(rows.get(0).get("version")).isEqualTo("1");
+     assertThat(rows.get(0).get("script")).isEqualTo("V1__orm_foundation_schema.sql");
+     assertThat(rows.get(0).get("success")).isEqualTo(true);
+@@ -68,6 +68,9 @@ class V1BaseSchemaMigrationTest {
+     assertThat(rows.get(4).get("version")).isEqualTo("5");
+     assertThat(rows.get(4).get("script")).isEqualTo("V5__work_log_rating_audit_type.sql");
+     assertThat(rows.get(4).get("success")).isEqualTo(true);
++    assertThat(rows.get(5).get("version")).isEqualTo("6");
++    assertThat(rows.get(5).get("script")).isEqualTo("V6__work_order_quality_rating_audit_type.sql");
++    assertThat(rows.get(5).get("success")).isEqualTo(true);
+   }
+ 
+   // -------------------------------------------------------------------------
+@@ -426,6 +429,38 @@ class V1BaseSchemaMigrationTest {
+         "SIGNATURE_USE");
+   }
+ 
++  /**
++   * Story 17-5: V6 extends the CHECK additively with WORK_ORDER_QUALITY_RATING so
++   * {@code AuditEntityType.WORK_ORDER_QUALITY_RATING} can be persisted. Every prior
++   * value — including the V3 WORK_ASSIGNMENT, V4 WORK_LOG and V5 WORK_LOG_RATING —
++   * survives the extension.
++   */
++  @Test
++  @DisplayName("17.5-DB-001 P0 audit_log entity_type CHECK accepts WORK_ORDER_QUALITY_RATING after V6")
++  void auditEntityTypeAcceptsWorkOrderQualityRating() {
++    var check = jdbc.queryForMap(
++        "SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint "
++            + "WHERE conname = 'ck_audit_log_entity_type'");
++    var def = (String) check.get("def");
++    assertThat(def).contains("WORK_ORDER_QUALITY_RATING");
++    // every prior value (V1 + V2 + V3 + V4 + V5) survives the additive V6 extension.
++    assertThat(def).contains("WORK_LOG_RATING", "WORK_LOG", "WORK_ASSIGNMENT", "WORK_ORDER",
++        "REPAIR_SESSION", "WORKORDER_SIGNATURE", "SPAREPART_STOCK", "SYNC_RUN",
++        "SYNC_QUARANTINE", "MACHINE_AREA", "USER_ROLE_BINDING", "PLANT_WORKING_CALENDAR",
++        "PLANT", "MACHINE_GROUP", "MACHINE", "SPAREPART_TAXONOMY",
++        "SPAREPART", "INSTALLATION", "RESPONSIBILITY", "ALERT",
++        "SPAREPART_PRICE_ENTRY", "SECTION", "TEAM", "WORK_ORDER_CATEGORY",
++        "WORKORDER_ATTACHMENT", "WORK_ORDER_TODO", "WORKORDER_RATING",
++        "RATING_DIMENSION", "PREVENTIVE_PROGRAM", "PREVENTIVE_SCHEDULE",
++        "PREVENTIVE_CHECKLIST", "PREVENTIVE_ATTACHMENT",
++        "SPAREPART_REQUEST", "DEPARTMENT", "DEPARTMENT_USER", "USER",
++        "INVENTORY_LOCATION", "INVENTORY_STOCK_BALANCE",
++        "INVENTORY_TRANSFER", "INVENTORY_RESERVATION",
++        "JOB_TITLE", "SYSTEM_ROLE", "ROLE_PERMISSION_MAPPING",
++        "MENU_FEATURE", "DOMAIN_CONTEXT", "USER_JOB_BINDING",
++        "SIGNATURE_USE");
++  }
++
+   // -------------------------------------------------------------------------
+   // Helpers
+   // -------------------------------------------------------------------------
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/maintenance/application/WorkOrderQualityRatingServiceIntegrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/maintenance/application/WorkOrderQualityRatingServiceIntegrationTest.java
+new file mode 100644
+index 0000000..55cdee9
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/maintenance/application/WorkOrderQualityRatingServiceIntegrationTest.java
+@@ -0,0 +1,233 @@
++package com.syncro.maintenance.application;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.api.Assertions.assertThatThrownBy;
++import static org.mockito.Mockito.when;
++
++import com.syncro.AbstractPostgresIntegrationTest;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingAlreadyExistsException;
++import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingNotClosedException;
++import com.syncro.maintenance.application.WorkOrderQualityRatingService.SubmitQualityRatingCommand;
++import com.syncro.maintenance.domain.workorder.WorkRatingStatus;
++import jakarta.persistence.EntityManager;
++import java.sql.Timestamp;
++import java.time.Clock;
++import java.time.Instant;
++import java.time.ZoneOffset;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.jdbc.core.JdbcTemplate;
++import org.springframework.test.context.bean.override.mockito.MockitoBean;
++
++/**
++ * Story 17-5 real-Postgres evidence (blueprint C4-C6, FR-124): a persisted
++ * work_order_quality_ratings row with scores and technicians for a CLOSED
++ * workorder, the WORK_ORDER_QUALITY_RATING audit row (V6 CHECK), the not-closed
++ * rejection, the duplicate rejection, and the PENDING-to-EXPIRED transition on
++ * read — all against real Postgres via JDBC.
++ */
++class WorkOrderQualityRatingServiceIntegrationTest extends AbstractPostgresIntegrationTest {
++
++  private static final Instant FIXED = Instant.parse("2026-09-01T00:00:00Z");
++
++  @MockitoBean
++  private Clock clock;
++
++  @Autowired
++  private JdbcTemplate jdbc;
++
++  @Autowired
++  private WorkOrderQualityRatingService qualityRatings;
++
++  @Autowired
++  private EntityManager entityManager;
++
++  @BeforeEach
++  void setUpClock() {
++    when(clock.instant()).thenReturn(FIXED);
++    when(clock.getZone()).thenReturn(ZoneOffset.UTC);
++  }
++
++  @Test
++  @DisplayName("17.5-IT-001 P0 submit a quality rating on a CLOSED workorder persists rows, scores, technicians, and audit WORK_ORDER_QUALITY_RATING")
++  void submitPersistsAndAudits() {
++    var seed = seed();
++    var admin = new AuthenticatedUser(seed.actorId().toString(), "super@syncro.dev", ApplicationRole.SUPER_ADMIN);
++    var criterionId = UUID.randomUUID();
++    insertCriterion(criterionId, "Quality", 1, 5);
++
++    var view = qualityRatings.submit(admin, seed.workOrderId,
++        new SubmitQualityRatingCommand(List.of(seed.technicianId), Map.of(criterionId, 4),
++            5, 4, 3));
++    entityManager.flush();
++
++    // work_order_quality_ratings row persisted.
++    var ratingRow = jdbc.queryForMap(
++        "SELECT * FROM work_order_quality_ratings WHERE work_order_id = ?", seed.workOrderId);
++    assertThat(ratingRow.get("work_order_id")).isEqualTo(seed.workOrderId);
++    assertThat(ratingRow.get("status")).isEqualTo("SUBMITTED");
++    assertThat(ratingRow.get("cleanliness_score")).isEqualTo(5);
++    assertThat(ratingRow.get("tidiness_score")).isEqualTo(4);
++    assertThat(ratingRow.get("speed_score")).isEqualTo(3);
++    assertThat(ratingRow.get("submitted_by")).isEqualTo(UUID.fromString(seed.actorId().toString()));
++
++    var ratingId = (UUID) ratingRow.get("id");
++
++    // work_order_quality_rating_scores row persisted.
++    var scoreCount = jdbc.queryForObject(
++        "SELECT count(*) FROM work_order_quality_rating_scores WHERE quality_rating_id = ?::uuid AND criterion_id = ?::uuid AND score = 4",
++        Integer.class, ratingId.toString(), criterionId.toString());
++    assertThat(scoreCount).isEqualTo(1);
++
++    // work_order_quality_rating_technicians row persisted.
++    var techCount = jdbc.queryForObject(
++        "SELECT count(*) FROM work_order_quality_rating_technicians WHERE quality_rating_id = ?::uuid AND technician_id = ?::uuid",
++        Integer.class, ratingId.toString(), seed.technicianId().toString());
++    assertThat(techCount).isEqualTo(1);
++
++    // Returned view matches.
++    assertThat(view.status()).isEqualTo(WorkRatingStatus.SUBMITTED);
++    assertThat(view.cleanlinessScore()).isEqualTo(5);
++    assertThat(view.scores()).hasSize(1);
++    assertThat(view.technicianIds()).containsExactly(seed.technicianId());
++
++    // WORK_ORDER_QUALITY_RATING audit row written (V6 CHECK accepts it).
++    var audit = jdbc.queryForObject("""
++        SELECT count(*) FROM audit_log
++        WHERE entity_label = ? AND entity_type = 'WORK_ORDER_QUALITY_RATING' AND action = 'CREATE'
++        """, Integer.class, seed.workOrderId);
++    assertThat(audit).isEqualTo(1);
++  }
++
++  @Test
++  @DisplayName("17.5-IT-002 P0 submit on a non-CLOSED workorder is rejected and no row is written")
++  void notClosedRejectedNoRowWritten() {
++    var seed = seed();
++    var admin = new AuthenticatedUser(seed.actorId().toString(), "super@syncro.dev", ApplicationRole.SUPER_ADMIN);
++    var criterionId = UUID.randomUUID();
++    insertCriterion(criterionId, "Quality", 1, 5);
++
++    // Re-open the workorder (seed() leaves it CLOSED for the happy path).
++    jdbc.update("UPDATE work_orders SET status = 'IN_PROGRESS' WHERE id = ?", seed.workOrderId);
++
++    assertThatThrownBy(() -> qualityRatings.submit(admin, seed.workOrderId,
++        new SubmitQualityRatingCommand(List.of(seed.technicianId), Map.of(criterionId, 3),
++            5, 4, 3)))
++        .isInstanceOf(QualityRatingNotClosedException.class);
++
++    var count = jdbc.queryForObject(
++        "SELECT count(*) FROM work_order_quality_ratings WHERE work_order_id = ?",
++        Integer.class, seed.workOrderId);
++    assertThat(count).isZero();
++  }
++
++  @Test
++  @DisplayName("17.5-IT-003 P0 duplicate quality rating is rejected by the unique constraint")
++  void duplicateRejected() {
++    var seed = seed();
++    var admin = new AuthenticatedUser(seed.actorId().toString(), "super@syncro.dev", ApplicationRole.SUPER_ADMIN);
++    var criterionId = UUID.randomUUID();
++    insertCriterion(criterionId, "Quality", 1, 5);
++
++    qualityRatings.submit(admin, seed.workOrderId,
++        new SubmitQualityRatingCommand(List.of(seed.technicianId), Map.of(criterionId, 4),
++            5, 4, 3));
++    entityManager.flush();
++
++    assertThatThrownBy(() -> qualityRatings.submit(admin, seed.workOrderId,
++        new SubmitQualityRatingCommand(List.of(seed.technicianId), Map.of(criterionId, 5),
++            5, 4, 3)))
++        .isInstanceOf(QualityRatingAlreadyExistsException.class);
++
++    var count = jdbc.queryForObject(
++        "SELECT count(*) FROM work_order_quality_ratings WHERE work_order_id = ?",
++        Integer.class, seed.workOrderId);
++    assertThat(count).isEqualTo(1);
++  }
++
++  @Test
++  @DisplayName("17.5-IT-004 P0 get transitions a past-due PENDING rating to EXPIRED on read")
++  void expiredOnRead() {
++    var seed = seed();
++    var admin = new AuthenticatedUser(seed.actorId().toString(), "super@syncro.dev", ApplicationRole.SUPER_ADMIN);
++    var criterionId = UUID.randomUUID();
++    insertCriterion(criterionId, "Quality", 1, 5);
++
++    // Insert a PENDING rating with due_at in the past.
++    var ratingId = UUID.randomUUID();
++    jdbc.update("""
++        INSERT INTO work_order_quality_ratings (id, work_order_id, status, due_at, created_at, updated_at)
++        VALUES (?::uuid, ?, 'PENDING', ?, now(), now())
++        """, ratingId.toString(), seed.workOrderId, Timestamp.from(FIXED.minus(java.time.Duration.ofHours(1))));
++
++    // The clock is still FIXED (= now is after due_at), so get() should expire it.
++    var view = qualityRatings.get(seed.workOrderId);
++
++    assertThat(view.status()).isEqualTo(WorkRatingStatus.EXPIRED);
++    var persistedStatus = jdbc.queryForObject(
++        "SELECT status FROM work_order_quality_ratings WHERE id = ?::uuid",
++        String.class, ratingId.toString());
++    assertThat(persistedStatus).isEqualTo("EXPIRED");
++  }
++
++  private void insertCriterion(UUID criterionId, String name, int minScore, int maxScore) {
++    jdbc.update("""
++        INSERT INTO work_order_rating_criteria (id, name, min_score, max_score, is_active, sort_order,
++                                                created_at, updated_at)
++        VALUES (?::uuid, ?, ?, ?, true, 1, now(), now())
++        """, criterionId.toString(), name, minScore, maxScore);
++  }
++
++  private Seed seed() {
++    var plantId = UUID.randomUUID();
++    var groupId = UUID.randomUUID();
++    var machineId = UUID.randomUUID();
++    var categoryId = UUID.randomUUID();
++    var technicianId = UUID.randomUUID();
++    var actorId = UUID.randomUUID();
++    var workOrderId = "WO-ITQ-" + UUID.randomUUID().toString().substring(0, 8);
++
++    jdbc.update("""
++        INSERT INTO plants (id, code, name, created_at, updated_at)
++        VALUES (?::uuid, 'ITQ-PLANT', 'ITQ Plant', now(), now())
++        """, plantId.toString());
++    jdbc.update("""
++        INSERT INTO machine_groups (id, plant_id, name, created_at, updated_at)
++        VALUES (?::uuid, ?::uuid, 'ITQ Group', now(), now())
++        """, groupId.toString(), plantId.toString());
++    jdbc.update("""
++        INSERT INTO machines (id, plant_id, machine_group_id, code, name, status, created_at, updated_at)
++        VALUES (?::uuid, ?::uuid, ?::uuid, 'ITQ-MC', 'ITQ Machine', 'ACTIVE', now(), now())
++        """, machineId.toString(), plantId.toString(), groupId.toString());
++    jdbc.update("""
++        INSERT INTO work_order_categories (id, code, label, created_at, updated_at)
++        VALUES (?::uuid, '97', 'ITQ Category', now(), now())
++        """, categoryId.toString());
++    jdbc.update("""
++        INSERT INTO auth_users (id, login_identifier, password_hash, application_role, enabled, created_at, updated_at)
++        VALUES (?::uuid, ?, 'x', 'TECHNICIAN', true, now(), now())
++        """, technicianId.toString(), "itq-tech-" + UUID.randomUUID() + "@syncro.dev");
++    jdbc.update("""
++        INSERT INTO auth_users (id, login_identifier, password_hash, application_role, enabled, created_at, updated_at)
++        VALUES (?::uuid, ?, 'x', 'SUPER_ADMIN', true, now(), now())
++        """, actorId.toString(), "itq-actor-" + UUID.randomUUID() + "@syncro.dev");
++    jdbc.update("""
++        INSERT INTO work_orders (id, source, status, category_id, machine_id, description, assigned_technician_id,
++                                 created_at, updated_at, sync_version)
++        VALUES (?, 'INTERNAL', 'CLOSED', ?::uuid, ?::uuid, 'ITQ quality rating test', ?::uuid, ?, ?, 1)
++        """, workOrderId, categoryId.toString(), machineId.toString(), technicianId.toString(),
++        Timestamp.from(FIXED.minus(java.time.Duration.ofHours(2))), Timestamp.from(FIXED.minus(java.time.Duration.ofHours(2))));
++
++    return new Seed(workOrderId, technicianId, actorId);
++  }
++
++  private record Seed(String workOrderId, UUID technicianId, UUID actorId) {
++  }
++}
+\ No newline at end of file
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/maintenance/application/WorkOrderQualityRatingServiceTest.java b/syncro/apps/backend/src/test/java/com/syncro/maintenance/application/WorkOrderQualityRatingServiceTest.java
+new file mode 100644
+index 0000000..67ce32b
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/maintenance/application/WorkOrderQualityRatingServiceTest.java
+@@ -0,0 +1,429 @@
++package com.syncro.maintenance.application;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.api.Assertions.assertThatThrownBy;
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.argThat;
++import static org.mockito.ArgumentMatchers.eq;
++import static org.mockito.Mockito.lenient;
++import static org.mockito.Mockito.never;
++import static org.mockito.Mockito.verify;
++import static org.mockito.Mockito.when;
++
++import com.syncro.audit.application.AuditLogWriter;
++import com.syncro.audit.domain.AuditAction;
++import com.syncro.audit.domain.AuditEntityType;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.application.PlantScopeService;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.machine.domain.MachineStatus;
++import com.syncro.machine.infrastructure.MachineEntity;
++import com.syncro.machine.infrastructure.MachineRepository;
++import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingAlreadyExistsException;
++import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingForbiddenException;
++import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingMachineNotFoundException;
++import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingNotClosedException;
++import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingNotFoundException;
++import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingUserNotExecutorException;
++import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingValidationException;
++import com.syncro.maintenance.application.WorkOrderQualityRatingService.QualityRatingWorkOrderNotFoundException;
++import com.syncro.maintenance.application.WorkOrderQualityRatingService.SubmitQualityRatingCommand;
++import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
++import com.syncro.maintenance.domain.workorder.WorkRatingStatus;
++import com.syncro.maintenance.infrastructure.db.WorkAssignmentRepository;
++import com.syncro.maintenance.infrastructure.db.WorkOrderEntity;
++import com.syncro.maintenance.infrastructure.db.WorkOrderQualityRatingEntity;
++import com.syncro.maintenance.infrastructure.db.WorkOrderQualityRatingRepository;
++import com.syncro.maintenance.infrastructure.db.WorkOrderQualityRatingScoreEntity;
++import com.syncro.maintenance.infrastructure.db.WorkOrderQualityRatingScoreRepository;
++import com.syncro.maintenance.infrastructure.db.WorkOrderQualityRatingTechnicianEntity;
++import com.syncro.maintenance.infrastructure.db.WorkOrderQualityRatingTechnicianRepository;
++import com.syncro.maintenance.infrastructure.db.WorkOrderRatingCriterionEntity;
++import com.syncro.maintenance.infrastructure.db.WorkOrderRatingCriterionRepository;
++import com.syncro.maintenance.infrastructure.db.WorkOrderRepository;
++import com.syncro.org.application.OperationalScopeService;
++import java.time.Clock;
++import java.time.Instant;
++import java.time.ZoneOffset;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.Optional;
++import java.util.UUID;
++import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.api.extension.ExtendWith;
++import org.mockito.Mock;
++import org.mockito.junit.jupiter.MockitoExtension;
++import org.mockito.junit.jupiter.MockitoSettings;
++import org.mockito.quality.Strictness;
++
++@ExtendWith(MockitoExtension.class)
++@MockitoSettings(strictness = Strictness.LENIENT)
++class WorkOrderQualityRatingServiceTest {
++
++  private static final Instant NOW = Instant.parse("2026-09-01T10:00:00Z");
++  private static final String WORKORDER_ID = "WO-260900001";
++
++  @Mock
++  private WorkOrderRepository workOrders;
++  @Mock
++  private WorkOrderQualityRatingRepository ratings;
++  @Mock
++  private WorkOrderQualityRatingTechnicianRepository technicianPivots;
++  @Mock
++  private WorkOrderQualityRatingScoreRepository scoreRows;
++  @Mock
++  private WorkOrderRatingCriterionRepository criteria;
++  @Mock
++  private MachineRepository machines;
++  @Mock
++  private PlantScopeService plantScope;
++  @Mock
++  private OperationalScopeService scopes;
++  @Mock
++  private AuditLogWriter auditLog;
++  @Mock
++  private WorkAssignmentRepository assignments;
++
++  private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
++  private final UUID plantId = UUID.randomUUID();
++  private final UUID groupId = UUID.randomUUID();
++  private final UUID machineId = UUID.randomUUID();
++  private final UUID raterId = UUID.randomUUID();
++  private final UUID technicianId = UUID.randomUUID();
++  private final UUID criterionId1 = UUID.randomUUID();
++  private final UUID criterionId2 = UUID.randomUUID();
++
++  private WorkOrderQualityRatingService service;
++  private MachineEntity machine;
++  private WorkOrderRatingCriterionEntity criterionSpeed;
++  private WorkOrderRatingCriterionEntity criterionQuality;
++
++  @BeforeEach
++  void setUp() {
++    service = new WorkOrderQualityRatingService(workOrders, ratings, technicianPivots, scoreRows,
++        criteria, machines, plantScope, scopes, auditLog, assignments, clock);
++    machine = machineWithPlant(plantId, groupId, machineId);
++    lenient().when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
++    lenient().when(assignments.findByWorkOrderIdOrderByAssignedAtAsc(WORKORDER_ID)).thenReturn(List.of());
++    lenient().when(workOrders.findSessionTechnicianIds(WORKORDER_ID)).thenReturn(List.of());
++    criterionSpeed = new WorkOrderRatingCriterionEntity(criterionId1, "Speed", null, 1, 5, null, true, 1,
++        UUID.randomUUID(), NOW, NOW);
++    criterionQuality = new WorkOrderRatingCriterionEntity(criterionId2, "Work Quality", null, 1, 5, null, true, 2,
++        UUID.randomUUID(), NOW, NOW);
++    lenient().when(criteria.findAll()).thenReturn(List.of(criterionSpeed, criterionQuality));
++  }
++
++  // -------------------------------------------------------------------------
++  // Submit quality rating
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("17.5-SVC-001 P0 PRODUCTION_LEADER submits a quality rating on a CLOSED workorder")
++  void submitQualityRatingOk() {
++    var user = productionLeader();
++    var entity = entity(WorkOrderStatus.CLOSED);
++    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity));
++    when(plantScope.canAccessPlant(user, plantId)).thenReturn(true);
++    when(ratings.existsByWorkOrderId(WORKORDER_ID)).thenReturn(false);
++    when(ratings.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
++    when(technicianPivots.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
++    when(scoreRows.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
++
++    var result = service.submit(user, WORKORDER_ID, command(List.of(technicianId),
++        Map.of(criterionId1, 4, criterionId2, 5), 5, 4, 3));
++
++    assertThat(result.status()).isEqualTo(WorkRatingStatus.SUBMITTED);
++    assertThat(result.workOrderId()).isEqualTo(WORKORDER_ID);
++    assertThat(result.cleanlinessScore()).isEqualTo(5);
++    assertThat(result.tidinessScore()).isEqualTo(4);
++    assertThat(result.speedScore()).isEqualTo(3);
++    assertThat(result.submittedBy()).isEqualTo(raterId);
++    assertThat(result.technicianIds()).containsExactly(technicianId);
++    assertThat(result.scores()).hasSize(2);
++    verify(auditLog).record(eq(user), argThat(r -> r.action() == AuditAction.CREATE
++        && r.entityType() == AuditEntityType.WORK_ORDER_QUALITY_RATING));
++  }
++
++  @Test
++  @DisplayName("17.5-SVC-002 P0 submit on a non-CLOSED workorder is rejected (RATING_WORKORDER_NOT_CLOSED)")
++  void submitQualityRatingNotClosed() {
++    var user = productionLeader();
++    var entity = entity(WorkOrderStatus.IN_PROGRESS);
++    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity));
++    when(plantScope.canAccessPlant(user, plantId)).thenReturn(true);
++
++    assertThatThrownBy(() -> service.submit(user, WORKORDER_ID, command(List.of(technicianId),
++        Map.of(criterionId1, 4), 5, 4, 3)))
++        .isInstanceOf(QualityRatingNotClosedException.class);
++  }
++
++  @Test
++  @DisplayName("17.5-SVC-003 P0 duplicate quality rating is 409 RATING_ALREADY_EXISTS")
++  void submitQualityRatingDuplicate() {
++    var user = productionLeader();
++    var entity = entity(WorkOrderStatus.CLOSED);
++    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity));
++    when(plantScope.canAccessPlant(user, plantId)).thenReturn(true);
++    when(ratings.existsByWorkOrderId(WORKORDER_ID)).thenReturn(true);
++
++    assertThatThrownBy(() -> service.submit(user, WORKORDER_ID, command(List.of(technicianId),
++        Map.of(criterionId1, 4), 5, 4, 3)))
++        .isInstanceOf(QualityRatingAlreadyExistsException.class);
++  }
++
++  @Test
++  @DisplayName("17.5-SVC-004 P0 submit by a non-PRODUCTION_LEADER is 403 FORBIDDEN")
++  void submitQualityRatingForbidden() {
++    var user = technicianUser();
++    var entity = entity(WorkOrderStatus.CLOSED);
++    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity));
++
++    assertThatThrownBy(() -> service.submit(user, WORKORDER_ID, command(List.of(technicianId),
++        Map.of(criterionId1, 4), 5, 4, 3)))
++        .isInstanceOf(QualityRatingForbiddenException.class);
++  }
++
++  @Test
++  @DisplayName("17.5-SVC-005 P0 PRODUCTION_LEADER without plant access is 403 FORBIDDEN")
++  void submitQualityRatingForbiddenNoPlantAccess() {
++    var user = productionLeader();
++    var entity = entity(WorkOrderStatus.CLOSED);
++    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity));
++    when(plantScope.canAccessPlant(user, plantId)).thenReturn(false);
++
++    assertThatThrownBy(() -> service.submit(user, WORKORDER_ID, command(List.of(technicianId),
++        Map.of(criterionId1, 4), 5, 4, 3)))
++        .isInstanceOf(QualityRatingForbiddenException.class);
++  }
++
++  @Test
++  @DisplayName("17.5-SVC-006 P0 SUPER_ADMIN can submit a quality rating without plant scope")
++  void superAdminSubmitQualityRating() {
++    var user = superAdmin();
++    var entity = entity(WorkOrderStatus.CLOSED);
++    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity));
++    when(ratings.existsByWorkOrderId(WORKORDER_ID)).thenReturn(false);
++    when(ratings.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
++    when(technicianPivots.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
++    when(scoreRows.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
++
++    var result = service.submit(user, WORKORDER_ID, command(List.of(technicianId),
++        Map.of(criterionId1, 4), 5, 4, 3));
++
++    assertThat(result.status()).isEqualTo(WorkRatingStatus.SUBMITTED);
++    assertThat(result.technicianIds()).containsExactly(technicianId);
++  }
++
++  @Test
++  @DisplayName("17.5-SVC-007 P0 submit with an unknown criterion is 400 VALIDATION_ERROR")
++  void submitQualityRatingUnknownCriterion() {
++    var user = productionLeader();
++    var entity = entity(WorkOrderStatus.CLOSED);
++    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity));
++    when(plantScope.canAccessPlant(user, plantId)).thenReturn(true);
++    when(ratings.existsByWorkOrderId(WORKORDER_ID)).thenReturn(false);
++    var bogusId = UUID.randomUUID();
++
++    assertThatThrownBy(() -> service.submit(user, WORKORDER_ID, command(List.of(technicianId),
++        Map.of(bogusId, 4), 5, 4, 3)))
++        .isInstanceOf(QualityRatingValidationException.class);
++  }
++
++  @Test
++  @DisplayName("17.5-SVC-008 P0 submit with an out-of-range score is 400 VALIDATION_ERROR")
++  void submitQualityRatingOutOfRangeScore() {
++    var user = productionLeader();
++    var entity = entity(WorkOrderStatus.CLOSED);
++    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity));
++    when(plantScope.canAccessPlant(user, plantId)).thenReturn(true);
++    when(ratings.existsByWorkOrderId(WORKORDER_ID)).thenReturn(false);
++
++    assertThatThrownBy(() -> service.submit(user, WORKORDER_ID, command(List.of(technicianId),
++        Map.of(criterionId1, 6), 5, 4, 3)))
++        .isInstanceOf(QualityRatingValidationException.class);
++  }
++
++  @Test
++  @DisplayName("17.5-SVC-009 P0 submit with no technicians is rejected (RATING_VALIDATION_ERROR)")
++  void submitQualityRatingNoTechnicians() {
++    var user = productionLeader();
++    var entity = entity(WorkOrderStatus.CLOSED);
++    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity));
++    when(plantScope.canAccessPlant(user, plantId)).thenReturn(true);
++    when(ratings.existsByWorkOrderId(WORKORDER_ID)).thenReturn(false);
++
++    assertThatThrownBy(() -> service.submit(user, WORKORDER_ID, command(List.of(),
++        Map.of(criterionId1, 4), 5, 4, 3)))
++        .isInstanceOf(QualityRatingValidationException.class);
++  }
++
++  @Test
++  @DisplayName("17.5-SVC-010 P0 submit with a technician outside the executor pool is RATING_USER_NOT_EXECUTOR")
++  void submitQualityRatingUnknownTechnician() {
++    var user = productionLeader();
++    var entity = entity(WorkOrderStatus.CLOSED);
++    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity));
++    when(plantScope.canAccessPlant(user, plantId)).thenReturn(true);
++    when(ratings.existsByWorkOrderId(WORKORDER_ID)).thenReturn(false);
++    var outsiderId = UUID.randomUUID();
++
++    assertThatThrownBy(() -> service.submit(user, WORKORDER_ID, command(List.of(outsiderId),
++        Map.of(criterionId1, 4), 5, 4, 3)))
++        .isInstanceOf(QualityRatingUserNotExecutorException.class);
++  }
++
++  @Test
++  @DisplayName("17.5-SVC-011 P0 submit on an unknown workorder is 404 WORKORDER_NOT_FOUND")
++  void submitQualityRatingWorkOrderNotFound() {
++    var user = productionLeader();
++    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.empty());
++
++    assertThatThrownBy(() -> service.submit(user, WORKORDER_ID, command(List.of(technicianId),
++        Map.of(criterionId1, 4), 5, 4, 3)))
++        .isInstanceOf(QualityRatingWorkOrderNotFoundException.class);
++  }
++
++  @Test
++  @DisplayName("17.5-SVC-012 P0 submit on a workorder with an unknown machine is 404 MACHINE_NOT_FOUND")
++  void submitQualityRatingMachineNotFound() {
++    var user = productionLeader();
++    var entity = entity(WorkOrderStatus.CLOSED);
++    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity));
++    when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.empty());
++
++    assertThatThrownBy(() -> service.submit(user, WORKORDER_ID, command(List.of(technicianId),
++        Map.of(criterionId1, 4), 5, 4, 3)))
++        .isInstanceOf(QualityRatingMachineNotFoundException.class);
++  }
++
++  // -------------------------------------------------------------------------
++  // Get / expiry
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("17.5-SVC-013 P0 get transitions a past-due PENDING rating to EXPIRED and persists it")
++  void getExpiresPendingRating() {
++    var entity = entity(WorkOrderStatus.CLOSED);
++    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity));
++    var ratingId = UUID.randomUUID();
++    var pastDue = new WorkOrderQualityRatingEntity(ratingId, WORKORDER_ID, WorkRatingStatus.PENDING,
++        NOW.minusSeconds(3600), null, null, null, null, null, null, NOW.minusSeconds(7200), NOW);
++    when(ratings.findByWorkOrderId(WORKORDER_ID)).thenReturn(Optional.of(pastDue));
++    when(ratings.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
++    when(scoreRows.findByQualityRatingId(ratingId)).thenReturn(List.of());
++    when(technicianPivots.findByQualityRatingId(ratingId)).thenReturn(List.of());
++
++    var result = service.get(WORKORDER_ID);
++
++    assertThat(result.status()).isEqualTo(WorkRatingStatus.EXPIRED);
++    verify(ratings).saveAndFlush(argThat(r -> r.getStatus() == WorkRatingStatus.EXPIRED));
++  }
++
++  @Test
++  @DisplayName("17.5-SVC-014 P0 get returns a SUBMITTED rating with criterion names and technicians")
++  void getRatingOk() {
++    var entity = entity(WorkOrderStatus.CLOSED);
++    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity));
++    var ratingId = UUID.randomUUID();
++    var rating = new WorkOrderQualityRatingEntity(ratingId, WORKORDER_ID, WorkRatingStatus.SUBMITTED,
++        null, NOW, raterId, 5, 4, 3, null, NOW, NOW);
++    when(ratings.findByWorkOrderId(WORKORDER_ID)).thenReturn(Optional.of(rating));
++    when(scoreRows.findByQualityRatingId(ratingId))
++        .thenReturn(List.of(new WorkOrderQualityRatingScoreEntity(UUID.randomUUID(), ratingId, criterionId1, 4)));
++    when(technicianPivots.findByQualityRatingId(ratingId))
++        .thenReturn(List.of(new WorkOrderQualityRatingTechnicianEntity(UUID.randomUUID(), ratingId, null, technicianId)));
++
++    var result = service.get(WORKORDER_ID);
++
++    assertThat(result.status()).isEqualTo(WorkRatingStatus.SUBMITTED);
++    assertThat(result.cleanlinessScore()).isEqualTo(5);
++    assertThat(result.scores()).hasSize(1);
++    assertThat(result.scores().getFirst().criterionName()).isEqualTo("Speed");
++    assertThat(result.scores().getFirst().score()).isEqualTo(4);
++    assertThat(result.technicianIds()).containsExactly(technicianId);
++  }
++
++  @Test
++  @DisplayName("17.5-SVC-015 P0 get on a workorder without a rating is 404 RATING_NOT_FOUND")
++  void getRatingNotFound() {
++    var entity = entity(WorkOrderStatus.CLOSED);
++    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity));
++    when(ratings.findByWorkOrderId(WORKORDER_ID)).thenReturn(Optional.empty());
++
++    assertThatThrownBy(() -> service.get(WORKORDER_ID))
++        .isInstanceOf(QualityRatingNotFoundException.class);
++  }
++
++  @Test
++  @DisplayName("17.5-SVC-016 P0 get on an unknown workorder is 404 WORKORDER_NOT_FOUND")
++  void getWorkOrderNotFound() {
++    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.empty());
++
++    assertThatThrownBy(() -> service.get(WORKORDER_ID))
++        .isInstanceOf(QualityRatingWorkOrderNotFoundException.class);
++  }
++
++  // -------------------------------------------------------------------------
++  // Exists / list criteria
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("17.5-SVC-017 P0 exists returns true when a quality rating row is present")
++  void existsRating() {
++    when(ratings.existsByWorkOrderId(WORKORDER_ID)).thenReturn(true);
++
++    assertThat(service.exists(WORKORDER_ID)).isTrue();
++    when(ratings.existsByWorkOrderId(WORKORDER_ID)).thenReturn(false);
++    assertThat(service.exists(WORKORDER_ID)).isFalse();
++  }
++
++  @Test
++  @DisplayName("17.5-SVC-018 P0 listCriteria returns ordered criteria")
++  void listCriteriaOk() {
++    when(criteria.findAllByOrderBySortOrderAsc()).thenReturn(List.of(criterionSpeed, criterionQuality));
++
++    var result = service.listCriteria();
++
++    assertThat(result).hasSize(2);
++    assertThat(result.get(0).name()).isEqualTo("Speed");
++    assertThat(result.get(0).minScore()).isEqualTo(1);
++    assertThat(result.get(0).maxScore()).isEqualTo(5);
++    assertThat(result.get(1).name()).isEqualTo("Work Quality");
++  }
++
++  // -------------------------------------------------------------------------
++  // Helpers
++  // -------------------------------------------------------------------------
++
++  private SubmitQualityRatingCommand command(List<UUID> technicianIds, Map<UUID, Integer> scores,
++      Integer cleanliness, Integer tidiness, Integer speed) {
++    return new SubmitQualityRatingCommand(technicianIds, scores, cleanliness, tidiness, speed);
++  }
++
++  private WorkOrderEntity entity(WorkOrderStatus status) {
++    return new WorkOrderEntity(WORKORDER_ID, "INTERNAL", null, status, UUID.randomUUID(),
++        machineId, "desc", 0, null, technicianId, UUID.randomUUID(), NOW, NOW);
++  }
++
++  private AuthenticatedUser productionLeader() {
++    return new AuthenticatedUser(raterId.toString(), "pl@test", ApplicationRole.PRODUCTION_LEADER);
++  }
++
++  private AuthenticatedUser technicianUser() {
++    return new AuthenticatedUser(technicianId.toString(), "tech@test", ApplicationRole.TECHNICIAN);
++  }
++
++  private AuthenticatedUser superAdmin() {
++    return new AuthenticatedUser(UUID.randomUUID().toString(), "admin@test", ApplicationRole.SUPER_ADMIN);
++  }
++
++  private static MachineEntity machineWithPlant(UUID plantId, UUID groupId, UUID machineId) {
++    var plant = new com.syncro.auth.infrastructure.PlantEntity(plantId, "P01", "Plant", NOW, NOW);
++    var group = new com.syncro.masterdata.infrastructure.MachineGroupEntity(groupId, plant, "Group", NOW, NOW);
++    return new MachineEntity(machineId, plant, group, "M-001", "Machine", MachineStatus.ACTIVE, null, null, null,
++        List.of(), NOW, NOW);
++  }
++}
+diff --git a/syncro/authz/policy/authz.rego b/syncro/authz/policy/authz.rego
+index 6c01c28..1e4f5c1 100644
+--- a/syncro/authz/policy/authz.rego
++++ b/syncro/authz/policy/authz.rego
+@@ -235,6 +235,26 @@ workorder_worklog_criterion_paths := {
+   "/api/v1/workorders/work-log-rating-criteria/*",
+ }
+ 
++# Workorder quality ratings & criteria (story 17-5, blueprint C4-C6, FR-124): the same
++# five-role allow set as workorder_rating_paths (MANAGER_MAINTENANCE, SECTION_LEADER,
++# MAINTENANCE_LEADER, STAFF_MAINTENANCE, PRODUCTION_LEADER) — the service gate is
++# authoritative for who-can-rate (PRODUCTION_LEADER of the affected line for submission,
++# SUPER_ADMIN exempt). TECHNICIAN is the ratee, not a rater, and stays default-deny on
++# these paths. Reads (GET) flow through generic read_allowed (any authenticated user).
++workorder_quality_rating_paths := {
++  "/api/v1/workorders/*/quality-rating",
++}
++
++# Workorder quality rating criterion paths (story 17-5, blueprint C3, AD-14): mutations
++# are SUPER_ADMIN-only (the super_admin top-level bypass handles it, so no non-admin role
++# matches this set — default-deny for everyone else); the criteria list (GET
++# /quality-rating-criteria) is a pure read flowing through generic read_allowed. Mirrors
++# workorder_worklog_criterion_paths exactly.
++workorder_quality_criterion_paths := {
++  "/api/v1/workorders/quality-rating-criteria",
++  "/api/v1/workorders/quality-rating-criteria/*",
++}
++
+ # Preventive programs & schedules (story 11-1): program mutations are allowed for the
+ # four-role set (MANAGER_MAINTENANCE, SECTION_LEADER, MAINTENANCE_LEADER,
+ # STAFF_MAINTENANCE) — the service gate is authoritative for scope (section leader needs
+@@ -737,6 +757,40 @@ mutation_allowed if {
+ # SUPER_ADMIN-only (the super_admin top-level bypass handles it); default-deny for
+ # everyone else. Mirrors rating_dimension_paths.
+ 
++# Workorder quality ratings & criteria (story 17-5): same five-role allow set as
++# workorder_rating_paths — the service gate is authoritative for who-can-rate
++# (PRODUCTION_LEADER of the affected line; SUPER_ADMIN exempt). Reads (GET) flow
++# through generic read_allowed.
++mutation_allowed if {
++  input.subject.roles[_] == "MANAGER_MAINTENANCE"
++  is_mutation
++  path_matches(workorder_quality_rating_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "SECTION_LEADER"
++  is_mutation
++  path_matches(workorder_quality_rating_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "MAINTENANCE_LEADER"
++  is_mutation
++  path_matches(workorder_quality_rating_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "STAFF_MAINTENANCE"
++  is_mutation
++  path_matches(workorder_quality_rating_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "PRODUCTION_LEADER"
++  is_mutation
++  path_matches(workorder_quality_rating_paths)
++}
++
+ # Work logs (story 17-2): same five-role allow set as sessions/transitions — the
+ # assigned executor or an in-scope leader may create/update work logs; scope is
+ # service-side. Reads (GET) flow through generic read_allowed.
+diff --git a/syncro/authz/policy/authz_test.rego b/syncro/authz/policy/authz_test.rego
+index 3f08143..666ae93 100644
+--- a/syncro/authz/policy/authz_test.rego
++++ b/syncro/authz/policy/authz_test.rego
+@@ -769,6 +769,74 @@ test_anonymous_worklog_criterion_denied if {
+   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/workorders/work-log-rating-criteria"}
+ }
+ 
++# -- Workorder quality ratings & criteria (story 17-5, blueprint C4-C6, FR-124):
++#    same five-role allow set as workorder_rating_paths; TECHNICIAN/AUDITOR denied;
++#    reads any-authenticated -----------------------------------------------------
++
++test_manager_workorder_quality_rating_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/workorders/WO-2409-00001/quality-rating"}
++}
++
++test_section_leader_workorder_quality_rating_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/workorders/WO-2409-00001/quality-rating"}
++}
++
++test_maintenance_leader_workorder_quality_rating_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/workorders/WO-2409-00001/quality-rating"}
++}
++
++test_staff_workorder_quality_rating_allowed if {
++  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/workorders/WO-2409-00001/quality-rating"}
++}
++
++test_production_leader_workorder_quality_rating_allowed if {
++  authz.allow with input as {"subject": {"roles": ["PRODUCTION_LEADER"], "userId": "u8"}, "action": "POST /api/v1/workorders/WO-2409-00001/quality-rating"}
++}
++
++test_super_admin_workorder_quality_rating_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/workorders/WO-2409-00001/quality-rating"}
++}
++
++test_technician_workorder_quality_rating_denied if {
++  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/workorders/WO-2409-00001/quality-rating"}
++}
++
++test_auditor_workorder_quality_rating_denied if {
++  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/workorders/WO-2409-00001/quality-rating"}
++}
++
++test_inventory_workorder_quality_rating_denied if {
++  not authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/workorders/WO-2409-00001/quality-rating"}
++}
++
++test_storekeeper_workorder_quality_rating_denied if {
++  not authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "POST /api/v1/workorders/WO-2409-00001/quality-rating"}
++}
++
++test_anonymous_workorder_quality_rating_denied if {
++  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/workorders/WO-2409-00001/quality-rating"}
++}
++
++test_auditor_workorder_quality_rating_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/workorders/WO-2409-00001/quality-rating"}
++}
++
++test_technician_workorder_quality_rating_criteria_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "GET /api/v1/workorders/quality-rating-criteria"}
++}
++
++test_auditor_workorder_quality_rating_criteria_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/workorders/quality-rating-criteria"}
++}
++
++test_manager_workorder_quality_rating_criteria_mutation_denied if {
++  not authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/workorders/quality-rating-criteria"}
++}
++
++test_anonymous_workorder_quality_rating_criteria_read_denied if {
++  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "GET /api/v1/workorders/quality-rating-criteria"}
++}
++
+ # -- Preventive programs & schedules (story 11-1): four-role mutation allow set
+ #    (MANAGER_MAINTENANCE, SECTION_LEADER, MAINTENANCE_LEADER, STAFF_MAINTENANCE);
+ #    TECHNICIAN/AUDITOR denied; schedule reads any-authenticated ------------------

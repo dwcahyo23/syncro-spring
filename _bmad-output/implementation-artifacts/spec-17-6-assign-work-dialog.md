@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-09-01'
 status: 'done'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 baseline_revision: '795497f'
 context:
   - '_bmad-output/project-context.md'
@@ -96,3 +96,23 @@ deferred: []
 
 **Manual checks (if no CLI):**
 - Verify the dialog renders with checkbox list, per-row log forms, and non-native pickers.
+
+## Review Triage Log
+
+### 2026-09-01 — Fresh review pass (done-spec follow-up via /bmad-build-auto)
+- intent_gap: 0
+- bad_spec: 0
+- patch: 8 (high 2, medium 4, low 2)
+- defer: 4
+- reject: 3
+- addressed_findings:
+  - `[high]` `[patch]` Same-day end-before-start used midnight Date comparison — now compares full ISO timestamps (toIso end vs start)
+  - `[high]` `[patch]` Backdate check compared dates only — now compares ISO timestamps incl. hour/minute (same-day-after-created_at no longer wrongly rejected)
+  - `[medium]` `[patch]` End-before-start gated on stoppedReason — removed gate
+  - `[medium]` `[patch]` Row with optional fields only (stoppedReason/completionNote) silently discarded — hasData now includes them
+  - `[medium]` `[patch]` Row with activity note but no start date silently timestamped at submit — START_REQUIRED validation added
+  - `[medium]` `[patch]` Dialog state persisted across close — reset on close via handleOpenChange
+  - `[low]` `[patch]` Stale per-row errors persisted across submits — cleared on each submit attempt
+  - `[low]` `[patch]` DONE status could not close (deletion check) — DONE: ["CLOSED"] restored in NEXT_STATUSES
+  - deferred: partial-success rollback (assignments/logs are independent mutations — idempotent retry later), server-error message surfacing (generic error consistent with existing dialogs), WorkLogView type unused (reserved for future work-log list UI), technician-already-assigned dedupe (17-1 backend pre-check handles it)
+  - rejected: PENDING_SPAREPART dialog availability (spec says OPEN + IN_PROGRESS only), local WorkAssignment interface (sufficient subset), NEXT_STATUSES lifecycle additions (necessary 6-status alignment from 17-3)

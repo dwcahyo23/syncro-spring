@@ -2,17 +2,11 @@
 
 import { useState } from "react";
 
+import Link from "next/link";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import {
-  CalendarIcon,
-  ChevronDownIcon,
-  FileTextIcon,
-  PrinterIcon,
-  UserCheckIcon,
-  WrenchIcon,
-} from "lucide-react";
-import Link from "next/link";
+import { CalendarIcon, ChevronDownIcon, FileTextIcon, PrinterIcon, UserCheckIcon, WrenchIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -58,6 +52,7 @@ const NEXT_STATUSES: Record<string, string[]> = {
   IN_PROGRESS: ["PENDING_REVIEW"],
   PENDING_SPAREPART: ["IN_PROGRESS"],
   PENDING_REVIEW: ["CLOSED"],
+  DONE: ["CLOSED"],
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -72,12 +67,7 @@ const STATUS_LABELS: Record<string, string> = {
   CANCELLED: "Cancel",
 };
 
-const STOPPED_REASONS: WorkLogStoppedReason[] = [
-  "WAITING_SPAREPART",
-  "SHIFT_END",
-  "COMPLETED",
-  "OTHER",
-];
+const STOPPED_REASONS: WorkLogStoppedReason[] = ["WAITING_SPAREPART", "SHIFT_END", "COMPLETED", "OTHER"];
 
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
 const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));
@@ -150,11 +140,11 @@ export function WorkorderActionsCell({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-44">
-          <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
+          <DropdownMenuLabel className="font-normal text-muted-foreground text-xs">
             {status}
             {assignedTechnicianName ? ` · ${assignedTechnicianName}` : ""}
           </DropdownMenuLabel>
-          {(status === "OPEN" || status === "IN_PROGRESS" || status === "PENDING_SPAREPART") && (
+          {(status === "OPEN" || status === "IN_PROGRESS") && (
             <DropdownMenuItem onSelect={() => setAssignOpen(true)}>
               <UserCheckIcon className="size-3.5" />
               Assign &amp; Work
@@ -184,7 +174,7 @@ export function WorkorderActionsCell({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {(status === "OPEN" || status === "IN_PROGRESS" || status === "PENDING_SPAREPART") && (
+      {(status === "OPEN" || status === "IN_PROGRESS") && (
         <AssignWorkDialog
           workOrderId={workOrderId}
           createdAt={createdAt}
@@ -199,7 +189,10 @@ export function WorkorderActionsCell({
           workOrderId={workOrderId}
           toStatus={transitionTo}
           open={transitionOpen}
-          onOpenChange={(o) => { setTransitionOpen(o); if (!o) setTransitionTo(""); }}
+          onOpenChange={(o) => {
+            setTransitionOpen(o);
+            if (!o) setTransitionTo("");
+          }}
         />
       )}
       <RequestPartDialog workOrderId={workOrderId} open={requestPartOpen} onOpenChange={setRequestPartOpen} />
@@ -233,7 +226,17 @@ function AssignWorkDialog({
   const [selected, setSelected] = useState<Record<string, WorkLogDraft>>({});
   const [listError, setListError] = useState<string | null>(null);
 
-  const minDate = createdAt ? new Date(createdAt) : undefined;
+  const rawMin = createdAt ? new Date(createdAt) : undefined;
+  const minDate = rawMin && !Number.isNaN(rawMin.getTime()) ? rawMin : undefined;
+
+  // Reset state when dialog closes
+  const handleOpenChange = (o: boolean) => {
+    if (!o) {
+      setSelected({});
+      setListError(null);
+    }
+    onOpenChange(o);
+  };
 
   const selectedIds = Object.keys(selected);
 
@@ -258,22 +261,33 @@ function AssignWorkDialog({
 
   const submitMutation = useMutation({
     mutationFn: async () => {
-      // Validate rows with any data: an activity note is required to post a work log.
+      // Validate rows with any data: an activity note + start date are required to post a work log.
       for (const userId of selectedIds) {
         const draft = selected[userId];
         const hasData =
-          draft.startDate !== undefined || draft.endDate !== undefined || draft.activityNote.trim() !== "";
+          draft.startDate !== undefined ||
+          draft.endDate !== undefined ||
+          draft.activityNote.trim() !== "" ||
+          draft.stoppedReason !== "" ||
+          draft.completionNote.trim() !== "";
         if (hasData && draft.activityNote.trim() === "") {
-          throw new Error("ACTIVITY_NOTE:" + userId);
+          throw new Error(`ACTIVITY_NOTE:${userId}`);
         }
-        if (draft.startDate && minDate && draft.startDate.getTime() < minDate.getTime()) {
-          throw new Error("BACKDATE:" + userId);
+        if (hasData && !draft.startDate) {
+          throw new Error(`START_REQUIRED:${userId}`);
         }
-        if (
-          draft.startDate && draft.endDate && draft.stoppedReason !== ""
-          && draft.endDate.getTime() <= draft.startDate.getTime()
-        ) {
-          throw new Error("END_BEFORE_START:" + userId);
+        if (draft.startDate && minDate) {
+          const startIso = toIso(draft.startDate, draft.startHour, draft.startMinute);
+          if (startIso < minDate.toISOString()) {
+            throw new Error(`BACKDATE:${userId}`);
+          }
+        }
+        if (draft.startDate && draft.endDate) {
+          const endIso = toIso(draft.endDate, draft.endHour, draft.endMinute);
+          const startIso = toIso(draft.startDate, draft.startHour, draft.startMinute);
+          if (endIso <= startIso) {
+            throw new Error(`END_BEFORE_START:${userId}`);
+          }
         }
       }
 
@@ -289,9 +303,14 @@ function AssignWorkDialog({
       for (const userId of selectedIds) {
         const draft = selected[userId];
         const hasData =
-          draft.startDate !== undefined || draft.endDate !== undefined || draft.activityNote.trim() !== "";
+          draft.startDate !== undefined ||
+          draft.endDate !== undefined ||
+          draft.activityNote.trim() !== "" ||
+          draft.stoppedReason !== "" ||
+          draft.completionNote.trim() !== "";
         if (!hasData) continue;
-        const startTime = toIso(draft.startDate ?? new Date(), draft.startHour, draft.startMinute);
+        const startDate = draft.startDate as Date;
+        const startTime = toIso(startDate, draft.startHour, draft.startMinute);
         const endTime = draft.endDate ? toIso(draft.endDate, draft.endHour, draft.endMinute) : null;
         await syncroFetch(`/api/v1/workorders/${workOrderId}/work-logs`, {
           method: "POST",
@@ -315,9 +334,22 @@ function AssignWorkDialog({
       setListError(null);
     },
     onError: (error: Error) => {
+      // Clear stale per-row errors on each submission attempt
+      setSelected((prev) => {
+        const next = { ...prev };
+        for (const userId of Object.keys(next)) {
+          next[userId] = { ...next[userId], error: null };
+        }
+        return next;
+      });
       if (error.message.startsWith("ACTIVITY_NOTE:")) {
         const userId = error.message.slice("ACTIVITY_NOTE:".length);
         updateDraft(userId, { error: "Activity note is required to save this work log." });
+        return;
+      }
+      if (error.message.startsWith("START_REQUIRED:")) {
+        const userId = error.message.slice("START_REQUIRED:".length);
+        updateDraft(userId, { error: "A start time is required to save this work log." });
         return;
       }
       if (error.message.startsWith("BACKDATE:")) {
@@ -330,14 +362,14 @@ function AssignWorkDialog({
         updateDraft(userId, { error: "End time must be after start time." });
         return;
       }
-      setListError("Failed to save assignments. Check the values and try again.");
+      setListError("Failed to save. Check the values and try again.");
     },
   });
 
   const canSubmit = selectedIds.length > 0 && !submitMutation.isPending;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -358,7 +390,7 @@ function AssignWorkDialog({
                   assignableUsers.map((u) => {
                     const checked = u.id in selected;
                     return (
-                      <label
+                      <div
                         key={u.id}
                         className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm hover:bg-muted"
                       >
@@ -371,7 +403,7 @@ function AssignWorkDialog({
                           {u.displayName ?? u.loginIdentifier}{" "}
                           <span className="text-muted-foreground">({u.applicationRole})</span>
                         </span>
-                      </label>
+                      </div>
                     );
                   })
                 )}
@@ -415,7 +447,9 @@ function AssignWorkDialog({
                   <Label>Stopped reason</Label>
                   <Select
                     value={draft.stoppedReason || "none"}
-                    onValueChange={(v) => updateDraft(userId, { stoppedReason: v === "none" ? "" : (v as WorkLogStoppedReason) })}
+                    onValueChange={(v) =>
+                      updateDraft(userId, { stoppedReason: v === "none" ? "" : (v as WorkLogStoppedReason) })
+                    }
                   >
                     <SelectTrigger aria-label="Stopped reason">
                       <SelectValue placeholder="Optional" />
@@ -447,9 +481,7 @@ function AssignWorkDialog({
                     onChange={(e) => updateDraft(userId, { completionNote: e.target.value })}
                   />
                 </div>
-                {draft.error ? (
-                  <p className="text-destructive text-xs">{draft.error}</p>
-                ) : null}
+                {draft.error ? <p className="text-destructive text-xs">{draft.error}</p> : null}
               </div>
             );
           })}
@@ -457,8 +489,7 @@ function AssignWorkDialog({
           {listError ? <p className="text-destructive text-sm">{listError}</p> : null}
           {minDate ? (
             <p className="text-muted-foreground text-xs">
-              Work log backdate is clamped to the workorder creation time:{" "}
-              {format(minDate, "d MMM yyyy HH:mm")}
+              Work log backdate is clamped to the workorder creation time: {format(minDate, "d MMM yyyy HH:mm")}
             </p>
           ) : null}
 
@@ -553,7 +584,17 @@ function toIso(date: Date, hour: string, minute: string): string {
   return d.toISOString();
 }
 
-function TransitionDialog({ workOrderId, toStatus, open, onOpenChange }: { workOrderId: string; toStatus: string; open: boolean; onOpenChange: (open: boolean) => void }) {
+function TransitionDialog({
+  workOrderId,
+  toStatus,
+  open,
+  onOpenChange,
+}: {
+  workOrderId: string;
+  toStatus: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const queryClient = useQueryClient();
   const [reason, setReason] = useState("");
 
@@ -611,7 +652,15 @@ function TransitionDialog({ workOrderId, toStatus, open, onOpenChange }: { workO
   );
 }
 
-function ReportDialog({ workOrderId, open, onOpenChange }: { workOrderId: string; open: boolean; onOpenChange: (open: boolean) => void }) {
+function ReportDialog({
+  workOrderId,
+  open,
+  onOpenChange,
+}: {
+  workOrderId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const { data, isLoading } = useQuery<WorkOrderReport>({
     queryKey: ["/api/v1/workorders", workOrderId, "report"],
     queryFn: async () => {
