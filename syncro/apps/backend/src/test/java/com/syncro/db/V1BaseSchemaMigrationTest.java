@@ -48,11 +48,11 @@ class V1BaseSchemaMigrationTest {
   // -------------------------------------------------------------------------
 
   @Test
-  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2/V3/V4 additive migrations")
+  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2/V3/V4/V5 additive migrations")
   void migrationsApplied() {
     var rows = jdbc.queryForList(
         "SELECT version, script, success FROM flyway_schema_history ORDER BY installed_rank");
-    assertThat(rows).hasSize(4);
+    assertThat(rows).hasSize(5);
     assertThat(rows.get(0).get("version")).isEqualTo("1");
     assertThat(rows.get(0).get("script")).isEqualTo("V1__orm_foundation_schema.sql");
     assertThat(rows.get(0).get("success")).isEqualTo(true);
@@ -65,6 +65,9 @@ class V1BaseSchemaMigrationTest {
     assertThat(rows.get(3).get("version")).isEqualTo("4");
     assertThat(rows.get(3).get("script")).isEqualTo("V4__work_log_audit_type.sql");
     assertThat(rows.get(3).get("success")).isEqualTo(true);
+    assertThat(rows.get(4).get("version")).isEqualTo("5");
+    assertThat(rows.get(4).get("script")).isEqualTo("V5__work_log_rating_audit_type.sql");
+    assertThat(rows.get(4).get("success")).isEqualTo(true);
   }
 
   // -------------------------------------------------------------------------
@@ -376,6 +379,37 @@ class V1BaseSchemaMigrationTest {
     assertThat(def).contains("WORK_LOG");
     // every prior value (V1 + V2 + V3) survives the additive V4 extension.
     assertThat(def).contains("WORK_ASSIGNMENT", "WORK_ORDER", "REPAIR_SESSION",
+        "WORKORDER_SIGNATURE", "SPAREPART_STOCK", "SYNC_RUN", "SYNC_QUARANTINE",
+        "MACHINE_AREA", "USER_ROLE_BINDING", "PLANT_WORKING_CALENDAR",
+        "PLANT", "MACHINE_GROUP", "MACHINE", "SPAREPART_TAXONOMY",
+        "SPAREPART", "INSTALLATION", "RESPONSIBILITY", "ALERT",
+        "SPAREPART_PRICE_ENTRY", "SECTION", "TEAM", "WORK_ORDER_CATEGORY",
+        "WORKORDER_ATTACHMENT", "WORK_ORDER_TODO", "WORKORDER_RATING",
+        "RATING_DIMENSION", "PREVENTIVE_PROGRAM", "PREVENTIVE_SCHEDULE",
+        "PREVENTIVE_CHECKLIST", "PREVENTIVE_ATTACHMENT",
+        "SPAREPART_REQUEST", "DEPARTMENT", "DEPARTMENT_USER", "USER",
+        "INVENTORY_LOCATION", "INVENTORY_STOCK_BALANCE",
+        "INVENTORY_TRANSFER", "INVENTORY_RESERVATION",
+        "JOB_TITLE", "SYSTEM_ROLE", "ROLE_PERMISSION_MAPPING",
+        "MENU_FEATURE", "DOMAIN_CONTEXT", "USER_JOB_BINDING",
+        "SIGNATURE_USE");
+  }
+
+  /**
+   * Story 17-4: V5 extends the CHECK additively with WORK_LOG_RATING so
+   * {@code AuditEntityType.WORK_LOG_RATING} can be persisted. Every prior value —
+   * including the V3 WORK_ASSIGNMENT and V4 WORK_LOG — survives the extension.
+   */
+  @Test
+  @DisplayName("17.4-DB-001 P0 audit_log entity_type CHECK accepts WORK_LOG_RATING after V5")
+  void auditEntityTypeAcceptsWorkLogRating() {
+    var check = jdbc.queryForMap(
+        "SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint "
+            + "WHERE conname = 'ck_audit_log_entity_type'");
+    var def = (String) check.get("def");
+    assertThat(def).contains("WORK_LOG_RATING");
+    // every prior value (V1 + V2 + V3 + V4) survives the additive V5 extension.
+    assertThat(def).contains("WORK_LOG", "WORK_ASSIGNMENT", "WORK_ORDER", "REPAIR_SESSION",
         "WORKORDER_SIGNATURE", "SPAREPART_STOCK", "SYNC_RUN", "SYNC_QUARANTINE",
         "MACHINE_AREA", "USER_ROLE_BINDING", "PLANT_WORKING_CALENDAR",
         "PLANT", "MACHINE_GROUP", "MACHINE", "SPAREPART_TAXONOMY",

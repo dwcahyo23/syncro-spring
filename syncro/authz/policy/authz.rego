@@ -216,6 +216,25 @@ rating_dimension_paths := {
   "/api/v1/rating-dimensions/*",
 }
 
+# Work-log rating paths (story 17-4, blueprint C2, FR-121): the same five-role allow
+# set as workorder_rating_paths (MANAGER_MAINTENANCE, SECTION_LEADER,
+# MAINTENANCE_LEADER, STAFF_MAINTENANCE, PRODUCTION_LEADER) — the service gate is
+# authoritative for who-can-rate-whom (in-scope section leader for work-log ratings).
+# TECHNICIAN is the ratee, not a rater, and stays default-deny on these paths. Reads
+# (GET) flow through generic read_allowed (any authenticated user).
+workorder_worklog_rating_paths := {
+  "/api/v1/workorders/*/work-logs/*/ratings",
+}
+
+# Work-log rating criterion paths (story 17-4, blueprint C1, AD-14): mutations are
+# SUPER_ADMIN-only (the super_admin top-level bypass handles it, so no non-admin role
+# matches this set — default-deny for everyone else); reads flow through generic
+# read_allowed. Mirrors rating_dimension_paths exactly.
+workorder_worklog_criterion_paths := {
+  "/api/v1/workorders/work-log-rating-criteria",
+  "/api/v1/workorders/work-log-rating-criteria/*",
+}
+
 # Preventive programs & schedules (story 11-1): program mutations are allowed for the
 # four-role set (MANAGER_MAINTENANCE, SECTION_LEADER, MAINTENANCE_LEADER,
 # STAFF_MAINTENANCE) — the service gate is authoritative for scope (section leader needs
@@ -680,6 +699,43 @@ mutation_allowed if {
   is_mutation
   path_matches(workorder_rating_paths)
 }
+
+# Work-log ratings (story 17-4): same five-role allow set as workorder_rating_paths —
+# the in-scope section leader rates a completed work log; scope is service-side. Reads
+# (GET) flow through generic read_allowed.
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(workorder_worklog_rating_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(workorder_worklog_rating_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(workorder_worklog_rating_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STAFF_MAINTENANCE"
+  is_mutation
+  path_matches(workorder_worklog_rating_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "PRODUCTION_LEADER"
+  is_mutation
+  path_matches(workorder_worklog_rating_paths)
+}
+
+# Work-log rating criteria (story 17-4): no non-admin role matches — mutations are
+# SUPER_ADMIN-only (the super_admin top-level bypass handles it); default-deny for
+# everyone else. Mirrors rating_dimension_paths.
 
 # Work logs (story 17-2): same five-role allow set as sessions/transitions — the
 # assigned executor or an in-scope leader may create/update work logs; scope is

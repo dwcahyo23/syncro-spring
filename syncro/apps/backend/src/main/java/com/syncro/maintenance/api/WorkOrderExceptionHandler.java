@@ -12,6 +12,16 @@ import com.syncro.maintenance.application.WorkLogService.WorkLogAssignmentNotFou
 import com.syncro.maintenance.application.WorkLogService.WorkLogBackdateBeforeWorkorderException;
 import com.syncro.maintenance.application.WorkLogService.WorkLogNotFoundException;
 import com.syncro.maintenance.application.WorkLogService.WorkLogValidationException;
+import com.syncro.maintenance.application.WorkLogRatingService.WorkLogRatingAlreadyExistsException;
+import com.syncro.maintenance.application.WorkLogRatingService.WorkLogRatingCriterionInUseException;
+import com.syncro.maintenance.application.WorkLogRatingService.WorkLogRatingCriterionNotFoundException;
+import com.syncro.maintenance.application.WorkLogRatingService.WorkLogRatingForbiddenException;
+import com.syncro.maintenance.application.WorkLogRatingService.WorkLogRatingMachineNotFoundException;
+import com.syncro.maintenance.application.WorkLogRatingService.WorkLogRatingNotClosedException;
+import com.syncro.maintenance.application.WorkLogRatingService.WorkLogRatingNotCompletedException;
+import com.syncro.maintenance.application.WorkLogRatingService.WorkLogRatingValidationException;
+import com.syncro.maintenance.application.WorkLogRatingService.WorkLogRatingWorkLogNotFoundException;
+import com.syncro.maintenance.application.WorkLogRatingService.WorkLogRatingWorkOrderNotFoundException;
 import com.syncro.maintenance.application.WorkOrderService.BreakdownCategoryRequiredException;
 import com.syncro.maintenance.application.WorkOrderService.ChildrenNotTerminalException;
 import com.syncro.maintenance.application.WorkOrderService.DoneWithoutSessionReasonRequiredException;
@@ -158,7 +168,7 @@ public class WorkOrderExceptionHandler {
 
   @ExceptionHandler({WorkorderForbiddenException.class, EvidenceForbiddenException.class,
       ReportForbiddenException.class, TodoForbiddenException.class, PlantAccessDeniedException.class,
-      RatingForbiddenException.class})
+      RatingForbiddenException.class, WorkLogRatingForbiddenException.class})
   ResponseEntity<ErrorResponse> forbidden() {
     return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "You do not have permission to access this resource.", Map.of());
   }
@@ -250,6 +260,61 @@ public class WorkOrderExceptionHandler {
   ResponseEntity<ErrorResponse> workLogValidation(WorkLogValidationException exception) {
     return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
         exception.getFieldErrors());
+  }
+
+  // -------------------------------------------------------------------------
+  // Work log ratings (17-4, blueprint C2, FR-121)
+  // -------------------------------------------------------------------------
+
+  @ExceptionHandler(WorkLogRatingWorkOrderNotFoundException.class)
+  ResponseEntity<ErrorResponse> workLogRatingWorkOrderNotFound() {
+    return error(HttpStatus.NOT_FOUND, "WORKORDER_NOT_FOUND", "Workorder was not found.", Map.of());
+  }
+
+  @ExceptionHandler(WorkLogRatingMachineNotFoundException.class)
+  ResponseEntity<ErrorResponse> workLogRatingMachineNotFound() {
+    return error(HttpStatus.NOT_FOUND, "MACHINE_NOT_FOUND", "Machine was not found.", Map.of());
+  }
+
+  @ExceptionHandler(WorkLogRatingWorkLogNotFoundException.class)
+  ResponseEntity<ErrorResponse> workLogRatingWorkLogNotFound() {
+    return error(HttpStatus.NOT_FOUND, "WORKLOG_NOT_FOUND", "Work log was not found.", Map.of());
+  }
+
+  @ExceptionHandler(WorkLogRatingNotClosedException.class)
+  ResponseEntity<ErrorResponse> workLogRatingNotClosed() {
+    return error(HttpStatus.BAD_REQUEST, "RATING_WORKORDER_NOT_CLOSED",
+        "Only closed workorders can be rated.", Map.of());
+  }
+
+  @ExceptionHandler(WorkLogRatingNotCompletedException.class)
+  ResponseEntity<ErrorResponse> workLogRatingNotCompleted() {
+    return error(HttpStatus.BAD_REQUEST, "RATING_WORKLOG_NOT_COMPLETED",
+        "Only completed work logs can be rated.", Map.of());
+  }
+
+  @ExceptionHandler(WorkLogRatingAlreadyExistsException.class)
+  ResponseEntity<ErrorResponse> workLogRatingAlreadyExists() {
+    return error(HttpStatus.CONFLICT, "RATING_ALREADY_EXISTS",
+        "This work log has already been rated for one or more of the submitted criteria.", Map.of());
+  }
+
+  @ExceptionHandler(WorkLogRatingValidationException.class)
+  ResponseEntity<ErrorResponse> workLogRatingValidation(WorkLogRatingValidationException exception) {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
+        exception.getFieldErrors());
+  }
+
+  @ExceptionHandler(WorkLogRatingCriterionNotFoundException.class)
+  ResponseEntity<ErrorResponse> workLogRatingCriterionNotFound() {
+    return error(HttpStatus.NOT_FOUND, "RATING_CRITERION_NOT_FOUND",
+        "Work-log rating criterion was not found.", Map.of());
+  }
+
+  @ExceptionHandler(WorkLogRatingCriterionInUseException.class)
+  ResponseEntity<ErrorResponse> workLogRatingCriterionInUse() {
+    return error(HttpStatus.BAD_REQUEST, "CRITERION_IN_USE",
+        "A work-log rating criterion referenced by existing ratings cannot be deleted.", Map.of());
   }
 
   @ExceptionHandler(InvalidStateTransitionException.class)

@@ -288,4 +288,68 @@ public final class WorkOrderDtos {
       List<ClosedWorkorderEntryView> rated,
       List<ClosedWorkorderEntryView> unrated) {
   }
+
+  // -------------------------------------------------------------------------
+  // Work log ratings (17-4, blueprint C2, FR-121)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Rate a completed work log body (FR-121). {@code scores} maps criterion id → integer
+   * within the criterion's min/max (default 1..5); the service validates ids and ranges
+   * (missing criteria allowed). Unknown ids and out-of-range values → 400 VALIDATION_ERROR.
+   * The rated technician is always derived from the work log — never from the request.
+   */
+  public record RateWorkLogRequest(@NotNull Map<UUID, Integer> scores) {
+  }
+
+  /** Read model for one persisted work-log rating row. */
+  public record WorkLogRatingView(
+      UUID id,
+      UUID workLogId,
+      String workOrderId,
+      UUID criterionId,
+      String criterionName,
+      int score,
+      UUID ratedBy,
+      Instant ratedAt) {
+  }
+
+  /**
+   * Create work-log rating criterion body (SUPER_ADMIN, AD-14). The score range must
+   * satisfy {@code minScore < maxScore} with positive bounds (DB CHECK backstop).
+   */
+  public record CreateWorkLogRatingCriterionRequest(
+      @NotBlank @Size(max = 200) String name,
+      @Size(max = 4000) String description,
+      @NotNull @Min(1) Integer minScore,
+      @NotNull @Min(1) Integer maxScore,
+      UUID plantId,
+      Boolean active,
+      @Min(0) @Max(100_000) Integer sortOrder) {
+  }
+
+  /** Update work-log rating criterion body (SUPER_ADMIN). */
+  public record UpdateWorkLogRatingCriterionRequest(
+      @NotBlank @Size(max = 200) String name,
+      @Size(max = 4000) String description,
+      @NotNull @Min(1) Integer minScore,
+      @NotNull @Min(1) Integer maxScore,
+      UUID plantId,
+      Boolean active,
+      @Min(0) @Max(100_000) Integer sortOrder) {
+  }
+
+  /** Read model for one work-log rating criterion row. */
+  public record WorkLogRatingCriterionView(
+      UUID id,
+      String name,
+      String description,
+      int minScore,
+      int maxScore,
+      UUID plantId,
+      boolean active,
+      int sortOrder,
+      Instant createdAt,
+      Instant updatedAt) {
+  }
 }

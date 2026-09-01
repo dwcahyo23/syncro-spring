@@ -51,6 +51,9 @@ import com.syncro.maintenance.application.WorkOrderTodoService.CreateTodoCommand
 import com.syncro.maintenance.application.WorkLogService;
 import com.syncro.maintenance.application.WorkLogService.CreateWorkLogCommand;
 import com.syncro.maintenance.application.WorkLogService.UpdateWorkLogCommand;
+import com.syncro.maintenance.application.WorkLogRatingService;
+import com.syncro.maintenance.application.WorkLogRatingService.CreateCriterionCommand;
+import com.syncro.maintenance.application.WorkLogRatingService.UpdateCriterionCommand;
 import com.syncro.maintenance.domain.workorder.RepairSession;
 import com.syncro.maintenance.domain.workorder.WorkOrder;
 import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
@@ -101,12 +104,13 @@ public class WorkOrderController {
   private final WorkOrderAckService acks;
   private final WorkAssignmentService workAssignments;
   private final WorkLogService workLogs;
+  private final WorkLogRatingService workLogRatings;
 
   public WorkOrderController(WorkOrderService workOrders, WorkOrderEvidenceService evidence,
       WorkOrderReportService report, WorkOrderTodoService todos, WorkOrderRatingService ratings,
       WorkOrderListService lists, WorkorderPrintReportService printReports,
       WorkorderSignatureService signatures, WorkOrderAckService acks,
-      WorkAssignmentService workAssignments, WorkLogService workLogs) {
+      WorkAssignmentService workAssignments, WorkLogService workLogs, WorkLogRatingService workLogRatings) {
     this.workOrders = workOrders;
     this.evidence = evidence;
     this.report = report;
@@ -118,6 +122,7 @@ public class WorkOrderController {
     this.acks = acks;
     this.workAssignments = workAssignments;
     this.workLogs = workLogs;
+    this.workLogRatings = workLogRatings;
   }
 
   /**
@@ -272,6 +277,122 @@ public class WorkOrderController {
   @GetMapping("/{id}/work-logs")
   public List<WorkOrderDtos.WorkLogView> listWorkLogs(@PathVariable String id) {
     return workLogs.list(id).stream().map(WorkOrderController::toWorkLogDto).toList();
+  }
+
+  // -------------------------------------------------------------------------
+  // Work log ratings (17-4, blueprint C2, FR-121)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Rates a completed work log on a CLOSED workorder (in-scope section leader, FR-121).
+   * The rated technician is derived from the work log — never from the request.
+   */
+  @Operation(operationId = "rateWorkLog", summary = "Rate a completed work log on a closed workorder")
+  @ApiResponses({
+      @ApiResponse(responseCode = "201", description = "Ratings created",
+          content = @Content(schema = @Schema(implementation = WorkOrderDtos.WorkLogRatingView.class))),
+      @ApiResponse(responseCode = "400", description = "Workorder not closed, work log not completed, or validation failed"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden"),
+      @ApiResponse(responseCode = "404", description = "Workorder or work log not found"),
+      @ApiResponse(responseCode = "409", description = "Rating already exists")
+  })
+  @PostMapping("/{id}/work-logs/{workLogId}/ratings")
+  public ResponseEntity<List<WorkOrderDtos.WorkLogRatingView>> rateWorkLog(
+      @AuthenticationPrincipal AuthenticatedUser user, @PathVariable String id, @PathVariable UUID workLogId,
+      @Valid @RequestBody WorkOrderDtos.RateWorkLogRequest request) {
+    var ratings = workLogRatings.rateWorkLog(user, id, workLogId, request.scores());
+    return ResponseEntity.status(HttpStatus.CREATED).body(ratings.stream()
+        .map(WorkOrderController::toWorkLogRatingDto).toList());
+  }
+
+  /** Lists a work log's ratings with their criterion names (any authenticated user). */
+  @Operation(operationId = "listWorkLogRatings", summary = "List a work log's ratings")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Ratings returned",
+          content = @Content(schema = @Schema(implementation = WorkOrderDtos.WorkLogRatingView.class))),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "404", description = "Workorder or work log not found")
+  })
+  @GetMapping("/{id}/work-logs/{workLogId}/ratings")
+  public List<WorkOrderDtos.WorkLogRatingView> listWorkLogRatings(@PathVariable String id,
+      @PathVariable UUID workLogId) {
+    return workLogRatings.listRatings(id, workLogId).stream()
+        .map(WorkOrderController::toWorkLogRatingDto).toList();
+  }
+
+  // -------------------------------------------------------------------------
+  // Work log rating criteria (17-4, blueprint C1, AD-14)
+  // -------------------------------------------------------------------------
+
+  /** Creates a work-log rating criterion (SUPER_ADMIN only, audit-logged). */
+  @Operation(operationId = "createWorkLogRatingCriterion", summary = "Create a work-log rating criterion (SUPER_ADMIN)")
+  @ApiResponses({
+      @ApiResponse(responseCode = "201", description = "Criterion created",
+          content = @Content(schema = @Schema(implementation = WorkOrderDtos.WorkLogRatingCriterionView.class))),
+      @ApiResponse(responseCode = "400", description = "Validation failed (invalid score range)"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden — SUPER_ADMIN only")
+  })
+  @PostMapping(value = "/work-log-rating-criteria")
+  public ResponseEntity<WorkOrderDtos.WorkLogRatingCriterionView> createWorkLogRatingCriterion(
+      @AuthenticationPrincipal AuthenticatedUser user,
+      @Valid @RequestBody WorkOrderDtos.CreateWorkLogRatingCriterionRequest request) {
+    var view = workLogRatings.createCriterion(user, new CreateCriterionCommand(request.name().trim(),
+        request.description(), request.minScore(), request.maxScore(), request.plantId(),
+        request.active() != null ? request.active() : true,
+        request.sortOrder() != null ? request.sortOrder() : 0));
+    return ResponseEntity.status(HttpStatus.CREATED).body(toWorkLogRatingCriterionDto(view));
+  }
+
+  /** Updates a work-log rating criterion's mutable fields (SUPER_ADMIN only). */
+  @Operation(operationId = "updateWorkLogRatingCriterion", summary = "Update a work-log rating criterion (SUPER_ADMIN)")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Criterion updated",
+          content = @Content(schema = @Schema(implementation = WorkOrderDtos.WorkLogRatingCriterionView.class))),
+      @ApiResponse(responseCode = "400", description = "Validation failed (invalid score range)"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden — SUPER_ADMIN only"),
+      @ApiResponse(responseCode = "404", description = "Criterion not found")
+  })
+  @PutMapping("/work-log-rating-criteria/{criterionId}")
+  public WorkOrderDtos.WorkLogRatingCriterionView updateWorkLogRatingCriterion(
+      @AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID criterionId,
+      @Valid @RequestBody WorkOrderDtos.UpdateWorkLogRatingCriterionRequest request) {
+    var view = workLogRatings.updateCriterion(user, criterionId, new UpdateCriterionCommand(
+        request.name().trim(), request.description(), request.minScore(), request.maxScore(),
+        request.plantId(), request.active() != null ? request.active() : true,
+        request.sortOrder() != null ? request.sortOrder() : 0));
+    return toWorkLogRatingCriterionDto(view);
+  }
+
+  /** Deletes a work-log rating criterion (SUPER_ADMIN only; in-use criteria rejected). */
+  @Operation(operationId = "deleteWorkLogRatingCriterion", summary = "Delete a work-log rating criterion (SUPER_ADMIN)")
+  @ApiResponses({
+      @ApiResponse(responseCode = "204", description = "Criterion removed"),
+      @ApiResponse(responseCode = "400", description = "Criterion in use by existing ratings"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden — SUPER_ADMIN only"),
+      @ApiResponse(responseCode = "404", description = "Criterion not found")
+  })
+  @DeleteMapping("/work-log-rating-criteria/{criterionId}")
+  public ResponseEntity<Void> deleteWorkLogRatingCriterion(@AuthenticationPrincipal AuthenticatedUser user,
+      @PathVariable UUID criterionId) {
+    workLogRatings.deleteCriterion(user, criterionId);
+    return ResponseEntity.noContent().build();
+  }
+
+  /** Lists work-log rating criteria ordered by sortOrder (any authenticated user). */
+  @Operation(operationId = "listWorkLogRatingCriteria", summary = "List work-log rating criteria ordered by sortOrder")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Criteria returned",
+          content = @Content(schema = @Schema(implementation = WorkOrderDtos.WorkLogRatingCriterionView.class))),
+      @ApiResponse(responseCode = "401", description = "Authentication required")
+  })
+  @GetMapping("/work-log-rating-criteria")
+  public List<WorkOrderDtos.WorkLogRatingCriterionView> listWorkLogRatingCriteria() {
+    return workLogRatings.listCriteria().stream()
+        .map(WorkOrderController::toWorkLogRatingCriterionDto).toList();
   }
 
   /** Drops an active assignment (soft-deactivate; 17-1, AD-17). */
@@ -816,6 +937,18 @@ public class WorkOrderController {
     return new WorkOrderDtos.WorkLogView(view.id(), view.workAssignmentId(), view.workOrderId(),
         view.technicianId(), view.startTime(), view.endTime(), view.stoppedReason(),
         view.activityNote(), view.completionNote(), view.notes(), view.createdAt(), view.updatedAt());
+  }
+
+  private static WorkOrderDtos.WorkLogRatingView toWorkLogRatingDto(WorkLogRatingService.WorkLogRatingView view) {
+    return new WorkOrderDtos.WorkLogRatingView(view.id(), view.workLogId(), view.workOrderId(),
+        view.criterionId(), view.criterionName(), view.score(), view.ratedBy(), view.ratedAt());
+  }
+
+  private static WorkOrderDtos.WorkLogRatingCriterionView toWorkLogRatingCriterionDto(
+      WorkLogRatingService.WorkLogRatingCriterionView view) {
+    return new WorkOrderDtos.WorkLogRatingCriterionView(view.id(), view.name(), view.description(),
+        view.minScore(), view.maxScore(), view.plantId(), view.active(), view.sortOrder(),
+        view.createdAt(), view.updatedAt());
   }
 
   private static WorkOrderDtos.WorkAssignmentView toAssignmentDto(WorkAssignmentView view) {
