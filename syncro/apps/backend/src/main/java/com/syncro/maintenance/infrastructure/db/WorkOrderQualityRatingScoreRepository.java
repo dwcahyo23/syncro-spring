@@ -9,6 +9,4 @@ public interface WorkOrderQualityRatingScoreRepository
     extends JpaRepository<WorkOrderQualityRatingScoreEntity, UUID> {
 
   List<WorkOrderQualityRatingScoreEntity> findByQualityRatingId(UUID qualityRatingId);
-
-  boolean existsByCriterionId(UUID criterionId);
 }

@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-09-01'
 status: 'done'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 baseline_revision: '717c548'
 context:
   - '_bmad-output/project-context.md'
@@ -130,3 +130,23 @@ deferred: []
 **Manual checks (if no CLI):**
 - Confirm V6 migration is additive-only (drop/re-add CHECK preserving all prior values)
 - Confirm AuditEntityType.WORK_ORDER_QUALITY_RATING matches SQL CHECK
+
+## Review Triage Log
+
+### 2026-09-01 — Fresh review pass (done-spec follow-up via /bmad-build-auto)
+- intent_gap: 0
+- bad_spec: 0
+- patch: 8 (high 1, medium 5, low 2)
+- defer: 3
+- reject: 2
+- addressed_findings:
+  - `[high]` `[patch]` EXPIRED lifecycle unreachable — `due_at` never set → added DEFAULT_DUE_WINDOW_SECONDS (7d) on create
+  - `[high]` `[patch]` Unique-constraint race → unhandled 500 — added DataIntegrityViolationException → QualityRatingAlreadyExistsException mapping (uq_work_order_quality_ratings_work_order)
+  - `[medium]` `[patch]` Headline scores no null/range service guard — added validateHeadlineScores (1-5, optional)
+  - `[medium]` `[patch]` Generic setStatus() setter broke immutability encapsulation — replaced with entity.expire() (PENDING-only guard)
+  - `[medium]` `[patch]` Inactive criteria accepted in validateScores — now filtered (Unknown or inactive criterion)
+  - `[medium]` `[patch]` listCriteria not filtering is_active — now filters active only
+  - `[low]` `[patch]` Dead OperationalScopeService field — removed from service + test constructor
+  - `[low]` `[patch]` Dead existsByCriterionId — removed from WorkOrderQualityRatingScoreRepository
+  - deferred: PENDING row eager-creation on WO close (lazy-on-submit chosen — spec allows either; adds a close-listener later), OPA broader than service gate (mirrors workorder_rating_paths pattern — service gate authoritative), read-side plant-scope isolation (matches existing workorder read posture)
+  - rejected: `WorkOrderRatingCriterionView` plant-filtering for criteria (criteria are global config by design), remarks field addition (out of scope — headline scores suffice)

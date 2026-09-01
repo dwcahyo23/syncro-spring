@@ -104,7 +104,7 @@ class WorkOrderQualityRatingServiceTest {
   @BeforeEach
   void setUp() {
     service = new WorkOrderQualityRatingService(workOrders, ratings, technicianPivots, scoreRows,
-        criteria, machines, plantScope, scopes, auditLog, assignments, clock);
+        criteria, machines, plantScope, auditLog, assignments, clock);
     machine = machineWithPlant(plantId, groupId, machineId);
     lenient().when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
     lenient().when(assignments.findByWorkOrderIdOrderByAssignedAtAsc(WORKORDER_ID)).thenReturn(List.of());

@@ -22,7 +22,6 @@ import com.syncro.maintenance.infrastructure.db.WorkOrderRatingCriterionReposito
 import com.syncro.maintenance.infrastructure.db.WorkOrderRepository;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
-import com.syncro.org.application.OperationalScopeService;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -31,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +44,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class WorkOrderQualityRatingService {
 
+  /** Default due window: 7 days after submission; the rating becomes EXPIRED on read if not submitted. */
+  static final long DEFAULT_DUE_WINDOW_SECONDS = 7 * 24 * 3600;
+
   private final WorkOrderRepository workOrders;
   private final WorkOrderQualityRatingRepository ratings;
   private final WorkOrderQualityRatingTechnicianRepository technicianPivots;
@@ -51,7 +54,6 @@ public class WorkOrderQualityRatingService {
   private final WorkOrderRatingCriterionRepository criteria;
   private final MachineRepository machines;
   private final PlantScopeService plantScope;
-  private final OperationalScopeService scopes;
   private final AuditLogWriter auditLog;
   private final WorkAssignmentRepository assignments;
   private final Clock clock;
@@ -62,7 +64,7 @@ public class WorkOrderQualityRatingService {
       WorkOrderQualityRatingScoreRepository scoreRows,
       WorkOrderRatingCriterionRepository criteria,
       MachineRepository machines, PlantScopeService plantScope,
-      OperationalScopeService scopes, AuditLogWriter auditLog,
+      AuditLogWriter auditLog,
       WorkAssignmentRepository assignments, Clock clock) {
     this.workOrders = workOrders;
     this.ratings = ratings;
@@ -71,7 +73,6 @@ public class WorkOrderQualityRatingService {
     this.criteria = criteria;
     this.machines = machines;
     this.plantScope = plantScope;
-    this.scopes = scopes;
     this.auditLog = auditLog;
     this.assignments = assignments;
     this.clock = clock;
@@ -96,34 +97,59 @@ public class WorkOrderQualityRatingService {
     var now = Instant.now(clock);
     var raterId = UUID.fromString(user.id());
 
+    validateHeadlineScores(command.cleanlinessScore(), command.tidinessScore(), command.speedScore());
     var validated = validateScores(command.scores());
     var technicianIds = validateTechnicians(workOrderId, command.technicianIds());
 
+    // Default due window: 7 days after submission; the rating becomes EXPIRED on read
+    // if not submitted by then (C4 — the expiry path is reachable via normal flow).
     var rating = new WorkOrderQualityRatingEntity(UUID.randomUUID(), workOrderId,
-        WorkRatingStatus.PENDING, null, null, null, null, null, null, null, now, now);
+        WorkRatingStatus.PENDING, now.plusSeconds(DEFAULT_DUE_WINDOW_SECONDS),
+        null, null, null, null, null, null, now, now);
     rating.submit(command.cleanlinessScore(), command.tidinessScore(), command.speedScore(),
         raterId, now, now);
-    var saved = ratings.saveAndFlush(rating);
+    try {
+      var saved = ratings.saveAndFlush(rating);
 
-    var savedTechs = new ArrayList<WorkOrderQualityRatingTechnicianEntity>();
-    for (var techId : technicianIds) {
-      var pivot = new WorkOrderQualityRatingTechnicianEntity(UUID.randomUUID(),
-          saved.getId(), null, techId);
-      savedTechs.add(technicianPivots.saveAndFlush(pivot));
+      var savedTechs = new ArrayList<WorkOrderQualityRatingTechnicianEntity>();
+      for (var techId : technicianIds) {
+        var pivot = new WorkOrderQualityRatingTechnicianEntity(UUID.randomUUID(),
+            saved.getId(), null, techId);
+        savedTechs.add(technicianPivots.saveAndFlush(pivot));
+      }
+
+      var savedScores = new ArrayList<WorkOrderQualityRatingScoreEntity>();
+      for (var entry : validated.scores().entrySet()) {
+        var score = new WorkOrderQualityRatingScoreEntity(UUID.randomUUID(),
+            saved.getId(), entry.getKey(), entry.getValue());
+        savedScores.add(scoreRows.saveAndFlush(score));
+      }
+
+      auditLog.record(user, new AuditRecord(AuditAction.CREATE,
+          AuditEntityType.WORK_ORDER_QUALITY_RATING,
+          saved.getId(), workOrderId, machine.getPlant().getId(), null,
+          ratingValues(saved, savedScores, savedTechs), null));
+      return toView(saved, savedScores, savedTechs, validated.criteria());
+    } catch (DataIntegrityViolationException exception) {
+      // Concurrent submit raced past the exists pre-check; the
+      // uq_work_order_quality_ratings_work_order constraint is the backstop.
+      if (isUniqueWorkOrderViolation(exception)) {
+        throw new QualityRatingAlreadyExistsException();
+      }
+      throw exception;
     }
+  }
 
-    var savedScores = new ArrayList<WorkOrderQualityRatingScoreEntity>();
-    for (var entry : validated.scores().entrySet()) {
-      var score = new WorkOrderQualityRatingScoreEntity(UUID.randomUUID(),
-          saved.getId(), entry.getKey(), entry.getValue());
-      savedScores.add(scoreRows.saveAndFlush(score));
+  private boolean isUniqueWorkOrderViolation(DataIntegrityViolationException exception) {
+    var cause = exception.getCause();
+    while (cause != null) {
+      if (cause instanceof org.hibernate.exception.ConstraintViolationException constraint
+          && "uq_work_order_quality_ratings_work_order".equalsIgnoreCase(constraint.getConstraintName())) {
+        return true;
+      }
+      cause = cause.getCause();
     }
-
-    auditLog.record(user, new AuditRecord(AuditAction.CREATE,
-        AuditEntityType.WORK_ORDER_QUALITY_RATING,
-        saved.getId(), workOrderId, machine.getPlant().getId(), null,
-        ratingValues(saved, savedScores, savedTechs), null));
-    return toView(saved, savedScores, savedTechs, validated.criteria());
+    return false;
   }
 
   /**
@@ -153,6 +179,7 @@ public class WorkOrderQualityRatingService {
   @Transactional(readOnly = true)
   public List<WorkOrderRatingCriterionView> listCriteria() {
     return criteria.findAllByOrderBySortOrderAsc().stream()
+        .filter(WorkOrderRatingCriterionEntity::isActive)
         .map(this::toCriterionView)
         .toList();
   }
@@ -195,13 +222,15 @@ public class WorkOrderQualityRatingService {
     var allCriteria = criteria.findAll();
     var criterionById = new HashMap<UUID, WorkOrderRatingCriterionEntity>();
     for (var c : allCriteria) {
-      criterionById.put(c.getId(), c);
+      if (c.isActive()) {
+        criterionById.put(c.getId(), c);
+      }
     }
     var validated = new LinkedHashMap<UUID, Integer>();
     for (var entry : requestedScores.entrySet()) {
       var criterion = criterionById.get(entry.getKey());
       if (criterion == null) {
-        fieldErrors.put("scores." + entry.getKey(), "Unknown criterion.");
+        fieldErrors.put("scores." + entry.getKey(), "Unknown or inactive criterion.");
         continue;
       }
       var value = entry.getValue();
@@ -273,9 +302,30 @@ public class WorkOrderQualityRatingService {
     if (rating.getStatus() == WorkRatingStatus.PENDING
         && rating.getDueAt() != null
         && rating.getDueAt().isBefore(Instant.now(clock))) {
-      rating.setStatus(WorkRatingStatus.EXPIRED);
-      rating.setUpdatedAt(Instant.now(clock));
+      rating.expire(Instant.now(clock));
       ratings.saveAndFlush(rating);
+    }
+  }
+
+  /**
+   * Validates the three headline scores (cleanliness/tidiness/speed). They are optional
+   * per the schema (nullable columns), but when present must be 1-5 — the DTO carries
+   * the same @Min/@Max constraints; this service-side guard closes the null/range gap
+   * and produces a stable VALIDATION_ERROR rather than a DB error.
+   */
+  private void validateHeadlineScores(Integer cleanliness, Integer tidiness, Integer speed) {
+    var fieldErrors = new LinkedHashMap<String, String>();
+    for (var entry : Map.of(
+        "cleanlinessScore", cleanliness,
+        "tidinessScore", tidiness,
+        "speedScore", speed).entrySet()) {
+      var value = entry.getValue();
+      if (value != null && (value < 1 || value > 5)) {
+        fieldErrors.put(entry.getKey(), "Score must be an integer between 1 and 5.");
+      }
+    }
+    if (!fieldErrors.isEmpty()) {
+      throw new QualityRatingValidationException(fieldErrors);
     }
   }
 
