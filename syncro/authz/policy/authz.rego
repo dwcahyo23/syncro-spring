@@ -144,6 +144,19 @@ inventory_location_stock_paths := {
   "/api/v1/inventory-locations/*/stock-balances/*/adjust",
 }
 
+# Inventory transfers (story 18-4, blueprint E3): transfer lifecycle mutations for
+# INVENTORY_MAINTENANCE/STOREKEEPER/MANAGER_MAINTENANCE (SUPER_ADMIN via the generic
+# bypass). A single `*` matches exactly one path segment, so each depth is enumerated
+# explicitly: collection (list/create), /{id} (get), /{id}/approve, /{id}/reject.
+# Reads (GET) flow through generic read_allowed. SoD, plant scope and the state
+# machine are service-side (rego cannot see the body or the transfer state).
+inventory_transfer_paths := {
+  "/api/v1/inventory-transfers",
+  "/api/v1/inventory-transfers/*",
+  "/api/v1/inventory-transfers/*/approve",
+  "/api/v1/inventory-transfers/*/reject",
+}
+
 workorder_assign_paths := {
   "/api/v1/workorders/*/assign",
 }
@@ -544,6 +557,29 @@ mutation_allowed if {
   input.subject.roles[_] == "STOREKEEPER"
   is_mutation
   path_matches(inventory_location_stock_paths)
+}
+
+# Inventory transfer mutations (story 18-4): INVENTORY_MAINTENANCE/STOREKEEPER/
+# MANAGER_MAINTENANCE (SUPER_ADMIN via the generic bypass). TECHNICIAN/
+# STAFF_MAINTENANCE and the other roles stay default-deny — parity with
+# InventoryTransferService.requireCreateRole/requireReviewRole (the service narrows
+# STOREKEEPER out of reviews; rego is the coarse gate).
+mutation_allowed if {
+  input.subject.roles[_] == "INVENTORY_MAINTENANCE"
+  is_mutation
+  path_matches(inventory_transfer_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STOREKEEPER"
+  is_mutation
+  path_matches(inventory_transfer_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(inventory_transfer_paths)
 }
 
 # Assign: leadership roles only (STAFF_MAINTENANCE and PRODUCTION_LEADER excluded).

@@ -1,0 +1,2220 @@
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryTransferController.java b/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryTransferController.java
+new file mode 100644
+index 0000000..f75250a
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryTransferController.java
+@@ -0,0 +1,135 @@
++package com.syncro.inventory.api;
++
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.inventory.api.InventoryTransferDtos.CreateInventoryTransferRequest;
++import com.syncro.inventory.api.InventoryTransferDtos.InventoryTransferListView;
++import com.syncro.inventory.api.InventoryTransferDtos.InventoryTransferView;
++import com.syncro.inventory.api.InventoryTransferDtos.RejectInventoryTransferRequest;
++import com.syncro.inventory.application.InventoryTransferService;
++import com.syncro.inventory.application.InventoryTransferService.CreateTransferCommand;
++import com.syncro.inventory.application.InventoryTransferService.TransferView;
++import com.syncro.inventory.domain.InventoryTransferStatus;
++import io.swagger.v3.oas.annotations.Operation;
++import io.swagger.v3.oas.annotations.media.Content;
++import io.swagger.v3.oas.annotations.media.Schema;
++import io.swagger.v3.oas.annotations.responses.ApiResponse;
++import io.swagger.v3.oas.annotations.responses.ApiResponses;
++import jakarta.validation.Valid;
++import java.util.UUID;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.security.core.annotation.AuthenticationPrincipal;
++import org.springframework.validation.annotation.Validated;
++import org.springframework.web.bind.annotation.GetMapping;
++import org.springframework.web.bind.annotation.PathVariable;
++import org.springframework.web.bind.annotation.PostMapping;
++import org.springframework.web.bind.annotation.RequestBody;
++import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RequestParam;
++import org.springframework.web.bind.annotation.RestController;
++
++/**
++ * Inventory-transfers REST surface (story 18-4, blueprint E3). Create requests a
++ * PENDING_APPROVAL transfer; approve moves stock atomically (source debit +
++ * destination credit in one transaction); reject stores a mandatory reason. List is
++ * plant-scoped with optional sparepartId/status filters. No update, no delete —
++ * APPROVED/REJECTED are terminal. All permission, SoD, state-machine and atomicity
++ * decisions live in the service; the controller only binds, delegates and maps.
++ */
++@Validated
++@RestController
++@RequestMapping("/api/v1/inventory-transfers")
++public class InventoryTransferController {
++
++  private final InventoryTransferService service;
++
++  public InventoryTransferController(InventoryTransferService service) {
++    this.service = service;
++  }
++
++  @Operation(operationId = "listInventoryTransfers",
++      summary = "List transfers visible to the caller (optional sparepartId/status filters)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Transfers returned"),
++      @ApiResponse(responseCode = "400", description = "INVALID_QUERY_VALUE"),
++      @ApiResponse(responseCode = "401", description = "Authentication required")
++  })
++  @GetMapping
++  public InventoryTransferListView list(@AuthenticationPrincipal AuthenticatedUser user,
++      @RequestParam(required = false) UUID sparepartId,
++      @RequestParam(required = false) InventoryTransferStatus status) {
++    var items = service.list(user, sparepartId, status).stream()
++        .map(InventoryTransferController::toView)
++        .toList();
++    return new InventoryTransferListView(items);
++  }
++
++  @Operation(operationId = "getInventoryTransfer", summary = "Get one transfer by id")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Transfer returned"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "INVENTORY_TRANSFER_NOT_FOUND")
++  })
++  @GetMapping("/{id}")
++  public InventoryTransferView get(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id) {
++    return toView(service.get(user, id));
++  }
++
++  @Operation(operationId = "createInventoryTransfer",
++      summary = "Request a stock transfer (PENDING_APPROVAL, audit CREATE)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "201", description = "Transfer requested",
++          content = @Content(schema = @Schema(implementation = InventoryTransferView.class))),
++      @ApiResponse(responseCode = "400", description = "VALIDATION_ERROR"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "SPAREPART_NOT_FOUND / INVENTORY_LOCATION_NOT_FOUND")
++  })
++  @PostMapping
++  public ResponseEntity<InventoryTransferView> create(@AuthenticationPrincipal AuthenticatedUser user,
++      @Valid @RequestBody CreateInventoryTransferRequest request) {
++    var created = service.create(user, new CreateTransferCommand(request.sparepartId(),
++        request.sourceLocationId(), request.destinationLocationId(), request.quantity()));
++    return ResponseEntity.status(HttpStatus.CREATED).body(toView(created));
++  }
++
++  @Operation(operationId = "approveInventoryTransfer",
++      summary = "Approve a pending transfer (atomic source debit + destination credit)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Transfer approved, stock moved"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "FORBIDDEN / TRANSFER_SELF_REVIEW_FORBIDDEN"),
++      @ApiResponse(responseCode = "404", description = "INVENTORY_TRANSFER_NOT_FOUND"),
++      @ApiResponse(responseCode = "409", description = "INVALID_TRANSFER_TRANSITION / INSUFFICIENT_STOCK")
++  })
++  @PostMapping("/{id}/approve")
++  public InventoryTransferView approve(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id) {
++    return toView(service.approve(user, id));
++  }
++
++  @Operation(operationId = "rejectInventoryTransfer",
++      summary = "Reject a pending transfer with a mandatory reason (no stock movement)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Transfer rejected"),
++      @ApiResponse(responseCode = "400", description = "VALIDATION_ERROR"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "FORBIDDEN / TRANSFER_SELF_REVIEW_FORBIDDEN"),
++      @ApiResponse(responseCode = "404", description = "INVENTORY_TRANSFER_NOT_FOUND"),
++      @ApiResponse(responseCode = "409", description = "INVALID_TRANSFER_TRANSITION")
++  })
++  @PostMapping("/{id}/reject")
++  public InventoryTransferView reject(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id, @Valid @RequestBody RejectInventoryTransferRequest request) {
++    return toView(service.reject(user, id, request.rejectionReason()));
++  }
++
++  private static InventoryTransferView toView(TransferView view) {
++    return new InventoryTransferView(view.id(), view.sparepartId(), view.sourceLocationId(),
++        view.destinationLocationId(), view.quantity(), view.status(), view.requestedBy(),
++        view.reviewedBy(), view.rejectionReason(), view.reviewedAt(), view.createdAt(),
++        view.updatedAt());
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryTransferDtos.java b/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryTransferDtos.java
+new file mode 100644
+index 0000000..837c838
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryTransferDtos.java
+@@ -0,0 +1,58 @@
++package com.syncro.inventory.api;
++
++import com.syncro.inventory.domain.InventoryTransferStatus;
++import io.swagger.v3.oas.annotations.media.Schema;
++import jakarta.validation.constraints.Digits;
++import jakarta.validation.constraints.NotBlank;
++import jakarta.validation.constraints.NotNull;
++import jakarta.validation.constraints.Positive;
++import jakarta.validation.constraints.Size;
++import java.math.BigDecimal;
++import java.time.Instant;
++import java.util.List;
++import java.util.UUID;
++
++/**
++ * Request/response records for the inventory-transfers API (story 18-4, blueprint
++ * E3). camelCase JSON; UUID ids are opaque. There is no update request — a transfer
++ * is created PENDING_APPROVAL and ends in APPROVED/REJECTED (terminal states only,
++ * no delete endpoint).
++ */
++public final class InventoryTransferDtos {
++  private InventoryTransferDtos() {
++  }
++
++  /** POST /api/v1/inventory-transfers. requested_by is never part of the body. */
++  @Schema(description = "Request a stock transfer between two locations of the same plant")
++  public record CreateInventoryTransferRequest(
++      @NotNull UUID sparepartId,
++      @NotNull UUID sourceLocationId,
++      @NotNull UUID destinationLocationId,
++      @NotNull @Positive @Digits(integer = 16, fraction = 2) BigDecimal quantity) {
++  }
++
++  /** POST /api/v1/inventory-transfers/{id}/reject — reason is mandatory. */
++  @Schema(description = "Reject a pending transfer with a reason")
++  public record RejectInventoryTransferRequest(
++      @NotBlank @Size(max = 2000) String rejectionReason) {
++  }
++
++  /** Transfer read model. */
++  public record InventoryTransferView(
++      UUID id,
++      UUID sparepartId,
++      UUID sourceLocationId,
++      UUID destinationLocationId,
++      BigDecimal quantity,
++      InventoryTransferStatus status,
++      UUID requestedBy,
++      UUID reviewedBy,
++      String rejectionReason,
++      Instant reviewedAt,
++      Instant createdAt,
++      Instant updatedAt) {
++  }
++
++  public record InventoryTransferListView(List<InventoryTransferView> items) {
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryTransferExceptionHandler.java b/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryTransferExceptionHandler.java
+new file mode 100644
+index 0000000..beea142
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryTransferExceptionHandler.java
+@@ -0,0 +1,142 @@
++package com.syncro.inventory.api;
++
++import com.syncro.inventory.api.InventoryLocationDtos.ErrorResponse;
++import com.syncro.inventory.application.InventoryLocationService.InventoryLocationNotFoundException;
++import com.syncro.inventory.application.InventoryStockService.SparepartNotFoundException;
++import com.syncro.inventory.application.InventoryTransferService.InsufficientStockException;
++import com.syncro.inventory.application.InventoryTransferService.InvalidTransferTransitionException;
++import com.syncro.inventory.application.InventoryTransferService.InventoryTransferNotFoundException;
++import com.syncro.inventory.application.InventoryTransferService.TransferForbiddenException;
++import com.syncro.inventory.application.InventoryTransferService.TransferSelfReviewForbiddenException;
++import com.syncro.inventory.application.InventoryTransferService.TransferValidationException;
++import jakarta.validation.ConstraintViolationException;
++import java.time.Clock;
++import java.time.Instant;
++import java.util.LinkedHashMap;
++import java.util.Map;
++import java.util.UUID;
++import org.springframework.core.Ordered;
++import org.springframework.core.annotation.Order;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.http.converter.HttpMessageNotReadableException;
++import org.springframework.web.bind.MethodArgumentNotValidException;
++import org.springframework.web.bind.MissingServletRequestParameterException;
++import org.springframework.web.bind.annotation.ExceptionHandler;
++import org.springframework.web.bind.annotation.RequestParam;
++import org.springframework.web.bind.annotation.RestControllerAdvice;
++import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
++
++/**
++ * Error mapping for the inventory-transfers API (story 18-4). One stable shape
++ * (code/message/fieldErrors/timestamp/traceId) — machine-readable codes:
++ * INVALID_TRANSFER_TRANSITION (409), INSUFFICIENT_STOCK (409),
++ * TRANSFER_SELF_REVIEW_FORBIDDEN (403), INVENTORY_LOCATION_NOT_FOUND (404),
++ * SPAREPART_NOT_FOUND (404), INVENTORY_TRANSFER_NOT_FOUND (404), FORBIDDEN (403),
++ * VALIDATION_ERROR (400).
++ */
++@Order(Ordered.HIGHEST_PRECEDENCE)
++@RestControllerAdvice(assignableTypes = InventoryTransferController.class)
++public class InventoryTransferExceptionHandler {
++
++  private final Clock clock;
++
++  public InventoryTransferExceptionHandler(Clock clock) {
++    this.clock = clock;
++  }
++
++  @ExceptionHandler(MethodArgumentNotValidException.class)
++  ResponseEntity<ErrorResponse> validationError(MethodArgumentNotValidException exception) {
++    var fieldErrors = new LinkedHashMap<String, String>();
++    for (var error : exception.getBindingResult().getFieldErrors()) {
++      fieldErrors.putIfAbsent(error.getField(), "Invalid value.");
++    }
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", fieldErrors);
++  }
++
++  @ExceptionHandler(ConstraintViolationException.class)
++  ResponseEntity<ErrorResponse> constraintViolation(ConstraintViolationException exception) {
++    var fieldErrors = new LinkedHashMap<String, String>();
++    for (var violation : exception.getConstraintViolations()) {
++      fieldErrors.putIfAbsent(violation.getPropertyPath().toString(), violation.getMessage());
++    }
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", fieldErrors);
++  }
++
++  @ExceptionHandler(TransferValidationException.class)
++  ResponseEntity<ErrorResponse> transferValidation(TransferValidationException exception) {
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
++        exception.getFieldErrors());
++  }
++
++  @ExceptionHandler(HttpMessageNotReadableException.class)
++  ResponseEntity<ErrorResponse> malformedJson() {
++    return error(HttpStatus.BAD_REQUEST, "MALFORMED_JSON", "Request body is malformed.", Map.of());
++  }
++
++  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
++  ResponseEntity<ErrorResponse> invalidPathValue(MethodArgumentTypeMismatchException exception) {
++    if (exception.getParameter() != null
++        && exception.getParameter().hasParameterAnnotation(RequestParam.class)) {
++      return error(HttpStatus.BAD_REQUEST, "INVALID_QUERY_VALUE", "Query value is invalid.", Map.of());
++    }
++    return error(HttpStatus.BAD_REQUEST, "INVALID_PATH_VALUE", "Path value is invalid.", Map.of());
++  }
++
++  @ExceptionHandler(MissingServletRequestParameterException.class)
++  ResponseEntity<ErrorResponse> missingParameter(MissingServletRequestParameterException exception) {
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
++        Map.of(exception.getParameterName(), "Invalid value."));
++  }
++
++  @ExceptionHandler(TransferForbiddenException.class)
++  ResponseEntity<ErrorResponse> forbidden() {
++    return error(HttpStatus.FORBIDDEN, "FORBIDDEN",
++        "You do not have permission to access this resource.", Map.of());
++  }
++
++  /** SoD: the requester can never review their own transfer. */
++  @ExceptionHandler(TransferSelfReviewForbiddenException.class)
++  ResponseEntity<ErrorResponse> selfReviewForbidden() {
++    return error(HttpStatus.FORBIDDEN, "TRANSFER_SELF_REVIEW_FORBIDDEN",
++        "The requester cannot review their own transfer.", Map.of());
++  }
++
++  @ExceptionHandler(InventoryTransferNotFoundException.class)
++  ResponseEntity<ErrorResponse> transferNotFound() {
++    return error(HttpStatus.NOT_FOUND, "INVENTORY_TRANSFER_NOT_FOUND",
++        "Inventory transfer was not found.", Map.of());
++  }
++
++  @ExceptionHandler(InventoryLocationNotFoundException.class)
++  ResponseEntity<ErrorResponse> locationNotFound() {
++    return error(HttpStatus.NOT_FOUND, "INVENTORY_LOCATION_NOT_FOUND",
++        "Inventory location was not found.", Map.of());
++  }
++
++  @ExceptionHandler(SparepartNotFoundException.class)
++  ResponseEntity<ErrorResponse> sparepartNotFound() {
++    return error(HttpStatus.NOT_FOUND, "SPAREPART_NOT_FOUND", "Sparepart was not found.", Map.of());
++  }
++
++  /** Review on a terminal transfer → 409. */
++  @ExceptionHandler(InvalidTransferTransitionException.class)
++  ResponseEntity<ErrorResponse> invalidTransition() {
++    return error(HttpStatus.CONFLICT, "INVALID_TRANSFER_TRANSITION",
++        "The transfer is not pending approval.", Map.of());
++  }
++
++  /** Source debit matched 0 rows → the whole move rolled back. */
++  @ExceptionHandler(InsufficientStockException.class)
++  ResponseEntity<ErrorResponse> insufficientStock() {
++    return error(HttpStatus.CONFLICT, "INSUFFICIENT_STOCK",
++        "The source location does not have enough available stock.", Map.of());
++  }
++
++  private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message,
++      Map<String, String> fieldErrors) {
++    return ResponseEntity.status(status)
++        .body(new ErrorResponse(code, message, fieldErrors, Instant.now(clock).toString(),
++            UUID.randomUUID().toString()));
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/inventory/application/InventoryTransferService.java b/syncro/apps/backend/src/main/java/com/syncro/inventory/application/InventoryTransferService.java
+new file mode 100644
+index 0000000..4091bce
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/inventory/application/InventoryTransferService.java
+@@ -0,0 +1,468 @@
++package com.syncro.inventory.application;
++
++import com.syncro.audit.application.AuditLogWriter;
++import com.syncro.audit.application.AuditRecord;
++import com.syncro.audit.domain.AuditAction;
++import com.syncro.audit.domain.AuditEntityType;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
++import com.syncro.inventory.application.InventoryLocationService.InventoryLocationNotFoundException;
++import com.syncro.inventory.application.InventoryStockService.SparepartNotFoundException;
++import com.syncro.inventory.domain.InventoryTransferStatus;
++import com.syncro.inventory.infrastructure.db.InventoryLocationEntity;
++import com.syncro.inventory.infrastructure.db.InventoryLocationRepository;
++import com.syncro.inventory.infrastructure.db.InventoryStockBalanceEntity;
++import com.syncro.inventory.infrastructure.db.InventoryStockBalanceRepository;
++import com.syncro.inventory.infrastructure.db.InventoryTransferEntity;
++import com.syncro.inventory.infrastructure.db.InventoryTransferRepository;
++import com.syncro.sparepart.infrastructure.SparepartEntity;
++import com.syncro.sparepart.infrastructure.SparepartRepository;
++import java.math.BigDecimal;
++import java.time.Clock;
++import java.time.Instant;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++
++/**
++ * Inventory-transfer lifecycle service (blueprint E3, story 18-4). A transfer moves
++ * {@code quantity} of one sparepart between two ACTIVE locations of the SAME plant
++ * through an approval gate: create → {@code PENDING_APPROVAL}; approve →
++ * {@code APPROVED} (source debit + destination credit in ONE transaction); reject →
++ * {@code REJECTED} with a stored reason. Terminal states never re-open — any review
++ * on a non-pending transfer is 409 INVALID_TRANSFER_TRANSITION.
++ *
++ * <p>Atomicity: the source debit runs as the existing atomic conditional update
++ * ({@link InventoryStockBalanceRepository#adjustAvailableIfSufficient} with a signed
++ * negative delta, guard {@code available - qty >= 0}); a zero-row result is 409
++ * INSUFFICIENT_STOCK and the whole transaction rolls back — no partial move. The
++ * destination credit is a create-or-increment upsert
++ * ({@link InventoryStockBalanceRepository#creditTransferIn}) so a missing destination
++ * row never needs a read-then-write. Both statements bump {@code version} in SQL,
++ * bypassing the JPA optimistic lock the same way the stock-adjust path does.
++ *
++ * <p>Separation of duties: the requester ({@code requested_by}) can never approve or
++ * reject their own transfer — 403 TRANSFER_SELF_REVIEW_FORBIDDEN, checked before any
++ * stock movement. Reviewers need MANAGER_MAINTENANCE/INVENTORY_MAINTENANCE plus the
++ * transfer's plant in their assignment scope (SUPER_ADMIN exempt); creators need
++ * INVENTORY_MAINTENANCE/STOREKEEPER/MANAGER_MAINTENANCE with BOTH locations' plant in
++ * scope. Concurrent reviews serialize on {@code findByIdForUpdate} (the transfer row
++ * has no {@code @Version} column — pattern anchor: story 18-1's sparepart review).
++ *
++ * <p>Location liveness: BOTH locations must be ACTIVE for a transfer to be created —
++ * a deactivated store cannot send or receive stock (documented choice; mirrors
++ * 18-3's {@code requireActiveLocation}, extended to the destination because a
++ * transfer is a two-sided mutation). Inactive/unknown locations surface as 404
++ * INVENTORY_LOCATION_NOT_FOUND; a sparepart outside the locations' plant surfaces as
++ * 404 SPAREPART_NOT_FOUND (no cross-plant existence oracle, 18-3 parity).
++ *
++ * <p>Reads: the list is plant-scoped by joining the source location (creation
++ * guarantees source.plant == destination.plant, so the source determines the plant —
++ * the table has no plant column); a caller with no plant assignment sees an empty
++ * list. Every mutation writes an audit record ({@link AuditEntityType#INVENTORY_TRANSFER});
++ * an approve additionally audits both touched balance rows (epic-18: every stock
++ * mutation is audit-logged).
++ */
++@Service
++public class InventoryTransferService {
++
++  private final InventoryTransferRepository transfers;
++  private final InventoryStockBalanceRepository balances;
++  private final InventoryLocationRepository locations;
++  private final SparepartRepository spareparts;
++  private final AuthUserPlantAssignmentRepository assignments;
++  private final AuditLogWriter auditLog;
++  private final Clock clock;
++
++  public InventoryTransferService(InventoryTransferRepository transfers,
++      InventoryStockBalanceRepository balances, InventoryLocationRepository locations,
++      SparepartRepository spareparts, AuthUserPlantAssignmentRepository assignments,
++      AuditLogWriter auditLog, Clock clock) {
++    this.transfers = transfers;
++    this.balances = balances;
++    this.locations = locations;
++    this.spareparts = spareparts;
++    this.assignments = assignments;
++    this.auditLog = auditLog;
++    this.clock = clock;
++  }
++
++  /**
++   * POST — request a transfer. Persists PENDING_APPROVAL with {@code requested_by}
++   * taken from the authenticated user (never from the body) and audits CREATE.
++   */
++  @Transactional
++  public TransferView create(AuthenticatedUser user, CreateTransferCommand command) {
++    requireCreateRole(user);
++    var source = requireActiveLocation(requireKnownLocation(command.sourceLocationId()));
++    var destination = requireActiveLocation(requireKnownLocation(command.destinationLocationId()));
++    if (source.getId().equals(destination.getId())) {
++      throw new TransferValidationException(Map.of("destinationLocationId",
++          "Source and destination locations must differ."));
++    }
++    if (!source.getPlantId().equals(destination.getPlantId())) {
++      throw new TransferValidationException(Map.of("destinationLocationId",
++          "Source and destination locations must belong to the same plant."));
++    }
++    requireCreatePlantScope(user, source.getPlantId());
++    var quantity = requirePositiveQuantity(command.quantity());
++    var sparepart = spareparts.findById(command.sparepartId())
++        .orElseThrow(SparepartNotFoundException::new);
++    requireSparepartInPlant(sparepart, source.getPlantId());
++    var now = Instant.now(clock);
++    var saved = transfers.saveAndFlush(new InventoryTransferEntity(UUID.randomUUID(),
++        sparepart.getId(), source.getId(), destination.getId(), quantity,
++        InventoryTransferStatus.PENDING_APPROVAL, UUID.fromString(user.id()), null, null, null,
++        now, now));
++    auditLog.record(user, new AuditRecord(AuditAction.CREATE,
++        AuditEntityType.INVENTORY_TRANSFER, saved.getId(), transferLabel(sparepart, saved),
++        source.getPlantId(), null, transferValues(saved), null));
++    return toView(saved);
++  }
++
++  /**
++   * POST /{id}/approve — PENDING_APPROVAL → APPROVED with the atomic stock move.
++   * Order: role gate → locked read → SoD → plant scope → state machine → debit →
++   * credit → status stamp → audits. A failed debit guard (0 rows) aborts everything.
++   */
++  @Transactional
++  public TransferView approve(AuthenticatedUser user, UUID transferId) {
++    requireReviewRole(user);
++    var transfer = findForUpdate(transferId);
++    requireNotSelfReview(user, transfer);
++    var plantId = requireReviewPlantScope(user, transfer);
++    if (transfer.getStatus() != InventoryTransferStatus.PENDING_APPROVAL) {
++      throw new InvalidTransferTransitionException();
++    }
++    var sparepartId = transfer.getSparepartId();
++    var sourceLocationId = transfer.getSourceLocationId();
++    var destinationLocationId = transfer.getDestinationLocationId();
++    var now = Instant.now(clock);
++    var previous = transferValues(transfer);
++    var quantity = transfer.getQuantity();
++
++    // Both balance writes run FIRST as atomic SQL (each bumps version in-statement).
++    // The conditional updates clear the persistence context, so every read/audit/merge
++    // below happens against fresh state — no pending write can be lost to a clear.
++    var sourceBefore = balances.findBySparepartIdAndLocationId(sparepartId, sourceLocationId)
++        .orElse(null);
++    var destinationBefore = balances.findBySparepartIdAndLocationId(sparepartId,
++        destinationLocationId).orElse(null);
++
++    // Source debit — 0 rows means insufficient available → 409, whole move rolls back.
++    int debited = balances.adjustAvailableIfSufficient(sparepartId, sourceLocationId,
++        quantity.negate(), now);
++    if (debited == 0) {
++      throw new InsufficientStockException();
++    }
++    // Destination credit — create-or-increment upsert (missing row starts at qty).
++    balances.creditTransferIn(UUID.randomUUID(), sparepartId, destinationLocationId, quantity, now);
++
++    var sparepart = spareparts.findById(sparepartId).orElseThrow(SparepartNotFoundException::new);
++    var sourceAfter = balances.findBySparepartIdAndLocationId(sparepartId, sourceLocationId)
++        .orElseThrow();
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE,
++        AuditEntityType.INVENTORY_STOCK_BALANCE, sourceAfter.getId(),
++        balanceLabel(sparepart, sourceAfter), plantId,
++        sourceBefore != null ? balanceValues(sparepart, sourceBefore) : null,
++        balanceValues(sparepart, sourceAfter), null));
++    var destinationAfter = balances.findBySparepartIdAndLocationId(sparepartId,
++        destinationLocationId).orElseThrow();
++    auditLog.record(user, new AuditRecord(
++        destinationBefore == null ? AuditAction.CREATE : AuditAction.UPDATE,
++        AuditEntityType.INVENTORY_STOCK_BALANCE, destinationAfter.getId(),
++        balanceLabel(sparepart, destinationAfter), plantId,
++        destinationBefore != null ? balanceValues(sparepart, destinationBefore) : null,
++        balanceValues(sparepart, destinationAfter), null));
++
++    // transfer is detached after the bulk-update clears — saveAndFlush merges it back.
++    transfer.review(InventoryTransferStatus.APPROVED, UUID.fromString(user.id()), null, now, now);
++    var saved = transfers.saveAndFlush(transfer);
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE,
++        AuditEntityType.INVENTORY_TRANSFER, saved.getId(), transferLabel(sparepart, saved),
++        plantId, previous, transferValues(saved), null));
++    return toView(saved);
++  }
++
++  /**
++   * POST /{id}/reject — PENDING_APPROVAL → REJECTED with a required reason. No stock
++   * movement happens on this path; the reviewer and reason are stamped and audited.
++   */
++  @Transactional
++  public TransferView reject(AuthenticatedUser user, UUID transferId, String rejectionReason) {
++    requireReviewRole(user);
++    var reason = rejectionReason == null ? "" : rejectionReason.trim();
++    if (reason.isEmpty()) {
++      throw new TransferValidationException(Map.of("rejectionReason",
++          "Rejection reason must not be blank."));
++    }
++    var transfer = findForUpdate(transferId);
++    requireNotSelfReview(user, transfer);
++    var plantId = requireReviewPlantScope(user, transfer);
++    if (transfer.getStatus() != InventoryTransferStatus.PENDING_APPROVAL) {
++      throw new InvalidTransferTransitionException();
++    }
++    var sparepart = spareparts.findById(transfer.getSparepartId())
++        .orElseThrow(SparepartNotFoundException::new);
++    var now = Instant.now(clock);
++    var previous = transferValues(transfer);
++    transfer.review(InventoryTransferStatus.REJECTED, UUID.fromString(user.id()), reason, now,
++        now);
++    var saved = transfers.saveAndFlush(transfer);
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE,
++        AuditEntityType.INVENTORY_TRANSFER, saved.getId(), transferLabel(sparepart, saved),
++        plantId, previous, transferValues(saved), null));
++    return toView(saved);
++  }
++
++  /**
++   * GET list — optional sparepartId/status filters, newest first. Plant-scoped
++   * through the source location; SUPER_ADMIN sees every plant; a caller without any
++   * plant assignment sees an empty list (never another plant's transfers).
++   */
++  @Transactional(readOnly = true)
++  public List<TransferView> list(AuthenticatedUser user, UUID sparepartId,
++      InventoryTransferStatus status) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return transfers.findAllFiltered(sparepartId, status).stream()
++          .map(InventoryTransferService::toView)
++          .toList();
++    }
++    var plantIds = assignedPlantIds(user);
++    if (plantIds.isEmpty()) {
++      return List.of();
++    }
++    return transfers.findScoped(plantIds, sparepartId, status).stream()
++        .map(InventoryTransferService::toView)
++        .toList();
++  }
++
++  /** GET one — read gate applies to the transfer's plant (403 outside scope). */
++  @Transactional(readOnly = true)
++  public TransferView get(AuthenticatedUser user, UUID transferId) {
++    var transfer = transfers.findById(transferId)
++        .orElseThrow(InventoryTransferNotFoundException::new);
++    var plantId = requireSourcePlant(transfer);
++    requireReadPlantScope(user, plantId);
++    return toView(transfer);
++  }
++
++  // -------------------------------------------------------------------------
++  // Gates
++  // -------------------------------------------------------------------------
++
++  /** Creation gate: INVENTORY_MAINTENANCE/STOREKEEPER/MANAGER_MAINTENANCE (+ SUPER_ADMIN). */
++  private static void requireCreateRole(AuthenticatedUser user) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN
++        || user.applicationRole() == ApplicationRole.INVENTORY_MAINTENANCE
++        || user.applicationRole() == ApplicationRole.STOREKEEPER
++        || user.applicationRole() == ApplicationRole.MANAGER_MAINTENANCE) {
++      return;
++    }
++    throw new TransferForbiddenException();
++  }
++
++  /** Review gate: MANAGER_MAINTENANCE/INVENTORY_MAINTENANCE (+ SUPER_ADMIN). STOREKEEPER cannot review. */
++  private static void requireReviewRole(AuthenticatedUser user) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN
++        || user.applicationRole() == ApplicationRole.MANAGER_MAINTENANCE
++        || user.applicationRole() == ApplicationRole.INVENTORY_MAINTENANCE) {
++      return;
++    }
++    throw new TransferForbiddenException();
++  }
++
++  /** SoD: the requester can never review their own transfer — checked before any movement. */
++  private static void requireNotSelfReview(AuthenticatedUser user, InventoryTransferEntity transfer) {
++    if (transfer.getRequestedBy() != null
++        && transfer.getRequestedBy().equals(UUID.fromString(user.id()))) {
++      throw new TransferSelfReviewForbiddenException();
++    }
++  }
++
++  private void requireCreatePlantScope(AuthenticatedUser user, UUID plantId) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    if (!plantAssigned(user, plantId)) {
++      throw new TransferForbiddenException();
++    }
++  }
++
++  /** Reviewer plant scope — returns the transfer's plant (derived from the source location). */
++  private UUID requireReviewPlantScope(AuthenticatedUser user, InventoryTransferEntity transfer) {
++    var plantId = requireSourcePlant(transfer);
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return plantId;
++    }
++    if (!plantAssigned(user, plantId)) {
++      throw new TransferForbiddenException();
++    }
++    return plantId;
++  }
++
++  private void requireReadPlantScope(AuthenticatedUser user, UUID plantId) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    if (!plantAssigned(user, plantId)) {
++      throw new TransferForbiddenException();
++    }
++  }
++
++  private boolean plantAssigned(AuthenticatedUser user, UUID plantId) {
++    return assignedPlantIds(user).contains(plantId);
++  }
++
++  private List<UUID> assignedPlantIds(AuthenticatedUser user) {
++    return assignments.findByAuthUserId(UUID.fromString(user.id())).stream()
++        .map(assignment -> assignment.getPlantId())
++        .distinct()
++        .toList();
++  }
++
++  // -------------------------------------------------------------------------
++  // Helpers
++  // -------------------------------------------------------------------------
++
++  /** Locked read for review transitions — serializes concurrent approve/reject (story 18-4). */
++  private InventoryTransferEntity findForUpdate(UUID transferId) {
++    return transfers.findByIdForUpdate(transferId)
++        .orElseThrow(InventoryTransferNotFoundException::new);
++  }
++
++  /** The transfer's plant, derived through the source location (FK guarantees existence). */
++  private UUID requireSourcePlant(InventoryTransferEntity transfer) {
++    return requireKnownLocation(transfer.getSourceLocationId()).getPlantId();
++  }
++
++  private InventoryLocationEntity requireKnownLocation(UUID locationId) {
++    return locations.findById(locationId).orElseThrow(InventoryLocationNotFoundException::new);
++  }
++
++  /** Both sides of a transfer must be ACTIVE (documented choice — see class javadoc). */
++  private static InventoryLocationEntity requireActiveLocation(InventoryLocationEntity location) {
++    if (!location.isActive()) {
++      throw new InventoryLocationNotFoundException();
++    }
++    return location;
++  }
++
++  /** 18-3 parity: a part outside the locations' plant is indistinguishable from unknown. */
++  private static void requireSparepartInPlant(SparepartEntity sparepart, UUID plantId) {
++    var machine = sparepart.getMachine();
++    var partPlantId = machine != null && machine.getPlant() != null
++        ? machine.getPlant().getId()
++        : null;
++    if (!plantId.equals(partPlantId)) {
++      throw new SparepartNotFoundException();
++    }
++  }
++
++  /** Business invariant behind the DTO's @Positive and the DB CHECK quantity > 0. */
++  private static BigDecimal requirePositiveQuantity(BigDecimal quantity) {
++    if (quantity == null || quantity.signum() <= 0) {
++      throw new TransferValidationException(Map.of("quantity",
++          "Quantity must be greater than zero."));
++    }
++    return quantity;
++  }
++
++  private static String transferLabel(SparepartEntity sparepart, InventoryTransferEntity transfer) {
++    var code = sparepart.getMaterialCode() != null ? sparepart.getMaterialCode() : sparepart.getCode();
++    return code + " " + transfer.getSourceLocationId() + "->" + transfer.getDestinationLocationId();
++  }
++
++  private static String balanceLabel(SparepartEntity sparepart, InventoryStockBalanceEntity entity) {
++    var code = sparepart.getMaterialCode() != null ? sparepart.getMaterialCode() : sparepart.getCode();
++    return code + " @" + entity.getLocationId();
++  }
++
++  private static Map<String, Object> transferValues(InventoryTransferEntity entity) {
++    var values = new LinkedHashMap<String, Object>();
++    values.put("sparepartId", entity.getSparepartId().toString());
++    values.put("sourceLocationId", entity.getSourceLocationId().toString());
++    values.put("destinationLocationId", entity.getDestinationLocationId().toString());
++    values.put("quantity", entity.getQuantity());
++    values.put("status", entity.getStatus().name());
++    values.put("requestedBy", entity.getRequestedBy() != null ? entity.getRequestedBy().toString() : null);
++    values.put("reviewedBy", entity.getReviewedBy() != null ? entity.getReviewedBy().toString() : null);
++    values.put("rejectionReason", entity.getRejectionReason());
++    values.put("reviewedAt", entity.getReviewedAt() != null ? entity.getReviewedAt().toString() : null);
++    return values;
++  }
++
++  private static Map<String, Object> balanceValues(SparepartEntity sparepart,
++      InventoryStockBalanceEntity entity) {
++    var values = new LinkedHashMap<String, Object>();
++    values.put("materialCode", sparepart.getMaterialCode());
++    values.put("sparepartId", entity.getSparepartId());
++    values.put("locationId", entity.getLocationId());
++    values.put("available", entity.getAvailable());
++    values.put("reserved", entity.getReserved());
++    values.put("consumed", entity.getConsumed());
++    values.put("minimumStock", entity.getMinimumStock());
++    values.put("version", entity.getVersion());
++    return values;
++  }
++
++  private static TransferView toView(InventoryTransferEntity entity) {
++    return new TransferView(entity.getId(), entity.getSparepartId(), entity.getSourceLocationId(),
++        entity.getDestinationLocationId(), entity.getQuantity(), entity.getStatus(),
++        entity.getRequestedBy(), entity.getReviewedBy(), entity.getRejectionReason(),
++        entity.getReviewedAt(), entity.getCreatedAt(), entity.getUpdatedAt());
++  }
++
++  // -------------------------------------------------------------------------
++  // Commands, read model, exceptions
++  // -------------------------------------------------------------------------
++
++  /** POST command — requested_by is never part of it (taken from the authenticated user). */
++  public record CreateTransferCommand(UUID sparepartId, UUID sourceLocationId,
++      UUID destinationLocationId, BigDecimal quantity) {
++  }
++
++  /** Service read model (the api layer maps it to the response DTO). */
++  public record TransferView(UUID id, UUID sparepartId, UUID sourceLocationId,
++      UUID destinationLocationId, BigDecimal quantity, InventoryTransferStatus status,
++      UUID requestedBy, UUID reviewedBy, String rejectionReason, Instant reviewedAt,
++      Instant createdAt, Instant updatedAt) {
++  }
++
++  /** Role/scope rejection → 403 FORBIDDEN. */
++  public static class TransferForbiddenException extends RuntimeException {
++  }
++
++  /** Requester reviewing their own transfer → 403 TRANSFER_SELF_REVIEW_FORBIDDEN (SoD). */
++  public static class TransferSelfReviewForbiddenException extends RuntimeException {
++  }
++
++  /** Unknown transfer id → 404 INVENTORY_TRANSFER_NOT_FOUND. */
++  public static class InventoryTransferNotFoundException extends RuntimeException {
++  }
++
++  /** Review on a non-PENDING_APPROVAL transfer → 409 INVALID_TRANSFER_TRANSITION. */
++  public static class InvalidTransferTransitionException extends RuntimeException {
++  }
++
++  /** Source debit matched 0 rows → 409 INSUFFICIENT_STOCK (whole move rolled back). */
++  public static class InsufficientStockException extends RuntimeException {
++  }
++
++  /** qty ≤ 0, same source/dest, cross-plant locations, blank reason → 400 VALIDATION_ERROR. */
++  public static class TransferValidationException extends RuntimeException {
++    private final Map<String, String> fieldErrors;
++
++    public TransferValidationException(Map<String, String> fieldErrors) {
++      this.fieldErrors = new LinkedHashMap<>(fieldErrors);
++    }
++
++    public Map<String, String> getFieldErrors() {
++      return fieldErrors;
++    }
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/inventory/infrastructure/db/InventoryStockBalanceRepository.java b/syncro/apps/backend/src/main/java/com/syncro/inventory/infrastructure/db/InventoryStockBalanceRepository.java
+index 534d541..c08bb4e 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/inventory/infrastructure/db/InventoryStockBalanceRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/inventory/infrastructure/db/InventoryStockBalanceRepository.java
+@@ -66,6 +66,32 @@ public interface InventoryStockBalanceRepository extends JpaRepository<Inventory
+       @Param("delta") BigDecimal delta,
+       @Param("now") java.time.Instant now);
+ 
++  /**
++   * Atomic transfer credit (story 18-4): create-or-increment {@code available} at
++   * (sparepart, location) in ONE statement. A missing destination row is inserted
++   * with {@code available = delta} (other stock columns take their DB defaults);
++   * an existing row is incremented and its version bumped in SQL — the same
++   * version-bypass idiom as the conditional updates, so the destination credit is
++   * race-safe without a read-then-write. The conflict target is
++   * {@code uq_inventory_stock_balances_sparepart_location}. Runs inside the approve
++   * transaction: a failure anywhere rolls the whole move back (no partial transfer).
++   */
++  @Modifying(clearAutomatically = true)
++  @Query(value = """
++      insert into inventory_stock_balances (id, sparepart_id, location_id, available, updated_at)
++      values (:id, :sparepartId, :locationId, :delta, :now)
++      on conflict (sparepart_id, location_id) do update
++      set available = inventory_stock_balances.available + excluded.available,
++          version = inventory_stock_balances.version + 1,
++          updated_at = excluded.updated_at
++      """, nativeQuery = true)
++  int creditTransferIn(
++      @Param("id") UUID id,
++      @Param("sparepartId") UUID sparepartId,
++      @Param("locationId") UUID locationId,
++      @Param("delta") BigDecimal delta,
++      @Param("now") java.time.Instant now);
++
+   /**
+    * Reorder-warning rows (FR-146 remapped, POC proposal §4): every balance row where
+    * available &le; minimum_stock, scoped by plant through the location. The rule is
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/inventory/infrastructure/db/InventoryTransferRepository.java b/syncro/apps/backend/src/main/java/com/syncro/inventory/infrastructure/db/InventoryTransferRepository.java
+index 434199e..2774b31 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/inventory/infrastructure/db/InventoryTransferRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/inventory/infrastructure/db/InventoryTransferRepository.java
+@@ -1,8 +1,60 @@
+ package com.syncro.inventory.infrastructure.db;
+ 
++import com.syncro.inventory.domain.InventoryTransferStatus;
++import jakarta.persistence.LockModeType;
++import java.util.Collection;
++import java.util.List;
++import java.util.Optional;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
++import org.springframework.data.jpa.repository.Lock;
++import org.springframework.data.jpa.repository.Query;
++import org.springframework.data.repository.query.Param;
+ 
+-/** Persistence for {@code inventory_transfers} (blueprint E3, story 15-2). */
++/**
++ * Persistence for {@code inventory_transfers} (blueprint E3, story 15-2; lifecycle
++ * queries added by story 18-4). The table has no plant column — plant scoping joins
++ * the source location (creation enforces source.plant == destination.plant, so the
++ * source alone determines the transfer's plant).
++ */
+ public interface InventoryTransferRepository extends JpaRepository<InventoryTransferEntity, UUID> {
++
++  /**
++   * Pessimistic row lock for review transitions (story 18-4): serializes concurrent
++   * approve/reject on the same transfer so the PENDING_APPROVAL precondition cannot
++   * pass twice (no {@code @Version} column exists on inventory_transfers). Pattern
++   * anchor: {@code SparepartRepository.findByIdForUpdate} (story 18-1).
++   */
++  @Lock(LockModeType.PESSIMISTIC_WRITE)
++  @Query("select t from InventoryTransferEntity t where t.id = :id")
++  Optional<InventoryTransferEntity> findByIdForUpdate(@Param("id") UUID id);
++
++  /**
++   * Plant-scoped list (story 18-4): optional sparepartId/status filters, newest
++   * first. The plant is derived through the source location — never stored on the
++   * transfer row.
++   */
++  @Query("""
++      select t
++      from InventoryTransferEntity t
++      join InventoryLocationEntity l on l.id = t.sourceLocationId
++      where l.plantId in :plantIds
++        and (:sparepartId is null or t.sparepartId = :sparepartId)
++        and (:status is null or t.status = :status)
++      order by t.createdAt desc
++      """)
++  List<InventoryTransferEntity> findScoped(@Param("plantIds") Collection<UUID> plantIds,
++      @Param("sparepartId") UUID sparepartId,
++      @Param("status") InventoryTransferStatus status);
++
++  /** Unscoped (SUPER_ADMIN) list with the same optional filters, newest first. */
++  @Query("""
++      select t
++      from InventoryTransferEntity t
++      where (:sparepartId is null or t.sparepartId = :sparepartId)
++        and (:status is null or t.status = :status)
++      order by t.createdAt desc
++      """)
++  List<InventoryTransferEntity> findAllFiltered(@Param("sparepartId") UUID sparepartId,
++      @Param("status") InventoryTransferStatus status);
+ }
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/inventory/api/InventoryTransferControllerTest.java b/syncro/apps/backend/src/test/java/com/syncro/inventory/api/InventoryTransferControllerTest.java
+new file mode 100644
+index 0000000..9ef44da
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/inventory/api/InventoryTransferControllerTest.java
+@@ -0,0 +1,358 @@
++package com.syncro.inventory.api;
++
++import static org.hamcrest.Matchers.nullValue;
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.eq;
++import static org.mockito.Mockito.doThrow;
++import static org.mockito.Mockito.when;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
++
++import com.syncro.TestJsonConfig;
++import com.syncro.auth.application.JwtTokenService;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.JwtAuthenticationFilter;
++import com.syncro.config.SecurityConfig;
++import com.syncro.config.TimeConfig;
++import com.syncro.inventory.application.InventoryLocationService.InventoryLocationNotFoundException;
++import com.syncro.inventory.application.InventoryStockService.SparepartNotFoundException;
++import com.syncro.inventory.application.InventoryTransferService;
++import com.syncro.inventory.application.InventoryTransferService.CreateTransferCommand;
++import com.syncro.inventory.application.InventoryTransferService.InsufficientStockException;
++import com.syncro.inventory.application.InventoryTransferService.InvalidTransferTransitionException;
++import com.syncro.inventory.application.InventoryTransferService.InventoryTransferNotFoundException;
++import com.syncro.inventory.application.InventoryTransferService.TransferForbiddenException;
++import com.syncro.inventory.application.InventoryTransferService.TransferSelfReviewForbiddenException;
++import com.syncro.inventory.application.InventoryTransferService.TransferValidationException;
++import com.syncro.inventory.application.InventoryTransferService.TransferView;
++import com.syncro.inventory.domain.InventoryTransferStatus;
++import java.math.BigDecimal;
++import java.time.Instant;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
++import org.springframework.context.annotation.Import;
++import org.springframework.http.MediaType;
++import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
++import org.springframework.security.core.authority.SimpleGrantedAuthority;
++import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
++import org.springframework.test.context.bean.override.mockito.MockitoBean;
++import org.springframework.test.web.servlet.MockMvc;
++import org.springframework.test.web.servlet.request.RequestPostProcessor;
++
++/**
++ * Story 18-4: the inventory-transfers API contract — DTO shape (camelCase, UUID
++ * opaque), status codes and machine-readable error codes per the spec matrix. The
++ * service is mocked; lifecycle/SoD/atomicity behavior is proven in
++ * {@code InventoryTransferServiceIntegrationTest}.
++ */
++@WebMvcTest(InventoryTransferController.class)
++@Import({SecurityConfig.class, InventoryTransferExceptionHandler.class, JwtAuthenticationFilter.class,
++    TimeConfig.class, TestJsonConfig.class})
++class InventoryTransferControllerTest {
++
++  @Autowired
++  private MockMvc mockMvc;
++
++  @MockitoBean
++  private InventoryTransferService service;
++  @MockitoBean
++  private JwtTokenService jwtTokenService;
++
++  private static final UUID TRANSFER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
++  private static final UUID SPAREPART_ID = UUID.fromString("99999999-9999-9999-9999-999999999999");
++  private static final UUID SOURCE_ID = UUID.fromString("77777777-7777-7777-7777-777777777777");
++  private static final UUID DEST_ID = UUID.fromString("66666666-6666-6666-6666-666666666666");
++  private static final UUID REQUESTER_ID = UUID.fromString("55555555-5555-5555-5555-555555555555");
++  private static final Instant NOW = Instant.parse("2026-09-01T00:00:00Z");
++
++  @Test
++  @DisplayName("18.4-API-001 P0 create returns 201 with the camelCase view")
++  void createReturnsCreated() throws Exception {
++    var user = user(ApplicationRole.STOREKEEPER);
++    when(service.create(eq(user), any(CreateTransferCommand.class)))
++        .thenReturn(transferView(InventoryTransferStatus.PENDING_APPROVAL));
++
++    mockMvc.perform(post("/api/v1/inventory-transfers")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content(createBody()))
++        .andExpect(status().isCreated())
++        .andExpect(jsonPath("$.id").value(TRANSFER_ID.toString()))
++        .andExpect(jsonPath("$.sparepartId").value(SPAREPART_ID.toString()))
++        .andExpect(jsonPath("$.sourceLocationId").value(SOURCE_ID.toString()))
++        .andExpect(jsonPath("$.destinationLocationId").value(DEST_ID.toString()))
++        .andExpect(jsonPath("$.quantity").value(5))
++        .andExpect(jsonPath("$.status").value("PENDING_APPROVAL"))
++        .andExpect(jsonPath("$.requestedBy").value(REQUESTER_ID.toString()))
++        .andExpect(jsonPath("$.reviewedBy").value(nullValue()))
++        .andExpect(jsonPath("$.rejectionReason").value(nullValue()));
++  }
++
++  @Test
++  @DisplayName("18.4-API-002 P0 missing body field maps to 400 VALIDATION_ERROR")
++  void createMissingFieldRejected() throws Exception {
++    var user = user(ApplicationRole.STOREKEEPER);
++
++    mockMvc.perform(post("/api/v1/inventory-transfers")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"sparepartId\":\"" + SPAREPART_ID + "\",\"sourceLocationId\":\""
++                + SOURCE_ID + "\",\"quantity\":5}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.destinationLocationId").exists());
++  }
++
++  @Test
++  @DisplayName("18.4-API-003 P0 quantity <= 0 maps to 400 VALIDATION_ERROR")
++  void createNonPositiveQuantityRejected() throws Exception {
++    var user = user(ApplicationRole.STOREKEEPER);
++
++    mockMvc.perform(post("/api/v1/inventory-transfers")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"sparepartId\":\"" + SPAREPART_ID + "\",\"sourceLocationId\":\""
++                + SOURCE_ID + "\",\"destinationLocationId\":\"" + DEST_ID + "\",\"quantity\":0}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.quantity").exists());
++  }
++
++  @Test
++  @DisplayName("18.4-API-004 P0 cross-plant/same-location/qty business validation maps to 400")
++  void createBusinessValidationRejected() throws Exception {
++    var user = user(ApplicationRole.STOREKEEPER);
++    when(service.create(eq(user), any(CreateTransferCommand.class)))
++        .thenThrow(new TransferValidationException(Map.of("destinationLocationId",
++            "Source and destination locations must belong to the same plant.")));
++
++    mockMvc.perform(post("/api/v1/inventory-transfers")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content(createBody()))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.destinationLocationId").exists());
++  }
++
++  @Test
++  @DisplayName("18.4-API-005 P0 unknown sparepart maps to 404 SPAREPART_NOT_FOUND")
++  void createUnknownSparepart() throws Exception {
++    var user = user(ApplicationRole.STOREKEEPER);
++    when(service.create(eq(user), any(CreateTransferCommand.class)))
++        .thenThrow(new SparepartNotFoundException());
++
++    mockMvc.perform(post("/api/v1/inventory-transfers")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content(createBody()))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("SPAREPART_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("18.4-API-006 P0 unknown/inactive location maps to 404 INVENTORY_LOCATION_NOT_FOUND")
++  void createUnknownLocation() throws Exception {
++    var user = user(ApplicationRole.STOREKEEPER);
++    when(service.create(eq(user), any(CreateTransferCommand.class)))
++        .thenThrow(new InventoryLocationNotFoundException());
++
++    mockMvc.perform(post("/api/v1/inventory-transfers")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content(createBody()))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("INVENTORY_LOCATION_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("18.4-API-007 P0 wrong role maps to 403 FORBIDDEN")
++  void createForbidden() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    when(service.create(eq(user), any(CreateTransferCommand.class)))
++        .thenThrow(new TransferForbiddenException());
++
++    mockMvc.perform(post("/api/v1/inventory-transfers")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content(createBody()))
++        .andExpect(status().isForbidden())
++        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
++  }
++
++  @Test
++  @DisplayName("18.4-API-008 P0 approve returns 200 with the APPROVED view")
++  void approveReturnsView() throws Exception {
++    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
++    when(service.approve(eq(user), eq(TRANSFER_ID)))
++        .thenReturn(transferView(InventoryTransferStatus.APPROVED));
++
++    mockMvc.perform(post("/api/v1/inventory-transfers/{id}/approve", TRANSFER_ID)
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.id").value(TRANSFER_ID.toString()))
++        .andExpect(jsonPath("$.status").value("APPROVED"));
++  }
++
++  @Test
++  @DisplayName("18.4-API-009 P0 self-review maps to 403 TRANSFER_SELF_REVIEW_FORBIDDEN")
++  void approveSelfReviewForbidden() throws Exception {
++    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
++    when(service.approve(eq(user), eq(TRANSFER_ID)))
++        .thenThrow(new TransferSelfReviewForbiddenException());
++
++    mockMvc.perform(post("/api/v1/inventory-transfers/{id}/approve", TRANSFER_ID)
++            .with(auth(user)))
++        .andExpect(status().isForbidden())
++        .andExpect(jsonPath("$.code").value("TRANSFER_SELF_REVIEW_FORBIDDEN"));
++  }
++
++  @Test
++  @DisplayName("18.4-API-010 P0 double review maps to 409 INVALID_TRANSFER_TRANSITION")
++  void approveInvalidTransition() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    when(service.approve(eq(user), eq(TRANSFER_ID)))
++        .thenThrow(new InvalidTransferTransitionException());
++
++    mockMvc.perform(post("/api/v1/inventory-transfers/{id}/approve", TRANSFER_ID)
++            .with(auth(user)))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("INVALID_TRANSFER_TRANSITION"));
++  }
++
++  @Test
++  @DisplayName("18.4-API-011 P0 insufficient source stock maps to 409 INSUFFICIENT_STOCK")
++  void approveInsufficientStock() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    when(service.approve(eq(user), eq(TRANSFER_ID)))
++        .thenThrow(new InsufficientStockException());
++
++    mockMvc.perform(post("/api/v1/inventory-transfers/{id}/approve", TRANSFER_ID)
++            .with(auth(user)))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("INSUFFICIENT_STOCK"));
++  }
++
++  @Test
++  @DisplayName("18.4-API-012 P0 reject returns 200 with the REJECTED view")
++  void rejectReturnsView() throws Exception {
++    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
++    when(service.reject(eq(user), eq(TRANSFER_ID), eq("Damaged in transit")))
++        .thenReturn(transferView(InventoryTransferStatus.REJECTED));
++
++    mockMvc.perform(post("/api/v1/inventory-transfers/{id}/reject", TRANSFER_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"rejectionReason\":\"Damaged in transit\"}"))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.status").value("REJECTED"))
++        .andExpect(jsonPath("$.rejectionReason").value("Damaged in transit"));
++  }
++
++  @Test
++  @DisplayName("18.4-API-013 P0 blank rejection reason maps to 400 VALIDATION_ERROR")
++  void rejectBlankReason() throws Exception {
++    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
++
++    mockMvc.perform(post("/api/v1/inventory-transfers/{id}/reject", TRANSFER_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"rejectionReason\":\"\"}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.rejectionReason").exists());
++  }
++
++  @Test
++  @DisplayName("18.4-API-014 P0 unknown transfer maps to 404 INVENTORY_TRANSFER_NOT_FOUND")
++  void getNotFound() throws Exception {
++    var user = user(ApplicationRole.STOREKEEPER);
++    when(service.get(eq(user), eq(TRANSFER_ID)))
++        .thenThrow(new InventoryTransferNotFoundException());
++
++    mockMvc.perform(get("/api/v1/inventory-transfers/{id}", TRANSFER_ID)
++            .with(auth(user)))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("INVENTORY_TRANSFER_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("18.4-API-015 P0 list passes sparepartId/status filters and returns the items envelope")
++  void listReturnsRows() throws Exception {
++    var user = user(ApplicationRole.STOREKEEPER);
++    when(service.list(eq(user), eq(SPAREPART_ID), eq(InventoryTransferStatus.PENDING_APPROVAL)))
++        .thenReturn(List.of(transferView(InventoryTransferStatus.PENDING_APPROVAL)));
++
++    mockMvc.perform(get("/api/v1/inventory-transfers")
++            .with(auth(user))
++            .param("sparepartId", SPAREPART_ID.toString())
++            .param("status", "PENDING_APPROVAL"))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.items[0].id").value(TRANSFER_ID.toString()))
++        .andExpect(jsonPath("$.items[0].status").value("PENDING_APPROVAL"));
++  }
++
++  @Test
++  @DisplayName("18.4-API-016 P0 invalid status filter maps to 400 INVALID_QUERY_VALUE")
++  void listInvalidStatusFilter() throws Exception {
++    var user = user(ApplicationRole.STOREKEEPER);
++
++    mockMvc.perform(get("/api/v1/inventory-transfers")
++            .with(auth(user))
++            .param("status", "NOT_A_STATUS"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("INVALID_QUERY_VALUE"));
++  }
++
++  @Test
++  @DisplayName("18.4-API-017 P1 non-UUID transfer path maps to 400 INVALID_PATH_VALUE")
++  void invalidPathValue() throws Exception {
++    var user = user(ApplicationRole.STOREKEEPER);
++
++    mockMvc.perform(get("/api/v1/inventory-transfers/{id}", "not-a-uuid")
++            .with(auth(user)))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("INVALID_PATH_VALUE"));
++  }
++
++  @Test
++  @DisplayName("18.4-API-018 P0 unauthenticated requests are rejected with 401")
++  void unauthenticatedRejected() throws Exception {
++    mockMvc.perform(get("/api/v1/inventory-transfers"))
++        .andExpect(status().isUnauthorized())
++        .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
++  }
++
++  private static String createBody() {
++    return "{\"sparepartId\":\"" + SPAREPART_ID + "\",\"sourceLocationId\":\"" + SOURCE_ID
++        + "\",\"destinationLocationId\":\"" + DEST_ID + "\",\"quantity\":5}";
++  }
++
++  private static TransferView transferView(InventoryTransferStatus status) {
++    return new TransferView(TRANSFER_ID, SPAREPART_ID, SOURCE_ID, DEST_ID, new BigDecimal("5"),
++        status, REQUESTER_ID,
++        status == InventoryTransferStatus.PENDING_APPROVAL ? null : REQUESTER_ID,
++        status == InventoryTransferStatus.REJECTED ? "Damaged in transit" : null,
++        status == InventoryTransferStatus.PENDING_APPROVAL ? null : NOW, NOW, NOW);
++  }
++
++  private static AuthenticatedUser user(ApplicationRole role) {
++    return new AuthenticatedUser(UUID.randomUUID().toString(),
++        role.name().toLowerCase() + "@syncro.dev", role);
++  }
++
++  private static RequestPostProcessor auth(AuthenticatedUser user) {
++    return SecurityMockMvcRequestPostProcessors.authentication(new UsernamePasswordAuthenticationToken(
++        user,
++        null,
++        List.of(new SimpleGrantedAuthority("ROLE_" + user.applicationRole().name()))));
++  }
++}
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/inventory/application/InventoryTransferApproveConcurrencyIntegrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/inventory/application/InventoryTransferApproveConcurrencyIntegrationTest.java
+new file mode 100644
+index 0000000..786ec9a
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/inventory/application/InventoryTransferApproveConcurrencyIntegrationTest.java
+@@ -0,0 +1,227 @@
++package com.syncro.inventory.application;
++
++import static org.assertj.core.api.Assertions.assertThat;
++
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.PlantEntity;
++import com.syncro.auth.infrastructure.PlantRepository;
++import com.syncro.inventory.application.InventoryTransferService.CreateTransferCommand;
++import com.syncro.inventory.application.InventoryTransferService.InvalidTransferTransitionException;
++import com.syncro.inventory.domain.InventoryTransferStatus;
++import com.syncro.inventory.infrastructure.db.InventoryLocationEntity;
++import com.syncro.inventory.infrastructure.db.InventoryLocationRepository;
++import com.syncro.inventory.infrastructure.db.InventoryStockBalanceEntity;
++import com.syncro.inventory.infrastructure.db.InventoryStockBalanceRepository;
++import com.syncro.inventory.infrastructure.db.InventoryTransferRepository;
++import com.syncro.machine.domain.MachineStatus;
++import com.syncro.machine.infrastructure.MachineEntity;
++import com.syncro.machine.infrastructure.MachineRepository;
++import com.syncro.masterdata.infrastructure.MachineGroupEntity;
++import com.syncro.masterdata.infrastructure.MachineGroupRepository;
++import com.syncro.sparepart.domain.SparepartTaxonomyDimension;
++import com.syncro.sparepart.infrastructure.SparepartEntity;
++import com.syncro.sparepart.infrastructure.SparepartRepository;
++import com.syncro.sparepart.infrastructure.SparepartTaxonomyEntity;
++import com.syncro.sparepart.infrastructure.SparepartTaxonomyRepository;
++import java.math.BigDecimal;
++import java.time.Instant;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.UUID;
++import java.util.concurrent.CountDownLatch;
++import java.util.concurrent.ExecutionException;
++import java.util.concurrent.Executors;
++import java.util.concurrent.TimeUnit;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.test.context.SpringBootTest;
++import org.springframework.test.context.DynamicPropertyRegistry;
++import org.springframework.test.context.DynamicPropertySource;
++import org.testcontainers.containers.PostgreSQLContainer;
++import org.testcontainers.junit.jupiter.Container;
++import org.testcontainers.junit.jupiter.Testcontainers;
++
++/**
++ * Story 18-4: proves the approve transition serializes on the {@code findByIdForUpdate}
++ * row lock AND the conditional debit guard. Two threads race approve on one
++ * PENDING_APPROVAL transfer; exactly one must win and the loser must see the committed
++ * APPROVED status (409 INVALID_TRANSFER_TRANSITION). The destination balance must
++ * increase by the quantity exactly ONCE — the regression guard that neither the lock
++ * nor the {@code available - qty >= 0} guard can be dropped without double-moving
++ * stock.
++ *
++ * <p>Deliberately NOT extending {@code AbstractPostgresIntegrationTest}: the race needs
++ * committed data visible to independent transactions, so this class is non-transactional
++ * and owns a dedicated database ({@code withDatabaseName}) — its committed rows never
++ * pollute the shared reused container that the transactional suites count against.
++ * Pattern anchor: {@code SparepartReviewConcurrencyIntegrationTest} (story 18-1).
++ */
++@Testcontainers
++@SpringBootTest(properties = {
++    "server.port=0",
++    "spring.lifecycle.timeout-per-shutdown-phase=5s",
++    "REDIS_HOST=localhost",
++    "REDIS_PORT=6379",
++    "INFLUXDB_HOST=localhost",
++    "INFLUXDB_PORT=8086",
++    "INFLUXDB_USERNAME=test",
++    "INFLUXDB_PASSWORD=test",
++    "INFLUXDB_TOKEN=test",
++    "INFLUXDB_ORG=test",
++    "INFLUXDB_BUCKET=test",
++    "SYNCRO_MQTT_HOST=localhost",
++    "SYNCRO_MQTT_PORT=1883",
++    "SYNCRO_MQTT_USERNAME=test",
++    "SYNCRO_MQTT_PASSWORD=test",
++    "SYNCRO_MQTT_CLIENT_ID=test",
++    "SYNCRO_MQTT_TOPIC_FILTER=syncro/+/telemetry",
++    "WAHA_HOST=localhost",
++    "WAHA_PORT=3000",
++    "WAHA_API_KEY=test",
++    "GARAGE_HOST=localhost",
++    "GARAGE_S3_PORT=3900",
++    "GARAGE_ACCESS_KEY=test",
++    "GARAGE_SECRET_KEY=test",
++    "GARAGE_BUCKET=test",
++    "GARAGE_REGION=garage",
++    "OPA_HOST=localhost",
++    "OPA_PORT=18181",
++    "SYNCRO_OPA_URL=http://localhost:18181",
++    "SYNCRO_AUTHZ_ENFORCED_PATHS=",
++    "SYNCRO_AUTHZ_DEGRADED_ALLOWLIST=/api/v1/health,/actuator/**",
++    "syncro.auth.jwt.secret=test-secret-for-auth-integration-32x",
++    "syncro.auth.jwt.issuer=syncro-test",
++    "syncro.auth.jwt.ttl-minutes=30",
++    "syncro.auth.local-admin.enabled=false",
++    "syncro.auth.local-admin.login-identifier=admin@syncro.dev",
++    "syncro.auth.local-admin.password=test-password"
++})
++class InventoryTransferApproveConcurrencyIntegrationTest {
++
++  @Container
++  static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
++
++  static {
++    postgres.withDatabaseName("inventory_transfer_concurrency");
++    postgres.withReuse(true);
++  }
++
++  @DynamicPropertySource
++  static void postgresProperties(DynamicPropertyRegistry registry) {
++    registry.add("spring.datasource.url", postgres::getJdbcUrl);
++    registry.add("spring.datasource.username", postgres::getUsername);
++    registry.add("spring.datasource.password", postgres::getPassword);
++  }
++
++  @Autowired
++  private InventoryTransferService transferService;
++  @Autowired
++  private InventoryTransferRepository transfers;
++  @Autowired
++  private InventoryStockBalanceRepository balances;
++  @Autowired
++  private InventoryLocationRepository locations;
++  @Autowired
++  private SparepartRepository spareparts;
++  @Autowired
++  private SparepartTaxonomyRepository taxonomy;
++  @Autowired
++  private MachineRepository machines;
++  @Autowired
++  private MachineGroupRepository machineGroups;
++  @Autowired
++  private PlantRepository plants;
++
++  @Test
++  @DisplayName("18.4-RACE-001 P0 concurrent approve: exactly one wins, stock moves ONCE")
++  void concurrentApproveMovesStockOnce() throws Exception {
++    var now = Instant.now();
++    var suffix = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
++    var plant = plants.saveAndFlush(new PlantEntity(UUID.randomUUID(), "RACE-" + suffix,
++        "Race Plant", now, now));
++    var source = locations.saveAndFlush(new InventoryLocationEntity(UUID.randomUUID(),
++        plant.getId(), "RACE-A" + suffix, "Race Source", null, true, now, now));
++    var destination = locations.saveAndFlush(new InventoryLocationEntity(UUID.randomUUID(),
++        plant.getId(), "RACE-B" + suffix, "Race Destination", null, true, now, now));
++    var sparepart = sparepart(plant, "RACE-MC-" + suffix, now);
++    balances.saveAndFlush(new InventoryStockBalanceEntity(UUID.randomUUID(), sparepart.getId(),
++        source.getId(), new BigDecimal("10"), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
++        now, now));
++    var destRow = balances.saveAndFlush(new InventoryStockBalanceEntity(UUID.randomUUID(),
++        sparepart.getId(), destination.getId(), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
++        BigDecimal.ZERO, now, now));
++
++    // Requester and reviewer are distinct SUPER_ADMINs (SoD passes; scope bypassed).
++    var requester = new AuthenticatedUser(UUID.randomUUID().toString(), "race-requester@syncro.dev",
++        ApplicationRole.SUPER_ADMIN);
++    var reviewerA = new AuthenticatedUser(UUID.randomUUID().toString(), "race-reviewer-a@syncro.dev",
++        ApplicationRole.SUPER_ADMIN);
++    var reviewerB = new AuthenticatedUser(UUID.randomUUID().toString(), "race-reviewer-b@syncro.dev",
++        ApplicationRole.SUPER_ADMIN);
++    var created = transferService.create(requester, new CreateTransferCommand(sparepart.getId(),
++        source.getId(), destination.getId(), new BigDecimal("5")));
++
++    var start = new CountDownLatch(1);
++    var executor = Executors.newFixedThreadPool(2);
++    List<InventoryTransferService.TransferView> successes = new ArrayList<>();
++    List<Throwable> failures = new ArrayList<>();
++    try {
++      var first = executor.submit(() -> {
++        start.await();
++        return transferService.approve(reviewerA, created.id());
++      });
++      var second = executor.submit(() -> {
++        start.await();
++        return transferService.approve(reviewerB, created.id());
++      });
++      start.countDown();
++      for (var future : List.of(first, second)) {
++        try {
++          successes.add(future.get(60, TimeUnit.SECONDS));
++        } catch (ExecutionException exception) {
++          failures.add(exception.getCause());
++        }
++      }
++    } finally {
++      executor.shutdownNow();
++    }
++
++    assertThat(successes).hasSize(1);
++    assertThat(failures).hasSize(1);
++    assertThat(failures.get(0)).isInstanceOf(InvalidTransferTransitionException.class);
++    var stored = transfers.findById(created.id()).orElseThrow();
++    assertThat(stored.getStatus()).isEqualTo(InventoryTransferStatus.APPROVED);
++    assertThat(stored.getReviewedBy()).isIn(UUID.fromString(reviewerA.id()),
++        UUID.fromString(reviewerB.id()));
++    // The decisive assertion: the destination gained 5 exactly ONCE (10 -> source 5,
++    // destination 0 -> 5), never 10.
++    assertThat(balances.findById(destRow.getId()).orElseThrow().getAvailable())
++        .isEqualByComparingTo("5");
++    var sourceRow = balances.findBySparepartIdAndLocationId(sparepart.getId(), source.getId())
++        .orElseThrow();
++    assertThat(sourceRow.getAvailable()).isEqualByComparingTo("5");
++  }
++
++  private SparepartEntity sparepart(PlantEntity plant, String materialCode, Instant now) {
++    var tag = materialCode;
++    var group = machineGroups.saveAndFlush(new MachineGroupEntity(UUID.randomUUID(), plant,
++        "Race Group " + tag, now, now));
++    var machine = machines.saveAndFlush(new MachineEntity(UUID.randomUUID(), plant, group,
++        "RACE-MCH-" + tag, "Race Machine " + tag, MachineStatus.ACTIVE, null, null, null,
++        List.of(), now, now));
++    var category = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(),
++        SparepartTaxonomyDimension.CATEGORY, "RACEC" + tag, "Race Category " + tag, now, now));
++    var brand = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(),
++        SparepartTaxonomyDimension.BRAND, "RACEB" + tag, "Race Brand " + tag, category, now, now));
++    var kind = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(),
++        SparepartTaxonomyDimension.KIND, "RACEK" + tag, "Race Kind " + tag, category, now, now));
++    var type = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(),
++        SparepartTaxonomyDimension.TYPE, "RACET" + tag, "Race Type " + tag, category, now, now));
++    var entity = new SparepartEntity(UUID.randomUUID(), "RACE-SP-" + tag, "Race Part " + tag,
++        machine, category, brand, kind, type, now, now);
++    entity.updateProcurement(materialCode, null, now);
++    return spareparts.saveAndFlush(entity);
++  }
++}
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/inventory/application/InventoryTransferServiceIntegrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/inventory/application/InventoryTransferServiceIntegrationTest.java
+new file mode 100644
+index 0000000..db15dbb
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/inventory/application/InventoryTransferServiceIntegrationTest.java
+@@ -0,0 +1,557 @@
++package com.syncro.inventory.application;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.api.Assertions.assertThatThrownBy;
++
++import com.fasterxml.jackson.databind.ObjectMapper;
++import com.syncro.AbstractPostgresIntegrationTest;
++import com.syncro.audit.domain.AuditAction;
++import com.syncro.audit.domain.AuditEntityType;
++import com.syncro.audit.infrastructure.AuditLogEntity;
++import com.syncro.audit.infrastructure.AuditLogRepository;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.AuthUserEntity;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentEntity;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
++import com.syncro.auth.infrastructure.AuthUserRepository;
++import com.syncro.auth.infrastructure.PlantEntity;
++import com.syncro.auth.infrastructure.PlantRepository;
++import com.syncro.inventory.application.InventoryLocationService.InventoryLocationNotFoundException;
++import com.syncro.inventory.application.InventoryStockService.SparepartNotFoundException;
++import com.syncro.inventory.application.InventoryTransferService.CreateTransferCommand;
++import com.syncro.inventory.application.InventoryTransferService.InsufficientStockException;
++import com.syncro.inventory.application.InventoryTransferService.InvalidTransferTransitionException;
++import com.syncro.inventory.application.InventoryTransferService.InventoryTransferNotFoundException;
++import com.syncro.inventory.application.InventoryTransferService.TransferForbiddenException;
++import com.syncro.inventory.application.InventoryTransferService.TransferSelfReviewForbiddenException;
++import com.syncro.inventory.application.InventoryTransferService.TransferValidationException;
++import com.syncro.inventory.domain.InventoryTransferStatus;
++import com.syncro.inventory.infrastructure.db.InventoryLocationEntity;
++import com.syncro.inventory.infrastructure.db.InventoryLocationRepository;
++import com.syncro.inventory.infrastructure.db.InventoryStockBalanceEntity;
++import com.syncro.inventory.infrastructure.db.InventoryStockBalanceRepository;
++import com.syncro.inventory.infrastructure.db.InventoryTransferRepository;
++import com.syncro.machine.domain.MachineStatus;
++import com.syncro.machine.infrastructure.MachineEntity;
++import com.syncro.machine.infrastructure.MachineRepository;
++import com.syncro.masterdata.infrastructure.MachineGroupEntity;
++import com.syncro.masterdata.infrastructure.MachineGroupRepository;
++import com.syncro.sparepart.domain.SparepartTaxonomyDimension;
++import com.syncro.sparepart.infrastructure.SparepartEntity;
++import com.syncro.sparepart.infrastructure.SparepartRepository;
++import com.syncro.sparepart.infrastructure.SparepartTaxonomyEntity;
++import com.syncro.sparepart.infrastructure.SparepartTaxonomyRepository;
++import java.math.BigDecimal;
++import java.time.Instant;
++import java.util.List;
++import java.util.UUID;
++import java.util.concurrent.atomic.AtomicInteger;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.security.crypto.password.PasswordEncoder;
++
++/**
++ * Story 18-4: the inventory-transfer lifecycle against a real Postgres (Testcontainers).
++ * Covers every row of the spec's I/O matrix at the service boundary: create →
++ * PENDING_APPROVAL + audit; approve moves stock atomically (both balances change,
++ * reviewer stamped, audits written); insufficient source stock → 409 with NO movement
++ * anywhere; SoD (requester can never review their own) → 403; double review → 409;
++ * reject with reason → REJECTED + no movement; blank reason / cross-plant / same
++ * location / qty ≤ 0 → 400; unknown refs and inactive locations → 404; wrong role →
++ * 403; plant-scoped list with filters. The concurrency guard (two threads approve the
++ * same transfer, exactly one wins) lives in
++ * {@code InventoryTransferApproveConcurrencyIntegrationTest} — it needs committed
++ * data and independent transactions, which the {@code @Transactional} base class here
++ * cannot provide.
++ */
++class InventoryTransferServiceIntegrationTest extends AbstractPostgresIntegrationTest {
++
++  private static final Instant NOW = Instant.parse("2026-09-01T00:00:00Z");
++  private static final AtomicInteger SEQ = new AtomicInteger();
++
++  @Autowired
++  private InventoryTransferService service;
++  @Autowired
++  private InventoryTransferRepository transfers;
++  @Autowired
++  private InventoryLocationRepository locations;
++  @Autowired
++  private InventoryStockBalanceRepository balances;
++  @Autowired
++  private PlantRepository plants;
++  @Autowired
++  private MachineGroupRepository machineGroups;
++  @Autowired
++  private MachineRepository machines;
++  @Autowired
++  private SparepartTaxonomyRepository taxonomy;
++  @Autowired
++  private SparepartRepository spareparts;
++  @Autowired
++  private AuthUserRepository users;
++  @Autowired
++  private AuthUserPlantAssignmentRepository assignments;
++  @Autowired
++  private AuditLogRepository auditLogs;
++  @Autowired
++  private PasswordEncoder passwordEncoder;
++
++  private final ObjectMapper mapper = new ObjectMapper();
++
++  // --- Create ------------------------------------------------------------------
++
++  @Test
++  @DisplayName("18.4-SVC-001 P0 create persists PENDING_APPROVAL with requested_by and audits CREATE")
++  void createPersistsPendingAndAudits() throws Exception {
++    var fixture = fixture("TRF-P1");
++    var requester = reviewer(fixture);
++
++    var created = service.create(requester, new CreateTransferCommand(fixture.sparepartId,
++        fixture.sourceId, fixture.destinationId, new BigDecimal("5")));
++
++    assertThat(created.status()).isEqualTo(InventoryTransferStatus.PENDING_APPROVAL);
++    assertThat(created.requestedBy()).isEqualTo(UUID.fromString(requester.id()));
++    assertThat(created.reviewedBy()).isNull();
++    assertThat(created.reviewedAt()).isNull();
++    assertThat(created.rejectionReason()).isNull();
++    var stored = transfers.findById(created.id()).orElseThrow();
++    assertThat(stored.getQuantity()).isEqualByComparingTo("5");
++    var entry = latestAuditEntryFor(created.id());
++    assertThat(entry.getAction()).isEqualTo(AuditAction.CREATE);
++    assertThat(entry.getEntityType()).isEqualTo(AuditEntityType.INVENTORY_TRANSFER);
++    assertThat(entry.getPlantId()).isEqualTo(fixture.plant.getId());
++    assertThat(mapper.readTree(entry.getNewValue()).get("status").asText())
++        .isEqualTo("PENDING_APPROVAL");
++    assertThat(mapper.readTree(entry.getNewValue()).get("requestedBy").asText())
++        .isEqualTo(requester.id());
++  }
++
++  @Test
++  @DisplayName("18.4-SVC-002 P0 create rejects qty <= 0, same source/dest, cross-plant locations → 400")
++  void createRejectsInvalidInputs() {
++    var fixture = fixture("TRF-P2");
++    var requester = reviewer(fixture);
++
++    assertThatThrownBy(() -> service.create(requester, new CreateTransferCommand(
++        fixture.sparepartId, fixture.sourceId, fixture.destinationId, BigDecimal.ZERO)))
++        .isInstanceOf(TransferValidationException.class);
++    assertThatThrownBy(() -> service.create(requester, new CreateTransferCommand(
++        fixture.sparepartId, fixture.sourceId, fixture.sourceId, BigDecimal.TEN)))
++        .isInstanceOf(TransferValidationException.class);
++    var otherPlant = plant("TRF-P2B");
++    var foreignDest = location(otherPlant, "WS-X");
++    assertThatThrownBy(() -> service.create(requester, new CreateTransferCommand(
++        fixture.sparepartId, fixture.sourceId, foreignDest.getId(), BigDecimal.TEN)))
++        .isInstanceOf(TransferValidationException.class);
++    assertThat(transfers.findAll()).extracting(t -> t.getSparepartId())
++        .doesNotContain(fixture.sparepartId);
++  }
++
++  @Test
++  @DisplayName("18.4-SVC-003 P0 create rejects unknown refs and inactive locations → 404")
++  void createRejectsUnknownRefs() {
++    var fixture = fixture("TRF-P3");
++    var requester = reviewer(fixture);
++
++    assertThatThrownBy(() -> service.create(requester, new CreateTransferCommand(
++        UUID.randomUUID(), fixture.sourceId, fixture.destinationId, BigDecimal.TEN)))
++        .isInstanceOf(SparepartNotFoundException.class);
++    assertThatThrownBy(() -> service.create(requester, new CreateTransferCommand(
++        fixture.sparepartId, UUID.randomUUID(), fixture.destinationId, BigDecimal.TEN)))
++        .isInstanceOf(InventoryLocationNotFoundException.class);
++    assertThatThrownBy(() -> service.create(requester, new CreateTransferCommand(
++        fixture.sparepartId, fixture.sourceId, UUID.randomUUID(), BigDecimal.TEN)))
++        .isInstanceOf(InventoryLocationNotFoundException.class);
++    // Inactive destination: a transfer is a two-sided mutation — both sides must be active.
++    deactivate(fixture.destinationId, fixture.plant);
++    assertThatThrownBy(() -> service.create(requester, new CreateTransferCommand(
++        fixture.sparepartId, fixture.sourceId, fixture.destinationId, BigDecimal.TEN)))
++        .isInstanceOf(InventoryLocationNotFoundException.class);
++  }
++
++  @Test
++  @DisplayName("18.4-SVC-004 P0 create with a sparepart from another plant → 404 (no cross-plant oracle)")
++  void createRejectsForeignPlantSparepart() {
++    var fixture = fixture("TRF-P4");
++    var foreignPart = sparepart(plant("TRF-P4B"), "MC-T4B");
++    var requester = reviewer(fixture);
++
++    assertThatThrownBy(() -> service.create(requester, new CreateTransferCommand(
++        foreignPart.getId(), fixture.sourceId, fixture.destinationId, BigDecimal.TEN)))
++        .isInstanceOf(SparepartNotFoundException.class);
++  }
++
++  @Test
++  @DisplayName("18.4-SVC-005 P0 create gates role and plant scope → 403")
++  void createGatesRoleAndScope() {
++    var fixture = fixture("TRF-P5");
++    var tech = persistedUser(ApplicationRole.TECHNICIAN, "trf-tech@syncro.dev");
++    assign(tech, fixture.plant);
++    assertThatThrownBy(() -> service.create(tech, new CreateTransferCommand(fixture.sparepartId,
++        fixture.sourceId, fixture.destinationId, BigDecimal.TEN)))
++        .isInstanceOf(TransferForbiddenException.class);
++
++    var outsider = persistedUser(ApplicationRole.STOREKEEPER, "trf-outsider@syncro.dev");
++    assign(outsider, plant("TRF-P5B"));
++    assertThatThrownBy(() -> service.create(outsider, new CreateTransferCommand(
++        fixture.sparepartId, fixture.sourceId, fixture.destinationId, BigDecimal.TEN)))
++        .isInstanceOf(TransferForbiddenException.class);
++  }
++
++  // --- Approve -----------------------------------------------------------------
++
++  @Test
++  @DisplayName("18.4-SVC-006 P0 approve moves stock atomically, stamps reviewer, audits everything")
++  void approveMovesStockAndAudits() throws Exception {
++    var fixture = fixture("TRF-P6");
++    var sourceRow = balance(fixture.sparepartId, fixture.sourceId, "10");
++    var destRow = balance(fixture.sparepartId, fixture.destinationId, "2");
++    var created = createPending(fixture);
++    var reviewer = reviewer(fixture);
++
++    var approved = service.approve(reviewer, created.id());
++
++    assertThat(approved.status()).isEqualTo(InventoryTransferStatus.APPROVED);
++    assertThat(approved.reviewedBy()).isEqualTo(UUID.fromString(reviewer.id()));
++    assertThat(approved.reviewedAt()).isNotNull();
++    assertThat(balances.findById(sourceRow.getId()).orElseThrow().getAvailable())
++        .isEqualByComparingTo("5");
++    assertThat(balances.findById(destRow.getId()).orElseThrow().getAvailable())
++        .isEqualByComparingTo("7");
++    // Transfer audit: UPDATE with previous + new status and reviewer identity.
++    var transferEntry = latestAuditEntryFor(approved.id());
++    assertThat(transferEntry.getAction()).isEqualTo(AuditAction.UPDATE);
++    assertThat(transferEntry.getEntityType()).isEqualTo(AuditEntityType.INVENTORY_TRANSFER);
++    assertThat(mapper.readTree(transferEntry.getPreviousValue()).get("status").asText())
++        .isEqualTo("PENDING_APPROVAL");
++    assertThat(mapper.readTree(transferEntry.getNewValue()).get("status").asText())
++        .isEqualTo("APPROVED");
++    assertThat(mapper.readTree(transferEntry.getNewValue()).get("reviewedBy").asText())
++        .isEqualTo(reviewer.id());
++    // Both balance rows are audit-visible (epic-18: every stock mutation is audited).
++    var sourceAudit = latestAuditEntryFor(sourceRow.getId());
++    assertThat(sourceAudit.getEntityType()).isEqualTo(AuditEntityType.INVENTORY_STOCK_BALANCE);
++    assertThat(mapper.readTree(sourceAudit.getNewValue()).get("available").decimalValue())
++        .isEqualByComparingTo("5");
++    var destAudit = latestAuditEntryFor(destRow.getId());
++    assertThat(mapper.readTree(destAudit.getNewValue()).get("available").decimalValue())
++        .isEqualByComparingTo("7");
++  }
++
++  @Test
++  @DisplayName("18.4-SVC-007 P0 approve creates a missing destination balance row with available = qty")
++  void approveCreatesMissingDestinationRow() throws Exception {
++    var fixture = fixture("TRF-P7");
++    balance(fixture.sparepartId, fixture.sourceId, "10");
++    var created = createPending(fixture);
++
++    var approved = service.approve(reviewer(fixture), created.id());
++
++    assertThat(approved.status()).isEqualTo(InventoryTransferStatus.APPROVED);
++    var dest = balances.findBySparepartIdAndLocationId(fixture.sparepartId,
++        fixture.destinationId).orElseThrow();
++    assertThat(dest.getAvailable()).isEqualByComparingTo("5");
++    assertThat(dest.getReserved()).isEqualByComparingTo("0");
++    assertThat(dest.getConsumed()).isEqualByComparingTo("0");
++    assertThat(dest.getMinimumStock()).isEqualByComparingTo("0");
++    // The created row is audited as CREATE on the balance entity.
++    var entry = latestAuditEntryFor(dest.getId());
++    assertThat(entry.getAction()).isEqualTo(AuditAction.CREATE);
++    assertThat(entry.getEntityType()).isEqualTo(AuditEntityType.INVENTORY_STOCK_BALANCE);
++  }
++
++  @Test
++  @DisplayName("18.4-SVC-008 P0 approve with insufficient source stock → 409 and NO movement anywhere")
++  void approveInsufficientStockRollsBack() {
++    var fixture = fixture("TRF-P8");
++    var sourceRow = balance(fixture.sparepartId, fixture.sourceId, "3");
++    var destRow = balance(fixture.sparepartId, fixture.destinationId, "2");
++    var created = createPending(fixture);
++
++    assertThatThrownBy(() -> service.approve(reviewer(fixture), created.id()))
++        .isInstanceOf(InsufficientStockException.class);
++    assertThat(balances.findById(sourceRow.getId()).orElseThrow().getAvailable())
++        .isEqualByComparingTo("3");
++    assertThat(balances.findById(destRow.getId()).orElseThrow().getAvailable())
++        .isEqualByComparingTo("2");
++    assertThat(transfers.findById(created.id()).orElseThrow().getStatus())
++        .isEqualTo(InventoryTransferStatus.PENDING_APPROVAL);
++  }
++
++  @Test
++  @DisplayName("18.4-SVC-009 P0 requester can never approve or reject their own transfer → 403")
++  void selfReviewForbidden() {
++    var fixture = fixture("TRF-P9");
++    balance(fixture.sparepartId, fixture.sourceId, "10");
++    var requester = reviewer(fixture);
++    var created = createPending(fixture, requester);
++
++    assertThatThrownBy(() -> service.approve(requester, created.id()))
++        .isInstanceOf(TransferSelfReviewForbiddenException.class);
++    assertThatThrownBy(() -> service.reject(requester, created.id(), "self reject"))
++        .isInstanceOf(TransferSelfReviewForbiddenException.class);
++    // No movement, no stamping: still pending.
++    assertThat(balances.findBySparepartIdAndLocationId(fixture.sparepartId, fixture.sourceId)
++        .orElseThrow().getAvailable()).isEqualByComparingTo("10");
++    assertThat(transfers.findById(created.id()).orElseThrow().getReviewedBy()).isNull();
++  }
++
++  @Test
++  @DisplayName("18.4-SVC-010 P0 review on a terminal transfer → 409 INVALID_TRANSFER_TRANSITION")
++  void doubleReviewRejected() {
++    var fixture = fixture("TRF-P10");
++    balance(fixture.sparepartId, fixture.sourceId, "10");
++    var created = createPending(fixture);
++    var reviewer = reviewer(fixture);
++    service.approve(reviewer, created.id());
++
++    assertThatThrownBy(() -> service.approve(reviewer, created.id()))
++        .isInstanceOf(InvalidTransferTransitionException.class);
++    assertThatThrownBy(() -> service.reject(reviewer, created.id(), "too late"))
++        .isInstanceOf(InvalidTransferTransitionException.class);
++    // The second approve attempt moved nothing.
++    assertThat(balances.findBySparepartIdAndLocationId(fixture.sparepartId, fixture.sourceId)
++        .orElseThrow().getAvailable()).isEqualByComparingTo("5");
++  }
++
++  @Test
++  @DisplayName("18.4-SVC-011 P0 approve gates reviewer role and plant scope → 403")
++  void approveGatesRoleAndScope() {
++    var fixture = fixture("TRF-P11");
++    balance(fixture.sparepartId, fixture.sourceId, "10");
++    var created = createPending(fixture);
++
++    // STOREKEEPER may create but may NOT review.
++    var storekeeper = persistedUser(ApplicationRole.STOREKEEPER, "trf-sk-review@syncro.dev");
++    assign(storekeeper, fixture.plant);
++    assertThatThrownBy(() -> service.approve(storekeeper, created.id()))
++        .isInstanceOf(TransferForbiddenException.class);
++    // Right reviewer role, wrong plant.
++    var outsider = persistedUser(ApplicationRole.MANAGER_MAINTENANCE, "trf-manager-out@syncro.dev");
++    assign(outsider, plant("TRF-P11B"));
++    assertThatThrownBy(() -> service.approve(outsider, created.id()))
++        .isInstanceOf(TransferForbiddenException.class);
++    assertThat(transfers.findById(created.id()).orElseThrow().getStatus())
++        .isEqualTo(InventoryTransferStatus.PENDING_APPROVAL);
++  }
++
++  @Test
++  @DisplayName("18.4-SVC-012 P0 SUPER_ADMIN approves out-of-plant transfers (scope bypass)")
++  void superAdminApprovesAcrossPlants() {
++    var fixture = fixture("TRF-P12");
++    balance(fixture.sparepartId, fixture.sourceId, "10");
++    var created = createPending(fixture);
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++
++    var approved = service.approve(admin, created.id());
++
++    assertThat(approved.status()).isEqualTo(InventoryTransferStatus.APPROVED);
++  }
++
++  @Test
++  @DisplayName("18.4-SVC-013 P1 approve unknown transfer → 404")
++  void approveUnknownTransfer() {
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++
++    assertThatThrownBy(() -> service.approve(admin, UUID.randomUUID()))
++        .isInstanceOf(InventoryTransferNotFoundException.class);
++  }
++
++  // --- Reject ------------------------------------------------------------------
++
++  @Test
++  @DisplayName("18.4-SVC-014 P0 reject stores reason + reviewer, moves no stock, audits UPDATE")
++  void rejectStoresReasonAndAudits() throws Exception {
++    var fixture = fixture("TRF-P14");
++    var sourceRow = balance(fixture.sparepartId, fixture.sourceId, "10");
++    var created = createPending(fixture);
++    var reviewer = reviewer(fixture);
++
++    var rejected = service.reject(reviewer, created.id(), "Not needed right now");
++
++    assertThat(rejected.status()).isEqualTo(InventoryTransferStatus.REJECTED);
++    assertThat(rejected.rejectionReason()).isEqualTo("Not needed right now");
++    assertThat(rejected.reviewedBy()).isEqualTo(UUID.fromString(reviewer.id()));
++    assertThat(rejected.reviewedAt()).isNotNull();
++    assertThat(balances.findById(sourceRow.getId()).orElseThrow().getAvailable())
++        .isEqualByComparingTo("10");
++    var entry = latestAuditEntryFor(rejected.id());
++    assertThat(entry.getAction()).isEqualTo(AuditAction.UPDATE);
++    assertThat(mapper.readTree(entry.getNewValue()).get("status").asText()).isEqualTo("REJECTED");
++    assertThat(mapper.readTree(entry.getNewValue()).get("rejectionReason").asText())
++        .isEqualTo("Not needed right now");
++  }
++
++  @Test
++  @DisplayName("18.4-SVC-015 P0 reject with blank reason → 400")
++  void rejectBlankReasonRejected() {
++    var fixture = fixture("TRF-P15");
++    var created = createPending(fixture);
++
++    assertThatThrownBy(() -> service.reject(reviewer(fixture), created.id(), "   "))
++        .isInstanceOf(TransferValidationException.class);
++    assertThatThrownBy(() -> service.reject(reviewer(fixture), created.id(), null))
++        .isInstanceOf(TransferValidationException.class);
++    assertThat(transfers.findById(created.id()).orElseThrow().getStatus())
++        .isEqualTo(InventoryTransferStatus.PENDING_APPROVAL);
++  }
++
++  // --- Read --------------------------------------------------------------------
++
++  @Test
++  @DisplayName("18.4-SVC-016 P0 list filters by sparepartId and status, newest first")
++  void listFilters() {
++    var fixture = fixture("TRF-P16");
++    balance(fixture.sparepartId, fixture.sourceId, "20");
++    var otherPart = sparepart(fixture.plant, "MC-T16B");
++    balance(otherPart.getId(), fixture.sourceId, "20");
++    var first = createPending(fixture);
++    var second = service.create(reviewer(fixture), new CreateTransferCommand(otherPart.getId(),
++        fixture.sourceId, fixture.destinationId, new BigDecimal("4")));
++    service.approve(reviewer(fixture), first.id());
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++
++    var all = service.list(admin, null, null);
++    // Newest-first ordering is asserted loosely: both rows are created within the same
++    // transaction window, so a microsecond timestamp tie must not make this flaky.
++    assertThat(all).extracting(view -> view.id()).containsExactlyInAnyOrder(second.id(), first.id());
++    var approvedOnly = service.list(admin, null, InventoryTransferStatus.APPROVED);
++    assertThat(approvedOnly).extracting(view -> view.id()).containsExactly(first.id());
++    var byPart = service.list(admin, otherPart.getId(), null);
++    assertThat(byPart).extracting(view -> view.id()).containsExactly(second.id());
++  }
++
++  @Test
++  @DisplayName("18.4-SVC-017 P0 list is plant-scoped; outsiders see nothing")
++  void listIsPlantScoped() {
++    var fixture = fixture("TRF-P17");
++    createPending(fixture);
++    var insider = reviewer(fixture);
++    var outsider = persistedUser(ApplicationRole.STOREKEEPER, "trf-outsider-list@syncro.dev");
++    assign(outsider, plant("TRF-P17B"));
++
++    assertThat(service.list(insider, null, null)).hasSize(1);
++    assertThat(service.list(outsider, null, null)).isEmpty();
++  }
++
++  @Test
++  @DisplayName("18.4-SVC-018 P1 get by id returns the view; unknown → 404; out of scope → 403")
++  void getByIdGated() {
++    var fixture = fixture("TRF-P18");
++    var created = createPending(fixture);
++    var outsider = persistedUser(ApplicationRole.INVENTORY_MAINTENANCE, "trf-out-get@syncro.dev");
++    assign(outsider, plant("TRF-P18B"));
++
++    assertThat(service.get(reviewer(fixture), created.id()).id()).isEqualTo(created.id());
++    assertThatThrownBy(() -> service.get(reviewer(fixture), UUID.randomUUID()))
++        .isInstanceOf(InventoryTransferNotFoundException.class);
++    assertThatThrownBy(() -> service.get(outsider, created.id()))
++        .isInstanceOf(TransferForbiddenException.class);
++  }
++
++  // --- helpers -----------------------------------------------------------------
++
++  /** plant + two active locations + one sparepart of that plant. */
++  private record Fixture(PlantEntity plant, UUID sourceId, UUID destinationId, UUID sparepartId) {
++  }
++
++  private Fixture fixture(String plantCode) {
++    var plant = plant(plantCode);
++    var source = location(plant, "WS-A");
++    var destination = location(plant, "WS-B");
++    var sparepart = sparepart(plant, "MC-" + plantCode.replace("TRF-", ""));
++    return new Fixture(plant, source.getId(), destination.getId(), sparepart.getId());
++  }
++
++  private InventoryTransferService.TransferView createPending(Fixture fixture) {
++    return createPending(fixture, reviewer(fixture));
++  }
++
++  private InventoryTransferService.TransferView createPending(Fixture fixture,
++      AuthenticatedUser requester) {
++    return service.create(requester, new CreateTransferCommand(fixture.sparepartId,
++        fixture.sourceId, fixture.destinationId, new BigDecimal("5")));
++  }
++
++  /** A MANAGER_MAINTENANCE reviewer assigned to the fixture plant (never the requester). */
++  private AuthenticatedUser reviewer(Fixture fixture) {
++    var user = persistedUser(ApplicationRole.MANAGER_MAINTENANCE,
++        "trf-rev-" + SEQ.incrementAndGet() + "@syncro.dev");
++    assign(user, fixture.plant);
++    return user;
++  }
++
++  private PlantEntity plant(String code) {
++    return plants.findByCodeIgnoreCase(code)
++        .orElseGet(() -> plants.saveAndFlush(new PlantEntity(UUID.randomUUID(), code,
++            "Plant " + code, NOW, NOW)));
++  }
++
++  private InventoryLocationEntity location(PlantEntity plant, String code) {
++    return locations.findByPlantIdAndCodeIgnoreCase(plant.getId(), code)
++        .orElseGet(() -> locations.saveAndFlush(new InventoryLocationEntity(UUID.randomUUID(),
++            plant.getId(), code, "Location " + code, null, true, NOW, NOW)));
++  }
++
++  private void deactivate(UUID locationId, PlantEntity plant) {
++    var location = locations.findById(locationId).orElseThrow();
++    locations.saveAndFlush(new InventoryLocationEntity(location.getId(), plant.getId(),
++        location.getCode(), location.getName(), location.getDescription(), false,
++        location.getCreatedAt(), NOW));
++  }
++
++  private SparepartEntity sparepart(PlantEntity plant, String materialCode) {
++    var existing = spareparts.findByMaterialCodeIgnoreCase(materialCode);
++    if (existing.isPresent()) {
++      return existing.get();
++    }
++    var n = SEQ.incrementAndGet();
++    var group = machineGroups.saveAndFlush(new MachineGroupEntity(UUID.randomUUID(), plant,
++        "Group " + n, NOW, NOW));
++    var machine = machines.saveAndFlush(new MachineEntity(UUID.randomUUID(), plant, group,
++        "M-" + n, "Machine " + n, MachineStatus.ACTIVE, "Juki",
++        java.time.LocalDate.parse("2026-05-27"), null, List.of(), NOW, NOW));
++    var category = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(),
++        SparepartTaxonomyDimension.CATEGORY, "CAT" + n, "Category " + n, NOW, NOW));
++    var brand = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(),
++        SparepartTaxonomyDimension.BRAND, "BRD" + n, "Brand " + n, category, NOW, NOW));
++    var kind = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(),
++        SparepartTaxonomyDimension.KIND, "KND" + n, "Kind " + n, category, NOW, NOW));
++    var type = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(),
++        SparepartTaxonomyDimension.TYPE, "TYP" + n, "Type " + n, category, NOW, NOW));
++    var entity = new SparepartEntity(UUID.randomUUID(), "SP-" + n, "Part " + n, machine,
++        category, brand, kind, type, NOW, NOW);
++    entity.updateProcurement(materialCode, null, NOW);
++    return spareparts.saveAndFlush(entity);
++  }
++
++  private InventoryStockBalanceEntity balance(UUID sparepartId, UUID locationId, String available) {
++    return balances.saveAndFlush(new InventoryStockBalanceEntity(UUID.randomUUID(), sparepartId,
++        locationId, new BigDecimal(available), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
++        NOW, NOW));
++  }
++
++  private AuthenticatedUser persistedUser(ApplicationRole role, String loginIdentifier) {
++    var user = users.saveAndFlush(new AuthUserEntity(UUID.randomUUID(), loginIdentifier,
++        passwordEncoder.encode("syncro-test-password"), role, true, NOW, NOW));
++    return new AuthenticatedUser(user.getId().toString(), user.getLoginIdentifier(), role);
++  }
++
++  private void assign(AuthenticatedUser user, PlantEntity plant) {
++    assignments.saveAndFlush(new AuthUserPlantAssignmentEntity(UUID.fromString(user.id()),
++        plant.getId(), NOW));
++  }
++
++  private static AuthenticatedUser authenticatedUser(ApplicationRole role) {
++    return new AuthenticatedUser(UUID.randomUUID().toString(),
++        role.name().toLowerCase() + "@syncro.dev", role);
++  }
++
++  private AuditLogEntity latestAuditEntryFor(UUID entityId) {
++    var entries = auditLogs.findByEntityIdOrderByCreatedAtAsc(entityId);
++    assertThat(entries).isNotEmpty();
++    return entries.get(entries.size() - 1);
++  }
++}
+diff --git a/syncro/authz/policy/authz.rego b/syncro/authz/policy/authz.rego
+index bbb5084..8fbb1a5 100644
+--- a/syncro/authz/policy/authz.rego
++++ b/syncro/authz/policy/authz.rego
+@@ -144,6 +144,19 @@ inventory_location_stock_paths := {
+   "/api/v1/inventory-locations/*/stock-balances/*/adjust",
+ }
+ 
++# Inventory transfers (story 18-4, blueprint E3): transfer lifecycle mutations for
++# INVENTORY_MAINTENANCE/STOREKEEPER/MANAGER_MAINTENANCE (SUPER_ADMIN via the generic
++# bypass). A single `*` matches exactly one path segment, so each depth is enumerated
++# explicitly: collection (list/create), /{id} (get), /{id}/approve, /{id}/reject.
++# Reads (GET) flow through generic read_allowed. SoD, plant scope and the state
++# machine are service-side (rego cannot see the body or the transfer state).
++inventory_transfer_paths := {
++  "/api/v1/inventory-transfers",
++  "/api/v1/inventory-transfers/*",
++  "/api/v1/inventory-transfers/*/approve",
++  "/api/v1/inventory-transfers/*/reject",
++}
++
+ workorder_assign_paths := {
+   "/api/v1/workorders/*/assign",
+ }
+@@ -546,6 +559,29 @@ mutation_allowed if {
+   path_matches(inventory_location_stock_paths)
+ }
+ 
++# Inventory transfer mutations (story 18-4): INVENTORY_MAINTENANCE/STOREKEEPER/
++# MANAGER_MAINTENANCE (SUPER_ADMIN via the generic bypass). TECHNICIAN/
++# STAFF_MAINTENANCE and the other roles stay default-deny — parity with
++# InventoryTransferService.requireCreateRole/requireReviewRole (the service narrows
++# STOREKEEPER out of reviews; rego is the coarse gate).
++mutation_allowed if {
++  input.subject.roles[_] == "INVENTORY_MAINTENANCE"
++  is_mutation
++  path_matches(inventory_transfer_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "STOREKEEPER"
++  is_mutation
++  path_matches(inventory_transfer_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "MANAGER_MAINTENANCE"
++  is_mutation
++  path_matches(inventory_transfer_paths)
++}
++
+ # Assign: leadership roles only (STAFF_MAINTENANCE and PRODUCTION_LEADER excluded).
+ mutation_allowed if {
+   input.subject.roles[_] == "MANAGER_MAINTENANCE"
+diff --git a/syncro/authz/policy/authz_test.rego b/syncro/authz/policy/authz_test.rego
+index 8f7fa55..0338f2e 100644
+--- a/syncro/authz/policy/authz_test.rego
++++ b/syncro/authz/policy/authz_test.rego
+@@ -1227,6 +1227,71 @@ test_anonymous_location_stock_denied if {
+   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances"}
+ }
+ 
++# -- Inventory transfers (story 18-4, blueprint E3): INVENTORY_MAINTENANCE/
++#    STOREKEEPER/MANAGER_MAINTENANCE mutations at every enumerated depth;
++#    SUPER_ADMIN via generic bypass; TECHNICIAN/STAFF_MAINTENANCE/anonymous denied;
++#    reads any-auth -------------------------------------------------------------
++
++test_inventory_transfer_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/inventory-transfers"}
++}
++
++test_storekeeper_transfer_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "POST /api/v1/inventory-transfers"}
++}
++
++test_manager_transfer_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/inventory-transfers"}
++}
++
++test_inventory_transfer_approve_allowed if {
++  authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/inventory-transfers/7b7c6d5e-1111-2222-3333-444455556666/approve"}
++}
++
++test_manager_transfer_approve_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/inventory-transfers/7b7c6d5e-1111-2222-3333-444455556666/approve"}
++}
++
++test_inventory_transfer_reject_allowed if {
++  authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/inventory-transfers/7b7c6d5e-1111-2222-3333-444455556666/reject"}
++}
++
++test_storekeeper_transfer_reject_allowed if {
++  authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "POST /api/v1/inventory-transfers/7b7c6d5e-1111-2222-3333-444455556666/reject"}
++}
++
++test_super_admin_transfer_approve_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/inventory-transfers/7b7c6d5e-1111-2222-3333-444455556666/approve"}
++}
++
++test_technician_transfer_create_denied if {
++  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/inventory-transfers"}
++}
++
++test_technician_transfer_approve_denied if {
++  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/inventory-transfers/7b7c6d5e-1111-2222-3333-444455556666/approve"}
++}
++
++test_staff_transfer_create_denied if {
++  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/inventory-transfers"}
++}
++
++test_staff_transfer_reject_denied if {
++  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/inventory-transfers/7b7c6d5e-1111-2222-3333-444455556666/reject"}
++}
++
++test_auditor_transfer_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/inventory-transfers"}
++}
++
++test_auditor_transfer_get_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/inventory-transfers/7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_anonymous_transfer_denied if {
++  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/inventory-transfers"}
++}
++
+ # -- Org maintenance (spec-org-maintenance-model): departments, section leader,
+ #    user master — MANAGER_MAINTENANCE + SUPER_ADMIN mutate; others denied -------
+ 

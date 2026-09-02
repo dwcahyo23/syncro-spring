@@ -250,7 +250,7 @@ development_status:
   18-1-sparepart-bom-master: done
   18-2-inventory-locations: done
   18-3-inventory-stock-balances: done
-  18-4-inventory-transfers: ready-for-dev
+  18-4-inventory-transfers: done
   18-5-inventory-reservations: ready-for-dev
   epic-18-retrospective: optional
 

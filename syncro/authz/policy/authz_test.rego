@@ -1227,6 +1227,71 @@ test_anonymous_location_stock_denied if {
   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances"}
 }
 
+# -- Inventory transfers (story 18-4, blueprint E3): INVENTORY_MAINTENANCE/
+#    STOREKEEPER/MANAGER_MAINTENANCE mutations at every enumerated depth;
+#    SUPER_ADMIN via generic bypass; TECHNICIAN/STAFF_MAINTENANCE/anonymous denied;
+#    reads any-auth -------------------------------------------------------------
+
+test_inventory_transfer_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/inventory-transfers"}
+}
+
+test_storekeeper_transfer_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "POST /api/v1/inventory-transfers"}
+}
+
+test_manager_transfer_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/inventory-transfers"}
+}
+
+test_inventory_transfer_approve_allowed if {
+  authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/inventory-transfers/7b7c6d5e-1111-2222-3333-444455556666/approve"}
+}
+
+test_manager_transfer_approve_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/inventory-transfers/7b7c6d5e-1111-2222-3333-444455556666/approve"}
+}
+
+test_inventory_transfer_reject_allowed if {
+  authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/inventory-transfers/7b7c6d5e-1111-2222-3333-444455556666/reject"}
+}
+
+test_storekeeper_transfer_reject_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "POST /api/v1/inventory-transfers/7b7c6d5e-1111-2222-3333-444455556666/reject"}
+}
+
+test_super_admin_transfer_approve_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/inventory-transfers/7b7c6d5e-1111-2222-3333-444455556666/approve"}
+}
+
+test_technician_transfer_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/inventory-transfers"}
+}
+
+test_technician_transfer_approve_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/inventory-transfers/7b7c6d5e-1111-2222-3333-444455556666/approve"}
+}
+
+test_staff_transfer_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/inventory-transfers"}
+}
+
+test_staff_transfer_reject_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/inventory-transfers/7b7c6d5e-1111-2222-3333-444455556666/reject"}
+}
+
+test_auditor_transfer_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/inventory-transfers"}
+}
+
+test_auditor_transfer_get_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/inventory-transfers/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_anonymous_transfer_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/inventory-transfers"}
+}
+
 # -- Org maintenance (spec-org-maintenance-model): departments, section leader,
 #    user master — MANAGER_MAINTENANCE + SUPER_ADMIN mutate; others denied -------
 

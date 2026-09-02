@@ -21,6 +21,23 @@ public interface InventoryStockBalanceRepository extends JpaRepository<Inventory
   boolean existsBySparepartIdAndLocationId(UUID sparepartId, UUID locationId);
 
   /**
+   * Pessimistic row lock on one balance row (story 18-4). Runs a native SELECT
+   * ... FOR UPDATE whose result is discarded — Postgres holds the row lock until
+   * the transaction ends. No version conflict because no entity enters the
+   * persistence context. The transfer approve locks both touched rows in
+   * deterministic location-id order (smallest first) before any write, so two
+   * opposing transfers (X→Y vs Y→X) cannot deadlock.
+   */
+  @Query(value = """
+      select 1 from inventory_stock_balances
+      where sparepart_id = :sparepartId and location_id = :locationId
+      for update
+      """, nativeQuery = true)
+  void lockBySparepartAndLocation(
+      @Param("sparepartId") UUID sparepartId,
+      @Param("locationId") UUID locationId);
+
+  /**
    * Atomic conditional availability decrement (AD-11, NFR-P2-6): subtracts
    * {@code delta} from {@code available}, adds the same amount to the lifetime
    * {@code consumed} running total, and bumps the version — but only when the
@@ -61,6 +78,32 @@ public interface InventoryStockBalanceRepository extends JpaRepository<Inventory
         and s.available + :delta >= 0
       """)
   int adjustAvailableIfSufficient(
+      @Param("sparepartId") UUID sparepartId,
+      @Param("locationId") UUID locationId,
+      @Param("delta") BigDecimal delta,
+      @Param("now") java.time.Instant now);
+
+  /**
+   * Atomic transfer credit (story 18-4): create-or-increment {@code available} at
+   * (sparepart, location) in ONE statement. A missing destination row is inserted
+   * with {@code available = delta} (other stock columns take their DB defaults);
+   * an existing row is incremented and its version bumped in SQL — the same
+   * version-bypass idiom as the conditional updates, so the destination credit is
+   * race-safe without a read-then-write. The conflict target is
+   * {@code uq_inventory_stock_balances_sparepart_location}. Runs inside the approve
+   * transaction: a failure anywhere rolls the whole move back (no partial transfer).
+   */
+  @Modifying(clearAutomatically = true)
+  @Query(value = """
+      insert into inventory_stock_balances (id, sparepart_id, location_id, available, created_at, updated_at)
+      values (:id, :sparepartId, :locationId, :delta, :now, :now)
+      on conflict (sparepart_id, location_id) do update
+      set available = inventory_stock_balances.available + excluded.available,
+          version = inventory_stock_balances.version + 1,
+          updated_at = excluded.updated_at
+      """, nativeQuery = true)
+  int creditTransferIn(
+      @Param("id") UUID id,
       @Param("sparepartId") UUID sparepartId,
       @Param("locationId") UUID locationId,
       @Param("delta") BigDecimal delta,

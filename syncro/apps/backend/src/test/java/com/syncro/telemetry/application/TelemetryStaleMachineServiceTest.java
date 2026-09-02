@@ -211,8 +211,8 @@ class TelemetryStaleMachineServiceTest {
 
   private static MachineService.MachineView machine(UUID id, String code, String plantCode) {
     return new MachineService.MachineView(id, UUID.randomUUID(), plantCode, "Plant " + plantCode,
-        UUID.randomUUID(), "Forming", code, "Machine " + code, MachineStatus.ACTIVE, null, null,
-        null, FIXED_NOW, FIXED_NOW, List.of());
+        UUID.randomUUID(), "Forming", null, code, "Machine " + code, MachineStatus.ACTIVE, null,
+        null, null, FIXED_NOW, FIXED_NOW, List.of());
   }
 
   private static TelemetryData telemetry(Instant lastReceivedAt, FreshnessState state) {
