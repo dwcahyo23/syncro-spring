@@ -1,9 +1,11 @@
 package com.syncro.inventory.api;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +42,26 @@ public final class InventoryLocationDtos {
       @Size(min = 1, max = 255) String name,
       @Size(max = 1000) String description,
       Boolean isActive) {
+  }
+
+  /**
+   * POST /api/v1/inventory-locations/{locationId}/stock-balances (story 18-3) —
+   * create/upsert a balance at the location. No plantId: the plant is derived from
+   * the location path, which is what prevents cross-plant spoofing.
+   */
+  @Schema(description = "Create (upsert) a stock balance for a material code at one location")
+  public record CreateLocationStockRequest(
+      @NotBlank @Size(max = 64) String materialCode,
+      @NotNull @Digits(integer = 16, fraction = 2) BigDecimal available,
+      @NotNull @Digits(integer = 16, fraction = 2) BigDecimal reserved,
+      @NotNull @Digits(integer = 16, fraction = 2) BigDecimal consumed,
+      @NotNull @Digits(integer = 16, fraction = 2) BigDecimal minimumStock) {
+  }
+
+  /** POST /api/v1/inventory-locations/{locationId}/stock-balances/{materialCode}/adjust. */
+  @Schema(description = "Apply a signed delta to available at one location")
+  public record AdjustLocationStockRequest(
+      @NotNull @Digits(integer = 16, fraction = 2) BigDecimal delta) {
   }
 
   /** Location read model. */

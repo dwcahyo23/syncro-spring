@@ -91,6 +91,23 @@ public interface InventoryStockBalanceRepository extends JpaRepository<Inventory
       """)
   List<InventoryStockBalanceEntity> findAllByPlantId(@Param("plantId") UUID plantId);
 
+  /** All balance rows at one location (story 18-3, location-scoped list). */
+  List<InventoryStockBalanceEntity> findAllByLocationIdOrderBySparepartIdAsc(UUID locationId);
+
+  /**
+   * Reorder-warning rows at one location (story 18-3): same derived rule as
+   * {@link #findReorderWarnings} (available &le; minimum_stock, never persisted),
+   * narrowed to a single location id.
+   */
+  @Query("""
+      select s
+      from InventoryStockBalanceEntity s
+      where s.locationId = :locationId
+        and s.available <= s.minimumStock
+      order by s.sparepartId asc
+      """)
+  List<InventoryStockBalanceEntity> findReorderWarningsByLocationId(@Param("locationId") UUID locationId);
+
   @Query("""
       select s
       from InventoryStockBalanceEntity s

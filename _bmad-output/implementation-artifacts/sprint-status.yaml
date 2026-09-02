@@ -35,7 +35,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-25
-last_updated: 2026-09-01
+last_updated: 2026-09-02
+# updated: 2026-09-02 Epic 18 — 18-1 done (1f886ad), 18-2 done (8198456), 18-3 done; 18-4/18-5 next
 # updated: 2026-09-01 (3) Epic 18 in-progress — 18-1 Sparepart BOM Master build started
 # updated: 2026-09-01 (2) epic-15 done — 15-1 & 15-2 complete (b15b975, d5e5424)
 # updated: 2026-08-31 (2) Epic 18 Multi-Language (i18n) added — Indonesian/English UI via next-intl
@@ -248,7 +249,7 @@ development_status:
   epic-18: in-progress
   18-1-sparepart-bom-master: done
   18-2-inventory-locations: done
-  18-3-inventory-stock-balances: ready-for-dev
+  18-3-inventory-stock-balances: done
   18-4-inventory-transfers: ready-for-dev
   18-5-inventory-reservations: ready-for-dev
   epic-18-retrospective: optional

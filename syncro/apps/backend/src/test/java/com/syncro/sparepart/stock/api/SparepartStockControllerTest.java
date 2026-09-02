@@ -1,8 +1,10 @@
 package com.syncro.sparepart.stock.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -17,6 +19,7 @@ import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.auth.infrastructure.JwtAuthenticationFilter;
 import com.syncro.config.SecurityConfig;
 import com.syncro.config.TimeConfig;
+import com.syncro.inventory.application.InventoryLocationService.InventoryLocationNotFoundException;
 import com.syncro.inventory.application.InventoryStockService;
 import com.syncro.inventory.application.InventoryStockService.AdjustBalanceCommand;
 import com.syncro.inventory.application.InventoryStockService.InventoryStockForbiddenException;
@@ -36,8 +39,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -78,6 +83,17 @@ class SparepartStockControllerTest {
   private static final UUID SPAREPART_ID = UUID.fromString("99999999-9999-9999-9999-999999999999");
   private static final UUID LOCATION_ID = UUID.fromString("77777777-7777-7777-7777-777777777777");
   private static final Instant NOW = Instant.parse("2026-08-28T00:00:00Z");
+
+  @BeforeEach
+  void stubSparepartLookup() {
+    // The controller's view assembly resolves materialCode via the sparepart
+    // repository (story 15-1 re-key); without this stub the read model carries a
+    // null materialCode and the contract assertions below would not hold.
+    var sparepart = new SparepartEntity(SPAREPART_ID, "SP-0001", "Part", null, null, null, null,
+        null, NOW, NOW);
+    sparepart.updateProcurement("MC-0001", null, NOW);
+    when(spareparts.findById(SPAREPART_ID)).thenReturn(Optional.of(sparepart));
+  }
 
   @Test
   @DisplayName("12.4-STK-API-001 P0 create stock returns 201 with the created view")
@@ -213,6 +229,81 @@ class SparepartStockControllerTest {
             .param("plantId", PLANT_ID.toString()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items[0].reorderWarning").value(false));
+  }
+
+  // --- Story 18-3: optional locationId on the legacy surface ---------------------
+
+  @Test
+  @DisplayName("18.3-STK-API-010 P0 list with locationId routes to the location-scoped overload")
+  void listWithLocationIdUsesOverload() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    when(service.list(eq(user), eq(PLANT_ID), eq(LOCATION_ID))).thenReturn(List.of(balanceDomain()));
+
+    mockMvc.perform(get("/api/v1/sparepart-stock")
+            .with(auth(user))
+            .param("plantId", PLANT_ID.toString())
+            .param("locationId", LOCATION_ID.toString()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items[0].materialCode").value("MC-0001"));
+
+    verify(service).list(eq(user), eq(PLANT_ID), eq(LOCATION_ID));
+  }
+
+  @Test
+  @DisplayName("18.3-STK-API-011 P0 create/update/adjust bodies carry locationId into the command")
+  void writeBodiesCarryLocationId() throws Exception {
+    var user = user(ApplicationRole.STOREKEEPER);
+    when(service.upsert(eq(user), any(UpsertBalanceCommand.class))).thenReturn(balanceDomain());
+    when(service.update(eq(user), eq("MC-0001"), any(UpdateBalanceCommand.class)))
+        .thenReturn(balanceDomain());
+    when(service.adjust(eq(user), eq("MC-0001"), any(AdjustBalanceCommand.class)))
+        .thenReturn(balanceDomain());
+
+    mockMvc.perform(post("/api/v1/sparepart-stock")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"materialCode\":\"MC-0001\",\"plantId\":\"" + PLANT_ID
+                + "\",\"available\":10,\"reserved\":0,\"consumed\":0,\"minimumStock\":5,"
+                + "\"locationId\":\"" + LOCATION_ID + "\"}"))
+        .andExpect(status().isCreated());
+    var upsertCaptor = ArgumentCaptor.forClass(UpsertBalanceCommand.class);
+    verify(service).upsert(eq(user), upsertCaptor.capture());
+    assertThat(upsertCaptor.getValue().locationId()).isEqualTo(LOCATION_ID);
+
+    mockMvc.perform(put("/api/v1/sparepart-stock/MC-0001")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"plantId\":\"" + PLANT_ID + "\",\"version\":0,\"available\":8,"
+                + "\"locationId\":\"" + LOCATION_ID + "\"}"))
+        .andExpect(status().isOk());
+    var updateCaptor = ArgumentCaptor.forClass(UpdateBalanceCommand.class);
+    verify(service).update(eq(user), eq("MC-0001"), updateCaptor.capture());
+    assertThat(updateCaptor.getValue().locationId()).isEqualTo(LOCATION_ID);
+
+    mockMvc.perform(post("/api/v1/sparepart-stock/MC-0001/adjust")
+            .with(auth(user))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"plantId\":\"" + PLANT_ID + "\",\"delta\":2,"
+                + "\"locationId\":\"" + LOCATION_ID + "\"}"))
+        .andExpect(status().isOk());
+    var adjustCaptor = ArgumentCaptor.forClass(AdjustBalanceCommand.class);
+    verify(service).adjust(eq(user), eq("MC-0001"), adjustCaptor.capture());
+    assertThat(adjustCaptor.getValue().locationId()).isEqualTo(LOCATION_ID);
+  }
+
+  @Test
+  @DisplayName("18.3-STK-API-012 P0 foreign/unknown locationId maps to 404 INVENTORY_LOCATION_NOT_FOUND")
+  void foreignLocationIdMapsToNotFound() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    when(service.list(eq(user), eq(PLANT_ID), eq(LOCATION_ID)))
+        .thenThrow(new InventoryLocationNotFoundException());
+
+    mockMvc.perform(get("/api/v1/sparepart-stock")
+            .with(auth(user))
+            .param("plantId", PLANT_ID.toString())
+            .param("locationId", LOCATION_ID.toString()))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("INVENTORY_LOCATION_NOT_FOUND"));
   }
 
   private InventoryStockBalance balanceDomain() {

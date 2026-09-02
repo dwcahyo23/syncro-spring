@@ -132,6 +132,18 @@ inventory_location_paths := {
   "/api/v1/inventory-locations/*",
 }
 
+# Inventory location stock balances (story 18-3, blueprint E2): per-location stock
+# mutations for INVENTORY_MAINTENANCE/STOREKEEPER (SUPER_ADMIN via the generic bypass).
+# A single `*` matches exactly one path segment, so each depth is enumerated
+# explicitly: collection (list/create), the material-code segment, and /adjust.
+# Reads (GET) flow through generic read_allowed. Plant scope is service-side (rego
+# cannot see the location's plant).
+inventory_location_stock_paths := {
+  "/api/v1/inventory-locations/*/stock-balances",
+  "/api/v1/inventory-locations/*/stock-balances/*",
+  "/api/v1/inventory-locations/*/stock-balances/*/adjust",
+}
+
 workorder_assign_paths := {
   "/api/v1/workorders/*/assign",
 }
@@ -517,6 +529,21 @@ mutation_allowed if {
   input.subject.roles[_] == "INVENTORY_MAINTENANCE"
   is_mutation
   path_matches(inventory_location_paths)
+}
+
+# Inventory location stock mutations (story 18-3): INVENTORY_MAINTENANCE/STOREKEEPER
+# (SUPER_ADMIN via the generic bypass). MANAGER_MAINTENANCE/TECHNICIAN and the other
+# roles stay default-deny — parity with InventoryStockService.requireMutationAccess.
+mutation_allowed if {
+  input.subject.roles[_] == "INVENTORY_MAINTENANCE"
+  is_mutation
+  path_matches(inventory_location_stock_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STOREKEEPER"
+  is_mutation
+  path_matches(inventory_location_stock_paths)
 }
 
 # Assign: leadership roles only (STAFF_MAINTENANCE and PRODUCTION_LEADER excluded).

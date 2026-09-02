@@ -1179,6 +1179,54 @@ test_anonymous_inventory_location_denied if {
   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/inventory-locations"}
 }
 
+# -- Inventory location stock balances (story 18-3, blueprint E2): INVENTORY_MAINTENANCE/
+#    STOREKEEPER mutations at every enumerated depth; SUPER_ADMIN via generic bypass;
+#    MANAGER_MAINTENANCE/TECHNICIAN/STAFF denied; reads any-auth -------------------
+
+test_inventory_location_stock_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances"}
+}
+
+test_storekeeper_location_stock_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "POST /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances"}
+}
+
+test_inventory_location_stock_adjust_allowed if {
+  authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances/MC-0001/adjust"}
+}
+
+test_storekeeper_location_stock_adjust_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "POST /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances/MC-0001/adjust"}
+}
+
+test_super_admin_location_stock_adjust_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances/MC-0001/adjust"}
+}
+
+test_technician_location_stock_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances"}
+}
+
+test_technician_location_stock_adjust_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances/MC-0001/adjust"}
+}
+
+test_manager_location_stock_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances"}
+}
+
+test_staff_location_stock_adjust_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances/MC-0001/adjust"}
+}
+
+test_auditor_location_stock_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances"}
+}
+
+test_anonymous_location_stock_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances"}
+}
+
 # -- Org maintenance (spec-org-maintenance-model): departments, section leader,
 #    user master — MANAGER_MAINTENANCE + SUPER_ADMIN mutate; others denied -------
 

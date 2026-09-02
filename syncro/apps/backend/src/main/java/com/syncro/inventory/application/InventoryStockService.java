@@ -7,11 +7,13 @@ import com.syncro.audit.domain.AuditEntityType;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
+import com.syncro.inventory.application.InventoryLocationService.InventoryLocationNotFoundException;
 import com.syncro.inventory.domain.InventoryStockBalance;
 import com.syncro.inventory.infrastructure.db.InventoryLocationEntity;
 import com.syncro.inventory.infrastructure.db.InventoryLocationRepository;
 import com.syncro.inventory.infrastructure.db.InventoryStockBalanceEntity;
 import com.syncro.inventory.infrastructure.db.InventoryStockBalanceRepository;
+import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.sparepart.infrastructure.SparepartEntity;
 import com.syncro.sparepart.infrastructure.SparepartRepository;
 import java.math.BigDecimal;
@@ -42,6 +44,15 @@ import org.springframework.transaction.annotation.Transactional;
  * guarded by {@code available - delta >= 0} (the consumed running total rises by the
  * same delta); a rejected adjustment is a 409 NEGATIVE_STOCK_REJECTED. Version
  * conflicts surface as 409 VERSION_CONFLICT.
+ *
+ * <p>Plant integrity (story 18-3): a balance may only pair a sparepart with a location
+ * in the SAME plant — every mutation asserts {@code sparepart.machine.plant ==
+ * location.plant} and rejects a mismatch as 404 SPAREPART_NOT_FOUND (indistinguishable
+ * from an unknown code, so no cross-plant existence oracle). On the location-scoped
+ * surface the plant is derived from the location (never the body) and a plant the
+ * caller is not assigned to surfaces as 404 INVENTORY_LOCATION_NOT_FOUND, so a
+ * foreign-plant location id is indistinguishable from an unknown one. Mutations also
+ * reject an inactive location (404); reads still see historical balances there.
  */
 @Service
 public class InventoryStockService {
@@ -69,7 +80,9 @@ public class InventoryStockService {
   /**
    * Upsert semantics: a missing balance row is created with the provided values
    * (version starts at 0); an existing row is fully overwritten with the provided
-   * fields and the version is advanced (optimistic lock).
+   * fields and the version is advanced (optimistic lock). The command's optional
+   * {@code locationId} (story 18-3) targets a named location — when absent the
+   * plant's default location is used, exactly as before.
    */
   @Transactional
   public InventoryStockBalance upsert(AuthenticatedUser user, UpsertBalanceCommand command) {
@@ -79,27 +92,59 @@ public class InventoryStockService {
     requireNonNegative(command.reserved(), "reserved");
     requireNonNegative(command.consumed(), "consumed");
     requireNonNegative(command.minimumStock(), "minimumStock");
-    var location = defaultLocation(command.plantId());
+    var location = resolveLocation(command.plantId(), command.locationId());
+    // Story 18-3: an explicit locationId must pair with a same-plant sparepart; the
+    // default-location path stays byte-identical to the legacy contract.
+    if (command.locationId() != null) {
+      requireSparepartInPlant(sparepart, location.getPlantId());
+    }
+    return upsertInternal(user, command.plantId(), location, sparepart, command.available(),
+        command.reserved(), command.consumed(), command.minimumStock());
+  }
+
+  /**
+   * Location-scoped upsert (story 18-3, {@code /inventory-locations/{id}/stock-balances}):
+   * the location is resolved first and the plant is derived from it — the plant never
+   * comes from the request body. The sparepart must belong to the location's plant
+   * (else 404 SPAREPART_NOT_FOUND), so a caller cannot attach another plant's part.
+   */
+  @Transactional
+  public InventoryStockBalance upsertAtLocation(AuthenticatedUser user, UUID locationId,
+      LocationUpsertCommand command) {
+    requireMutationRole(user);
+    var location = requireActiveLocation(requireKnownLocation(locationId));
+    requirePlantScopeForLocation(user, location.getPlantId());
+    var sparepart = requireKnownSparepart(command.materialCode());
+    requireSparepartInPlant(sparepart, location.getPlantId());
+    requireNonNegative(command.available(), "available");
+    requireNonNegative(command.reserved(), "reserved");
+    requireNonNegative(command.consumed(), "consumed");
+    requireNonNegative(command.minimumStock(), "minimumStock");
+    return upsertInternal(user, location.getPlantId(), location, sparepart, command.available(),
+        command.reserved(), command.consumed(), command.minimumStock());
+  }
+
+  private InventoryStockBalance upsertInternal(AuthenticatedUser user, UUID plantId,
+      InventoryLocationEntity location, SparepartEntity sparepart, BigDecimal available,
+      BigDecimal reserved, BigDecimal consumed, BigDecimal minimumStock) {
     var now = Instant.now(clock);
     var existing = balances.findBySparepartIdAndLocationId(sparepart.getId(), location.getId())
         .orElse(null);
     if (existing == null) {
       var entity = new InventoryStockBalanceEntity(UUID.randomUUID(), sparepart.getId(),
-          location.getId(), command.available(), command.reserved(), command.consumed(),
-          command.minimumStock(), now, now);
+          location.getId(), available, reserved, consumed, minimumStock, now, now);
       var saved = balances.saveAndFlush(entity);
       auditLog.record(user, new AuditRecord(AuditAction.CREATE,
           AuditEntityType.INVENTORY_STOCK_BALANCE, saved.getId(), entityLabel(sparepart, saved),
-          command.plantId(), null, balanceValues(sparepart, saved), null));
+          plantId, null, balanceValues(sparepart, saved), null));
       return toDomain(saved);
     }
     var previous = balanceValues(sparepart, existing);
-    existing.replace(command.available(), command.reserved(), command.consumed(),
-        command.minimumStock(), now);
+    existing.replace(available, reserved, consumed, minimumStock, now);
     var saved = balances.saveAndFlush(existing);
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE,
         AuditEntityType.INVENTORY_STOCK_BALANCE, saved.getId(), entityLabel(sparepart, saved),
-        command.plantId(), previous, balanceValues(sparepart, saved), null));
+        plantId, previous, balanceValues(sparepart, saved), null));
     return toDomain(saved);
   }
 
@@ -123,7 +168,10 @@ public class InventoryStockService {
           "At least one of available, reserved, consumed or minimumStock must be provided."));
     }
     var sparepart = requireKnownSparepart(materialCode);
-    var location = defaultLocation(command.plantId());
+    var location = resolveLocation(command.plantId(), command.locationId());
+    if (command.locationId() != null) {
+      requireSparepartInPlant(sparepart, location.getPlantId());
+    }
     var existing = findBalance(sparepart.getId(), location.getId());
     if (existing.getVersion() != command.version()) {
       throw new VersionConflictException();
@@ -155,10 +203,33 @@ public class InventoryStockService {
       AdjustBalanceCommand command) {
     requireMutationAccess(user, command.plantId());
     var sparepart = requireKnownSparepart(materialCode);
-    var location = defaultLocation(command.plantId());
+    var location = resolveLocation(command.plantId(), command.locationId());
+    if (command.locationId() != null) {
+      requireSparepartInPlant(sparepart, location.getPlantId());
+    }
+    return adjustInternal(user, command.plantId(), location, sparepart, command.delta());
+  }
+
+  /**
+   * Location-scoped adjust (story 18-3): plant derived from the location, never from
+   * the body; the sparepart must belong to that plant (else 404 SPAREPART_NOT_FOUND);
+   * the same atomic conditional update and NEGATIVE_STOCK_REJECTED guard apply.
+   */
+  @Transactional
+  public InventoryStockBalance adjustAtLocation(AuthenticatedUser user, UUID locationId,
+      String materialCode, BigDecimal delta) {
+    requireMutationRole(user);
+    var location = requireActiveLocation(requireKnownLocation(locationId));
+    requirePlantScopeForLocation(user, location.getPlantId());
+    var sparepart = requireKnownSparepart(materialCode);
+    requireSparepartInPlant(sparepart, location.getPlantId());
+    return adjustInternal(user, location.getPlantId(), location, sparepart, delta);
+  }
+
+  private InventoryStockBalance adjustInternal(AuthenticatedUser user, UUID plantId,
+      InventoryLocationEntity location, SparepartEntity sparepart, BigDecimal delta) {
     var existing = findBalance(sparepart.getId(), location.getId());
     var previous = balanceValues(sparepart, existing);
-    var delta = command.delta();
     var now = Instant.now(clock);
     int rows = balances.adjustAvailableIfSufficient(sparepart.getId(), location.getId(), delta, now);
     if (rows == 0) {
@@ -168,7 +239,7 @@ public class InventoryStockService {
     var updated = findBalance(sparepart.getId(), location.getId());
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE,
         AuditEntityType.INVENTORY_STOCK_BALANCE, updated.getId(), entityLabel(sparepart, updated),
-        command.plantId(), previous, balanceValues(sparepart, updated), null));
+        plantId, previous, balanceValues(sparepart, updated), null));
     return toDomain(updated);
   }
 
@@ -235,11 +306,51 @@ public class InventoryStockService {
         .toList();
   }
 
+  /**
+   * Reorder-warning rows at one location (story 18-3). The location is validated
+   * against the requested plant — a foreign locationId is 404, never a cross-plant
+   * read. The warning stays a derived signal (available &le; minimum_stock).
+   */
+  @Transactional(readOnly = true)
+  public List<InventoryStockBalance> reorderWarnings(AuthenticatedUser user, UUID plantId,
+      UUID locationId) {
+    requireReadAccess(user, plantId);
+    var location = requireLocationInPlant(locationId, plantId);
+    return balances.findReorderWarningsByLocationId(location.getId()).stream()
+        .map(InventoryStockService::toDomain)
+        .toList();
+  }
+
   /** All balance rows visible in a plant (read path for the Stock page). */
   @Transactional(readOnly = true)
   public List<InventoryStockBalance> list(AuthenticatedUser user, UUID plantId) {
     requireReadAccess(user, plantId);
     return balances.findAllByPlantId(plantId).stream()
+        .map(InventoryStockService::toDomain)
+        .toList();
+  }
+
+  /** All balance rows at one location of the plant (story 18-3, optional locationId). */
+  @Transactional(readOnly = true)
+  public List<InventoryStockBalance> list(AuthenticatedUser user, UUID plantId, UUID locationId) {
+    requireReadAccess(user, plantId);
+    var location = requireLocationInPlant(locationId, plantId);
+    return balances.findAllByLocationIdOrderBySparepartIdAsc(location.getId()).stream()
+        .map(InventoryStockService::toDomain)
+        .toList();
+  }
+
+  /**
+   * All balance rows at a location (story 18-3, {@code /inventory-locations/{id}/stock-balances}):
+   * reads still succeed at an INACTIVE location (historical balances); the read gate
+   * applies to the location's plant and a plant the caller is not assigned to
+   * surfaces as 404 (no existence oracle); unknown location → 404.
+   */
+  @Transactional(readOnly = true)
+  public List<InventoryStockBalance> listAtLocation(AuthenticatedUser user, UUID locationId) {
+    var location = requireKnownLocation(locationId);
+    requirePlantScopeForLocation(user, location.getPlantId());
+    return balances.findAllByLocationIdOrderBySparepartIdAsc(location.getId()).stream()
         .map(InventoryStockService::toDomain)
         .toList();
   }
@@ -256,6 +367,57 @@ public class InventoryStockService {
   private InventoryLocationEntity defaultLocation(UUID plantId) {
     return locations.findByPlantIdAndCodeIgnoreCase(plantId, DEFAULT_LOCATION_CODE)
         .orElseThrow(DefaultLocationNotFoundException::new);
+  }
+
+  /**
+   * Story 18-3 location resolution (mutation path): an explicit locationId must exist
+   * and belong to the plant (404 INVENTORY_LOCATION_NOT_FOUND otherwise — a
+   * foreign-plant id is indistinguishable from an unknown one, so no cross-plant
+   * leak); an absent locationId falls back to the plant default, byte-identical to
+   * the legacy path. Mutations additionally require an ACTIVE location (story 18-3
+   * review) — reads still see historical balances at inactive locations.
+   */
+  private InventoryLocationEntity resolveLocation(UUID plantId, UUID locationId) {
+    var location = locationId == null
+        ? defaultLocation(plantId)
+        : requireLocationInPlant(locationId, plantId);
+    return requireActiveLocation(location);
+  }
+
+  private InventoryLocationEntity requireLocationInPlant(UUID locationId, UUID plantId) {
+    var location = requireKnownLocation(locationId);
+    if (!location.getPlantId().equals(plantId)) {
+      throw new InventoryLocationNotFoundException();
+    }
+    return location;
+  }
+
+  private InventoryLocationEntity requireKnownLocation(UUID locationId) {
+    return locations.findById(locationId).orElseThrow(InventoryLocationNotFoundException::new);
+  }
+
+  /** Mutations reject an inactive location (404 — same shape as unknown). */
+  private static InventoryLocationEntity requireActiveLocation(InventoryLocationEntity location) {
+    if (!location.isActive()) {
+      throw new InventoryLocationNotFoundException();
+    }
+    return location;
+  }
+
+  /**
+   * Plant integrity invariant (story 18-3 review): a balance may only pair a
+   * sparepart with a location in the SAME plant. A mismatch is reported as 404
+   * SPAREPART_NOT_FOUND — indistinguishable from an unknown material code, so the
+   * check never leaks which plant owns the part.
+   */
+  private static void requireSparepartInPlant(SparepartEntity sparepart, UUID plantId) {
+    var machine = sparepart.getMachine();
+    var partPlantId = machine != null && machine.getPlant() != null
+        ? machine.getPlant().getId()
+        : null;
+    if (!plantId.equals(partPlantId)) {
+      throw new SparepartNotFoundException();
+    }
   }
 
   private void requireMutationAccess(AuthenticatedUser user, UUID plantId) {
@@ -277,6 +439,35 @@ public class InventoryStockService {
     }
     if (!plantAssigned(user, plantId)) {
       throw new InventoryStockForbiddenException();
+    }
+  }
+
+  /**
+   * Role gate for the location-scoped mutation surface (story 18-3 review): checked
+   * BEFORE the location is resolved so an unauthorized role can never probe location
+   * existence. Denial (not INVENTORY_MAINTENANCE/STOREKEEPER/SUPER_ADMIN) is 403.
+   */
+  private void requireMutationRole(AuthenticatedUser user) {
+    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN
+        || user.applicationRole() == ApplicationRole.INVENTORY_MAINTENANCE
+        || user.applicationRole() == ApplicationRole.STOREKEEPER) {
+      return;
+    }
+    throw new InventoryStockForbiddenException();
+  }
+
+  /**
+   * Plant-scope gate for the location-scoped surface (story 18-3 review): a plant the
+   * caller is not assigned to surfaces as 404 INVENTORY_LOCATION_NOT_FOUND — a
+   * foreign-plant location id must be indistinguishable from an unknown one (no
+   * existence oracle). SUPER_ADMIN is exempt.
+   */
+  private void requirePlantScopeForLocation(AuthenticatedUser user, UUID plantId) {
+    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
+      return;
+    }
+    if (!plantAssigned(user, plantId)) {
+      throw new InventoryLocationNotFoundException();
     }
   }
 
@@ -335,18 +526,46 @@ public class InventoryStockService {
         entity.getVersion(), entity.getCreatedAt(), entity.getUpdatedAt());
   }
 
-  /** Upsert-create command. */
+  /**
+   * Upsert-create command. {@code locationId} (story 18-3) is optional: null targets
+   * the plant's default location, preserving the legacy contract.
+   */
   public record UpsertBalanceCommand(String materialCode, UUID plantId, BigDecimal available,
-      BigDecimal reserved, BigDecimal consumed, BigDecimal minimumStock) {
+      BigDecimal reserved, BigDecimal consumed, BigDecimal minimumStock, UUID locationId) {
+
+    public UpsertBalanceCommand(String materialCode, UUID plantId, BigDecimal available,
+        BigDecimal reserved, BigDecimal consumed, BigDecimal minimumStock) {
+      this(materialCode, plantId, available, reserved, consumed, minimumStock, null);
+    }
   }
 
-  /** PUT partial-overwrite command (all four optional, at least one required). */
+  /**
+   * PUT partial-overwrite command (all four optional, at least one required).
+   * {@code locationId} optional — null targets the plant default (story 18-3).
+   */
   public record UpdateBalanceCommand(UUID plantId, long version, BigDecimal available,
-      BigDecimal reserved, BigDecimal consumed, BigDecimal minimumStock) {
+      BigDecimal reserved, BigDecimal consumed, BigDecimal minimumStock, UUID locationId) {
+
+    public UpdateBalanceCommand(UUID plantId, long version, BigDecimal available,
+        BigDecimal reserved, BigDecimal consumed, BigDecimal minimumStock) {
+      this(plantId, version, available, reserved, consumed, minimumStock, null);
+    }
   }
 
-  /** POST /adjust signed-delta command. */
-  public record AdjustBalanceCommand(UUID plantId, BigDecimal delta) {
+  /** POST /adjust signed-delta command. {@code locationId} optional (story 18-3). */
+  public record AdjustBalanceCommand(UUID plantId, BigDecimal delta, UUID locationId) {
+
+    public AdjustBalanceCommand(UUID plantId, BigDecimal delta) {
+      this(plantId, delta, null);
+    }
+  }
+
+  /**
+   * Location-scoped upsert command (story 18-3): no plantId — the plant is derived
+   * from the location, which is what makes cross-plant spoofing impossible.
+   */
+  public record LocationUpsertCommand(String materialCode, BigDecimal available,
+      BigDecimal reserved, BigDecimal consumed, BigDecimal minimumStock) {
   }
 
   public static class StockBalanceNotFoundException extends RuntimeException {

@@ -1,0 +1,1738 @@
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryLocationDtos.java b/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryLocationDtos.java
+index 43c3e68..08453be 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryLocationDtos.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryLocationDtos.java
+@@ -1,9 +1,11 @@
+ package com.syncro.inventory.api;
+ 
+ import io.swagger.v3.oas.annotations.media.Schema;
++import jakarta.validation.constraints.Digits;
+ import jakarta.validation.constraints.NotBlank;
+ import jakarta.validation.constraints.NotNull;
+ import jakarta.validation.constraints.Size;
++import java.math.BigDecimal;
+ import java.time.Instant;
+ import java.util.List;
+ import java.util.Map;
+@@ -42,6 +44,26 @@ public final class InventoryLocationDtos {
+       Boolean isActive) {
+   }
+ 
++  /**
++   * POST /api/v1/inventory-locations/{locationId}/stock-balances (story 18-3) —
++   * create/upsert a balance at the location. No plantId: the plant is derived from
++   * the location path, which is what prevents cross-plant spoofing.
++   */
++  @Schema(description = "Create (upsert) a stock balance for a material code at one location")
++  public record CreateLocationStockRequest(
++      @NotBlank @Size(max = 64) String materialCode,
++      @NotNull @Digits(integer = 16, fraction = 2) BigDecimal available,
++      @NotNull @Digits(integer = 16, fraction = 2) BigDecimal reserved,
++      @NotNull @Digits(integer = 16, fraction = 2) BigDecimal consumed,
++      @NotNull @Digits(integer = 16, fraction = 2) BigDecimal minimumStock) {
++  }
++
++  /** POST /api/v1/inventory-locations/{locationId}/stock-balances/{materialCode}/adjust. */
++  @Schema(description = "Apply a signed delta to available at one location")
++  public record AdjustLocationStockRequest(
++      @NotNull @Digits(integer = 16, fraction = 2) BigDecimal delta) {
++  }
++
+   /** Location read model. */
+   public record InventoryLocationView(
+       UUID id,
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryLocationStockController.java b/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryLocationStockController.java
+new file mode 100644
+index 0000000..7edd298
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryLocationStockController.java
+@@ -0,0 +1,121 @@
++package com.syncro.inventory.api;
++
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.inventory.api.InventoryLocationDtos.AdjustLocationStockRequest;
++import com.syncro.inventory.api.InventoryLocationDtos.CreateLocationStockRequest;
++import com.syncro.inventory.application.InventoryStockService;
++import com.syncro.inventory.application.InventoryStockService.LocationUpsertCommand;
++import com.syncro.inventory.domain.InventoryStockBalance;
++import com.syncro.inventory.infrastructure.db.InventoryLocationRepository;
++import com.syncro.sparepart.infrastructure.SparepartRepository;
++import com.syncro.sparepart.stock.api.SparepartStockDtos.SparepartStockListView;
++import com.syncro.sparepart.stock.api.SparepartStockDtos.SparepartStockView;
++import io.swagger.v3.oas.annotations.Operation;
++import io.swagger.v3.oas.annotations.media.Content;
++import io.swagger.v3.oas.annotations.media.Schema;
++import io.swagger.v3.oas.annotations.responses.ApiResponse;
++import io.swagger.v3.oas.annotations.responses.ApiResponses;
++import jakarta.validation.Valid;
++import java.util.UUID;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.security.core.annotation.AuthenticationPrincipal;
++import org.springframework.validation.annotation.Validated;
++import org.springframework.web.bind.annotation.GetMapping;
++import org.springframework.web.bind.annotation.PathVariable;
++import org.springframework.web.bind.annotation.PostMapping;
++import org.springframework.web.bind.annotation.RequestBody;
++import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RestController;
++
++/**
++ * Location-scoped stock-balances API (story 18-3). Where {@code /sparepart-stock}
++ * addresses stock by material code + plant (with an optional locationId), this
++ * surface addresses it by location directly: the plant is derived from the location,
++ * never taken from the request body — that is what makes a cross-plant mutation
++ * impossible here. Mutations are gated INVENTORY_MAINTENANCE/STOREKEEPER/SUPER_ADMIN
++ * with the location's plant in the caller's assignment scope (service-side); the
++ * response reuses the shared {@link SparepartStockView} shape so both surfaces agree.
++ */
++@Validated
++@RestController
++@RequestMapping("/api/v1/inventory-locations/{locationId}/stock-balances")
++public class InventoryLocationStockController {
++
++  private final InventoryStockService service;
++  private final SparepartRepository spareparts;
++  private final InventoryLocationRepository locations;
++
++  public InventoryLocationStockController(InventoryStockService service,
++      SparepartRepository spareparts, InventoryLocationRepository locations) {
++    this.service = service;
++    this.spareparts = spareparts;
++    this.locations = locations;
++  }
++
++  @Operation(operationId = "listInventoryLocationStockBalances",
++      summary = "List stock balances at one inventory location")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Stock balances returned"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "INVENTORY_LOCATION_NOT_FOUND")
++  })
++  @GetMapping
++  public SparepartStockListView list(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID locationId) {
++    var items = service.listAtLocation(user, locationId).stream()
++        .map(this::toView)
++        .toList();
++    return new SparepartStockListView(items);
++  }
++
++  @Operation(operationId = "createInventoryLocationStockBalance",
++      summary = "Create (or upsert) a stock balance for a material code at one location")
++  @ApiResponses({
++      @ApiResponse(responseCode = "201", description = "Stock balance created",
++          content = @Content(schema = @Schema(implementation = SparepartStockView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Sparepart or location not found")
++  })
++  @PostMapping
++  public ResponseEntity<SparepartStockView> create(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID locationId, @Valid @RequestBody CreateLocationStockRequest request) {
++    var command = new LocationUpsertCommand(request.materialCode(), request.available(),
++        request.reserved(), request.consumed(), request.minimumStock());
++    var created = service.upsertAtLocation(user, locationId, command);
++    return ResponseEntity.status(HttpStatus.CREATED).body(toView(created));
++  }
++
++  @Operation(operationId = "adjustInventoryLocationStockBalance",
++      summary = "Apply a signed delta to available at one location (409 NEGATIVE_STOCK_REJECTED on underflow)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Stock adjusted",
++          content = @Content(schema = @Schema(implementation = SparepartStockView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Stock balance or location not found"),
++      @ApiResponse(responseCode = "409", description = "NEGATIVE_STOCK_REJECTED")
++  })
++  @PostMapping("/{materialCode}/adjust")
++  public SparepartStockView adjust(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID locationId, @PathVariable String materialCode,
++      @Valid @RequestBody AdjustLocationStockRequest request) {
++    return toView(service.adjustAtLocation(user, locationId, materialCode, request.delta()));
++  }
++
++  private SparepartStockView toView(InventoryStockBalance balance) {
++    var sparepart = spareparts.findById(balance.sparepartId()).orElse(null);
++    var materialCode = sparepart != null ? sparepart.getMaterialCode() : null;
++    var sparepartCode = sparepart != null ? sparepart.getCode() : null;
++    var sparepartName = sparepart != null ? sparepart.getName() : null;
++    var location = locations.findById(balance.locationId()).orElse(null);
++    var locationCode = location != null ? location.getCode() : null;
++    var plantId = location != null ? location.getPlantId() : null;
++    return SparepartStockView.from(balance, materialCode, sparepartCode, sparepartName,
++        locationCode, plantId);
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryStockExceptionHandler.java b/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryStockExceptionHandler.java
+new file mode 100644
+index 0000000..928f73f
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryStockExceptionHandler.java
+@@ -0,0 +1,121 @@
++package com.syncro.inventory.api;
++
++import com.syncro.inventory.application.InventoryLocationService.InventoryLocationNotFoundException;
++import com.syncro.inventory.application.InventoryStockService.InventoryStockForbiddenException;
++import com.syncro.inventory.application.InventoryStockService.InventoryStockValidationException;
++import com.syncro.inventory.application.InventoryStockService.NegativeStockRejectedException;
++import com.syncro.inventory.application.InventoryStockService.SparepartNotFoundException;
++import com.syncro.inventory.application.InventoryStockService.StockBalanceNotFoundException;
++import com.syncro.inventory.application.InventoryStockService.VersionConflictException;
++import com.syncro.inventory.api.InventoryLocationDtos.ErrorResponse;
++import jakarta.validation.ConstraintViolationException;
++import java.time.Clock;
++import java.time.Instant;
++import java.util.LinkedHashMap;
++import java.util.Map;
++import java.util.UUID;
++import org.springframework.core.Ordered;
++import org.springframework.core.annotation.Order;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.http.converter.HttpMessageNotReadableException;
++import org.springframework.web.bind.MethodArgumentNotValidException;
++import org.springframework.web.bind.annotation.ExceptionHandler;
++import org.springframework.web.bind.annotation.RestControllerAdvice;
++import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
++
++/**
++ * Error mapping for the location-scoped stock-balances API (story 18-3). One stable
++ * shape (code/message/fieldErrors/timestamp/traceId) with the same machine-readable
++ * codes the sparepart-stock surface uses: INVENTORY_LOCATION_NOT_FOUND (404),
++ * SPAREPART_NOT_FOUND (404), STOCK_NOT_FOUND (404), NEGATIVE_STOCK_REJECTED (409),
++ * VERSION_CONFLICT (409), FORBIDDEN (403), VALIDATION_ERROR (400).
++ */
++@Order(Ordered.HIGHEST_PRECEDENCE)
++@RestControllerAdvice(assignableTypes = InventoryLocationStockController.class)
++public class InventoryStockExceptionHandler {
++
++  private final Clock clock;
++
++  public InventoryStockExceptionHandler(Clock clock) {
++    this.clock = clock;
++  }
++
++  @ExceptionHandler(MethodArgumentNotValidException.class)
++  ResponseEntity<ErrorResponse> validationError(MethodArgumentNotValidException exception) {
++    var fieldErrors = new LinkedHashMap<String, String>();
++    for (var error : exception.getBindingResult().getFieldErrors()) {
++      fieldErrors.putIfAbsent(error.getField(), "Invalid value.");
++    }
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", fieldErrors);
++  }
++
++  @ExceptionHandler(ConstraintViolationException.class)
++  ResponseEntity<ErrorResponse> constraintViolation(ConstraintViolationException exception) {
++    var fieldErrors = new LinkedHashMap<String, String>();
++    for (var violation : exception.getConstraintViolations()) {
++      fieldErrors.putIfAbsent(violation.getPropertyPath().toString(), violation.getMessage());
++    }
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", fieldErrors);
++  }
++
++  @ExceptionHandler(InventoryStockValidationException.class)
++  ResponseEntity<ErrorResponse> stockValidation(InventoryStockValidationException exception) {
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
++        exception.getFieldErrors());
++  }
++
++  @ExceptionHandler(HttpMessageNotReadableException.class)
++  ResponseEntity<ErrorResponse> malformedJson() {
++    return error(HttpStatus.BAD_REQUEST, "MALFORMED_JSON", "Request body is malformed.", Map.of());
++  }
++
++  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
++  ResponseEntity<ErrorResponse> invalidPathValue() {
++    return error(HttpStatus.BAD_REQUEST, "INVALID_PATH_VALUE", "Path value is invalid.", Map.of());
++  }
++
++  @ExceptionHandler(InventoryStockForbiddenException.class)
++  ResponseEntity<ErrorResponse> forbidden() {
++    return error(HttpStatus.FORBIDDEN, "FORBIDDEN",
++        "You do not have permission to access this resource.", Map.of());
++  }
++
++  /** Unknown or foreign-plant locationId → 404 (never a cross-plant leak). */
++  @ExceptionHandler(InventoryLocationNotFoundException.class)
++  ResponseEntity<ErrorResponse> locationNotFound() {
++    return error(HttpStatus.NOT_FOUND, "INVENTORY_LOCATION_NOT_FOUND",
++        "Inventory location was not found.", Map.of());
++  }
++
++  @ExceptionHandler(StockBalanceNotFoundException.class)
++  ResponseEntity<ErrorResponse> stockNotFound() {
++    return error(HttpStatus.NOT_FOUND, "STOCK_NOT_FOUND", "Stock balance was not found.", Map.of());
++  }
++
++  @ExceptionHandler(SparepartNotFoundException.class)
++  ResponseEntity<ErrorResponse> sparepartNotFound() {
++    return error(HttpStatus.NOT_FOUND, "SPAREPART_NOT_FOUND", "Sparepart was not found.", Map.of());
++  }
++
++  /** Atomic conditional update matched 0 rows → stock would go negative. */
++  @ExceptionHandler(NegativeStockRejectedException.class)
++  ResponseEntity<ErrorResponse> negativeStockRejected() {
++    return error(HttpStatus.CONFLICT, "NEGATIVE_STOCK_REJECTED",
++        "The adjustment would make stock negative.", Map.of());
++  }
++
++  /** Optimistic-lock mismatch on PUT. */
++  @ExceptionHandler(VersionConflictException.class)
++  ResponseEntity<ErrorResponse> versionConflict() {
++    return error(HttpStatus.CONFLICT, "VERSION_CONFLICT",
++        "Concurrent update detected; reload and retry.", Map.of());
++  }
++
++  private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message,
++      Map<String, String> fieldErrors) {
++    return ResponseEntity.status(status)
++        .body(new ErrorResponse(code, message, fieldErrors, Instant.now(clock).toString(),
++            UUID.randomUUID().toString()));
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/inventory/application/InventoryStockService.java b/syncro/apps/backend/src/main/java/com/syncro/inventory/application/InventoryStockService.java
+index 5835462..b238d94 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/inventory/application/InventoryStockService.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/inventory/application/InventoryStockService.java
+@@ -7,6 +7,7 @@ import com.syncro.audit.domain.AuditEntityType;
+ import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
+ import com.syncro.auth.domain.ApplicationRole;
+ import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
++import com.syncro.inventory.application.InventoryLocationService.InventoryLocationNotFoundException;
+ import com.syncro.inventory.domain.InventoryStockBalance;
+ import com.syncro.inventory.infrastructure.db.InventoryLocationEntity;
+ import com.syncro.inventory.infrastructure.db.InventoryLocationRepository;
+@@ -69,7 +70,9 @@ public class InventoryStockService {
+   /**
+    * Upsert semantics: a missing balance row is created with the provided values
+    * (version starts at 0); an existing row is fully overwritten with the provided
+-   * fields and the version is advanced (optimistic lock).
++   * fields and the version is advanced (optimistic lock). The command's optional
++   * {@code locationId} (story 18-3) targets a named location — when absent the
++   * plant's default location is used, exactly as before.
+    */
+   @Transactional
+   public InventoryStockBalance upsert(AuthenticatedUser user, UpsertBalanceCommand command) {
+@@ -79,27 +82,51 @@ public class InventoryStockService {
+     requireNonNegative(command.reserved(), "reserved");
+     requireNonNegative(command.consumed(), "consumed");
+     requireNonNegative(command.minimumStock(), "minimumStock");
+-    var location = defaultLocation(command.plantId());
++    var location = resolveLocation(command.plantId(), command.locationId());
++    return upsertInternal(user, command.plantId(), location, sparepart, command.available(),
++        command.reserved(), command.consumed(), command.minimumStock());
++  }
++
++  /**
++   * Location-scoped upsert (story 18-3, {@code /inventory-locations/{id}/stock-balances}):
++   * the location is resolved first and the plant is derived from it — the plant never
++   * comes from the request body, so a caller cannot spoof a cross-plant mutation.
++   */
++  @Transactional
++  public InventoryStockBalance upsertAtLocation(AuthenticatedUser user, UUID locationId,
++      LocationUpsertCommand command) {
++    var location = requireKnownLocation(locationId);
++    requireMutationAccess(user, location.getPlantId());
++    var sparepart = requireKnownSparepart(command.materialCode());
++    requireNonNegative(command.available(), "available");
++    requireNonNegative(command.reserved(), "reserved");
++    requireNonNegative(command.consumed(), "consumed");
++    requireNonNegative(command.minimumStock(), "minimumStock");
++    return upsertInternal(user, location.getPlantId(), location, sparepart, command.available(),
++        command.reserved(), command.consumed(), command.minimumStock());
++  }
++
++  private InventoryStockBalance upsertInternal(AuthenticatedUser user, UUID plantId,
++      InventoryLocationEntity location, SparepartEntity sparepart, BigDecimal available,
++      BigDecimal reserved, BigDecimal consumed, BigDecimal minimumStock) {
+     var now = Instant.now(clock);
+     var existing = balances.findBySparepartIdAndLocationId(sparepart.getId(), location.getId())
+         .orElse(null);
+     if (existing == null) {
+       var entity = new InventoryStockBalanceEntity(UUID.randomUUID(), sparepart.getId(),
+-          location.getId(), command.available(), command.reserved(), command.consumed(),
+-          command.minimumStock(), now, now);
++          location.getId(), available, reserved, consumed, minimumStock, now, now);
+       var saved = balances.saveAndFlush(entity);
+       auditLog.record(user, new AuditRecord(AuditAction.CREATE,
+           AuditEntityType.INVENTORY_STOCK_BALANCE, saved.getId(), entityLabel(sparepart, saved),
+-          command.plantId(), null, balanceValues(sparepart, saved), null));
++          plantId, null, balanceValues(sparepart, saved), null));
+       return toDomain(saved);
+     }
+     var previous = balanceValues(sparepart, existing);
+-    existing.replace(command.available(), command.reserved(), command.consumed(),
+-        command.minimumStock(), now);
++    existing.replace(available, reserved, consumed, minimumStock, now);
+     var saved = balances.saveAndFlush(existing);
+     auditLog.record(user, new AuditRecord(AuditAction.UPDATE,
+         AuditEntityType.INVENTORY_STOCK_BALANCE, saved.getId(), entityLabel(sparepart, saved),
+-        command.plantId(), previous, balanceValues(sparepart, saved), null));
++        plantId, previous, balanceValues(sparepart, saved), null));
+     return toDomain(saved);
+   }
+ 
+@@ -123,7 +150,7 @@ public class InventoryStockService {
+           "At least one of available, reserved, consumed or minimumStock must be provided."));
+     }
+     var sparepart = requireKnownSparepart(materialCode);
+-    var location = defaultLocation(command.plantId());
++    var location = resolveLocation(command.plantId(), command.locationId());
+     var existing = findBalance(sparepart.getId(), location.getId());
+     if (existing.getVersion() != command.version()) {
+       throw new VersionConflictException();
+@@ -155,10 +182,28 @@ public class InventoryStockService {
+       AdjustBalanceCommand command) {
+     requireMutationAccess(user, command.plantId());
+     var sparepart = requireKnownSparepart(materialCode);
+-    var location = defaultLocation(command.plantId());
++    var location = resolveLocation(command.plantId(), command.locationId());
++    return adjustInternal(user, command.plantId(), location, sparepart, command.delta());
++  }
++
++  /**
++   * Location-scoped adjust (story 18-3): plant derived from the location, never from
++   * the body; the same atomic conditional update and NEGATIVE_STOCK_REJECTED guard
++   * apply.
++   */
++  @Transactional
++  public InventoryStockBalance adjustAtLocation(AuthenticatedUser user, UUID locationId,
++      String materialCode, BigDecimal delta) {
++    var location = requireKnownLocation(locationId);
++    requireMutationAccess(user, location.getPlantId());
++    var sparepart = requireKnownSparepart(materialCode);
++    return adjustInternal(user, location.getPlantId(), location, sparepart, delta);
++  }
++
++  private InventoryStockBalance adjustInternal(AuthenticatedUser user, UUID plantId,
++      InventoryLocationEntity location, SparepartEntity sparepart, BigDecimal delta) {
+     var existing = findBalance(sparepart.getId(), location.getId());
+     var previous = balanceValues(sparepart, existing);
+-    var delta = command.delta();
+     var now = Instant.now(clock);
+     int rows = balances.adjustAvailableIfSufficient(sparepart.getId(), location.getId(), delta, now);
+     if (rows == 0) {
+@@ -168,7 +213,7 @@ public class InventoryStockService {
+     var updated = findBalance(sparepart.getId(), location.getId());
+     auditLog.record(user, new AuditRecord(AuditAction.UPDATE,
+         AuditEntityType.INVENTORY_STOCK_BALANCE, updated.getId(), entityLabel(sparepart, updated),
+-        command.plantId(), previous, balanceValues(sparepart, updated), null));
++        plantId, previous, balanceValues(sparepart, updated), null));
+     return toDomain(updated);
+   }
+ 
+@@ -235,6 +280,21 @@ public class InventoryStockService {
+         .toList();
+   }
+ 
++  /**
++   * Reorder-warning rows at one location (story 18-3). The location is validated
++   * against the requested plant — a foreign locationId is 404, never a cross-plant
++   * read. The warning stays a derived signal (available &le; minimum_stock).
++   */
++  @Transactional(readOnly = true)
++  public List<InventoryStockBalance> reorderWarnings(AuthenticatedUser user, UUID plantId,
++      UUID locationId) {
++    requireReadAccess(user, plantId);
++    var location = requireLocationInPlant(locationId, plantId);
++    return balances.findReorderWarningsByLocationId(location.getId()).stream()
++        .map(InventoryStockService::toDomain)
++        .toList();
++  }
++
+   /** All balance rows visible in a plant (read path for the Stock page). */
+   @Transactional(readOnly = true)
+   public List<InventoryStockBalance> list(AuthenticatedUser user, UUID plantId) {
+@@ -244,6 +304,29 @@ public class InventoryStockService {
+         .toList();
+   }
+ 
++  /** All balance rows at one location of the plant (story 18-3, optional locationId). */
++  @Transactional(readOnly = true)
++  public List<InventoryStockBalance> list(AuthenticatedUser user, UUID plantId, UUID locationId) {
++    requireReadAccess(user, plantId);
++    var location = requireLocationInPlant(locationId, plantId);
++    return balances.findAllByLocationIdOrderBySparepartIdAsc(location.getId()).stream()
++        .map(InventoryStockService::toDomain)
++        .toList();
++  }
++
++  /**
++   * All balance rows at a location (story 18-3, {@code /inventory-locations/{id}/stock-balances}):
++   * read gate applies to the location's plant; unknown location → 404.
++   */
++  @Transactional(readOnly = true)
++  public List<InventoryStockBalance> listAtLocation(AuthenticatedUser user, UUID locationId) {
++    var location = requireKnownLocation(locationId);
++    requireReadAccess(user, location.getPlantId());
++    return balances.findAllByLocationIdOrderBySparepartIdAsc(location.getId()).stream()
++        .map(InventoryStockService::toDomain)
++        .toList();
++  }
++
+   // -------------------------------------------------------------------------
+   // Helpers
+   // -------------------------------------------------------------------------
+@@ -258,6 +341,31 @@ public class InventoryStockService {
+         .orElseThrow(DefaultLocationNotFoundException::new);
+   }
+ 
++  /**
++   * Story 18-3 location resolution: an explicit locationId must exist and belong to
++   * the plant (404 INVENTORY_LOCATION_NOT_FOUND otherwise — a foreign-plant id is
++   * indistinguishable from an unknown one, so no cross-plant leak); an absent
++   * locationId falls back to the plant default, byte-identical to the legacy path.
++   */
++  private InventoryLocationEntity resolveLocation(UUID plantId, UUID locationId) {
++    if (locationId == null) {
++      return defaultLocation(plantId);
++    }
++    return requireLocationInPlant(locationId, plantId);
++  }
++
++  private InventoryLocationEntity requireLocationInPlant(UUID locationId, UUID plantId) {
++    var location = requireKnownLocation(locationId);
++    if (!location.getPlantId().equals(plantId)) {
++      throw new InventoryLocationNotFoundException();
++    }
++    return location;
++  }
++
++  private InventoryLocationEntity requireKnownLocation(UUID locationId) {
++    return locations.findById(locationId).orElseThrow(InventoryLocationNotFoundException::new);
++  }
++
+   private void requireMutationAccess(AuthenticatedUser user, UUID plantId) {
+     if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
+       return;
+@@ -335,18 +443,46 @@ public class InventoryStockService {
+         entity.getVersion(), entity.getCreatedAt(), entity.getUpdatedAt());
+   }
+ 
+-  /** Upsert-create command. */
++  /**
++   * Upsert-create command. {@code locationId} (story 18-3) is optional: null targets
++   * the plant's default location, preserving the legacy contract.
++   */
+   public record UpsertBalanceCommand(String materialCode, UUID plantId, BigDecimal available,
+-      BigDecimal reserved, BigDecimal consumed, BigDecimal minimumStock) {
++      BigDecimal reserved, BigDecimal consumed, BigDecimal minimumStock, UUID locationId) {
++
++    public UpsertBalanceCommand(String materialCode, UUID plantId, BigDecimal available,
++        BigDecimal reserved, BigDecimal consumed, BigDecimal minimumStock) {
++      this(materialCode, plantId, available, reserved, consumed, minimumStock, null);
++    }
+   }
+ 
+-  /** PUT partial-overwrite command (all four optional, at least one required). */
++  /**
++   * PUT partial-overwrite command (all four optional, at least one required).
++   * {@code locationId} optional — null targets the plant default (story 18-3).
++   */
+   public record UpdateBalanceCommand(UUID plantId, long version, BigDecimal available,
+-      BigDecimal reserved, BigDecimal consumed, BigDecimal minimumStock) {
++      BigDecimal reserved, BigDecimal consumed, BigDecimal minimumStock, UUID locationId) {
++
++    public UpdateBalanceCommand(UUID plantId, long version, BigDecimal available,
++        BigDecimal reserved, BigDecimal consumed, BigDecimal minimumStock) {
++      this(plantId, version, available, reserved, consumed, minimumStock, null);
++    }
++  }
++
++  /** POST /adjust signed-delta command. {@code locationId} optional (story 18-3). */
++  public record AdjustBalanceCommand(UUID plantId, BigDecimal delta, UUID locationId) {
++
++    public AdjustBalanceCommand(UUID plantId, BigDecimal delta) {
++      this(plantId, delta, null);
++    }
+   }
+ 
+-  /** POST /adjust signed-delta command. */
+-  public record AdjustBalanceCommand(UUID plantId, BigDecimal delta) {
++  /**
++   * Location-scoped upsert command (story 18-3): no plantId — the plant is derived
++   * from the location, which is what makes cross-plant spoofing impossible.
++   */
++  public record LocationUpsertCommand(String materialCode, BigDecimal available,
++      BigDecimal reserved, BigDecimal consumed, BigDecimal minimumStock) {
+   }
+ 
+   public static class StockBalanceNotFoundException extends RuntimeException {
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/inventory/infrastructure/db/InventoryStockBalanceRepository.java b/syncro/apps/backend/src/main/java/com/syncro/inventory/infrastructure/db/InventoryStockBalanceRepository.java
+index 939bdef..534d541 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/inventory/infrastructure/db/InventoryStockBalanceRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/inventory/infrastructure/db/InventoryStockBalanceRepository.java
+@@ -91,6 +91,23 @@ public interface InventoryStockBalanceRepository extends JpaRepository<Inventory
+       """)
+   List<InventoryStockBalanceEntity> findAllByPlantId(@Param("plantId") UUID plantId);
+ 
++  /** All balance rows at one location (story 18-3, location-scoped list). */
++  List<InventoryStockBalanceEntity> findAllByLocationIdOrderBySparepartIdAsc(UUID locationId);
++
++  /**
++   * Reorder-warning rows at one location (story 18-3): same derived rule as
++   * {@link #findReorderWarnings} (available &le; minimum_stock, never persisted),
++   * narrowed to a single location id.
++   */
++  @Query("""
++      select s
++      from InventoryStockBalanceEntity s
++      where s.locationId = :locationId
++        and s.available <= s.minimumStock
++      order by s.sparepartId asc
++      """)
++  List<InventoryStockBalanceEntity> findReorderWarningsByLocationId(@Param("locationId") UUID locationId);
++
+   @Query("""
+       select s
+       from InventoryStockBalanceEntity s
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/api/SparepartStockController.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/api/SparepartStockController.java
+index 1a9a1b3..9a91c60 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/api/SparepartStockController.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/api/SparepartStockController.java
+@@ -38,6 +38,14 @@ import org.springframework.web.bind.annotation.RestController;
+  * endpoints is {@code inventory_stock_balances} (blueprint E2); the URL contract and
+  * the material-code + plant addressing are unchanged so the frontend keeps working.
+  * Values carry the new available/reserved/consumed/minimumStock semantics.
++ *
++ * <p>Story 18-3: every endpoint accepts an optional {@code locationId} (query param
++ * on the reads, body field on the writes). Absent → the plant's default location,
++ * byte-identical to the legacy behavior; present → the service validates the location
++ * belongs to the plant (404 INVENTORY_LOCATION_NOT_FOUND otherwise) and operates on
++ * it. The plant still comes from the request here — the location-scoped
++ * {@code /inventory-locations/{id}/stock-balances} surface is where the plant is
++ * derived from the location instead.
+  */
+ @Validated
+ @RestController
+@@ -55,52 +63,64 @@ public class SparepartStockController {
+     this.locations = locations;
+   }
+ 
+-  @Operation(operationId = "listSparepartStock", summary = "List stock balances for a plant (FR-146)")
++  @Operation(operationId = "listSparepartStock",
++      summary = "List stock balances for a plant, optionally at one location (FR-146)")
+   @ApiResponses({
+       @ApiResponse(responseCode = "200", description = "Stock balances returned"),
+       @ApiResponse(responseCode = "401", description = "Authentication required"),
+-      @ApiResponse(responseCode = "403", description = "Forbidden")
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "INVENTORY_LOCATION_NOT_FOUND")
+   })
+   @GetMapping
+   public SparepartStockListView list(@AuthenticationPrincipal AuthenticatedUser user,
+-      @RequestParam UUID plantId) {
+-    var items = service.list(user, plantId).stream()
++      @RequestParam UUID plantId,
++      @RequestParam(required = false) UUID locationId) {
++    var balances = locationId == null
++        ? service.list(user, plantId)
++        : service.list(user, plantId, locationId);
++    var items = balances.stream()
+         .map(this::toView)
+         .toList();
+     return new SparepartStockListView(items);
+   }
+ 
+   @Operation(operationId = "listSparepartStockReorderWarnings",
+-      summary = "Reorder-warning rows for a plant (available <= minimum_stock)")
++      summary = "Reorder-warning rows for a plant (available <= minimum_stock), optionally at one location")
+   @ApiResponses({
+       @ApiResponse(responseCode = "200", description = "Reorder warnings returned"),
+       @ApiResponse(responseCode = "401", description = "Authentication required"),
+-      @ApiResponse(responseCode = "403", description = "Forbidden")
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "INVENTORY_LOCATION_NOT_FOUND")
+   })
+   @GetMapping("/reorder-warnings")
+   public SparepartStockListView reorderWarnings(@AuthenticationPrincipal AuthenticatedUser user,
+-      @RequestParam UUID plantId) {
+-    var items = service.reorderWarnings(user, plantId).stream()
++      @RequestParam UUID plantId,
++      @RequestParam(required = false) UUID locationId) {
++    var balances = locationId == null
++        ? service.reorderWarnings(user, plantId)
++        : service.reorderWarnings(user, plantId, locationId);
++    var items = balances.stream()
+         .map(this::toView)
+         .toList();
+     return new SparepartStockListView(items);
+   }
+ 
+   @Operation(operationId = "createSparepartStock",
+-      summary = "Create (or upsert) a stock balance for a material code and plant (FR-146)")
++      summary = "Create (or upsert) a stock balance for a material code and plant, optionally at one location (FR-146)")
+   @ApiResponses({
+       @ApiResponse(responseCode = "201", description = "Stock balance created",
+           content = @Content(schema = @Schema(implementation = SparepartStockView.class))),
+       @ApiResponse(responseCode = "400", description = "Validation failed"),
+       @ApiResponse(responseCode = "401", description = "Authentication required"),
+       @ApiResponse(responseCode = "403", description = "Forbidden"),
+-      @ApiResponse(responseCode = "404", description = "Sparepart not found")
++      @ApiResponse(responseCode = "404", description = "Sparepart or location not found")
+   })
+   @PostMapping
+   public ResponseEntity<SparepartStockView> create(@AuthenticationPrincipal AuthenticatedUser user,
+       @Valid @RequestBody CreateSparepartStockRequest request) {
+     var command = new UpsertBalanceCommand(request.materialCode(), request.plantId(),
+-        request.available(), request.reserved(), request.consumed(), request.minimumStock());
++        request.available(), request.reserved(), request.consumed(), request.minimumStock(),
++        request.locationId());
+     var created = service.upsert(user, command);
+     return ResponseEntity.status(HttpStatus.CREATED).body(toView(created));
+   }
+@@ -113,14 +133,15 @@ public class SparepartStockController {
+       @ApiResponse(responseCode = "400", description = "Validation failed"),
+       @ApiResponse(responseCode = "401", description = "Authentication required"),
+       @ApiResponse(responseCode = "403", description = "Forbidden"),
+-      @ApiResponse(responseCode = "404", description = "Stock balance not found"),
++      @ApiResponse(responseCode = "404", description = "Stock balance or location not found"),
+       @ApiResponse(responseCode = "409", description = "VERSION_CONFLICT")
+   })
+   @PutMapping("/{materialCode}")
+   public SparepartStockView update(@AuthenticationPrincipal AuthenticatedUser user,
+       @PathVariable String materialCode, @Valid @RequestBody UpdateSparepartStockRequest request) {
+     var command = new UpdateBalanceCommand(request.plantId(), request.version(),
+-        request.available(), request.reserved(), request.consumed(), request.minimumStock());
++        request.available(), request.reserved(), request.consumed(), request.minimumStock(),
++        request.locationId());
+     return toView(service.update(user, materialCode, command));
+   }
+ 
+@@ -132,13 +153,13 @@ public class SparepartStockController {
+       @ApiResponse(responseCode = "400", description = "Validation failed"),
+       @ApiResponse(responseCode = "401", description = "Authentication required"),
+       @ApiResponse(responseCode = "403", description = "Forbidden"),
+-      @ApiResponse(responseCode = "404", description = "Stock balance not found"),
++      @ApiResponse(responseCode = "404", description = "Stock balance or location not found"),
+       @ApiResponse(responseCode = "409", description = "NEGATIVE_STOCK_REJECTED")
+   })
+   @PostMapping("/{materialCode}/adjust")
+   public SparepartStockView adjust(@AuthenticationPrincipal AuthenticatedUser user,
+       @PathVariable String materialCode, @Valid @RequestBody AdjustSparepartStockRequest request) {
+-    var command = new AdjustBalanceCommand(request.plantId(), request.delta());
++    var command = new AdjustBalanceCommand(request.plantId(), request.delta(), request.locationId());
+     return toView(service.adjust(user, materialCode, command));
+   }
+ 
+@@ -149,9 +170,12 @@ public class SparepartStockController {
+   private SparepartStockView toView(InventoryStockBalance balance) {
+     var sparepart = spareparts.findById(balance.sparepartId()).orElse(null);
+     var materialCode = sparepart != null ? sparepart.getMaterialCode() : null;
+-    var plantId = locations.findById(balance.locationId())
+-        .map(location -> location.getPlantId())
+-        .orElse(null);
+-    return SparepartStockView.from(balance, materialCode, plantId);
++    var sparepartCode = sparepart != null ? sparepart.getCode() : null;
++    var sparepartName = sparepart != null ? sparepart.getName() : null;
++    var location = locations.findById(balance.locationId()).orElse(null);
++    var locationCode = location != null ? location.getCode() : null;
++    var plantId = location != null ? location.getPlantId() : null;
++    return SparepartStockView.from(balance, materialCode, sparepartCode, sparepartName,
++        locationCode, plantId);
+   }
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/api/SparepartStockDtos.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/api/SparepartStockDtos.java
+index 5a3e6aa..82029a9 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/api/SparepartStockDtos.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/api/SparepartStockDtos.java
+@@ -22,12 +22,19 @@ public final class SparepartStockDtos {
+   private SparepartStockDtos() {
+   }
+ 
+-  /** Stock balance read model (FR-146 remapped to blueprint E2 columns). */
++  /**
++   * Stock balance read model (FR-146 remapped to blueprint E2 columns). Story 18-3
++   * adds locationCode + sparepartCode/sparepartName (additive JSON fields) so
++   * per-location rows are self-describing; existing consumers are unaffected.
++   */
+   public record SparepartStockView(
+       UUID balanceId,
+       UUID sparepartId,
+       UUID locationId,
++      String locationCode,
+       String materialCode,
++      String sparepartCode,
++      String sparepartName,
+       UUID plantId,
+       BigDecimal available,
+       BigDecimal reserved,
+@@ -39,9 +46,10 @@ public final class SparepartStockDtos {
+       boolean reorderWarning) {
+ 
+     public static SparepartStockView from(InventoryStockBalance balance, String materialCode,
+-        UUID plantId) {
++        String sparepartCode, String sparepartName, String locationCode, UUID plantId) {
+       return new SparepartStockView(balance.id(), balance.sparepartId(), balance.locationId(),
+-          materialCode, plantId, balance.available(), balance.reserved(), balance.consumed(),
++          locationCode, materialCode, sparepartCode, sparepartName, plantId,
++          balance.available(), balance.reserved(), balance.consumed(),
+           balance.minimumStock(), balance.version(), balance.createdAt(), balance.updatedAt(),
+           balance.reorderWarning());
+     }
+@@ -50,20 +58,26 @@ public final class SparepartStockDtos {
+   public record SparepartStockListView(List<SparepartStockView> items) {
+   }
+ 
+-  /** POST /api/v1/sparepart-stock — create (upsert semantics, version starts at 0). */
++  /**
++   * POST /api/v1/sparepart-stock — create (upsert semantics, version starts at 0).
++   * Story 18-3: optional {@code locationId} targets a named location; absent keeps
++   * the plant-default behavior.
++   */
+   public record CreateSparepartStockRequest(
+       @NotBlank @Size(max = 64) String materialCode,
+       @NotNull UUID plantId,
+       @NotNull @Digits(integer = 16, fraction = 2) BigDecimal available,
+       @NotNull @Digits(integer = 16, fraction = 2) BigDecimal reserved,
+       @NotNull @Digits(integer = 16, fraction = 2) BigDecimal consumed,
+-      @NotNull @Digits(integer = 16, fraction = 2) BigDecimal minimumStock) {
++      @NotNull @Digits(integer = 16, fraction = 2) BigDecimal minimumStock,
++      UUID locationId) {
+   }
+ 
+   /**
+    * PUT /api/v1/sparepart-stock/{materialCode} — partial overwrite: all four value
+    * fields are optional but at least one is required; the version is mandatory for
+-   * optimistic locking (409 VERSION_CONFLICT on mismatch).
++   * optimistic locking (409 VERSION_CONFLICT on mismatch). Optional {@code locationId}
++   * (story 18-3) targets a named location; absent keeps the plant default.
+    */
+   public record UpdateSparepartStockRequest(
+       @NotNull UUID plantId,
+@@ -71,13 +85,19 @@ public final class SparepartStockDtos {
+       @Digits(integer = 16, fraction = 2) BigDecimal available,
+       @Digits(integer = 16, fraction = 2) BigDecimal reserved,
+       @Digits(integer = 16, fraction = 2) BigDecimal consumed,
+-      @Digits(integer = 16, fraction = 2) BigDecimal minimumStock) {
++      @Digits(integer = 16, fraction = 2) BigDecimal minimumStock,
++      UUID locationId) {
+   }
+ 
+-  /** POST /api/v1/sparepart-stock/{materialCode}/adjust — signed delta (FR-146). */
++  /**
++   * POST /api/v1/sparepart-stock/{materialCode}/adjust — signed delta (FR-146).
++   * Optional {@code locationId} (story 18-3) targets a named location; absent keeps
++   * the plant default.
++   */
+   public record AdjustSparepartStockRequest(
+       @NotNull UUID plantId,
+-      @NotNull @Digits(integer = 16, fraction = 2) BigDecimal delta) {
++      @NotNull @Digits(integer = 16, fraction = 2) BigDecimal delta,
++      UUID locationId) {
+   }
+ 
+   public record ErrorResponse(String code, String message, Map<String, String> fieldErrors, String timestamp,
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/api/SparepartStockExceptionHandler.java b/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/api/SparepartStockExceptionHandler.java
+index 9abb483..b57113b 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/api/SparepartStockExceptionHandler.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/sparepart/stock/api/SparepartStockExceptionHandler.java
+@@ -1,5 +1,6 @@
+ package com.syncro.sparepart.stock.api;
+ 
++import com.syncro.inventory.application.InventoryLocationService.InventoryLocationNotFoundException;
+ import com.syncro.inventory.application.InventoryStockService.DefaultLocationNotFoundException;
+ import com.syncro.inventory.application.InventoryStockService.InventoryStockForbiddenException;
+ import com.syncro.inventory.application.InventoryStockService.InventoryStockValidationException;
+@@ -102,6 +103,13 @@ public class SparepartStockExceptionHandler {
+         "The plant's default inventory location was not found.", Map.of());
+   }
+ 
++  /** Story 18-3: an explicit locationId that is unknown or belongs to another plant. */
++  @ExceptionHandler(InventoryLocationNotFoundException.class)
++  ResponseEntity<ErrorResponse> inventoryLocationNotFound() {
++    return error(HttpStatus.NOT_FOUND, "INVENTORY_LOCATION_NOT_FOUND",
++        "Inventory location was not found.", Map.of());
++  }
++
+   @ExceptionHandler(SparepartNotFoundException.class)
+   ResponseEntity<ErrorResponse> sparepartNotFound() {
+     return error(HttpStatus.NOT_FOUND, "SPAREPART_NOT_FOUND", "Sparepart was not found.", Map.of());
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/inventory/api/InventoryLocationStockControllerTest.java b/syncro/apps/backend/src/test/java/com/syncro/inventory/api/InventoryLocationStockControllerTest.java
+new file mode 100644
+index 0000000..add9f69
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/inventory/api/InventoryLocationStockControllerTest.java
+@@ -0,0 +1,240 @@
++package com.syncro.inventory.api;
++
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.eq;
++import static org.mockito.Mockito.doThrow;
++import static org.mockito.Mockito.when;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
++
++import com.syncro.TestJsonConfig;
++import com.syncro.auth.application.JwtTokenService;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.JwtAuthenticationFilter;
++import com.syncro.config.SecurityConfig;
++import com.syncro.config.TimeConfig;
++import com.syncro.inventory.application.InventoryLocationService.InventoryLocationNotFoundException;
++import com.syncro.inventory.application.InventoryStockService;
++import com.syncro.inventory.application.InventoryStockService.InventoryStockForbiddenException;
++import com.syncro.inventory.application.InventoryStockService.LocationUpsertCommand;
++import com.syncro.inventory.application.InventoryStockService.NegativeStockRejectedException;
++import com.syncro.inventory.application.InventoryStockService.SparepartNotFoundException;
++import com.syncro.inventory.application.InventoryStockService.StockBalanceNotFoundException;
++import com.syncro.inventory.domain.InventoryStockBalance;
++import com.syncro.inventory.infrastructure.db.InventoryLocationEntity;
++import com.syncro.inventory.infrastructure.db.InventoryLocationRepository;
++import com.syncro.sparepart.infrastructure.SparepartEntity;
++import com.syncro.sparepart.infrastructure.SparepartRepository;
++import java.math.BigDecimal;
++import java.time.Instant;
++import java.util.List;
++import java.util.Optional;
++import java.util.UUID;
++import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
++import org.springframework.context.annotation.Import;
++import org.springframework.http.MediaType;
++import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
++import org.springframework.security.core.authority.SimpleGrantedAuthority;
++import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
++import org.springframework.test.context.bean.override.mockito.MockitoBean;
++import org.springframework.test.web.servlet.MockMvc;
++import org.springframework.test.web.servlet.request.RequestPostProcessor;
++
++/**
++ * Story 18-3: the location-scoped stock-balances API contract — status codes,
++ * machine-readable error codes and the additive view fields (locationCode,
++ * sparepartCode, sparepartName) on the shared SparepartStockView shape.
++ */
++@WebMvcTest(InventoryLocationStockController.class)
++@Import({SecurityConfig.class, InventoryStockExceptionHandler.class, JwtAuthenticationFilter.class,
++    TimeConfig.class, TestJsonConfig.class})
++class InventoryLocationStockControllerTest {
++
++  @Autowired
++  private MockMvc mockMvc;
++
++  @MockitoBean
++  private InventoryStockService service;
++  @MockitoBean
++  private SparepartRepository spareparts;
++  @MockitoBean
++  private InventoryLocationRepository locations;
++  @MockitoBean
++  private JwtTokenService jwtTokenService;
++
++  private static final UUID PLANT_ID = UUID.fromString("88888888-8888-8888-8888-888888888888");
++  private static final UUID SPAREPART_ID = UUID.fromString("99999999-9999-9999-9999-999999999999");
++  private static final UUID LOCATION_ID = UUID.fromString("77777777-7777-7777-7777-777777777777");
++  private static final Instant NOW = Instant.parse("2026-09-01T00:00:00Z");
++
++  @BeforeEach
++  void stubViewAssembly() {
++    var sparepart = new SparepartEntity(SPAREPART_ID, "SP-0001", "Part", null, null, null, null,
++        null, NOW, NOW);
++    sparepart.updateProcurement("MC-0001", null, NOW);
++    when(spareparts.findById(SPAREPART_ID)).thenReturn(Optional.of(sparepart));
++    when(locations.findById(LOCATION_ID)).thenReturn(Optional.of(new InventoryLocationEntity(
++        LOCATION_ID, PLANT_ID, "WS-B", "Workshop B", null, true, NOW, NOW)));
++  }
++
++  @Test
++  @DisplayName("18.3-API-001 P0 list returns rows with the additive location/sparepart fields")
++  void listReturnsRows() throws Exception {
++    var user = user(ApplicationRole.STOREKEEPER);
++    when(service.listAtLocation(eq(user), eq(LOCATION_ID))).thenReturn(List.of(balance()));
++
++    mockMvc.perform(get("/api/v1/inventory-locations/{id}/stock-balances", LOCATION_ID)
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.items[0].materialCode").value("MC-0001"))
++        .andExpect(jsonPath("$.items[0].locationCode").value("WS-B"))
++        .andExpect(jsonPath("$.items[0].sparepartCode").value("SP-0001"))
++        .andExpect(jsonPath("$.items[0].sparepartName").value("Part"))
++        .andExpect(jsonPath("$.items[0].plantId").value(PLANT_ID.toString()));
++  }
++
++  @Test
++  @DisplayName("18.3-API-002 P0 create returns 201 with the created view")
++  void createReturnsCreated() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    when(service.upsertAtLocation(eq(user), eq(LOCATION_ID), any(LocationUpsertCommand.class)))
++        .thenReturn(balance());
++
++    mockMvc.perform(post("/api/v1/inventory-locations/{id}/stock-balances", LOCATION_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"materialCode\":\"MC-0001\",\"available\":10,\"reserved\":0,"
++                + "\"consumed\":0,\"minimumStock\":5}"))
++        .andExpect(status().isCreated())
++        .andExpect(jsonPath("$.locationId").value(LOCATION_ID.toString()))
++        .andExpect(jsonPath("$.locationCode").value("WS-B"));
++  }
++
++  @Test
++  @DisplayName("18.3-API-003 P0 blank material code maps to 400 VALIDATION_ERROR")
++  void createBlankMaterialCode() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++
++    mockMvc.perform(post("/api/v1/inventory-locations/{id}/stock-balances", LOCATION_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"materialCode\":\"\",\"available\":10,\"reserved\":0,\"consumed\":0,"
++                + "\"minimumStock\":5}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.materialCode").exists());
++  }
++
++  @Test
++  @DisplayName("18.3-API-004 P0 wrong role maps to 403 FORBIDDEN")
++  void createForbidden() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    doThrow(new InventoryStockForbiddenException())
++        .when(service).upsertAtLocation(eq(user), eq(LOCATION_ID), any(LocationUpsertCommand.class));
++
++    mockMvc.perform(post("/api/v1/inventory-locations/{id}/stock-balances", LOCATION_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"materialCode\":\"MC-0001\",\"available\":10,\"reserved\":0,"
++                + "\"consumed\":0,\"minimumStock\":5}"))
++        .andExpect(status().isForbidden())
++        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
++  }
++
++  @Test
++  @DisplayName("18.3-API-005 P0 unknown/foreign location maps to 404 INVENTORY_LOCATION_NOT_FOUND")
++  void locationNotFound() throws Exception {
++    var user = user(ApplicationRole.STOREKEEPER);
++    when(service.listAtLocation(eq(user), eq(LOCATION_ID)))
++        .thenThrow(new InventoryLocationNotFoundException());
++
++    mockMvc.perform(get("/api/v1/inventory-locations/{id}/stock-balances", LOCATION_ID)
++            .with(auth(user)))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("INVENTORY_LOCATION_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("18.3-API-006 P0 adjust underflow maps to 409 NEGATIVE_STOCK_REJECTED")
++  void adjustNegativeRejected() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    doThrow(new NegativeStockRejectedException())
++        .when(service).adjustAtLocation(eq(user), eq(LOCATION_ID), eq("MC-0001"), any());
++
++    mockMvc.perform(post("/api/v1/inventory-locations/{id}/stock-balances/{materialCode}/adjust",
++            LOCATION_ID, "MC-0001")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"delta\":-5}"))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("NEGATIVE_STOCK_REJECTED"));
++  }
++
++  @Test
++  @DisplayName("18.3-API-007 P0 adjust missing balance maps to 404 STOCK_NOT_FOUND")
++  void adjustStockNotFound() throws Exception {
++    var user = user(ApplicationRole.STOREKEEPER);
++    doThrow(new StockBalanceNotFoundException())
++        .when(service).adjustAtLocation(eq(user), eq(LOCATION_ID), eq("MC-0001"), any());
++
++    mockMvc.perform(post("/api/v1/inventory-locations/{id}/stock-balances/{materialCode}/adjust",
++            LOCATION_ID, "MC-0001")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"delta\":1}"))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("STOCK_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("18.3-API-008 P0 unknown material maps to 404 SPAREPART_NOT_FOUND")
++  void createUnknownSparepart() throws Exception {
++    var user = user(ApplicationRole.INVENTORY_MAINTENANCE);
++    doThrow(new SparepartNotFoundException())
++        .when(service).upsertAtLocation(eq(user), eq(LOCATION_ID), any(LocationUpsertCommand.class));
++
++    mockMvc.perform(post("/api/v1/inventory-locations/{id}/stock-balances", LOCATION_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"materialCode\":\"UNKNOWN\",\"available\":10,\"reserved\":0,"
++                + "\"consumed\":0,\"minimumStock\":5}"))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("SPAREPART_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("18.3-API-009 P1 non-UUID location path maps to 400 INVALID_PATH_VALUE")
++  void invalidPathValue() throws Exception {
++    var user = user(ApplicationRole.STOREKEEPER);
++
++    mockMvc.perform(get("/api/v1/inventory-locations/{id}/stock-balances", "not-a-uuid")
++            .with(auth(user)))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("INVALID_PATH_VALUE"));
++  }
++
++  private InventoryStockBalance balance() {
++    return new InventoryStockBalance(UUID.randomUUID(), SPAREPART_ID, LOCATION_ID,
++        new BigDecimal("10"), BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("5"),
++        0L, NOW, NOW);
++  }
++
++  private static AuthenticatedUser user(ApplicationRole role) {
++    return new AuthenticatedUser(UUID.randomUUID().toString(),
++        role.name().toLowerCase() + "@syncro.dev", role);
++  }
++
++  private static RequestPostProcessor auth(AuthenticatedUser user) {
++    return SecurityMockMvcRequestPostProcessors.authentication(new UsernamePasswordAuthenticationToken(
++        user,
++        null,
++        List.of(new SimpleGrantedAuthority("ROLE_" + user.applicationRole().name()))));
++  }
++}
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/inventory/application/InventoryStockLocationIntegrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/inventory/application/InventoryStockLocationIntegrationTest.java
+new file mode 100644
+index 0000000..aa02ee6
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/inventory/application/InventoryStockLocationIntegrationTest.java
+@@ -0,0 +1,497 @@
++package com.syncro.inventory.application;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.api.Assertions.assertThatThrownBy;
++
++import com.fasterxml.jackson.databind.ObjectMapper;
++import com.syncro.AbstractPostgresIntegrationTest;
++import com.syncro.audit.domain.AuditAction;
++import com.syncro.audit.domain.AuditEntityType;
++import com.syncro.audit.infrastructure.AuditLogEntity;
++import com.syncro.audit.infrastructure.AuditLogRepository;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.AuthUserEntity;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentEntity;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
++import com.syncro.auth.infrastructure.AuthUserRepository;
++import com.syncro.auth.infrastructure.PlantEntity;
++import com.syncro.auth.infrastructure.PlantRepository;
++import com.syncro.inventory.application.InventoryLocationService.InventoryLocationNotFoundException;
++import com.syncro.inventory.application.InventoryStockService.AdjustBalanceCommand;
++import com.syncro.inventory.application.InventoryStockService.InventoryStockForbiddenException;
++import com.syncro.inventory.application.InventoryStockService.InventoryStockValidationException;
++import com.syncro.inventory.application.InventoryStockService.LocationUpsertCommand;
++import com.syncro.inventory.application.InventoryStockService.NegativeStockRejectedException;
++import com.syncro.inventory.application.InventoryStockService.SparepartNotFoundException;
++import com.syncro.inventory.application.InventoryStockService.UpdateBalanceCommand;
++import com.syncro.inventory.application.InventoryStockService.UpsertBalanceCommand;
++import com.syncro.inventory.application.InventoryStockService.VersionConflictException;
++import com.syncro.inventory.infrastructure.db.InventoryLocationEntity;
++import com.syncro.inventory.infrastructure.db.InventoryLocationRepository;
++import com.syncro.inventory.infrastructure.db.InventoryStockBalanceEntity;
++import com.syncro.inventory.infrastructure.db.InventoryStockBalanceRepository;
++import com.syncro.machine.domain.MachineStatus;
++import com.syncro.machine.infrastructure.MachineEntity;
++import com.syncro.machine.infrastructure.MachineRepository;
++import com.syncro.masterdata.infrastructure.MachineGroupEntity;
++import com.syncro.masterdata.infrastructure.MachineGroupRepository;
++import com.syncro.sparepart.domain.SparepartTaxonomyDimension;
++import com.syncro.sparepart.infrastructure.SparepartEntity;
++import com.syncro.sparepart.infrastructure.SparepartRepository;
++import com.syncro.sparepart.infrastructure.SparepartTaxonomyEntity;
++import com.syncro.sparepart.infrastructure.SparepartTaxonomyRepository;
++import java.math.BigDecimal;
++import java.time.Instant;
++import java.time.LocalDate;
++import java.util.List;
++import java.util.UUID;
++import java.util.concurrent.atomic.AtomicInteger;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.security.crypto.password.PasswordEncoder;
++
++/**
++ * Story 18-3: location-aware stock balances against a real Postgres (Testcontainers).
++ * Covers every row of the spec's I/O matrix at the service boundary: list/create/
++ * upsert/adjust at a named location, the atomic underflow guard (409
++ * NEGATIVE_STOCK_REJECTED), the legacy no-locationId path (default location), the
++ * legacy path with an explicit locationId, per-location reorder warnings, the
++ * foreign-plant locationId 404 (never a cross-plant leak), the wrong-role 403, and
++ * the optimistic-lock 409. The plant for location-scoped calls is derived from the
++ * location, never from the body — the spoofing-prevention invariant.
++ */
++class InventoryStockLocationIntegrationTest extends AbstractPostgresIntegrationTest {
++
++  private static final Instant NOW = Instant.parse("2026-09-01T00:00:00Z");
++  private static final String DEFAULT_LOCATION_CODE = "GUDANG-UTAMA";
++  private static final AtomicInteger SEQ = new AtomicInteger();
++
++  @Autowired
++  private InventoryStockService service;
++  @Autowired
++  private InventoryLocationRepository locations;
++  @Autowired
++  private InventoryStockBalanceRepository balances;
++  @Autowired
++  private PlantRepository plants;
++  @Autowired
++  private MachineGroupRepository machineGroups;
++  @Autowired
++  private MachineRepository machines;
++  @Autowired
++  private SparepartTaxonomyRepository taxonomy;
++  @Autowired
++  private SparepartRepository spareparts;
++  @Autowired
++  private AuthUserRepository users;
++  @Autowired
++  private AuthUserPlantAssignmentRepository assignments;
++  @Autowired
++  private AuditLogRepository auditLogs;
++  @Autowired
++  private PasswordEncoder passwordEncoder;
++
++  private final ObjectMapper mapper = new ObjectMapper();
++
++  // --- List at a location ------------------------------------------------------
++
++  @Test
++  @DisplayName("18.3-LOC-001 P0 listAtLocation returns only that location's rows")
++  void listAtLocationIsLocationScoped() {
++    var plant = plant("STK-P1");
++    var defaultLoc = location(plant, DEFAULT_LOCATION_CODE);
++    var locB = location(plant, "WS-B");
++    var sparepart = sparepart(plant, "MC-0001");
++    balance(sparepart.getId(), defaultLoc.getId(), "10", "5");
++    balance(sparepart.getId(), locB.getId(), "3", "5");
++    var user = persistedUser(ApplicationRole.STOREKEEPER, "stk-list@syncro.dev");
++    assign(user, plant);
++
++    var rows = service.listAtLocation(user, locB.getId());
++
++    assertThat(rows).hasSize(1);
++    assertThat(rows.getFirst().locationId()).isEqualTo(locB.getId());
++    assertThat(rows.getFirst().available()).isEqualByComparingTo("3");
++  }
++
++  @Test
++  @DisplayName("18.3-LOC-002 P0 unknown location on the location-scoped list → 404")
++  void listAtUnknownLocationRejected() {
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++
++    assertThatThrownBy(() -> service.listAtLocation(admin, UUID.randomUUID()))
++        .isInstanceOf(InventoryLocationNotFoundException.class);
++  }
++
++  // --- Create / upsert at a location -------------------------------------------
++
++  @Test
++  @DisplayName("18.3-LOC-003 P0 upsertAtLocation creates a row (version 0) and audits CREATE")
++  void upsertAtLocationCreatesAndAudits() throws Exception {
++    var plant = plant("STK-P2");
++    var locB = location(plant, "WS-B");
++    var sparepart = sparepart(plant, "MC-0002");
++    var user = persistedUser(ApplicationRole.INVENTORY_MAINTENANCE, "stk-create@syncro.dev");
++    assign(user, plant);
++
++    var created = service.upsertAtLocation(user, locB.getId(), new LocationUpsertCommand(
++        "MC-0002", new BigDecimal("10"), BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("5")));
++
++    assertThat(created.locationId()).isEqualTo(locB.getId());
++    assertThat(created.sparepartId()).isEqualTo(sparepart.getId());
++    assertThat(created.available()).isEqualByComparingTo("10");
++    assertThat(created.version()).isZero();
++    var entry = latestAuditEntryFor(created.id());
++    assertThat(entry.getAction()).isEqualTo(AuditAction.CREATE);
++    assertThat(entry.getEntityType()).isEqualTo(AuditEntityType.INVENTORY_STOCK_BALANCE);
++    // Plant derived from the location, not the body.
++    assertThat(entry.getPlantId()).isEqualTo(plant.getId());
++    assertThat(mapper.readTree(entry.getNewValue()).get("locationId").asText())
++        .isEqualTo(locB.getId().toString());
++  }
++
++  @Test
++  @DisplayName("18.3-LOC-004 P0 upsertAtLocation overwrites an existing row and audits UPDATE")
++  void upsertAtLocationOverwritesExisting() {
++    var plant = plant("STK-P3");
++    var locB = location(plant, "WS-B");
++    sparepart(plant, "MC-0003");
++    var user = persistedUser(ApplicationRole.STOREKEEPER, "stk-upsert@syncro.dev");
++    assign(user, plant);
++    service.upsertAtLocation(user, locB.getId(), new LocationUpsertCommand("MC-0003",
++        new BigDecimal("10"), BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("5")));
++
++    var updated = service.upsertAtLocation(user, locB.getId(), new LocationUpsertCommand("MC-0003",
++        new BigDecimal("7"), BigDecimal.ONE, new BigDecimal("2"), new BigDecimal("4")));
++
++    assertThat(updated.available()).isEqualByComparingTo("7");
++    assertThat(updated.minimumStock()).isEqualByComparingTo("4");
++    assertThat(updated.version()).isEqualTo(1L);
++    assertThat(balances.findBySparepartIdAndLocationId(
++        spareparts.findByMaterialCodeIgnoreCase("MC-0003").orElseThrow().getId(), locB.getId()))
++        .isPresent();
++  }
++
++  @Test
++  @DisplayName("18.3-LOC-005 P1 upsertAtLocation unknown material → 404; negative value → 400")
++  void upsertAtLocationRejectsUnknownAndNegative() {
++    var plant = plant("STK-P4");
++    var locB = location(plant, "WS-B");
++    sparepart(plant, "MC-0004");
++    var user = persistedUser(ApplicationRole.INVENTORY_MAINTENANCE, "stk-bad@syncro.dev");
++    assign(user, plant);
++
++    assertThatThrownBy(() -> service.upsertAtLocation(user, locB.getId(), new LocationUpsertCommand(
++        "UNKNOWN-XYZ", BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO)))
++        .isInstanceOf(SparepartNotFoundException.class);
++    assertThatThrownBy(() -> service.upsertAtLocation(user, locB.getId(), new LocationUpsertCommand(
++        "MC-0004", new BigDecimal("-1"), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO)))
++        .isInstanceOf(InventoryStockValidationException.class);
++    assertThat(balances.findAllByLocationIdOrderBySparepartIdAsc(locB.getId())).isEmpty();
++  }
++
++  // --- Adjust at a location ----------------------------------------------------
++
++  @Test
++  @DisplayName("18.3-LOC-006 P0 adjust at location: underflow → 409 and no change")
++  void adjustAtLocationUnderflowRejected() {
++    var plant = plant("STK-P5");
++    var locB = location(plant, "WS-B");
++    var sparepart = sparepart(plant, "MC-0005");
++    var row = balance(sparepart.getId(), locB.getId(), "3", "5");
++    var user = persistedUser(ApplicationRole.STOREKEEPER, "stk-under@syncro.dev");
++    assign(user, plant);
++
++    assertThatThrownBy(() -> service.adjustAtLocation(user, locB.getId(), "MC-0005",
++        new BigDecimal("-5")))
++        .isInstanceOf(NegativeStockRejectedException.class);
++    assertThat(balances.findById(row.getId()).orElseThrow().getAvailable())
++        .isEqualByComparingTo("3");
++  }
++
++  @Test
++  @DisplayName("18.3-LOC-007 P0 adjust at location: exact drawdown succeeds with version bump + audit")
++  void adjustAtLocationSucceeds() throws Exception {
++    var plant = plant("STK-P6");
++    var locB = location(plant, "WS-B");
++    var sparepart = sparepart(plant, "MC-0006");
++    var row = balance(sparepart.getId(), locB.getId(), "3", "5");
++    var user = persistedUser(ApplicationRole.INVENTORY_MAINTENANCE, "stk-adjust@syncro.dev");
++    assign(user, plant);
++
++    var adjusted = service.adjustAtLocation(user, locB.getId(), "MC-0006", new BigDecimal("-3"));
++
++    assertThat(adjusted.available()).isEqualByComparingTo("0");
++    assertThat(adjusted.version()).isEqualTo(1L);
++    var entry = latestAuditEntryFor(row.getId());
++    assertThat(entry.getAction()).isEqualTo(AuditAction.UPDATE);
++    assertThat(mapper.readTree(entry.getPreviousValue()).get("available").decimalValue())
++        .isEqualByComparingTo("3");
++    assertThat(mapper.readTree(entry.getNewValue()).get("available").decimalValue())
++        .isEqualByComparingTo("0");
++  }
++
++  // --- Legacy contract (no locationId) -----------------------------------------
++
++  @Test
++  @DisplayName("18.3-LOC-008 P0 legacy upsert with no locationId targets the plant default")
++  void legacyUpsertUsesDefaultLocation() {
++    var plant = plant("STK-P7");
++    var defaultLoc = location(plant, DEFAULT_LOCATION_CODE);
++    sparepart(plant, "MC-0007");
++    var user = persistedUser(ApplicationRole.STOREKEEPER, "stk-legacy@syncro.dev");
++    assign(user, plant);
++
++    var created = service.upsert(user, new UpsertBalanceCommand("MC-0007", plant.getId(),
++        new BigDecimal("9"), BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("2")));
++
++    assertThat(created.locationId()).isEqualTo(defaultLoc.getId());
++  }
++
++  @Test
++  @DisplayName("18.3-LOC-009 P0 legacy list with no locationId returns the plant's rows")
++  void legacyListUnchanged() {
++    var plant = plant("STK-P8");
++    var defaultLoc = location(plant, DEFAULT_LOCATION_CODE);
++    var sparepart = sparepart(plant, "MC-0008");
++    balance(sparepart.getId(), defaultLoc.getId(), "4", "6");
++    var user = persistedUser(ApplicationRole.INVENTORY_MAINTENANCE, "stk-legacylist@syncro.dev");
++    assign(user, plant);
++
++    var rows = service.list(user, plant.getId());
++
++    assertThat(rows).hasSize(1);
++    assertThat(rows.getFirst().locationId()).isEqualTo(defaultLoc.getId());
++  }
++
++  @Test
++  @DisplayName("18.3-LOC-010 P0 legacy list with an explicit locationId returns that location's rows")
++  void legacyListWithLocationId() {
++    var plant = plant("STK-P9");
++    var defaultLoc = location(plant, DEFAULT_LOCATION_CODE);
++    var locB = location(plant, "WS-B");
++    var sparepart = sparepart(plant, "MC-0009");
++    balance(sparepart.getId(), defaultLoc.getId(), "10", "5");
++    balance(sparepart.getId(), locB.getId(), "3", "5");
++    var user = persistedUser(ApplicationRole.STOREKEEPER, "stk-legacyloc@syncro.dev");
++    assign(user, plant);
++
++    var rows = service.list(user, plant.getId(), locB.getId());
++
++    assertThat(rows).hasSize(1);
++    assertThat(rows.getFirst().locationId()).isEqualTo(locB.getId());
++  }
++
++  @Test
++  @DisplayName("18.3-LOC-011 P0 legacy path with a foreign-plant locationId → 404 (no cross-plant leak)")
++  void legacyPathForeignLocationRejected() {
++    var home = plant("STK-P10A");
++    var foreign = plant("STK-P10B");
++    var foreignLoc = location(foreign, "WS-X");
++    sparepart(home, "MC-0010");
++    var user = persistedUser(ApplicationRole.STOREKEEPER, "stk-foreign@syncro.dev");
++    assign(user, home);
++
++    assertThatThrownBy(() -> service.list(user, home.getId(), foreignLoc.getId()))
++        .isInstanceOf(InventoryLocationNotFoundException.class);
++    assertThatThrownBy(() -> service.upsert(user, new UpsertBalanceCommand("MC-0010",
++        home.getId(), BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
++        foreignLoc.getId())))
++        .isInstanceOf(InventoryLocationNotFoundException.class);
++  }
++
++  // --- Reorder per location ----------------------------------------------------
++
++  @Test
++  @DisplayName("18.3-LOC-012 P0 reorder warning fires at loc B only (available 3 <= minimum 5)")
++  void reorderWarningIsPerLocation() {
++    var plant = plant("STK-P11");
++    var locA = location(plant, "WS-A");
++    var locB = location(plant, "WS-B");
++    var sparepart = sparepart(plant, "MC-0011");
++    balance(sparepart.getId(), locA.getId(), "10", "5");
++    balance(sparepart.getId(), locB.getId(), "3", "5");
++    var user = persistedUser(ApplicationRole.INVENTORY_MAINTENANCE, "stk-reorder@syncro.dev");
++    assign(user, plant);
++
++    var warningsAtB = service.reorderWarnings(user, plant.getId(), locB.getId());
++    var warningsAtA = service.reorderWarnings(user, plant.getId(), locA.getId());
++
++    assertThat(warningsAtB).hasSize(1);
++    assertThat(warningsAtB.getFirst().locationId()).isEqualTo(locB.getId());
++    assertThat(warningsAtB.getFirst().reorderWarning()).isTrue();
++    assertThat(warningsAtA).isEmpty();
++  }
++
++  @Test
++  @DisplayName("18.3-LOC-013 P1 plant-wide reorder warnings include the warning row at loc B")
++  void plantWideReorderIncludesWarningRow() {
++    var plant = plant("STK-P12");
++    var locA = location(plant, "WS-A");
++    var locB = location(plant, "WS-B");
++    var sparepart = sparepart(plant, "MC-0012");
++    balance(sparepart.getId(), locA.getId(), "10", "5");
++    balance(sparepart.getId(), locB.getId(), "3", "5");
++    var user = persistedUser(ApplicationRole.STOREKEEPER, "stk-plantreorder@syncro.dev");
++    assign(user, plant);
++
++    var warnings = service.reorderWarnings(user, plant.getId());
++
++    assertThat(warnings).hasSize(1);
++    assertThat(warnings.getFirst().locationId()).isEqualTo(locB.getId());
++  }
++
++  // --- Gates -------------------------------------------------------------------
++
++  @Test
++  @DisplayName("18.3-LOC-014 P0 TECHNICIAN cannot mutate stock at a location (403)")
++  void technicianCannotMutateAtLocation() {
++    var plant = plant("STK-P13");
++    var locB = location(plant, "WS-B");
++    sparepart(plant, "MC-0013");
++    balance(sparepart(plant, "MC-0013").getId(), locB.getId(), "5", "2");
++    var tech = persistedUser(ApplicationRole.TECHNICIAN, "stk-tech@syncro.dev");
++    assign(tech, plant);
++
++    assertThatThrownBy(() -> service.upsertAtLocation(tech, locB.getId(), new LocationUpsertCommand(
++        "MC-0013", BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO)))
++        .isInstanceOf(InventoryStockForbiddenException.class);
++    assertThatThrownBy(() -> service.adjustAtLocation(tech, locB.getId(), "MC-0013", BigDecimal.ONE))
++        .isInstanceOf(InventoryStockForbiddenException.class);
++  }
++
++  @Test
++  @DisplayName("18.3-LOC-015 P0 STOREKEEPER outside the location's plant cannot mutate (403)")
++  void outOfScopeStorekeeperRejected() {
++    var home = plant("STK-P14A");
++    var foreign = plant("STK-P14B");
++    var foreignLoc = location(foreign, "WS-F");
++    sparepart(foreign, "MC-0014");
++    var outsider = persistedUser(ApplicationRole.STOREKEEPER, "stk-outsider@syncro.dev");
++    assign(outsider, home);
++
++    assertThatThrownBy(() -> service.upsertAtLocation(outsider, foreignLoc.getId(),
++        new LocationUpsertCommand("MC-0014", BigDecimal.TEN, BigDecimal.ZERO, BigDecimal.ZERO,
++            BigDecimal.ZERO)))
++        .isInstanceOf(InventoryStockForbiddenException.class);
++  }
++
++  @Test
++  @DisplayName("18.3-LOC-016 P0 SUPER_ADMIN bypasses the plant-scope gate on the location surface")
++  void superAdminBypassesScope() {
++    var plant = plant("STK-P15");
++    var locB = location(plant, "WS-B");
++    sparepart(plant, "MC-0015");
++    var admin = authenticatedUser(ApplicationRole.SUPER_ADMIN);
++
++    var created = service.upsertAtLocation(admin, locB.getId(), new LocationUpsertCommand(
++        "MC-0015", new BigDecimal("6"), BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("1")));
++
++    assertThat(created.locationId()).isEqualTo(locB.getId());
++  }
++
++  // --- Optimistic lock ---------------------------------------------------------
++
++  @Test
++  @DisplayName("18.3-LOC-017 P0 legacy PUT with a stale version → 409 VERSION_CONFLICT")
++  void updateVersionConflict() {
++    var plant = plant("STK-P16");
++    var defaultLoc = location(plant, DEFAULT_LOCATION_CODE);
++    var sparepart = sparepart(plant, "MC-0016");
++    balance(sparepart.getId(), defaultLoc.getId(), "10", "5");
++    var user = persistedUser(ApplicationRole.STOREKEEPER, "stk-version@syncro.dev");
++    assign(user, plant);
++
++    assertThatThrownBy(() -> service.update(user, "MC-0016", new UpdateBalanceCommand(
++        plant.getId(), 99L, new BigDecimal("8"), null, null, null)))
++        .isInstanceOf(VersionConflictException.class);
++  }
++
++  @Test
++  @DisplayName("18.3-LOC-018 P0 legacy PUT with a locationId targets that location")
++  void updateAtLocation() {
++    var plant = plant("STK-P17");
++    var locB = location(plant, "WS-B");
++    var sparepart = sparepart(plant, "MC-0017");
++    balance(sparepart.getId(), locB.getId(), "10", "5");
++    var user = persistedUser(ApplicationRole.INVENTORY_MAINTENANCE, "stk-updateloc@syncro.dev");
++    assign(user, plant);
++
++    var updated = service.update(user, "MC-0017", new UpdateBalanceCommand(plant.getId(), 0L,
++        new BigDecimal("8"), null, null, null, locB.getId()));
++
++    assertThat(updated.locationId()).isEqualTo(locB.getId());
++    assertThat(updated.available()).isEqualByComparingTo("8");
++    assertThat(updated.version()).isEqualTo(1L);
++  }
++
++  // --- helpers -----------------------------------------------------------------
++
++  private PlantEntity plant(String code) {
++    return plants.findByCodeIgnoreCase(code)
++        .orElseGet(() -> plants.saveAndFlush(new PlantEntity(UUID.randomUUID(), code,
++            "Plant " + code, NOW, NOW)));
++  }
++
++  private InventoryLocationEntity location(PlantEntity plant, String code) {
++    return locations.findByPlantIdAndCodeIgnoreCase(plant.getId(), code)
++        .orElseGet(() -> locations.saveAndFlush(new InventoryLocationEntity(UUID.randomUUID(),
++            plant.getId(), code, "Location " + code, null, true, NOW, NOW)));
++  }
++
++  private SparepartEntity sparepart(PlantEntity plant, String materialCode) {
++    var existing = spareparts.findByMaterialCodeIgnoreCase(materialCode);
++    if (existing.isPresent()) {
++      return existing.get();
++    }
++    var n = SEQ.incrementAndGet();
++    var group = machineGroups.saveAndFlush(new MachineGroupEntity(UUID.randomUUID(), plant,
++        "Group " + n, NOW, NOW));
++    var machine = machines.saveAndFlush(new MachineEntity(UUID.randomUUID(), plant, group,
++        "M-" + n, "Machine " + n, MachineStatus.ACTIVE, "Juki", LocalDate.parse("2026-05-27"),
++        null, List.of(), NOW, NOW));
++    var category = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(),
++        SparepartTaxonomyDimension.CATEGORY, "CAT" + n, "Category " + n, NOW, NOW));
++    var brand = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(),
++        SparepartTaxonomyDimension.BRAND, "BRD" + n, "Brand " + n, category, NOW, NOW));
++    var kind = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(),
++        SparepartTaxonomyDimension.KIND, "KND" + n, "Kind " + n, category, NOW, NOW));
++    var type = taxonomy.saveAndFlush(new SparepartTaxonomyEntity(UUID.randomUUID(),
++        SparepartTaxonomyDimension.TYPE, "TYP" + n, "Type " + n, category, NOW, NOW));
++    var entity = new SparepartEntity(UUID.randomUUID(), "SP-" + n, "Part " + n, machine,
++        category, brand, kind, type, NOW, NOW);
++    entity.updateProcurement(materialCode, null, NOW);
++    return spareparts.saveAndFlush(entity);
++  }
++
++  private InventoryStockBalanceEntity balance(UUID sparepartId, UUID locationId,
++      String available, String minimumStock) {
++    return balances.saveAndFlush(new InventoryStockBalanceEntity(UUID.randomUUID(), sparepartId,
++        locationId, new BigDecimal(available), BigDecimal.ZERO, BigDecimal.ZERO,
++        new BigDecimal(minimumStock), NOW, NOW));
++  }
++
++  private AuthenticatedUser persistedUser(ApplicationRole role, String loginIdentifier) {
++    var user = users.saveAndFlush(new AuthUserEntity(UUID.randomUUID(), loginIdentifier,
++        passwordEncoder.encode("syncro-test-password"), role, true, NOW, NOW));
++    return new AuthenticatedUser(user.getId().toString(), user.getLoginIdentifier(), role);
++  }
++
++  private void assign(AuthenticatedUser user, PlantEntity plant) {
++    assignments.saveAndFlush(new AuthUserPlantAssignmentEntity(UUID.fromString(user.id()),
++        plant.getId(), NOW));
++  }
++
++  private static AuthenticatedUser authenticatedUser(ApplicationRole role) {
++    return new AuthenticatedUser(UUID.randomUUID().toString(),
++        role.name().toLowerCase() + "@syncro.dev", role);
++  }
++
++  private AuditLogEntity latestAuditEntryFor(UUID entityId) {
++    var entries = auditLogs.findByEntityIdOrderByCreatedAtAsc(entityId);
++    assertThat(entries).isNotEmpty();
++    return entries.get(entries.size() - 1);
++  }
++}
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/sparepart/stock/api/SparepartStockControllerTest.java b/syncro/apps/backend/src/test/java/com/syncro/sparepart/stock/api/SparepartStockControllerTest.java
+index da1859e..66e24de 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/sparepart/stock/api/SparepartStockControllerTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/sparepart/stock/api/SparepartStockControllerTest.java
+@@ -36,6 +36,7 @@ import java.time.Instant;
+ import java.util.List;
+ import java.util.Optional;
+ import java.util.UUID;
++import org.junit.jupiter.api.BeforeEach;
+ import org.junit.jupiter.api.DisplayName;
+ import org.junit.jupiter.api.Test;
+ import org.springframework.beans.factory.annotation.Autowired;
+@@ -79,6 +80,17 @@ class SparepartStockControllerTest {
+   private static final UUID LOCATION_ID = UUID.fromString("77777777-7777-7777-7777-777777777777");
+   private static final Instant NOW = Instant.parse("2026-08-28T00:00:00Z");
+ 
++  @BeforeEach
++  void stubSparepartLookup() {
++    // The controller's view assembly resolves materialCode via the sparepart
++    // repository (story 15-1 re-key); without this stub the read model carries a
++    // null materialCode and the contract assertions below would not hold.
++    var sparepart = new SparepartEntity(SPAREPART_ID, "SP-0001", "Part", null, null, null, null,
++        null, NOW, NOW);
++    sparepart.updateProcurement("MC-0001", null, NOW);
++    when(spareparts.findById(SPAREPART_ID)).thenReturn(Optional.of(sparepart));
++  }
++
+   @Test
+   @DisplayName("12.4-STK-API-001 P0 create stock returns 201 with the created view")
+   void createReturnsCreated() throws Exception {
+diff --git a/syncro/authz/policy/authz.rego b/syncro/authz/policy/authz.rego
+index 5780847..bbb5084 100644
+--- a/syncro/authz/policy/authz.rego
++++ b/syncro/authz/policy/authz.rego
+@@ -132,6 +132,18 @@ inventory_location_paths := {
+   "/api/v1/inventory-locations/*",
+ }
+ 
++# Inventory location stock balances (story 18-3, blueprint E2): per-location stock
++# mutations for INVENTORY_MAINTENANCE/STOREKEEPER (SUPER_ADMIN via the generic bypass).
++# A single `*` matches exactly one path segment, so each depth is enumerated
++# explicitly: collection (list/create), the material-code segment, and /adjust.
++# Reads (GET) flow through generic read_allowed. Plant scope is service-side (rego
++# cannot see the location's plant).
++inventory_location_stock_paths := {
++  "/api/v1/inventory-locations/*/stock-balances",
++  "/api/v1/inventory-locations/*/stock-balances/*",
++  "/api/v1/inventory-locations/*/stock-balances/*/adjust",
++}
++
+ workorder_assign_paths := {
+   "/api/v1/workorders/*/assign",
+ }
+@@ -519,6 +531,21 @@ mutation_allowed if {
+   path_matches(inventory_location_paths)
+ }
+ 
++# Inventory location stock mutations (story 18-3): INVENTORY_MAINTENANCE/STOREKEEPER
++# (SUPER_ADMIN via the generic bypass). MANAGER_MAINTENANCE/TECHNICIAN and the other
++# roles stay default-deny — parity with InventoryStockService.requireMutationAccess.
++mutation_allowed if {
++  input.subject.roles[_] == "INVENTORY_MAINTENANCE"
++  is_mutation
++  path_matches(inventory_location_stock_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "STOREKEEPER"
++  is_mutation
++  path_matches(inventory_location_stock_paths)
++}
++
+ # Assign: leadership roles only (STAFF_MAINTENANCE and PRODUCTION_LEADER excluded).
+ mutation_allowed if {
+   input.subject.roles[_] == "MANAGER_MAINTENANCE"
+diff --git a/syncro/authz/policy/authz_test.rego b/syncro/authz/policy/authz_test.rego
+index 80e7625..8f7fa55 100644
+--- a/syncro/authz/policy/authz_test.rego
++++ b/syncro/authz/policy/authz_test.rego
+@@ -1179,6 +1179,54 @@ test_anonymous_inventory_location_denied if {
+   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/inventory-locations"}
+ }
+ 
++# -- Inventory location stock balances (story 18-3, blueprint E2): INVENTORY_MAINTENANCE/
++#    STOREKEEPER mutations at every enumerated depth; SUPER_ADMIN via generic bypass;
++#    MANAGER_MAINTENANCE/TECHNICIAN/STAFF denied; reads any-auth -------------------
++
++test_inventory_location_stock_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances"}
++}
++
++test_storekeeper_location_stock_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "POST /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances"}
++}
++
++test_inventory_location_stock_adjust_allowed if {
++  authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances/MC-0001/adjust"}
++}
++
++test_storekeeper_location_stock_adjust_allowed if {
++  authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "POST /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances/MC-0001/adjust"}
++}
++
++test_super_admin_location_stock_adjust_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances/MC-0001/adjust"}
++}
++
++test_technician_location_stock_create_denied if {
++  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances"}
++}
++
++test_technician_location_stock_adjust_denied if {
++  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances/MC-0001/adjust"}
++}
++
++test_manager_location_stock_create_denied if {
++  not authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances"}
++}
++
++test_staff_location_stock_adjust_denied if {
++  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances/MC-0001/adjust"}
++}
++
++test_auditor_location_stock_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances"}
++}
++
++test_anonymous_location_stock_denied if {
++  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/inventory-locations/7b7c6d5e-1111-2222-3333-444455556666/stock-balances"}
++}
++
+ # -- Org maintenance (spec-org-maintenance-model): departments, section leader,
+ #    user master — MANAGER_MAINTENANCE + SUPER_ADMIN mutate; others denied -------
+ 

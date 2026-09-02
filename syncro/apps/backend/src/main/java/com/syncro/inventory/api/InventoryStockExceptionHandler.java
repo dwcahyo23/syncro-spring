@@ -1,14 +1,12 @@
-package com.syncro.sparepart.stock.api;
+package com.syncro.inventory.api;
 
 import com.syncro.inventory.application.InventoryLocationService.InventoryLocationNotFoundException;
-import com.syncro.inventory.application.InventoryStockService.DefaultLocationNotFoundException;
 import com.syncro.inventory.application.InventoryStockService.InventoryStockForbiddenException;
 import com.syncro.inventory.application.InventoryStockService.InventoryStockValidationException;
 import com.syncro.inventory.application.InventoryStockService.NegativeStockRejectedException;
 import com.syncro.inventory.application.InventoryStockService.SparepartNotFoundException;
 import com.syncro.inventory.application.InventoryStockService.StockBalanceNotFoundException;
-import com.syncro.inventory.application.InventoryStockService.VersionConflictException;
-import com.syncro.sparepart.stock.api.SparepartStockDtos.ErrorResponse;
+import com.syncro.inventory.api.InventoryLocationDtos.ErrorResponse;
 import jakarta.validation.ConstraintViolationException;
 import java.time.Clock;
 import java.time.Instant;
@@ -23,15 +21,24 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import tools.jackson.databind.exc.InvalidFormatException;
 
+/**
+ * Error mapping for the location-scoped stock-balances API (story 18-3). One stable
+ * shape (code/message/fieldErrors/timestamp/traceId) with the same machine-readable
+ * codes the sparepart-stock surface uses: INVENTORY_LOCATION_NOT_FOUND (404),
+ * SPAREPART_NOT_FOUND (404), STOCK_NOT_FOUND (404), NEGATIVE_STOCK_REJECTED (409),
+ * FORBIDDEN (403), VALIDATION_ERROR (400). There is no VERSION_CONFLICT here — this
+ * surface has no optimistic-lock PUT.
+ */
 @Order(Ordered.HIGHEST_PRECEDENCE)
-@RestControllerAdvice(assignableTypes = {SparepartStockController.class})
-public class SparepartStockExceptionHandler {
+@RestControllerAdvice(assignableTypes = InventoryLocationStockController.class)
+public class InventoryStockExceptionHandler {
 
   private final Clock clock;
 
-  public SparepartStockExceptionHandler(Clock clock) {
+  public InventoryStockExceptionHandler(Clock clock) {
     this.clock = clock;
   }
 
@@ -51,6 +58,12 @@ public class SparepartStockExceptionHandler {
       fieldErrors.putIfAbsent(violation.getPropertyPath().toString(), violation.getMessage());
     }
     return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", fieldErrors);
+  }
+
+  @ExceptionHandler(InventoryStockValidationException.class)
+  ResponseEntity<ErrorResponse> stockValidation(InventoryStockValidationException exception) {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
+        exception.getFieldErrors());
   }
 
   @ExceptionHandler(HttpMessageNotReadableException.class)
@@ -82,32 +95,27 @@ public class SparepartStockExceptionHandler {
     return null;
   }
 
-  @ExceptionHandler(InventoryStockValidationException.class)
-  ResponseEntity<ErrorResponse> stockValidation(InventoryStockValidationException exception) {
-    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", exception.getFieldErrors());
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  ResponseEntity<ErrorResponse> invalidPathValue() {
+    return error(HttpStatus.BAD_REQUEST, "INVALID_PATH_VALUE", "Path value is invalid.", Map.of());
   }
 
   @ExceptionHandler(InventoryStockForbiddenException.class)
   ResponseEntity<ErrorResponse> forbidden() {
-    return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "You do not have permission to access this resource.", Map.of());
+    return error(HttpStatus.FORBIDDEN, "FORBIDDEN",
+        "You do not have permission to access this resource.", Map.of());
+  }
+
+  /** Unknown or foreign-plant locationId → 404 (never a cross-plant leak). */
+  @ExceptionHandler(InventoryLocationNotFoundException.class)
+  ResponseEntity<ErrorResponse> locationNotFound() {
+    return error(HttpStatus.NOT_FOUND, "INVENTORY_LOCATION_NOT_FOUND",
+        "Inventory location was not found.", Map.of());
   }
 
   @ExceptionHandler(StockBalanceNotFoundException.class)
   ResponseEntity<ErrorResponse> stockNotFound() {
     return error(HttpStatus.NOT_FOUND, "STOCK_NOT_FOUND", "Stock balance was not found.", Map.of());
-  }
-
-  @ExceptionHandler(DefaultLocationNotFoundException.class)
-  ResponseEntity<ErrorResponse> defaultLocationNotFound() {
-    return error(HttpStatus.NOT_FOUND, "LOCATION_NOT_FOUND",
-        "The plant's default inventory location was not found.", Map.of());
-  }
-
-  /** Story 18-3: an explicit locationId that is unknown or belongs to another plant. */
-  @ExceptionHandler(InventoryLocationNotFoundException.class)
-  ResponseEntity<ErrorResponse> inventoryLocationNotFound() {
-    return error(HttpStatus.NOT_FOUND, "INVENTORY_LOCATION_NOT_FOUND",
-        "Inventory location was not found.", Map.of());
   }
 
   @ExceptionHandler(SparepartNotFoundException.class)
@@ -120,13 +128,6 @@ public class SparepartStockExceptionHandler {
   ResponseEntity<ErrorResponse> negativeStockRejected() {
     return error(HttpStatus.CONFLICT, "NEGATIVE_STOCK_REJECTED",
         "The adjustment would make stock negative.", Map.of());
-  }
-
-  /** Optimistic-lock mismatch on PUT. */
-  @ExceptionHandler(VersionConflictException.class)
-  ResponseEntity<ErrorResponse> versionConflict() {
-    return error(HttpStatus.CONFLICT, "VERSION_CONFLICT",
-        "Concurrent update detected; reload and retry.", Map.of());
   }
 
   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message,

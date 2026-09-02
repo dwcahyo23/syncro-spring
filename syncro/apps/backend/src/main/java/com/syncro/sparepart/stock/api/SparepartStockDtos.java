@@ -22,12 +22,19 @@ public final class SparepartStockDtos {
   private SparepartStockDtos() {
   }
 
-  /** Stock balance read model (FR-146 remapped to blueprint E2 columns). */
+  /**
+   * Stock balance read model (FR-146 remapped to blueprint E2 columns). Story 18-3
+   * adds locationCode + sparepartCode/sparepartName (additive JSON fields) so
+   * per-location rows are self-describing; existing consumers are unaffected.
+   */
   public record SparepartStockView(
       UUID balanceId,
       UUID sparepartId,
       UUID locationId,
+      String locationCode,
       String materialCode,
+      String sparepartCode,
+      String sparepartName,
       UUID plantId,
       BigDecimal available,
       BigDecimal reserved,
@@ -39,9 +46,10 @@ public final class SparepartStockDtos {
       boolean reorderWarning) {
 
     public static SparepartStockView from(InventoryStockBalance balance, String materialCode,
-        UUID plantId) {
+        String sparepartCode, String sparepartName, String locationCode, UUID plantId) {
       return new SparepartStockView(balance.id(), balance.sparepartId(), balance.locationId(),
-          materialCode, plantId, balance.available(), balance.reserved(), balance.consumed(),
+          locationCode, materialCode, sparepartCode, sparepartName, plantId,
+          balance.available(), balance.reserved(), balance.consumed(),
           balance.minimumStock(), balance.version(), balance.createdAt(), balance.updatedAt(),
           balance.reorderWarning());
     }
@@ -50,20 +58,26 @@ public final class SparepartStockDtos {
   public record SparepartStockListView(List<SparepartStockView> items) {
   }
 
-  /** POST /api/v1/sparepart-stock — create (upsert semantics, version starts at 0). */
+  /**
+   * POST /api/v1/sparepart-stock — create (upsert semantics, version starts at 0).
+   * Story 18-3: optional {@code locationId} targets a named location; absent keeps
+   * the plant-default behavior.
+   */
   public record CreateSparepartStockRequest(
       @NotBlank @Size(max = 64) String materialCode,
       @NotNull UUID plantId,
       @NotNull @Digits(integer = 16, fraction = 2) BigDecimal available,
       @NotNull @Digits(integer = 16, fraction = 2) BigDecimal reserved,
       @NotNull @Digits(integer = 16, fraction = 2) BigDecimal consumed,
-      @NotNull @Digits(integer = 16, fraction = 2) BigDecimal minimumStock) {
+      @NotNull @Digits(integer = 16, fraction = 2) BigDecimal minimumStock,
+      UUID locationId) {
   }
 
   /**
    * PUT /api/v1/sparepart-stock/{materialCode} — partial overwrite: all four value
    * fields are optional but at least one is required; the version is mandatory for
-   * optimistic locking (409 VERSION_CONFLICT on mismatch).
+   * optimistic locking (409 VERSION_CONFLICT on mismatch). Optional {@code locationId}
+   * (story 18-3) targets a named location; absent keeps the plant default.
    */
   public record UpdateSparepartStockRequest(
       @NotNull UUID plantId,
@@ -71,13 +85,19 @@ public final class SparepartStockDtos {
       @Digits(integer = 16, fraction = 2) BigDecimal available,
       @Digits(integer = 16, fraction = 2) BigDecimal reserved,
       @Digits(integer = 16, fraction = 2) BigDecimal consumed,
-      @Digits(integer = 16, fraction = 2) BigDecimal minimumStock) {
+      @Digits(integer = 16, fraction = 2) BigDecimal minimumStock,
+      UUID locationId) {
   }
 
-  /** POST /api/v1/sparepart-stock/{materialCode}/adjust — signed delta (FR-146). */
+  /**
+   * POST /api/v1/sparepart-stock/{materialCode}/adjust — signed delta (FR-146).
+   * Optional {@code locationId} (story 18-3) targets a named location; absent keeps
+   * the plant default.
+   */
   public record AdjustSparepartStockRequest(
       @NotNull UUID plantId,
-      @NotNull @Digits(integer = 16, fraction = 2) BigDecimal delta) {
+      @NotNull @Digits(integer = 16, fraction = 2) BigDecimal delta,
+      UUID locationId) {
   }
 
   public record ErrorResponse(String code, String message, Map<String, String> fieldErrors, String timestamp,

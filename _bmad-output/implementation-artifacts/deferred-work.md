@@ -1175,3 +1175,9 @@ origin: code review of spec-18-2-inventory-locations (blind-hunter), 2026-09-02
 location: syncro/authz/policy/authz.rego (actions set, ~lines 955-975)
 reason: The actions set grants *.write only to MANAGER/SECTION_LEADER/MAINTENANCE_LEADER; INVENTORY_MAINTENANCE now mutates inventory-locations (and sparepart-stock) but has no mirror entry, so the menu/permission projection disagrees with enforcement. Pre-existing pattern (also true for sparepart-stock); needs one focused pass across all inventory roles.
 status: open
+
+### DW-146: N+1 view assembly in stock controllers
+origin: code review of spec-18-3-inventory-stock-balances (blind-hunter), 2026-09-02
+location: syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryLocationStockController.java + com/syncro/sparepart/stock/api/SparepartStockController.java
+reason: Both controllers call spareparts.findById + locations.findById per row (N+1 on list responses), and toView is duplicated between them. Pre-existing pattern (legacy controller already did this); batch with findAllById + a shared mapper when list sizes demand it.
+status: open
