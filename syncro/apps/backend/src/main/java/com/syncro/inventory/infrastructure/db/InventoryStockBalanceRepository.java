@@ -84,6 +84,83 @@ public interface InventoryStockBalanceRepository extends JpaRepository<Inventory
       @Param("now") java.time.Instant now);
 
   /**
+   * Atomic reserve move (story 18-5, blueprint E4): reservation create decrements
+   * {@code available} and increments {@code reserved} in ONE statement, guarded by
+   * {@code available - qty >= 0}. Returns rows updated — 0 means insufficient
+   * available stock and the caller must reject with INSUFFICIENT_STOCK (409), so
+   * no partial reservation can ever be created. Version is bumped in SQL (the same
+   * version-bypass idiom as the conditional updates — race-safe without a
+   * read-then-write).
+   */
+  @Modifying(clearAutomatically = true)
+  @Query("""
+      update InventoryStockBalanceEntity s
+      set s.available = s.available - :quantity,
+          s.reserved = s.reserved + :quantity,
+          s.version = s.version + 1,
+          s.updatedAt = :now
+      where s.sparepartId = :sparepartId
+        and s.locationId = :locationId
+        and s.available - :quantity >= 0
+      """)
+  int moveToReserved(
+      @Param("sparepartId") UUID sparepartId,
+      @Param("locationId") UUID locationId,
+      @Param("quantity") BigDecimal quantity,
+      @Param("now") java.time.Instant now);
+
+  /**
+   * Atomic reserved-release move (story 18-5, blueprint E4): returns {@code quantity}
+   * from {@code reserved} back to {@code available} in ONE statement, guarded by
+   * {@code reserved >= qty}. Single UPDATE for cancel and expiry return-to-available
+   * alike. Returns rows updated — 0 means the guard failed (the balance no longer
+   * covers the reservation's remaining quantity) and the whole transaction rolls back,
+   * so reserved stock can never go negative. Version is bumped in SQL (version-bypass
+   * idiom).
+   */
+  @Modifying(clearAutomatically = true)
+  @Query("""
+      update InventoryStockBalanceEntity s
+      set s.available = s.available + :quantity,
+          s.reserved = s.reserved - :quantity,
+          s.version = s.version + 1,
+          s.updatedAt = :now
+      where s.sparepartId = :sparepartId
+        and s.locationId = :locationId
+        and s.reserved >= :quantity
+      """)
+  int moveFromReserved(
+      @Param("sparepartId") UUID sparepartId,
+      @Param("locationId") UUID locationId,
+      @Param("quantity") BigDecimal quantity,
+      @Param("now") java.time.Instant now);
+
+  /**
+   * Atomic consume draw-down (story 18-5, blueprint E4): decrements {@code reserved}
+   * and increments the lifetime {@code consumed} running total in ONE statement, guarded
+   * by {@code reserved >= qty}. This is the consume path on a reservation — the reserved
+   * quantity is not returned to available (it is consumed against the reference). Returns
+   * rows updated — 0 means the guard failed and the caller must reject with
+   * INSUFFICIENT_STOCK (409). Version is bumped in SQL (version-bypass idiom).
+   */
+  @Modifying(clearAutomatically = true)
+  @Query("""
+      update InventoryStockBalanceEntity s
+      set s.reserved = s.reserved - :quantity,
+          s.consumed = s.consumed + :quantity,
+          s.version = s.version + 1,
+          s.updatedAt = :now
+      where s.sparepartId = :sparepartId
+        and s.locationId = :locationId
+        and s.reserved >= :quantity
+      """)
+  int consumeFromReserved(
+      @Param("sparepartId") UUID sparepartId,
+      @Param("locationId") UUID locationId,
+      @Param("quantity") BigDecimal quantity,
+      @Param("now") java.time.Instant now);
+
+  /**
    * Atomic transfer credit (story 18-4): create-or-increment {@code available} at
    * (sparepart, location) in ONE statement. A missing destination row is inserted
    * with {@code available = delta} (other stock columns take their DB defaults);

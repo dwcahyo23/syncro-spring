@@ -143,17 +143,27 @@ public class InventoryReservationEntity {
     return updatedAt;
   }
 
-  /** Draws down the remaining quantity (E4 consume path); caller owns the status. */
+  /** Draws down the remaining quantity (E4 consume path); transitions to CONSUMED
+   * when remaining reaches zero. */
   public void consume(BigDecimal delta, UUID consumedBy, Instant updatedAt) {
     this.remainingQuantity = this.remainingQuantity.subtract(delta);
     this.consumedBy = consumedBy;
     this.updatedAt = updatedAt;
+    if (this.remainingQuantity.signum() == 0) {
+      this.status = InventoryReservationStatus.CONSUMED;
+    }
   }
 
   /** Cancels the reservation (E4 cancel path): stamps who and keeps remaining as-is. */
   public void cancel(UUID cancelledBy, Instant updatedAt) {
     this.status = InventoryReservationStatus.CANCELLED;
     this.cancelledBy = cancelledBy;
+    this.updatedAt = updatedAt;
+  }
+
+  /** Marks the reservation as expired (E4 expiry path, evaluated on access). */
+  public void expire(Instant updatedAt) {
+    this.status = InventoryReservationStatus.EXPIRED;
     this.updatedAt = updatedAt;
   }
 }

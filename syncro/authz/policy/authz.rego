@@ -157,6 +157,20 @@ inventory_transfer_paths := {
   "/api/v1/inventory-transfers/*/reject",
 }
 
+# Inventory reservation mutations (story 18-5, blueprint E4): the same three-role
+# allow set as inventory transfer creates (INVENTORY_MAINTENANCE/STOREKEEPER/
+# MANAGER_MAINTENANCE; SUPER_ADMIN via the generic bypass). A single `*` matches
+# exactly one path segment, so each depth is enumerated explicitly: collection
+# (list/create), /{id} (get), /{id}/consume, /{id}/cancel. Reads (GET) flow through
+# generic read_allowed. Plant scope and the state machine are service-side (rego
+# cannot see the body or the reservation state).
+inventory_reservation_paths := {
+  "/api/v1/inventory-reservations",
+  "/api/v1/inventory-reservations/*",
+  "/api/v1/inventory-reservations/*/consume",
+  "/api/v1/inventory-reservations/*/cancel",
+}
+
 workorder_assign_paths := {
   "/api/v1/workorders/*/assign",
 }
@@ -580,6 +594,29 @@ mutation_allowed if {
   input.subject.roles[_] == "MANAGER_MAINTENANCE"
   is_mutation
   path_matches(inventory_transfer_paths)
+}
+
+# Inventory reservation mutations (story 18-5): INVENTORY_MAINTENANCE/STOREKEEPER/
+# MANAGER_MAINTENANCE (SUPER_ADMIN via the generic bypass). TECHNICIAN/STAFF_MAINTENANCE
+# and the other roles stay default-deny — parity with
+# InventoryReservationService.requireMutationRole. The service narrows scope; rego is
+# the coarse gate.
+mutation_allowed if {
+  input.subject.roles[_] == "INVENTORY_MAINTENANCE"
+  is_mutation
+  path_matches(inventory_reservation_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STOREKEEPER"
+  is_mutation
+  path_matches(inventory_reservation_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(inventory_reservation_paths)
 }
 
 # Assign: leadership roles only (STAFF_MAINTENANCE and PRODUCTION_LEADER excluded).

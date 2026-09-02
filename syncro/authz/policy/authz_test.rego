@@ -1292,6 +1292,67 @@ test_anonymous_transfer_denied if {
   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/inventory-transfers"}
 }
 
+# -- Inventory reservations (story 18-5, blueprint E4): INVENTORY_MAINTENANCE/
+#    STOREKEEPER/MANAGER_MAINTENANCE mutations at every enumerated depth;
+#    SUPER_ADMIN via generic bypass; TECHNICIAN/STAFF_MAINTENANCE/anonymous denied;
+#    reads any-auth -------------------------------------------------------------
+
+test_inventory_reservation_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/inventory-reservations"}
+}
+
+test_storekeeper_reservation_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "POST /api/v1/inventory-reservations"}
+}
+
+test_manager_reservation_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/inventory-reservations"}
+}
+
+test_inventory_reservation_consume_allowed if {
+  authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/inventory-reservations/7b7c6d5e-1111-2222-3333-444455556666/consume"}
+}
+
+test_storekeeper_reservation_cancel_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "POST /api/v1/inventory-reservations/7b7c6d5e-1111-2222-3333-444455556666/cancel"}
+}
+
+test_manager_reservation_consume_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/inventory-reservations/7b7c6d5e-1111-2222-3333-444455556666/consume"}
+}
+
+test_super_admin_reservation_cancel_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/inventory-reservations/7b7c6d5e-1111-2222-3333-444455556666/cancel"}
+}
+
+test_technician_reservation_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/inventory-reservations"}
+}
+
+test_technician_reservation_consume_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/inventory-reservations/7b7c6d5e-1111-2222-3333-444455556666/consume"}
+}
+
+test_staff_reservation_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/inventory-reservations"}
+}
+
+test_staff_reservation_cancel_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/inventory-reservations/7b7c6d5e-1111-2222-3333-444455556666/cancel"}
+}
+
+test_auditor_reservation_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/inventory-reservations"}
+}
+
+test_auditor_reservation_get_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/inventory-reservations/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_anonymous_reservation_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/inventory-reservations"}
+}
+
 # -- Org maintenance (spec-org-maintenance-model): departments, section leader,
 #    user master — MANAGER_MAINTENANCE + SUPER_ADMIN mutate; others denied -------
 

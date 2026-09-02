@@ -246,12 +246,12 @@ development_status:
   epic-17-retrospective: optional
 
   # Epic 18: Sparepart BOM & Inventory Maturation
-  epic-18: in-progress
+  epic-18: done
   18-1-sparepart-bom-master: done
   18-2-inventory-locations: done
   18-3-inventory-stock-balances: done
   18-4-inventory-transfers: done
-  18-5-inventory-reservations: ready-for-dev
+  18-5-inventory-reservations: done
   epic-18-retrospective: optional
 
   # Epic 19: Preventive PM Execution Model
