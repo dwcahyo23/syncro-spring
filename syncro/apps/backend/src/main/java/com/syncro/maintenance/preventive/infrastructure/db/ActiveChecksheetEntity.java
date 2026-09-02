@@ -37,4 +37,9 @@ public class ActiveChecksheetEntity {
   public UUID getChecksheetId() {
     return checksheetId;
   }
+
+  /** Points the active pointer at a different (newer) revision. */
+  public void setChecksheetId(UUID checksheetId) {
+    this.checksheetId = checksheetId;
+  }
 }

@@ -1,5 +1,6 @@
 package com.syncro.maintenance.preventive.infrastructure.db;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,4 +9,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface PmFrequencyRepository extends JpaRepository<PmFrequencyEntity, UUID> {
 
   Optional<PmFrequencyEntity> findByCode(String code);
+
+  List<PmFrequencyEntity> findAllByOrderBySortOrderAsc();
 }

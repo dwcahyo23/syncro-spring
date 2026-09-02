@@ -95,4 +95,55 @@ public final class PreventiveDtos {
   public record ErrorResponse(String code, String message, Map<String, String> fieldErrors, String timestamp,
       String traceId) {
   }
+
+  // -------------------------------------------------------------------------
+  // PM Frequencies (story 19-1)
+  // -------------------------------------------------------------------------
+
+  public record CreateFrequencyRequest(
+      @NotBlank @Size(max = 50) String code,
+      @NotBlank @Size(max = 200) String name,
+      @Size(max = 4000) String description,
+      Integer sortOrder,
+      Boolean isActive) {
+  }
+
+  public record UpdateFrequencyRequest(
+      @NotBlank @Size(max = 200) String name,
+      @Size(max = 4000) String description,
+      Integer sortOrder,
+      Boolean isActive) {
+  }
+
+  public record FrequencyView(UUID id, String code, String name, String description,
+      int sortOrder, boolean isActive, Instant createdAt, Instant updatedAt) {
+  }
+
+  // -------------------------------------------------------------------------
+  // PM Checksheets (story 19-1)
+  // -------------------------------------------------------------------------
+
+  public record CreateChecksheetRequest(
+      @NotNull UUID machineId,
+      @NotNull UUID frequencyId,
+      @Size(max = 4000) String revisionReason) {
+  }
+
+  public record ReviseChecksheetRequest(
+      @Size(max = 4000) String revisionReason) {
+  }
+
+  public record ApproveChecksheetRequest(
+      LocalDate effectiveDate) {
+  }
+
+  public record ChecksheetView(UUID id, UUID machineId, UUID frequencyId, int revisionNo,
+      String revisionReason, boolean isActive, UUID supersedes, UUID approvedBy,
+      Instant approvedAt, LocalDate effectiveDate, UUID createdBy, Instant createdAt,
+      Instant updatedAt) {
+  }
+
+  public record ActiveChecksheetView(UUID checksheetId, UUID machineId, UUID frequencyId,
+      int revisionNo) {
+  }
 }

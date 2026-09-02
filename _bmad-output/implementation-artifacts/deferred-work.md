@@ -1181,3 +1181,27 @@ origin: code review of spec-18-3-inventory-stock-balances (blind-hunter), 2026-0
 location: syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryLocationStockController.java + com/syncro/sparepart/stock/api/SparepartStockController.java
 reason: Both controllers call spareparts.findById + locations.findById per row (N+1 on list responses), and toView is duplicated between them. Pre-existing pattern (legacy controller already did this); batch with findAllById + a shared mapper when list sizes demand it.
 status: open
+
+### DW-147: OPA rego tests not wired into mvn test / CI
+origin: code review of spec-19-1-pm-frequencies-checksheets (verification-gap), 2026-09-03
+location: syncro/authz/policy/authz_test.rego + syncro/authz/run-opa-test.ps1 + syncro/authz/README.md
+reason: The 22 new PM rego cases (and all prior ones) execute only via the manual run-opa-test.ps1 Docker invocation; no Maven exec/antrun hook or CI job runs `opa test`, so a rego regression reaches production enforcement silently. README's "Expected: PASS: 38/38" count is stale. Pre-existing repo condition (also flagged in spec-17-1); needs one focused CI-wiring pass.
+status: open
+
+### DW-148: openapi.json not regenerated for new backend endpoints
+origin: code review of spec-19-1-pm-frequencies-checksheets (blind-hunter), 2026-09-03
+location: syncro/apps/web/openapi.json
+reason: The checked-in OpenAPI contract has no /api/v1/pm-frequencies or /api/v1/pm-checksheets paths (and is already missing several prior-epic surfaces), so the Orval-generated client does not include this story's endpoints. Pre-existing staleness; regenerate as a dedicated contract-sync task rather than per-story.
+status: open
+
+### DW-149: N+1 + unbounded findAll in PmChecksheetService.list
+origin: code review of spec-19-1-pm-frequencies-checksheets (blind-hunter+verification-gap), 2026-09-03
+location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecksheetService.java:121-135
+reason: The unfiltered list branch loads every checksheet then calls machines.findByIdWithPlantAndGroup per row for scope filtering. Matches the existing PreventiveProgramService.list idiom (same N+1); batch/join the scoped query when list sizes demand it. Related to DW-146.
+status: open
+
+### DW-150: frequency isActive=false can orphan active checksheets
+origin: code review of spec-19-1-pm-frequencies-checksheets (edge-case-hunter), 2026-09-03
+location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmFrequencyService.java:79-99
+reason: Deactivating a frequency does not check whether active checksheets still reference it; the create guard blocks new checksheets but existing active pointers remain on an inactive frequency. Spec is silent on the in-use guard; adding one is a behavior change that needs a product decision (reject vs cascade-deactivate).
+status: open

@@ -1,0 +1,2450 @@
+diff --git a/syncro/.env.example b/syncro/.env.example
+index 3f5f29a..436c2a1 100644
+--- a/syncro/.env.example
++++ b/syncro/.env.example
+@@ -75,7 +75,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+ 
+ # Authz coarse gate (9.5 rolls out enforcement on the org/maintenance/sync surface;
+ # health/actuator stay public and are deliberately excluded)
+-SYNCRO_AUTHZ_ENFORCED_PATHS=/api/v1/plants/**,/api/v1/machine-groups/**,/api/v1/sections/**,/api/v1/teams/**,/api/v1/machine-responsibilities/**,/api/v1/machines/**,/api/v1/machine-sparepart-installations/**,/api/v1/spareparts/**,/api/v1/sparepart-taxonomies/**,/api/v1/alerts/**,/api/v1/audit-log/**,/api/v1/setup-completeness/**,/api/v1/telemetry/**,/api/v1/notification/templates/**,/api/v1/notification/worker/**,/api/v1/work-order-categories/**,/api/v1/workorders/**,/api/v1/workorders/*/transition,/api/v1/workorders/*/sessions,/api/v1/workorders/*/sessions/stop,/api/v1/workorders/*/attachments,/api/v1/workorders/*/attachments/*,/api/v1/workorders/*/report,/api/v1/workorders/*/report/cpk,/api/v1/workorders/*/todos,/api/v1/workorders/*/todos/*,/api/v1/workorders/*/todos/*/assign,/api/v1/workorders/*/todos/*/complete,/api/v1/workorders/*/todos/*/reorder,/api/v1/workorders/*/ratings,/api/v1/workorders/*/ratings/technician,/api/v1/workorders/*/ratings/workorder,/api/v1/rating-dimensions,/api/v1/rating-dimensions/*,/api/v1/preventive-programs,/api/v1/preventive-programs/*,/api/v1/preventive-programs/*/generate,/api/v1/preventive-schedules,/api/v1/preventive-schedules/*/checklist,/api/v1/preventive-schedules/*/evidence,/api/v1/preventive-schedules/*/evidence/*,/api/v1/preventive-schedules/*/approve,/api/v1/preventive-schedules/*/skip,/api/v1/sparepart-requests,/api/v1/sparepart-requests/*/transition,/api/v1/sparepart-requests/*/mre,/api/v1/sparepart-requests/*/approve,/api/v1/sparepart-requests/*/complete,/api/v1/sparepart-stock,/api/v1/sparepart-stock/*,/api/v1/sparepart-stock/*/adjust,/api/v1/departments,/api/v1/departments/*,/api/v1/departments/*/members,/api/v1/sections/*/leader,/api/v1/auth/users/*,/api/v1/sync/**,/api/v1/inventory-locations/**,/api/v1/inventory-locations/*/stock-balances,/api/v1/inventory-locations/*/stock-balances/*,/api/v1/inventory-locations/*/stock-balances/*/adjust,/api/v1/inventory-transfers,/api/v1/inventory-transfers/*,/api/v1/inventory-transfers/*/approve,/api/v1/inventory-transfers/*/reject
++SYNCRO_AUTHZ_ENFORCED_PATHS=/api/v1/plants/**,/api/v1/machine-groups/**,/api/v1/sections/**,/api/v1/teams/**,/api/v1/machine-responsibilities/**,/api/v1/machines/**,/api/v1/machine-sparepart-installations/**,/api/v1/spareparts/**,/api/v1/sparepart-taxonomies/**,/api/v1/alerts/**,/api/v1/audit-log/**,/api/v1/setup-completeness/**,/api/v1/telemetry/**,/api/v1/notification/templates/**,/api/v1/notification/worker/**,/api/v1/work-order-categories/**,/api/v1/workorders/**,/api/v1/workorders/*/transition,/api/v1/workorders/*/sessions,/api/v1/workorders/*/sessions/stop,/api/v1/workorders/*/attachments,/api/v1/workorders/*/attachments/*,/api/v1/workorders/*/report,/api/v1/workorders/*/report/cpk,/api/v1/workorders/*/todos,/api/v1/workorders/*/todos/*,/api/v1/workorders/*/todos/*/assign,/api/v1/workorders/*/todos/*/complete,/api/v1/workorders/*/todos/*/reorder,/api/v1/workorders/*/ratings,/api/v1/workorders/*/ratings/technician,/api/v1/workorders/*/ratings/workorder,/api/v1/rating-dimensions,/api/v1/rating-dimensions/*,/api/v1/preventive-programs,/api/v1/preventive-programs/*,/api/v1/preventive-programs/*/generate,/api/v1/preventive-schedules,/api/v1/preventive-schedules/*/checklist,/api/v1/preventive-schedules/*/evidence,/api/v1/preventive-schedules/*/evidence/*,/api/v1/preventive-schedules/*/approve,/api/v1/preventive-schedules/*/skip,/api/v1/sparepart-requests,/api/v1/sparepart-requests/*/transition,/api/v1/sparepart-requests/*/mre,/api/v1/sparepart-requests/*/approve,/api/v1/sparepart-requests/*/complete,/api/v1/sparepart-stock,/api/v1/sparepart-stock/*,/api/v1/sparepart-stock/*/adjust,/api/v1/departments,/api/v1/departments/*,/api/v1/departments/*/members,/api/v1/sections/*/leader,/api/v1/auth/users/*,/api/v1/sync/**,/api/v1/inventory-locations/**,/api/v1/inventory-locations/*/stock-balances,/api/v1/inventory-locations/*/stock-balances/*,/api/v1/inventory-locations/*/stock-balances/*/adjust,/api/v1/inventory-transfers,/api/v1/inventory-transfers/*,/api/v1/inventory-transfers/*/approve,/api/v1/inventory-transfers/*/reject,/api/v1/pm-frequencies/**,/api/v1/pm-checksheets/**
+ SYNCRO_AUTHZ_DEGRADED_ALLOWLIST=/api/v1/health,/actuator/**
+ 
+ # Authz decision-log retention (days) for the authz_decisions purge job
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java b/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
+index b1c678d..4895c8a 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
+@@ -56,5 +56,7 @@ public enum AuditEntityType {
+   WORK_ASSIGNMENT,
+   WORK_LOG,
+   WORK_LOG_RATING,
+-  WORK_ORDER_QUALITY_RATING
++  WORK_ORDER_QUALITY_RATING,
++  PM_FREQUENCY,
++  PM_CHECKSHEET
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java
+index 4af295c..fab7338 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java
+@@ -95,4 +95,55 @@ public final class PreventiveDtos {
+   public record ErrorResponse(String code, String message, Map<String, String> fieldErrors, String timestamp,
+       String traceId) {
+   }
+-}
+\ No newline at end of file
++
++  // -------------------------------------------------------------------------
++  // PM Frequencies (story 19-1)
++  // -------------------------------------------------------------------------
++
++  public record CreateFrequencyRequest(
++      @NotBlank @Size(max = 50) String code,
++      @NotBlank @Size(max = 200) String name,
++      @Size(max = 4000) String description,
++      Integer sortOrder,
++      Boolean isActive) {
++  }
++
++  public record UpdateFrequencyRequest(
++      @NotBlank @Size(max = 200) String name,
++      @Size(max = 4000) String description,
++      Integer sortOrder,
++      Boolean isActive) {
++  }
++
++  public record FrequencyView(UUID id, String code, String name, String description,
++      int sortOrder, boolean isActive, Instant createdAt, Instant updatedAt) {
++  }
++
++  // -------------------------------------------------------------------------
++  // PM Checksheets (story 19-1)
++  // -------------------------------------------------------------------------
++
++  public record CreateChecksheetRequest(
++      @NotNull UUID machineId,
++      @NotNull UUID frequencyId,
++      @Size(max = 4000) String revisionReason) {
++  }
++
++  public record ReviseChecksheetRequest(
++      @Size(max = 4000) String revisionReason) {
++  }
++
++  public record ApproveChecksheetRequest(
++      LocalDate effectiveDate) {
++  }
++
++  public record ChecksheetView(UUID id, UUID machineId, UUID frequencyId, int revisionNo,
++      String revisionReason, boolean isActive, UUID supersedes, UUID approvedBy,
++      Instant approvedAt, LocalDate effectiveDate, UUID createdBy, Instant createdAt,
++      Instant updatedAt) {
++  }
++
++  public record ActiveChecksheetView(UUID checksheetId, UUID machineId, UUID frequencyId,
++      int revisionNo) {
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveExceptionHandler.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveExceptionHandler.java
+index bd8a44e..be209e2 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveExceptionHandler.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveExceptionHandler.java
+@@ -18,6 +18,16 @@ import com.syncro.maintenance.preventive.application.PreventiveProgramService.Ma
+ import com.syncro.maintenance.preventive.application.PreventiveProgramService.PreventiveForbiddenException;
+ import com.syncro.maintenance.preventive.application.PreventiveProgramService.PreventiveValidationException;
+ import com.syncro.maintenance.preventive.application.PreventiveProgramService.ProgramNotFoundException;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.ActiveChecksheetNotFoundException;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.ChecksheetAlreadyExistsException;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.ChecksheetValidationException;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.InvalidChecksheetTransitionException;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.PmChecksheetForbiddenException;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.PmChecksheetNotFoundException;
++import com.syncro.maintenance.preventive.application.PmFrequencyService.DuplicateFrequencyCodeException;
++import com.syncro.maintenance.preventive.application.PmFrequencyService.FrequencyValidationException;
++import com.syncro.maintenance.preventive.application.PmFrequencyService.PmFrequencyForbiddenException;
++import com.syncro.maintenance.preventive.application.PmFrequencyService.PmFrequencyNotFoundException;
+ import java.time.Clock;
+ import java.time.Instant;
+ import java.util.LinkedHashMap;
+@@ -34,7 +44,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
+ import tools.jackson.databind.exc.InvalidFormatException;
+ 
+ @Order(Ordered.HIGHEST_PRECEDENCE)
+-@RestControllerAdvice(assignableTypes = {PreventiveProgramController.class, PreventiveScheduleController.class})
++@RestControllerAdvice(assignableTypes = {PreventiveProgramController.class, PreventiveScheduleController.class,
++    PmFrequencyController.class, PmChecksheetController.class})
+ public class PreventiveExceptionHandler {
+ 
+   private final Clock clock;
+@@ -186,9 +197,78 @@ public class PreventiveExceptionHandler {
+         "File storage operation failed. Please try again.", Map.of());
+   }
+ 
++  // -------------------------------------------------------------------------
++  // Story 19-1: PM frequencies & checksheets
++  // -------------------------------------------------------------------------
++
++  @ExceptionHandler(PmFrequencyForbiddenException.class)
++  ResponseEntity<ErrorResponse> pmFrequencyForbidden() {
++    return error(HttpStatus.FORBIDDEN, "FORBIDDEN",
++        "You do not have permission to access this resource.", Map.of());
++  }
++
++  @ExceptionHandler(DuplicateFrequencyCodeException.class)
++  ResponseEntity<ErrorResponse> duplicateFrequencyCode() {
++    return error(HttpStatus.CONFLICT, "DUPLICATE_FREQUENCY_CODE",
++        "A PM frequency with this code already exists.", Map.of());
++  }
++
++  @ExceptionHandler(PmFrequencyNotFoundException.class)
++  ResponseEntity<ErrorResponse> pmFrequencyNotFound() {
++    return error(HttpStatus.NOT_FOUND, "PM_FREQUENCY_NOT_FOUND",
++        "PM frequency was not found.", Map.of());
++  }
++
++  @ExceptionHandler(FrequencyValidationException.class)
++  ResponseEntity<ErrorResponse> frequencyValidation(FrequencyValidationException exception) {
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
++        exception.getFieldErrors());
++  }
++
++  @ExceptionHandler(PmChecksheetForbiddenException.class)
++  ResponseEntity<ErrorResponse> pmChecksheetForbidden() {
++    return error(HttpStatus.FORBIDDEN, "FORBIDDEN",
++        "You do not have permission to access this resource.", Map.of());
++  }
++
++  @ExceptionHandler(PmChecksheetNotFoundException.class)
++  ResponseEntity<ErrorResponse> pmChecksheetNotFound() {
++    return error(HttpStatus.NOT_FOUND, "PM_CHECKSHEET_NOT_FOUND",
++        "PM checksheet was not found.", Map.of());
++  }
++
++  @ExceptionHandler(ActiveChecksheetNotFoundException.class)
++  ResponseEntity<ErrorResponse> activeChecksheetNotFound() {
++    return error(HttpStatus.NOT_FOUND, "PM_CHECKSHEET_NOT_FOUND",
++        "No active PM checksheet was found for this machine and frequency.", Map.of());
++  }
++
++  @ExceptionHandler(ChecksheetAlreadyExistsException.class)
++  ResponseEntity<ErrorResponse> checksheetAlreadyExists() {
++    return error(HttpStatus.CONFLICT, "CHECKSHEET_ALREADY_EXISTS",
++        "A PM checksheet already exists for this machine and frequency.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmChecksheetService.MachineNotFoundException.class)
++  ResponseEntity<ErrorResponse> pmChecksheetMachineNotFound() {
++    return error(HttpStatus.NOT_FOUND, "MACHINE_NOT_FOUND", "Machine was not found.", Map.of());
++  }
++
++  @ExceptionHandler(InvalidChecksheetTransitionException.class)
++  ResponseEntity<ErrorResponse> invalidChecksheetTransition() {
++    return error(HttpStatus.CONFLICT, "INVALID_CHECKSHEET_TRANSITION",
++        "The checksheet is not in the expected state for this action.", Map.of());
++  }
++
++  @ExceptionHandler(ChecksheetValidationException.class)
++  ResponseEntity<ErrorResponse> checksheetValidation(ChecksheetValidationException exception) {
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
++        exception.getFieldErrors());
++  }
++
+   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message,
+       Map<String, String> fieldErrors) {
+     return ResponseEntity.status(status)
+         .body(new ErrorResponse(code, message, fieldErrors, Instant.now(clock).toString(), UUID.randomUUID().toString()));
+   }
+-}
+\ No newline at end of file
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/ActiveChecksheetEntity.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/ActiveChecksheetEntity.java
+index ea1147b..8e67ff9 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/ActiveChecksheetEntity.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/ActiveChecksheetEntity.java
+@@ -37,4 +37,9 @@ public class ActiveChecksheetEntity {
+   public UUID getChecksheetId() {
+     return checksheetId;
+   }
++
++  /** Points the active pointer at a different (newer) revision. */
++  public void setChecksheetId(UUID checksheetId) {
++    this.checksheetId = checksheetId;
++  }
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/ActiveChecksheetRepository.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/ActiveChecksheetRepository.java
+index c83015e..8980b0d 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/ActiveChecksheetRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/ActiveChecksheetRepository.java
+@@ -1,7 +1,11 @@
+ package com.syncro.maintenance.preventive.infrastructure.db;
+ 
++import java.util.Optional;
++import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
+ 
+ /** Persistence for {@code active_checksheets} (blueprint F3, story 15-2). */
+ public interface ActiveChecksheetRepository extends JpaRepository<ActiveChecksheetEntity, ActiveChecksheetId> {
++
++  Optional<ActiveChecksheetEntity> findByIdMachineIdAndIdFrequencyId(UUID machineId, UUID frequencyId);
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmChecksheetEntity.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmChecksheetEntity.java
+index 5d22264..4f5cc66 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmChecksheetEntity.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmChecksheetEntity.java
+@@ -138,4 +138,16 @@ public class PmChecksheetEntity {
+     this.effectiveDate = effectiveDate;
+     this.updatedAt = updatedAt;
+   }
++
++  /** Deactivates this revision (used when a newer revision is approved). */
++  public void deactivate(Instant updatedAt) {
++    this.active = false;
++    this.updatedAt = updatedAt;
++  }
++
++  /** Marks this revision as the active one (approval path). */
++  public void activate(Instant updatedAt) {
++    this.active = true;
++    this.updatedAt = updatedAt;
++  }
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmChecksheetRepository.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmChecksheetRepository.java
+index 673edd8..1f5e24e 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmChecksheetRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmChecksheetRepository.java
+@@ -1,12 +1,30 @@
+ package com.syncro.maintenance.preventive.infrastructure.db;
+ 
++import java.util.List;
+ import java.util.Optional;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
++import org.springframework.data.jpa.repository.Query;
++import org.springframework.data.repository.query.Param;
+ 
+ /** Persistence for {@code pm_checksheets} (blueprint F2, story 15-2). */
+ public interface PmChecksheetRepository extends JpaRepository<PmChecksheetEntity, UUID> {
+ 
+   Optional<PmChecksheetEntity> findByMachineIdAndFrequencyIdAndRevisionNo(UUID machineId,
+       UUID frequencyId, int revisionNo);
++
++  List<PmChecksheetEntity> findByMachineIdOrderByRevisionNoDesc(UUID machineId);
++
++  List<PmChecksheetEntity> findByFrequencyIdOrderByRevisionNoDesc(UUID frequencyId);
++
++  List<PmChecksheetEntity> findByMachineIdAndFrequencyIdOrderByRevisionNoAsc(UUID machineId,
++      UUID frequencyId);
++
++  boolean existsByMachineIdAndFrequencyId(UUID machineId, UUID frequencyId);
++
++  /** Highest revision number for a (machine, frequency) pair; empty when none exist. */
++  @Query("select max(c.revisionNo) from PmChecksheetEntity c "
++      + "where c.machineId = :machineId and c.frequencyId = :frequencyId")
++  Optional<Integer> findMaxRevisionNo(@Param("machineId") UUID machineId,
++      @Param("frequencyId") UUID frequencyId);
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmFrequencyRepository.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmFrequencyRepository.java
+index 8be89c7..2d02775 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmFrequencyRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmFrequencyRepository.java
+@@ -1,5 +1,6 @@
+ package com.syncro.maintenance.preventive.infrastructure.db;
+ 
++import java.util.List;
+ import java.util.Optional;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
+@@ -8,4 +9,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
+ public interface PmFrequencyRepository extends JpaRepository<PmFrequencyEntity, UUID> {
+ 
+   Optional<PmFrequencyEntity> findByCode(String code);
++
++  List<PmFrequencyEntity> findAllByOrderBySortOrderAsc();
+ }
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
+index 2f394b8..8a4ac1d 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
+@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
+ 
+ import java.util.List;
+ import java.util.Map;
++import java.util.stream.Collectors;
+ import org.flywaydb.core.Flyway;
+ import org.junit.jupiter.api.BeforeAll;
+ import org.junit.jupiter.api.DisplayName;
+@@ -48,11 +49,11 @@ class V1BaseSchemaMigrationTest {
+   // -------------------------------------------------------------------------
+ 
+   @Test
+-  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2/V3/V4/V5/V6 additive migrations")
++  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V7 additive migrations")
+   void migrationsApplied() {
+     var rows = jdbc.queryForList(
+         "SELECT version, script, success FROM flyway_schema_history ORDER BY installed_rank");
+-    assertThat(rows).hasSize(6);
++    assertThat(rows).hasSize(7);
+     assertThat(rows.get(0).get("version")).isEqualTo("1");
+     assertThat(rows.get(0).get("script")).isEqualTo("V1__orm_foundation_schema.sql");
+     assertThat(rows.get(0).get("success")).isEqualTo(true);
+@@ -71,6 +72,9 @@ class V1BaseSchemaMigrationTest {
+     assertThat(rows.get(5).get("version")).isEqualTo("6");
+     assertThat(rows.get(5).get("script")).isEqualTo("V6__work_order_quality_rating_audit_type.sql");
+     assertThat(rows.get(5).get("success")).isEqualTo(true);
++    assertThat(rows.get(6).get("version")).isEqualTo("7");
++    assertThat(rows.get(6).get("script")).isEqualTo("V7__pm_frequencies_seed_and_audit_types.sql");
++    assertThat(rows.get(6).get("success")).isEqualTo(true);
+   }
+ 
+   // -------------------------------------------------------------------------
+@@ -461,6 +465,56 @@ class V1BaseSchemaMigrationTest {
+         "SIGNATURE_USE");
+   }
+ 
++  /**
++   * Story 19-1: V7 extends the CHECK additively with PM_FREQUENCY/PM_CHECKSHEET so
++   * {@code AuditEntityType.PM_FREQUENCY} / {@code AuditEntityType.PM_CHECKSHEET} can
++   * be persisted, and seeds MONTHLY/ANNUAL into pm_frequencies. Every prior value —
++   * including WORK_ORDER_QUALITY_RATING — survives the extension.
++   */
++  @Test
++  @DisplayName("19.1-DB-001 P0 audit_log entity_type CHECK accepts PM_FREQUENCY/PM_CHECKSHEET after V7")
++  void auditEntityTypeAcceptsPmTypes() {
++    var check = jdbc.queryForMap(
++        "SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint "
++            + "WHERE conname = 'ck_audit_log_entity_type'");
++    var def = (String) check.get("def");
++    assertThat(def).contains("PM_FREQUENCY", "PM_CHECKSHEET");
++    // every prior value survives the additive V7 extension.
++    assertThat(def).contains("WORK_ORDER_QUALITY_RATING", "WORK_LOG_RATING", "WORK_LOG",
++        "WORK_ASSIGNMENT", "WORK_ORDER", "REPAIR_SESSION", "WORKORDER_SIGNATURE",
++        "SPAREPART_STOCK", "SYNC_RUN", "SYNC_QUARANTINE", "MACHINE_AREA",
++        "USER_ROLE_BINDING", "PLANT_WORKING_CALENDAR",
++        "PLANT", "MACHINE_GROUP", "MACHINE", "SPAREPART_TAXONOMY",
++        "SPAREPART", "INSTALLATION", "RESPONSIBILITY", "ALERT",
++        "SPAREPART_PRICE_ENTRY", "SECTION", "TEAM", "WORK_ORDER_CATEGORY",
++        "WORKORDER_ATTACHMENT", "WORK_ORDER_TODO", "WORKORDER_RATING",
++        "RATING_DIMENSION", "PREVENTIVE_PROGRAM", "PREVENTIVE_SCHEDULE",
++        "PREVENTIVE_CHECKLIST", "PREVENTIVE_ATTACHMENT",
++        "SPAREPART_REQUEST", "DEPARTMENT", "DEPARTMENT_USER", "USER",
++        "INVENTORY_LOCATION", "INVENTORY_STOCK_BALANCE",
++        "INVENTORY_TRANSFER", "INVENTORY_RESERVATION",
++        "JOB_TITLE", "SYSTEM_ROLE", "ROLE_PERMISSION_MAPPING",
++        "MENU_FEATURE", "DOMAIN_CONTEXT", "USER_JOB_BINDING",
++        "SIGNATURE_USE");
++  }
++
++  /**
++   * Story 19-1 AC: a fresh DB applying V7 seeds MONTHLY and ANNUAL into
++   * pm_frequencies (idempotent ON CONFLICT DO NOTHING).
++   */
++  @Test
++  @DisplayName("19.1-DB-002 P0 pm_frequencies contains MONTHLY and ANNUAL after V7")
++  void pmFrequenciesSeeded() {
++    var rows = jdbc.queryForList(
++        "SELECT code, sort_order, is_active FROM pm_frequencies WHERE code IN ('MONTHLY','ANNUAL') ORDER BY sort_order");
++    assertThat(rows).hasSize(2);
++    var codes = rows.stream().map(m -> (String) m.get("code")).collect(Collectors.toSet());
++    assertThat(codes).containsExactlyInAnyOrder("MONTHLY", "ANNUAL");
++    assertThat(rows.get(0).get("sort_order")).isEqualTo(1);
++    assertThat(rows.get(1).get("sort_order")).isEqualTo(2);
++    assertThat(rows.stream().allMatch(m -> Boolean.TRUE.equals(m.get("is_active")))).isTrue();
++  }
++
+   // -------------------------------------------------------------------------
+   // Helpers
+   // -------------------------------------------------------------------------
+diff --git a/syncro/authz/policy/authz.rego b/syncro/authz/policy/authz.rego
+index aecb931..53fc0d2 100644
+--- a/syncro/authz/policy/authz.rego
++++ b/syncro/authz/policy/authz.rego
+@@ -328,6 +328,28 @@ preventive_schedule_mutation_paths := {
+   "/api/v1/preventive-schedules/*/skip",
+ }
+ 
++# PM frequencies (story 19-1, blueprint F1): global master-data mutations for the
++# four-role set (MANAGER_MAINTENANCE, SECTION_LEADER, MAINTENANCE_LEADER,
++# STAFF_MAINTENANCE) — no scope dimension, role gate only (SUPER_ADMIN via the
++# generic bypass). Reads (GET) flow through generic read_allowed.
++pm_frequency_paths := {
++  "/api/v1/pm-frequencies",
++  "/api/v1/pm-frequencies/*",
++}
++
++# PM checksheets (story 19-1, blueprint F2/F3): create/revise for the four-role set;
++# approve for the leader subset. A single `*` matches exactly one path segment, so
++# each depth is enumerated explicitly: collection (list/create), /{id} (get — and
++# /active, which the same `*` matches), /{id}/revise, /{id}/approve. The service
++# gate is authoritative for scope (machine plant/group) and the leader-only approve
++# role (STAFF_MAINTENANCE passes rego but is denied approve in service).
++pm_checksheet_paths := {
++  "/api/v1/pm-checksheets",
++  "/api/v1/pm-checksheets/*",
++  "/api/v1/pm-checksheets/*/revise",
++  "/api/v1/pm-checksheets/*/approve",
++}
++
+ # Org-maintenance departments (spec-org-maintenance-model): mutations are the
+ # Phase 1 gate (SUPER_ADMIN|MANAGER_MAINTENANCE). Reads flow through generic
+ # read_allowed. Members replace + section leader assignment + user-master updates
+@@ -999,6 +1021,59 @@ mutation_allowed if {
+   path_matches(preventive_schedule_mutation_paths)
+ }
+ 
++# PM frequencies (story 19-1): the same four-role allow set as preventive_program_paths.
++mutation_allowed if {
++  input.subject.roles[_] == "MANAGER_MAINTENANCE"
++  is_mutation
++  path_matches(pm_frequency_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "SECTION_LEADER"
++  is_mutation
++  path_matches(pm_frequency_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "MAINTENANCE_LEADER"
++  is_mutation
++  path_matches(pm_frequency_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "STAFF_MAINTENANCE"
++  is_mutation
++  path_matches(pm_frequency_paths)
++}
++
++# PM checksheets (story 19-1): create/revise for the four-role set; approve for
++# the leader subset (SECTION_LEADER, MAINTENANCE_LEADER, MANAGER_MAINTENANCE).
++# The service gate is authoritative for scope and the leader-only approve role
++# (STAFF_MAINTENANCE is denied approve in service, not in rego).
++mutation_allowed if {
++  input.subject.roles[_] == "MANAGER_MAINTENANCE"
++  is_mutation
++  path_matches(pm_checksheet_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "SECTION_LEADER"
++  is_mutation
++  path_matches(pm_checksheet_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "MAINTENANCE_LEADER"
++  is_mutation
++  path_matches(pm_checksheet_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "STAFF_MAINTENANCE"
++  is_mutation
++  path_matches(pm_checksheet_paths)
++}
++
+ mutation_allowed if {
+   input.subject.roles[_] == "MANAGER_MAINTENANCE"
+   is_mutation
+diff --git a/syncro/authz/policy/authz_test.rego b/syncro/authz/policy/authz_test.rego
+index b2b0c43..5bb3094 100644
+--- a/syncro/authz/policy/authz_test.rego
++++ b/syncro/authz/policy/authz_test.rego
+@@ -1428,6 +1428,108 @@ test_anonymous_department_denied if {
+   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/departments"}
+ }
+ 
++# -- PM frequencies (story 19-1, blueprint F1): four-role mutation allow set;
++#    TECHNICIAN/AUDITOR/anonymous denied; reads any-authenticated ---------------
++
++test_manager_pm_frequency_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/pm-frequencies"}
++}
++
++test_section_leader_pm_frequency_update_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "PUT /api/v1/pm-frequencies/7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_maintenance_leader_pm_frequency_update_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "PUT /api/v1/pm-frequencies/7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_staff_pm_frequency_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/pm-frequencies"}
++}
++
++test_super_admin_pm_frequency_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/pm-frequencies"}
++}
++
++test_technician_pm_frequency_create_denied if {
++  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-frequencies"}
++}
++
++test_auditor_pm_frequency_update_denied if {
++  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "PUT /api/v1/pm-frequencies/7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_auditor_pm_frequency_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-frequencies"}
++}
++
++test_anonymous_pm_frequency_denied if {
++  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/pm-frequencies"}
++}
++
++# -- PM checksheets (story 19-1, blueprint F2/F3): create/revise/approve for the
++#    four-role set (the service narrows approve to the leader subset);
++#    TECHNICIAN/AUDITOR/anonymous denied; reads any-authenticated ---------------
++
++test_manager_pm_checksheet_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/pm-checksheets"}
++}
++
++test_section_leader_pm_checksheet_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/pm-checksheets"}
++}
++
++test_maintenance_leader_pm_checksheet_revise_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/pm-checksheets/7b7c6d5e-1111-2222-3333-444455556666/revise"}
++}
++
++test_staff_pm_checksheet_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/pm-checksheets"}
++}
++
++test_manager_pm_checksheet_approve_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/pm-checksheets/7b7c6d5e-1111-2222-3333-444455556666/approve"}
++}
++
++test_section_leader_pm_checksheet_approve_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/pm-checksheets/7b7c6d5e-1111-2222-3333-444455556666/approve"}
++}
++
++test_super_admin_pm_checksheet_approve_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/pm-checksheets/7b7c6d5e-1111-2222-3333-444455556666/approve"}
++}
++
++test_technician_pm_checksheet_create_denied if {
++  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-checksheets"}
++}
++
++test_technician_pm_checksheet_approve_denied if {
++  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-checksheets/7b7c6d5e-1111-2222-3333-444455556666/approve"}
++}
++
++test_auditor_pm_checksheet_revise_denied if {
++  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/pm-checksheets/7b7c6d5e-1111-2222-3333-444455556666/revise"}
++}
++
++test_auditor_pm_checksheet_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-checksheets"}
++}
++
++test_auditor_pm_checksheet_active_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-checksheets/active"}
++}
++
++# STAFF_MAINTENANCE approve is ALLOWED at the rego layer (coarse gate) — the
++# service narrows approve to the leader subset. This test pins that deliberate
++# split so a future rego tightening can't silently change enforcement semantics.
++test_staff_pm_checksheet_approve_allowed_at_rego if {
++  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/pm-checksheets/7b7c6d5e-1111-2222-3333-444455556666/approve"}
++}
++
++test_anonymous_pm_checksheet_denied if {
++  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/pm-checksheets"}
++}
++
+ # -- Anonymous (no userId): default deny everywhere ------------------------
+ 
+ test_anonymous_admin_only_denied if {
+--- NEW FILE: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmChecksheetController.java ---
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmChecksheetController.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmChecksheetController.java
+new file mode 100644
+index 0000000..a938ef3
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmChecksheetController.java
+@@ -0,0 +1,154 @@
++package com.syncro.maintenance.preventive.api;
++
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.ActiveChecksheetView;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.ApproveChecksheetRequest;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.ChecksheetView;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.CreateChecksheetRequest;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.ReviseChecksheetRequest;
++import com.syncro.maintenance.preventive.application.PmChecksheetService;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.ApproveChecksheetCommand;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.CreateChecksheetCommand;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.ReviseChecksheetCommand;
++import io.swagger.v3.oas.annotations.Operation;
++import io.swagger.v3.oas.annotations.media.Content;
++import io.swagger.v3.oas.annotations.media.Schema;
++import io.swagger.v3.oas.annotations.responses.ApiResponse;
++import io.swagger.v3.oas.annotations.responses.ApiResponses;
++import jakarta.validation.Valid;
++import java.net.URI;
++import java.util.List;
++import java.util.UUID;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.security.core.annotation.AuthenticationPrincipal;
++import org.springframework.validation.annotation.Validated;
++import org.springframework.web.bind.annotation.GetMapping;
++import org.springframework.web.bind.annotation.PathVariable;
++import org.springframework.web.bind.annotation.PostMapping;
++import org.springframework.web.bind.annotation.RequestBody;
++import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RequestParam;
++import org.springframework.web.bind.annotation.RestController;
++
++/** PM checksheet revision/approval workflow API (story 19-1, blueprint F2/F3). */
++@Validated
++@RestController
++@RequestMapping("/api/v1/pm-checksheets")
++public class PmChecksheetController {
++
++  private final PmChecksheetService checksheets;
++
++  public PmChecksheetController(PmChecksheetService checksheets) {
++    this.checksheets = checksheets;
++  }
++
++  @Operation(operationId = "createPmChecksheet", summary = "Create a checksheet revision 1 (unapproved)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "201", description = "Checksheet created",
++          content = @Content(schema = @Schema(implementation = ChecksheetView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Machine or frequency not found"),
++      @ApiResponse(responseCode = "409", description = "Checksheet already exists for this machine and frequency")
++  })
++  @PostMapping
++  public ResponseEntity<ChecksheetView> create(@AuthenticationPrincipal AuthenticatedUser user,
++      @Valid @RequestBody CreateChecksheetRequest request) {
++    var view = checksheets.create(user, new CreateChecksheetCommand(request.machineId(),
++        request.frequencyId(), request.revisionReason()));
++    return ResponseEntity.status(HttpStatus.CREATED)
++        .location(URI.create("/api/v1/pm-checksheets/" + view.id()))
++        .body(toView(view));
++  }
++
++  @Operation(operationId = "listPmChecksheets", summary = "List checksheets (filter by machineId, frequencyId)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Checksheets returned",
++          content = @Content(schema = @Schema(implementation = ChecksheetView.class))),
++      @ApiResponse(responseCode = "401", description = "Authentication required")
++  })
++  @GetMapping
++  public List<ChecksheetView> list(@AuthenticationPrincipal AuthenticatedUser user,
++      @RequestParam(required = false) UUID machineId,
++      @RequestParam(required = false) UUID frequencyId) {
++    return checksheets.list(user, machineId, frequencyId).stream()
++        .map(PmChecksheetController::toView).toList();
++  }
++
++  @Operation(operationId = "getPmChecksheet", summary = "Get a checksheet")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Checksheet returned",
++          content = @Content(schema = @Schema(implementation = ChecksheetView.class))),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Checksheet not found")
++  })
++  @GetMapping("/{id}")
++  public ChecksheetView get(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID id) {
++    return toView(checksheets.get(user, id));
++  }
++
++  @Operation(operationId = "getActiveChecksheet", summary = "Get active checksheet pointer for (machineId, frequencyId)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Active checksheet returned",
++          content = @Content(schema = @Schema(implementation = ActiveChecksheetView.class))),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "No active checksheet for this pair")
++  })
++  @GetMapping("/active")
++  public ActiveChecksheetView getActive(@AuthenticationPrincipal AuthenticatedUser user,
++      @RequestParam UUID machineId, @RequestParam UUID frequencyId) {
++    var view = checksheets.getActive(user, machineId, frequencyId);
++    return new ActiveChecksheetView(view.checksheetId(), view.machineId(), view.frequencyId(),
++        view.revisionNo());
++  }
++
++  @Operation(operationId = "revisePmChecksheet", summary = "Create a new revision superseding the source")
++  @ApiResponses({
++      @ApiResponse(responseCode = "201", description = "New revision created",
++          content = @Content(schema = @Schema(implementation = ChecksheetView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Checksheet not found"),
++      @ApiResponse(responseCode = "409", description = "Source is not the latest revision or concurrent conflict")
++  })
++  @PostMapping("/{id}/revise")
++  public ResponseEntity<ChecksheetView> revise(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id,
++      @Valid @RequestBody(required = false) ReviseChecksheetRequest request) {
++    var reason = request == null ? null : request.revisionReason();
++    var view = checksheets.revise(user, id, new ReviseChecksheetCommand(reason));
++    return ResponseEntity.status(HttpStatus.CREATED)
++        .location(URI.create("/api/v1/pm-checksheets/" + view.id()))
++        .body(toView(view));
++  }
++
++  @Operation(operationId = "approvePmChecksheet", summary = "Approve a checksheet revision (flips active pointer)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Checksheet approved",
++          content = @Content(schema = @Schema(implementation = ChecksheetView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Checksheet not found"),
++      @ApiResponse(responseCode = "409", description = "Checksheet already approved or not the latest revision")
++  })
++  @PostMapping("/{id}/approve")
++  public ChecksheetView approve(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id,
++      @Valid @RequestBody(required = false) ApproveChecksheetRequest request) {
++    var effectiveDate = request == null ? null : request.effectiveDate();
++    return toView(checksheets.approve(user, id, new ApproveChecksheetCommand(effectiveDate)));
++  }
++
++  private static ChecksheetView toView(
++      com.syncro.maintenance.preventive.application.PmChecksheetService.ChecksheetView v) {
++    return new ChecksheetView(v.id(), v.machineId(), v.frequencyId(), v.revisionNo(),
++        v.revisionReason(), v.isActive(), v.supersedes(), v.approvedBy(), v.approvedAt(),
++        v.effectiveDate(), v.createdBy(), v.createdAt(), v.updatedAt());
++  }
++}
+--- NEW FILE: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmFrequencyController.java ---
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmFrequencyController.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmFrequencyController.java
+new file mode 100644
+index 0000000..2d91c62
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmFrequencyController.java
+@@ -0,0 +1,105 @@
++package com.syncro.maintenance.preventive.api;
++
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.CreateFrequencyRequest;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.FrequencyView;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.UpdateFrequencyRequest;
++import com.syncro.maintenance.preventive.application.PmFrequencyService;
++import com.syncro.maintenance.preventive.application.PmFrequencyService.CreateFrequencyCommand;
++import com.syncro.maintenance.preventive.application.PmFrequencyService.UpdateFrequencyCommand;
++import io.swagger.v3.oas.annotations.Operation;
++import io.swagger.v3.oas.annotations.media.Content;
++import io.swagger.v3.oas.annotations.media.Schema;
++import io.swagger.v3.oas.annotations.responses.ApiResponse;
++import io.swagger.v3.oas.annotations.responses.ApiResponses;
++import jakarta.validation.Valid;
++import java.net.URI;
++import java.util.List;
++import java.util.UUID;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.security.core.annotation.AuthenticationPrincipal;
++import org.springframework.validation.annotation.Validated;
++import org.springframework.web.bind.annotation.GetMapping;
++import org.springframework.web.bind.annotation.PathVariable;
++import org.springframework.web.bind.annotation.PostMapping;
++import org.springframework.web.bind.annotation.PutMapping;
++import org.springframework.web.bind.annotation.RequestBody;
++import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RestController;
++
++/** PM frequency master-data API (story 19-1, blueprint F1). */
++@Validated
++@RestController
++@RequestMapping("/api/v1/pm-frequencies")
++public class PmFrequencyController {
++
++  private final PmFrequencyService frequencies;
++
++  public PmFrequencyController(PmFrequencyService frequencies) {
++    this.frequencies = frequencies;
++  }
++
++  @Operation(operationId = "listPmFrequencies", summary = "List PM frequencies (sort_order asc)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Frequencies returned",
++          content = @Content(schema = @Schema(implementation = FrequencyView.class))),
++      @ApiResponse(responseCode = "401", description = "Authentication required")
++  })
++  @GetMapping
++  public List<FrequencyView> list() {
++    return frequencies.list().stream().map(PmFrequencyController::toView).toList();
++  }
++
++  @Operation(operationId = "getPmFrequency", summary = "Get a PM frequency")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Frequency returned",
++          content = @Content(schema = @Schema(implementation = FrequencyView.class))),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "404", description = "Frequency not found")
++  })
++  @GetMapping("/{id}")
++  public FrequencyView get(@PathVariable UUID id) {
++    return toView(frequencies.get(id));
++  }
++
++  @Operation(operationId = "createPmFrequency", summary = "Create a PM frequency")
++  @ApiResponses({
++      @ApiResponse(responseCode = "201", description = "Frequency created",
++          content = @Content(schema = @Schema(implementation = FrequencyView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "409", description = "Duplicate frequency code")
++  })
++  @PostMapping
++  public ResponseEntity<FrequencyView> create(@AuthenticationPrincipal AuthenticatedUser user,
++      @Valid @RequestBody CreateFrequencyRequest request) {
++    var frequency = frequencies.create(user, new CreateFrequencyCommand(request.code(),
++        request.name(), request.description(), request.sortOrder(), request.isActive()));
++    return ResponseEntity.status(HttpStatus.CREATED)
++        .location(URI.create("/api/v1/pm-frequencies/" + frequency.id()))
++        .body(toView(frequency));
++  }
++
++  @Operation(operationId = "updatePmFrequency", summary = "Update a PM frequency")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Frequency updated",
++          content = @Content(schema = @Schema(implementation = FrequencyView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Frequency not found")
++  })
++  @PutMapping("/{id}")
++  public FrequencyView update(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID id,
++      @Valid @RequestBody UpdateFrequencyRequest request) {
++    return toView(frequencies.update(user, id, new UpdateFrequencyCommand(request.name(),
++        request.description(), request.sortOrder(), request.isActive())));
++  }
++
++  private static FrequencyView toView(com.syncro.maintenance.preventive.application.PmFrequencyService.FrequencyView f) {
++    return new FrequencyView(f.id(), f.code(), f.name(), f.description(), f.sortOrder(), f.active(),
++        f.createdAt(), f.updatedAt());
++  }
++}
+--- NEW FILE: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecksheetService.java ---
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecksheetService.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecksheetService.java
+new file mode 100644
+index 0000000..38488d9
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecksheetService.java
+@@ -0,0 +1,443 @@
++package com.syncro.maintenance.preventive.application;
++
++import com.syncro.audit.application.AuditLogWriter;
++import com.syncro.audit.application.AuditRecord;
++import com.syncro.audit.domain.AuditAction;
++import com.syncro.audit.domain.AuditEntityType;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.maintenance.preventive.application.PmFrequencyService.PmFrequencyNotFoundException;
++import com.syncro.maintenance.preventive.infrastructure.db.ActiveChecksheetEntity;
++import com.syncro.maintenance.preventive.infrastructure.db.ActiveChecksheetId;
++import com.syncro.maintenance.preventive.infrastructure.db.ActiveChecksheetRepository;
++import com.syncro.maintenance.preventive.infrastructure.db.PmChecksheetEntity;
++import com.syncro.maintenance.preventive.infrastructure.db.PmChecksheetRepository;
++import com.syncro.maintenance.preventive.infrastructure.db.PmFrequencyEntity;
++import com.syncro.maintenance.preventive.infrastructure.db.PmFrequencyRepository;
++import com.syncro.machine.infrastructure.MachineEntity;
++import com.syncro.machine.infrastructure.MachineRepository;
++import com.syncro.org.application.OperationalScope;
++import com.syncro.org.application.OperationalScopeService;
++import java.time.Clock;
++import java.time.Instant;
++import java.time.LocalDate;
++import java.util.ArrayList;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++import org.springframework.dao.DataIntegrityViolationException;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++
++/**
++ * PM checksheet revision/approval workflow service (story 19-1, blueprint F2/F3).
++ * Create revision 1 (unapproved), revise (supersedes self-FK, next revision_no),
++ * approve (stamps approver/time/effective_date, flips the active_checksheets
++ * pointer, deactivates the old revision).
++ *
++ * <p>Gates: create/revise by STAFF_MAINTENANCE/SECTION_LEADER/MAINTENANCE_LEADER/
++ * MANAGER_MAINTENANCE (SUPER_ADMIN bypass). Approve additionally requires a leader
++ * role (SECTION_LEADER/MAINTENANCE_LEADER/MANAGER_MAINTENANCE/SUPER_ADMIN).
++ * Machine-scoped checksheet actions use the requireMutationAccess pattern (plant/
++ * group scope via OperationalScopeService); reads are scope-filtered the same way
++ * {@link PreventiveProgramService#list} filters (scoped data never leaks across
++ * plant/group boundaries).
++ *
++ * <p>Workflow guards: only the latest revision of a (machine, frequency) pair may
++ * be revised or approved — approving a stale revision would regress the active
++ * pointer, and revising a superseded revision would fork the supersedes chain.
++ * Both surface as 409 INVALID_CHECKSHEET_TRANSITION.
++ */
++@Service
++public class PmChecksheetService {
++
++  private static final String CHECKSHEET_REVISION_UNIQUE_CONSTRAINT =
++      "uq_pm_checksheets_machine_frequency_revision";
++
++  private final PmChecksheetRepository checksheets;
++  private final PmFrequencyRepository frequencies;
++  private final MachineRepository machines;
++  private final ActiveChecksheetRepository activeChecksheets;
++  private final AuditLogWriter auditLog;
++  private final OperationalScopeService scopes;
++  private final Clock clock;
++
++  public PmChecksheetService(PmChecksheetRepository checksheets, PmFrequencyRepository frequencies,
++      MachineRepository machines, ActiveChecksheetRepository activeChecksheets,
++      AuditLogWriter auditLog, OperationalScopeService scopes, Clock clock) {
++    this.checksheets = checksheets;
++    this.frequencies = frequencies;
++    this.machines = machines;
++    this.activeChecksheets = activeChecksheets;
++    this.auditLog = auditLog;
++    this.scopes = scopes;
++    this.clock = clock;
++  }
++
++  // -------------------------------------------------------------------------
++  // Create (revision 1)
++  // -------------------------------------------------------------------------
++
++  @Transactional
++  public ChecksheetView create(AuthenticatedUser user, CreateChecksheetCommand command) {
++    var machine = loadMachine(command.machineId());
++    requireMutationAccess(user, machine);
++    var frequency = loadFrequency(command.frequencyId());
++    if (!frequency.isActive()) {
++      throw new ChecksheetValidationException(
++          Map.of("frequencyId", "Frequency is not active."));
++    }
++    if (checksheets.existsByMachineIdAndFrequencyId(machine.getId(), frequency.getId())) {
++      throw new ChecksheetAlreadyExistsException();
++    }
++    var now = Instant.now(clock);
++    var entity = new PmChecksheetEntity(
++        UUID.randomUUID(), machine.getId(), frequency.getId(), 1,
++        normalizeOptional(command.revisionReason()), false, null, null, null, null,
++        UUID.fromString(user.id()), now, now);
++    var saved = save(entity);
++    auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.PM_CHECKSHEET,
++        saved.getId(), label(saved, machine), machine.getPlant().getId(), null,
++        checksheetValues(saved), null));
++    return toView(saved);
++  }
++
++  // -------------------------------------------------------------------------
++  // List / Get / Active (scope-filtered reads)
++  // -------------------------------------------------------------------------
++
++  @Transactional(readOnly = true)
++  public List<ChecksheetView> list(AuthenticatedUser user, UUID machineId, UUID frequencyId) {
++    var scope = scopes.derive(user);
++    List<PmChecksheetEntity> rows;
++    if (machineId != null && frequencyId != null) {
++      rows = checksheets.findByMachineIdAndFrequencyIdOrderByRevisionNoAsc(machineId, frequencyId);
++    } else if (machineId != null) {
++      rows = checksheets.findByMachineIdOrderByRevisionNoDesc(machineId);
++    } else if (frequencyId != null) {
++      rows = checksheets.findByFrequencyIdOrderByRevisionNoDesc(frequencyId);
++    } else {
++      rows = checksheets.findAll();
++    }
++    // PreventiveProgramService.list idiom: SUPER_ADMIN (plantIds == null) is
++    // unrestricted; everyone else only sees checksheets whose machine is in scope.
++    if (scope.plantIds() == null) {
++      return rows.stream().map(PmChecksheetService::toView).toList();
++    }
++    var result = new ArrayList<ChecksheetView>();
++    for (var checksheet : rows) {
++      var machine = machines.findByIdWithPlantAndGroup(checksheet.getMachineId());
++      if (machine.isPresent() && inScope(scope, machine.get())) {
++        result.add(toView(checksheet));
++      }
++    }
++    return result;
++  }
++
++  @Transactional(readOnly = true)
++  public ChecksheetView get(AuthenticatedUser user, UUID id) {
++    var entity = loadChecksheet(id);
++    requireReadAccess(user, entity.getMachineId());
++    return toView(entity);
++  }
++
++  @Transactional(readOnly = true)
++  public ActiveChecksheetView getActive(AuthenticatedUser user, UUID machineId, UUID frequencyId) {
++    requireReadAccess(user, machineId);
++    var pointer = activeChecksheets
++        .findByIdMachineIdAndIdFrequencyId(machineId, frequencyId)
++        .orElseThrow(ActiveChecksheetNotFoundException::new);
++    var checksheet = checksheets.findById(pointer.getChecksheetId())
++        .orElseThrow(PmChecksheetNotFoundException::new);
++    return new ActiveChecksheetView(checksheet.getId(), machineId, frequencyId,
++        checksheet.getRevisionNo());
++  }
++
++  // -------------------------------------------------------------------------
++  // Revise
++  // -------------------------------------------------------------------------
++
++  @Transactional
++  public ChecksheetView revise(AuthenticatedUser user, UUID id, ReviseChecksheetCommand command) {
++    var source = loadChecksheet(id);
++    var machine = loadMachine(source.getMachineId());
++    requireMutationAccess(user, machine);
++    // Only the latest revision may be revised — a superseded source would fork
++    // the chain (two revisions claiming the same predecessor).
++    var maxRevision = checksheets.findMaxRevisionNo(machine.getId(), source.getFrequencyId())
++        .orElse(0);
++    if (source.getRevisionNo() < maxRevision) {
++      throw new InvalidChecksheetTransitionException();
++    }
++    var now = Instant.now(clock);
++    var entity = new PmChecksheetEntity(
++        UUID.randomUUID(), machine.getId(), source.getFrequencyId(), maxRevision + 1,
++        normalizeOptional(command.revisionReason()), false, source.getId(), null, null, null,
++        UUID.fromString(user.id()), now, now);
++    var saved = save(entity);
++    auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.PM_CHECKSHEET,
++        saved.getId(), label(saved, machine), machine.getPlant().getId(), null,
++        checksheetValues(saved), null));
++    return toView(saved);
++  }
++
++  // -------------------------------------------------------------------------
++  // Approve
++  // -------------------------------------------------------------------------
++
++  @Transactional
++  public ChecksheetView approve(AuthenticatedUser user, UUID id, ApproveChecksheetCommand command) {
++    var entity = loadChecksheet(id);
++    requireApproveRole(user);
++    if (entity.getApprovedBy() != null) {
++      throw new InvalidChecksheetTransitionException();
++    }
++    var machine = loadMachine(entity.getMachineId());
++    requireMutationAccess(user, machine);
++    // Only the latest revision may be approved — approving a stale revision would
++    // regress the active pointer to superseded content.
++    var maxRevision = checksheets.findMaxRevisionNo(machine.getId(), entity.getFrequencyId())
++        .orElse(0);
++    if (entity.getRevisionNo() < maxRevision) {
++      throw new InvalidChecksheetTransitionException();
++    }
++    var now = Instant.now(clock);
++    var effectiveDate = command.effectiveDate() != null ? command.effectiveDate() : LocalDate.now(clock);
++    var previous = checksheetValues(entity);
++
++    // Deactivate the old active revision for this (machine, frequency) pair —
++    // audit-logged as its own UPDATE so the pointer flip is fully traceable.
++    activeChecksheets.findByIdMachineIdAndIdFrequencyId(machine.getId(), entity.getFrequencyId())
++        .ifPresent(oldPtr -> {
++          var oldActive = checksheets.findById(oldPtr.getChecksheetId()).orElse(null);
++          if (oldActive != null && !oldActive.getId().equals(entity.getId())) {
++            var oldPrevious = checksheetValues(oldActive);
++            oldActive.deactivate(now);
++            checksheets.save(oldActive);
++            auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PM_CHECKSHEET,
++                oldActive.getId(), label(oldActive, machine), machine.getPlant().getId(),
++                oldPrevious, checksheetValues(oldActive), null));
++          }
++        });
++
++    // Stamp the new revision as approved and active.
++    entity.approve(UUID.fromString(user.id()), now, effectiveDate, now);
++    entity.activate(now);
++    var saved = checksheets.saveAndFlush(entity);
++
++    // Upsert the active_checksheets pointer (composite PK makes this find-then-save).
++    var pointerId = new ActiveChecksheetId(machine.getId(), entity.getFrequencyId());
++    var pointer = activeChecksheets.findById(pointerId).orElse(null);
++    if (pointer != null) {
++      pointer.setChecksheetId(saved.getId());
++    } else {
++      pointer = new ActiveChecksheetEntity(pointerId, saved.getId());
++    }
++    try {
++      activeChecksheets.saveAndFlush(pointer);
++    } catch (DataIntegrityViolationException exception) {
++      // uq_active_checksheets_checksheet: a concurrent approve raced us.
++      throw new InvalidChecksheetTransitionException();
++    }
++
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PM_CHECKSHEET,
++        saved.getId(), label(saved, machine), machine.getPlant().getId(), previous,
++        checksheetValues(saved), null));
++    return toView(saved);
++  }
++
++  // -------------------------------------------------------------------------
++  // Gates
++  // -------------------------------------------------------------------------
++
++  /** Gate: create/revise/approve by STAFF_MAINTENANCE+; scope via requireMutationAccess. */
++  private void requireMutationAccess(AuthenticatedUser user, MachineEntity machine) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    var scope = scopes.derive(user);
++    switch (user.applicationRole()) {
++      case SECTION_LEADER -> {
++        if (!groupInScope(scope, machine)) {
++          throw new PmChecksheetForbiddenException();
++        }
++      }
++      case MAINTENANCE_LEADER, MANAGER_MAINTENANCE -> {
++        if (!plantInScope(scope, machine) && !groupInScope(scope, machine)) {
++          throw new PmChecksheetForbiddenException();
++        }
++      }
++      case STAFF_MAINTENANCE -> {
++        if (!plantInScope(scope, machine)) {
++          throw new PmChecksheetForbiddenException();
++        }
++      }
++      default -> throw new PmChecksheetForbiddenException();
++    }
++  }
++
++  /** Read gate: SUPER_ADMIN unrestricted; everyone else needs the machine in scope. */
++  private void requireReadAccess(AuthenticatedUser user, UUID machineId) {
++    var machine = loadMachine(machineId);
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    var scope = scopes.derive(user);
++    if (!inScope(scope, machine)) {
++      throw new PmChecksheetForbiddenException();
++    }
++  }
++
++  /** Approve additionally requires a leader role. */
++  private void requireApproveRole(AuthenticatedUser user) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    switch (user.applicationRole()) {
++      case SECTION_LEADER, MAINTENANCE_LEADER, MANAGER_MAINTENANCE -> {}
++      default -> throw new PmChecksheetForbiddenException();
++    }
++  }
++
++  private boolean inScope(OperationalScope scope, MachineEntity machine) {
++    return plantInScope(scope, machine) || groupInScope(scope, machine);
++  }
++
++  private boolean plantInScope(OperationalScope scope, MachineEntity machine) {
++    return scope.plantIds() != null && scope.plantIds().contains(machine.getPlant().getId());
++  }
++
++  private boolean groupInScope(OperationalScope scope, MachineEntity machine) {
++    return scope.machineGroupIds().contains(machine.getMachineGroup().getId())
++        || scope.activeTeamIds().contains(machine.getMachineGroup().getId());
++  }
++
++  // -------------------------------------------------------------------------
++  // Loaders
++  // -------------------------------------------------------------------------
++
++  private MachineEntity loadMachine(UUID machineId) {
++    return machines.findByIdWithPlantAndGroup(machineId)
++        .orElseThrow(MachineNotFoundException::new);
++  }
++
++  private PmFrequencyEntity loadFrequency(UUID frequencyId) {
++    return frequencies.findById(frequencyId)
++        .orElseThrow(PmFrequencyNotFoundException::new);
++  }
++
++  private PmChecksheetEntity loadChecksheet(UUID id) {
++    return checksheets.findById(id).orElseThrow(PmChecksheetNotFoundException::new);
++  }
++
++  /** Race backstop: uq_pm_checksheets_machine_frequency_revision → 409. */
++  private PmChecksheetEntity save(PmChecksheetEntity entity) {
++    try {
++      return checksheets.saveAndFlush(entity);
++    } catch (DataIntegrityViolationException exception) {
++      var message = String.valueOf(exception.getMostSpecificCause().getMessage()).toLowerCase();
++      if (message.contains(CHECKSHEET_REVISION_UNIQUE_CONSTRAINT)) {
++        throw new InvalidChecksheetTransitionException();
++      }
++      throw exception;
++    }
++  }
++
++  // -------------------------------------------------------------------------
++  // Helpers
++  // -------------------------------------------------------------------------
++
++  private static String normalizeOptional(String value) {
++    if (value == null || value.isBlank()) {
++      return null;
++    }
++    return value.trim();
++  }
++
++  private static String label(PmChecksheetEntity entity, MachineEntity machine) {
++    return "c" + entity.getRevisionNo() + " @" + (machine != null ? machine.getCode() : "?");
++  }
++
++  private static Map<String, Object> checksheetValues(PmChecksheetEntity entity) {
++    var values = new LinkedHashMap<String, Object>();
++    values.put("id", entity.getId().toString());
++    values.put("machineId", entity.getMachineId().toString());
++    values.put("frequencyId", entity.getFrequencyId().toString());
++    values.put("revisionNo", entity.getRevisionNo());
++    values.put("isActive", entity.isActive());
++    values.put("supersedes", entity.getSupersedes());
++    values.put("approvedBy", entity.getApprovedBy());
++    values.put("approvedAt", entity.getApprovedAt() != null ? entity.getApprovedAt().toString() : null);
++    values.put("effectiveDate", entity.getEffectiveDate() != null ? entity.getEffectiveDate().toString() : null);
++    values.put("createdBy", entity.getCreatedBy());
++    return values;
++  }
++
++  private static ChecksheetView toView(PmChecksheetEntity entity) {
++    return new ChecksheetView(entity.getId(), entity.getMachineId(), entity.getFrequencyId(),
++        entity.getRevisionNo(), entity.getRevisionReason(), entity.isActive(),
++        entity.getSupersedes(), entity.getApprovedBy(), entity.getApprovedAt(),
++        entity.getEffectiveDate(), entity.getCreatedBy(), entity.getCreatedAt(),
++        entity.getUpdatedAt());
++  }
++
++  // -------------------------------------------------------------------------
++  // Commands & views
++  // -------------------------------------------------------------------------
++
++  public record CreateChecksheetCommand(UUID machineId, UUID frequencyId,
++      String revisionReason) {
++  }
++
++  public record ReviseChecksheetCommand(String revisionReason) {
++  }
++
++  public record ApproveChecksheetCommand(LocalDate effectiveDate) {
++  }
++
++  public record ChecksheetView(UUID id, UUID machineId, UUID frequencyId, int revisionNo,
++      String revisionReason, boolean isActive, UUID supersedes, UUID approvedBy,
++      Instant approvedAt, LocalDate effectiveDate, UUID createdBy, Instant createdAt,
++      Instant updatedAt) {
++  }
++
++  public record ActiveChecksheetView(UUID checksheetId, UUID machineId, UUID frequencyId,
++      int revisionNo) {
++  }
++
++  // -------------------------------------------------------------------------
++  // Exceptions
++  // -------------------------------------------------------------------------
++
++  public static class PmChecksheetNotFoundException extends RuntimeException {
++  }
++
++  public static class MachineNotFoundException extends RuntimeException {
++  }
++
++  public static class PmChecksheetForbiddenException extends RuntimeException {
++  }
++
++  public static class InvalidChecksheetTransitionException extends RuntimeException {
++  }
++
++  public static class ActiveChecksheetNotFoundException extends RuntimeException {
++  }
++
++  /** (machine, frequency) already has a checksheet — create is revision 1 only. */
++  public static class ChecksheetAlreadyExistsException extends RuntimeException {
++  }
++
++  public static class ChecksheetValidationException extends RuntimeException {
++    private final Map<String, String> fieldErrors;
++
++    public ChecksheetValidationException(Map<String, String> fieldErrors) {
++      this.fieldErrors = new LinkedHashMap<>(fieldErrors);
++    }
++
++    public Map<String, String> getFieldErrors() {
++      return fieldErrors;
++    }
++  }
++}
+--- NEW FILE: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmFrequencyService.java ---
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmFrequencyService.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmFrequencyService.java
+new file mode 100644
+index 0000000..8ab2eb5
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmFrequencyService.java
+@@ -0,0 +1,213 @@
++package com.syncro.maintenance.preventive.application;
++
++import com.syncro.audit.application.AuditLogWriter;
++import com.syncro.audit.application.AuditRecord;
++import com.syncro.audit.domain.AuditAction;
++import com.syncro.audit.domain.AuditEntityType;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.maintenance.preventive.infrastructure.db.PmFrequencyEntity;
++import com.syncro.maintenance.preventive.infrastructure.db.PmFrequencyRepository;
++import java.time.Clock;
++import java.time.Instant;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++import org.springframework.dao.DataIntegrityViolationException;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++
++/**
++ * PM frequency master-data service (story 19-1, blueprint F1). Frequencies are
++ * global (no plant column) — role gate only, no plant/group scope check.
++ *
++ * <p>Gates: CREATE/UPDATE require STAFF_MAINTENANCE/SECTION_LEADER/
++ * MAINTENANCE_LEADER/MANAGER_MAINTENANCE (SUPER_ADMIN bypass).
++ */
++@Service
++public class PmFrequencyService {
++
++  private static final String FREQUENCY_CODE_UNIQUE_CONSTRAINT = "uq_pm_frequencies_code";
++
++  private final PmFrequencyRepository frequencies;
++  private final AuditLogWriter auditLog;
++  private final Clock clock;
++
++  public PmFrequencyService(PmFrequencyRepository frequencies, AuditLogWriter auditLog, Clock clock) {
++    this.frequencies = frequencies;
++    this.auditLog = auditLog;
++    this.clock = clock;
++  }
++
++  @Transactional(readOnly = true)
++  public List<FrequencyView> list() {
++    return frequencies.findAllByOrderBySortOrderAsc().stream()
++        .map(PmFrequencyService::toView)
++        .toList();
++  }
++
++  @Transactional(readOnly = true)
++  public FrequencyView get(UUID id) {
++    var entity = loadFrequency(id);
++    return toView(entity);
++  }
++
++  @Transactional
++  public FrequencyView create(AuthenticatedUser user, CreateFrequencyCommand command) {
++    requireMutationRole(user);
++    var code = requireText(command.code(), "code", 50).toUpperCase();
++    var name = requireText(command.name(), "name", 200);
++    var sortOrder = command.sortOrder() != null ? command.sortOrder() : 0;
++    requireNonNegativeSortOrder(sortOrder);
++    var now = Instant.now(clock);
++    var entity = new PmFrequencyEntity(
++        UUID.randomUUID(),
++        code,
++        name,
++        normalize(command.description()),
++        sortOrder,
++        command.isActive() != null ? command.isActive() : true,
++        now, now);
++    var saved = save(entity);
++    auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.PM_FREQUENCY,
++        saved.getId(), saved.getCode(), null, null, frequencyValues(saved), null));
++    return toView(saved);
++  }
++
++  @Transactional
++  public FrequencyView update(AuthenticatedUser user, UUID id, UpdateFrequencyCommand command) {
++    requireMutationRole(user);
++    var entity = loadFrequency(id);
++    var name = requireText(command.name(), "name", 200);
++    var sortOrder = command.sortOrder() != null ? command.sortOrder() : entity.getSortOrder();
++    requireNonNegativeSortOrder(sortOrder);
++    var previous = frequencyValues(entity);
++    var now = Instant.now(clock);
++    entity = new PmFrequencyEntity(
++        entity.getId(),
++        entity.getCode(),
++        name,
++        normalize(command.description()),
++        sortOrder,
++        command.isActive() != null ? command.isActive() : entity.isActive(),
++        entity.getCreatedAt(), now);
++    var saved = save(entity);
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PM_FREQUENCY,
++        saved.getId(), saved.getCode(), null, previous, frequencyValues(saved), null));
++    return toView(saved);
++  }
++
++  private PmFrequencyEntity loadFrequency(UUID id) {
++    return frequencies.findById(id).orElseThrow(PmFrequencyNotFoundException::new);
++  }
++
++  /** Gate: frequency mutations are global master-data — role gate only. */
++  private void requireMutationRole(AuthenticatedUser user) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    switch (user.applicationRole()) {
++      case STAFF_MAINTENANCE, SECTION_LEADER, MAINTENANCE_LEADER, MANAGER_MAINTENANCE -> {}
++      default -> throw new PmFrequencyForbiddenException();
++    }
++  }
++
++  /** Race backstop: the UNIQUE code constraint maps to DUPLICATE_FREQUENCY_CODE. */
++  private PmFrequencyEntity save(PmFrequencyEntity entity) {
++    try {
++      return frequencies.saveAndFlush(entity);
++    } catch (DataIntegrityViolationException exception) {
++      var message = String.valueOf(exception.getMostSpecificCause().getMessage()).toLowerCase();
++      if (message.contains(FREQUENCY_CODE_UNIQUE_CONSTRAINT)) {
++        throw new DuplicateFrequencyCodeException();
++      }
++      throw exception;
++    }
++  }
++
++  private static String normalize(String value) {
++    if (value == null || value.isBlank()) {
++      return null;
++    }
++    return value.trim();
++  }
++
++  /**
++   * Blank-after-trim and over-long values are rejected here rather than at the
++   * DB CHECK (ck_pm_frequencies_code_not_blank / name_not_blank), which would
++   * surface as a 500 — @NotBlank passes on "   ", so the service is the last
++   * boundary that can produce a 400 VALIDATION_ERROR.
++   */
++  private static String requireText(String value, String field, int maxLength) {
++    var trimmed = value == null ? "" : value.trim();
++    if (trimmed.isEmpty()) {
++      throw new FrequencyValidationException(Map.of(field, field + " must not be blank."));
++    }
++    if (trimmed.length() > maxLength) {
++      throw new FrequencyValidationException(
++          Map.of(field, field + " must be at most " + maxLength + " characters."));
++    }
++    return trimmed;
++  }
++
++  private static void requireNonNegativeSortOrder(int sortOrder) {
++    if (sortOrder < 0) {
++      throw new FrequencyValidationException(
++          Map.of("sortOrder", "sortOrder must be zero or greater."));
++    }
++  }
++
++  private static Map<String, Object> frequencyValues(PmFrequencyEntity entity) {
++    var values = new LinkedHashMap<String, Object>();
++    values.put("id", entity.getId().toString());
++    values.put("code", entity.getCode());
++    values.put("name", entity.getName());
++    values.put("description", entity.getDescription());
++    values.put("sortOrder", entity.getSortOrder());
++    values.put("isActive", entity.isActive());
++    values.put("createdAt", entity.getCreatedAt().toString());
++    values.put("updatedAt", entity.getUpdatedAt().toString());
++    return values;
++  }
++
++  public static FrequencyView toView(PmFrequencyEntity entity) {
++    return new FrequencyView(entity.getId(), entity.getCode(), entity.getName(),
++        entity.getDescription(), entity.getSortOrder(), entity.isActive(),
++        entity.getCreatedAt(), entity.getUpdatedAt());
++  }
++
++  public record CreateFrequencyCommand(String code, String name, String description,
++      Integer sortOrder, Boolean isActive) {
++  }
++
++  public record UpdateFrequencyCommand(String name, String description, Integer sortOrder,
++      Boolean isActive) {
++  }
++
++  public record FrequencyView(UUID id, String code, String name, String description,
++      int sortOrder, boolean active, Instant createdAt, Instant updatedAt) {
++  }
++
++  public static class PmFrequencyNotFoundException extends RuntimeException {
++  }
++
++  public static class DuplicateFrequencyCodeException extends RuntimeException {
++  }
++
++  public static class PmFrequencyForbiddenException extends RuntimeException {
++  }
++
++  /** Blank/over-long/negative-sortOrder fields → 400 VALIDATION_ERROR with field errors. */
++  public static class FrequencyValidationException extends RuntimeException {
++    private final Map<String, String> fieldErrors;
++
++    public FrequencyValidationException(Map<String, String> fieldErrors) {
++      this.fieldErrors = new LinkedHashMap<>(fieldErrors);
++    }
++
++    public Map<String, String> getFieldErrors() {
++      return fieldErrors;
++    }
++  }
++}
+--- NEW FILE: syncro/apps/backend/src/main/resources/db/migration/V7__pm_frequencies_seed_and_audit_types.sql ---
+diff --git a/syncro/apps/backend/src/main/resources/db/migration/V7__pm_frequencies_seed_and_audit_types.sql b/syncro/apps/backend/src/main/resources/db/migration/V7__pm_frequencies_seed_and_audit_types.sql
+new file mode 100644
+index 0000000..9968526
+--- /dev/null
++++ b/syncro/apps/backend/src/main/resources/db/migration/V7__pm_frequencies_seed_and_audit_types.sql
+@@ -0,0 +1,39 @@
++-- ============================================================================
++-- V7: PM frequencies seed + audit entity type extension (story 19-1, blueprint F1)
++-- Additive-only migration: seed MONTHLY/ANNUAL into pm_frequencies (idempotent
++-- ON CONFLICT DO NOTHING) and extend ck_audit_log_entity_type with PM_FREQUENCY
++-- and PM_CHECKSHEET that AuditEntityType.PM_FREQUENCY / PM_CHECKSHEET write
++-- (the doc comment on that enum requires the Java enum and the SQL CHECK to move
++-- together in one change).
++-- ============================================================================
++
++-- Seed MONTHLY/ANNUAL frequencies (sort_order 1/2).
++INSERT INTO pm_frequencies (id, code, name, description, sort_order, is_active, created_at, updated_at)
++VALUES
++  (gen_random_uuid(), 'MONTHLY', 'Monthly', 'Monthly preventive maintenance', 1, TRUE, NOW(), NOW()),
++  (gen_random_uuid(), 'ANNUAL', 'Annual', 'Annual preventive maintenance', 2, TRUE, NOW(), NOW())
++ON CONFLICT (code) DO NOTHING;
++
++-- Extend the audit_log entity_type CHECK additively (V6 pattern).
++ALTER TABLE audit_log
++  DROP CONSTRAINT ck_audit_log_entity_type;
++
++ALTER TABLE audit_log
++  ADD CONSTRAINT ck_audit_log_entity_type CHECK (entity_type IN
++    ('PLANT', 'MACHINE_GROUP', 'MACHINE', 'SPAREPART_TAXONOMY',
++     'SPAREPART', 'INSTALLATION', 'RESPONSIBILITY', 'ALERT',
++     'SPAREPART_PRICE_ENTRY', 'SECTION', 'TEAM', 'WORK_ORDER_CATEGORY',
++     'WORK_ORDER', 'REPAIR_SESSION', 'WORKORDER_ATTACHMENT',
++     'WORK_ORDER_TODO', 'WORKORDER_RATING', 'RATING_DIMENSION',
++     'PREVENTIVE_PROGRAM', 'PREVENTIVE_SCHEDULE',
++     'PREVENTIVE_CHECKLIST', 'PREVENTIVE_ATTACHMENT',
++     'SPAREPART_REQUEST', 'DEPARTMENT', 'DEPARTMENT_USER', 'USER',
++     'INVENTORY_LOCATION', 'INVENTORY_STOCK_BALANCE',
++     'INVENTORY_TRANSFER', 'INVENTORY_RESERVATION',
++     'MACHINE_AREA', 'JOB_TITLE', 'SYSTEM_ROLE', 'ROLE_PERMISSION_MAPPING',
++     'MENU_FEATURE', 'DOMAIN_CONTEXT', 'USER_JOB_BINDING', 'USER_ROLE_BINDING',
++     'PLANT_WORKING_CALENDAR', 'SIGNATURE_USE',
++     'SPAREPART_STOCK', 'SYNC_RUN', 'SYNC_QUARANTINE', 'WORKORDER_SIGNATURE',
++     'WORK_ASSIGNMENT', 'WORK_LOG', 'WORK_LOG_RATING',
++     'WORK_ORDER_QUALITY_RATING',
++     'PM_FREQUENCY', 'PM_CHECKSHEET'));
+--- NEW FILE: syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmChecksheetControllerTest.java ---
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmChecksheetControllerTest.java b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmChecksheetControllerTest.java
+new file mode 100644
+index 0000000..2e8edd5
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmChecksheetControllerTest.java
+@@ -0,0 +1,324 @@
++package com.syncro.maintenance.preventive.api;
++
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.eq;
++import static org.mockito.Mockito.doThrow;
++import static org.mockito.Mockito.when;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
++
++import com.syncro.TestJsonConfig;
++import com.syncro.auth.application.JwtTokenService;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.JwtAuthenticationFilter;
++import com.syncro.config.SecurityConfig;
++import com.syncro.config.TimeConfig;
++import com.syncro.maintenance.preventive.application.PmChecksheetService;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.ActiveChecksheetView;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.ChecksheetView;
++import com.syncro.maintenance.preventive.application.PmFrequencyService;
++import java.time.Instant;
++import java.time.LocalDate;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
++import org.springframework.context.annotation.Import;
++import org.springframework.http.MediaType;
++import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
++import org.springframework.security.core.authority.SimpleGrantedAuthority;
++import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
++import org.springframework.test.context.bean.override.mockito.MockitoBean;
++import org.springframework.test.web.servlet.MockMvc;
++import org.springframework.test.web.servlet.request.RequestPostProcessor;
++
++@WebMvcTest({PmFrequencyController.class, PmChecksheetController.class})
++@Import({SecurityConfig.class, PreventiveExceptionHandler.class, JwtAuthenticationFilter.class,
++    TimeConfig.class, TestJsonConfig.class})
++class PmChecksheetControllerTest {
++
++  @Autowired
++  private MockMvc mockMvc;
++
++  @MockitoBean
++  private PmFrequencyService frequencies;
++
++  @MockitoBean
++  private PmChecksheetService checksheets;
++
++  @MockitoBean
++  private JwtTokenService jwtTokenService;
++
++  private static final UUID CS_ID = UUID.fromString("11111111-2222-3333-4444-555555555555");
++  private static final UUID MACHINE_ID = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
++  private static final UUID FREQ_ID = UUID.fromString("ffffffff-eeee-dddd-cccc-bbbbbbbbbbbb");
++  private static final Instant NOW = Instant.parse("2026-09-01T08:00:00Z");
++
++  @Test
++  @DisplayName("19.1-API-010 P0 create checksheet returns 201")
++  void createChecksheet() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(checksheets.create(eq(user), any())).thenReturn(view(1, false, null));
++
++    mockMvc.perform(post("/api/v1/pm-checksheets")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"machineId\":\"" + MACHINE_ID + "\",\"frequencyId\":\"" + FREQ_ID + "\"}"))
++        .andExpect(status().isCreated())
++        .andExpect(jsonPath("$.revisionNo").value(1))
++        .andExpect(jsonPath("$.isActive").value(false));
++  }
++
++  @Test
++  @DisplayName("19.1-API-011 P0 create checksheet missing machineId → 400")
++  void createChecksheetMissingMachineId() throws Exception {
++    mockMvc.perform(post("/api/v1/pm-checksheets")
++            .with(auth(ApplicationRole.STAFF_MAINTENANCE))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"frequencyId\":\"" + FREQ_ID + "\"}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
++  }
++
++  @Test
++  @DisplayName("19.1-API-012 P0 list checksheets returns 200")
++  void listChecksheets() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(checksheets.list(eq(user), eq(null), eq(null))).thenReturn(List.of(view(1, false, null)));
++
++    mockMvc.perform(get("/api/v1/pm-checksheets")
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$[0].revisionNo").value(1));
++  }
++
++  @Test
++  @DisplayName("19.1-API-013 P0 get checksheet returns 200")
++  void getChecksheet() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(checksheets.get(eq(user), eq(CS_ID))).thenReturn(view(2, true, NOW));
++
++    mockMvc.perform(get("/api/v1/pm-checksheets/{id}", CS_ID)
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.revisionNo").value(2))
++        .andExpect(jsonPath("$.isActive").value(true));
++  }
++
++  @Test
++  @DisplayName("19.1-API-014 P0 GET active checksheet returns 200")
++  void getActiveChecksheet() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(checksheets.getActive(eq(user), eq(MACHINE_ID), eq(FREQ_ID)))
++        .thenReturn(new ActiveChecksheetView(CS_ID, MACHINE_ID, FREQ_ID, 2));
++
++    mockMvc.perform(get("/api/v1/pm-checksheets/active")
++            .param("machineId", MACHINE_ID.toString())
++            .param("frequencyId", FREQ_ID.toString())
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.checksheetId").value(CS_ID.toString()))
++        .andExpect(jsonPath("$.revisionNo").value(2));
++  }
++
++  @Test
++  @DisplayName("19.1-API-015 P0 revise checksheet returns 201")
++  void reviseChecksheet() throws Exception {
++    var user = user(ApplicationRole.SECTION_LEADER);
++    when(checksheets.revise(eq(user), eq(CS_ID), any())).thenReturn(view(2, false, null));
++
++    mockMvc.perform(post("/api/v1/pm-checksheets/{id}/revise", CS_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"revisionReason\":\"Updated\"}"))
++        .andExpect(status().isCreated())
++        .andExpect(jsonPath("$.revisionNo").value(2));
++  }
++
++  @Test
++  @DisplayName("19.1-API-015b P0 revise without body returns 201 (optional body)")
++  void reviseChecksheetWithoutBody() throws Exception {
++    var user = user(ApplicationRole.SECTION_LEADER);
++    when(checksheets.revise(eq(user), eq(CS_ID), any())).thenReturn(view(2, false, null));
++
++    mockMvc.perform(post("/api/v1/pm-checksheets/{id}/revise", CS_ID)
++            .with(auth(user)))
++        .andExpect(status().isCreated())
++        .andExpect(jsonPath("$.revisionNo").value(2));
++  }
++
++  @Test
++  @DisplayName("19.1-API-016 P0 approve checksheet returns 200")
++  void approveChecksheet() throws Exception {
++    var user = user(ApplicationRole.SECTION_LEADER);
++    when(checksheets.approve(eq(user), eq(CS_ID), any()))
++        .thenReturn(view(2, true, NOW));
++
++    mockMvc.perform(post("/api/v1/pm-checksheets/{id}/approve", CS_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"effectiveDate\":\"2026-09-15\"}"))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.revisionNo").value(2))
++        .andExpect(jsonPath("$.isActive").value(true));
++  }
++
++  @Test
++  @DisplayName("19.1-API-016b P0 approve without body returns 200 (optional body)")
++  void approveChecksheetWithoutBody() throws Exception {
++    var user = user(ApplicationRole.SECTION_LEADER);
++    when(checksheets.approve(eq(user), eq(CS_ID), any()))
++        .thenReturn(view(2, true, NOW));
++
++    mockMvc.perform(post("/api/v1/pm-checksheets/{id}/approve", CS_ID)
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.isActive").value(true));
++  }
++
++  @Test
++  @DisplayName("19.1-API-017 P0 approve already-approved → 409")
++  void approveAlreadyApproved() throws Exception {
++    var user = user(ApplicationRole.SECTION_LEADER);
++    doThrow(new PmChecksheetService.InvalidChecksheetTransitionException())
++        .when(checksheets).approve(eq(user), eq(CS_ID), any());
++
++    mockMvc.perform(post("/api/v1/pm-checksheets/{id}/approve", CS_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{}"))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("INVALID_CHECKSHEET_TRANSITION"));
++  }
++
++  @Test
++  @DisplayName("19.1-API-018 P0 unknown checksheet → 404")
++  void getUnknownChecksheet() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(checksheets.get(eq(user), eq(CS_ID)))
++        .thenThrow(new PmChecksheetService.PmChecksheetNotFoundException());
++
++    mockMvc.perform(get("/api/v1/pm-checksheets/{id}", CS_ID)
++            .with(auth(user)))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("PM_CHECKSHEET_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("19.1-API-019 P0 forbidden role maps to 403 FORBIDDEN")
++  void createChecksheetForbidden() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    when(checksheets.create(eq(user), any()))
++        .thenThrow(new PmChecksheetService.PmChecksheetForbiddenException());
++
++    mockMvc.perform(post("/api/v1/pm-checksheets")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"machineId\":\"" + MACHINE_ID + "\",\"frequencyId\":\"" + FREQ_ID + "\"}"))
++        .andExpect(status().isForbidden())
++        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
++  }
++
++  @Test
++  @DisplayName("19.1-API-020 P0 duplicate pair maps to 409 CHECKSHEET_ALREADY_EXISTS")
++  void createChecksheetAlreadyExists() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(checksheets.create(eq(user), any()))
++        .thenThrow(new PmChecksheetService.ChecksheetAlreadyExistsException());
++
++    mockMvc.perform(post("/api/v1/pm-checksheets")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"machineId\":\"" + MACHINE_ID + "\",\"frequencyId\":\"" + FREQ_ID + "\"}"))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("CHECKSHEET_ALREADY_EXISTS"));
++  }
++
++  @Test
++  @DisplayName("19.1-API-021 P0 unknown machine maps to 404 MACHINE_NOT_FOUND")
++  void createChecksheetMachineNotFound() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(checksheets.create(eq(user), any()))
++        .thenThrow(new PmChecksheetService.MachineNotFoundException());
++
++    mockMvc.perform(post("/api/v1/pm-checksheets")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"machineId\":\"" + MACHINE_ID + "\",\"frequencyId\":\"" + FREQ_ID + "\"}"))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("MACHINE_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("19.1-API-022 P0 unknown frequency maps to 404 PM_FREQUENCY_NOT_FOUND")
++  void createChecksheetFrequencyNotFound() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(checksheets.create(eq(user), any()))
++        .thenThrow(new PmFrequencyService.PmFrequencyNotFoundException());
++
++    mockMvc.perform(post("/api/v1/pm-checksheets")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"machineId\":\"" + MACHINE_ID + "\",\"frequencyId\":\"" + FREQ_ID + "\"}"))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("PM_FREQUENCY_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("19.1-API-023 P0 missing active pointer maps to 404 PM_CHECKSHEET_NOT_FOUND")
++  void getActiveNotFound() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(checksheets.getActive(eq(user), eq(MACHINE_ID), eq(FREQ_ID)))
++        .thenThrow(new PmChecksheetService.ActiveChecksheetNotFoundException());
++
++    mockMvc.perform(get("/api/v1/pm-checksheets/active")
++            .param("machineId", MACHINE_ID.toString())
++            .param("frequencyId", FREQ_ID.toString())
++            .with(auth(user)))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("PM_CHECKSHEET_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("19.1-API-024 P0 inactive frequency maps to 400 VALIDATION_ERROR with fieldErrors")
++  void createChecksheetInactiveFrequency() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(checksheets.create(eq(user), any())).thenThrow(
++        new PmChecksheetService.ChecksheetValidationException(
++            Map.of("frequencyId", "Frequency is not active.")));
++
++    mockMvc.perform(post("/api/v1/pm-checksheets")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"machineId\":\"" + MACHINE_ID + "\",\"frequencyId\":\"" + FREQ_ID + "\"}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.frequencyId").exists());
++  }
++
++  private static ChecksheetView view(int revision, boolean active, Instant approvedAt) {
++    return new ChecksheetView(CS_ID, MACHINE_ID, FREQ_ID, revision, null, active,
++        null, null, approvedAt, approvedAt != null ? LocalDate.of(2026, 9, 15) : null,
++        UUID.randomUUID(), NOW, NOW);
++  }
++
++  private static AuthenticatedUser user(ApplicationRole role) {
++    return new AuthenticatedUser(UUID.randomUUID().toString(), role.name().toLowerCase() + "@syncro.dev", role);
++  }
++
++  private static RequestPostProcessor auth(AuthenticatedUser user) {
++    return SecurityMockMvcRequestPostProcessors.authentication(new UsernamePasswordAuthenticationToken(
++        user, null,
++        List.of(new SimpleGrantedAuthority("ROLE_" + user.applicationRole().name()))));
++  }
++
++  private static RequestPostProcessor auth(ApplicationRole role) {
++    return auth(user(role));
++  }
++}
+--- NEW FILE: syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmFrequencyControllerTest.java ---
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmFrequencyControllerTest.java b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmFrequencyControllerTest.java
+new file mode 100644
+index 0000000..8120d78
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmFrequencyControllerTest.java
+@@ -0,0 +1,199 @@
++package com.syncro.maintenance.preventive.api;
++
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.eq;
++import static org.mockito.Mockito.doThrow;
++import static org.mockito.Mockito.when;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
++
++import com.syncro.TestJsonConfig;
++import com.syncro.auth.application.JwtTokenService;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.JwtAuthenticationFilter;
++import com.syncro.config.SecurityConfig;
++import com.syncro.config.TimeConfig;
++import com.syncro.maintenance.preventive.application.PmChecksheetService;
++import com.syncro.maintenance.preventive.application.PmFrequencyService;
++import com.syncro.maintenance.preventive.application.PmFrequencyService.FrequencyView;
++import java.time.Instant;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
++import org.springframework.context.annotation.Import;
++import org.springframework.http.MediaType;
++import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
++import org.springframework.security.core.authority.SimpleGrantedAuthority;
++import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
++import org.springframework.test.context.bean.override.mockito.MockitoBean;
++import org.springframework.test.web.servlet.MockMvc;
++import org.springframework.test.web.servlet.request.RequestPostProcessor;
++
++@WebMvcTest({PmFrequencyController.class, PmChecksheetController.class})
++@Import({SecurityConfig.class, PreventiveExceptionHandler.class, JwtAuthenticationFilter.class,
++    TimeConfig.class, TestJsonConfig.class})
++class PmFrequencyControllerTest {
++
++  @Autowired
++  private MockMvc mockMvc;
++
++  @MockitoBean
++  private PmFrequencyService frequencies;
++
++  @MockitoBean
++  private PmChecksheetService checksheets;
++
++  @MockitoBean
++  private JwtTokenService jwtTokenService;
++
++  private static final UUID FREQ_ID = UUID.fromString("11111111-2222-3333-4444-555555555555");
++  private static final Instant NOW = Instant.parse("2026-09-01T08:00:00Z");
++
++  @Test
++  @DisplayName("19.1-API-001 P0 GET list frequencies returns 200")
++  void listFrequencies() throws Exception {
++    when(frequencies.list()).thenReturn(List.of(
++        new FrequencyView(FREQ_ID, "MONTHLY", "Monthly", null, 1, true, NOW, NOW)));
++
++    mockMvc.perform(get("/api/v1/pm-frequencies")
++            .with(auth(ApplicationRole.AUDITOR)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$[0].code").value("MONTHLY"))
++        .andExpect(jsonPath("$[0].sortOrder").value(1));
++  }
++
++  @Test
++  @DisplayName("19.1-API-002 P0 GET frequency by id returns 200")
++  void getFrequency() throws Exception {
++    when(frequencies.get(FREQ_ID)).thenReturn(
++        new FrequencyView(FREQ_ID, "MONTHLY", "Monthly", null, 1, true, NOW, NOW));
++
++    mockMvc.perform(get("/api/v1/pm-frequencies/{id}", FREQ_ID)
++            .with(auth(ApplicationRole.AUDITOR)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.code").value("MONTHLY"));
++  }
++
++  @Test
++  @DisplayName("19.1-API-003 P0 POST create frequency returns 201")
++  void createFrequency() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(frequencies.create(eq(user), any())).thenReturn(
++        new FrequencyView(FREQ_ID, "QUARTERLY", "Quarterly", null, 3, true, NOW, NOW));
++
++    mockMvc.perform(post("/api/v1/pm-frequencies")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"code\":\"QUARTERLY\",\"name\":\"Quarterly\",\"sortOrder\":3}"))
++        .andExpect(status().isCreated())
++        .andExpect(jsonPath("$.code").value("QUARTERLY"))
++        .andExpect(jsonPath("$.sortOrder").value(3));
++  }
++
++  @Test
++  @DisplayName("19.1-API-004 P0 PUT update frequency returns 200")
++  void updateFrequency() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(frequencies.update(eq(user), eq(FREQ_ID), any())).thenReturn(
++        new FrequencyView(FREQ_ID, "MONTHLY", "Monthly v2", null, 1, false, NOW, NOW));
++
++    mockMvc.perform(put("/api/v1/pm-frequencies/{id}", FREQ_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"name\":\"Monthly v2\",\"isActive\":false}"))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.name").value("Monthly v2"))
++        .andExpect(jsonPath("$.isActive").value(false));
++  }
++
++  @Test
++  @DisplayName("19.1-API-005 P0 POST create frequency missing code → 400")
++  void createFrequencyMissingCode() throws Exception {
++    mockMvc.perform(post("/api/v1/pm-frequencies")
++            .with(auth(ApplicationRole.STAFF_MAINTENANCE))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"name\":\"No code\"}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
++  }
++
++  @Test
++  @DisplayName("19.1-API-006 P0 forbidden role maps to 403 FORBIDDEN")
++  void createFrequencyForbidden() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    doThrow(new PmFrequencyService.PmFrequencyForbiddenException())
++        .when(frequencies).create(eq(user), any());
++
++    mockMvc.perform(post("/api/v1/pm-frequencies")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"code\":\"X\",\"name\":\"X\"}"))
++        .andExpect(status().isForbidden())
++        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
++  }
++
++  @Test
++  @DisplayName("19.1-API-007 P0 duplicate code maps to 409 DUPLICATE_FREQUENCY_CODE")
++  void createFrequencyDuplicateCode() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(frequencies.create(eq(user), any()))
++        .thenThrow(new PmFrequencyService.DuplicateFrequencyCodeException());
++
++    mockMvc.perform(post("/api/v1/pm-frequencies")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"code\":\"MONTHLY\",\"name\":\"Monthly\"}"))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("DUPLICATE_FREQUENCY_CODE"));
++  }
++
++  @Test
++  @DisplayName("19.1-API-008 P0 unknown frequency maps to 404 PM_FREQUENCY_NOT_FOUND")
++  void getUnknownFrequency() throws Exception {
++    when(frequencies.get(FREQ_ID))
++        .thenThrow(new PmFrequencyService.PmFrequencyNotFoundException());
++
++    mockMvc.perform(get("/api/v1/pm-frequencies/{id}", FREQ_ID)
++            .with(auth(ApplicationRole.AUDITOR)))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("PM_FREQUENCY_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("19.1-API-009 P0 blank-after-trim code maps to 400 VALIDATION_ERROR with fieldErrors")
++  void createFrequencyBlankCode() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(frequencies.create(eq(user), any())).thenThrow(
++        new PmFrequencyService.FrequencyValidationException(Map.of("code", "code must not be blank.")));
++
++    mockMvc.perform(post("/api/v1/pm-frequencies")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"code\":\"   \",\"name\":\"X\"}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.code").exists());
++  }
++
++  private static AuthenticatedUser user(ApplicationRole role) {
++    return new AuthenticatedUser(UUID.randomUUID().toString(), role.name().toLowerCase() + "@syncro.dev", role);
++  }
++
++  private static RequestPostProcessor auth(AuthenticatedUser user) {
++    return SecurityMockMvcRequestPostProcessors.authentication(new UsernamePasswordAuthenticationToken(
++        user, null,
++        List.of(new SimpleGrantedAuthority("ROLE_" + user.applicationRole().name()))));
++  }
++
++  private static RequestPostProcessor auth(ApplicationRole role) {
++    return auth(user(role));
++  }
++}
+--- NEW FILE: syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/application/PmChecksheetServiceIntegrationTest.java ---
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/application/PmChecksheetServiceIntegrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/application/PmChecksheetServiceIntegrationTest.java
+new file mode 100644
+index 0000000..29e3040
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/application/PmChecksheetServiceIntegrationTest.java
+@@ -0,0 +1,314 @@
++package com.syncro.maintenance.preventive.application;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.api.Assertions.assertThatThrownBy;
++
++import com.syncro.AbstractPostgresIntegrationTest;
++import com.syncro.audit.domain.AuditAction;
++import com.syncro.audit.domain.AuditEntityType;
++import com.syncro.audit.infrastructure.AuditLogRepository;
++import com.syncro.auth.infrastructure.AuthUserEntity;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentEntity;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
++import com.syncro.auth.infrastructure.AuthUserRepository;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.machine.domain.MachineStatus;
++import com.syncro.machine.domain.ResponsibilityLevel;
++import com.syncro.machine.infrastructure.MachineEntity;
++import com.syncro.machine.infrastructure.MachineRepository;
++import com.syncro.machine.infrastructure.MachineResponsibilityEntity;
++import com.syncro.machine.infrastructure.MachineResponsibilityRepository;
++import com.syncro.masterdata.infrastructure.MachineGroupEntity;
++import com.syncro.masterdata.infrastructure.MachineGroupRepository;
++import com.syncro.auth.infrastructure.PlantEntity;
++import com.syncro.auth.infrastructure.PlantRepository;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.ApproveChecksheetCommand;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.CreateChecksheetCommand;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.ReviseChecksheetCommand;
++import java.time.Instant;
++import java.time.LocalDate;
++import java.time.ZoneOffset;
++import java.util.UUID;
++import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++
++/**
++ * Story 19-1 integration test: PM checksheet revision/approval workflow against
++ * a real Postgres container (blueprint F2/F3). Covers the full create → revise →
++ * approve → active-pointer chain including the second-approval path (deactivate
++ * old + pointer update), workflow guards, audit trail, and frequency seeding.
++ */
++class PmChecksheetServiceIntegrationTest extends AbstractPostgresIntegrationTest {
++
++  private static final Instant T0 = Instant.parse("2026-09-01T08:00:00Z");
++
++  @Autowired
++  private PmChecksheetService checksheets;
++  @Autowired
++  private PmFrequencyService frequencies;
++  @Autowired
++  private PlantRepository plants;
++  @Autowired
++  private MachineGroupRepository machineGroups;
++  @Autowired
++  private MachineRepository machines;
++  @Autowired
++  private AuthUserRepository users;
++  @Autowired
++  private AuthUserPlantAssignmentRepository assignments;
++  @Autowired
++  private MachineResponsibilityRepository responsibilities;
++  @Autowired
++  private AuditLogRepository auditLogs;
++
++  private PlantEntity plant;
++  private MachineGroupEntity group;
++  private MachineEntity machine;
++  private AuthenticatedUser leaderUser;
++  private AuthenticatedUser staffUser;
++  private UUID frequencyId;
++
++  @BeforeEach
++  void setUp() {
++    plant = plants.saveAndFlush(new PlantEntity(
++        UUID.randomUUID(), "P" + UUID.randomUUID().toString().substring(0, 8), "Plant", T0, T0));
++    group = machineGroups.saveAndFlush(new MachineGroupEntity(
++        UUID.randomUUID(), plant, "Group", T0, T0));
++    machine = machines.saveAndFlush(new MachineEntity(
++        UUID.randomUUID(), plant, group, "MC-" + UUID.randomUUID().toString().substring(0, 8),
++        "Machine", MachineStatus.ACTIVE, null, null, null, null, T0, T0));
++
++    var leaderId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(
++        leaderId, "leader-" + UUID.randomUUID() + "@test", "hash",
++        ApplicationRole.SECTION_LEADER, true, T0, T0));
++    assignments.saveAndFlush(new AuthUserPlantAssignmentEntity(
++        leaderId, plant.getId(), T0));
++    // SECTION_LEADER scope comes from a LEADER responsibility on the machine group.
++    responsibilities.saveAndFlush(new MachineResponsibilityEntity(
++        UUID.randomUUID(), machine.getId(), leaderId, ResponsibilityLevel.LEADER, T0, T0));
++    leaderUser = new AuthenticatedUser(leaderId.toString(),
++        "leader@test", ApplicationRole.SECTION_LEADER);
++
++    var staffId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(
++        staffId, "staff-" + UUID.randomUUID() + "@test", "hash",
++        ApplicationRole.STAFF_MAINTENANCE, true, T0, T0));
++    assignments.saveAndFlush(new AuthUserPlantAssignmentEntity(
++        staffId, plant.getId(), T0));
++    staffUser = new AuthenticatedUser(staffId.toString(),
++        "staff@test", ApplicationRole.STAFF_MAINTENANCE);
++
++    // V7 seeds MONTHLY/ANNUAL; resolve the MONTHLY id.
++    frequencyId = frequencies.list().stream()
++        .filter(f -> f.code().equals("MONTHLY"))
++        .findFirst().orElseThrow().id();
++  }
++
++  @Test
++  @DisplayName("19.1-INT-001 P0 create → revise → approve: pointer created, no deactivation yet")
++  void firstApprovalCreatesPointer() {
++    // Create revision 1 (unapproved, inactive)
++    var r1 = checksheets.create(staffUser,
++        new CreateChecksheetCommand(machine.getId(), frequencyId, null));
++    assertThat(r1.revisionNo()).isEqualTo(1);
++    assertThat(r1.isActive()).isFalse();
++    assertThat(r1.approvedBy()).isNull();
++
++    // No pointer row exists before any approval.
++    assertThatThrownBy(() -> checksheets.getActive(leaderUser, machine.getId(), frequencyId))
++        .isInstanceOf(PmChecksheetService.ActiveChecksheetNotFoundException.class);
++
++    // Revise → revision 2, supersedes = r1
++    var r2 = checksheets.revise(leaderUser, r1.id(),
++        new ReviseChecksheetCommand("Annual review"));
++    assertThat(r2.revisionNo()).isEqualTo(2);
++    assertThat(r2.supersedes()).isEqualTo(r1.id());
++    assertThat(r2.isActive()).isFalse();
++
++    // Approve revision 2 → stamps approver, activates, creates pointer.
++    // r1 was never active, so nothing is deactivated on this first approval.
++    var approved = checksheets.approve(leaderUser, r2.id(),
++        new ApproveChecksheetCommand(null));
++    assertThat(approved.approvedBy()).isNotNull();
++    assertThat(approved.approvedAt()).isNotNull();
++    assertThat(approved.isActive()).isTrue();
++
++    // Active pointer points at r2.
++    var active = checksheets.getActive(leaderUser, machine.getId(), frequencyId);
++    assertThat(active.checksheetId()).isEqualTo(approved.id());
++    assertThat(active.revisionNo()).isEqualTo(2);
++
++    // r1 stays inactive (it was created inactive; no deactivation needed).
++    assertThat(checksheets.get(leaderUser, r1.id()).isActive()).isFalse();
++  }
++
++  @Test
++  @DisplayName("19.1-INT-002 P0 second approval deactivates the old revision and updates the pointer")
++  void secondApprovalDeactivatesOldAndFlipsPointer() {
++    var r1 = checksheets.create(staffUser,
++        new CreateChecksheetCommand(machine.getId(), frequencyId, null));
++    checksheets.approve(leaderUser, r1.id(), new ApproveChecksheetCommand(null));
++
++    // r1 is now the active revision and the pointer targets it.
++    assertThat(checksheets.get(leaderUser, r1.id()).isActive()).isTrue();
++    assertThat(checksheets.getActive(leaderUser, machine.getId(), frequencyId).checksheetId())
++        .isEqualTo(r1.id());
++
++    var r2 = checksheets.revise(leaderUser, r1.id(),
++        new ReviseChecksheetCommand("Revision 2"));
++    checksheets.approve(leaderUser, r2.id(), new ApproveChecksheetCommand(null));
++
++    // deactivate() ran on r1; the pointer update branch ran to r2.
++    assertThat(checksheets.get(leaderUser, r1.id()).isActive()).isFalse();
++    var active = checksheets.getActive(leaderUser, machine.getId(), frequencyId);
++    assertThat(active.checksheetId()).isEqualTo(r2.id());
++    assertThat(active.revisionNo()).isEqualTo(2);
++
++    // Audit trail: r1 has CREATE + approve UPDATE + deactivate UPDATE; r2 CREATE + approve UPDATE.
++    var r1Audit = auditLogs.findByEntityIdOrderByCreatedAtAsc(r1.id());
++    assertThat(r1Audit).anySatisfy(entry -> {
++      assertThat(entry.getEntityType()).isEqualTo(AuditEntityType.PM_CHECKSHEET);
++      assertThat(entry.getAction()).isEqualTo(AuditAction.UPDATE);
++    });
++    assertThat(r1Audit).anySatisfy(entry ->
++        assertThat(entry.getAction()).isEqualTo(AuditAction.CREATE));
++    assertThat(auditLogs.findByEntityIdOrderByCreatedAtAsc(r2.id()))
++        .anySatisfy(entry ->
++            assertThat(entry.getEntityType()).isEqualTo(AuditEntityType.PM_CHECKSHEET));
++  }
++
++  @Test
++  @DisplayName("19.1-INT-003 P0 approving an already-approved revision is rejected")
++  void approveAlreadyApprovedRejected() {
++    var r1 = checksheets.create(staffUser,
++        new CreateChecksheetCommand(machine.getId(), frequencyId, null));
++    checksheets.approve(leaderUser, r1.id(), new ApproveChecksheetCommand(null));
++
++    assertThatThrownBy(() ->
++        checksheets.approve(leaderUser, r1.id(), new ApproveChecksheetCommand(null)))
++        .isInstanceOf(PmChecksheetService.InvalidChecksheetTransitionException.class);
++  }
++
++  @Test
++  @DisplayName("19.1-INT-004 P0 approving a stale (non-latest) revision is rejected")
++  void approveStaleRevisionRejected() {
++    var r1 = checksheets.create(staffUser,
++        new CreateChecksheetCommand(machine.getId(), frequencyId, null));
++    checksheets.revise(leaderUser, r1.id(), new ReviseChecksheetCommand("newer"));
++
++    // r1 is unapproved but no longer the latest revision → pointer regression guard.
++    assertThatThrownBy(() ->
++        checksheets.approve(leaderUser, r1.id(), new ApproveChecksheetCommand(null)))
++        .isInstanceOf(PmChecksheetService.InvalidChecksheetTransitionException.class);
++  }
++
++  @Test
++  @DisplayName("19.1-INT-005 P0 revising a superseded revision is rejected")
++  void reviseSupersededRejected() {
++    var r1 = checksheets.create(staffUser,
++        new CreateChecksheetCommand(machine.getId(), frequencyId, null));
++    checksheets.revise(leaderUser, r1.id(), new ReviseChecksheetCommand("r2"));
++
++    assertThatThrownBy(() ->
++        checksheets.revise(leaderUser, r1.id(), new ReviseChecksheetCommand("fork")))
++        .isInstanceOf(PmChecksheetService.InvalidChecksheetTransitionException.class);
++  }
++
++  @Test
++  @DisplayName("19.1-INT-006 P0 creating a second checksheet for the same pair is rejected")
++  void duplicateChecksheetPairRejected() {
++    checksheets.create(staffUser,
++        new CreateChecksheetCommand(machine.getId(), frequencyId, null));
++
++    assertThatThrownBy(() ->
++        checksheets.create(staffUser,
++            new CreateChecksheetCommand(machine.getId(), frequencyId, null)))
++        .isInstanceOf(PmChecksheetService.ChecksheetAlreadyExistsException.class);
++  }
++
++  @Test
++  @DisplayName("19.1-INT-007 P0 STAFF_MAINTENANCE can create but cannot approve")
++  void staffCannotApprove() {
++    var r1 = checksheets.create(staffUser,
++        new CreateChecksheetCommand(machine.getId(), frequencyId, null));
++
++    // STAFF_MAINTENANCE cannot approve (leader role required)
++    assertThatThrownBy(() ->
++        checksheets.approve(staffUser, r1.id(), new ApproveChecksheetCommand(null)))
++        .isInstanceOf(PmChecksheetService.PmChecksheetForbiddenException.class);
++  }
++
++  @Test
++  @DisplayName("19.1-INT-008 P0 approve with null effectiveDate defaults to today from the clock")
++  void approveDefaultsEffectiveDateToToday() {
++    var r1 = checksheets.create(staffUser,
++        new CreateChecksheetCommand(machine.getId(), frequencyId, null));
++    var approved = checksheets.approve(leaderUser, r1.id(), new ApproveChecksheetCommand(null));
++
++    assertThat(approved.effectiveDate()).isEqualTo(LocalDate.now(ZoneOffset.UTC));
++  }
++
++  @Test
++  @DisplayName("19.1-INT-009 P0 duplicate frequency code is rejected (constraint backstop → 409)")
++  void duplicateFrequencyCodeRejected() {
++    // MONTHLY already exists (V7 seed); try to create with same code
++    assertThatThrownBy(() ->
++        frequencies.create(staffUser, new PmFrequencyService.CreateFrequencyCommand(
++            "MONTHLY", "Monthly copy", null, null, null)))
++        .isInstanceOf(PmFrequencyService.DuplicateFrequencyCodeException.class);
++  }
++
++  @Test
++  @DisplayName("19.1-INT-010 P0 frequency list is ordered by sort_order asc")
++  void frequencyListOrderedBySortOrder() {
++    var list = frequencies.list();
++    assertThat(list).extracting(PmFrequencyService.FrequencyView::code)
++        .startsWith("MONTHLY", "ANNUAL");
++    assertThat(list).extracting(PmFrequencyService.FrequencyView::sortOrder).isSorted();
++  }
++
++  @Test
++  @DisplayName("19.1-INT-011 P0 checksheet list filters: pair asc, machine desc, frequency desc")
++  void checksheetListFilterBranches() {
++    var r1 = checksheets.create(staffUser,
++        new CreateChecksheetCommand(machine.getId(), frequencyId, null));
++    var r2 = checksheets.revise(leaderUser, r1.id(), new ReviseChecksheetCommand("r2"));
++
++    var pair = checksheets.list(leaderUser, machine.getId(), frequencyId);
++    assertThat(pair).extracting(PmChecksheetService.ChecksheetView::revisionNo)
++        .containsExactly(1, 2);
++
++    var byMachine = checksheets.list(leaderUser, machine.getId(), null);
++    assertThat(byMachine).extracting(PmChecksheetService.ChecksheetView::revisionNo)
++        .containsExactly(2, 1);
++
++    var byFrequency = checksheets.list(leaderUser, null, frequencyId);
++    assertThat(byFrequency).extracting(PmChecksheetService.ChecksheetView::id)
++        .containsExactly(r2.id(), r1.id());
++  }
++
++  @Test
++  @DisplayName("19.1-INT-012 P0 out-of-scope user cannot read another plant's checksheet")
++  void outOfScopeReadRejected() {
++    var r1 = checksheets.create(staffUser,
++        new CreateChecksheetCommand(machine.getId(), frequencyId, null));
++
++    // A second SECTION_LEADER with no responsibility on this machine's group.
++    var otherId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(
++        otherId, "other-" + UUID.randomUUID() + "@test", "hash",
++        ApplicationRole.SECTION_LEADER, true, T0, T0));
++    var otherUser = new AuthenticatedUser(otherId.toString(),
++        "other@test", ApplicationRole.SECTION_LEADER);
++
++    assertThatThrownBy(() -> checksheets.get(otherUser, r1.id()))
++        .isInstanceOf(PmChecksheetService.PmChecksheetForbiddenException.class);
++    assertThatThrownBy(() -> checksheets.getActive(otherUser, machine.getId(), frequencyId))
++        .isInstanceOf(PmChecksheetService.PmChecksheetForbiddenException.class);
++    assertThat(checksheets.list(otherUser, null, null)).isEmpty();
++  }
++}

@@ -138,4 +138,16 @@ public class PmChecksheetEntity {
     this.effectiveDate = effectiveDate;
     this.updatedAt = updatedAt;
   }
+
+  /** Deactivates this revision (used when a newer revision is approved). */
+  public void deactivate(Instant updatedAt) {
+    this.active = false;
+    this.updatedAt = updatedAt;
+  }
+
+  /** Marks this revision as the active one (approval path). */
+  public void activate(Instant updatedAt) {
+    this.active = true;
+    this.updatedAt = updatedAt;
+  }
 }

@@ -18,6 +18,16 @@ import com.syncro.maintenance.preventive.application.PreventiveProgramService.Ma
 import com.syncro.maintenance.preventive.application.PreventiveProgramService.PreventiveForbiddenException;
 import com.syncro.maintenance.preventive.application.PreventiveProgramService.PreventiveValidationException;
 import com.syncro.maintenance.preventive.application.PreventiveProgramService.ProgramNotFoundException;
+import com.syncro.maintenance.preventive.application.PmChecksheetService.ActiveChecksheetNotFoundException;
+import com.syncro.maintenance.preventive.application.PmChecksheetService.ChecksheetAlreadyExistsException;
+import com.syncro.maintenance.preventive.application.PmChecksheetService.ChecksheetValidationException;
+import com.syncro.maintenance.preventive.application.PmChecksheetService.InvalidChecksheetTransitionException;
+import com.syncro.maintenance.preventive.application.PmChecksheetService.PmChecksheetForbiddenException;
+import com.syncro.maintenance.preventive.application.PmChecksheetService.PmChecksheetNotFoundException;
+import com.syncro.maintenance.preventive.application.PmFrequencyService.DuplicateFrequencyCodeException;
+import com.syncro.maintenance.preventive.application.PmFrequencyService.FrequencyValidationException;
+import com.syncro.maintenance.preventive.application.PmFrequencyService.PmFrequencyForbiddenException;
+import com.syncro.maintenance.preventive.application.PmFrequencyService.PmFrequencyNotFoundException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -29,12 +39,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import tools.jackson.databind.exc.InvalidFormatException;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
-@RestControllerAdvice(assignableTypes = {PreventiveProgramController.class, PreventiveScheduleController.class})
+@RestControllerAdvice(assignableTypes = {PreventiveProgramController.class, PreventiveScheduleController.class,
+    PmFrequencyController.class, PmChecksheetController.class})
 public class PreventiveExceptionHandler {
 
   private final Clock clock;
@@ -89,6 +103,27 @@ public class PreventiveExceptionHandler {
   @ExceptionHandler(PreventiveValidationException.class)
   ResponseEntity<ErrorResponse> preventiveValidation(PreventiveValidationException exception) {
     return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", exception.getFieldErrors());
+  }
+
+  /**
+   * Malformed query/path value (e.g. a non-UUID {@code machineId} on
+   * GET /pm-checksheets/active) must not leak Spring's default body — map to the
+   * standard envelope (InventoryLocationExceptionHandler parity).
+   */
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  ResponseEntity<ErrorResponse> invalidArgumentValue(MethodArgumentTypeMismatchException exception) {
+    if (exception.getParameter() != null
+        && exception.getParameter().hasParameterAnnotation(RequestParam.class)) {
+      return error(HttpStatus.BAD_REQUEST, "INVALID_QUERY_VALUE", "Query value is invalid.", Map.of());
+    }
+    return error(HttpStatus.BAD_REQUEST, "INVALID_PATH_VALUE", "Path value is invalid.", Map.of());
+  }
+
+  /** Missing required query param (e.g. machineId/frequencyId) → 400 VALIDATION_ERROR. */
+  @ExceptionHandler(MissingServletRequestParameterException.class)
+  ResponseEntity<ErrorResponse> missingParameter(MissingServletRequestParameterException exception) {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
+        Map.of(exception.getParameterName(), "Invalid value."));
   }
 
   @ExceptionHandler(PreventiveForbiddenException.class)
@@ -184,6 +219,75 @@ public class PreventiveExceptionHandler {
   ResponseEntity<ErrorResponse> reportStorageError() {
     return error(HttpStatus.INTERNAL_SERVER_ERROR, "STORAGE_ERROR",
         "File storage operation failed. Please try again.", Map.of());
+  }
+
+  // -------------------------------------------------------------------------
+  // Story 19-1: PM frequencies & checksheets
+  // -------------------------------------------------------------------------
+
+  @ExceptionHandler(PmFrequencyForbiddenException.class)
+  ResponseEntity<ErrorResponse> pmFrequencyForbidden() {
+    return error(HttpStatus.FORBIDDEN, "FORBIDDEN",
+        "You do not have permission to access this resource.", Map.of());
+  }
+
+  @ExceptionHandler(DuplicateFrequencyCodeException.class)
+  ResponseEntity<ErrorResponse> duplicateFrequencyCode() {
+    return error(HttpStatus.CONFLICT, "DUPLICATE_FREQUENCY_CODE",
+        "A PM frequency with this code already exists.", Map.of());
+  }
+
+  @ExceptionHandler(PmFrequencyNotFoundException.class)
+  ResponseEntity<ErrorResponse> pmFrequencyNotFound() {
+    return error(HttpStatus.NOT_FOUND, "PM_FREQUENCY_NOT_FOUND",
+        "PM frequency was not found.", Map.of());
+  }
+
+  @ExceptionHandler(FrequencyValidationException.class)
+  ResponseEntity<ErrorResponse> frequencyValidation(FrequencyValidationException exception) {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
+        exception.getFieldErrors());
+  }
+
+  @ExceptionHandler(PmChecksheetForbiddenException.class)
+  ResponseEntity<ErrorResponse> pmChecksheetForbidden() {
+    return error(HttpStatus.FORBIDDEN, "FORBIDDEN",
+        "You do not have permission to access this resource.", Map.of());
+  }
+
+  @ExceptionHandler(PmChecksheetNotFoundException.class)
+  ResponseEntity<ErrorResponse> pmChecksheetNotFound() {
+    return error(HttpStatus.NOT_FOUND, "PM_CHECKSHEET_NOT_FOUND",
+        "PM checksheet was not found.", Map.of());
+  }
+
+  @ExceptionHandler(ActiveChecksheetNotFoundException.class)
+  ResponseEntity<ErrorResponse> activeChecksheetNotFound() {
+    return error(HttpStatus.NOT_FOUND, "PM_CHECKSHEET_NOT_FOUND",
+        "No active PM checksheet was found for this machine and frequency.", Map.of());
+  }
+
+  @ExceptionHandler(ChecksheetAlreadyExistsException.class)
+  ResponseEntity<ErrorResponse> checksheetAlreadyExists() {
+    return error(HttpStatus.CONFLICT, "CHECKSHEET_ALREADY_EXISTS",
+        "A PM checksheet already exists for this machine and frequency.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmChecksheetService.MachineNotFoundException.class)
+  ResponseEntity<ErrorResponse> pmChecksheetMachineNotFound() {
+    return error(HttpStatus.NOT_FOUND, "MACHINE_NOT_FOUND", "Machine was not found.", Map.of());
+  }
+
+  @ExceptionHandler(InvalidChecksheetTransitionException.class)
+  ResponseEntity<ErrorResponse> invalidChecksheetTransition() {
+    return error(HttpStatus.CONFLICT, "INVALID_CHECKSHEET_TRANSITION",
+        "The checksheet is not in the expected state for this action.", Map.of());
+  }
+
+  @ExceptionHandler(ChecksheetValidationException.class)
+  ResponseEntity<ErrorResponse> checksheetValidation(ChecksheetValidationException exception) {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
+        exception.getFieldErrors());
   }
 
   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message,

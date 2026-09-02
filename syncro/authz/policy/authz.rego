@@ -328,6 +328,28 @@ preventive_schedule_mutation_paths := {
   "/api/v1/preventive-schedules/*/skip",
 }
 
+# PM frequencies (story 19-1, blueprint F1): global master-data mutations for the
+# four-role set (MANAGER_MAINTENANCE, SECTION_LEADER, MAINTENANCE_LEADER,
+# STAFF_MAINTENANCE) — no scope dimension, role gate only (SUPER_ADMIN via the
+# generic bypass). Reads (GET) flow through generic read_allowed.
+pm_frequency_paths := {
+  "/api/v1/pm-frequencies",
+  "/api/v1/pm-frequencies/*",
+}
+
+# PM checksheets (story 19-1, blueprint F2/F3): create/revise for the four-role set;
+# approve for the leader subset. A single `*` matches exactly one path segment, so
+# each depth is enumerated explicitly: collection (list/create), /{id} (get — and
+# /active, which the same `*` matches), /{id}/revise, /{id}/approve. The service
+# gate is authoritative for scope (machine plant/group) and the leader-only approve
+# role (STAFF_MAINTENANCE passes rego but is denied approve in service).
+pm_checksheet_paths := {
+  "/api/v1/pm-checksheets",
+  "/api/v1/pm-checksheets/*",
+  "/api/v1/pm-checksheets/*/revise",
+  "/api/v1/pm-checksheets/*/approve",
+}
+
 # Org-maintenance departments (spec-org-maintenance-model): mutations are the
 # Phase 1 gate (SUPER_ADMIN|MANAGER_MAINTENANCE). Reads flow through generic
 # read_allowed. Members replace + section leader assignment + user-master updates
@@ -997,6 +1019,59 @@ mutation_allowed if {
   input.subject.roles[_] == "STAFF_MAINTENANCE"
   is_mutation
   path_matches(preventive_schedule_mutation_paths)
+}
+
+# PM frequencies (story 19-1): the same four-role allow set as preventive_program_paths.
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(pm_frequency_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(pm_frequency_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(pm_frequency_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STAFF_MAINTENANCE"
+  is_mutation
+  path_matches(pm_frequency_paths)
+}
+
+# PM checksheets (story 19-1): create/revise for the four-role set; approve for
+# the leader subset (SECTION_LEADER, MAINTENANCE_LEADER, MANAGER_MAINTENANCE).
+# The service gate is authoritative for scope and the leader-only approve role
+# (STAFF_MAINTENANCE is denied approve in service, not in rego).
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(pm_checksheet_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(pm_checksheet_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(pm_checksheet_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STAFF_MAINTENANCE"
+  is_mutation
+  path_matches(pm_checksheet_paths)
 }
 
 mutation_allowed if {

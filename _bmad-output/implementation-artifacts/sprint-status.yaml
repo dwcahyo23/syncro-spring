@@ -35,7 +35,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-25
-last_updated: 2026-09-02
+last_updated: 2026-09-03
+# updated: 2026-09-03 Epic 19 in-progress — 19-1 PM Frequencies & Checksheets done
 # updated: 2026-09-02 Epic 18 — 18-1 done (1f886ad), 18-2 done (8198456), 18-3 done; 18-4/18-5 next
 # updated: 2026-09-01 (3) Epic 18 in-progress — 18-1 Sparepart BOM Master build started
 # updated: 2026-09-01 (2) epic-15 done — 15-1 & 15-2 complete (b15b975, d5e5424)
@@ -255,8 +256,8 @@ development_status:
   epic-18-retrospective: optional
 
   # Epic 19: Preventive PM Execution Model
-  epic-19: backlog
-  19-1-pm-frequencies-checksheets: backlog
+  epic-19: in-progress
+  19-1-pm-frequencies-checksheets: done
   19-2-pm-checklist-categories-items: backlog
   19-3-pm-schedules-dates: backlog
   19-4-pm-work-orders: backlog

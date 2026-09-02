@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -48,11 +49,11 @@ class V1BaseSchemaMigrationTest {
   // -------------------------------------------------------------------------
 
   @Test
-  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2/V3/V4/V5/V6 additive migrations")
+  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V7 additive migrations")
   void migrationsApplied() {
     var rows = jdbc.queryForList(
         "SELECT version, script, success FROM flyway_schema_history ORDER BY installed_rank");
-    assertThat(rows).hasSize(6);
+    assertThat(rows).hasSize(7);
     assertThat(rows.get(0).get("version")).isEqualTo("1");
     assertThat(rows.get(0).get("script")).isEqualTo("V1__orm_foundation_schema.sql");
     assertThat(rows.get(0).get("success")).isEqualTo(true);
@@ -71,6 +72,9 @@ class V1BaseSchemaMigrationTest {
     assertThat(rows.get(5).get("version")).isEqualTo("6");
     assertThat(rows.get(5).get("script")).isEqualTo("V6__work_order_quality_rating_audit_type.sql");
     assertThat(rows.get(5).get("success")).isEqualTo(true);
+    assertThat(rows.get(6).get("version")).isEqualTo("7");
+    assertThat(rows.get(6).get("script")).isEqualTo("V7__pm_frequencies_seed_and_audit_types.sql");
+    assertThat(rows.get(6).get("success")).isEqualTo(true);
   }
 
   // -------------------------------------------------------------------------
@@ -459,6 +463,56 @@ class V1BaseSchemaMigrationTest {
         "JOB_TITLE", "SYSTEM_ROLE", "ROLE_PERMISSION_MAPPING",
         "MENU_FEATURE", "DOMAIN_CONTEXT", "USER_JOB_BINDING",
         "SIGNATURE_USE");
+  }
+
+  /**
+   * Story 19-1: V7 extends the CHECK additively with PM_FREQUENCY/PM_CHECKSHEET so
+   * {@code AuditEntityType.PM_FREQUENCY} / {@code AuditEntityType.PM_CHECKSHEET} can
+   * be persisted, and seeds MONTHLY/ANNUAL into pm_frequencies. Every prior value —
+   * including WORK_ORDER_QUALITY_RATING — survives the extension.
+   */
+  @Test
+  @DisplayName("19.1-DB-001 P0 audit_log entity_type CHECK accepts PM_FREQUENCY/PM_CHECKSHEET after V7")
+  void auditEntityTypeAcceptsPmTypes() {
+    var check = jdbc.queryForMap(
+        "SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint "
+            + "WHERE conname = 'ck_audit_log_entity_type'");
+    var def = (String) check.get("def");
+    assertThat(def).contains("PM_FREQUENCY", "PM_CHECKSHEET");
+    // every prior value survives the additive V7 extension.
+    assertThat(def).contains("WORK_ORDER_QUALITY_RATING", "WORK_LOG_RATING", "WORK_LOG",
+        "WORK_ASSIGNMENT", "WORK_ORDER", "REPAIR_SESSION", "WORKORDER_SIGNATURE",
+        "SPAREPART_STOCK", "SYNC_RUN", "SYNC_QUARANTINE", "MACHINE_AREA",
+        "USER_ROLE_BINDING", "PLANT_WORKING_CALENDAR",
+        "PLANT", "MACHINE_GROUP", "MACHINE", "SPAREPART_TAXONOMY",
+        "SPAREPART", "INSTALLATION", "RESPONSIBILITY", "ALERT",
+        "SPAREPART_PRICE_ENTRY", "SECTION", "TEAM", "WORK_ORDER_CATEGORY",
+        "WORKORDER_ATTACHMENT", "WORK_ORDER_TODO", "WORKORDER_RATING",
+        "RATING_DIMENSION", "PREVENTIVE_PROGRAM", "PREVENTIVE_SCHEDULE",
+        "PREVENTIVE_CHECKLIST", "PREVENTIVE_ATTACHMENT",
+        "SPAREPART_REQUEST", "DEPARTMENT", "DEPARTMENT_USER", "USER",
+        "INVENTORY_LOCATION", "INVENTORY_STOCK_BALANCE",
+        "INVENTORY_TRANSFER", "INVENTORY_RESERVATION",
+        "JOB_TITLE", "SYSTEM_ROLE", "ROLE_PERMISSION_MAPPING",
+        "MENU_FEATURE", "DOMAIN_CONTEXT", "USER_JOB_BINDING",
+        "SIGNATURE_USE");
+  }
+
+  /**
+   * Story 19-1 AC: a fresh DB applying V7 seeds MONTHLY and ANNUAL into
+   * pm_frequencies (idempotent ON CONFLICT DO NOTHING).
+   */
+  @Test
+  @DisplayName("19.1-DB-002 P0 pm_frequencies contains MONTHLY and ANNUAL after V7")
+  void pmFrequenciesSeeded() {
+    var rows = jdbc.queryForList(
+        "SELECT code, sort_order, is_active FROM pm_frequencies WHERE code IN ('MONTHLY','ANNUAL') ORDER BY sort_order");
+    assertThat(rows).hasSize(2);
+    var codes = rows.stream().map(m -> (String) m.get("code")).collect(Collectors.toSet());
+    assertThat(codes).containsExactlyInAnyOrder("MONTHLY", "ANNUAL");
+    assertThat(rows.get(0).get("sort_order")).isEqualTo(1);
+    assertThat(rows.get(1).get("sort_order")).isEqualTo(2);
+    assertThat(rows.stream().allMatch(m -> Boolean.TRUE.equals(m.get("is_active")))).isTrue();
   }
 
   // -------------------------------------------------------------------------

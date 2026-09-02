@@ -1428,6 +1428,108 @@ test_anonymous_department_denied if {
   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/departments"}
 }
 
+# -- PM frequencies (story 19-1, blueprint F1): four-role mutation allow set;
+#    TECHNICIAN/AUDITOR/anonymous denied; reads any-authenticated ---------------
+
+test_manager_pm_frequency_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/pm-frequencies"}
+}
+
+test_section_leader_pm_frequency_update_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "PUT /api/v1/pm-frequencies/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_maintenance_leader_pm_frequency_update_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "PUT /api/v1/pm-frequencies/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_staff_pm_frequency_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/pm-frequencies"}
+}
+
+test_super_admin_pm_frequency_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/pm-frequencies"}
+}
+
+test_technician_pm_frequency_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-frequencies"}
+}
+
+test_auditor_pm_frequency_update_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "PUT /api/v1/pm-frequencies/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_auditor_pm_frequency_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-frequencies"}
+}
+
+test_anonymous_pm_frequency_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/pm-frequencies"}
+}
+
+# -- PM checksheets (story 19-1, blueprint F2/F3): create/revise/approve for the
+#    four-role set (the service narrows approve to the leader subset);
+#    TECHNICIAN/AUDITOR/anonymous denied; reads any-authenticated ---------------
+
+test_manager_pm_checksheet_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/pm-checksheets"}
+}
+
+test_section_leader_pm_checksheet_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/pm-checksheets"}
+}
+
+test_maintenance_leader_pm_checksheet_revise_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/pm-checksheets/7b7c6d5e-1111-2222-3333-444455556666/revise"}
+}
+
+test_staff_pm_checksheet_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/pm-checksheets"}
+}
+
+test_manager_pm_checksheet_approve_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/pm-checksheets/7b7c6d5e-1111-2222-3333-444455556666/approve"}
+}
+
+test_section_leader_pm_checksheet_approve_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/pm-checksheets/7b7c6d5e-1111-2222-3333-444455556666/approve"}
+}
+
+test_super_admin_pm_checksheet_approve_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/pm-checksheets/7b7c6d5e-1111-2222-3333-444455556666/approve"}
+}
+
+test_technician_pm_checksheet_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-checksheets"}
+}
+
+test_technician_pm_checksheet_approve_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-checksheets/7b7c6d5e-1111-2222-3333-444455556666/approve"}
+}
+
+test_auditor_pm_checksheet_revise_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/pm-checksheets/7b7c6d5e-1111-2222-3333-444455556666/revise"}
+}
+
+test_auditor_pm_checksheet_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-checksheets"}
+}
+
+test_auditor_pm_checksheet_active_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-checksheets/active"}
+}
+
+# STAFF_MAINTENANCE approve is ALLOWED at the rego layer (coarse gate) — the
+# service narrows approve to the leader subset. This test pins that deliberate
+# split so a future rego tightening can't silently change enforcement semantics.
+test_staff_pm_checksheet_approve_allowed_at_rego if {
+  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/pm-checksheets/7b7c6d5e-1111-2222-3333-444455556666/approve"}
+}
+
+test_anonymous_pm_checksheet_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/pm-checksheets"}
+}
+
 # -- Anonymous (no userId): default deny everywhere ------------------------
 
 test_anonymous_admin_only_denied if {
