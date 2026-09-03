@@ -1,0 +1,2544 @@
+diff --git a/syncro/.env.example b/syncro/.env.example
+index 24f22ed..ba3b9ee 100644
+--- a/syncro/.env.example
++++ b/syncro/.env.example
+@@ -76,8 +76,9 @@ NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+ # Authz coarse gate (9.5 rolls out enforcement on the org/maintenance/sync surface;
+ # 18-x adds the inventory surface; 19-1 adds the PM frequencies/checksheets surface; 19-2 adds the PM checklist surface;
+ # 19-3 adds the PM schedules/schedule-dates surface; 19-4 adds the PM work-orders surface;
++# 19-5 adds the PM executions surface;
+ # health/actuator stay public and are deliberately excluded)
+-SYNCRO_AUTHZ_ENFORCED_PATHS=/api/v1/plants/**,/api/v1/machine-groups/**,/api/v1/sections/**,/api/v1/teams/**,/api/v1/machine-responsibilities/**,/api/v1/machines/**,/api/v1/machine-sparepart-installations/**,/api/v1/spareparts/**,/api/v1/sparepart-taxonomies/**,/api/v1/alerts/**,/api/v1/audit-log/**,/api/v1/setup-completeness/**,/api/v1/telemetry/**,/api/v1/notification/templates/**,/api/v1/notification/worker/**,/api/v1/work-order-categories/**,/api/v1/workorders/**,/api/v1/workorders/*/transition,/api/v1/workorders/*/sessions,/api/v1/workorders/*/sessions/stop,/api/v1/workorders/*/attachments,/api/v1/workorders/*/attachments/*,/api/v1/workorders/*/report,/api/v1/workorders/*/report/cpk,/api/v1/workorders/*/todos,/api/v1/workorders/*/todos/*,/api/v1/workorders/*/todos/*/assign,/api/v1/workorders/*/todos/*/complete,/api/v1/workorders/*/todos/*/reorder,/api/v1/workorders/*/ratings,/api/v1/workorders/*/ratings/technician,/api/v1/workorders/*/ratings/workorder,/api/v1/rating-dimensions,/api/v1/rating-dimensions/*,/api/v1/preventive-programs,/api/v1/preventive-programs/*,/api/v1/preventive-programs/*/generate,/api/v1/preventive-schedules,/api/v1/preventive-schedules/*/checklist,/api/v1/preventive-schedules/*/evidence,/api/v1/preventive-schedules/*/evidence/*,/api/v1/preventive-schedules/*/approve,/api/v1/preventive-schedules/*/skip,/api/v1/sparepart-requests,/api/v1/sparepart-requests/*/transition,/api/v1/sparepart-requests/*/mre,/api/v1/sparepart-requests/*/approve,/api/v1/sparepart-requests/*/complete,/api/v1/sparepart-stock,/api/v1/sparepart-stock/*,/api/v1/sparepart-stock/*/adjust,/api/v1/departments,/api/v1/departments/*,/api/v1/departments/*/members,/api/v1/sections/*/leader,/api/v1/auth/users/*,/api/v1/sync/**,/api/v1/inventory-locations/**,/api/v1/inventory-locations/*/stock-balances,/api/v1/inventory-locations/*/stock-balances/*,/api/v1/inventory-locations/*/stock-balances/*/adjust,/api/v1/inventory-transfers,/api/v1/inventory-transfers/*,/api/v1/inventory-transfers/*/approve,/api/v1/inventory-transfers/*/reject,/api/v1/pm-frequencies/**,/api/v1/pm-checksheets/**,/api/v1/pm-checklist-categories/**,/api/v1/pm-checklist-items/**,/api/v1/pm-schedules/**,/api/v1/pm-schedules/*/submit,/api/v1/pm-schedules/*/approve-spv,/api/v1/pm-schedules/*/approve-prod,/api/v1/pm-schedules/*/activate,/api/v1/pm-schedules/*/dates/*/transition,/api/v1/pm-work-orders,/api/v1/pm-work-orders/*,/api/v1/pm-work-orders/generate,/api/v1/pm-work-orders/sweep-overdue,/api/v1/pm-work-orders/*/assign,/api/v1/pm-work-orders/*/start,/api/v1/pm-work-orders/*/complete
++SYNCRO_AUTHZ_ENFORCED_PATHS=/api/v1/plants/**,/api/v1/machine-groups/**,/api/v1/sections/**,/api/v1/teams/**,/api/v1/machine-responsibilities/**,/api/v1/machines/**,/api/v1/machine-sparepart-installations/**,/api/v1/spareparts/**,/api/v1/sparepart-taxonomies/**,/api/v1/alerts/**,/api/v1/audit-log/**,/api/v1/setup-completeness/**,/api/v1/telemetry/**,/api/v1/notification/templates/**,/api/v1/notification/worker/**,/api/v1/work-order-categories/**,/api/v1/workorders/**,/api/v1/workorders/*/transition,/api/v1/workorders/*/sessions,/api/v1/workorders/*/sessions/stop,/api/v1/workorders/*/attachments,/api/v1/workorders/*/attachments/*,/api/v1/workorders/*/report,/api/v1/workorders/*/report/cpk,/api/v1/workorders/*/todos,/api/v1/workorders/*/todos/*,/api/v1/workorders/*/todos/*/assign,/api/v1/workorders/*/todos/*/complete,/api/v1/workorders/*/todos/*/reorder,/api/v1/workorders/*/ratings,/api/v1/workorders/*/ratings/technician,/api/v1/workorders/*/ratings/workorder,/api/v1/rating-dimensions,/api/v1/rating-dimensions/*,/api/v1/preventive-programs,/api/v1/preventive-programs/*,/api/v1/preventive-programs/*/generate,/api/v1/preventive-schedules,/api/v1/preventive-schedules/*/checklist,/api/v1/preventive-schedules/*/evidence,/api/v1/preventive-schedules/*/evidence/*,/api/v1/preventive-schedules/*/approve,/api/v1/preventive-schedules/*/skip,/api/v1/sparepart-requests,/api/v1/sparepart-requests/*/transition,/api/v1/sparepart-requests/*/mre,/api/v1/sparepart-requests/*/approve,/api/v1/sparepart-requests/*/complete,/api/v1/sparepart-stock,/api/v1/sparepart-stock/*,/api/v1/sparepart-stock/*/adjust,/api/v1/departments,/api/v1/departments/*,/api/v1/departments/*/members,/api/v1/sections/*/leader,/api/v1/auth/users/*,/api/v1/sync/**,/api/v1/inventory-locations/**,/api/v1/inventory-locations/*/stock-balances,/api/v1/inventory-locations/*/stock-balances/*,/api/v1/inventory-locations/*/stock-balances/*/adjust,/api/v1/inventory-transfers,/api/v1/inventory-transfers/*,/api/v1/inventory-transfers/*/approve,/api/v1/inventory-transfers/*/reject,/api/v1/pm-frequencies/**,/api/v1/pm-checksheets/**,/api/v1/pm-checklist-categories/**,/api/v1/pm-checklist-items/**,/api/v1/pm-schedules/**,/api/v1/pm-schedules/*/submit,/api/v1/pm-schedules/*/approve-spv,/api/v1/pm-schedules/*/approve-prod,/api/v1/pm-schedules/*/activate,/api/v1/pm-schedules/*/dates/*/transition,/api/v1/pm-work-orders,/api/v1/pm-work-orders/*,/api/v1/pm-work-orders/generate,/api/v1/pm-work-orders/sweep-overdue,/api/v1/pm-work-orders/*/assign,/api/v1/pm-work-orders/*/start,/api/v1/pm-work-orders/*/complete,/api/v1/pm-executions,/api/v1/pm-executions/*,/api/v1/pm-executions/start,/api/v1/pm-executions/*/items/*/fill,/api/v1/pm-executions/*/complete,/api/v1/pm-executions/*/verify
+ SYNCRO_AUTHZ_DEGRADED_ALLOWLIST=/api/v1/health,/actuator/**
+ 
+ # Authz decision-log retention (days) for the authz_decisions purge job
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java b/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
+index 0652e6f..dfbe9c6 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
+@@ -63,5 +63,7 @@ public enum AuditEntityType {
+   PM_CHECKLIST_ITEM,
+   PM_SCHEDULE,
+   PM_SCHEDULE_DATE,
+-  PM_WORK_ORDER
++  PM_WORK_ORDER,
++  PM_EXECUTION,
++  PM_EXECUTION_ITEM
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmExecutionController.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmExecutionController.java
+new file mode 100644
+index 0000000..0ade3fb
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmExecutionController.java
+@@ -0,0 +1,161 @@
++package com.syncro.maintenance.preventive.api;
++
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.ExecutionItemView;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.ExecutionView;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.FillExecutionItemRequest;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.StartExecutionRequest;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.VerifyExecutionRequest;
++import com.syncro.maintenance.preventive.application.PmExecutionService;
++import com.syncro.maintenance.preventive.application.PmExecutionService.FillExecutionCommand;
++import io.swagger.v3.oas.annotations.Operation;
++import io.swagger.v3.oas.annotations.media.Content;
++import io.swagger.v3.oas.annotations.media.Schema;
++import io.swagger.v3.oas.annotations.responses.ApiResponse;
++import io.swagger.v3.oas.annotations.responses.ApiResponses;
++import io.swagger.v3.oas.annotations.tags.Tag;
++import jakarta.validation.Valid;
++import java.net.URI;
++import java.util.List;
++import java.util.UUID;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.security.core.annotation.AuthenticationPrincipal;
++import org.springframework.validation.annotation.Validated;
++import org.springframework.web.bind.annotation.GetMapping;
++import org.springframework.web.bind.annotation.PathVariable;
++import org.springframework.web.bind.annotation.PostMapping;
++import org.springframework.web.bind.annotation.RequestBody;
++import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RequestParam;
++import org.springframework.web.bind.annotation.RestController;
++
++/** PM execution API (story 19-5, blueprint F7/F8). */
++@Tag(name = "pm-executions")
++@Validated
++@RestController
++@RequestMapping("/api/v1/pm-executions")
++public class PmExecutionController {
++
++  private final PmExecutionService executions;
++
++  public PmExecutionController(PmExecutionService executions) {
++    this.executions = executions;
++  }
++
++  @Operation(operationId = "startPmExecution", summary = "Start an execution on an IN_PROGRESS PM work order (one per work order)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "201", description = "Execution started",
++          content = @Content(schema = @Schema(implementation = ExecutionView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden (not the assignee)"),
++      @ApiResponse(responseCode = "404", description = "PM work order not found"),
++      @ApiResponse(responseCode = "409", description = "Work order not IN_PROGRESS or execution already exists")
++  })
++  @PostMapping("/start")
++  public ResponseEntity<ExecutionView> start(@AuthenticationPrincipal AuthenticatedUser user,
++      @Valid @RequestBody StartExecutionRequest request) {
++    var view = executions.start(user, request.pmWoId());
++    return ResponseEntity.status(HttpStatus.CREATED)
++        .location(URI.create("/api/v1/pm-executions/" + view.id()))
++        .body(toView(view));
++  }
++
++  @Operation(operationId = "fillPmExecutionItem", summary = "Fill one checklist item's result (snapshot + MEASUREMENT/OK_NG outcome)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Item filled",
++          content = @Content(schema = @Schema(implementation = ExecutionItemView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden (not the execution's technician)"),
++      @ApiResponse(responseCode = "404", description = "Execution or checklist item not found"),
++      @ApiResponse(responseCode = "409", description = "Execution completed")
++  })
++  @PostMapping("/{id}/items/{itemId}/fill")
++  public ExecutionItemView fill(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id, @PathVariable UUID itemId,
++      @Valid @RequestBody FillExecutionItemRequest request) {
++    return toItemView(executions.fill(user, id, itemId, new FillExecutionCommand(
++        request.actualValue(), request.ok(), request.ng(), request.ngNotes(),
++        request.ngPhotoUrl(), Boolean.TRUE.equals(request.blocked()),
++        request.blockingWoCode())));
++  }
++
++  @Operation(operationId = "completePmExecution", summary = "Complete an execution (NG rollup, work order COMPLETED, schedule date EXECUTED, finding work order for critical NG)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Execution completed",
++          content = @Content(schema = @Schema(implementation = ExecutionView.class))),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden (not the execution's technician)"),
++      @ApiResponse(responseCode = "404", description = "Execution not found"),
++      @ApiResponse(responseCode = "409", description = "No items filled or already completed")
++  })
++  @PostMapping("/{id}/complete")
++  public ExecutionView complete(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id) {
++    return toView(executions.complete(user, id));
++  }
++
++  @Operation(operationId = "verifyPmExecution", summary = "SPV sign-off of a completed execution (leader-gated)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Execution verified",
++          content = @Content(schema = @Schema(implementation = ExecutionView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden (not a leader or out of scope)"),
++      @ApiResponse(responseCode = "404", description = "Execution not found"),
++      @ApiResponse(responseCode = "409", description = "Not completed or already verified")
++  })
++  @PostMapping("/{id}/verify")
++  public ExecutionView verify(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id,
++      @Valid @RequestBody(required = false) VerifyExecutionRequest request) {
++    return toView(executions.verify(user, id, request != null ? request.spvSignatureId() : null));
++  }
++
++  @Operation(operationId = "listPmExecutions", summary = "List executions (filter by pmWoId, technicianId)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Executions returned"),
++      @ApiResponse(responseCode = "401", description = "Authentication required")
++  })
++  @GetMapping
++  public List<ExecutionView> list(@AuthenticationPrincipal AuthenticatedUser user,
++      @RequestParam(required = false) UUID pmWoId,
++      @RequestParam(required = false) UUID technicianId) {
++    return executions.list(user, pmWoId, technicianId).stream()
++        .map(PmExecutionController::toView).toList();
++  }
++
++  @Operation(operationId = "getPmExecution", summary = "Get an execution with its items")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Execution returned",
++          content = @Content(schema = @Schema(implementation = ExecutionView.class))),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Execution not found")
++  })
++  @GetMapping("/{id}")
++  public ExecutionView get(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id) {
++    return toView(executions.get(user, id));
++  }
++
++  private static ExecutionView toView(
++      com.syncro.maintenance.preventive.application.PmExecutionService.ExecutionView v) {
++    return new ExecutionView(v.id(), v.pmWoId(), v.scheduleDateId(), v.technicianId(),
++        v.spvVerifierId(), v.technicianSignatureId(), v.technicianSignedAt(), v.spvSignatureId(),
++        v.spvSignedAt(), v.startedAt(), v.completedAt(), v.hasNgItems(), v.ngCount(),
++        v.findingWoId(), v.createdAt(), v.updatedAt(),
++        v.items().stream().map(PmExecutionController::toItemView).toList());
++  }
++
++  private static ExecutionItemView toItemView(
++      com.syncro.maintenance.preventive.application.PmExecutionService.ExecutionItemView v) {
++    return new ExecutionItemView(v.id(), v.executionId(), v.checklistItemId(), v.sequence(),
++        v.categoryName(), v.parameterText(), v.checkMethod(), v.inputType(), v.isCriticalFlag(),
++        v.unit(), v.lsl(), v.nominal(), v.usl(), v.actualValue(), v.isOk(), v.isNg(),
++        v.ngNotes(), v.ngPhotoUrl(), v.isBlocked(), v.blockedWoCode(), v.blockingWoId(),
++        v.filledAt(), v.createdAt(), v.updatedAt());
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java
+index 32d2017..8b40fe2 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java
+@@ -261,4 +261,41 @@ public final class PreventiveDtos {
+ 
+   public record SweepOverdueView(int overdueCount) {
+   }
++
++  // -------------------------------------------------------------------------
++  // PM executions & execution items (story 19-5)
++  // -------------------------------------------------------------------------
++
++  public record StartExecutionRequest(
++      @NotNull UUID pmWoId) {
++  }
++
++  public record FillExecutionItemRequest(
++      BigDecimal actualValue,
++      Boolean ok,
++      Boolean ng,
++      @Size(max = 4000) String ngNotes,
++      @Size(max = 2000) String ngPhotoUrl,
++      Boolean blocked,
++      @Size(max = 50) String blockingWoCode) {
++  }
++
++  public record VerifyExecutionRequest(
++      UUID spvSignatureId) {
++  }
++
++  public record ExecutionItemView(UUID id, UUID executionId, UUID checklistItemId, int sequence,
++      String categoryName, String parameterText, String checkMethod, PmItemInputType inputType,
++      boolean isCriticalFlag, String unit, BigDecimal lsl, BigDecimal nominal, BigDecimal usl,
++      BigDecimal actualValue, Boolean isOk, boolean isNg, String ngNotes, String ngPhotoUrl,
++      boolean isBlocked, String blockedWoCode, String blockingWoId, Instant filledAt,
++      Instant createdAt, Instant updatedAt) {
++  }
++
++  public record ExecutionView(UUID id, UUID pmWoId, UUID scheduleDateId, UUID technicianId,
++      UUID spvVerifierId, UUID technicianSignatureId, Instant technicianSignedAt,
++      UUID spvSignatureId, Instant spvSignedAt, Instant startedAt, Instant completedAt,
++      boolean hasNgItems, int ngCount, String findingWoId, Instant createdAt, Instant updatedAt,
++      List<ExecutionItemView> items) {
++  }
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveExceptionHandler.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveExceptionHandler.java
+index 191b61f..97cefcb 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveExceptionHandler.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveExceptionHandler.java
+@@ -53,7 +53,8 @@ import tools.jackson.databind.exc.InvalidFormatException;
+ @Order(Ordered.HIGHEST_PRECEDENCE)
+ @RestControllerAdvice(assignableTypes = {PreventiveProgramController.class, PreventiveScheduleController.class,
+     PmFrequencyController.class, PmChecksheetController.class, PmChecklistCategoryController.class,
+-    PmChecklistItemController.class, PmScheduleController.class, PmWorkOrderController.class})
++    PmChecklistItemController.class, PmScheduleController.class, PmWorkOrderController.class,
++    PmExecutionController.class})
+ public class PreventiveExceptionHandler {
+ 
+   private final Clock clock;
+@@ -464,6 +465,47 @@ public class PreventiveExceptionHandler {
+         "The PM schedule is not ACTIVE and cannot generate work orders.", Map.of());
+   }
+ 
++  // -------------------------------------------------------------------------
++  // Story 19-5: PM executions & execution items
++  // -------------------------------------------------------------------------
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmExecutionService.PmExecutionForbiddenException.class)
++  ResponseEntity<ErrorResponse> pmExecutionForbidden() {
++    return error(HttpStatus.FORBIDDEN, "FORBIDDEN",
++        "You do not have permission to access this resource.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmExecutionService.PmExecutionNotFoundException.class)
++  ResponseEntity<ErrorResponse> pmExecutionNotFound() {
++    return error(HttpStatus.NOT_FOUND, "PM_EXECUTION_NOT_FOUND",
++        "PM execution was not found.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmExecutionService.ExecutionAlreadyExistsException.class)
++  ResponseEntity<ErrorResponse> executionAlreadyExists() {
++    return error(HttpStatus.CONFLICT, "EXECUTION_ALREADY_EXISTS",
++        "An execution already exists for this PM work order.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmExecutionService.InvalidExecutionStateException.class)
++  ResponseEntity<ErrorResponse> invalidExecutionState() {
++    return error(HttpStatus.CONFLICT, "INVALID_EXECUTION_STATE",
++        "The PM work order is not IN_PROGRESS and cannot start an execution.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmExecutionService.InvalidExecutionTransitionException.class)
++  ResponseEntity<ErrorResponse> invalidExecutionTransition() {
++    return error(HttpStatus.CONFLICT, "INVALID_EXECUTION_TRANSITION",
++        "The PM execution is not in the expected state for this action.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmExecutionService.ExecutionValidationException.class)
++  ResponseEntity<ErrorResponse> executionValidation(
++      com.syncro.maintenance.preventive.application.PmExecutionService.ExecutionValidationException exception) {
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
++        exception.getFieldErrors());
++  }
++
+   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message,
+       Map<String, String> fieldErrors) {
+     return ResponseEntity.status(status)
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmExecutionService.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmExecutionService.java
+new file mode 100644
+index 0000000..a6869d0
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmExecutionService.java
+@@ -0,0 +1,658 @@
++package com.syncro.maintenance.preventive.application;
++
++import com.syncro.audit.application.AuditLogWriter;
++import com.syncro.audit.application.AuditRecord;
++import com.syncro.audit.domain.AuditAction;
++import com.syncro.audit.domain.AuditEntityType;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.maintenance.application.WorkOrderService;
++import com.syncro.maintenance.preventive.application.PmChecklistService.PmChecklistItemNotFoundException;
++import com.syncro.maintenance.preventive.domain.PmItemInputType;
++import com.syncro.maintenance.preventive.domain.PmScheduleDateStatus;
++import com.syncro.maintenance.preventive.domain.PmWorkOrderStatus;
++import com.syncro.maintenance.preventive.infrastructure.db.PmChecklistCategoryRepository;
++import com.syncro.maintenance.preventive.infrastructure.db.PmChecklistItemRepository;
++import com.syncro.maintenance.preventive.infrastructure.db.PmExecutionEntity;
++import com.syncro.maintenance.preventive.infrastructure.db.PmExecutionItemEntity;
++import com.syncro.maintenance.preventive.infrastructure.db.PmExecutionItemRepository;
++import com.syncro.maintenance.preventive.infrastructure.db.PmExecutionRepository;
++import com.syncro.maintenance.preventive.infrastructure.db.PmScheduleDateEntity;
++import com.syncro.maintenance.preventive.infrastructure.db.PmScheduleDateRepository;
++import com.syncro.maintenance.preventive.infrastructure.db.PmScheduleRepository;
++import com.syncro.maintenance.preventive.infrastructure.db.PmWorkOrderEntity;
++import com.syncro.maintenance.preventive.infrastructure.db.PmWorkOrderRepository;
++import com.syncro.machine.infrastructure.MachineEntity;
++import com.syncro.machine.infrastructure.MachineRepository;
++import com.syncro.org.application.OperationalScope;
++import com.syncro.org.application.OperationalScopeService;
++import java.math.BigDecimal;
++import java.time.Clock;
++import java.time.Instant;
++import java.util.ArrayList;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++import org.springframework.dao.DataIntegrityViolationException;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++
++/**
++ * PM execution service (story 19-5, blueprint F7/F8). Records the execution of an
++ * IN_PROGRESS PM workorder: start (one execution per workorder — unique pm_wo_id,
++ * pre-check + V1 uq backstop), per-item fill (snapshotting the checklist item onto
++ * the execution-item row so results survive checksheet revision, then storing the
++ * MEASUREMENT/OK_NG result), complete (NG rollup, workorder IN_PROGRESS→COMPLETED
++ * via the 19-4 service, schedule date → EXECUTED, and one corrective workorder via
++ * the 11-3 system-creation path for CRITICAL NG items, linked through
++ * finding_wo_id/blocking_wo_id), and SPV verify (leader-gated sign-off).
++ *
++ * <p>Gates: start/fill/complete require caller == the execution's technician_id
++ * (fixed at start from the workorder's assignee) or SUPER_ADMIN — a technician
++ * executes only their own work; verify requires a leader role
++ * (SECTION_LEADER/MAINTENANCE_LEADER/MANAGER_MAINTENANCE, SUPER_ADMIN bypass) with
++ * the workorder's machine scope. Reads: the execution's technician, users with the
++ * machine in scope, or SUPER_ADMIN.
++ *
++ * <p>Concurrency: every mutation loads the execution row through
++ * {@code findByIdForUpdate} with PESSIMISTIC_WRITE (19-4 pattern), serializing
++ * concurrent fill/complete/verify so exactly one caller wins; the unique pm_wo_id
++ * index is the start race backstop.
++ */
++@Service
++public class PmExecutionService {
++
++  private static final String EXECUTION_UNIQUE_INDEX = "uq_pm_executions_pm_wo";
++
++  /** Breakdown category for corrective finding workorders (story 19-5 design note). */
++  private static final String FINDING_CATEGORY_CODE = "01";
++
++  private final PmExecutionRepository executions;
++  private final PmExecutionItemRepository executionItems;
++  private final PmWorkOrderRepository workOrders;
++  private final PmWorkOrderService pmWorkOrders;
++  private final PmChecklistItemRepository checklistItems;
++  private final PmChecklistCategoryRepository checklistCategories;
++  private final PmScheduleDateRepository scheduleDates;
++  private final PmScheduleRepository schedules;
++  private final MachineRepository machines;
++  private final WorkOrderService workOrderSystem;
++  private final AuditLogWriter auditLog;
++  private final OperationalScopeService scopes;
++  private final Clock clock;
++
++  public PmExecutionService(PmExecutionRepository executions,
++      PmExecutionItemRepository executionItems, PmWorkOrderRepository workOrders,
++      PmWorkOrderService pmWorkOrders, PmChecklistItemRepository checklistItems,
++      PmChecklistCategoryRepository checklistCategories, PmScheduleDateRepository scheduleDates,
++      PmScheduleRepository schedules, MachineRepository machines, WorkOrderService workOrderSystem,
++      AuditLogWriter auditLog, OperationalScopeService scopes, Clock clock) {
++    this.executions = executions;
++    this.executionItems = executionItems;
++    this.workOrders = workOrders;
++    this.pmWorkOrders = pmWorkOrders;
++    this.checklistItems = checklistItems;
++    this.checklistCategories = checklistCategories;
++    this.scheduleDates = scheduleDates;
++    this.schedules = schedules;
++    this.machines = machines;
++    this.workOrderSystem = workOrderSystem;
++    this.auditLog = auditLog;
++    this.scopes = scopes;
++    this.clock = clock;
++  }
++
++  // -------------------------------------------------------------------------
++  // Start (IN_PROGRESS workorder → one execution)
++  // -------------------------------------------------------------------------
++
++  @Transactional
++  public ExecutionView start(AuthenticatedUser user, UUID pmWoId) {
++    // Lock the workorder row first: the assignee gate, the IN_PROGRESS precondition
++    // and the one-execution pre-check must all observe committed state (19-4
++    // loadForUpdate pattern).
++    var workOrder = workOrders.findByIdForUpdate(pmWoId)
++        .orElseThrow(PmWorkOrderService.PmWorkOrderNotFoundException::new);
++    var machine = loadMachine(workOrder.getMachineId());
++    requireAssignee(user, workOrder.getAssignedTechnicianId());
++    if (workOrder.getStatus() != PmWorkOrderStatus.IN_PROGRESS
++        || workOrder.getAssignedTechnicianId() == null) {
++      // A manually seeded IN_PROGRESS row without an assignee has no technician to
++      // bind — the execution's technician_id is NOT NULL, so treat it as not
++      // executable rather than a 500.
++      throw new InvalidExecutionStateException();
++    }
++    if (executions.existsByPmWoId(pmWoId)) {
++      throw new ExecutionAlreadyExistsException();
++    }
++    var now = Instant.now(clock);
++    // technician_id is fixed at start from the workorder's assignee (the gate above
++    // already proved the caller is that assignee or SUPER_ADMIN); an IN_PROGRESS
++    // workorder always has one (ASSIGNED precedes IN_PROGRESS in 19-4's lifecycle).
++    var technicianId = workOrder.getAssignedTechnicianId();
++    var scheduleDateId = resolveScheduleDateId(workOrder, machine);
++    var entity = new PmExecutionEntity(UUID.randomUUID(), pmWoId, scheduleDateId, technicianId,
++        null, null, null, null, null, now, null, false, 0, null, now, now);
++    PmExecutionEntity saved;
++    try {
++      saved = executions.saveAndFlush(entity);
++    } catch (DataIntegrityViolationException exception) {
++      // Lost the start race to a concurrent caller: uq_pm_executions_pm_wo → 409.
++      var message = String.valueOf(exception.getMostSpecificCause().getMessage()).toLowerCase();
++      if (message.contains(EXECUTION_UNIQUE_INDEX)) {
++        throw new ExecutionAlreadyExistsException();
++      }
++      throw exception;
++    }
++    auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.PM_EXECUTION,
++        saved.getId(), label(saved, machine), machine.getPlant().getId(), null,
++        executionValues(saved), null));
++    return toView(saved, List.of());
++  }
++
++  // -------------------------------------------------------------------------
++  // Fill (snapshot the checklist item + record the result)
++  // -------------------------------------------------------------------------
++
++  @Transactional
++  public ExecutionItemView fill(AuthenticatedUser user, UUID id, UUID checklistItemId,
++      FillExecutionCommand command) {
++    var execution = loadForUpdate(id);
++    var workOrder = loadWorkOrder(execution.getPmWoId());
++    var machine = loadMachine(workOrder.getMachineId());
++    requireExecutionTechnician(user, execution);
++    if (execution.getCompletedAt() != null) {
++      throw new InvalidExecutionTransitionException();
++    }
++    // The fill target must be an item of the workorder's checksheet revision — the
++    // snapshot source. An item from another checksheet is reported as not-found so
++    // the surface never probes foreign revisions.
++    var source = checklistItems.findById(checklistItemId)
++        .orElseThrow(PmChecklistItemNotFoundException::new);
++    if (workOrder.getTemplateId() == null
++        || !workOrder.getTemplateId().equals(source.getChecksheetId())) {
++      throw new PmChecklistItemNotFoundException();
++    }
++    var fieldErrors = new LinkedHashMap<String, String>();
++    var actualValue = command.actualValue();
++    var ok = command.ok();
++    var ng = command.ng() != null && command.ng();
++    if (source.getInputType() == PmItemInputType.MEASUREMENT && actualValue == null) {
++      fieldErrors.put("actualValue", "actualValue is required for MEASUREMENT items.");
++    }
++    if (source.getInputType() == PmItemInputType.OK_NG && ok == null && command.ng() == null) {
++      fieldErrors.put("ok", "ok or ng is required for OK_NG items.");
++    }
++    var ngNotes = normalizeOptional(command.ngNotes());
++    if (ng && ngNotes == null) {
++      fieldErrors.put("ngNotes", "ngNotes is required when an item is NG.");
++    }
++    if (!fieldErrors.isEmpty()) {
++      throw new ExecutionValidationException(Map.copyOf(fieldErrors));
++    }
++    var now = Instant.now(clock);
++    var existing = executionItems.findByExecutionIdAndChecklistItemId(id, checklistItemId);
++    var previous = existing.map(PmExecutionService::itemValues).orElse(null);
++    PmExecutionItemEntity item;
++    if (existing.isPresent()) {
++      item = existing.get();
++    } else {
++      var categoryName = source.getCategoryId() == null ? null
++          : checklistCategories.findById(source.getCategoryId())
++              .map(c -> c.getName()).orElse(null);
++      item = new PmExecutionItemEntity(UUID.randomUUID(), id, source.getId(),
++          source.getSequence(), categoryName, source.getParameterText(),
++          source.getCheckMethod(), source.getInputType(), source.isCriticalFlag(),
++          source.getUnit(), source.getLsl(), source.getNominal(), source.getUsl(),
++          null, null, false, null, null, false, null, null, null, null, null, null, null,
++          null, now, now);
++    }
++    item.fill(actualValue, ok, ng, ngNotes, normalizeOptional(command.ngPhotoUrl()),
++        command.blocked(), normalizeOptional(command.blockingWoCode()), null, now, now);
++    var saved = executionItems.saveAndFlush(item);
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PM_EXECUTION_ITEM,
++        saved.getId(), itemLabel(saved), machine.getPlant().getId(), previous,
++        itemValues(saved), null));
++    return toItemView(saved);
++  }
++
++  // -------------------------------------------------------------------------
++  // Complete (rollup + workorder COMPLETED + schedule date EXECUTED + finding WO)
++  // -------------------------------------------------------------------------
++
++  @Transactional
++  public ExecutionView complete(AuthenticatedUser user, UUID id) {
++    var execution = loadForUpdate(id);
++    var workOrder = loadWorkOrder(execution.getPmWoId());
++    var machine = loadMachine(workOrder.getMachineId());
++    requireExecutionTechnician(user, execution);
++    if (execution.getCompletedAt() != null) {
++      throw new InvalidExecutionTransitionException();
++    }
++    var items = executionItems.findByExecutionIdOrderBySequenceAsc(id);
++    var filled = items.stream().filter(i -> i.getFilledAt() != null).toList();
++    if (filled.isEmpty()) {
++      throw new InvalidExecutionTransitionException();
++    }
++    var previous = executionValues(execution);
++    var now = Instant.now(clock);
++    var ngItems = filled.stream().filter(PmExecutionItemEntity::isNg).toList();
++    var hasNg = !ngItems.isEmpty();
++
++    // Workorder IN_PROGRESS→COMPLETED through the 19-4 service (its own assignee
++    // gate is already satisfied — the execution's technician is the assignee — and
++    // it writes the PM_WORK_ORDER audit UPDATE).
++    pmWorkOrders.complete(user, execution.getPmWoId(), null);
++
++    // Schedule date → EXECUTED when the execution is linked to one (a manually
++    // created workorder has no period match — documented skip, not an error).
++    if (execution.getScheduleDateId() != null) {
++      var date = scheduleDates.findById(execution.getScheduleDateId()).orElse(null);
++      if (date != null && date.getStatus() != PmScheduleDateStatus.EXECUTED) {
++        var datePrevious = scheduleDateValues(date);
++        date.transitionTo(PmScheduleDateStatus.EXECUTED, now);
++        scheduleDates.saveAndFlush(date);
++        auditLog.record(user, new AuditRecord(AuditAction.UPDATE,
++            AuditEntityType.PM_SCHEDULE_DATE, date.getId(), dateLabel(date, machine),
++            machine.getPlant().getId(), datePrevious, scheduleDateValues(date), null));
++      }
++    }
++
++    // One corrective workorder for the whole execution when any CRITICAL item is NG
++    // (11-3 system path, null preventive_schedule_id — the partial unique index
++    // tolerates nulls). Its audit is WorkOrderService's own recordSystem.
++    var criticalNg = ngItems.stream().filter(PmExecutionItemEntity::isCriticalFlag).toList();
++    String findingWoId = null;
++    if (!criticalNg.isEmpty()) {
++      findingWoId = workOrderSystem.createSystem(machine.getId(), FINDING_CATEGORY_CODE,
++          "PM finding: " + criticalNg.getFirst().getParameterText(), null);
++      for (var item : criticalNg) {
++        var itemPrevious = itemValues(item);
++        item.linkBlockingWo(findingWoId, now);
++        var linked = executionItems.saveAndFlush(item);
++        auditLog.record(user, new AuditRecord(AuditAction.UPDATE,
++            AuditEntityType.PM_EXECUTION_ITEM, linked.getId(), itemLabel(linked),
++            machine.getPlant().getId(), itemPrevious, itemValues(linked), null));
++      }
++    }
++
++    execution.complete(now, hasNg, ngItems.size(), now);
++    if (findingWoId != null) {
++      execution.setFindingWoId(findingWoId, now);
++    }
++    var saved = executions.saveAndFlush(execution);
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PM_EXECUTION,
++        saved.getId(), label(saved, machine), machine.getPlant().getId(), previous,
++        executionValues(saved), null));
++    return toView(saved, savedItems(saved.getId()));
++  }
++
++  // -------------------------------------------------------------------------
++  // Verify (SPV sign-off)
++  // -------------------------------------------------------------------------
++
++  @Transactional
++  public ExecutionView verify(AuthenticatedUser user, UUID id, UUID spvSignatureId) {
++    var execution = loadForUpdate(id);
++    var workOrder = loadWorkOrder(execution.getPmWoId());
++    var machine = loadMachine(workOrder.getMachineId());
++    requireLeaderMutationAccess(user, machine);
++    if (execution.getCompletedAt() == null) {
++      throw new InvalidExecutionTransitionException();
++    }
++    if (execution.getSpvVerifierId() != null) {
++      throw new InvalidExecutionTransitionException();
++    }
++    var previous = executionValues(execution);
++    var now = Instant.now(clock);
++    execution.verifyBySpv(UUID.fromString(user.id()), spvSignatureId, now, now);
++    var saved = executions.saveAndFlush(execution);
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PM_EXECUTION,
++        saved.getId(), label(saved, machine), machine.getPlant().getId(), previous,
++        executionValues(saved), null));
++    return toView(saved, savedItems(saved.getId()));
++  }
++
++  // -------------------------------------------------------------------------
++  // List / Get (scope-filtered reads)
++  // -------------------------------------------------------------------------
++
++  @Transactional(readOnly = true)
++  public List<ExecutionView> list(AuthenticatedUser user, UUID pmWoId, UUID technicianId) {
++    List<PmExecutionEntity> rows;
++    if (pmWoId != null) {
++      rows = executions.findByPmWoId(pmWoId).stream().toList();
++    } else if (technicianId != null) {
++      rows = executions.findByTechnicianIdOrderByStartedAtDesc(technicianId);
++    } else {
++      rows = executions.findAll();
++    }
++    var result = new ArrayList<ExecutionView>();
++    for (var execution : rows) {
++      var workOrder = workOrders.findById(execution.getPmWoId()).orElse(null);
++      if (workOrder == null) {
++        continue;
++      }
++      var machine = machines.findByIdWithPlantAndGroup(workOrder.getMachineId()).orElse(null);
++      if (machine == null || !canRead(user, execution, machine)) {
++        continue;
++      }
++      result.add(toView(execution, savedItems(execution.getId())));
++    }
++    return result;
++  }
++
++  @Transactional(readOnly = true)
++  public ExecutionView get(AuthenticatedUser user, UUID id) {
++    var execution = executions.findById(id).orElseThrow(PmExecutionNotFoundException::new);
++    var workOrder = loadWorkOrder(execution.getPmWoId());
++    var machine = loadMachine(workOrder.getMachineId());
++    if (!canRead(user, execution, machine)) {
++      throw new PmExecutionForbiddenException();
++    }
++    return toView(execution, savedItems(execution.getId()));
++  }
++
++  // -------------------------------------------------------------------------
++  // Gates & scope
++  // -------------------------------------------------------------------------
++
++  /** Read gate: SUPER_ADMIN, the execution's technician, or the machine in scope. */
++  private boolean canRead(AuthenticatedUser user, PmExecutionEntity execution,
++      MachineEntity machine) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return true;
++    }
++    if (execution.getTechnicianId().equals(UUID.fromString(user.id()))) {
++      return true;
++    }
++    return inScope(scopes.derive(user), machine);
++  }
++
++  /** Start gate: only the workorder's assigned technician (or SUPER_ADMIN) may start. */
++  private void requireAssignee(AuthenticatedUser user, UUID assignedTechnicianId) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    if (assignedTechnicianId == null || !assignedTechnicianId.equals(UUID.fromString(user.id()))) {
++      throw new PmExecutionForbiddenException();
++    }
++  }
++
++  /** Fill/complete gate: caller == the execution's technician_id (fixed at start) or SUPER_ADMIN. */
++  private void requireExecutionTechnician(AuthenticatedUser user, PmExecutionEntity execution) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    if (!execution.getTechnicianId().equals(UUID.fromString(user.id()))) {
++      throw new PmExecutionForbiddenException();
++    }
++  }
++
++  /**
++   * Verify gate: SECTION_LEADER/MAINTENANCE_LEADER/MANAGER_MAINTENANCE with the
++   * machine's plant/group scope; SUPER_ADMIN bypass (19-4
++   * requireLeaderMutationAccess parity).
++   */
++  private void requireLeaderMutationAccess(AuthenticatedUser user, MachineEntity machine) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    var scope = scopes.derive(user);
++    switch (user.applicationRole()) {
++      case SECTION_LEADER -> {
++        if (!groupInScope(scope, machine)) {
++          throw new PmExecutionForbiddenException();
++        }
++      }
++      case MAINTENANCE_LEADER, MANAGER_MAINTENANCE -> {
++        if (!plantInScope(scope, machine) && !groupInScope(scope, machine)) {
++          throw new PmExecutionForbiddenException();
++        }
++      }
++      default -> throw new PmExecutionForbiddenException();
++    }
++  }
++
++  private boolean inScope(OperationalScope scope, MachineEntity machine) {
++    return plantInScope(scope, machine) || groupInScope(scope, machine);
++  }
++
++  private boolean plantInScope(OperationalScope scope, MachineEntity machine) {
++    return scope.plantIds() != null && scope.plantIds().contains(machine.getPlant().getId());
++  }
++
++  private boolean groupInScope(OperationalScope scope, MachineEntity machine) {
++    return scope.machineGroupIds().contains(machine.getMachineGroup().getId())
++        || scope.activeTeamIds().contains(machine.getMachineGroup().getId());
++  }
++
++  // -------------------------------------------------------------------------
++  // Loaders & resolution
++  // -------------------------------------------------------------------------
++
++  private List<PmExecutionItemEntity> savedItems(UUID executionId) {
++    return executionItems.findByExecutionIdOrderBySequenceAsc(executionId);
++  }
++
++  private PmExecutionEntity loadForUpdate(UUID id) {
++    return executions.findByIdForUpdate(id).orElseThrow(PmExecutionNotFoundException::new);
++  }
++
++  private PmWorkOrderEntity loadWorkOrder(UUID id) {
++    return workOrders.findById(id).orElseThrow(PmWorkOrderService.PmWorkOrderNotFoundException::new);
++  }
++
++  private MachineEntity loadMachine(UUID machineId) {
++    return machines.findByIdWithPlantAndGroup(machineId)
++        .orElseThrow(PmWorkOrderService.MachineNotFoundException::new);
++  }
++
++  /**
++   * Resolve the schedule date for the workorder's period (machine, template/checksheet,
++   * scheduled_date) — the same triple that generated the workorder in 19-4. No match
++   * (manually created workorder) → null; the EXECUTED step is then skipped at complete.
++   */
++  private UUID resolveScheduleDateId(PmWorkOrderEntity workOrder, MachineEntity machine) {
++    if (workOrder.getTemplateId() == null || workOrder.getScheduledDate() == null) {
++      return null;
++    }
++    var schedule = schedules.findByPlantIdAndMachineIdAndChecksheetIdAndYear(
++            machine.getPlant().getId(), workOrder.getMachineId(), workOrder.getTemplateId(),
++            workOrder.getScheduledDate().getYear())
++        .orElse(null);
++    if (schedule == null) {
++      return null;
++    }
++    return scheduleDates.findByScheduleIdAndPlannedDate(schedule.getId(),
++            workOrder.getScheduledDate())
++        .map(PmScheduleDateEntity::getId)
++        .orElse(null);
++  }
++
++  // -------------------------------------------------------------------------
++  // Validation helpers
++  // -------------------------------------------------------------------------
++
++  /** null → null; blank → null; otherwise trimmed. */
++  private static String normalizeOptional(String value) {
++    if (value == null || value.isBlank()) {
++      return null;
++    }
++    return value.trim();
++  }
++
++  // -------------------------------------------------------------------------
++  // Audit value maps & views (all UUIDs stringified — 19-1 pattern)
++  // -------------------------------------------------------------------------
++
++  private static String label(PmExecutionEntity entity, MachineEntity machine) {
++    return (machine != null ? machine.getCode() : "?") + "@exec:" + entity.getId();
++  }
++
++  private static String dateLabel(PmScheduleDateEntity date, MachineEntity machine) {
++    return (machine != null ? machine.getCode() : "?") + "@" + date.getPlannedDate();
++  }
++
++  private static Map<String, Object> executionValues(PmExecutionEntity entity) {
++    var values = new LinkedHashMap<String, Object>();
++    values.put("id", entity.getId().toString());
++    values.put("pmWoId", entity.getPmWoId().toString());
++    values.put("scheduleDateId", entity.getScheduleDateId() != null
++        ? entity.getScheduleDateId().toString() : null);
++    values.put("technicianId", entity.getTechnicianId().toString());
++    values.put("spvVerifierId", entity.getSpvVerifierId() != null
++        ? entity.getSpvVerifierId().toString() : null);
++    values.put("technicianSignatureId", entity.getTechnicianSignatureId() != null
++        ? entity.getTechnicianSignatureId().toString() : null);
++    values.put("technicianSignedAt", entity.getTechnicianSignedAt() != null
++        ? entity.getTechnicianSignedAt().toString() : null);
++    values.put("spvSignatureId", entity.getSpvSignatureId() != null
++        ? entity.getSpvSignatureId().toString() : null);
++    values.put("spvSignedAt", entity.getSpvSignedAt() != null
++        ? entity.getSpvSignedAt().toString() : null);
++    values.put("startedAt", entity.getStartedAt().toString());
++    values.put("completedAt", entity.getCompletedAt() != null
++        ? entity.getCompletedAt().toString() : null);
++    values.put("hasNgItems", entity.hasNgItems());
++    values.put("ngCount", entity.getNgCount());
++    values.put("findingWoId", entity.getFindingWoId());
++    values.put("createdAt", entity.getCreatedAt().toString());
++    values.put("updatedAt", entity.getUpdatedAt().toString());
++    return values;
++  }
++
++  private static Map<String, Object> itemValues(PmExecutionItemEntity entity) {
++    var values = new LinkedHashMap<String, Object>();
++    values.put("id", entity.getId().toString());
++    values.put("executionId", entity.getExecutionId().toString());
++    values.put("checklistItemId", entity.getChecklistItemId() != null
++        ? entity.getChecklistItemId().toString() : null);
++    values.put("sequence", entity.getSequence());
++    values.put("categoryName", entity.getCategoryName());
++    values.put("parameterText", entity.getParameterText());
++    values.put("checkMethod", entity.getCheckMethod());
++    values.put("inputType", entity.getInputType() != null ? entity.getInputType().name() : null);
++    values.put("isCriticalFlag", entity.isCriticalFlag());
++    values.put("unit", entity.getUnit());
++    values.put("lsl", entity.getLsl() != null ? entity.getLsl().toPlainString() : null);
++    values.put("nominal", entity.getNominal() != null ? entity.getNominal().toPlainString() : null);
++    values.put("usl", entity.getUsl() != null ? entity.getUsl().toPlainString() : null);
++    values.put("actualValue", entity.getActualValue() != null
++        ? entity.getActualValue().toPlainString() : null);
++    values.put("isOk", entity.getOk());
++    values.put("isNg", entity.isNg());
++    values.put("ngNotes", entity.getNgNotes());
++    values.put("ngPhotoUrl", entity.getNgPhotoUrl());
++    values.put("isBlocked", entity.isBlocked());
++    values.put("blockedWoCode", entity.getBlockedWoCode());
++    values.put("blockingWoId", entity.getBlockingWoId());
++    values.put("filledAt", entity.getFilledAt() != null ? entity.getFilledAt().toString() : null);
++    values.put("createdAt", entity.getCreatedAt().toString());
++    values.put("updatedAt", entity.getUpdatedAt().toString());
++    return values;
++  }
++
++  private static Map<String, Object> scheduleDateValues(PmScheduleDateEntity entity) {
++    var values = new LinkedHashMap<String, Object>();
++    values.put("id", entity.getId().toString());
++    values.put("scheduleId", entity.getScheduleId().toString());
++    values.put("plannedDate", entity.getPlannedDate().toString());
++    values.put("status", entity.getStatus().name());
++    values.put("createdAt", entity.getCreatedAt().toString());
++    values.put("updatedAt", entity.getUpdatedAt().toString());
++    return values;
++  }
++
++  /** entity_label is VARCHAR(255) NOT NULL — parameterText (≤500) truncated code-point-safe. */
++  private static String itemLabel(PmExecutionItemEntity entity) {
++    var text = entity.getParameterText();
++    if (text == null) {
++      return entity.getId().toString();
++    }
++    if (text.length() <= 255) {
++      return text;
++    }
++    return text.substring(0, text.offsetByCodePoints(0, 255));
++  }
++
++  private static ExecutionView toView(PmExecutionEntity entity,
++      List<PmExecutionItemEntity> items) {
++    return new ExecutionView(entity.getId(), entity.getPmWoId(), entity.getScheduleDateId(),
++        entity.getTechnicianId(), entity.getSpvVerifierId(), entity.getTechnicianSignatureId(),
++        entity.getTechnicianSignedAt(), entity.getSpvSignatureId(), entity.getSpvSignedAt(),
++        entity.getStartedAt(), entity.getCompletedAt(), entity.hasNgItems(), entity.getNgCount(),
++        entity.getFindingWoId(), entity.getCreatedAt(), entity.getUpdatedAt(),
++        items.stream().map(PmExecutionService::toItemView).toList());
++  }
++
++  private static ExecutionItemView toItemView(PmExecutionItemEntity entity) {
++    return new ExecutionItemView(entity.getId(), entity.getExecutionId(),
++        entity.getChecklistItemId(), entity.getSequence(), entity.getCategoryName(),
++        entity.getParameterText(), entity.getCheckMethod(), entity.getInputType(),
++        entity.isCriticalFlag(), entity.getUnit(), entity.getLsl(), entity.getNominal(),
++        entity.getUsl(), entity.getActualValue(), entity.getOk(), entity.isNg(),
++        entity.getNgNotes(), entity.getNgPhotoUrl(), entity.isBlocked(),
++        entity.getBlockedWoCode(), entity.getBlockingWoId(), entity.getFilledAt(),
++        entity.getCreatedAt(), entity.getUpdatedAt());
++  }
++
++  // -------------------------------------------------------------------------
++  // Commands & views
++  // -------------------------------------------------------------------------
++
++  public record FillExecutionCommand(BigDecimal actualValue, Boolean ok, Boolean ng,
++      String ngNotes, String ngPhotoUrl, boolean blocked, String blockingWoCode) {
++  }
++
++  public record ExecutionView(UUID id, UUID pmWoId, UUID scheduleDateId, UUID technicianId,
++      UUID spvVerifierId, UUID technicianSignatureId, Instant technicianSignedAt,
++      UUID spvSignatureId, Instant spvSignedAt, Instant startedAt, Instant completedAt,
++      boolean hasNgItems, int ngCount, String findingWoId, Instant createdAt, Instant updatedAt,
++      List<ExecutionItemView> items) {
++  }
++
++  public record ExecutionItemView(UUID id, UUID executionId, UUID checklistItemId, int sequence,
++      String categoryName, String parameterText, String checkMethod, PmItemInputType inputType,
++      boolean isCriticalFlag, String unit, BigDecimal lsl, BigDecimal nominal, BigDecimal usl,
++      BigDecimal actualValue, Boolean isOk, boolean isNg, String ngNotes, String ngPhotoUrl,
++      boolean isBlocked, String blockedWoCode, String blockingWoId, Instant filledAt,
++      Instant createdAt, Instant updatedAt) {
++  }
++
++  // -------------------------------------------------------------------------
++  // Exceptions
++  // -------------------------------------------------------------------------
++
++  public static class PmExecutionNotFoundException extends RuntimeException {
++  }
++
++  public static class PmExecutionForbiddenException extends RuntimeException {
++  }
++
++  /** Second start on a workorder that already has an execution → 409. */
++  public static class ExecutionAlreadyExistsException extends RuntimeException {
++  }
++
++  /** Start against a workorder that is not IN_PROGRESS → 409. */
++  public static class InvalidExecutionStateException extends RuntimeException {
++  }
++
++  /** Fill after complete, complete with zero filled items, verify before/after verify → 409. */
++  public static class InvalidExecutionTransitionException extends RuntimeException {
++  }
++
++  public static class ExecutionValidationException extends RuntimeException {
++
++    private final Map<String, String> fieldErrors;
++
++    public ExecutionValidationException(Map<String, String> fieldErrors) {
++      this.fieldErrors = fieldErrors;
++    }
++
++    public Map<String, String> getFieldErrors() {
++      return fieldErrors;
++    }
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmExecutionEntity.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmExecutionEntity.java
+index c75a401..f0f2fd9 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmExecutionEntity.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmExecutionEntity.java
+@@ -170,4 +170,13 @@ public class PmExecutionEntity {
+     this.ngCount = ngCount;
+     this.updatedAt = updatedAt;
+   }
++
++  /**
++   * Links the corrective finding workorder (F7, story 19-5): the VARCHAR(50)
++   * work_orders reference created for a critical NG item at completion.
++   */
++  public void setFindingWoId(String findingWoId, Instant updatedAt) {
++    this.findingWoId = findingWoId;
++    this.updatedAt = updatedAt;
++  }
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmExecutionItemEntity.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmExecutionItemEntity.java
+index 293ab0b..bec9bca 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmExecutionItemEntity.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmExecutionItemEntity.java
+@@ -272,14 +272,33 @@ public class PmExecutionItemEntity {
+   public void fill(BigDecimal actualValue, Boolean ok, boolean ng, String ngNotes,
+       boolean blocked, String blockedWoCode, String blockingWoId, Instant filledAt,
+       Instant updatedAt) {
++    fill(actualValue, ok, ng, ngNotes, null, blocked, blockedWoCode, blockingWoId, filledAt,
++        updatedAt);
++  }
++
++  /** Fills the result with NG photo evidence (F8, story 19-5). */
++  public void fill(BigDecimal actualValue, Boolean ok, boolean ng, String ngNotes,
++      String ngPhotoUrl, boolean blocked, String blockedWoCode, String blockingWoId,
++      Instant filledAt, Instant updatedAt) {
+     this.actualValue = actualValue;
+     this.ok = ok;
+     this.ng = ng;
+     this.ngNotes = ngNotes;
++    this.ngPhotoUrl = ngPhotoUrl;
+     this.blocked = blocked;
+     this.blockedWoCode = blockedWoCode;
+     this.blockingWoId = blockingWoId;
+     this.filledAt = filledAt;
+     this.updatedAt = updatedAt;
+   }
++
++  /**
++   * Links the corrective blocking workorder (F8, story 19-5): stamped at execution
++   * completion for every critical NG item; the technician's own blocked flag and
++   * code stay untouched.
++   */
++  public void linkBlockingWo(String blockingWoId, Instant updatedAt) {
++    this.blockingWoId = blockingWoId;
++    this.updatedAt = updatedAt;
++  }
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmExecutionItemRepository.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmExecutionItemRepository.java
+index 0d150ec..01346ec 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmExecutionItemRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmExecutionItemRepository.java
+@@ -1,11 +1,16 @@
+ package com.syncro.maintenance.preventive.infrastructure.db;
+ 
+ import java.util.List;
++import java.util.Optional;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
+ 
+-/** Persistence for {@code pm_execution_items} (blueprint F8, story 15-2). */
++/** Persistence for {@code pm_execution_items} (blueprint F8, story 15-2; queries for 19-5). */
+ public interface PmExecutionItemRepository extends JpaRepository<PmExecutionItemEntity, UUID> {
+ 
+   List<PmExecutionItemEntity> findByExecutionIdOrderBySequenceAsc(UUID executionId);
++
++  /** Fill lookup: the execution's snapshot row for one checklist item. */
++  Optional<PmExecutionItemEntity> findByExecutionIdAndChecklistItemId(UUID executionId,
++      UUID checklistItemId);
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmExecutionRepository.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmExecutionRepository.java
+index 2447e23..fb9ad79 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmExecutionRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmExecutionRepository.java
+@@ -1,11 +1,33 @@
+ package com.syncro.maintenance.preventive.infrastructure.db;
+ 
++import jakarta.persistence.LockModeType;
++import java.util.List;
+ import java.util.Optional;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
++import org.springframework.data.jpa.repository.Lock;
++import org.springframework.data.jpa.repository.Query;
++import org.springframework.data.repository.query.Param;
+ 
+-/** Persistence for {@code pm_executions} (blueprint F7, story 15-2). */
++/** Persistence for {@code pm_executions} (blueprint F7, story 15-2; queries for 19-5). */
+ public interface PmExecutionRepository extends JpaRepository<PmExecutionEntity, UUID> {
+ 
+   Optional<PmExecutionEntity> findByPmWoId(UUID pmWoId);
++
++  /** Start pre-check: one execution per PM work order (uq_pm_executions_pm_wo backstop). */
++  boolean existsByPmWoId(UUID pmWoId);
++
++  Optional<PmExecutionEntity> findByScheduleDateId(UUID scheduleDateId);
++
++  /** List filter: a technician's own executions, newest first. */
++  List<PmExecutionEntity> findByTechnicianIdOrderByStartedAtDesc(UUID technicianId);
++
++  /**
++   * Pessimistic row lock for execution transitions (story 19-5): serializes
++   * concurrent fill/complete/verify on the same row so the state precondition
++   * cannot pass twice (19-4 findByIdForUpdate pattern).
++   */
++  @Lock(LockModeType.PESSIMISTIC_WRITE)
++  @Query("select e from PmExecutionEntity e where e.id = :id")
++  Optional<PmExecutionEntity> findByIdForUpdate(@Param("id") UUID id);
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmScheduleDateRepository.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmScheduleDateRepository.java
+index 8bafa5e..8c3f1c9 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmScheduleDateRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmScheduleDateRepository.java
+@@ -1,6 +1,8 @@
+ package com.syncro.maintenance.preventive.infrastructure.db;
+ 
++import java.time.LocalDate;
+ import java.util.List;
++import java.util.Optional;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
+ 
+@@ -8,4 +10,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
+ public interface PmScheduleDateRepository extends JpaRepository<PmScheduleDateEntity, UUID> {
+ 
+   List<PmScheduleDateEntity> findByScheduleIdOrderByPlannedDateAsc(UUID scheduleId);
++
++  /** Period lookup (story 19-5): the schedule date a workorder's execution links to. */
++  Optional<PmScheduleDateEntity> findByScheduleIdAndPlannedDate(UUID scheduleId,
++      LocalDate plannedDate);
+ }
+diff --git a/syncro/apps/backend/src/main/resources/db/migration/V11__pm_execution_audit_types.sql b/syncro/apps/backend/src/main/resources/db/migration/V11__pm_execution_audit_types.sql
+new file mode 100644
+index 0000000..cb4e668
+--- /dev/null
++++ b/syncro/apps/backend/src/main/resources/db/migration/V11__pm_execution_audit_types.sql
+@@ -0,0 +1,37 @@
++-- ============================================================================
++-- V11: PM execution audit entity types (story 19-5, blueprint F7/F8).
++-- Additive-only migration: extends the ck_audit_log_entity_type CHECK with
++-- PM_EXECUTION and PM_EXECUTION_ITEM that AuditEntityType.PM_EXECUTION /
++-- AuditEntityType.PM_EXECUTION_ITEM write (the doc comment on that enum
++-- requires the Java enum and the SQL CHECK to move together in one change —
++-- V6..V10 drop-and-recreate pattern, preserving every prior value).
++-- No schema changes to pm_executions / pm_execution_items — both tables
++-- already carry every F7/F8 column in V1.
++-- ============================================================================
++
++ALTER TABLE audit_log
++  DROP CONSTRAINT ck_audit_log_entity_type;
++
++ALTER TABLE audit_log
++  ADD CONSTRAINT ck_audit_log_entity_type CHECK (entity_type IN
++    ('PLANT', 'MACHINE_GROUP', 'MACHINE', 'SPAREPART_TAXONOMY',
++     'SPAREPART', 'INSTALLATION', 'RESPONSIBILITY', 'ALERT',
++     'SPAREPART_PRICE_ENTRY', 'SECTION', 'TEAM', 'WORK_ORDER_CATEGORY',
++     'WORK_ORDER', 'REPAIR_SESSION', 'WORKORDER_ATTACHMENT',
++     'WORK_ORDER_TODO', 'WORKORDER_RATING', 'RATING_DIMENSION',
++     'PREVENTIVE_PROGRAM', 'PREVENTIVE_SCHEDULE',
++     'PREVENTIVE_CHECKLIST', 'PREVENTIVE_ATTACHMENT',
++     'SPAREPART_REQUEST', 'DEPARTMENT', 'DEPARTMENT_USER', 'USER',
++     'INVENTORY_LOCATION', 'INVENTORY_STOCK_BALANCE',
++     'INVENTORY_TRANSFER', 'INVENTORY_RESERVATION',
++     'MACHINE_AREA', 'JOB_TITLE', 'SYSTEM_ROLE', 'ROLE_PERMISSION_MAPPING',
++     'MENU_FEATURE', 'DOMAIN_CONTEXT', 'USER_JOB_BINDING', 'USER_ROLE_BINDING',
++     'PLANT_WORKING_CALENDAR', 'SIGNATURE_USE',
++     'SPAREPART_STOCK', 'SYNC_RUN', 'SYNC_QUARANTINE', 'WORKORDER_SIGNATURE',
++     'WORK_ASSIGNMENT', 'WORK_LOG', 'WORK_LOG_RATING',
++     'WORK_ORDER_QUALITY_RATING',
++     'PM_FREQUENCY', 'PM_CHECKSHEET',
++     'PM_CHECKLIST_CATEGORY', 'PM_CHECKLIST_ITEM',
++     'PM_SCHEDULE', 'PM_SCHEDULE_DATE',
++     'PM_WORK_ORDER',
++     'PM_EXECUTION', 'PM_EXECUTION_ITEM'));
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
+index a432630..af58971 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
+@@ -49,11 +49,11 @@ class V1BaseSchemaMigrationTest {
+   // -------------------------------------------------------------------------
+ 
+   @Test
+-  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V10 additive migrations")
++  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V11 additive migrations")
+   void migrationsApplied() {
+     var rows = jdbc.queryForList(
+         "SELECT version, script, success FROM flyway_schema_history ORDER BY installed_rank");
+-    assertThat(rows).hasSize(10);
++    assertThat(rows).hasSize(11);
+     assertThat(rows.get(0).get("version")).isEqualTo("1");
+     assertThat(rows.get(0).get("script")).isEqualTo("V1__orm_foundation_schema.sql");
+     assertThat(rows.get(0).get("success")).isEqualTo(true);
+@@ -84,6 +84,9 @@ class V1BaseSchemaMigrationTest {
+     assertThat(rows.get(9).get("version")).isEqualTo("10");
+     assertThat(rows.get(9).get("script")).isEqualTo("V10__pm_work_order_audit_and_period_index.sql");
+     assertThat(rows.get(9).get("success")).isEqualTo(true);
++    assertThat(rows.get(10).get("version")).isEqualTo("11");
++    assertThat(rows.get(10).get("script")).isEqualTo("V11__pm_execution_audit_types.sql");
++    assertThat(rows.get(10).get("success")).isEqualTo(true);
+   }
+ 
+   // -------------------------------------------------------------------------
+@@ -644,6 +647,42 @@ class V1BaseSchemaMigrationTest {
+     assertThat(def).contains("WHERE ((template_id IS NOT NULL) AND (scheduled_date IS NOT NULL))");
+   }
+ 
++  /**
++   * Story 19-5: V11 extends the CHECK additively with PM_EXECUTION/PM_EXECUTION_ITEM
++   * so {@code AuditEntityType.PM_EXECUTION} / {@code AuditEntityType.PM_EXECUTION_ITEM}
++   * can be persisted. Every prior value — including the V10 PM_WORK_ORDER — survives
++   * the extension.
++   */
++  @Test
++  @DisplayName("19.5-DB-001 P0 audit_log entity_type CHECK accepts PM_EXECUTION/PM_EXECUTION_ITEM after V11")
++  void auditEntityTypeAcceptsPmExecutionTypes() {
++    var check = jdbc.queryForMap(
++        "SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint "
++            + "WHERE conname = 'ck_audit_log_entity_type'");
++    var def = (String) check.get("def");
++    assertThat(def).contains("PM_EXECUTION", "PM_EXECUTION_ITEM");
++    // every prior value survives the additive V11 extension.
++    assertThat(def).contains("PM_WORK_ORDER", "PM_SCHEDULE", "PM_SCHEDULE_DATE",
++        "PM_CHECKLIST_CATEGORY", "PM_CHECKLIST_ITEM",
++        "PM_FREQUENCY", "PM_CHECKSHEET",
++        "WORK_ORDER_QUALITY_RATING", "WORK_LOG_RATING", "WORK_LOG",
++        "WORK_ASSIGNMENT", "WORK_ORDER", "REPAIR_SESSION", "WORKORDER_SIGNATURE",
++        "SPAREPART_STOCK", "SYNC_RUN", "SYNC_QUARANTINE", "MACHINE_AREA",
++        "USER_ROLE_BINDING", "PLANT_WORKING_CALENDAR",
++        "PLANT", "MACHINE_GROUP", "MACHINE", "SPAREPART_TAXONOMY",
++        "SPAREPART", "INSTALLATION", "RESPONSIBILITY", "ALERT",
++        "SPAREPART_PRICE_ENTRY", "SECTION", "TEAM", "WORK_ORDER_CATEGORY",
++        "WORKORDER_ATTACHMENT", "WORK_ORDER_TODO", "WORKORDER_RATING",
++        "RATING_DIMENSION", "PREVENTIVE_PROGRAM", "PREVENTIVE_SCHEDULE",
++        "PREVENTIVE_CHECKLIST", "PREVENTIVE_ATTACHMENT",
++        "SPAREPART_REQUEST", "DEPARTMENT", "DEPARTMENT_USER", "USER",
++        "INVENTORY_LOCATION", "INVENTORY_STOCK_BALANCE",
++        "INVENTORY_TRANSFER", "INVENTORY_RESERVATION",
++        "JOB_TITLE", "SYSTEM_ROLE", "ROLE_PERMISSION_MAPPING",
++        "MENU_FEATURE", "DOMAIN_CONTEXT", "USER_JOB_BINDING",
++        "SIGNATURE_USE");
++  }
++
+   // -------------------------------------------------------------------------
+   // Helpers
+   // -------------------------------------------------------------------------
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmExecutionControllerTest.java b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmExecutionControllerTest.java
+new file mode 100644
+index 0000000..5d51b1c
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmExecutionControllerTest.java
+@@ -0,0 +1,390 @@
++package com.syncro.maintenance.preventive.api;
++
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.eq;
++import static org.mockito.ArgumentMatchers.isNull;
++import static org.mockito.Mockito.when;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
++
++import com.syncro.TestJsonConfig;
++import com.syncro.auth.application.JwtTokenService;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.JwtAuthenticationFilter;
++import com.syncro.config.SecurityConfig;
++import com.syncro.config.TimeConfig;
++import com.syncro.maintenance.preventive.application.PmChecklistService;
++import com.syncro.maintenance.preventive.application.PmExecutionService;
++import com.syncro.maintenance.preventive.application.PmExecutionService.ExecutionItemView;
++import com.syncro.maintenance.preventive.application.PmExecutionService.ExecutionView;
++import com.syncro.maintenance.preventive.application.PmWorkOrderService;
++import com.syncro.maintenance.preventive.domain.PmItemInputType;
++import java.math.BigDecimal;
++import java.time.Instant;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
++import org.springframework.context.annotation.Import;
++import org.springframework.http.MediaType;
++import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
++import org.springframework.security.core.authority.SimpleGrantedAuthority;
++import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
++import org.springframework.test.context.bean.override.mockito.MockitoBean;
++import org.springframework.test.web.servlet.MockMvc;
++import org.springframework.test.web.servlet.request.RequestPostProcessor;
++
++/**
++ * Story 19-5 MockMvc contract test: DTO shape, status codes, and every new
++ * exception→HTTP mapping for the /api/v1/pm-executions surface
++ * (PmWorkOrderControllerTest pattern — the service is stubbed to throw and the
++ * handler asserts status + code).
++ */
++@WebMvcTest(PmExecutionController.class)
++@Import({SecurityConfig.class, PreventiveExceptionHandler.class, JwtAuthenticationFilter.class,
++    TimeConfig.class, TestJsonConfig.class})
++class PmExecutionControllerTest {
++
++  @Autowired
++  private MockMvc mockMvc;
++
++  @MockitoBean
++  private PmExecutionService executions;
++
++  @MockitoBean
++  private JwtTokenService jwtTokenService;
++
++  private static final UUID EXEC_ID = UUID.fromString("11111111-2222-3333-4444-555555555555");
++  private static final UUID WO_ID = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
++  private static final UUID ITEM_ID = UUID.fromString("ffffffff-eeee-dddd-cccc-bbbbbbbbbbbb");
++  private static final UUID TECH_ID = UUID.fromString("44444444-3333-2222-1111-000000000000");
++  private static final UUID SIG_ID = UUID.fromString("55555555-6666-7777-8888-999999999999");
++  private static final Instant NOW = Instant.parse("2026-09-01T08:00:00Z");
++
++  // -------------------------------------------------------------------------
++  // Happy paths
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.5-API-001 P0 start returns 201 with execution view")
++  void start() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    when(executions.start(eq(user), eq(WO_ID))).thenReturn(view(false, false, false, 0, null));
++
++    mockMvc.perform(post("/api/v1/pm-executions/start")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"pmWoId\":\"" + WO_ID + "\"}"))
++        .andExpect(status().isCreated())
++        .andExpect(jsonPath("$.id").value(EXEC_ID.toString()))
++        .andExpect(jsonPath("$.pmWoId").value(WO_ID.toString()))
++        .andExpect(jsonPath("$.technicianId").value(TECH_ID.toString()))
++        .andExpect(jsonPath("$.startedAt").exists())
++        .andExpect(jsonPath("$.completedAt").value(org.hamcrest.Matchers.nullValue()))
++        .andExpect(jsonPath("$.hasNgItems").value(false))
++        .andExpect(jsonPath("$.ngCount").value(0))
++        .andExpect(jsonPath("$.items").isArray());
++  }
++
++  @Test
++  @DisplayName("19.5-API-002 P0 start missing pmWoId → 400 VALIDATION_ERROR")
++  void startMissingBody() throws Exception {
++    mockMvc.perform(post("/api/v1/pm-executions/start")
++            .with(auth(ApplicationRole.TECHNICIAN))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.pmWoId").exists());
++  }
++
++  @Test
++  @DisplayName("19.5-API-003 P0 fill returns 200 with snapshotted item view")
++  void fill() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    when(executions.fill(eq(user), eq(EXEC_ID), eq(ITEM_ID), any()))
++        .thenReturn(itemView());
++
++    mockMvc.perform(post("/api/v1/pm-executions/{id}/items/{itemId}/fill", EXEC_ID, ITEM_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"actualValue\":5.2,\"ng\":false}"))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.id").value(ITEM_ID.toString()))
++        .andExpect(jsonPath("$.executionId").value(EXEC_ID.toString()))
++        .andExpect(jsonPath("$.checklistItemId").value(ITEM_ID.toString()))
++        .andExpect(jsonPath("$.parameterText").value("Oil pressure"))
++        .andExpect(jsonPath("$.inputType").value("MEASUREMENT"))
++        .andExpect(jsonPath("$.actualValue").value(5.2))
++        .andExpect(jsonPath("$.isNg").value(false))
++        .andExpect(jsonPath("$.filledAt").exists());
++  }
++
++  @Test
++  @DisplayName("19.5-API-004 P0 complete returns 200 with rollup + finding link")
++  void complete() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    when(executions.complete(eq(user), eq(EXEC_ID)))
++        .thenReturn(view(true, false, true, 2, "WO-2609-00007"));
++
++    mockMvc.perform(post("/api/v1/pm-executions/{id}/complete", EXEC_ID)
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.completedAt").exists())
++        .andExpect(jsonPath("$.hasNgItems").value(true))
++        .andExpect(jsonPath("$.ngCount").value(2))
++        .andExpect(jsonPath("$.findingWoId").value("WO-2609-00007"));
++  }
++
++  @Test
++  @DisplayName("19.5-API-005 P0 verify returns 200 with spv stamps; body optional")
++  void verify() throws Exception {
++    var user = user(ApplicationRole.SECTION_LEADER);
++    when(executions.verify(eq(user), eq(EXEC_ID), eq(SIG_ID)))
++        .thenReturn(view(true, true, false, 0, null));
++
++    mockMvc.perform(post("/api/v1/pm-executions/{id}/verify", EXEC_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"spvSignatureId\":\"" + SIG_ID + "\"}"))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.spvVerifierId").exists());
++  }
++
++  @Test
++  @DisplayName("19.5-API-006 P0 verify without body passes null signature")
++  void verifyWithoutBody() throws Exception {
++    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
++    when(executions.verify(eq(user), eq(EXEC_ID), isNull()))
++        .thenReturn(view(true, true, false, 0, null));
++
++    mockMvc.perform(post("/api/v1/pm-executions/{id}/verify", EXEC_ID)
++            .with(auth(user)))
++        .andExpect(status().isOk());
++  }
++
++  @Test
++  @DisplayName("19.5-API-007 P0 list returns 200 with filters")
++  void list() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(executions.list(eq(user), eq(WO_ID), eq(TECH_ID)))
++        .thenReturn(List.of(view(false, false, false, 0, null)));
++
++    mockMvc.perform(get("/api/v1/pm-executions")
++            .param("pmWoId", WO_ID.toString())
++            .param("technicianId", TECH_ID.toString())
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$[0].id").value(EXEC_ID.toString()));
++  }
++
++  @Test
++  @DisplayName("19.5-API-008 P0 get returns 200 with items array")
++  void getExecution() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(executions.get(eq(user), eq(EXEC_ID))).thenReturn(view(false, false, false, 0, null));
++
++    mockMvc.perform(get("/api/v1/pm-executions/{id}", EXEC_ID)
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.id").value(EXEC_ID.toString()))
++        .andExpect(jsonPath("$.items[0].sequence").value(1));
++  }
++
++  // -------------------------------------------------------------------------
++  // Error paths — every new exception→HTTP mapping (stubbed service throws)
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.5-API-009 P0 unknown execution → 404 PM_EXECUTION_NOT_FOUND")
++  void getNotFound() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(executions.get(eq(user), eq(EXEC_ID)))
++        .thenThrow(new PmExecutionService.PmExecutionNotFoundException());
++
++    mockMvc.perform(get("/api/v1/pm-executions/{id}", EXEC_ID)
++            .with(auth(user)))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("PM_EXECUTION_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("19.5-API-010 P0 unknown work order on start → 404 PM_WORK_ORDER_NOT_FOUND")
++  void startWorkOrderNotFound() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    when(executions.start(eq(user), eq(WO_ID)))
++        .thenThrow(new PmWorkOrderService.PmWorkOrderNotFoundException());
++
++    mockMvc.perform(post("/api/v1/pm-executions/start")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"pmWoId\":\"" + WO_ID + "\"}"))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("PM_WORK_ORDER_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("19.5-API-011 P0 duplicate start → 409 EXECUTION_ALREADY_EXISTS")
++  void startAlreadyExists() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    when(executions.start(eq(user), eq(WO_ID)))
++        .thenThrow(new PmExecutionService.ExecutionAlreadyExistsException());
++
++    mockMvc.perform(post("/api/v1/pm-executions/start")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"pmWoId\":\"" + WO_ID + "\"}"))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("EXECUTION_ALREADY_EXISTS"));
++  }
++
++  @Test
++  @DisplayName("19.5-API-012 P0 WO not IN_PROGRESS on start → 409 INVALID_EXECUTION_STATE")
++  void startInvalidState() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    when(executions.start(eq(user), eq(WO_ID)))
++        .thenThrow(new PmExecutionService.InvalidExecutionStateException());
++
++    mockMvc.perform(post("/api/v1/pm-executions/start")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"pmWoId\":\"" + WO_ID + "\"}"))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("INVALID_EXECUTION_STATE"));
++  }
++
++  @Test
++  @DisplayName("19.5-API-013 P0 fill after complete → 409 INVALID_EXECUTION_TRANSITION")
++  void fillInvalidTransition() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    when(executions.fill(eq(user), eq(EXEC_ID), eq(ITEM_ID), any()))
++        .thenThrow(new PmExecutionService.InvalidExecutionTransitionException());
++
++    mockMvc.perform(post("/api/v1/pm-executions/{id}/items/{itemId}/fill", EXEC_ID, ITEM_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"actualValue\":5.2}"))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("INVALID_EXECUTION_TRANSITION"));
++  }
++
++  @Test
++  @DisplayName("19.5-API-014 P0 fill validation → 400 VALIDATION_ERROR with fieldErrors")
++  void fillValidation() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    when(executions.fill(eq(user), eq(EXEC_ID), eq(ITEM_ID), any()))
++        .thenThrow(new PmExecutionService.ExecutionValidationException(
++            Map.of("actualValue", "actualValue is required for MEASUREMENT items.")));
++
++    mockMvc.perform(post("/api/v1/pm-executions/{id}/items/{itemId}/fill", EXEC_ID, ITEM_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.actualValue").exists());
++  }
++
++  @Test
++  @DisplayName("19.5-API-015 P0 foreign checklist item on fill → 404 PM_CHECKLIST_ITEM_NOT_FOUND")
++  void fillItemNotFound() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    when(executions.fill(eq(user), eq(EXEC_ID), eq(ITEM_ID), any()))
++        .thenThrow(new PmChecklistService.PmChecklistItemNotFoundException());
++
++    mockMvc.perform(post("/api/v1/pm-executions/{id}/items/{itemId}/fill", EXEC_ID, ITEM_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"ok\":true}"))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("PM_CHECKLIST_ITEM_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("19.5-API-016 P0 wrong technician on complete → 403 FORBIDDEN")
++  void completeForbidden() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    when(executions.complete(eq(user), eq(EXEC_ID)))
++        .thenThrow(new PmExecutionService.PmExecutionForbiddenException());
++
++    mockMvc.perform(post("/api/v1/pm-executions/{id}/complete", EXEC_ID)
++            .with(auth(user)))
++        .andExpect(status().isForbidden())
++        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
++  }
++
++  @Test
++  @DisplayName("19.5-API-017 P0 double verify → 409 INVALID_EXECUTION_TRANSITION")
++  void verifyConflict() throws Exception {
++    var user = user(ApplicationRole.SECTION_LEADER);
++    when(executions.verify(eq(user), eq(EXEC_ID), any()))
++        .thenThrow(new PmExecutionService.InvalidExecutionTransitionException());
++
++    mockMvc.perform(post("/api/v1/pm-executions/{id}/verify", EXEC_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{}"))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("INVALID_EXECUTION_TRANSITION"));
++  }
++
++  @Test
++  @DisplayName("19.5-API-018 P0 malformed UUID path value → 400 INVALID_PATH_VALUE")
++  void getMalformedPathValue() throws Exception {
++    mockMvc.perform(get("/api/v1/pm-executions/{id}", "not-a-uuid")
++            .with(auth(ApplicationRole.AUDITOR)))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("INVALID_PATH_VALUE"));
++  }
++
++  @Test
++  @DisplayName("19.5-API-019 P0 malformed UUID body field → 400 VALIDATION_ERROR")
++  void startMalformedBody() throws Exception {
++    mockMvc.perform(post("/api/v1/pm-executions/start")
++            .with(auth(ApplicationRole.TECHNICIAN))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"pmWoId\":\"not-a-uuid\"}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
++  }
++
++  // -------------------------------------------------------------------------
++  // Fixtures
++  // -------------------------------------------------------------------------
++
++  private static ExecutionView view(boolean completed, boolean verified, boolean hasNg,
++      int ngCount, String findingWoId) {
++    return new ExecutionView(EXEC_ID, WO_ID, null, TECH_ID,
++        verified ? SIG_ID : null, null, null, verified ? SIG_ID : null,
++        verified ? NOW : null, NOW, completed ? NOW : null, hasNg, ngCount, findingWoId,
++        NOW, NOW, List.of(itemView()));
++  }
++
++  private static ExecutionItemView itemView() {
++    return new ExecutionItemView(ITEM_ID, EXEC_ID, ITEM_ID, 1, "Hydraulics", "Oil pressure",
++        "Gauge", PmItemInputType.MEASUREMENT, false, "bar", new BigDecimal("3.0"),
++        new BigDecimal("5.0"), new BigDecimal("7.0"), new BigDecimal("5.2"), null, false,
++        null, null, false, null, null, NOW, NOW, NOW);
++  }
++
++  private static AuthenticatedUser user(ApplicationRole role) {
++    return new AuthenticatedUser(UUID.randomUUID().toString(),
++        role.name().toLowerCase() + "@syncro.dev", role);
++  }
++
++  private static RequestPostProcessor auth(AuthenticatedUser user) {
++    return SecurityMockMvcRequestPostProcessors.authentication(
++        new UsernamePasswordAuthenticationToken(user, null,
++            List.of(new SimpleGrantedAuthority("ROLE_" + user.applicationRole().name()))));
++  }
++
++  private static RequestPostProcessor auth(ApplicationRole role) {
++    return auth(user(role));
++  }
++}
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/application/PmExecutionServiceIntegrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/application/PmExecutionServiceIntegrationTest.java
+new file mode 100644
+index 0000000..0b12e38
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/application/PmExecutionServiceIntegrationTest.java
+@@ -0,0 +1,776 @@
++package com.syncro.maintenance.preventive.application;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.api.Assertions.assertThatThrownBy;
++
++import com.syncro.audit.domain.AuditAction;
++import com.syncro.audit.domain.AuditEntityType;
++import com.syncro.audit.infrastructure.AuditLogRepository;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.AuthUserEntity;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentEntity;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
++import com.syncro.auth.infrastructure.AuthUserRepository;
++import com.syncro.auth.infrastructure.PlantEntity;
++import com.syncro.auth.infrastructure.PlantRepository;
++import com.syncro.machine.domain.MachineStatus;
++import com.syncro.machine.domain.ResponsibilityLevel;
++import com.syncro.machine.infrastructure.MachineEntity;
++import com.syncro.machine.infrastructure.MachineRepository;
++import com.syncro.machine.infrastructure.MachineResponsibilityEntity;
++import com.syncro.machine.infrastructure.MachineResponsibilityRepository;
++import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
++import com.syncro.maintenance.infrastructure.db.WorkOrderCategoryEntity;
++import com.syncro.maintenance.infrastructure.db.WorkOrderCategoryRepository;
++import com.syncro.maintenance.infrastructure.db.WorkOrderRepository;
++import com.syncro.maintenance.preventive.application.PmChecklistService.CreateCategoryCommand;
++import com.syncro.maintenance.preventive.application.PmChecklistService.CreateItemCommand;
++import com.syncro.maintenance.preventive.application.PmChecklistService.PmChecklistItemNotFoundException;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.ApproveChecksheetCommand;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.CreateChecksheetCommand;
++import com.syncro.maintenance.preventive.application.PmExecutionService.ExecutionAlreadyExistsException;
++import com.syncro.maintenance.preventive.application.PmExecutionService.ExecutionValidationException;
++import com.syncro.maintenance.preventive.application.PmExecutionService.ExecutionView;
++import com.syncro.maintenance.preventive.application.PmExecutionService.FillExecutionCommand;
++import com.syncro.maintenance.preventive.application.PmExecutionService.InvalidExecutionStateException;
++import com.syncro.maintenance.preventive.application.PmExecutionService.InvalidExecutionTransitionException;
++import com.syncro.maintenance.preventive.application.PmExecutionService.PmExecutionForbiddenException;
++import com.syncro.maintenance.preventive.application.PmExecutionService.PmExecutionNotFoundException;
++import com.syncro.maintenance.preventive.application.PmScheduleService.CreateScheduleCommand;
++import com.syncro.maintenance.preventive.domain.PmItemInputType;
++import com.syncro.maintenance.preventive.domain.PmScheduleDateStatus;
++import com.syncro.maintenance.preventive.domain.PmWorkOrderStatus;
++import com.syncro.maintenance.preventive.infrastructure.db.PmExecutionItemRepository;
++import com.syncro.maintenance.preventive.infrastructure.db.PmExecutionRepository;
++import com.syncro.maintenance.preventive.infrastructure.db.PmScheduleDateRepository;
++import com.syncro.maintenance.preventive.infrastructure.db.PmWorkOrderEntity;
++import com.syncro.maintenance.preventive.infrastructure.db.PmWorkOrderRepository;
++import com.syncro.masterdata.infrastructure.MachineGroupEntity;
++import com.syncro.masterdata.infrastructure.MachineGroupRepository;
++import java.math.BigDecimal;
++import java.time.Instant;
++import java.time.LocalDate;
++import java.util.UUID;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.test.context.SpringBootTest;
++import org.springframework.test.context.DynamicPropertyRegistry;
++import org.springframework.test.context.DynamicPropertySource;
++import org.testcontainers.containers.PostgreSQLContainer;
++import org.testcontainers.junit.jupiter.Container;
++import org.testcontainers.junit.jupiter.Testcontainers;
++
++/**
++ * Story 19-5 integration test: PM executions & execution items against a real
++ * Postgres container (blueprint F7/F8). Covers start on an IN_PROGRESS workorder
++ * (stamps + audit CREATE, duplicate 409, non-IN_PROGRESS 409, unknown 404, wrong
++ * assignee 403), per-item fill (snapshot + result, MEASUREMENT/OK_NG validation
++ * 400s, NG-notes rule, re-fill update, foreign-item 404, fill-after-complete 409),
++ * complete (NG rollup, workorder COMPLETED, schedule date EXECUTED, critical-NG
++ * finding workorder via the 11-3 system path linked through finding_wo_id +
++ * blocking_wo_id, clean-complete no finding, zero-filled 409, double-complete 409,
++ * manual-period null schedule_date), SPV verify (stamps + audit, not-completed 409,
++ * double-verify 409, non-leader 403, out-of-scope 403, SUPER_ADMIN bypass), the
++ * technician gate on fill/complete, and scope-filtered reads.
++ *
++ * <p>Deliberately NOT extending {@code AbstractPostgresIntegrationTest}: complete()
++ * creates the finding workorder through {@code WorkOrderService.createSystem}, which
++ * runs in its own REQUIRES_NEW transaction and therefore can only see COMMITTED
++ * machines/categories. The transactional base would leave every fixture invisible to
++ * that inner transaction (FK violation). This class is non-transactional and owns a
++ * dedicated database ({@code withDatabaseName}, the 19-4
++ * {@code PmWorkOrderTransitionConcurrencyIntegrationTest} pattern); every test builds
++ * its own uniquely-suffixed fixture chain and asserts only against its own rows.
++ */
++@Testcontainers
++@SpringBootTest(properties = {
++    "server.port=0",
++    "spring.lifecycle.timeout-per-shutdown-phase=5s",
++    "REDIS_HOST=localhost",
++    "REDIS_PORT=6379",
++    "INFLUXDB_HOST=localhost",
++    "INFLUXDB_PORT=8086",
++    "INFLUXDB_USERNAME=test",
++    "INFLUXDB_PASSWORD=test",
++    "INFLUXDB_TOKEN=test",
++    "INFLUXDB_ORG=test",
++    "INFLUXDB_BUCKET=test",
++    "SYNCRO_MQTT_HOST=localhost",
++    "SYNCRO_MQTT_PORT=1883",
++    "SYNCRO_MQTT_USERNAME=test",
++    "SYNCRO_MQTT_PASSWORD=test",
++    "SYNCRO_MQTT_CLIENT_ID=test",
++    "SYNCRO_MQTT_TOPIC_FILTER=syncro/+/telemetry",
++    "WAHA_HOST=localhost",
++    "WAHA_PORT=3000",
++    "WAHA_API_KEY=test",
++    "GARAGE_HOST=localhost",
++    "GARAGE_S3_PORT=3900",
++    "GARAGE_ACCESS_KEY=test",
++    "GARAGE_SECRET_KEY=test",
++    "GARAGE_BUCKET=test",
++    "GARAGE_REGION=garage",
++    "OPA_HOST=localhost",
++    "OPA_PORT=18181",
++    "SYNCRO_OPA_URL=http://localhost:18181",
++    "SYNCRO_AUTHZ_ENFORCED_PATHS=",
++    "SYNCRO_AUTHZ_DEGRADED_ALLOWLIST=/api/v1/health,/actuator/**",
++    "syncro.auth.jwt.secret=test-secret-for-auth-integration-32x",
++    "syncro.auth.jwt.issuer=syncro-test",
++    "syncro.auth.jwt.ttl-minutes=30",
++    "syncro.auth.local-admin.enabled=false",
++    "syncro.auth.local-admin.login-identifier=admin@syncro.dev",
++    "syncro.auth.local-admin.password=test-password"
++})
++class PmExecutionServiceIntegrationTest {
++
++  @Container
++  static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
++
++  static {
++    postgres.withDatabaseName("pm_execution_integration");
++    postgres.withReuse(true);
++  }
++
++  @DynamicPropertySource
++  static void postgresProperties(DynamicPropertyRegistry registry) {
++    registry.add("spring.datasource.url", postgres::getJdbcUrl);
++    registry.add("spring.datasource.username", postgres::getUsername);
++    registry.add("spring.datasource.password", postgres::getPassword);
++  }
++
++  @Autowired
++  private PmExecutionService executions;
++  @Autowired
++  private PmWorkOrderService workOrders;
++  @Autowired
++  private PmScheduleService schedules;
++  @Autowired
++  private PmChecksheetService checksheets;
++  @Autowired
++  private PmChecklistService checklist;
++  @Autowired
++  private PmFrequencyService frequencies;
++  @Autowired
++  private PlantRepository plants;
++  @Autowired
++  private MachineGroupRepository machineGroups;
++  @Autowired
++  private MachineRepository machines;
++  @Autowired
++  private AuthUserRepository users;
++  @Autowired
++  private AuthUserPlantAssignmentRepository assignments;
++  @Autowired
++  private MachineResponsibilityRepository responsibilities;
++  @Autowired
++  private AuditLogRepository auditLogs;
++  @Autowired
++  private PmWorkOrderRepository workOrderRows;
++  @Autowired
++  private PmScheduleDateRepository scheduleDateRows;
++  @Autowired
++  private PmExecutionRepository executionRows;
++  @Autowired
++  private PmExecutionItemRepository executionItemRows;
++  @Autowired
++  private WorkOrderRepository systemWorkOrders;
++  @Autowired
++  private WorkOrderCategoryRepository workOrderCategories;
++
++  /** One fully-wired fixture: ACTIVE monthly schedule, checklist items, one IN_PROGRESS WO. */
++  private record Fixture(PlantEntity plant, MachineEntity machine,
++      AuthenticatedUser leader, AuthenticatedUser staff, AuthenticatedUser manager,
++      AuthenticatedUser tech, UUID technicianId, UUID checksheetId, UUID measurementItemId,
++      UUID criticalMeasurementItemId, UUID okNgItemId, UUID foreignItemId, UUID scheduleId,
++      UUID scheduleDateId, PmWorkOrderService.WorkOrderView workOrder) {
++  }
++
++  private Fixture fixture() {
++    var now = Instant.now();
++    var suffix = UUID.randomUUID().toString().substring(0, 8);
++    // The finding WO path needs the "01" Breakdown category (V1 seeds only "02";
++    // production creates "01" via the 10-1 API). Committed once per container.
++    if (!workOrderCategories.existsByCode("01")) {
++      workOrderCategories.saveAndFlush(new WorkOrderCategoryEntity(
++          UUID.randomUUID(), "01", "Breakdown", null, now, now));
++    }
++    var plant = plants.saveAndFlush(new PlantEntity(
++        UUID.randomUUID(), "P-EX-" + suffix, "Exec Plant", now, now));
++    var group = machineGroups.saveAndFlush(new MachineGroupEntity(
++        UUID.randomUUID(), plant, "Exec Group", now, now));
++    var machine = machines.saveAndFlush(new MachineEntity(
++        UUID.randomUUID(), plant, group, "MC-EX-" + suffix, "Exec Machine",
++        MachineStatus.ACTIVE, null, null, null, null, now, now));
++
++    var leaderId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(leaderId, "ex-leader-" + UUID.randomUUID() + "@test",
++        "hash", ApplicationRole.SECTION_LEADER, true, now, now));
++    assignments.saveAndFlush(new AuthUserPlantAssignmentEntity(leaderId, plant.getId(), now));
++    responsibilities.saveAndFlush(new MachineResponsibilityEntity(
++        UUID.randomUUID(), machine.getId(), leaderId, ResponsibilityLevel.LEADER, now, now));
++    var leader = new AuthenticatedUser(leaderId.toString(), "ex-leader@test",
++        ApplicationRole.SECTION_LEADER);
++
++    var staffId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(staffId, "ex-staff-" + UUID.randomUUID() + "@test",
++        "hash", ApplicationRole.STAFF_MAINTENANCE, true, now, now));
++    assignments.saveAndFlush(new AuthUserPlantAssignmentEntity(staffId, plant.getId(), now));
++    var staff = new AuthenticatedUser(staffId.toString(), "ex-staff@test",
++        ApplicationRole.STAFF_MAINTENANCE);
++
++    var managerId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(managerId, "ex-manager-" + UUID.randomUUID() + "@test",
++        "hash", ApplicationRole.MANAGER_MAINTENANCE, true, now, now));
++    assignments.saveAndFlush(new AuthUserPlantAssignmentEntity(managerId, plant.getId(), now));
++    var manager = new AuthenticatedUser(managerId.toString(), "ex-manager@test",
++        ApplicationRole.MANAGER_MAINTENANCE);
++
++    var technicianId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(technicianId, "ex-tech-" + UUID.randomUUID() + "@test",
++        "hash", ApplicationRole.TECHNICIAN, true, now, now));
++    var tech = new AuthenticatedUser(technicianId.toString(), "ex-tech@test",
++        ApplicationRole.TECHNICIAN);
++
++    var monthly = frequencies.list().stream()
++        .filter(f -> f.code().equals("MONTHLY")).findFirst().orElseThrow().id();
++    var checksheetId = checksheets.create(staff,
++        new CreateChecksheetCommand(machine.getId(), monthly, null)).id();
++    // Checklist content must exist BEFORE approval (19-2 freezes approved revisions).
++    var categoryId = checklist.createCategory(staff,
++        new CreateCategoryCommand(checksheetId, "Hydraulics", 0)).id();
++    var measurementItemId = checklist.createItem(staff, new CreateItemCommand(checksheetId,
++        categoryId, 1, "Oil pressure", "Gauge", PmItemInputType.MEASUREMENT, "bar",
++        new BigDecimal("3.0"), new BigDecimal("5.0"), new BigDecimal("7.0"), false,
++        null, null)).id();
++    var criticalMeasurementItemId = checklist.createItem(staff, new CreateItemCommand(checksheetId,
++        categoryId, 2, "Bearing temperature", "Thermometer", PmItemInputType.MEASUREMENT, "C",
++        new BigDecimal("10"), new BigDecimal("40"), new BigDecimal("60"), true,
++        null, null)).id();
++    var okNgItemId = checklist.createItem(staff, new CreateItemCommand(checksheetId,
++        categoryId, 3, "Visual leak check", "Eyes", PmItemInputType.OK_NG, null,
++        null, null, null, false, null, null)).id();
++    // A second checksheet on the same machine is impossible (uq per machine+frequency),
++    // so the foreign-item probe uses a second machine's checksheet.
++    var otherMachine = machines.saveAndFlush(new MachineEntity(
++        UUID.randomUUID(), plant, group, "MC-EX2-" + suffix, "Exec Machine 2",
++        MachineStatus.ACTIVE, null, null, null, null, now, now));
++    var otherChecksheetId = checksheets.create(staff,
++        new CreateChecksheetCommand(otherMachine.getId(), monthly, null)).id();
++    var foreignItemId = checklist.createItem(staff, new CreateItemCommand(otherChecksheetId,
++        null, 1, "Foreign parameter", null, PmItemInputType.OK_NG, null, null, null, null,
++        false, null, null)).id();
++    checksheets.approve(leader, checksheetId,
++        new ApproveChecksheetCommand(LocalDate.of(2026, 1, 15)));
++
++    var scheduleId = schedules.create(staff,
++        new CreateScheduleCommand(plant.getId(), machine.getId(), checksheetId, 2027)).id();
++    schedules.submit(staff, scheduleId);
++    schedules.approveSpv(leader, scheduleId);
++    schedules.approveProd(leader, scheduleId);
++    schedules.activate(leader, scheduleId);
++    var generated = workOrders.generate(leader, scheduleId);
++    var scheduleDateId = scheduleDateRows
++        .findByScheduleIdAndPlannedDate(scheduleId, LocalDate.of(2027, 1, 15)).orElseThrow().getId();
++    var wo = generated.getFirst();
++    workOrders.assign(leader, wo.id(), technicianId);
++    var started = workOrders.start(tech, wo.id());
++    return new Fixture(plant, machine, leader, staff, manager, tech, technicianId, checksheetId,
++        measurementItemId, criticalMeasurementItemId, okNgItemId, foreignItemId, scheduleId,
++        scheduleDateId, started);
++  }
++
++  private static FillExecutionCommand measurement(BigDecimal value) {
++    return new FillExecutionCommand(value, null, null, null, null, false, null);
++  }
++
++  private static FillExecutionCommand ok() {
++    return new FillExecutionCommand(null, true, false, null, null, false, null);
++  }
++
++  private static FillExecutionCommand ng(String notes) {
++    return new FillExecutionCommand(null, null, true, notes, null, false, null);
++  }
++
++  // -------------------------------------------------------------------------
++  // AC1: start
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.5-INT-001 P0 start on IN_PROGRESS WO stamps execution + schedule date + audit CREATE; second start 409")
++  void startStampsExecutionAndRejectsDuplicate() {
++    var fx = fixture();
++    var view = executions.start(fx.tech(), fx.workOrder().id());
++
++    assertThat(view.pmWoId()).isEqualTo(fx.workOrder().id());
++    assertThat(view.technicianId()).isEqualTo(fx.technicianId());
++    assertThat(view.startedAt()).isNotNull();
++    assertThat(view.completedAt()).isNull();
++    assertThat(view.spvVerifierId()).isNull();
++    assertThat(view.hasNgItems()).isFalse();
++    assertThat(view.ngCount()).isZero();
++    assertThat(view.findingWoId()).isNull();
++    assertThat(view.items()).isEmpty();
++    // Period resolution: the workorder's (machine, template, scheduled_date) triple.
++    assertThat(view.scheduleDateId()).isEqualTo(fx.scheduleDateId());
++
++    var persisted = executionRows.findById(view.id()).orElseThrow();
++    assertThat(persisted.getTechnicianId()).isEqualTo(fx.technicianId());
++
++    var audit = auditLogs.findByEntityIdOrderByCreatedAtAsc(view.id());
++    assertThat(audit).hasSize(1);
++    assertThat(audit.getFirst().getEntityType()).isEqualTo(AuditEntityType.PM_EXECUTION);
++    assertThat(audit.getFirst().getAction()).isEqualTo(AuditAction.CREATE);
++    assertThat(audit.getFirst().getPlantId()).isEqualTo(fx.plant().getId());
++    assertThat(audit.getFirst().getPreviousValue()).isNull();
++    assertThat(audit.getFirst().getNewValue()).contains("\"technicianId\":\"" + fx.technicianId() + "\"");
++
++    assertThatThrownBy(() -> executions.start(fx.tech(), fx.workOrder().id()))
++        .isInstanceOf(ExecutionAlreadyExistsException.class);
++    assertThat(executionRows.findByPmWoId(fx.workOrder().id())).isPresent();
++  }
++
++  @Test
++  @DisplayName("19.5-INT-002 P0 start guards: non-IN_PROGRESS 409, unknown WO 404, wrong assignee 403")
++  void startGuards() {
++    var fx = fixture();
++    // A SCHEDULED workorder (second generated row) is not executable. Assign it to
++    // the fixture technician first so the assignee gate passes and the state check
++    // fires (gate order mirrors 19-4: requireAssignee before requireState).
++    var second = workOrderRows.findByMachineIdAndTemplateIdAndScheduledDate(
++        fx.machine().getId(), fx.checksheetId(), LocalDate.of(2027, 2, 15)).orElseThrow();
++    workOrders.assign(fx.leader(), second.getId(), fx.technicianId());
++    assertThatThrownBy(() -> executions.start(fx.tech(), second.getId()))
++        .isInstanceOf(InvalidExecutionStateException.class);
++    // IN_PROGRESS now accepts a start; the second start hits the one-per-WO rule.
++    workOrders.start(fx.tech(), second.getId());
++    assertThat(executions.start(fx.tech(), second.getId()).pmWoId()).isEqualTo(second.getId());
++    assertThatThrownBy(() -> executions.start(fx.tech(), second.getId()))
++        .isInstanceOf(ExecutionAlreadyExistsException.class);
++
++    assertThatThrownBy(() -> executions.start(fx.tech(), UUID.randomUUID()))
++        .isInstanceOf(PmWorkOrderService.PmWorkOrderNotFoundException.class);
++
++    // A different technician is not the assignee — 403 even though the WO is IN_PROGRESS.
++    var otherId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(otherId, "ex-tech2-" + UUID.randomUUID() + "@test",
++        "hash", ApplicationRole.TECHNICIAN, true, Instant.now(), Instant.now()));
++    var otherTech = new AuthenticatedUser(otherId.toString(), "ex-tech2@test",
++        ApplicationRole.TECHNICIAN);
++    assertThatThrownBy(() -> executions.start(otherTech, fx.workOrder().id()))
++        .isInstanceOf(PmExecutionForbiddenException.class);
++  }
++
++  @Test
++  @DisplayName("19.5-INT-002b P0 SUPER_ADMIN starts on behalf of the assignee — technician_id stays the WO assignee")
++  void superAdminStartBindsAssignee() {
++    var fx = fixture();
++    var adminId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(adminId, "ex-admin-" + UUID.randomUUID() + "@test",
++        "hash", ApplicationRole.SUPER_ADMIN, true, Instant.now(), Instant.now()));
++    var admin = new AuthenticatedUser(adminId.toString(), "ex-admin@test",
++        ApplicationRole.SUPER_ADMIN);
++
++    var view = executions.start(admin, fx.workOrder().id());
++    assertThat(view.technicianId()).isEqualTo(fx.technicianId());
++  }
++
++  // -------------------------------------------------------------------------
++  // AC2: fill
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.5-INT-003 P0 fill MEASUREMENT snapshots the checklist item + stores actualValue with audit UPDATE; re-fill updates the same row")
++  void fillMeasurementSnapshotsAndStores() {
++    var fx = fixture();
++    var execution = executions.start(fx.tech(), fx.workOrder().id());
++
++    var item = executions.fill(fx.tech(), execution.id(), fx.measurementItemId(),
++        measurement(new BigDecimal("5.2")));
++
++    assertThat(item.checklistItemId()).isEqualTo(fx.measurementItemId());
++    assertThat(item.sequence()).isEqualTo(1);
++    assertThat(item.categoryName()).isEqualTo("Hydraulics");
++    assertThat(item.parameterText()).isEqualTo("Oil pressure");
++    assertThat(item.checkMethod()).isEqualTo("Gauge");
++    assertThat(item.inputType()).isEqualTo(PmItemInputType.MEASUREMENT);
++    assertThat(item.isCriticalFlag()).isFalse();
++    assertThat(item.unit()).isEqualTo("bar");
++    assertThat(item.lsl()).isEqualByComparingTo("3.0");
++    assertThat(item.nominal()).isEqualByComparingTo("5.0");
++    assertThat(item.usl()).isEqualByComparingTo("7.0");
++    assertThat(item.actualValue()).isEqualByComparingTo("5.2");
++    assertThat(item.isNg()).isFalse();
++    assertThat(item.filledAt()).isNotNull();
++
++    var audit = auditLogs.findByEntityIdOrderByCreatedAtAsc(item.id());
++    assertThat(audit).hasSize(1);
++    assertThat(audit.getFirst().getEntityType()).isEqualTo(AuditEntityType.PM_EXECUTION_ITEM);
++    assertThat(audit.getFirst().getAction()).isEqualTo(AuditAction.UPDATE);
++    assertThat(audit.getFirst().getPreviousValue()).isNull();
++    assertThat(audit.getFirst().getNewValue()).contains("5.2");
++
++    // Re-fill: same snapshot row, updated result — one row, second audit entry.
++    var refilled = executions.fill(fx.tech(), execution.id(), fx.measurementItemId(),
++        measurement(new BigDecimal("4.8")));
++    assertThat(refilled.id()).isEqualTo(item.id());
++    assertThat(refilled.actualValue()).isEqualByComparingTo("4.8");
++    assertThat(executionItemRows.findByExecutionIdOrderBySequenceAsc(execution.id())).hasSize(1);
++    assertThat(auditLogs.findByEntityIdOrderByCreatedAtAsc(item.id())).hasSize(2);
++  }
++
++  @Test
++  @DisplayName("19.5-INT-004 P0 fill validation: MEASUREMENT without actualValue 400; OK_NG needs ok/ng; NG needs non-blank notes")
++  void fillValidationRules() {
++    var fx = fixture();
++    var execution = executions.start(fx.tech(), fx.workOrder().id());
++
++    assertThatThrownBy(() -> executions.fill(fx.tech(), execution.id(), fx.measurementItemId(),
++        new FillExecutionCommand(null, null, null, null, null, false, null)))
++        .isInstanceOfSatisfying(ExecutionValidationException.class,
++            e -> assertThat(e.getFieldErrors()).containsKey("actualValue"));
++
++    assertThatThrownBy(() -> executions.fill(fx.tech(), execution.id(), fx.okNgItemId(),
++        new FillExecutionCommand(null, null, null, null, null, false, null)))
++        .isInstanceOfSatisfying(ExecutionValidationException.class,
++            e -> assertThat(e.getFieldErrors()).containsKey("ok"));
++
++    // ng=true with blank notes → 400.
++    assertThatThrownBy(() -> executions.fill(fx.tech(), execution.id(), fx.okNgItemId(),
++        ng("   ")))
++        .isInstanceOfSatisfying(ExecutionValidationException.class,
++            e -> assertThat(e.getFieldErrors()).containsKey("ngNotes"));
++
++    // ok=true is valid for OK_NG.
++    var okItem = executions.fill(fx.tech(), execution.id(), fx.okNgItemId(), ok());
++    assertThat(okItem.isOk()).isTrue();
++    assertThat(okItem.isNg()).isFalse();
++
++    // ng=true with notes is valid and stores notes + photo.
++    var ngItem = executions.fill(fx.tech(), execution.id(), fx.criticalMeasurementItemId(),
++        new FillExecutionCommand(new BigDecimal("95"), null, true, "Overheating",
++            "https://evidence/x.jpg", false, null));
++    assertThat(ngItem.isNg()).isTrue();
++    assertThat(ngItem.ngNotes()).isEqualTo("Overheating");
++    assertThat(ngItem.ngPhotoUrl()).isEqualTo("https://evidence/x.jpg");
++    assertThat(ngItem.actualValue()).isEqualByComparingTo("95");
++  }
++
++  @Test
++  @DisplayName("19.5-INT-005 P0 fill on unknown execution 404; foreign checklist item 404; wrong technician 403; after complete 409")
++  void fillGuards() {
++    var fx = fixture();
++    var execution = executions.start(fx.tech(), fx.workOrder().id());
++
++    assertThatThrownBy(() -> executions.fill(fx.tech(), UUID.randomUUID(), fx.measurementItemId(),
++        measurement(BigDecimal.ONE)))
++        .isInstanceOf(PmExecutionNotFoundException.class);
++    // An item from another checksheet is reported as not-found (no foreign probe).
++    assertThatThrownBy(() -> executions.fill(fx.tech(), execution.id(), fx.foreignItemId(),
++        ok()))
++        .isInstanceOf(PmChecklistItemNotFoundException.class);
++
++    var otherId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(otherId, "ex-tech3-" + UUID.randomUUID() + "@test",
++        "hash", ApplicationRole.TECHNICIAN, true, Instant.now(), Instant.now()));
++    var otherTech = new AuthenticatedUser(otherId.toString(), "ex-tech3@test",
++        ApplicationRole.TECHNICIAN);
++    assertThatThrownBy(() -> executions.fill(otherTech, execution.id(), fx.measurementItemId(),
++        measurement(BigDecimal.ONE)))
++        .isInstanceOf(PmExecutionForbiddenException.class);
++
++    executions.fill(fx.tech(), execution.id(), fx.measurementItemId(),
++        measurement(new BigDecimal("5")));
++    executions.complete(fx.tech(), execution.id());
++    assertThatThrownBy(() -> executions.fill(fx.tech(), execution.id(), fx.okNgItemId(), ok()))
++        .isInstanceOf(InvalidExecutionTransitionException.class);
++  }
++
++  // -------------------------------------------------------------------------
++  // AC3: complete
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.5-INT-006 P0 complete with critical NG: WO COMPLETED, date EXECUTED, rollup, finding WO linked via finding_wo_id + blocking_wo_id")
++  void completeWithCriticalNgCreatesFindingWorkOrder() {
++    var fx = fixture();
++    var execution = executions.start(fx.tech(), fx.workOrder().id());
++    executions.fill(fx.tech(), execution.id(), fx.measurementItemId(),
++        measurement(new BigDecimal("5.2"))); // OK measurement
++    executions.fill(fx.tech(), execution.id(), fx.criticalMeasurementItemId(),
++        new FillExecutionCommand(new BigDecimal("95"), null, true, "Bearing overheating",
++            null, false, null)); // CRITICAL NG
++    executions.fill(fx.tech(), execution.id(), fx.okNgItemId(),
++        ng("Weep at seal")); // non-critical NG
++
++    var completed = executions.complete(fx.tech(), execution.id());
++
++    assertThat(completed.completedAt()).isNotNull();
++    assertThat(completed.hasNgItems()).isTrue();
++    assertThat(completed.ngCount()).isEqualTo(2);
++    assertThat(completed.findingWoId()).isNotNull();
++
++    // PM workorder moved IN_PROGRESS → COMPLETED through the 19-4 service.
++    assertThat(workOrders.get(fx.leader(), fx.workOrder().id()).status())
++        .isEqualTo(PmWorkOrderStatus.COMPLETED);
++    // Schedule date moved to EXECUTED.
++    assertThat(scheduleDateRows.findById(fx.scheduleDateId()).orElseThrow().getStatus())
++        .isEqualTo(PmScheduleDateStatus.EXECUTED);
++
++    // The finding workorder exists via the 11-3 system path: INTERNAL, OPEN, category
++    // "01", description referencing the critical parameter, no preventive schedule.
++    var finding = systemWorkOrders.findById(completed.findingWoId()).orElseThrow();
++    assertThat(finding.getStatus()).isEqualTo(WorkOrderStatus.OPEN);
++    assertThat(finding.getMachineId()).isEqualTo(fx.machine().getId());
++    assertThat(finding.getDescription()).contains("Bearing temperature");
++    assertThat(finding.getPreventiveScheduleId()).isNull();
++    assertThat(finding.getCategoryId())
++        .isEqualTo(workOrderCategories.findByCode("01").orElseThrow().getId());
++    // createSystem audits itself (SYSTEM actor) — not double-audited here.
++    var findingAudit = auditLogs.findByEntityIdOrderByCreatedAtAsc(
++        java.util.UUID.nameUUIDFromBytes(completed.findingWoId().getBytes(
++            java.nio.charset.StandardCharsets.UTF_8)));
++    assertThat(findingAudit).anySatisfy(entry -> {
++      assertThat(entry.getEntityType()).isEqualTo(AuditEntityType.WORK_ORDER);
++      assertThat(entry.getAction()).isEqualTo(AuditAction.CREATE);
++      assertThat(entry.getActorName()).isEqualTo("SYSTEM");
++    });
++
++    // Every CRITICAL NG item carries the blocking link; the non-critical NG does not.
++    var items = executionItemRows.findByExecutionIdOrderBySequenceAsc(execution.id());
++    var critical = items.stream()
++        .filter(i -> i.getChecklistItemId().equals(fx.criticalMeasurementItemId())).findFirst()
++        .orElseThrow();
++    var nonCriticalNg = items.stream()
++        .filter(i -> i.getChecklistItemId().equals(fx.okNgItemId())).findFirst().orElseThrow();
++    var clean = items.stream()
++        .filter(i -> i.getChecklistItemId().equals(fx.measurementItemId())).findFirst()
++        .orElseThrow();
++    assertThat(critical.getBlockingWoId()).isEqualTo(completed.findingWoId());
++    assertThat(nonCriticalNg.getBlockingWoId()).isNull();
++    assertThat(clean.getBlockingWoId()).isNull();
++
++    // Execution audit UPDATE with previous + new values (order-independent: the
++    // CREATE and UPDATE can share a millisecond timestamp).
++    var audit = auditLogs.findByEntityIdOrderByCreatedAtAsc(execution.id());
++    assertThat(audit).hasSize(2);
++    assertThat(audit).filteredOn(e -> e.getAction() == AuditAction.UPDATE).singleElement()
++        .satisfies(entry -> {
++          assertThat(entry.getEntityType()).isEqualTo(AuditEntityType.PM_EXECUTION);
++          assertThat(entry.getPlantId()).isEqualTo(fx.plant().getId());
++          assertThat(entry.getPreviousValue()).contains("\"ngCount\":0");
++          assertThat(entry.getNewValue()).contains("\"ngCount\":2")
++              .contains(completed.findingWoId());
++        });
++  }
++
++  @Test
++  @DisplayName("19.5-INT-007 P0 clean complete: WO COMPLETED, has_ng_items false, no finding WO, date EXECUTED")
++  void completeClean() {
++    var fx = fixture();
++    var execution = executions.start(fx.tech(), fx.workOrder().id());
++    executions.fill(fx.tech(), execution.id(), fx.measurementItemId(),
++        measurement(new BigDecimal("5")));
++    executions.fill(fx.tech(), execution.id(), fx.criticalMeasurementItemId(),
++        measurement(new BigDecimal("41")));
++    executions.fill(fx.tech(), execution.id(), fx.okNgItemId(), ok());
++
++    var completed = executions.complete(fx.tech(), execution.id());
++
++    assertThat(completed.hasNgItems()).isFalse();
++    assertThat(completed.ngCount()).isZero();
++    assertThat(completed.findingWoId()).isNull();
++    assertThat(workOrders.get(fx.leader(), fx.workOrder().id()).status())
++        .isEqualTo(PmWorkOrderStatus.COMPLETED);
++    assertThat(scheduleDateRows.findById(fx.scheduleDateId()).orElseThrow().getStatus())
++        .isEqualTo(PmScheduleDateStatus.EXECUTED);
++  }
++
++  @Test
++  @DisplayName("19.5-INT-008 P0 complete guards: zero filled items 409, double complete 409, wrong technician 403")
++  void completeGuards() {
++    var fx = fixture();
++    var execution = executions.start(fx.tech(), fx.workOrder().id());
++
++    assertThatThrownBy(() -> executions.complete(fx.tech(), execution.id()))
++        .isInstanceOf(InvalidExecutionTransitionException.class);
++
++    var otherId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(otherId, "ex-tech4-" + UUID.randomUUID() + "@test",
++        "hash", ApplicationRole.TECHNICIAN, true, Instant.now(), Instant.now()));
++    var otherTech = new AuthenticatedUser(otherId.toString(), "ex-tech4@test",
++        ApplicationRole.TECHNICIAN);
++    executions.fill(fx.tech(), execution.id(), fx.measurementItemId(),
++        measurement(new BigDecimal("5")));
++    assertThatThrownBy(() -> executions.complete(otherTech, execution.id()))
++        .isInstanceOf(PmExecutionForbiddenException.class);
++
++    executions.complete(fx.tech(), execution.id());
++    assertThatThrownBy(() -> executions.complete(fx.tech(), execution.id()))
++        .isInstanceOf(InvalidExecutionTransitionException.class);
++  }
++
++  @Test
++  @DisplayName("19.5-INT-009 P0 workorder with no matching schedule period: schedule_date_id null, EXECUTED step skipped, complete still succeeds")
++  void completeWithoutSchedulePeriod() {
++    var fx = fixture();
++    // A manually created IN_PROGRESS workorder whose scheduled_date is not a planned
++    // date of the schedule (the 20th is not the 15th anchor).
++    var now = Instant.now();
++    var manual = workOrderRows.saveAndFlush(new PmWorkOrderEntity(UUID.randomUUID(),
++        fx.machine().getId(), fx.checksheetId(), null, "MONTHLY", "Monthly", 1,
++        PmWorkOrderStatus.IN_PROGRESS, fx.technicianId(), LocalDate.of(2027, 1, 20),
++        now, null, null, now, now));
++
++    var execution = executions.start(fx.tech(), manual.getId());
++    assertThat(execution.scheduleDateId()).isNull();
++
++    executions.fill(fx.tech(), execution.id(), fx.measurementItemId(),
++        measurement(new BigDecimal("5")));
++    var completed = executions.complete(fx.tech(), execution.id());
++    assertThat(completed.completedAt()).isNotNull();
++    assertThat(completed.scheduleDateId()).isNull();
++    // The real 2027-01-15 date is untouched.
++    assertThat(scheduleDateRows.findById(fx.scheduleDateId()).orElseThrow().getStatus())
++        .isEqualTo(PmScheduleDateStatus.SCHEDULED);
++  }
++
++  // -------------------------------------------------------------------------
++  // AC4: verify
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.5-INT-010 P0 leader verifies a completed execution: spv stamps + audit UPDATE; double verify 409; non-completed 409; non-leader 403")
++  void verifyLifecycle() {
++    var fx = fixture();
++    var execution = executions.start(fx.tech(), fx.workOrder().id());
++    var signatureId = UUID.randomUUID();
++
++    // Not completed yet → 409.
++    assertThatThrownBy(() -> executions.verify(fx.leader(), execution.id(), signatureId))
++        .isInstanceOf(InvalidExecutionTransitionException.class);
++
++    executions.fill(fx.tech(), execution.id(), fx.measurementItemId(),
++        measurement(new BigDecimal("5")));
++    executions.complete(fx.tech(), execution.id());
++
++    var verified = executions.verify(fx.leader(), execution.id(), signatureId);
++    assertThat(verified.spvVerifierId()).isNotNull();
++    assertThat(verified.spvSignedAt()).isNotNull();
++    assertThat(verified.spvSignatureId()).isEqualTo(signatureId);
++
++    var audit = auditLogs.findByEntityIdOrderByCreatedAtAsc(execution.id());
++    assertThat(audit).anySatisfy(entry -> {
++      assertThat(entry.getAction()).isEqualTo(AuditAction.UPDATE);
++      assertThat(entry.getNewValue()).contains("\"spvVerifierId\"");
++    });
++
++    // Double verify → 409.
++    assertThatThrownBy(() -> executions.verify(fx.manager(), execution.id(), null))
++        .isInstanceOf(InvalidExecutionTransitionException.class);
++
++    // Non-leader roles cannot verify (fresh execution to keep the state clean).
++    var fx2 = fixture();
++    var execution2 = executions.start(fx2.tech(), fx2.workOrder().id());
++    executions.fill(fx2.tech(), execution2.id(), fx2.measurementItemId(),
++        measurement(new BigDecimal("5")));
++    executions.complete(fx2.tech(), execution2.id());
++    assertThatThrownBy(() -> executions.verify(fx2.tech(), execution2.id(), null))
++        .isInstanceOf(PmExecutionForbiddenException.class);
++    assertThatThrownBy(() -> executions.verify(fx2.staff(), execution2.id(), null))
++        .isInstanceOf(PmExecutionForbiddenException.class);
++
++    // Out-of-scope leader → 403; SUPER_ADMIN bypass works.
++    var otherPlant = plants.saveAndFlush(new PlantEntity(UUID.randomUUID(),
++        "Y-EX-" + UUID.randomUUID().toString().substring(0, 8), "Other Exec", Instant.now(),
++        Instant.now()));
++    var otherGroup = machineGroups.saveAndFlush(new MachineGroupEntity(
++        UUID.randomUUID(), otherPlant, "Other Exec Group", Instant.now(), Instant.now()));
++    var otherMachine = machines.saveAndFlush(new MachineEntity(UUID.randomUUID(), otherPlant,
++        otherGroup, "MC-EXO-" + UUID.randomUUID().toString().substring(0, 8), "Other Exec M",
++        MachineStatus.ACTIVE, null, null, null, null, Instant.now(), Instant.now()));
++    var otherId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(otherId, "ex-other-" + UUID.randomUUID() + "@test",
++        "hash", ApplicationRole.SECTION_LEADER, true, Instant.now(), Instant.now()));
++    responsibilities.saveAndFlush(new MachineResponsibilityEntity(UUID.randomUUID(),
++        otherMachine.getId(), otherId, ResponsibilityLevel.LEADER, Instant.now(),
++        Instant.now()));
++    var otherLeader = new AuthenticatedUser(otherId.toString(), "ex-other@test",
++        ApplicationRole.SECTION_LEADER);
++    assertThatThrownBy(() -> executions.verify(otherLeader, execution2.id(), null))
++        .isInstanceOf(PmExecutionForbiddenException.class);
++
++    var adminId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(adminId, "ex-vadmin-" + UUID.randomUUID() + "@test",
++        "hash", ApplicationRole.SUPER_ADMIN, true, Instant.now(), Instant.now()));
++    var admin = new AuthenticatedUser(adminId.toString(), "ex-vadmin@test",
++        ApplicationRole.SUPER_ADMIN);
++    var adminVerified = executions.verify(admin, execution2.id(), null);
++    assertThat(adminVerified.spvVerifierId()).isEqualTo(adminId);
++    assertThat(adminVerified.spvSignatureId()).isNull();
++  }
++
++  // -------------------------------------------------------------------------
++  // Reads
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.5-INT-011 P0 get returns execution + items; technician and in-scope leader read; out-of-scope leader 403; unknown 404; list filters")
++  void readsAreScopeFiltered() {
++    var fx = fixture();
++    var execution = executions.start(fx.tech(), fx.workOrder().id());
++    executions.fill(fx.tech(), execution.id(), fx.measurementItemId(),
++        measurement(new BigDecimal("5")));
++
++    var byTech = executions.get(fx.tech(), execution.id());
++    assertThat(byTech.items()).hasSize(1);
++    assertThat(byTech.items().getFirst().parameterText()).isEqualTo("Oil pressure");
++    assertThat(executions.get(fx.leader(), execution.id()).id()).isEqualTo(execution.id());
++    assertThat(executions.get(fx.manager(), execution.id()).id()).isEqualTo(execution.id());
++
++    assertThatThrownBy(() -> executions.get(fx.tech(), UUID.randomUUID()))
++        .isInstanceOf(PmExecutionNotFoundException.class);
++
++    // Out-of-scope leader: 403 on get, invisible on list.
++    var otherPlant = plants.saveAndFlush(new PlantEntity(UUID.randomUUID(),
++        "Z-EX-" + UUID.randomUUID().toString().substring(0, 8), "Other2", Instant.now(),
++        Instant.now()));
++    var otherGroup = machineGroups.saveAndFlush(new MachineGroupEntity(
++        UUID.randomUUID(), otherPlant, "Other2 Group", Instant.now(), Instant.now()));
++    var otherMachine = machines.saveAndFlush(new MachineEntity(UUID.randomUUID(), otherPlant,
++        otherGroup, "MC-EXZ-" + UUID.randomUUID().toString().substring(0, 8), "Other2 M",
++        MachineStatus.ACTIVE, null, null, null, null, Instant.now(), Instant.now()));
++    var otherId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(otherId, "ex-z-" + UUID.randomUUID() + "@test",
++        "hash", ApplicationRole.SECTION_LEADER, true, Instant.now(), Instant.now()));
++    responsibilities.saveAndFlush(new MachineResponsibilityEntity(UUID.randomUUID(),
++        otherMachine.getId(), otherId, ResponsibilityLevel.LEADER, Instant.now(), Instant.now()));
++    var otherLeader = new AuthenticatedUser(otherId.toString(), "ex-z@test",
++        ApplicationRole.SECTION_LEADER);
++    assertThatThrownBy(() -> executions.get(otherLeader, execution.id()))
++        .isInstanceOf(PmExecutionForbiddenException.class);
++    assertThat(executions.list(otherLeader, null, null))
++        .extracting(ExecutionView::id).doesNotContain(execution.id());
++
++    // List filters.
++    assertThat(executions.list(fx.tech(), fx.workOrder().id(), null))
++        .extracting(ExecutionView::id).containsExactly(execution.id());
++    assertThat(executions.list(fx.tech(), null, fx.technicianId()))
++        .extracting(ExecutionView::id).contains(execution.id());
++    assertThat(executions.list(fx.tech(), null, UUID.randomUUID())).isEmpty();
++  }
++
++  @Test
++  @DisplayName("19.5-INT-012 P0 blocked flag + blockingWoCode are stored on fill (technician-declared block)")
++  void fillStoresBlockedFields() {
++    var fx = fixture();
++    var execution = executions.start(fx.tech(), fx.workOrder().id());
++    var item = executions.fill(fx.tech(), execution.id(), fx.okNgItemId(),
++        new FillExecutionCommand(null, null, true, "Cannot reach sensor", null, true,
++            "WO-2609-00042"));
++    assertThat(item.isBlocked()).isTrue();
++    assertThat(item.blockedWoCode()).isEqualTo("WO-2609-00042");
++  }
++}
+diff --git a/syncro/authz/policy/authz.rego b/syncro/authz/policy/authz.rego
+index bf18a5b..17dee33 100644
+--- a/syncro/authz/policy/authz.rego
++++ b/syncro/authz/policy/authz.rego
+@@ -405,6 +405,26 @@ pm_work_order_paths := {
+   "/api/v1/pm-work-orders/*/complete",
+ }
+ 
++# PM executions & execution items (story 19-5, blueprint F7/F8): start/fill/complete
++# are assignee-scoped in service (the execution's technician — TECHNICIAN is the
++# realistic executor); verify is leader-gated (SECTION_LEADER, MAINTENANCE_LEADER,
++# MANAGER_MAINTENANCE). The coarse rego set is the union of both gates: the three
++# leader roles + TECHNICIAN (SUPER_ADMIN via the generic bypass). STAFF_MAINTENANCE
++# and the other roles stay default-deny — parity with PmExecutionService
++# requireAssignee/requireExecutionTechnician/requireLeaderMutationAccess (rego cannot
++# see the body, the assignment or the execution state). A single `*` matches exactly
++# one path segment, so each depth is enumerated explicitly: collection (list), /{id}
++# (get), /start, /{id}/items/{itemId}/fill, /{id}/complete, /{id}/verify. Reads (GET)
++# flow through generic read_allowed. Machine scope is service-side.
++pm_execution_paths := {
++  "/api/v1/pm-executions",
++  "/api/v1/pm-executions/*",
++  "/api/v1/pm-executions/start",
++  "/api/v1/pm-executions/*/items/*/fill",
++  "/api/v1/pm-executions/*/complete",
++  "/api/v1/pm-executions/*/verify",
++}
++
+ # Org-maintenance departments (spec-org-maintenance-model): mutations are the
+ # Phase 1 gate (SUPER_ADMIN|MANAGER_MAINTENANCE). Reads flow through generic
+ # read_allowed. Members replace + section leader assignment + user-master updates
+@@ -1211,6 +1231,34 @@ mutation_allowed if {
+   path_matches(pm_work_order_paths)
+ }
+ 
++# PM executions (story 19-5): four-role coarse allow set — the three leader roles
++# (verify, narrowed by scope in service) plus TECHNICIAN (the assignee-scoped
++# start/fill/complete executor). STAFF_MAINTENANCE and the other roles stay
++# default-deny; the service gate is authoritative for scope and technician.
++mutation_allowed if {
++  input.subject.roles[_] == "MANAGER_MAINTENANCE"
++  is_mutation
++  path_matches(pm_execution_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "SECTION_LEADER"
++  is_mutation
++  path_matches(pm_execution_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "MAINTENANCE_LEADER"
++  is_mutation
++  path_matches(pm_execution_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "TECHNICIAN"
++  is_mutation
++  path_matches(pm_execution_paths)
++}
++
+ mutation_allowed if {
+   input.subject.roles[_] == "MANAGER_MAINTENANCE"
+   is_mutation
+diff --git a/syncro/authz/policy/authz_test.rego b/syncro/authz/policy/authz_test.rego
+index 6ff8b74..d4e9072 100644
+--- a/syncro/authz/policy/authz_test.rego
++++ b/syncro/authz/policy/authz_test.rego
+@@ -1759,6 +1759,75 @@ test_anonymous_pm_work_order_denied if {
+   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/pm-work-orders/generate"}
+ }
+ 
++# -- PM executions (story 19-5, blueprint F7/F8): four-role coarse allow set (the
++#    three leader roles + TECHNICIAN as the assignee-scoped executor) on the
++#    collection, /{id}, /start, /{id}/items/{itemId}/fill, /{id}/complete and
++#    /{id}/verify; STAFF_MAINTENANCE/AUDITOR/anonymous denied; reads any-authenticated --
++
++test_technician_pm_execution_start_allowed if {
++  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-executions/start"}
++}
++
++test_technician_pm_execution_fill_allowed if {
++  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/items/8c8d9e0f-1111-2222-3333-444455556666/fill"}
++}
++
++test_technician_pm_execution_complete_allowed if {
++  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/complete"}
++}
++
++test_section_leader_pm_execution_verify_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/verify"}
++}
++
++test_manager_pm_execution_verify_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/verify"}
++}
++
++test_maintenance_leader_pm_execution_start_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/pm-executions/start"}
++}
++
++test_super_admin_pm_execution_start_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/pm-executions/start"}
++}
++
++test_super_admin_pm_execution_verify_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/verify"}
++}
++
++test_staff_pm_execution_start_denied if {
++  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/pm-executions/start"}
++}
++
++test_staff_pm_execution_fill_denied if {
++  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/items/8c8d9e0f-1111-2222-3333-444455556666/fill"}
++}
++
++test_auditor_pm_execution_complete_denied if {
++  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/complete"}
++}
++
++test_auditor_pm_execution_verify_denied if {
++  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/verify"}
++}
++
++test_storekeeper_pm_execution_start_denied if {
++  not authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u8"}, "action": "POST /api/v1/pm-executions/start"}
++}
++
++test_auditor_pm_execution_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-executions"}
++}
++
++test_auditor_pm_execution_get_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_anonymous_pm_execution_denied if {
++  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/pm-executions/start"}
++}
++
+ # -- Anonymous (no userId): default deny everywhere ------------------------
+ 
+ test_anonymous_admin_only_denied if {

@@ -1,0 +1,2014 @@
+diff --git a/syncro/.env.example b/syncro/.env.example
+index 5b529c4..24f22ed 100644
+--- a/syncro/.env.example
++++ b/syncro/.env.example
+@@ -75,9 +75,9 @@ NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+ 
+ # Authz coarse gate (9.5 rolls out enforcement on the org/maintenance/sync surface;
+ # 18-x adds the inventory surface; 19-1 adds the PM frequencies/checksheets surface; 19-2 adds the PM checklist surface;
+-# 19-3 adds the PM schedules/schedule-dates surface;
++# 19-3 adds the PM schedules/schedule-dates surface; 19-4 adds the PM work-orders surface;
+ # health/actuator stay public and are deliberately excluded)
+-SYNCRO_AUTHZ_ENFORCED_PATHS=/api/v1/plants/**,/api/v1/machine-groups/**,/api/v1/sections/**,/api/v1/teams/**,/api/v1/machine-responsibilities/**,/api/v1/machines/**,/api/v1/machine-sparepart-installations/**,/api/v1/spareparts/**,/api/v1/sparepart-taxonomies/**,/api/v1/alerts/**,/api/v1/audit-log/**,/api/v1/setup-completeness/**,/api/v1/telemetry/**,/api/v1/notification/templates/**,/api/v1/notification/worker/**,/api/v1/work-order-categories/**,/api/v1/workorders/**,/api/v1/workorders/*/transition,/api/v1/workorders/*/sessions,/api/v1/workorders/*/sessions/stop,/api/v1/workorders/*/attachments,/api/v1/workorders/*/attachments/*,/api/v1/workorders/*/report,/api/v1/workorders/*/report/cpk,/api/v1/workorders/*/todos,/api/v1/workorders/*/todos/*,/api/v1/workorders/*/todos/*/assign,/api/v1/workorders/*/todos/*/complete,/api/v1/workorders/*/todos/*/reorder,/api/v1/workorders/*/ratings,/api/v1/workorders/*/ratings/technician,/api/v1/workorders/*/ratings/workorder,/api/v1/rating-dimensions,/api/v1/rating-dimensions/*,/api/v1/preventive-programs,/api/v1/preventive-programs/*,/api/v1/preventive-programs/*/generate,/api/v1/preventive-schedules,/api/v1/preventive-schedules/*/checklist,/api/v1/preventive-schedules/*/evidence,/api/v1/preventive-schedules/*/evidence/*,/api/v1/preventive-schedules/*/approve,/api/v1/preventive-schedules/*/skip,/api/v1/sparepart-requests,/api/v1/sparepart-requests/*/transition,/api/v1/sparepart-requests/*/mre,/api/v1/sparepart-requests/*/approve,/api/v1/sparepart-requests/*/complete,/api/v1/sparepart-stock,/api/v1/sparepart-stock/*,/api/v1/sparepart-stock/*/adjust,/api/v1/departments,/api/v1/departments/*,/api/v1/departments/*/members,/api/v1/sections/*/leader,/api/v1/auth/users/*,/api/v1/sync/**,/api/v1/inventory-locations/**,/api/v1/inventory-locations/*/stock-balances,/api/v1/inventory-locations/*/stock-balances/*,/api/v1/inventory-locations/*/stock-balances/*/adjust,/api/v1/inventory-transfers,/api/v1/inventory-transfers/*,/api/v1/inventory-transfers/*/approve,/api/v1/inventory-transfers/*/reject,/api/v1/pm-frequencies/**,/api/v1/pm-checksheets/**,/api/v1/pm-checklist-categories/**,/api/v1/pm-checklist-items/**,/api/v1/pm-schedules/**,/api/v1/pm-schedules/*/submit,/api/v1/pm-schedules/*/approve-spv,/api/v1/pm-schedules/*/approve-prod,/api/v1/pm-schedules/*/activate,/api/v1/pm-schedules/*/dates/*/transition
++SYNCRO_AUTHZ_ENFORCED_PATHS=/api/v1/plants/**,/api/v1/machine-groups/**,/api/v1/sections/**,/api/v1/teams/**,/api/v1/machine-responsibilities/**,/api/v1/machines/**,/api/v1/machine-sparepart-installations/**,/api/v1/spareparts/**,/api/v1/sparepart-taxonomies/**,/api/v1/alerts/**,/api/v1/audit-log/**,/api/v1/setup-completeness/**,/api/v1/telemetry/**,/api/v1/notification/templates/**,/api/v1/notification/worker/**,/api/v1/work-order-categories/**,/api/v1/workorders/**,/api/v1/workorders/*/transition,/api/v1/workorders/*/sessions,/api/v1/workorders/*/sessions/stop,/api/v1/workorders/*/attachments,/api/v1/workorders/*/attachments/*,/api/v1/workorders/*/report,/api/v1/workorders/*/report/cpk,/api/v1/workorders/*/todos,/api/v1/workorders/*/todos/*,/api/v1/workorders/*/todos/*/assign,/api/v1/workorders/*/todos/*/complete,/api/v1/workorders/*/todos/*/reorder,/api/v1/workorders/*/ratings,/api/v1/workorders/*/ratings/technician,/api/v1/workorders/*/ratings/workorder,/api/v1/rating-dimensions,/api/v1/rating-dimensions/*,/api/v1/preventive-programs,/api/v1/preventive-programs/*,/api/v1/preventive-programs/*/generate,/api/v1/preventive-schedules,/api/v1/preventive-schedules/*/checklist,/api/v1/preventive-schedules/*/evidence,/api/v1/preventive-schedules/*/evidence/*,/api/v1/preventive-schedules/*/approve,/api/v1/preventive-schedules/*/skip,/api/v1/sparepart-requests,/api/v1/sparepart-requests/*/transition,/api/v1/sparepart-requests/*/mre,/api/v1/sparepart-requests/*/approve,/api/v1/sparepart-requests/*/complete,/api/v1/sparepart-stock,/api/v1/sparepart-stock/*,/api/v1/sparepart-stock/*/adjust,/api/v1/departments,/api/v1/departments/*,/api/v1/departments/*/members,/api/v1/sections/*/leader,/api/v1/auth/users/*,/api/v1/sync/**,/api/v1/inventory-locations/**,/api/v1/inventory-locations/*/stock-balances,/api/v1/inventory-locations/*/stock-balances/*,/api/v1/inventory-locations/*/stock-balances/*/adjust,/api/v1/inventory-transfers,/api/v1/inventory-transfers/*,/api/v1/inventory-transfers/*/approve,/api/v1/inventory-transfers/*/reject,/api/v1/pm-frequencies/**,/api/v1/pm-checksheets/**,/api/v1/pm-checklist-categories/**,/api/v1/pm-checklist-items/**,/api/v1/pm-schedules/**,/api/v1/pm-schedules/*/submit,/api/v1/pm-schedules/*/approve-spv,/api/v1/pm-schedules/*/approve-prod,/api/v1/pm-schedules/*/activate,/api/v1/pm-schedules/*/dates/*/transition,/api/v1/pm-work-orders,/api/v1/pm-work-orders/*,/api/v1/pm-work-orders/generate,/api/v1/pm-work-orders/sweep-overdue,/api/v1/pm-work-orders/*/assign,/api/v1/pm-work-orders/*/start,/api/v1/pm-work-orders/*/complete
+ SYNCRO_AUTHZ_DEGRADED_ALLOWLIST=/api/v1/health,/actuator/**
+ 
+ # Authz decision-log retention (days) for the authz_decisions purge job
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java b/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
+index 50b1f57..0652e6f 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
+@@ -62,5 +62,6 @@ public enum AuditEntityType {
+   PM_CHECKLIST_CATEGORY,
+   PM_CHECKLIST_ITEM,
+   PM_SCHEDULE,
+-  PM_SCHEDULE_DATE
++  PM_SCHEDULE_DATE,
++  PM_WORK_ORDER
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmWorkOrderController.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmWorkOrderController.java
+new file mode 100644
+index 0000000..6da2179
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmWorkOrderController.java
+@@ -0,0 +1,151 @@
++package com.syncro.maintenance.preventive.api;
++
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.AssignWorkOrderRequest;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.CompleteWorkOrderRequest;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.GenerateWorkOrdersRequest;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.SweepOverdueView;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.WorkOrderView;
++import com.syncro.maintenance.preventive.application.PmWorkOrderService;
++import com.syncro.maintenance.preventive.domain.PmWorkOrderStatus;
++import io.swagger.v3.oas.annotations.Operation;
++import io.swagger.v3.oas.annotations.media.Content;
++import io.swagger.v3.oas.annotations.media.Schema;
++import io.swagger.v3.oas.annotations.responses.ApiResponse;
++import io.swagger.v3.oas.annotations.responses.ApiResponses;
++import io.swagger.v3.oas.annotations.tags.Tag;
++import jakarta.validation.Valid;
++import java.util.List;
++import java.util.UUID;
++import org.springframework.security.core.annotation.AuthenticationPrincipal;
++import org.springframework.validation.annotation.Validated;
++import org.springframework.web.bind.annotation.GetMapping;
++import org.springframework.web.bind.annotation.PathVariable;
++import org.springframework.web.bind.annotation.PostMapping;
++import org.springframework.web.bind.annotation.RequestBody;
++import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RequestParam;
++import org.springframework.web.bind.annotation.RestController;
++
++/** PM work order API (story 19-4, blueprint F6). */
++@Tag(name = "pm-work-orders")
++@Validated
++@RestController
++@RequestMapping("/api/v1/pm-work-orders")
++public class PmWorkOrderController {
++
++  private final PmWorkOrderService workOrders;
++
++  public PmWorkOrderController(PmWorkOrderService workOrders) {
++    this.workOrders = workOrders;
++  }
++
++  @Operation(operationId = "generatePmWorkOrders", summary = "Generate workorders from an ACTIVE schedule's dates (idempotent per period)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Created workorders (empty when all periods already exist)",
++          content = @Content(schema = @Schema(implementation = WorkOrderView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Schedule or machine not found"),
++      @ApiResponse(responseCode = "409", description = "Schedule not ACTIVE or period workorder already exists")
++  })
++  @PostMapping("/generate")
++  public List<WorkOrderView> generate(@AuthenticationPrincipal AuthenticatedUser user,
++      @Valid @RequestBody GenerateWorkOrdersRequest request) {
++    return workOrders.generate(user, request.scheduleId()).stream()
++        .map(PmWorkOrderController::toView).toList();
++  }
++
++  @Operation(operationId = "assignPmWorkOrder", summary = "Assign a SCHEDULED workorder to a technician (→ ASSIGNED)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Workorder assigned",
++          content = @Content(schema = @Schema(implementation = WorkOrderView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Workorder, machine or technician not found"),
++      @ApiResponse(responseCode = "409", description = "Invalid transition")
++  })
++  @PostMapping("/{id}/assign")
++  public WorkOrderView assign(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id, @Valid @RequestBody AssignWorkOrderRequest request) {
++    return toView(workOrders.assign(user, id, request.technicianId()));
++  }
++
++  @Operation(operationId = "startPmWorkOrder", summary = "Start an ASSIGNED workorder by its assignee (→ IN_PROGRESS)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Workorder started",
++          content = @Content(schema = @Schema(implementation = WorkOrderView.class))),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden (not the assignee)"),
++      @ApiResponse(responseCode = "404", description = "Workorder not found"),
++      @ApiResponse(responseCode = "409", description = "Invalid transition")
++  })
++  @PostMapping("/{id}/start")
++  public WorkOrderView start(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id) {
++    return toView(workOrders.start(user, id));
++  }
++
++  @Operation(operationId = "completePmWorkOrder", summary = "Complete an IN_PROGRESS workorder by its assignee (→ COMPLETED)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Workorder completed",
++          content = @Content(schema = @Schema(implementation = WorkOrderView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden (not the assignee)"),
++      @ApiResponse(responseCode = "404", description = "Workorder not found"),
++      @ApiResponse(responseCode = "409", description = "Invalid transition")
++  })
++  @PostMapping("/{id}/complete")
++  public WorkOrderView complete(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id, @Valid @RequestBody(required = false) CompleteWorkOrderRequest request) {
++    return toView(workOrders.complete(user, id, request != null ? request.certificateUrl() : null));
++  }
++
++  @Operation(operationId = "sweepOverduePmWorkOrders", summary = "Mark past-due non-terminal workorders OVERDUE (Clock-based, endpoint-triggered)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Sweep count returned"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden")
++  })
++  @PostMapping("/sweep-overdue")
++  public SweepOverdueView sweepOverdue(@AuthenticationPrincipal AuthenticatedUser user) {
++    return new SweepOverdueView(workOrders.sweepOverdue(user));
++  }
++
++  @Operation(operationId = "listPmWorkOrders", summary = "List workorders (filter by status, machineId)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Workorders returned"),
++      @ApiResponse(responseCode = "401", description = "Authentication required")
++  })
++  @GetMapping
++  public List<WorkOrderView> list(@AuthenticationPrincipal AuthenticatedUser user,
++      @RequestParam(required = false) PmWorkOrderStatus status,
++      @RequestParam(required = false) UUID machineId) {
++    return workOrders.list(user, status, machineId).stream()
++        .map(PmWorkOrderController::toView).toList();
++  }
++
++  @Operation(operationId = "getPmWorkOrder", summary = "Get a workorder")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Workorder returned",
++          content = @Content(schema = @Schema(implementation = WorkOrderView.class))),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Workorder not found")
++  })
++  @GetMapping("/{id}")
++  public WorkOrderView get(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID id) {
++    return toView(workOrders.get(user, id));
++  }
++
++  private static WorkOrderView toView(
++      com.syncro.maintenance.preventive.application.PmWorkOrderService.WorkOrderView v) {
++    return new WorkOrderView(v.id(), v.machineId(), v.templateId(), v.frequencyId(),
++        v.frequencyCode(), v.frequencyName(), v.templateRevision(), v.status(),
++        v.assignedTechnicianId(), v.scheduledDate(), v.startedAt(), v.completedAt(),
++        v.certificateUrl(), v.createdAt(), v.updatedAt());
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java
+index c0c324b..32d2017 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java
+@@ -3,6 +3,7 @@ package com.syncro.maintenance.preventive.api;
+ import com.syncro.maintenance.preventive.domain.PmItemInputType;
+ import com.syncro.maintenance.preventive.domain.PmScheduleDateStatus;
+ import com.syncro.maintenance.preventive.domain.PmScheduleStatus;
++import com.syncro.maintenance.preventive.domain.PmWorkOrderStatus;
+ import com.syncro.maintenance.preventive.domain.PreventiveCategory;
+ import com.syncro.maintenance.preventive.domain.ScheduleType;
+ import jakarta.validation.constraints.Max;
+@@ -234,4 +235,30 @@ public final class PreventiveDtos {
+   public record ScheduleDateView(UUID id, UUID scheduleId, LocalDate plannedDate,
+       PmScheduleDateStatus status, Instant createdAt, Instant updatedAt) {
+   }
++
++  // -------------------------------------------------------------------------
++  // PM work orders (story 19-4)
++  // -------------------------------------------------------------------------
++
++  public record GenerateWorkOrdersRequest(
++      @NotNull UUID scheduleId) {
++  }
++
++  public record AssignWorkOrderRequest(
++      @NotNull UUID technicianId) {
++  }
++
++  public record CompleteWorkOrderRequest(
++      @Size(max = 2000) String certificateUrl) {
++  }
++
++  public record WorkOrderView(UUID id, UUID machineId, UUID templateId, UUID frequencyId,
++      String frequencyCode, String frequencyName, Integer templateRevision,
++      PmWorkOrderStatus status, UUID assignedTechnicianId, LocalDate scheduledDate,
++      Instant startedAt, Instant completedAt, String certificateUrl, Instant createdAt,
++      Instant updatedAt) {
++  }
++
++  public record SweepOverdueView(int overdueCount) {
++  }
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveExceptionHandler.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveExceptionHandler.java
+index bf8ff44..191b61f 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveExceptionHandler.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveExceptionHandler.java
+@@ -53,7 +53,7 @@ import tools.jackson.databind.exc.InvalidFormatException;
+ @Order(Ordered.HIGHEST_PRECEDENCE)
+ @RestControllerAdvice(assignableTypes = {PreventiveProgramController.class, PreventiveScheduleController.class,
+     PmFrequencyController.class, PmChecksheetController.class, PmChecklistCategoryController.class,
+-    PmChecklistItemController.class, PmScheduleController.class})
++    PmChecklistItemController.class, PmScheduleController.class, PmWorkOrderController.class})
+ public class PreventiveExceptionHandler {
+ 
+   private final Clock clock;
+@@ -413,6 +413,57 @@ public class PreventiveExceptionHandler {
+     return error(HttpStatus.NOT_FOUND, "PLANT_NOT_FOUND", "Plant was not found.", Map.of());
+   }
+ 
++  // -------------------------------------------------------------------------
++  // Story 19-4: PM work orders
++  // -------------------------------------------------------------------------
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmWorkOrderService.PmWorkOrderForbiddenException.class)
++  ResponseEntity<ErrorResponse> pmWorkOrderForbidden() {
++    return error(HttpStatus.FORBIDDEN, "FORBIDDEN",
++        "You do not have permission to access this resource.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmWorkOrderService.PmWorkOrderNotFoundException.class)
++  ResponseEntity<ErrorResponse> pmWorkOrderNotFound() {
++    return error(HttpStatus.NOT_FOUND, "PM_WORK_ORDER_NOT_FOUND",
++        "PM work order was not found.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmWorkOrderService.PmScheduleNotFoundException.class)
++  ResponseEntity<ErrorResponse> pmWorkOrderScheduleNotFound() {
++    return error(HttpStatus.NOT_FOUND, "PM_SCHEDULE_NOT_FOUND",
++        "PM schedule was not found.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmWorkOrderService.MachineNotFoundException.class)
++  ResponseEntity<ErrorResponse> pmWorkOrderMachineNotFound() {
++    return error(HttpStatus.NOT_FOUND, "MACHINE_NOT_FOUND", "Machine was not found.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmWorkOrderService.TechnicianNotFoundException.class)
++  ResponseEntity<ErrorResponse> pmWorkOrderTechnicianNotFound() {
++    return error(HttpStatus.NOT_FOUND, "TECHNICIAN_NOT_FOUND",
++        "Technician was not found.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmWorkOrderService.WorkOrderPeriodExistsException.class)
++  ResponseEntity<ErrorResponse> workOrderPeriodExists() {
++    return error(HttpStatus.CONFLICT, "WORK_ORDER_PERIOD_EXISTS",
++        "A PM work order already exists for this machine, template and scheduled date.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmWorkOrderService.InvalidWorkOrderTransitionException.class)
++  ResponseEntity<ErrorResponse> invalidWorkOrderTransition() {
++    return error(HttpStatus.CONFLICT, "INVALID_WORK_ORDER_TRANSITION",
++        "The PM work order is not in the expected state for this action.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmWorkOrderService.InvalidScheduleStateException.class)
++  ResponseEntity<ErrorResponse> invalidScheduleState() {
++    return error(HttpStatus.CONFLICT, "INVALID_SCHEDULE_STATE",
++        "The PM schedule is not ACTIVE and cannot generate work orders.", Map.of());
++  }
++
+   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message,
+       Map<String, String> fieldErrors) {
+     return ResponseEntity.status(status)
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmWorkOrderService.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmWorkOrderService.java
+new file mode 100644
+index 0000000..e713a6a
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmWorkOrderService.java
+@@ -0,0 +1,451 @@
++package com.syncro.maintenance.preventive.application;
++
++import com.syncro.audit.application.AuditLogWriter;
++import com.syncro.audit.application.AuditRecord;
++import com.syncro.audit.domain.AuditAction;
++import com.syncro.audit.domain.AuditEntityType;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.AuthUserRepository;
++import com.syncro.maintenance.preventive.domain.PmScheduleStatus;
++import com.syncro.maintenance.preventive.domain.PmWorkOrderStatus;
++import com.syncro.maintenance.preventive.infrastructure.db.PmScheduleDateRepository;
++import com.syncro.maintenance.preventive.infrastructure.db.PmScheduleEntity;
++import com.syncro.maintenance.preventive.infrastructure.db.PmScheduleRepository;
++import com.syncro.maintenance.preventive.infrastructure.db.PmWorkOrderEntity;
++import com.syncro.maintenance.preventive.infrastructure.db.PmWorkOrderRepository;
++import com.syncro.machine.infrastructure.MachineEntity;
++import com.syncro.machine.infrastructure.MachineRepository;
++import com.syncro.org.application.OperationalScope;
++import com.syncro.org.application.OperationalScopeService;
++import java.time.Clock;
++import java.time.Instant;
++import java.time.LocalDate;
++import java.util.ArrayList;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++import org.springframework.dao.DataIntegrityViolationException;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++
++/**
++ * PM workorder service (story 19-4, blueprint F6). Turns an ACTIVE schedule's
++ * {@code pm_schedule_dates} into executable workorders (generate — idempotent per
++ * (machine, template, scheduled_date) period via a pre-check plus the V10 partial
++ * unique index as the race backstop) and drives the strictly sequential lifecycle
++ * SCHEDULED → ASSIGNED → IN_PROGRESS → COMPLETED, with a Clock-based overdue sweep
++ * moving any non-terminal workorder whose scheduled_date has passed to OVERDUE.
++ * The sweep is an endpoint, not a scheduler — the operator/cron calls it.
++ *
++ * <p>Gates: generate/assign/sweep-overdue require a leader role
++ * (SECTION_LEADER/MAINTENANCE_LEADER/MANAGER_MAINTENANCE, SUPER_ADMIN bypass) with
++ * the machine's plant/group scope; start/complete are assignee-scoped — only the
++ * workorder's {@code assigned_technician_id} (or SUPER_ADMIN) may execute their own
++ * work. Reads are scope-filtered like 19-1/19-2/19-3.
++ *
++ * <p>Concurrency: every mutation loads the workorder row through
++ * {@code findByIdForUpdate} with PESSIMISTIC_WRITE (19-3 pattern), serializing
++ * concurrent transitions so exactly one caller wins and the loser sees the
++ * committed state and throws.
++ */
++@Service
++public class PmWorkOrderService {
++
++  private static final String PERIOD_UNIQUE_INDEX = "uq_pm_work_orders_period";
++
++  /** Non-terminal statuses eligible for the overdue sweep. */
++  private static final List<PmWorkOrderStatus> SWEEPABLE_STATUSES =
++      List.of(PmWorkOrderStatus.SCHEDULED, PmWorkOrderStatus.ASSIGNED,
++          PmWorkOrderStatus.IN_PROGRESS);
++
++  private final PmWorkOrderRepository workOrders;
++  private final PmScheduleRepository schedules;
++  private final PmScheduleDateRepository scheduleDates;
++  private final MachineRepository machines;
++  private final AuthUserRepository users;
++  private final AuditLogWriter auditLog;
++  private final OperationalScopeService scopes;
++  private final Clock clock;
++
++  public PmWorkOrderService(PmWorkOrderRepository workOrders, PmScheduleRepository schedules,
++      PmScheduleDateRepository scheduleDates, MachineRepository machines,
++      AuthUserRepository users, AuditLogWriter auditLog, OperationalScopeService scopes,
++      Clock clock) {
++    this.workOrders = workOrders;
++    this.schedules = schedules;
++    this.scheduleDates = scheduleDates;
++    this.machines = machines;
++    this.users = users;
++    this.auditLog = auditLog;
++    this.scopes = scopes;
++    this.clock = clock;
++  }
++
++  // -------------------------------------------------------------------------
++  // Generate (ACTIVE schedule dates → SCHEDULED workorders, idempotent per period)
++  // -------------------------------------------------------------------------
++
++  @Transactional
++  public List<WorkOrderView> generate(AuthenticatedUser user, UUID scheduleId) {
++    var schedule = loadSchedule(scheduleId);
++    var machine = loadMachine(schedule.getMachineId());
++    requireLeaderMutationAccess(user, machine);
++    if (schedule.getStatus() != PmScheduleStatus.ACTIVE) {
++      throw new InvalidScheduleStateException();
++    }
++    var now = Instant.now(clock);
++    var created = new ArrayList<WorkOrderView>();
++    for (var date : scheduleDates.findByScheduleIdOrderByPlannedDateAsc(schedule.getId())) {
++      // Idempotency pre-check: one workorder per (machine, template, planned_date).
++      if (workOrders.existsByMachineIdAndTemplateIdAndScheduledDate(
++          schedule.getMachineId(), schedule.getChecksheetId(), date.getPlannedDate())) {
++        continue;
++      }
++      var entity = new PmWorkOrderEntity(
++          UUID.randomUUID(), schedule.getMachineId(), schedule.getChecksheetId(),
++          schedule.getFrequencyId(), schedule.getFrequencyCode(), schedule.getFrequencyName(),
++          schedule.getChecksheetRevisionNo(), PmWorkOrderStatus.SCHEDULED, null,
++          date.getPlannedDate(), null, null, null, now, now);
++      var saved = saveWorkOrder(entity);
++      auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.PM_WORK_ORDER,
++          saved.getId(), label(saved, machine), machine.getPlant().getId(), null,
++          workOrderValues(saved), null));
++      created.add(toView(saved));
++    }
++    return created;
++  }
++
++  // -------------------------------------------------------------------------
++  // Lifecycle: assign → start → complete (strictly sequential)
++  // -------------------------------------------------------------------------
++
++  @Transactional
++  public WorkOrderView assign(AuthenticatedUser user, UUID id, UUID technicianId) {
++    var entity = loadForUpdate(id);
++    var machine = loadMachine(entity.getMachineId());
++    requireLeaderMutationAccess(user, machine);
++    requireState(entity, PmWorkOrderStatus.SCHEDULED);
++    if (!users.existsById(technicianId)) {
++      throw new TechnicianNotFoundException();
++    }
++    var previous = workOrderValues(entity);
++    entity.assign(technicianId, Instant.now(clock));
++    var saved = workOrders.saveAndFlush(entity);
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PM_WORK_ORDER,
++        saved.getId(), label(saved, machine), machine.getPlant().getId(),
++        previous, workOrderValues(saved), null));
++    return toView(saved);
++  }
++
++  @Transactional
++  public WorkOrderView start(AuthenticatedUser user, UUID id) {
++    var entity = loadForUpdate(id);
++    var machine = loadMachine(entity.getMachineId());
++    requireAssignee(user, entity);
++    requireState(entity, PmWorkOrderStatus.ASSIGNED);
++    var previous = workOrderValues(entity);
++    var now = Instant.now(clock);
++    entity.start(now, now);
++    var saved = workOrders.saveAndFlush(entity);
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PM_WORK_ORDER,
++        saved.getId(), label(saved, machine), machine.getPlant().getId(),
++        previous, workOrderValues(saved), null));
++    return toView(saved);
++  }
++
++  @Transactional
++  public WorkOrderView complete(AuthenticatedUser user, UUID id, String certificateUrl) {
++    var entity = loadForUpdate(id);
++    var machine = loadMachine(entity.getMachineId());
++    requireAssignee(user, entity);
++    requireState(entity, PmWorkOrderStatus.IN_PROGRESS);
++    var previous = workOrderValues(entity);
++    var now = Instant.now(clock);
++    entity.complete(now, certificateUrl, now);
++    var saved = workOrders.saveAndFlush(entity);
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PM_WORK_ORDER,
++        saved.getId(), label(saved, machine), machine.getPlant().getId(),
++        previous, workOrderValues(saved), null));
++    return toView(saved);
++  }
++
++  // -------------------------------------------------------------------------
++  // Overdue sweep (endpoint-triggered, Clock-decided — no scheduler)
++  // -------------------------------------------------------------------------
++
++  @Transactional
++  public int sweepOverdue(AuthenticatedUser user) {
++    requireLeaderRole(user);
++    var cutoff = LocalDate.now(clock);
++    var candidates = workOrders.findByStatusInAndScheduledDateBefore(SWEEPABLE_STATUSES, cutoff);
++    var scope = user.applicationRole() == ApplicationRole.SUPER_ADMIN ? null : scopes.derive(user);
++    var swept = 0;
++    for (var candidate : candidates) {
++      // Lock + re-check per row so a concurrent complete/assign cannot be clobbered.
++      var entity = loadForUpdate(candidate.getId());
++      if (!SWEEPABLE_STATUSES.contains(entity.getStatus())
++          || !entity.getScheduledDate().isBefore(cutoff)) {
++        continue;
++      }
++      var machine = loadMachine(entity.getMachineId());
++      if (scope != null && !inScope(scope, machine)) {
++        continue;
++      }
++      var previous = workOrderValues(entity);
++      entity.markOverdue(Instant.now(clock));
++      var saved = workOrders.saveAndFlush(entity);
++      auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PM_WORK_ORDER,
++          saved.getId(), label(saved, machine), machine.getPlant().getId(),
++          previous, workOrderValues(saved), null));
++      swept++;
++    }
++    return swept;
++  }
++
++  // -------------------------------------------------------------------------
++  // List / Get (scope-filtered reads)
++  // -------------------------------------------------------------------------
++
++  @Transactional(readOnly = true)
++  public List<WorkOrderView> list(AuthenticatedUser user, PmWorkOrderStatus status,
++      UUID machineId) {
++    if (machineId != null) {
++      loadMachine(machineId);
++    }
++    var scope = scopes.derive(user);
++    var rows = workOrders.findAll().stream()
++        .filter(w -> status == null || w.getStatus() == status)
++        .filter(w -> machineId == null || w.getMachineId().equals(machineId))
++        .sorted(java.util.Comparator.comparing(PmWorkOrderEntity::getScheduledDate,
++                java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
++            .thenComparing(PmWorkOrderEntity::getId))
++        .toList();
++    if (scope.plantIds() == null) {
++      return rows.stream().map(PmWorkOrderService::toView).toList();
++    }
++    var result = new ArrayList<WorkOrderView>();
++    for (var workOrder : rows) {
++      var machine = machines.findByIdWithPlantAndGroup(workOrder.getMachineId());
++      if (machine.isPresent() && inScope(scope, machine.get())) {
++        result.add(toView(workOrder));
++      }
++    }
++    return result;
++  }
++
++  @Transactional(readOnly = true)
++  public WorkOrderView get(AuthenticatedUser user, UUID id) {
++    var entity = loadWorkOrder(id);
++    var machine = loadMachine(entity.getMachineId());
++    if (!canRead(user, machine)) {
++      throw new PmWorkOrderForbiddenException();
++    }
++    return toView(entity);
++  }
++
++  // -------------------------------------------------------------------------
++  // Validation helpers
++  // -------------------------------------------------------------------------
++
++  /** Strictly sequential lifecycle: any other from-state → 409. */
++  private static void requireState(PmWorkOrderEntity entity, PmWorkOrderStatus expected) {
++    if (entity.getStatus() != expected) {
++      throw new InvalidWorkOrderTransitionException();
++    }
++  }
++
++  // -------------------------------------------------------------------------
++  // Gates & scope
++  // -------------------------------------------------------------------------
++
++  /** Read gate: SUPER_ADMIN unrestricted; everyone else needs the machine in scope. */
++  private boolean canRead(AuthenticatedUser user, MachineEntity machine) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return true;
++    }
++    return inScope(scopes.derive(user), machine);
++  }
++
++  /**
++   * Gate: generate/assign by SECTION_LEADER/MAINTENANCE_LEADER/MANAGER_MAINTENANCE
++   * with machine plant/group scope; SUPER_ADMIN bypass. STAFF_MAINTENANCE and every
++   * other role are denied (19-3 requireLeaderRole parity + scope).
++   */
++  private void requireLeaderMutationAccess(AuthenticatedUser user, MachineEntity machine) {
++    requireLeaderRole(user);
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    var scope = scopes.derive(user);
++    switch (user.applicationRole()) {
++      case SECTION_LEADER -> {
++        if (!groupInScope(scope, machine)) {
++          throw new PmWorkOrderForbiddenException();
++        }
++      }
++      case MAINTENANCE_LEADER, MANAGER_MAINTENANCE -> {
++        if (!plantInScope(scope, machine) && !groupInScope(scope, machine)) {
++          throw new PmWorkOrderForbiddenException();
++        }
++      }
++      default -> throw new PmWorkOrderForbiddenException();
++    }
++  }
++
++  /** Role-only leader gate (sweep has no single machine to scope against). */
++  private void requireLeaderRole(AuthenticatedUser user) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    switch (user.applicationRole()) {
++      case SECTION_LEADER, MAINTENANCE_LEADER, MANAGER_MAINTENANCE -> {}
++      default -> throw new PmWorkOrderForbiddenException();
++    }
++  }
++
++  /** Execution gate: only the assigned technician (or SUPER_ADMIN) may start/complete. */
++  private void requireAssignee(AuthenticatedUser user, PmWorkOrderEntity entity) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    var assignee = entity.getAssignedTechnicianId();
++    if (assignee == null || !assignee.equals(UUID.fromString(user.id()))) {
++      throw new PmWorkOrderForbiddenException();
++    }
++  }
++
++  private boolean inScope(OperationalScope scope, MachineEntity machine) {
++    return plantInScope(scope, machine) || groupInScope(scope, machine);
++  }
++
++  private boolean plantInScope(OperationalScope scope, MachineEntity machine) {
++    return scope.plantIds() != null && scope.plantIds().contains(machine.getPlant().getId());
++  }
++
++  private boolean groupInScope(OperationalScope scope, MachineEntity machine) {
++    return scope.machineGroupIds().contains(machine.getMachineGroup().getId())
++        || scope.activeTeamIds().contains(machine.getMachineGroup().getId());
++  }
++
++  // -------------------------------------------------------------------------
++  // Loaders & saves
++  // -------------------------------------------------------------------------
++
++  private MachineEntity loadMachine(UUID machineId) {
++    return machines.findByIdWithPlantAndGroup(machineId)
++        .orElseThrow(MachineNotFoundException::new);
++  }
++
++  private PmScheduleEntity loadSchedule(UUID id) {
++    return schedules.findById(id).orElseThrow(PmScheduleNotFoundException::new);
++  }
++
++  /** Read-only load (GET). */
++  private PmWorkOrderEntity loadWorkOrder(UUID id) {
++    return workOrders.findById(id).orElseThrow(PmWorkOrderNotFoundException::new);
++  }
++
++  /**
++   * Mutation load with PESSIMISTIC_WRITE row lock (19-3 pattern). Serializes
++   * concurrent assign/start/complete/sweep so exactly one caller wins the state
++   * check.
++   */
++  private PmWorkOrderEntity loadForUpdate(UUID id) {
++    return workOrders.findByIdForUpdate(id).orElseThrow(PmWorkOrderNotFoundException::new);
++  }
++
++  /** Race backstop: uq_pm_work_orders_period → 409 WORK_ORDER_PERIOD_EXISTS. */
++  private PmWorkOrderEntity saveWorkOrder(PmWorkOrderEntity entity) {
++    try {
++      return workOrders.saveAndFlush(entity);
++    } catch (DataIntegrityViolationException exception) {
++      var message = String.valueOf(exception.getMostSpecificCause().getMessage()).toLowerCase();
++      if (message.contains(PERIOD_UNIQUE_INDEX)) {
++        throw new WorkOrderPeriodExistsException();
++      }
++      throw exception;
++    }
++  }
++
++  // -------------------------------------------------------------------------
++  // Audit value maps & views (all UUIDs stringified — 19-1 pattern)
++  // -------------------------------------------------------------------------
++
++  private static String label(PmWorkOrderEntity entity, MachineEntity machine) {
++    return (machine != null ? machine.getCode() : "?") + "@" + entity.getScheduledDate();
++  }
++
++  private static Map<String, Object> workOrderValues(PmWorkOrderEntity entity) {
++    var values = new LinkedHashMap<String, Object>();
++    values.put("id", entity.getId().toString());
++    values.put("machineId", entity.getMachineId().toString());
++    values.put("templateId", entity.getTemplateId() != null ? entity.getTemplateId().toString() : null);
++    values.put("frequencyId", entity.getFrequencyId() != null ? entity.getFrequencyId().toString() : null);
++    values.put("frequencyCode", entity.getFrequencyCode());
++    values.put("frequencyName", entity.getFrequencyName());
++    values.put("templateRevision", entity.getTemplateRevision());
++    values.put("status", entity.getStatus().name());
++    values.put("assignedTechnicianId", entity.getAssignedTechnicianId() != null
++        ? entity.getAssignedTechnicianId().toString() : null);
++    values.put("scheduledDate", entity.getScheduledDate() != null
++        ? entity.getScheduledDate().toString() : null);
++    values.put("startedAt", entity.getStartedAt() != null ? entity.getStartedAt().toString() : null);
++    values.put("completedAt", entity.getCompletedAt() != null ? entity.getCompletedAt().toString() : null);
++    values.put("certificateUrl", entity.getCertificateUrl());
++    values.put("createdAt", entity.getCreatedAt().toString());
++    values.put("updatedAt", entity.getUpdatedAt().toString());
++    return values;
++  }
++
++  private static WorkOrderView toView(PmWorkOrderEntity entity) {
++    return new WorkOrderView(entity.getId(), entity.getMachineId(), entity.getTemplateId(),
++        entity.getFrequencyId(), entity.getFrequencyCode(), entity.getFrequencyName(),
++        entity.getTemplateRevision(), entity.getStatus(), entity.getAssignedTechnicianId(),
++        entity.getScheduledDate(), entity.getStartedAt(), entity.getCompletedAt(),
++        entity.getCertificateUrl(), entity.getCreatedAt(), entity.getUpdatedAt());
++  }
++
++  // -------------------------------------------------------------------------
++  // Views
++  // -------------------------------------------------------------------------
++
++  public record WorkOrderView(UUID id, UUID machineId, UUID templateId, UUID frequencyId,
++      String frequencyCode, String frequencyName, Integer templateRevision,
++      PmWorkOrderStatus status, UUID assignedTechnicianId, LocalDate scheduledDate,
++      Instant startedAt, Instant completedAt, String certificateUrl, Instant createdAt,
++      Instant updatedAt) {
++  }
++
++  // -------------------------------------------------------------------------
++  // Exceptions
++  // -------------------------------------------------------------------------
++
++  public static class PmWorkOrderNotFoundException extends RuntimeException {
++  }
++
++  public static class PmScheduleNotFoundException extends RuntimeException {
++  }
++
++  public static class MachineNotFoundException extends RuntimeException {
++  }
++
++  public static class TechnicianNotFoundException extends RuntimeException {
++  }
++
++  public static class PmWorkOrderForbiddenException extends RuntimeException {
++  }
++
++  /** Duplicate (machine, template, scheduled_date) period → 409. */
++  public static class WorkOrderPeriodExistsException extends RuntimeException {
++  }
++
++  /** Any out-of-order lifecycle step (or terminal re-transition) → 409. */
++  public static class InvalidWorkOrderTransitionException extends RuntimeException {
++  }
++
++  /** Generate against a non-ACTIVE schedule → 409. */
++  public static class InvalidScheduleStateException extends RuntimeException {
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmWorkOrderEntity.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmWorkOrderEntity.java
+index 9925673..135a15c 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmWorkOrderEntity.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmWorkOrderEntity.java
+@@ -159,6 +159,13 @@ public class PmWorkOrderEntity {
+     this.updatedAt = updatedAt;
+   }
+ 
++  /** Start transition (F6): stamps the execution start time. */
++  public void start(Instant startedAt, Instant updatedAt) {
++    this.startedAt = startedAt;
++    this.status = PmWorkOrderStatus.IN_PROGRESS;
++    this.updatedAt = updatedAt;
++  }
++
+   /** Completion transition (F6): stamps the completion time and certificate. */
+   public void complete(Instant completedAt, String certificateUrl, Instant updatedAt) {
+     this.completedAt = completedAt;
+@@ -166,4 +173,13 @@ public class PmWorkOrderEntity {
+     this.status = PmWorkOrderStatus.COMPLETED;
+     this.updatedAt = updatedAt;
+   }
++
++  /**
++   * Overdue sweep transition (F6): only the status and updated_at move —
++   * started_at/completed_at and the assignment stay untouched.
++   */
++  public void markOverdue(Instant updatedAt) {
++    this.status = PmWorkOrderStatus.OVERDUE;
++    this.updatedAt = updatedAt;
++  }
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmWorkOrderRepository.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmWorkOrderRepository.java
+index ae524d0..80ba470 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmWorkOrderRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmWorkOrderRepository.java
+@@ -1,8 +1,36 @@
+ package com.syncro.maintenance.preventive.infrastructure.db;
+ 
++import com.syncro.maintenance.preventive.domain.PmWorkOrderStatus;
++import jakarta.persistence.LockModeType;
++import java.time.LocalDate;
++import java.util.List;
++import java.util.Optional;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
++import org.springframework.data.jpa.repository.Lock;
++import org.springframework.data.jpa.repository.Query;
++import org.springframework.data.repository.query.Param;
+ 
+-/** Persistence for {@code pm_work_orders} (blueprint F6, story 15-2). */
++/** Persistence for {@code pm_work_orders} (blueprint F6, story 15-2; queries for 19-4). */
+ public interface PmWorkOrderRepository extends JpaRepository<PmWorkOrderEntity, UUID> {
++
++  /** Generate pre-check: one workorder per (machine, template, scheduled_date) period. */
++  boolean existsByMachineIdAndTemplateIdAndScheduledDate(UUID machineId, UUID templateId,
++      LocalDate scheduledDate);
++
++  Optional<PmWorkOrderEntity> findByMachineIdAndTemplateIdAndScheduledDate(UUID machineId,
++      UUID templateId, LocalDate scheduledDate);
++
++  /** Overdue sweep candidates: non-terminal statuses with a past scheduled_date. */
++  List<PmWorkOrderEntity> findByStatusInAndScheduledDateBefore(List<PmWorkOrderStatus> statuses,
++      LocalDate cutoff);
++
++  /**
++   * Pessimistic row lock for lifecycle transitions (story 19-4): serializes
++   * concurrent assign/start/complete/sweep on the same row so the state
++   * precondition cannot pass twice (19-3 findByIdForUpdate pattern).
++   */
++  @Lock(LockModeType.PESSIMISTIC_WRITE)
++  @Query("select w from PmWorkOrderEntity w where w.id = :id")
++  Optional<PmWorkOrderEntity> findByIdForUpdate(@Param("id") UUID id);
+ }
+diff --git a/syncro/apps/backend/src/main/resources/db/migration/V10__pm_work_order_audit_and_period_index.sql b/syncro/apps/backend/src/main/resources/db/migration/V10__pm_work_order_audit_and_period_index.sql
+new file mode 100644
+index 0000000..9659872
+--- /dev/null
++++ b/syncro/apps/backend/src/main/resources/db/migration/V10__pm_work_order_audit_and_period_index.sql
+@@ -0,0 +1,45 @@
++-- ============================================================================
++-- V10: PM work order audit entity type + period idempotency index (story 19-4,
++-- blueprint F6). Additive-only migration:
++--   (a) extends the ck_audit_log_entity_type CHECK with PM_WORK_ORDER that
++--       AuditEntityType.PM_WORK_ORDER writes (the doc comment on that enum
++--       requires the Java enum and the SQL CHECK to move together in one
++--       change — V6..V9 drop-and-recreate pattern, preserving every prior
++--       value);
++--   (b) creates the partial unique index uq_pm_work_orders_period on
++--       pm_work_orders(machine_id, template_id, scheduled_date) — the race-safe
++--       idempotency backstop for workorder generation per schedule period
++--       (FR-134). Partial because template_id/scheduled_date are nullable in
++--       V1 and only fully-specified generated rows must be unique.
++-- No schema changes to pm_work_orders — the table already carries every F6
++-- column in V1.
++-- ============================================================================
++
++ALTER TABLE audit_log
++  DROP CONSTRAINT ck_audit_log_entity_type;
++
++ALTER TABLE audit_log
++  ADD CONSTRAINT ck_audit_log_entity_type CHECK (entity_type IN
++    ('PLANT', 'MACHINE_GROUP', 'MACHINE', 'SPAREPART_TAXONOMY',
++     'SPAREPART', 'INSTALLATION', 'RESPONSIBILITY', 'ALERT',
++     'SPAREPART_PRICE_ENTRY', 'SECTION', 'TEAM', 'WORK_ORDER_CATEGORY',
++     'WORK_ORDER', 'REPAIR_SESSION', 'WORKORDER_ATTACHMENT',
++     'WORK_ORDER_TODO', 'WORKORDER_RATING', 'RATING_DIMENSION',
++     'PREVENTIVE_PROGRAM', 'PREVENTIVE_SCHEDULE',
++     'PREVENTIVE_CHECKLIST', 'PREVENTIVE_ATTACHMENT',
++     'SPAREPART_REQUEST', 'DEPARTMENT', 'DEPARTMENT_USER', 'USER',
++     'INVENTORY_LOCATION', 'INVENTORY_STOCK_BALANCE',
++     'INVENTORY_TRANSFER', 'INVENTORY_RESERVATION',
++     'MACHINE_AREA', 'JOB_TITLE', 'SYSTEM_ROLE', 'ROLE_PERMISSION_MAPPING',
++     'MENU_FEATURE', 'DOMAIN_CONTEXT', 'USER_JOB_BINDING', 'USER_ROLE_BINDING',
++     'PLANT_WORKING_CALENDAR', 'SIGNATURE_USE',
++     'SPAREPART_STOCK', 'SYNC_RUN', 'SYNC_QUARANTINE', 'WORKORDER_SIGNATURE',
++     'WORK_ASSIGNMENT', 'WORK_LOG', 'WORK_LOG_RATING',
++     'WORK_ORDER_QUALITY_RATING',
++     'PM_FREQUENCY', 'PM_CHECKSHEET',
++     'PM_CHECKLIST_CATEGORY', 'PM_CHECKLIST_ITEM',
++     'PM_SCHEDULE', 'PM_SCHEDULE_DATE',
++     'PM_WORK_ORDER'));
++
++CREATE UNIQUE INDEX uq_pm_work_orders_period ON pm_work_orders(machine_id, template_id, scheduled_date)
++  WHERE template_id IS NOT NULL AND scheduled_date IS NOT NULL;
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
+index e50cb73..a432630 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
+@@ -49,11 +49,11 @@ class V1BaseSchemaMigrationTest {
+   // -------------------------------------------------------------------------
+ 
+   @Test
+-  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V9 additive migrations")
++  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V10 additive migrations")
+   void migrationsApplied() {
+     var rows = jdbc.queryForList(
+         "SELECT version, script, success FROM flyway_schema_history ORDER BY installed_rank");
+-    assertThat(rows).hasSize(9);
++    assertThat(rows).hasSize(10);
+     assertThat(rows.get(0).get("version")).isEqualTo("1");
+     assertThat(rows.get(0).get("script")).isEqualTo("V1__orm_foundation_schema.sql");
+     assertThat(rows.get(0).get("success")).isEqualTo(true);
+@@ -81,6 +81,9 @@ class V1BaseSchemaMigrationTest {
+     assertThat(rows.get(8).get("version")).isEqualTo("9");
+     assertThat(rows.get(8).get("script")).isEqualTo("V9__pm_schedule_audit_types.sql");
+     assertThat(rows.get(8).get("success")).isEqualTo(true);
++    assertThat(rows.get(9).get("version")).isEqualTo("10");
++    assertThat(rows.get(9).get("script")).isEqualTo("V10__pm_work_order_audit_and_period_index.sql");
++    assertThat(rows.get(9).get("success")).isEqualTo(true);
+   }
+ 
+   // -------------------------------------------------------------------------
+@@ -590,6 +593,57 @@ class V1BaseSchemaMigrationTest {
+         "SIGNATURE_USE");
+   }
+ 
++  /**
++   * Story 19-4: V10 extends the CHECK additively with PM_WORK_ORDER so
++   * {@code AuditEntityType.PM_WORK_ORDER} can be persisted. Every prior value —
++   * including the V9 PM_SCHEDULE/PM_SCHEDULE_DATE pair — survives the extension.
++   */
++  @Test
++  @DisplayName("19.4-DB-001 P0 audit_log entity_type CHECK accepts PM_WORK_ORDER after V10")
++  void auditEntityTypeAcceptsPmWorkOrder() {
++    var check = jdbc.queryForMap(
++        "SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint "
++            + "WHERE conname = 'ck_audit_log_entity_type'");
++    var def = (String) check.get("def");
++    assertThat(def).contains("PM_WORK_ORDER");
++    // every prior value survives the additive V10 extension.
++    assertThat(def).contains("PM_SCHEDULE", "PM_SCHEDULE_DATE",
++        "PM_CHECKLIST_CATEGORY", "PM_CHECKLIST_ITEM",
++        "PM_FREQUENCY", "PM_CHECKSHEET",
++        "WORK_ORDER_QUALITY_RATING", "WORK_LOG_RATING", "WORK_LOG",
++        "WORK_ASSIGNMENT", "WORK_ORDER", "REPAIR_SESSION", "WORKORDER_SIGNATURE",
++        "SPAREPART_STOCK", "SYNC_RUN", "SYNC_QUARANTINE", "MACHINE_AREA",
++        "USER_ROLE_BINDING", "PLANT_WORKING_CALENDAR",
++        "PLANT", "MACHINE_GROUP", "MACHINE", "SPAREPART_TAXONOMY",
++        "SPAREPART", "INSTALLATION", "RESPONSIBILITY", "ALERT",
++        "SPAREPART_PRICE_ENTRY", "SECTION", "TEAM", "WORK_ORDER_CATEGORY",
++        "WORKORDER_ATTACHMENT", "WORK_ORDER_TODO", "WORKORDER_RATING",
++        "RATING_DIMENSION", "PREVENTIVE_PROGRAM", "PREVENTIVE_SCHEDULE",
++        "PREVENTIVE_CHECKLIST", "PREVENTIVE_ATTACHMENT",
++        "SPAREPART_REQUEST", "DEPARTMENT", "DEPARTMENT_USER", "USER",
++        "INVENTORY_LOCATION", "INVENTORY_STOCK_BALANCE",
++        "INVENTORY_TRANSFER", "INVENTORY_RESERVATION",
++        "JOB_TITLE", "SYSTEM_ROLE", "ROLE_PERMISSION_MAPPING",
++        "MENU_FEATURE", "DOMAIN_CONTEXT", "USER_JOB_BINDING",
++        "SIGNATURE_USE");
++  }
++
++  /**
++   * Story 19-4: V10 creates the partial unique index uq_pm_work_orders_period on
++   * pm_work_orders(machine_id, template_id, scheduled_date) WHERE both non-null —
++   * the race-safe idempotency backstop for workorder generation (FR-134).
++   */
++  @Test
++  @DisplayName("19.4-DB-002 P0 partial unique index uq_pm_work_orders_period exists after V10")
++  void pmWorkOrderPeriodIndexExists() {
++    var index = jdbc.queryForMap(
++        "SELECT indexdef FROM pg_indexes WHERE indexname = 'uq_pm_work_orders_period'");
++    var def = (String) index.get("indexdef");
++    assertThat(def).contains("UNIQUE");
++    assertThat(def).contains("machine_id", "template_id", "scheduled_date");
++    assertThat(def).contains("WHERE ((template_id IS NOT NULL) AND (scheduled_date IS NOT NULL))");
++  }
++
+   // -------------------------------------------------------------------------
+   // Helpers
+   // -------------------------------------------------------------------------
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmWorkOrderControllerTest.java b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmWorkOrderControllerTest.java
+new file mode 100644
+index 0000000..97b951a
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmWorkOrderControllerTest.java
+@@ -0,0 +1,375 @@
++package com.syncro.maintenance.preventive.api;
++
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.eq;
++import static org.mockito.Mockito.when;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
++
++import com.syncro.TestJsonConfig;
++import com.syncro.auth.application.JwtTokenService;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.JwtAuthenticationFilter;
++import com.syncro.config.SecurityConfig;
++import com.syncro.config.TimeConfig;
++import com.syncro.maintenance.preventive.application.PmWorkOrderService;
++import com.syncro.maintenance.preventive.application.PmWorkOrderService.WorkOrderView;
++import com.syncro.maintenance.preventive.domain.PmWorkOrderStatus;
++import java.time.Instant;
++import java.time.LocalDate;
++import java.util.List;
++import java.util.UUID;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
++import org.springframework.context.annotation.Import;
++import org.springframework.http.MediaType;
++import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
++import org.springframework.security.core.authority.SimpleGrantedAuthority;
++import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
++import org.springframework.test.context.bean.override.mockito.MockitoBean;
++import org.springframework.test.web.servlet.MockMvc;
++import org.springframework.test.web.servlet.request.RequestPostProcessor;
++
++/**
++ * Story 19-4 MockMvc contract test: DTO shape, status codes, and every new
++ * exception→HTTP mapping for the /api/v1/pm-work-orders surface
++ * (PmScheduleControllerTest error-path pattern — the service is stubbed to throw
++ * and the handler asserts status + code).
++ */
++@WebMvcTest(PmWorkOrderController.class)
++@Import({SecurityConfig.class, PreventiveExceptionHandler.class, JwtAuthenticationFilter.class,
++    TimeConfig.class, TestJsonConfig.class})
++class PmWorkOrderControllerTest {
++
++  @Autowired
++  private MockMvc mockMvc;
++
++  @MockitoBean
++  private PmWorkOrderService workOrders;
++
++  @MockitoBean
++  private JwtTokenService jwtTokenService;
++
++  private static final UUID WO_ID = UUID.fromString("11111111-2222-3333-4444-555555555555");
++  private static final UUID SCHEDULE_ID = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
++  private static final UUID MACHINE_ID = UUID.fromString("ffffffff-eeee-dddd-cccc-bbbbbbbbbbbb");
++  private static final UUID TEMPLATE_ID = UUID.fromString("99999999-8888-7777-6666-555555555555");
++  private static final UUID TECH_ID = UUID.fromString("44444444-3333-2222-1111-000000000000");
++  private static final Instant NOW = Instant.parse("2026-09-01T08:00:00Z");
++
++  // -------------------------------------------------------------------------
++  // Happy paths
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.4-API-001 P0 generate returns 200 with created workorder list")
++  void generate() throws Exception {
++    var user = user(ApplicationRole.SECTION_LEADER);
++    when(workOrders.generate(eq(user), eq(SCHEDULE_ID)))
++        .thenReturn(List.of(view(PmWorkOrderStatus.SCHEDULED)));
++
++    mockMvc.perform(post("/api/v1/pm-work-orders/generate")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"scheduleId\":\"" + SCHEDULE_ID + "\"}"))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$[0].id").value(WO_ID.toString()))
++        .andExpect(jsonPath("$[0].status").value("SCHEDULED"))
++        .andExpect(jsonPath("$[0].scheduledDate").value("2027-01-15"))
++        .andExpect(jsonPath("$[0].templateRevision").value(1));
++  }
++
++  @Test
++  @DisplayName("19.4-API-002 P0 generate missing scheduleId → 400 VALIDATION_ERROR")
++  void generateMissingScheduleId() throws Exception {
++    mockMvc.perform(post("/api/v1/pm-work-orders/generate")
++            .with(auth(ApplicationRole.SECTION_LEADER))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.scheduleId").exists());
++  }
++
++  @Test
++  @DisplayName("19.4-API-003 P0 assign returns 200 ASSIGNED with technician stamp")
++  void assign() throws Exception {
++    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
++    when(workOrders.assign(eq(user), eq(WO_ID), eq(TECH_ID)))
++        .thenReturn(view(PmWorkOrderStatus.ASSIGNED));
++
++    mockMvc.perform(post("/api/v1/pm-work-orders/{id}/assign", WO_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"technicianId\":\"" + TECH_ID + "\"}"))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.status").value("ASSIGNED"))
++        .andExpect(jsonPath("$.assignedTechnicianId").value(TECH_ID.toString()));
++  }
++
++  @Test
++  @DisplayName("19.4-API-004 P0 start returns 200 IN_PROGRESS")
++  void start() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    when(workOrders.start(eq(user), eq(WO_ID))).thenReturn(view(PmWorkOrderStatus.IN_PROGRESS));
++
++    mockMvc.perform(post("/api/v1/pm-work-orders/{id}/start", WO_ID)
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
++        .andExpect(jsonPath("$.startedAt").exists());
++  }
++
++  @Test
++  @DisplayName("19.4-API-005 P0 complete returns 200 COMPLETED with certificate")
++  void complete() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    when(workOrders.complete(eq(user), eq(WO_ID), eq("https://cert/x.pdf")))
++        .thenReturn(view(PmWorkOrderStatus.COMPLETED));
++
++    mockMvc.perform(post("/api/v1/pm-work-orders/{id}/complete", WO_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"certificateUrl\":\"https://cert/x.pdf\"}"))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.status").value("COMPLETED"))
++        .andExpect(jsonPath("$.certificateUrl").value("https://cert/x.pdf"));
++  }
++
++  @Test
++  @DisplayName("19.4-API-006 P0 complete without body returns 200 (certificateUrl optional)")
++  void completeWithoutBody() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    when(workOrders.complete(eq(user), eq(WO_ID), eq(null)))
++        .thenReturn(view(PmWorkOrderStatus.COMPLETED));
++
++    mockMvc.perform(post("/api/v1/pm-work-orders/{id}/complete", WO_ID)
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.status").value("COMPLETED"));
++  }
++
++  @Test
++  @DisplayName("19.4-API-007 P0 sweep-overdue returns 200 with count")
++  void sweepOverdue() throws Exception {
++    var user = user(ApplicationRole.MAINTENANCE_LEADER);
++    when(workOrders.sweepOverdue(eq(user))).thenReturn(3);
++
++    mockMvc.perform(post("/api/v1/pm-work-orders/sweep-overdue")
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.overdueCount").value(3));
++  }
++
++  @Test
++  @DisplayName("19.4-API-008 P0 list returns 200 with filters")
++  void list() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(workOrders.list(eq(user), eq(PmWorkOrderStatus.SCHEDULED), eq(MACHINE_ID)))
++        .thenReturn(List.of(view(PmWorkOrderStatus.SCHEDULED)));
++
++    mockMvc.perform(get("/api/v1/pm-work-orders")
++            .param("status", "SCHEDULED")
++            .param("machineId", MACHINE_ID.toString())
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$[0].status").value("SCHEDULED"));
++  }
++
++  @Test
++  @DisplayName("19.4-API-009 P0 get returns 200 with view shape")
++  void getWorkOrder() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(workOrders.get(eq(user), eq(WO_ID))).thenReturn(view(PmWorkOrderStatus.OVERDUE));
++
++    mockMvc.perform(get("/api/v1/pm-work-orders/{id}", WO_ID)
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.id").value(WO_ID.toString()))
++        .andExpect(jsonPath("$.status").value("OVERDUE"))
++        .andExpect(jsonPath("$.machineId").value(MACHINE_ID.toString()));
++  }
++
++  // -------------------------------------------------------------------------
++  // Error paths — every new exception→HTTP mapping (stubbed service throws)
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.4-API-010 P0 unknown workorder → 404 PM_WORK_ORDER_NOT_FOUND")
++  void getUnknownWorkOrder() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(workOrders.get(eq(user), eq(WO_ID)))
++        .thenThrow(new PmWorkOrderService.PmWorkOrderNotFoundException());
++
++    mockMvc.perform(get("/api/v1/pm-work-orders/{id}", WO_ID)
++            .with(auth(user)))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("PM_WORK_ORDER_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("19.4-API-011 P0 unknown schedule on generate → 404 PM_SCHEDULE_NOT_FOUND")
++  void generateScheduleNotFound() throws Exception {
++    var user = user(ApplicationRole.SECTION_LEADER);
++    when(workOrders.generate(eq(user), eq(SCHEDULE_ID)))
++        .thenThrow(new PmWorkOrderService.PmScheduleNotFoundException());
++
++    mockMvc.perform(post("/api/v1/pm-work-orders/generate")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"scheduleId\":\"" + SCHEDULE_ID + "\"}"))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("PM_SCHEDULE_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("19.4-API-012 P0 unknown technician on assign → 404 TECHNICIAN_NOT_FOUND")
++  void assignTechnicianNotFound() throws Exception {
++    var user = user(ApplicationRole.SECTION_LEADER);
++    when(workOrders.assign(eq(user), eq(WO_ID), any()))
++        .thenThrow(new PmWorkOrderService.TechnicianNotFoundException());
++
++    mockMvc.perform(post("/api/v1/pm-work-orders/{id}/assign", WO_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"technicianId\":\"" + TECH_ID + "\"}"))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("TECHNICIAN_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("19.4-API-013 P0 non-ACTIVE schedule on generate → 409 INVALID_SCHEDULE_STATE")
++  void generateInvalidScheduleState() throws Exception {
++    var user = user(ApplicationRole.SECTION_LEADER);
++    when(workOrders.generate(eq(user), eq(SCHEDULE_ID)))
++        .thenThrow(new PmWorkOrderService.InvalidScheduleStateException());
++
++    mockMvc.perform(post("/api/v1/pm-work-orders/generate")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"scheduleId\":\"" + SCHEDULE_ID + "\"}"))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("INVALID_SCHEDULE_STATE"));
++  }
++
++  @Test
++  @DisplayName("19.4-API-014 P0 duplicate period on generate → 409 WORK_ORDER_PERIOD_EXISTS")
++  void generatePeriodExists() throws Exception {
++    var user = user(ApplicationRole.SECTION_LEADER);
++    when(workOrders.generate(eq(user), eq(SCHEDULE_ID)))
++        .thenThrow(new PmWorkOrderService.WorkOrderPeriodExistsException());
++
++    mockMvc.perform(post("/api/v1/pm-work-orders/generate")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"scheduleId\":\"" + SCHEDULE_ID + "\"}"))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("WORK_ORDER_PERIOD_EXISTS"));
++  }
++
++  @Test
++  @DisplayName("19.4-API-015 P0 out-of-order transition → 409 INVALID_WORK_ORDER_TRANSITION")
++  void startInvalidTransition() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    when(workOrders.start(eq(user), eq(WO_ID)))
++        .thenThrow(new PmWorkOrderService.InvalidWorkOrderTransitionException());
++
++    mockMvc.perform(post("/api/v1/pm-work-orders/{id}/start", WO_ID)
++            .with(auth(user)))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("INVALID_WORK_ORDER_TRANSITION"));
++  }
++
++  @Test
++  @DisplayName("19.4-API-016 P0 non-assignee start → 403 FORBIDDEN")
++  void startForbidden() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    when(workOrders.start(eq(user), eq(WO_ID)))
++        .thenThrow(new PmWorkOrderService.PmWorkOrderForbiddenException());
++
++    mockMvc.perform(post("/api/v1/pm-work-orders/{id}/start", WO_ID)
++            .with(auth(user)))
++        .andExpect(status().isForbidden())
++        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
++  }
++
++  @Test
++  @DisplayName("19.4-API-017 P0 unknown machine on list → 404 MACHINE_NOT_FOUND")
++  void listMachineNotFound() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(workOrders.list(eq(user), any(), eq(MACHINE_ID)))
++        .thenThrow(new PmWorkOrderService.MachineNotFoundException());
++
++    mockMvc.perform(get("/api/v1/pm-work-orders")
++            .param("machineId", MACHINE_ID.toString())
++            .with(auth(user)))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("MACHINE_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("19.4-API-018 P0 unknown status query param → 400 INVALID_QUERY_VALUE")
++  void listUnknownStatus() throws Exception {
++    mockMvc.perform(get("/api/v1/pm-work-orders")
++            .param("status", "NOT_A_STATUS")
++            .with(auth(ApplicationRole.AUDITOR)))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("INVALID_QUERY_VALUE"));
++  }
++
++  @Test
++  @DisplayName("19.4-API-019 P0 malformed UUID path value → 400 INVALID_PATH_VALUE")
++  void getMalformedPathValue() throws Exception {
++    mockMvc.perform(get("/api/v1/pm-work-orders/{id}", "not-a-uuid")
++            .with(auth(ApplicationRole.AUDITOR)))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("INVALID_PATH_VALUE"));
++  }
++
++  @Test
++  @DisplayName("19.4-API-020 P0 malformed UUID body field → 400 VALIDATION_ERROR")
++  void generateMalformedBody() throws Exception {
++    mockMvc.perform(post("/api/v1/pm-work-orders/generate")
++            .with(auth(ApplicationRole.SECTION_LEADER))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"scheduleId\":\"not-a-uuid\"}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
++  }
++
++  // -------------------------------------------------------------------------
++  // Fixtures
++  // -------------------------------------------------------------------------
++
++  private static WorkOrderView view(PmWorkOrderStatus status) {
++    return new WorkOrderView(WO_ID, MACHINE_ID, TEMPLATE_ID, UUID.randomUUID(),
++        "MONTHLY", "Monthly", 1, status,
++        status == PmWorkOrderStatus.SCHEDULED ? null : TECH_ID,
++        LocalDate.of(2027, 1, 15),
++        status == PmWorkOrderStatus.SCHEDULED || status == PmWorkOrderStatus.ASSIGNED
++            ? null : NOW,
++        status == PmWorkOrderStatus.COMPLETED ? NOW : null,
++        status == PmWorkOrderStatus.COMPLETED ? "https://cert/x.pdf" : null,
++        NOW, NOW);
++  }
++
++  private static AuthenticatedUser user(ApplicationRole role) {
++    return new AuthenticatedUser(UUID.randomUUID().toString(),
++        role.name().toLowerCase() + "@syncro.dev", role);
++  }
++
++  private static RequestPostProcessor auth(AuthenticatedUser user) {
++    return SecurityMockMvcRequestPostProcessors.authentication(
++        new UsernamePasswordAuthenticationToken(user, null,
++            List.of(new SimpleGrantedAuthority("ROLE_" + user.applicationRole().name()))));
++  }
++
++  private static RequestPostProcessor auth(ApplicationRole role) {
++    return auth(user(role));
++  }
++}
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/application/PmWorkOrderServiceIntegrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/application/PmWorkOrderServiceIntegrationTest.java
+new file mode 100644
+index 0000000..a799e3c
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/application/PmWorkOrderServiceIntegrationTest.java
+@@ -0,0 +1,505 @@
++package com.syncro.maintenance.preventive.application;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.api.Assertions.assertThatThrownBy;
++
++import com.syncro.AbstractPostgresIntegrationTest;
++import com.syncro.audit.domain.AuditAction;
++import com.syncro.audit.domain.AuditEntityType;
++import com.syncro.audit.infrastructure.AuditLogRepository;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.AuthUserEntity;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentEntity;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
++import com.syncro.auth.infrastructure.AuthUserRepository;
++import com.syncro.auth.infrastructure.PlantEntity;
++import com.syncro.auth.infrastructure.PlantRepository;
++import com.syncro.machine.domain.MachineStatus;
++import com.syncro.machine.domain.ResponsibilityLevel;
++import com.syncro.machine.infrastructure.MachineEntity;
++import com.syncro.machine.infrastructure.MachineRepository;
++import com.syncro.machine.infrastructure.MachineResponsibilityEntity;
++import com.syncro.machine.infrastructure.MachineResponsibilityRepository;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.ApproveChecksheetCommand;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.CreateChecksheetCommand;
++import com.syncro.maintenance.preventive.application.PmScheduleService.CreateScheduleCommand;
++import com.syncro.maintenance.preventive.domain.PmScheduleDateStatus;
++import com.syncro.maintenance.preventive.domain.PmWorkOrderStatus;
++import com.syncro.maintenance.preventive.infrastructure.db.PmScheduleDateEntity;
++import com.syncro.maintenance.preventive.infrastructure.db.PmScheduleDateRepository;
++import com.syncro.maintenance.preventive.infrastructure.db.PmWorkOrderEntity;
++import com.syncro.maintenance.preventive.infrastructure.db.PmWorkOrderRepository;
++import com.syncro.masterdata.infrastructure.MachineGroupEntity;
++import com.syncro.masterdata.infrastructure.MachineGroupRepository;
++import java.time.Clock;
++import java.time.Instant;
++import java.time.LocalDate;
++import java.util.UUID;
++import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.dao.DataIntegrityViolationException;
++
++/**
++ * Story 19-4 integration test: PM work orders against a real Postgres container
++ * (blueprint F6). Covers generate from an ACTIVE schedule (12 SCHEDULED workorders
++ * with snapshots + audit CREATE), idempotent re-generate and per-date skip, the
++ * strict lifecycle assign → start → complete with stamps and per-step audit UPDATE
++ * rows, out-of-order and terminal re-transition rejection, the Clock-based overdue
++ * sweep (past-due non-terminal → OVERDUE, completed + future untouched, count
++ * returned), the duplicate-period unique-index backstop, the leader + assignee
++ * gates, unknown-reference 404s, SUPER_ADMIN bypass, and scope-filtered reads.
++ */
++class PmWorkOrderServiceIntegrationTest extends AbstractPostgresIntegrationTest {
++
++  private static final Instant T0 = Instant.parse("2026-09-01T08:00:00Z");
++
++  @Autowired
++  private PmWorkOrderService workOrders;
++  @Autowired
++  private PmScheduleService schedules;
++  @Autowired
++  private PmChecksheetService checksheets;
++  @Autowired
++  private PmFrequencyService frequencies;
++  @Autowired
++  private PlantRepository plants;
++  @Autowired
++  private MachineGroupRepository machineGroups;
++  @Autowired
++  private MachineRepository machines;
++  @Autowired
++  private AuthUserRepository users;
++  @Autowired
++  private AuthUserPlantAssignmentRepository assignments;
++  @Autowired
++  private MachineResponsibilityRepository responsibilities;
++  @Autowired
++  private AuditLogRepository auditLogs;
++  @Autowired
++  private PmWorkOrderRepository workOrderRows;
++  @Autowired
++  private PmScheduleDateRepository scheduleDates;
++  /** The same Clock bean the service uses — sweep eligibility never uses wall clock. */
++  @Autowired
++  private Clock clock;
++
++  private PlantEntity plant;
++  private MachineEntity machine;
++  private AuthenticatedUser leaderUser;
++  private AuthenticatedUser staffUser;
++  private AuthenticatedUser managerUser;
++  private AuthenticatedUser techUser;
++  private UUID technicianId;
++  private UUID monthlyFrequencyId;
++
++  @BeforeEach
++  void setUp() {
++    plant = plants.saveAndFlush(new PlantEntity(
++        UUID.randomUUID(), "P" + UUID.randomUUID().toString().substring(0, 8), "Plant", T0, T0));
++    var group = machineGroups.saveAndFlush(new MachineGroupEntity(
++        UUID.randomUUID(), plant, "Group", T0, T0));
++    machine = machines.saveAndFlush(new MachineEntity(
++        UUID.randomUUID(), plant, group, "MC-" + UUID.randomUUID().toString().substring(0, 8),
++        "Machine", MachineStatus.ACTIVE, null, null, null, null, T0, T0));
++
++    var leaderId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(
++        leaderId, "leader-" + UUID.randomUUID() + "@test", "hash",
++        ApplicationRole.SECTION_LEADER, true, T0, T0));
++    assignments.saveAndFlush(new AuthUserPlantAssignmentEntity(leaderId, plant.getId(), T0));
++    responsibilities.saveAndFlush(new MachineResponsibilityEntity(
++        UUID.randomUUID(), machine.getId(), leaderId, ResponsibilityLevel.LEADER, T0, T0));
++    leaderUser = new AuthenticatedUser(leaderId.toString(), "leader@test",
++        ApplicationRole.SECTION_LEADER);
++
++    var staffId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(
++        staffId, "staff-" + UUID.randomUUID() + "@test", "hash",
++        ApplicationRole.STAFF_MAINTENANCE, true, T0, T0));
++    assignments.saveAndFlush(new AuthUserPlantAssignmentEntity(staffId, plant.getId(), T0));
++    staffUser = new AuthenticatedUser(staffId.toString(), "staff@test",
++        ApplicationRole.STAFF_MAINTENANCE);
++
++    var managerId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(
++        managerId, "manager-" + UUID.randomUUID() + "@test", "hash",
++        ApplicationRole.MANAGER_MAINTENANCE, true, T0, T0));
++    assignments.saveAndFlush(new AuthUserPlantAssignmentEntity(managerId, plant.getId(), T0));
++    managerUser = new AuthenticatedUser(managerId.toString(), "manager@test",
++        ApplicationRole.MANAGER_MAINTENANCE);
++
++    technicianId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(
++        technicianId, "tech-" + UUID.randomUUID() + "@test", "hash",
++        ApplicationRole.TECHNICIAN, true, T0, T0));
++    techUser = new AuthenticatedUser(technicianId.toString(), "tech@test",
++        ApplicationRole.TECHNICIAN);
++
++    // V7 seeds MONTHLY/ANNUAL.
++    monthlyFrequencyId = frequencies.list().stream()
++        .filter(f -> f.code().equals("MONTHLY")).findFirst().orElseThrow().id();
++  }
++
++  /** Approved monthly checksheet on the fixture machine (15th anchor → 12 dates). */
++  private UUID approvedMonthlyChecksheet() {
++    var id = checksheets.create(staffUser,
++        new CreateChecksheetCommand(machine.getId(), monthlyFrequencyId, null)).id();
++    checksheets.approve(leaderUser, id, new ApproveChecksheetCommand(LocalDate.of(2026, 1, 15)));
++    return id;
++  }
++
++  /** Drives the full 19-3 approval chain to ACTIVE for a checksheet + year. */
++  private UUID activeSchedule(UUID checksheetId, int year) {
++    var created = schedules.create(staffUser,
++        new CreateScheduleCommand(plant.getId(), machine.getId(), checksheetId, year));
++    schedules.submit(staffUser, created.id());
++    schedules.approveSpv(leaderUser, created.id());
++    schedules.approveProd(leaderUser, created.id());
++    schedules.activate(leaderUser, created.id());
++    return created.id();
++  }
++
++  // -------------------------------------------------------------------------
++  // AC1: generate — snapshots, audit, idempotency
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.4-INT-001 P0 generate from ACTIVE schedule creates 12 SCHEDULED workorders with snapshots + audit CREATE")
++  void generateCreatesWorkordersWithSnapshots() {
++    var scheduleId = activeSchedule(approvedMonthlyChecksheet(), 2027);
++
++    var created = workOrders.generate(leaderUser, scheduleId);
++    assertThat(created).hasSize(12);
++    assertThat(created).allMatch(w -> w.status() == PmWorkOrderStatus.SCHEDULED);
++    var first = created.getFirst();
++    assertThat(first.machineId()).isEqualTo(machine.getId());
++    assertThat(first.templateId()).isNotNull();
++    assertThat(first.frequencyCode()).isEqualTo("MONTHLY");
++    assertThat(first.frequencyName()).isEqualTo("Monthly");
++    assertThat(first.templateRevision()).isEqualTo(1);
++    assertThat(first.scheduledDate()).isEqualTo(LocalDate.of(2027, 1, 15));
++    assertThat(first.assignedTechnicianId()).isNull();
++    assertThat(first.startedAt()).isNull();
++    assertThat(first.completedAt()).isNull();
++
++    var audit = auditLogs.findByEntityIdOrderByCreatedAtAsc(first.id());
++    assertThat(audit).hasSize(1);
++    assertThat(audit.getFirst().getEntityType()).isEqualTo(AuditEntityType.PM_WORK_ORDER);
++    assertThat(audit.getFirst().getAction()).isEqualTo(AuditAction.CREATE);
++    assertThat(audit.getFirst().getPlantId()).isEqualTo(plant.getId());
++    assertThat(audit.getFirst().getEntityLabel())
++        .isEqualTo(machine.getCode() + "@2027-01-15");
++    assertThat(audit.getFirst().getNewValue()).contains("SCHEDULED");
++    assertThat(audit.getFirst().getPreviousValue()).isNull();
++  }
++
++  @Test
++  @DisplayName("19.4-INT-002 P0 re-generate the same schedule creates zero (idempotent per period)")
++  void regenerateIsIdempotent() {
++    var scheduleId = activeSchedule(approvedMonthlyChecksheet(), 2027);
++    assertThat(workOrders.generate(leaderUser, scheduleId)).hasSize(12);
++
++    assertThat(workOrders.generate(leaderUser, scheduleId)).isEmpty();
++    assertThat(workOrderRows.count()).isEqualTo(12);
++  }
++
++  @Test
++  @DisplayName("19.4-INT-003 P0 generate against a non-ACTIVE schedule → 409; unknown schedule → 404")
++  void generateGuardsScheduleState() {
++    var checksheetId = approvedMonthlyChecksheet();
++    var draft = schedules.create(staffUser,
++        new CreateScheduleCommand(plant.getId(), machine.getId(), checksheetId, 2027));
++
++    assertThatThrownBy(() -> workOrders.generate(leaderUser, draft.id()))
++        .isInstanceOf(PmWorkOrderService.InvalidScheduleStateException.class);
++    assertThatThrownBy(() -> workOrders.generate(leaderUser, UUID.randomUUID()))
++        .isInstanceOf(PmWorkOrderService.PmScheduleNotFoundException.class);
++  }
++
++  @Test
++  @DisplayName("19.4-INT-004 P0 duplicate (machine, template, scheduled_date) period is rejected by the V10 unique index")
++  void duplicatePeriodRejectedByIndex() {
++    var now = Instant.now(clock);
++    var templateId = UUID.randomUUID();
++    var date = LocalDate.of(2027, 3, 15);
++    workOrderRows.saveAndFlush(new PmWorkOrderEntity(UUID.randomUUID(), machine.getId(),
++        templateId, null, null, null, null, PmWorkOrderStatus.SCHEDULED, null, date,
++        null, null, null, now, now));
++
++    assertThatThrownBy(() -> workOrderRows.saveAndFlush(new PmWorkOrderEntity(
++        UUID.randomUUID(), machine.getId(), templateId, null, null, null, null,
++        PmWorkOrderStatus.SCHEDULED, null, date, null, null, null, now, now)))
++        .isInstanceOf(DataIntegrityViolationException.class)
++        .hasMessageContaining("uq_pm_work_orders_period");
++  }
++
++  @Test
++  @DisplayName("19.4-INT-005 P0 generate only creates workorders for dates that lack one (per-date skip)")
++  void generateSkipsDatesThatAlreadyHaveWorkorders() {
++    var scheduleId = activeSchedule(approvedMonthlyChecksheet(), 2027);
++    assertThat(workOrders.generate(leaderUser, scheduleId)).hasSize(12);
++
++    // A newly added schedule date gets exactly one workorder on re-generate.
++    var now = Instant.now(clock);
++    scheduleDates.saveAndFlush(new PmScheduleDateEntity(UUID.randomUUID(), scheduleId,
++        LocalDate.of(2027, 7, 22), PmScheduleDateStatus.SCHEDULED, now, now));
++    var second = workOrders.generate(leaderUser, scheduleId);
++    assertThat(second).hasSize(1);
++    assertThat(second.getFirst().scheduledDate()).isEqualTo(LocalDate.of(2027, 7, 22));
++    assertThat(workOrderRows.count()).isEqualTo(13);
++  }
++
++  // -------------------------------------------------------------------------
++  // AC2: lifecycle assign → start → complete
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.4-INT-006 P0 assign → start → complete advances strictly with stamps + per-step audit UPDATE rows")
++  void lifecycleAdvancesWithStampsAndAudit() {
++    var scheduleId = activeSchedule(approvedMonthlyChecksheet(), 2027);
++    var wo = workOrders.generate(leaderUser, scheduleId).getFirst();
++
++    var assigned = workOrders.assign(leaderUser, wo.id(), technicianId);
++    assertThat(assigned.status()).isEqualTo(PmWorkOrderStatus.ASSIGNED);
++    assertThat(assigned.assignedTechnicianId()).isEqualTo(technicianId);
++
++    var started = workOrders.start(techUser, wo.id());
++    assertThat(started.status()).isEqualTo(PmWorkOrderStatus.IN_PROGRESS);
++    assertThat(started.startedAt()).isNotNull();
++
++    var completed = workOrders.complete(techUser, wo.id(), "https://cert.example/x.pdf");
++    assertThat(completed.status()).isEqualTo(PmWorkOrderStatus.COMPLETED);
++    assertThat(completed.completedAt()).isNotNull();
++    assertThat(completed.certificateUrl()).isEqualTo("https://cert.example/x.pdf");
++
++    var audit = auditLogs.findByEntityIdOrderByCreatedAtAsc(wo.id());
++    assertThat(audit).filteredOn(e -> e.getAction() == AuditAction.UPDATE).hasSize(3);
++    assertThat(audit).allSatisfy(entry ->
++        assertThat(entry.getEntityType()).isEqualTo(AuditEntityType.PM_WORK_ORDER));
++    assertThat(audit).anySatisfy(entry -> {
++      assertThat(entry.getPreviousValue()).contains("SCHEDULED");
++      assertThat(entry.getNewValue()).contains("ASSIGNED");
++    });
++    assertThat(audit).anySatisfy(entry -> {
++      assertThat(entry.getPreviousValue()).contains("ASSIGNED");
++      assertThat(entry.getNewValue()).contains("IN_PROGRESS");
++    });
++    assertThat(audit).anySatisfy(entry -> {
++      assertThat(entry.getPreviousValue()).contains("IN_PROGRESS");
++      assertThat(entry.getNewValue()).contains("COMPLETED");
++    });
++  }
++
++  @Test
++  @DisplayName("19.4-INT-007 P0 out-of-order and terminal re-transitions are rejected with 409 semantics")
++  void outOfOrderTransitionsRejected() {
++    var scheduleId = activeSchedule(approvedMonthlyChecksheet(), 2027);
++    var wo = workOrders.generate(leaderUser, scheduleId).getFirst();
++    workOrders.assign(leaderUser, wo.id(), technicianId);
++
++    // Complete before start (assignee acting, so the gate passes and the state check fires).
++    assertThatThrownBy(() -> workOrders.complete(techUser, wo.id(), null))
++        .isInstanceOf(PmWorkOrderService.InvalidWorkOrderTransitionException.class);
++    // Double assign.
++    assertThatThrownBy(() -> workOrders.assign(leaderUser, wo.id(), technicianId))
++        .isInstanceOf(PmWorkOrderService.InvalidWorkOrderTransitionException.class);
++
++    workOrders.start(techUser, wo.id());
++    var completed = workOrders.complete(techUser, wo.id(), null);
++    assertThat(completed.status()).isEqualTo(PmWorkOrderStatus.COMPLETED);
++    // Terminal COMPLETED rejects every further transition.
++    assertThatThrownBy(() -> workOrders.assign(leaderUser, wo.id(), technicianId))
++        .isInstanceOf(PmWorkOrderService.InvalidWorkOrderTransitionException.class);
++    assertThatThrownBy(() -> workOrders.start(techUser, wo.id()))
++        .isInstanceOf(PmWorkOrderService.InvalidWorkOrderTransitionException.class);
++    assertThatThrownBy(() -> workOrders.complete(techUser, wo.id(), null))
++        .isInstanceOf(PmWorkOrderService.InvalidWorkOrderTransitionException.class);
++  }
++
++  @Test
++  @DisplayName("19.4-INT-008 P0 start/complete by a non-assignee → 403; unknown technician on assign → 404")
++  void executionIsAssigneeScoped() {
++    var scheduleId = activeSchedule(approvedMonthlyChecksheet(), 2027);
++    var wo = workOrders.generate(leaderUser, scheduleId).getFirst();
++
++    assertThatThrownBy(() -> workOrders.assign(leaderUser, wo.id(), UUID.randomUUID()))
++        .isInstanceOf(PmWorkOrderService.TechnicianNotFoundException.class);
++
++    workOrders.assign(leaderUser, wo.id(), technicianId);
++    // The leader who assigned is not the assignee — cannot execute.
++    assertThatThrownBy(() -> workOrders.start(leaderUser, wo.id()))
++        .isInstanceOf(PmWorkOrderService.PmWorkOrderForbiddenException.class);
++    var otherId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(otherId, "tech2-" + UUID.randomUUID() + "@test",
++        "hash", ApplicationRole.TECHNICIAN, true, T0, T0));
++    var otherTech = new AuthenticatedUser(otherId.toString(), "tech2@test",
++        ApplicationRole.TECHNICIAN);
++    assertThatThrownBy(() -> workOrders.start(otherTech, wo.id()))
++        .isInstanceOf(PmWorkOrderService.PmWorkOrderForbiddenException.class);
++    assertThatThrownBy(() -> workOrders.complete(otherTech, wo.id(), null))
++        .isInstanceOf(PmWorkOrderService.PmWorkOrderForbiddenException.class);
++    // The assignee may execute.
++    assertThat(workOrders.start(techUser, wo.id()).status())
++        .isEqualTo(PmWorkOrderStatus.IN_PROGRESS);
++  }
++
++  // -------------------------------------------------------------------------
++  // AC3: overdue sweep
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.4-INT-009 P0 sweep marks past-due non-terminal workorders OVERDUE (audited, counted) and leaves completed + future untouched")
++  void sweepMarksPastDueOverdue() {
++    var checksheetId = approvedMonthlyChecksheet();
++    // A schedule entirely in the past relative to the injected clock, and one in the
++    // future — same machine + checksheet, different years (allowed by 19-3's uq).
++    var pastYear = LocalDate.now(clock).getYear() - 1;
++    var pastSchedule = activeSchedule(checksheetId, pastYear);
++    var generated = workOrders.generate(leaderUser, pastSchedule);
++    assertThat(generated).hasSize(12);
++    assertThat(generated.getFirst().scheduledDate()).isBefore(LocalDate.now(clock));
++
++    // Complete one through the full chain — it must survive the sweep.
++    var done = generated.getFirst();
++    workOrders.assign(leaderUser, done.id(), technicianId);
++    workOrders.start(techUser, done.id());
++    workOrders.complete(techUser, done.id(), null);
++
++    var futureSchedule = activeSchedule(checksheetId, pastYear + 2);
++    var future = workOrders.generate(leaderUser, futureSchedule);
++    assertThat(future).hasSize(12);
++
++    var swept = workOrders.sweepOverdue(managerUser);
++    assertThat(swept).isEqualTo(11);
++
++    assertThat(workOrders.get(managerUser, done.id()).status())
++        .isEqualTo(PmWorkOrderStatus.COMPLETED);
++    assertThat(workOrders.get(managerUser, future.getFirst().id()).status())
++        .isEqualTo(PmWorkOrderStatus.SCHEDULED);
++    var overdue = workOrders.get(managerUser, generated.get(1).id());
++    assertThat(overdue.status()).isEqualTo(PmWorkOrderStatus.OVERDUE);
++    assertThat(overdue.startedAt()).isNull();
++    assertThat(overdue.completedAt()).isNull();
++
++    var audit = auditLogs.findByEntityIdOrderByCreatedAtAsc(overdue.id());
++    assertThat(audit).anySatisfy(entry -> {
++      assertThat(entry.getAction()).isEqualTo(AuditAction.UPDATE);
++      assertThat(entry.getPreviousValue()).contains("SCHEDULED");
++      assertThat(entry.getNewValue()).contains("OVERDUE");
++    });
++
++    // OVERDUE is terminal — a second sweep finds nothing new.
++    assertThat(workOrders.sweepOverdue(managerUser)).isZero();
++    assertThatThrownBy(() -> workOrders.assign(leaderUser, overdue.id(), technicianId))
++        .isInstanceOf(PmWorkOrderService.InvalidWorkOrderTransitionException.class);
++  }
++
++  @Test
++  @DisplayName("19.4-INT-010 P0 sweep by a non-leader role → 403")
++  void sweepRequiresLeaderRole() {
++    assertThatThrownBy(() -> workOrders.sweepOverdue(staffUser))
++        .isInstanceOf(PmWorkOrderService.PmWorkOrderForbiddenException.class);
++    assertThatThrownBy(() -> workOrders.sweepOverdue(techUser))
++        .isInstanceOf(PmWorkOrderService.PmWorkOrderForbiddenException.class);
++  }
++
++  // -------------------------------------------------------------------------
++  // Gates, scope, SUPER_ADMIN
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.4-INT-011 P0 STAFF_MAINTENANCE cannot generate/assign (leader gate)")
++  void staffCannotGenerateOrAssign() {
++    var scheduleId = activeSchedule(approvedMonthlyChecksheet(), 2027);
++    assertThatThrownBy(() -> workOrders.generate(staffUser, scheduleId))
++        .isInstanceOf(PmWorkOrderService.PmWorkOrderForbiddenException.class);
++    var wo = workOrders.generate(leaderUser, scheduleId).getFirst();
++    assertThatThrownBy(() -> workOrders.assign(staffUser, wo.id(), technicianId))
++        .isInstanceOf(PmWorkOrderService.PmWorkOrderForbiddenException.class);
++  }
++
++  @Test
++  @DisplayName("19.4-INT-012 P0 out-of-scope leader: 403 generate/assign, invisible on reads")
++  void outOfScopeLeaderForbiddenAndInvisible() {
++    var scheduleId = activeSchedule(approvedMonthlyChecksheet(), 2027);
++    var wo = workOrders.generate(leaderUser, scheduleId).getFirst();
++
++    var otherPlant = plants.saveAndFlush(new PlantEntity(
++        UUID.randomUUID(), "Y" + UUID.randomUUID().toString().substring(0, 8), "Other", T0, T0));
++    var otherGroup = machineGroups.saveAndFlush(new MachineGroupEntity(
++        UUID.randomUUID(), otherPlant, "Other Group", T0, T0));
++    var otherMachine = machines.saveAndFlush(new MachineEntity(
++        UUID.randomUUID(), otherPlant, otherGroup,
++        "MC-" + UUID.randomUUID().toString().substring(0, 8), "Other Machine",
++        MachineStatus.ACTIVE, null, null, null, null, T0, T0));
++    var otherId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(otherId, "other-" + UUID.randomUUID() + "@test",
++        "hash", ApplicationRole.SECTION_LEADER, true, T0, T0));
++    responsibilities.saveAndFlush(new MachineResponsibilityEntity(
++        UUID.randomUUID(), otherMachine.getId(), otherId, ResponsibilityLevel.LEADER, T0, T0));
++    var otherUser = new AuthenticatedUser(otherId.toString(), "other@test",
++        ApplicationRole.SECTION_LEADER);
++
++    assertThatThrownBy(() -> workOrders.generate(otherUser, scheduleId))
++        .isInstanceOf(PmWorkOrderService.PmWorkOrderForbiddenException.class);
++    assertThatThrownBy(() -> workOrders.assign(otherUser, wo.id(), technicianId))
++        .isInstanceOf(PmWorkOrderService.PmWorkOrderForbiddenException.class);
++    assertThatThrownBy(() -> workOrders.get(otherUser, wo.id()))
++        .isInstanceOf(PmWorkOrderService.PmWorkOrderForbiddenException.class);
++    assertThat(workOrders.list(otherUser, null, null)).isEmpty();
++    // The in-scope leader still sees their own rows.
++    assertThat(workOrders.list(leaderUser, null, null)).hasSize(12);
++  }
++
++  @Test
++  @DisplayName("19.4-INT-013 P0 SUPER_ADMIN with no assignments bypasses every gate end-to-end")
++  void superAdminBypassesEveryGate() {
++    var adminId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(adminId, "admin-" + UUID.randomUUID() + "@test",
++        "hash", ApplicationRole.SUPER_ADMIN, true, T0, T0));
++    var admin = new AuthenticatedUser(adminId.toString(), "admin@test",
++        ApplicationRole.SUPER_ADMIN);
++
++    var scheduleId = activeSchedule(approvedMonthlyChecksheet(), 2027);
++    var wo = workOrders.generate(admin, scheduleId).getFirst();
++    workOrders.assign(admin, wo.id(), technicianId);
++    // Admin is not the assignee but may execute (SUPER_ADMIN bypass).
++    assertThat(workOrders.start(admin, wo.id()).status())
++        .isEqualTo(PmWorkOrderStatus.IN_PROGRESS);
++    assertThat(workOrders.complete(admin, wo.id(), "cert").status())
++        .isEqualTo(PmWorkOrderStatus.COMPLETED);
++    assertThat(workOrders.get(admin, wo.id()).id()).isEqualTo(wo.id());
++    assertThat(workOrders.list(admin, null, null)).hasSize(12);
++    // 2027 dates are all future relative to the injected clock — nothing to sweep.
++    assertThat(workOrders.sweepOverdue(admin)).isZero();
++  }
++
++  // -------------------------------------------------------------------------
++  // Reads
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.4-INT-014 P0 list filters by status and machineId; unknown machine → 404; unknown workorder → 404")
++  void listFiltersAndNotFound() {
++    var scheduleId = activeSchedule(approvedMonthlyChecksheet(), 2027);
++    var generated = workOrders.generate(leaderUser, scheduleId);
++    workOrders.assign(leaderUser, generated.getFirst().id(), technicianId);
++
++    assertThat(workOrders.list(leaderUser, PmWorkOrderStatus.ASSIGNED, null))
++        .extracting(w -> w.id()).containsExactly(generated.getFirst().id());
++    assertThat(workOrders.list(leaderUser, null, machine.getId())).hasSize(12);
++    assertThat(workOrders.list(leaderUser, PmWorkOrderStatus.COMPLETED, null)).isEmpty();
++
++    assertThatThrownBy(() -> workOrders.list(leaderUser, null, UUID.randomUUID()))
++        .isInstanceOf(PmWorkOrderService.MachineNotFoundException.class);
++    assertThatThrownBy(() -> workOrders.get(leaderUser, UUID.randomUUID()))
++        .isInstanceOf(PmWorkOrderService.PmWorkOrderNotFoundException.class);
++    assertThatThrownBy(() -> workOrders.assign(leaderUser, UUID.randomUUID(), technicianId))
++        .isInstanceOf(PmWorkOrderService.PmWorkOrderNotFoundException.class);
++    assertThatThrownBy(() -> workOrders.start(techUser, UUID.randomUUID()))
++        .isInstanceOf(PmWorkOrderService.PmWorkOrderNotFoundException.class);
++  }
++}
+diff --git a/syncro/authz/policy/authz.rego b/syncro/authz/policy/authz.rego
+index 650e80a..bf18a5b 100644
+--- a/syncro/authz/policy/authz.rego
++++ b/syncro/authz/policy/authz.rego
+@@ -384,6 +384,27 @@ pm_schedule_paths := {
+   "/api/v1/pm-schedules/*/dates/*/transition",
+ }
+ 
++# PM work orders (story 19-4, blueprint F6): generate/assign/sweep-overdue are
++# leader-gated in service (SECTION_LEADER, MAINTENANCE_LEADER, MANAGER_MAINTENANCE);
++# start/complete are assignee-scoped in service (the WO's assigned technician —
++# TECHNICIAN is the realistic executor). The coarse rego set is the union of both
++# gates: the three leader roles + TECHNICIAN (SUPER_ADMIN via the generic bypass).
++# STAFF_MAINTENANCE and the other roles stay default-deny — parity with
++# PmWorkOrderService.requireLeaderMutationAccess/requireAssignee (rego cannot see
++# the body, the assignment or the schedule state). A single `*` matches exactly one
++# path segment, so each depth is enumerated explicitly: collection (list), /{id}
++# (get), /generate, /sweep-overdue, /{id}/assign, /{id}/start, /{id}/complete.
++# Reads (GET) flow through generic read_allowed. Plant/group scope is service-side.
++pm_work_order_paths := {
++  "/api/v1/pm-work-orders",
++  "/api/v1/pm-work-orders/*",
++  "/api/v1/pm-work-orders/generate",
++  "/api/v1/pm-work-orders/sweep-overdue",
++  "/api/v1/pm-work-orders/*/assign",
++  "/api/v1/pm-work-orders/*/start",
++  "/api/v1/pm-work-orders/*/complete",
++}
++
+ # Org-maintenance departments (spec-org-maintenance-model): mutations are the
+ # Phase 1 gate (SUPER_ADMIN|MANAGER_MAINTENANCE). Reads flow through generic
+ # read_allowed. Members replace + section leader assignment + user-master updates
+@@ -1162,6 +1183,34 @@ mutation_allowed if {
+   path_matches(pm_schedule_paths)
+ }
+ 
++# PM work orders (story 19-4): four-role coarse allow set — the three leader roles
++# (generate/assign/sweep, narrowed by scope in service) plus TECHNICIAN (the
++# assignee-scoped start/complete executor). STAFF_MAINTENANCE and the other roles
++# stay default-deny; the service gate is authoritative for scope and assignee.
++mutation_allowed if {
++  input.subject.roles[_] == "MANAGER_MAINTENANCE"
++  is_mutation
++  path_matches(pm_work_order_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "SECTION_LEADER"
++  is_mutation
++  path_matches(pm_work_order_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "MAINTENANCE_LEADER"
++  is_mutation
++  path_matches(pm_work_order_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "TECHNICIAN"
++  is_mutation
++  path_matches(pm_work_order_paths)
++}
++
+ mutation_allowed if {
+   input.subject.roles[_] == "MANAGER_MAINTENANCE"
+   is_mutation
+diff --git a/syncro/authz/policy/authz_test.rego b/syncro/authz/policy/authz_test.rego
+index 6a1af27..6ff8b74 100644
+--- a/syncro/authz/policy/authz_test.rego
++++ b/syncro/authz/policy/authz_test.rego
+@@ -1682,6 +1682,83 @@ test_anonymous_pm_schedule_denied if {
+   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/pm-schedules"}
+ }
+ 
++# -- PM work orders (story 19-4, blueprint F6): four-role coarse allow set (the
++#    three leader roles + TECHNICIAN as the assignee-scoped executor) on the
++#    collection, /{id}, /generate, /sweep-overdue and the action subpaths;
++#    STAFF_MAINTENANCE/AUDITOR/anonymous denied; reads any-authenticated --------
++
++test_manager_pm_work_order_generate_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/pm-work-orders/generate"}
++}
++
++test_section_leader_pm_work_order_generate_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/pm-work-orders/generate"}
++}
++
++test_maintenance_leader_pm_work_order_generate_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/pm-work-orders/generate"}
++}
++
++test_section_leader_pm_work_order_assign_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/pm-work-orders/7b7c6d5e-1111-2222-3333-444455556666/assign"}
++}
++
++test_manager_pm_work_order_sweep_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/pm-work-orders/sweep-overdue"}
++}
++
++test_technician_pm_work_order_start_allowed if {
++  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-work-orders/7b7c6d5e-1111-2222-3333-444455556666/start"}
++}
++
++test_technician_pm_work_order_complete_allowed if {
++  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-work-orders/7b7c6d5e-1111-2222-3333-444455556666/complete"}
++}
++
++test_super_admin_pm_work_order_generate_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/pm-work-orders/generate"}
++}
++
++test_super_admin_pm_work_order_start_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/pm-work-orders/7b7c6d5e-1111-2222-3333-444455556666/start"}
++}
++
++test_staff_pm_work_order_generate_denied if {
++  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/pm-work-orders/generate"}
++}
++
++test_staff_pm_work_order_assign_denied if {
++  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/pm-work-orders/7b7c6d5e-1111-2222-3333-444455556666/assign"}
++}
++
++test_staff_pm_work_order_sweep_denied if {
++  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/pm-work-orders/sweep-overdue"}
++}
++
++test_auditor_pm_work_order_start_denied if {
++  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/pm-work-orders/7b7c6d5e-1111-2222-3333-444455556666/start"}
++}
++
++test_auditor_pm_work_order_generate_denied if {
++  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/pm-work-orders/generate"}
++}
++
++test_storekeeper_pm_work_order_assign_denied if {
++  not authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u8"}, "action": "POST /api/v1/pm-work-orders/7b7c6d5e-1111-2222-3333-444455556666/assign"}
++}
++
++test_auditor_pm_work_order_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-work-orders"}
++}
++
++test_auditor_pm_work_order_get_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-work-orders/7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_anonymous_pm_work_order_denied if {
++  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/pm-work-orders/generate"}
++}
++
+ # -- Anonymous (no userId): default deny everywhere ------------------------
+ 
+ test_anonymous_admin_only_denied if {
