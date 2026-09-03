@@ -1,0 +1,1042 @@
+diff --git a/_bmad-output/implementation-artifacts/sprint-status.yaml b/_bmad-output/implementation-artifacts/sprint-status.yaml
+index 7591ec2..b4981b1 100644
+--- a/_bmad-output/implementation-artifacts/sprint-status.yaml
++++ b/_bmad-output/implementation-artifacts/sprint-status.yaml
+@@ -36,6 +36,8 @@
+ 
+ generated: 2026-05-25
+ last_updated: 2026-09-04
++# updated: 2026-09-04 (2) Epic 19 DONE — 19-6 PM Preventive Print Report done (derived story closing FR-133; no migration)
++# updated: 2026-09-04 Epic 19 — 19-5 PM Executions done (V11 + finding WO + SPV verify)
+ # updated: 2026-09-04 Epic 19 — 19-4 PM Work Orders done (V10 + lifecycle + concurrency tests)
+ # updated: 2026-09-03 (3) Epic 19 — 19-3 PM Schedules & Schedule Dates done
+ # updated: 2026-09-03 (2) Epic 19 — 19-2 PM Checklist Categories & Items done
+@@ -259,12 +261,13 @@ development_status:
+   epic-18-retrospective: optional
+ 
+   # Epic 19: Preventive PM Execution Model
+-  epic-19: in-progress
++  epic-19: done
+   19-1-pm-frequencies-checksheets: done
+   19-2-pm-checklist-categories-items: done
+   19-3-pm-schedules-dates: done
+   19-4-pm-work-orders: done
+   19-5-pm-executions-items: done
++  19-6-pm-preventive-print-report: done
+   epic-19-retrospective: optional
+ 
+   # Epic 20: KPI Materialization
+diff --git a/syncro/.env.example b/syncro/.env.example
+index ba3b9ee..122d225 100644
+--- a/syncro/.env.example
++++ b/syncro/.env.example
+@@ -76,9 +76,9 @@ NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+ # Authz coarse gate (9.5 rolls out enforcement on the org/maintenance/sync surface;
+ # 18-x adds the inventory surface; 19-1 adds the PM frequencies/checksheets surface; 19-2 adds the PM checklist surface;
+ # 19-3 adds the PM schedules/schedule-dates surface; 19-4 adds the PM work-orders surface;
+-# 19-5 adds the PM executions surface;
++# 19-5 adds the PM executions surface; 19-6 adds the PM execution print-report path;
+ # health/actuator stay public and are deliberately excluded)
+-SYNCRO_AUTHZ_ENFORCED_PATHS=/api/v1/plants/**,/api/v1/machine-groups/**,/api/v1/sections/**,/api/v1/teams/**,/api/v1/machine-responsibilities/**,/api/v1/machines/**,/api/v1/machine-sparepart-installations/**,/api/v1/spareparts/**,/api/v1/sparepart-taxonomies/**,/api/v1/alerts/**,/api/v1/audit-log/**,/api/v1/setup-completeness/**,/api/v1/telemetry/**,/api/v1/notification/templates/**,/api/v1/notification/worker/**,/api/v1/work-order-categories/**,/api/v1/workorders/**,/api/v1/workorders/*/transition,/api/v1/workorders/*/sessions,/api/v1/workorders/*/sessions/stop,/api/v1/workorders/*/attachments,/api/v1/workorders/*/attachments/*,/api/v1/workorders/*/report,/api/v1/workorders/*/report/cpk,/api/v1/workorders/*/todos,/api/v1/workorders/*/todos/*,/api/v1/workorders/*/todos/*/assign,/api/v1/workorders/*/todos/*/complete,/api/v1/workorders/*/todos/*/reorder,/api/v1/workorders/*/ratings,/api/v1/workorders/*/ratings/technician,/api/v1/workorders/*/ratings/workorder,/api/v1/rating-dimensions,/api/v1/rating-dimensions/*,/api/v1/preventive-programs,/api/v1/preventive-programs/*,/api/v1/preventive-programs/*/generate,/api/v1/preventive-schedules,/api/v1/preventive-schedules/*/checklist,/api/v1/preventive-schedules/*/evidence,/api/v1/preventive-schedules/*/evidence/*,/api/v1/preventive-schedules/*/approve,/api/v1/preventive-schedules/*/skip,/api/v1/sparepart-requests,/api/v1/sparepart-requests/*/transition,/api/v1/sparepart-requests/*/mre,/api/v1/sparepart-requests/*/approve,/api/v1/sparepart-requests/*/complete,/api/v1/sparepart-stock,/api/v1/sparepart-stock/*,/api/v1/sparepart-stock/*/adjust,/api/v1/departments,/api/v1/departments/*,/api/v1/departments/*/members,/api/v1/sections/*/leader,/api/v1/auth/users/*,/api/v1/sync/**,/api/v1/inventory-locations/**,/api/v1/inventory-locations/*/stock-balances,/api/v1/inventory-locations/*/stock-balances/*,/api/v1/inventory-locations/*/stock-balances/*/adjust,/api/v1/inventory-transfers,/api/v1/inventory-transfers/*,/api/v1/inventory-transfers/*/approve,/api/v1/inventory-transfers/*/reject,/api/v1/pm-frequencies/**,/api/v1/pm-checksheets/**,/api/v1/pm-checklist-categories/**,/api/v1/pm-checklist-items/**,/api/v1/pm-schedules/**,/api/v1/pm-schedules/*/submit,/api/v1/pm-schedules/*/approve-spv,/api/v1/pm-schedules/*/approve-prod,/api/v1/pm-schedules/*/activate,/api/v1/pm-schedules/*/dates/*/transition,/api/v1/pm-work-orders,/api/v1/pm-work-orders/*,/api/v1/pm-work-orders/generate,/api/v1/pm-work-orders/sweep-overdue,/api/v1/pm-work-orders/*/assign,/api/v1/pm-work-orders/*/start,/api/v1/pm-work-orders/*/complete,/api/v1/pm-executions,/api/v1/pm-executions/*,/api/v1/pm-executions/start,/api/v1/pm-executions/*/items/*/fill,/api/v1/pm-executions/*/complete,/api/v1/pm-executions/*/verify
++SYNCRO_AUTHZ_ENFORCED_PATHS=/api/v1/plants/**,/api/v1/machine-groups/**,/api/v1/sections/**,/api/v1/teams/**,/api/v1/machine-responsibilities/**,/api/v1/machines/**,/api/v1/machine-sparepart-installations/**,/api/v1/spareparts/**,/api/v1/sparepart-taxonomies/**,/api/v1/alerts/**,/api/v1/audit-log/**,/api/v1/setup-completeness/**,/api/v1/telemetry/**,/api/v1/notification/templates/**,/api/v1/notification/worker/**,/api/v1/work-order-categories/**,/api/v1/workorders/**,/api/v1/workorders/*/transition,/api/v1/workorders/*/sessions,/api/v1/workorders/*/sessions/stop,/api/v1/workorders/*/attachments,/api/v1/workorders/*/attachments/*,/api/v1/workorders/*/report,/api/v1/workorders/*/report/cpk,/api/v1/workorders/*/todos,/api/v1/workorders/*/todos/*,/api/v1/workorders/*/todos/*/assign,/api/v1/workorders/*/todos/*/complete,/api/v1/workorders/*/todos/*/reorder,/api/v1/workorders/*/ratings,/api/v1/workorders/*/ratings/technician,/api/v1/workorders/*/ratings/workorder,/api/v1/rating-dimensions,/api/v1/rating-dimensions/*,/api/v1/preventive-programs,/api/v1/preventive-programs/*,/api/v1/preventive-programs/*/generate,/api/v1/preventive-schedules,/api/v1/preventive-schedules/*/checklist,/api/v1/preventive-schedules/*/evidence,/api/v1/preventive-schedules/*/evidence/*,/api/v1/preventive-schedules/*/approve,/api/v1/preventive-schedules/*/skip,/api/v1/sparepart-requests,/api/v1/sparepart-requests/*/transition,/api/v1/sparepart-requests/*/mre,/api/v1/sparepart-requests/*/approve,/api/v1/sparepart-requests/*/complete,/api/v1/sparepart-stock,/api/v1/sparepart-stock/*,/api/v1/sparepart-stock/*/adjust,/api/v1/departments,/api/v1/departments/*,/api/v1/departments/*/members,/api/v1/sections/*/leader,/api/v1/auth/users/*,/api/v1/sync/**,/api/v1/inventory-locations/**,/api/v1/inventory-locations/*/stock-balances,/api/v1/inventory-locations/*/stock-balances/*,/api/v1/inventory-locations/*/stock-balances/*/adjust,/api/v1/inventory-transfers,/api/v1/inventory-transfers/*,/api/v1/inventory-transfers/*/approve,/api/v1/inventory-transfers/*/reject,/api/v1/pm-frequencies/**,/api/v1/pm-checksheets/**,/api/v1/pm-checklist-categories/**,/api/v1/pm-checklist-items/**,/api/v1/pm-schedules/**,/api/v1/pm-schedules/*/submit,/api/v1/pm-schedules/*/approve-spv,/api/v1/pm-schedules/*/approve-prod,/api/v1/pm-schedules/*/activate,/api/v1/pm-schedules/*/dates/*/transition,/api/v1/pm-work-orders,/api/v1/pm-work-orders/*,/api/v1/pm-work-orders/generate,/api/v1/pm-work-orders/sweep-overdue,/api/v1/pm-work-orders/*/assign,/api/v1/pm-work-orders/*/start,/api/v1/pm-work-orders/*/complete,/api/v1/pm-executions,/api/v1/pm-executions/*,/api/v1/pm-executions/start,/api/v1/pm-executions/*/items/*/fill,/api/v1/pm-executions/*/complete,/api/v1/pm-executions/*/verify,/api/v1/pm-executions/*/report
+ SYNCRO_AUTHZ_DEGRADED_ALLOWLIST=/api/v1/health,/actuator/**
+ 
+ # Authz decision-log retention (days) for the authz_decisions purge job
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmExecutionController.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmExecutionController.java
+index 0ade3fb..17bc7f5 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmExecutionController.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmExecutionController.java
+@@ -4,8 +4,10 @@ import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
+ import com.syncro.maintenance.preventive.api.PreventiveDtos.ExecutionItemView;
+ import com.syncro.maintenance.preventive.api.PreventiveDtos.ExecutionView;
+ import com.syncro.maintenance.preventive.api.PreventiveDtos.FillExecutionItemRequest;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.PmExecutionReportView;
+ import com.syncro.maintenance.preventive.api.PreventiveDtos.StartExecutionRequest;
+ import com.syncro.maintenance.preventive.api.PreventiveDtos.VerifyExecutionRequest;
++import com.syncro.maintenance.preventive.application.PmExecutionReportService;
+ import com.syncro.maintenance.preventive.application.PmExecutionService;
+ import com.syncro.maintenance.preventive.application.PmExecutionService.FillExecutionCommand;
+ import io.swagger.v3.oas.annotations.Operation;
+@@ -38,9 +40,11 @@ import org.springframework.web.bind.annotation.RestController;
+ public class PmExecutionController {
+ 
+   private final PmExecutionService executions;
++  private final PmExecutionReportService reports;
+ 
+-  public PmExecutionController(PmExecutionService executions) {
++  public PmExecutionController(PmExecutionService executions, PmExecutionReportService reports) {
+     this.executions = executions;
++    this.reports = reports;
+   }
+ 
+   @Operation(operationId = "startPmExecution", summary = "Start an execution on an IN_PROGRESS PM work order (one per work order)")
+@@ -141,6 +145,26 @@ public class PmExecutionController {
+     return toView(executions.get(user, id));
+   }
+ 
++  /**
++   * Aggregate preventive print report (GET /{id}/report): header, sequence-ordered
++   * item rows with presigned NG photos, and the technician/SPV signature blocks for
++   * the WYSIWYG browser-print page (story 19-6, FR-133). Same read gate as get().
++   */
++  @Operation(operationId = "getPmExecutionReport", summary = "Aggregate PM execution print report (WYSIWYG browser print)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Print report returned",
++          content = @Content(schema = @Schema(implementation = PmExecutionReportView.class))),
++      @ApiResponse(responseCode = "400", description = "Malformed path value"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden (out of scope)"),
++      @ApiResponse(responseCode = "404", description = "Execution not found")
++  })
++  @GetMapping("/{id}/report")
++  public PmExecutionReportView report(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id) {
++    return reports.get(user, id);
++  }
++
+   private static ExecutionView toView(
+       com.syncro.maintenance.preventive.application.PmExecutionService.ExecutionView v) {
+     return new ExecutionView(v.id(), v.pmWoId(), v.scheduleDateId(), v.technicianId(),
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java
+index 8b40fe2..9c5664f 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java
+@@ -6,6 +6,7 @@ import com.syncro.maintenance.preventive.domain.PmScheduleStatus;
+ import com.syncro.maintenance.preventive.domain.PmWorkOrderStatus;
+ import com.syncro.maintenance.preventive.domain.PreventiveCategory;
+ import com.syncro.maintenance.preventive.domain.ScheduleType;
++import io.swagger.v3.oas.annotations.media.Schema;
+ import jakarta.validation.constraints.Max;
+ import jakarta.validation.constraints.Min;
+ import jakarta.validation.constraints.NotBlank;
+@@ -298,4 +299,46 @@ public final class PreventiveDtos {
+       boolean hasNgItems, int ngCount, String findingWoId, Instant createdAt, Instant updatedAt,
+       List<ExecutionItemView> items) {
+   }
++
++  // -------------------------------------------------------------------------
++  // PM preventive print report (story 19-6, FR-133)
++  // -------------------------------------------------------------------------
++
++  /** Execution + machine/plant + WO period header for the print report. */
++  public record PmExecutionReportHeaderView(UUID executionId, UUID pmWoId, UUID machineId,
++      String machineCode, String machineName, String plantCode, LocalDate scheduledDate,
++      String frequencyCode, String frequencyName,
++      /** Sourced from the PM work order's template_revision (denormalized checksheet revision). */
++      Integer checksheetRevision,
++      Instant startedAt, Instant completedAt,
++      @Schema(description = "Derived execution lifecycle status",
++          allowableValues = {"RUNNING", "COMPLETED", "VERIFIED"}) String status,
++      boolean hasNgItems, int ngCount, String findingWoId) {
++  }
++
++  /** One snapshotted checklist row (sequence-ordered) with bounds, result and NG evidence. */
++  public record PmExecutionReportItemView(int sequence, String categoryName, String parameterText,
++      String checkMethod, String inputType, boolean criticalFlag, String unit, BigDecimal lsl,
++      BigDecimal nominal, BigDecimal usl, BigDecimal actualValue, Boolean ok, boolean ng,
++      String ngNotes, String ngPhotoPresignedUrl, boolean blocked, String blockedWoCode) {
++  }
++
++  /** One signer block (technician or SPV); null when that side has not signed. */
++  public record PmExecutionReportSignatureView(UUID userId, String displayName,
++      String signaturePresignedUrl, Instant signedAt) {
++  }
++
++  /** The two signature blocks of the print report. */
++  public record PmExecutionReportSignaturesView(PmExecutionReportSignatureView technician,
++      PmExecutionReportSignatureView spv) {
++  }
++
++  /**
++   * Aggregate preventive print report (WYSIWYG browser print, 14-3 precedent). The
++   * company logo is a separate settings read (GET /api/v1/settings/logo), not part
++   * of this aggregate.
++   */
++  public record PmExecutionReportView(PmExecutionReportHeaderView header,
++      List<PmExecutionReportItemView> items, PmExecutionReportSignaturesView signatures) {
++  }
+ }
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmExecutionControllerTest.java b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmExecutionControllerTest.java
+index d7ac65a..40df175 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmExecutionControllerTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmExecutionControllerTest.java
+@@ -16,7 +16,13 @@ import com.syncro.auth.domain.ApplicationRole;
+ import com.syncro.auth.infrastructure.JwtAuthenticationFilter;
+ import com.syncro.config.SecurityConfig;
+ import com.syncro.config.TimeConfig;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.PmExecutionReportHeaderView;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.PmExecutionReportItemView;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.PmExecutionReportSignatureView;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.PmExecutionReportSignaturesView;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.PmExecutionReportView;
+ import com.syncro.maintenance.preventive.application.PmChecklistService;
++import com.syncro.maintenance.preventive.application.PmExecutionReportService;
+ import com.syncro.maintenance.preventive.application.PmExecutionService;
+ import com.syncro.maintenance.preventive.application.PmExecutionService.ExecutionItemView;
+ import com.syncro.maintenance.preventive.application.PmExecutionService.ExecutionView;
+@@ -57,6 +63,9 @@ class PmExecutionControllerTest {
+   @MockitoBean
+   private PmExecutionService executions;
+ 
++  @MockitoBean
++  private PmExecutionReportService reports;
++
+   @MockitoBean
+   private JwtTokenService jwtTokenService;
+ 
+@@ -64,6 +73,7 @@ class PmExecutionControllerTest {
+   private static final UUID WO_ID = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+   private static final UUID ITEM_ID = UUID.fromString("ffffffff-eeee-dddd-cccc-bbbbbbbbbbbb");
+   private static final UUID TECH_ID = UUID.fromString("44444444-3333-2222-1111-000000000000");
++  private static final UUID MACHINE_ID = UUID.fromString("66666666-7777-8888-9999-000000000000");
+   private static final UUID SIG_ID = UUID.fromString("55555555-6666-7777-8888-999999999999");
+   private static final Instant NOW = Instant.parse("2026-09-01T08:00:00Z");
+ 
+@@ -388,6 +398,67 @@ class PmExecutionControllerTest {
+         .andExpect(jsonPath("$.code").value("INVALID_PATH_VALUE"));
+   }
+ 
++  // -------------------------------------------------------------------------
++  // Story 19-6: print report endpoint
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.6-API-001 P0 report returns 200 with header/items/signature aggregate shape")
++  void report() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(reports.get(eq(user), eq(EXEC_ID))).thenReturn(reportView());
++
++    mockMvc.perform(get("/api/v1/pm-executions/{id}/report", EXEC_ID)
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.header.executionId").value(EXEC_ID.toString()))
++        .andExpect(jsonPath("$.header.machineId").value(MACHINE_ID.toString()))
++        .andExpect(jsonPath("$.header.machineCode").value("GM1"))
++        .andExpect(jsonPath("$.header.plantCode").value("JBF19"))
++        .andExpect(jsonPath("$.header.status").value("VERIFIED"))
++        .andExpect(jsonPath("$.items[0].sequence").value(1))
++        .andExpect(jsonPath("$.items[0].ngPhotoPresignedUrl")
++            .value("https://garage/ng.jpg"))
++        .andExpect(jsonPath("$.signatures.technician.displayName").value("Tech One"))
++        .andExpect(jsonPath("$.signatures.spv")
++            .value(org.hamcrest.Matchers.nullValue()));
++  }
++
++  @Test
++  @DisplayName("19.6-API-002 P0 report out-of-scope → 403 FORBIDDEN")
++  void reportForbidden() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    when(reports.get(eq(user), eq(EXEC_ID)))
++        .thenThrow(new PmExecutionService.PmExecutionForbiddenException());
++
++    mockMvc.perform(get("/api/v1/pm-executions/{id}/report", EXEC_ID)
++            .with(auth(user)))
++        .andExpect(status().isForbidden())
++        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
++  }
++
++  @Test
++  @DisplayName("19.6-API-003 P0 report unknown execution → 404 PM_EXECUTION_NOT_FOUND")
++  void reportNotFound() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(reports.get(eq(user), eq(EXEC_ID)))
++        .thenThrow(new PmExecutionService.PmExecutionNotFoundException());
++
++    mockMvc.perform(get("/api/v1/pm-executions/{id}/report", EXEC_ID)
++            .with(auth(user)))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("PM_EXECUTION_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("19.6-API-004 P0 report malformed UUID → 400 INVALID_PATH_VALUE")
++  void reportMalformedPathValue() throws Exception {
++    mockMvc.perform(get("/api/v1/pm-executions/{id}/report", "not-a-uuid")
++            .with(auth(ApplicationRole.AUDITOR)))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("INVALID_PATH_VALUE"));
++  }
++
+   @Test
+   @DisplayName("19.5-API-019 P0 malformed UUID body field → 400 VALIDATION_ERROR")
+   void startMalformedBody() throws Exception {
+@@ -411,6 +482,20 @@ class PmExecutionControllerTest {
+         NOW, NOW, List.of(itemView()));
+   }
+ 
++  private static PmExecutionReportView reportView() {
++    var header = new PmExecutionReportHeaderView(EXEC_ID, WO_ID, MACHINE_ID, "GM1", "Press A",
++        "JBF19", java.time.LocalDate.of(2027, 1, 15), "MONTHLY", "Monthly", 1, NOW, NOW,
++        "VERIFIED", true, 1, null);
++    var item = new PmExecutionReportItemView(1, "Hydraulics", "Oil pressure", "Gauge",
++        "MEASUREMENT", false, "bar", new BigDecimal("3.0"), new BigDecimal("5.0"),
++        new BigDecimal("7.0"), new BigDecimal("9.5"), null, true, "Weep at seal",
++        "https://garage/ng.jpg", false, null);
++    var tech = new PmExecutionReportSignatureView(TECH_ID, "Tech One",
++        "https://garage/tech.png", NOW);
++    return new PmExecutionReportView(header, List.of(item),
++        new PmExecutionReportSignaturesView(tech, null));
++  }
++
+   private static ExecutionItemView itemView() {
+     return new ExecutionItemView(ITEM_ID, EXEC_ID, ITEM_ID, 1, "Hydraulics", "Oil pressure",
+         "Gauge", PmItemInputType.MEASUREMENT, false, "bar", new BigDecimal("3.0"),
+diff --git a/syncro/authz/policy/authz.rego b/syncro/authz/policy/authz.rego
+index 17dee33..e1ed13a 100644
+--- a/syncro/authz/policy/authz.rego
++++ b/syncro/authz/policy/authz.rego
+@@ -414,8 +414,10 @@ pm_work_order_paths := {
+ # requireAssignee/requireExecutionTechnician/requireLeaderMutationAccess (rego cannot
+ # see the body, the assignment or the execution state). A single `*` matches exactly
+ # one path segment, so each depth is enumerated explicitly: collection (list), /{id}
+-# (get), /start, /{id}/items/{itemId}/fill, /{id}/complete, /{id}/verify. Reads (GET)
+-# flow through generic read_allowed. Machine scope is service-side.
++# (get), /start, /{id}/items/{itemId}/fill, /{id}/complete, /{id}/verify, and (story
++# 19-6) /{id}/report — the print-report read gate is service-side (19-5 posture), the
++# rego entry keeps the enforced-path surface complete. Reads (GET) flow through
++# generic read_allowed. Machine scope is service-side.
+ pm_execution_paths := {
+   "/api/v1/pm-executions",
+   "/api/v1/pm-executions/*",
+@@ -423,6 +425,7 @@ pm_execution_paths := {
+   "/api/v1/pm-executions/*/items/*/fill",
+   "/api/v1/pm-executions/*/complete",
+   "/api/v1/pm-executions/*/verify",
++  "/api/v1/pm-executions/*/report",
+ }
+ 
+ # Org-maintenance departments (spec-org-maintenance-model): mutations are the
+diff --git a/syncro/authz/policy/authz_test.rego b/syncro/authz/policy/authz_test.rego
+index d4e9072..9f19416 100644
+--- a/syncro/authz/policy/authz_test.rego
++++ b/syncro/authz/policy/authz_test.rego
+@@ -1824,6 +1824,35 @@ test_auditor_pm_execution_get_read_allowed if {
+   authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666"}
+ }
+ 
++# -- PM execution print report (story 19-6, FR-133): GET is a read (any-authenticated,
++#    service gate is authoritative); the /{id}/report depth is in pm_execution_paths so
++#    the coarse mutation set mirrors the rest of the surface (same role set allowed,
++#    others denied) --
++
++test_auditor_pm_execution_report_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/report"}
++}
++
++test_technician_pm_execution_report_post_allowed if {
++  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/report"}
++}
++
++test_section_leader_pm_execution_report_post_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/report"}
++}
++
++test_staff_pm_execution_report_post_denied if {
++  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/report"}
++}
++
++test_auditor_pm_execution_report_post_denied if {
++  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/report"}
++}
++
++test_anonymous_pm_execution_report_denied if {
++  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "GET /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/report"}
++}
++
+ test_anonymous_pm_execution_denied if {
+   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/pm-executions/start"}
+ }
+
+
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmExecutionReportService.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmExecutionReportService.java
+new file mode 100644
+index 0000000..bb229c3
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmExecutionReportService.java
+@@ -0,0 +1,182 @@
++package com.syncro.maintenance.preventive.application;
++
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.infrastructure.AuthUserRepository;
++import com.syncro.auth.infrastructure.UserSignatureRepository;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.PmExecutionReportHeaderView;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.PmExecutionReportItemView;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.PmExecutionReportSignatureView;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.PmExecutionReportSignaturesView;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.PmExecutionReportView;
++import com.syncro.maintenance.preventive.application.PmExecutionService.ExecutionItemView;
++import com.syncro.maintenance.preventive.application.PmExecutionService.ExecutionView;
++import com.syncro.maintenance.preventive.infrastructure.db.PmWorkOrderEntity;
++import com.syncro.maintenance.preventive.infrastructure.db.PmWorkOrderRepository;
++import com.syncro.machine.infrastructure.MachineEntity;
++import com.syncro.machine.infrastructure.MachineRepository;
++import com.syncro.storage.application.ObjectStorageException;
++import com.syncro.storage.application.ObjectStorageService;
++import java.time.Instant;
++import java.util.List;
++import java.util.UUID;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++
++/**
++ * PM preventive print report assembly (story 19-6, FR-133). Composes the execution
++ * header (machine/plant + WO period info + derived lifecycle status), the sequence-
++ * ordered snapshotted checklist rows with results and NG photo URLs, and the
++ * technician/SPV signature blocks into one aggregate DTO for the WYSIWYG
++ * browser-print page. Mirrors the 14-3 {@code WorkorderPrintReportService} pattern:
++ * JSON payload only, no server-side PDF/HTML; the company logo is a separate
++ * {@code GET /api/v1/settings/logo} read.
++ *
++ * <p>Read gate: the 19-5 {@link PmExecutionService#get} posture is reused verbatim
++ * (execution's technician / machine-scope readers / SUPER_ADMIN; unknown id 404,
++ * out-of-scope 403, same load-then-gate ordering) — no second gate here.
++ *
++ * <p>{@code ng_photo_url} is free text (19-5 stores it as-is): it is presigned only
++ * when it looks like a storage object key (non-blank, no URL scheme, no
++ * protocol-relative or domain-like first segment); anything else (e.g. an external
++ * https:// link or photos.example.com/x.jpg) is echoed verbatim as the photo URL
++ * field.
++ * Presign failures (deleted Garage object) never break the report — the URL is
++ * skipped as null (14-3 buildSignature precedent).
++ */
++@Service
++public class PmExecutionReportService {
++
++  private final PmExecutionService executions;
++  private final PmWorkOrderRepository workOrders;
++  private final MachineRepository machines;
++  private final UserSignatureRepository signatures;
++  private final AuthUserRepository users;
++  private final ObjectStorageService objectStorage;
++
++  public PmExecutionReportService(PmExecutionService executions, PmWorkOrderRepository workOrders,
++      MachineRepository machines, UserSignatureRepository signatures, AuthUserRepository users,
++      ObjectStorageService objectStorage) {
++    this.executions = executions;
++    this.workOrders = workOrders;
++    this.machines = machines;
++    this.signatures = signatures;
++    this.users = users;
++    this.objectStorage = objectStorage;
++  }
++
++  @Transactional(readOnly = true)
++  public PmExecutionReportView get(AuthenticatedUser user, UUID id) {
++    // 19-5 read posture reused verbatim: load-then-gate, 404/403 semantics included.
++    var execution = executions.get(user, id);
++    var workOrder = workOrders.findById(execution.pmWoId())
++        .orElseThrow(PmWorkOrderService.PmWorkOrderNotFoundException::new);
++    var machine = machines.findByIdWithPlantAndGroup(workOrder.getMachineId())
++        .orElseThrow(PmWorkOrderService.MachineNotFoundException::new);
++
++    return new PmExecutionReportView(
++        buildHeader(execution, workOrder, machine),
++        buildItems(execution.items()),
++        buildSignatures(execution));
++  }
++
++  // -------------------------------------------------------------------------
++  // Section builders
++  // -------------------------------------------------------------------------
++
++  private static PmExecutionReportHeaderView buildHeader(ExecutionView execution,
++      PmWorkOrderEntity workOrder, MachineEntity machine) {
++    return new PmExecutionReportHeaderView(
++        execution.id(),
++        execution.pmWoId(),
++        machine.getId(),
++        machine.getCode(),
++        machine.getName(),
++        machine.getPlant().getCode(),
++        workOrder.getScheduledDate(),
++        workOrder.getFrequencyCode(),
++        workOrder.getFrequencyName(),
++        workOrder.getTemplateRevision(),
++        execution.startedAt(),
++        execution.completedAt(),
++        deriveStatus(execution),
++        execution.hasNgItems(),
++        execution.ngCount(),
++        execution.findingWoId());
++  }
++
++  /**
++   * Execution lifecycle status is derived, not stored (19-6 design note): NOT_STARTED
++   * is impossible (an execution row exists once started), RUNNING = not completed,
++   * COMPLETED = completed but not SPV-signed, VERIFIED = both.
++   */
++  private static String deriveStatus(ExecutionView execution) {
++    if (execution.completedAt() == null) {
++      return "RUNNING";
++    }
++    return execution.spvSignedAt() == null ? "COMPLETED" : "VERIFIED";
++  }
++
++  private List<PmExecutionReportItemView> buildItems(List<ExecutionItemView> items) {
++    return items.stream()
++        .map(i -> new PmExecutionReportItemView(i.sequence(), i.categoryName(), i.parameterText(),
++            i.checkMethod(), i.inputType() != null ? i.inputType().name() : null,
++            i.isCriticalFlag(), i.unit(), i.lsl(), i.nominal(), i.usl(), i.actualValue(),
++            i.isOk(), i.isNg(), i.ngNotes(), ngPhotoUrl(i.ngPhotoUrl()), i.isBlocked(),
++            i.blockedWoCode()))
++        .toList();
++  }
++
++  /**
++   * ng_photo_url is free text: presign only object-key-looking values; anything
++   * URL-like — a scheme ("https://…"), a protocol-relative "//host/…", or a
++   * domain-like first segment ("photos.example.com/x.jpg", object keys never
++   * contain a dot in the first segment) — is echoed verbatim. Presign failure on a
++   * genuine key skips the URL (null).
++   */
++  private String ngPhotoUrl(String value) {
++    if (value == null || value.isBlank()) {
++      return null;
++    }
++    if (value.contains("://") || value.startsWith("//")) {
++      return value;
++    }
++    var slash = value.indexOf('/');
++    if (value.substring(0, slash == -1 ? value.length() : slash).contains(".")) {
++      return value;
++    }
++    return presign(value);
++  }
++
++  private PmExecutionReportSignaturesView buildSignatures(ExecutionView execution) {
++    return new PmExecutionReportSignaturesView(
++        buildSignature(execution.technicianId(), execution.technicianSignatureId(),
++            execution.technicianSignedAt()),
++        buildSignature(execution.spvVerifierId(), execution.spvSignatureId(),
++            execution.spvSignedAt()));
++  }
++
++  /** One signer block; null when that side has not signed. */
++  private PmExecutionReportSignatureView buildSignature(UUID userId, UUID signatureId,
++      Instant signedAt) {
++    if (signedAt == null) {
++      return null;
++    }
++    // Presigning a deleted/missing Garage object can fail — the print page must not
++    // break; the signature image is simply skipped (null URL).
++    var url = signatureId == null ? null : signatures.findById(signatureId)
++        .map(sig -> presign(sig.getObjectKey())).orElse(null);
++    var displayName = userId == null ? null : users.findById(userId)
++        .map(u -> u.getDisplayName() != null && !u.getDisplayName().isBlank()
++            ? u.getDisplayName().trim() : u.getLoginIdentifier())
++        .orElse(null);
++    return new PmExecutionReportSignatureView(userId, displayName, url, signedAt);
++  }
++
++  private String presign(String objectKey) {
++    try {
++      return objectStorage.presignGetUrl(objectKey);
++    } catch (ObjectStorageException exception) {
++      return null;
++    }
++  }
++}
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/application/PmExecutionReportServiceIntegrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/application/PmExecutionReportServiceIntegrationTest.java
+new file mode 100644
+index 0000000..69aa2b6
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/application/PmExecutionReportServiceIntegrationTest.java
+@@ -0,0 +1,434 @@
++package com.syncro.maintenance.preventive.application;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.api.Assertions.assertThatThrownBy;
++import static org.mockito.ArgumentMatchers.anyString;
++import static org.mockito.Mockito.when;
++
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.AuthUserEntity;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentEntity;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
++import com.syncro.auth.infrastructure.AuthUserRepository;
++import com.syncro.auth.infrastructure.UserSignatureEntity;
++import com.syncro.auth.infrastructure.UserSignatureRepository;
++import com.syncro.machine.domain.MachineStatus;
++import com.syncro.machine.domain.ResponsibilityLevel;
++import com.syncro.machine.infrastructure.MachineEntity;
++import com.syncro.machine.infrastructure.MachineRepository;
++import com.syncro.machine.infrastructure.MachineResponsibilityEntity;
++import com.syncro.machine.infrastructure.MachineResponsibilityRepository;
++import com.syncro.maintenance.preventive.application.PmChecklistService.CreateCategoryCommand;
++import com.syncro.maintenance.preventive.application.PmChecklistService.CreateItemCommand;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.ApproveChecksheetCommand;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.CreateChecksheetCommand;
++import com.syncro.maintenance.preventive.application.PmExecutionService.ExecutionView;
++import com.syncro.maintenance.preventive.application.PmExecutionService.FillExecutionCommand;
++import com.syncro.maintenance.preventive.application.PmExecutionService.PmExecutionForbiddenException;
++import com.syncro.maintenance.preventive.application.PmExecutionService.PmExecutionNotFoundException;
++import com.syncro.maintenance.preventive.application.PmScheduleService.CreateScheduleCommand;
++import com.syncro.maintenance.preventive.domain.PmItemInputType;
++import com.syncro.maintenance.preventive.infrastructure.db.PmExecutionEntity;
++import com.syncro.maintenance.preventive.infrastructure.db.PmExecutionRepository;
++import com.syncro.masterdata.infrastructure.MachineGroupEntity;
++import com.syncro.masterdata.infrastructure.MachineGroupRepository;
++import com.syncro.auth.infrastructure.PlantEntity;
++import com.syncro.auth.infrastructure.PlantRepository;
++import com.syncro.storage.application.ObjectStorageException;
++import com.syncro.storage.application.ObjectStorageService;
++import java.math.BigDecimal;
++import java.time.Instant;
++import java.time.LocalDate;
++import java.util.UUID;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.test.context.SpringBootTest;
++import org.springframework.test.context.DynamicPropertyRegistry;
++import org.springframework.test.context.DynamicPropertySource;
++import org.springframework.test.context.bean.override.mockito.MockitoBean;
++import org.testcontainers.containers.PostgreSQLContainer;
++import org.testcontainers.junit.jupiter.Container;
++import org.testcontainers.junit.jupiter.Testcontainers;
++
++/**
++ * Story 19-6 integration test: the PM preventive print report (FR-133) against a
++ * real Postgres container. Covers every row of the spec's I/O matrix: the full
++ * completed+verified report (machine/plant header, sequence-ordered rows with
++ * bounds+actual+ok/ng, presigned NG photo, both signature blocks with resolved
++ * display names and the login_identifier fallback), the unsigned execution (null
++ * blocks, RUNNING), the deleted signature object (200 with null URL), the external
++ * ng_photo_url (echoed verbatim, never presigned), the out-of-scope reader (403),
++ * and the unknown id (404).
++ *
++ * <p>Non-transactional with a dedicated database (19-5 pattern): the fixture chain
++ * runs the real 19-1..19-5 services end-to-end. ObjectStorageService is mocked —
++ * presigning is the only storage touch, and its failure-skip behavior is exactly
++ * what the deleted-object case must prove.
++ */
++@Testcontainers
++@SpringBootTest(properties = {
++    "server.port=0",
++    "spring.lifecycle.timeout-per-shutdown-phase=5s",
++    "REDIS_HOST=localhost",
++    "REDIS_PORT=6379",
++    "INFLUXDB_HOST=localhost",
++    "INFLUXDB_PORT=8086",
++    "INFLUXDB_USERNAME=test",
++    "INFLUXDB_PASSWORD=test",
++    "INFLUXDB_TOKEN=test",
++    "INFLUXDB_ORG=test",
++    "INFLUXDB_BUCKET=test",
++    "SYNCRO_MQTT_HOST=localhost",
++    "SYNCRO_MQTT_PORT=1883",
++    "SYNCRO_MQTT_USERNAME=test",
++    "SYNCRO_MQTT_PASSWORD=test",
++    "SYNCRO_MQTT_CLIENT_ID=test",
++    "SYNCRO_MQTT_TOPIC_FILTER=syncro/+/telemetry",
++    "WAHA_HOST=localhost",
++    "WAHA_PORT=3000",
++    "WAHA_API_KEY=test",
++    "GARAGE_HOST=localhost",
++    "GARAGE_S3_PORT=3900",
++    "GARAGE_ACCESS_KEY=test",
++    "GARAGE_SECRET_KEY=test",
++    "GARAGE_BUCKET=test",
++    "GARAGE_REGION=garage",
++    "OPA_HOST=localhost",
++    "OPA_PORT=18181",
++    "SYNCRO_OPA_URL=http://localhost:18181",
++    "SYNCRO_AUTHZ_ENFORCED_PATHS=",
++    "SYNCRO_AUTHZ_DEGRADED_ALLOWLIST=/api/v1/health,/actuator/**",
++    "syncro.auth.jwt.secret=test-secret-for-auth-integration-32x",
++    "syncro.auth.jwt.issuer=syncro-test",
++    "syncro.auth.jwt.ttl-minutes=30",
++    "syncro.auth.local-admin.enabled=false",
++    "syncro.auth.local-admin.login-identifier=admin@syncro.dev",
++    "syncro.auth.local-admin.password=test-password"
++})
++class PmExecutionReportServiceIntegrationTest {
++
++  @Container
++  static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
++
++  static {
++    postgres.withDatabaseName("pm_execution_report_integration");
++    postgres.withReuse(true);
++  }
++
++  @DynamicPropertySource
++  static void postgresProperties(DynamicPropertyRegistry registry) {
++    registry.add("spring.datasource.url", postgres::getJdbcUrl);
++    registry.add("spring.datasource.username", postgres::getUsername);
++    registry.add("spring.datasource.password", postgres::getPassword);
++  }
++
++  @MockitoBean
++  private ObjectStorageService objectStorage;
++
++  @Autowired
++  private PmExecutionReportService reports;
++  @Autowired
++  private PmExecutionService executions;
++  @Autowired
++  private PmWorkOrderService workOrders;
++  @Autowired
++  private PmScheduleService schedules;
++  @Autowired
++  private PmChecksheetService checksheets;
++  @Autowired
++  private PmChecklistService checklist;
++  @Autowired
++  private PmFrequencyService frequencies;
++  @Autowired
++  private PlantRepository plants;
++  @Autowired
++  private MachineGroupRepository machineGroups;
++  @Autowired
++  private MachineRepository machines;
++  @Autowired
++  private AuthUserRepository users;
++  @Autowired
++  private AuthUserPlantAssignmentRepository assignments;
++  @Autowired
++  private MachineResponsibilityRepository responsibilities;
++  @Autowired
++  private UserSignatureRepository userSignatures;
++  @Autowired
++  private PmExecutionRepository executionRows;
++
++  /** One fully-wired fixture: ACTIVE monthly schedule, checklist items, one IN_PROGRESS WO. */
++  private record Fixture(PlantEntity plant, MachineEntity machine,
++      AuthenticatedUser leader, AuthenticatedUser staff, AuthenticatedUser tech,
++      UUID technicianId, UUID leaderId, UUID checksheetId, UUID measurementItemId,
++      UUID okNgItemId, UUID scheduleId, PmWorkOrderService.WorkOrderView workOrder) {
++  }
++
++  private Fixture fixture() {
++    var now = Instant.now();
++    var suffix = UUID.randomUUID().toString().substring(0, 8);
++    var plant = plants.saveAndFlush(new PlantEntity(
++        UUID.randomUUID(), "P-RPT-" + suffix, "Report Plant", now, now));
++    var group = machineGroups.saveAndFlush(new MachineGroupEntity(
++        UUID.randomUUID(), plant, "Report Group", now, now));
++    var machine = machines.saveAndFlush(new MachineEntity(
++        UUID.randomUUID(), plant, group, "MC-RPT-" + suffix, "Report Machine",
++        MachineStatus.ACTIVE, null, null, null, null, now, now));
++
++    var leaderId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(leaderId, "rpt-leader-" + UUID.randomUUID() + "@test",
++        "hash", ApplicationRole.SECTION_LEADER, true, now, now));
++    assignments.saveAndFlush(new AuthUserPlantAssignmentEntity(leaderId, plant.getId(), now));
++    responsibilities.saveAndFlush(new MachineResponsibilityEntity(
++        UUID.randomUUID(), machine.getId(), leaderId, ResponsibilityLevel.LEADER, now, now));
++    var leader = new AuthenticatedUser(leaderId.toString(), "rpt-leader@test",
++        ApplicationRole.SECTION_LEADER);
++
++    var staffId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(staffId, "rpt-staff-" + UUID.randomUUID() + "@test",
++        "hash", ApplicationRole.STAFF_MAINTENANCE, true, now, now));
++    assignments.saveAndFlush(new AuthUserPlantAssignmentEntity(staffId, plant.getId(), now));
++    var staff = new AuthenticatedUser(staffId.toString(), "rpt-staff@test",
++        ApplicationRole.STAFF_MAINTENANCE);
++
++    var technicianId = UUID.randomUUID();
++    var techUser = new AuthUserEntity(technicianId, "rpt-tech-" + UUID.randomUUID() + "@test",
++        "hash", ApplicationRole.TECHNICIAN, true, now, now);
++    techUser.updateMasterFields("Tech One", null, null, null, null, now);
++    users.saveAndFlush(techUser);
++    var tech = new AuthenticatedUser(technicianId.toString(), "rpt-tech@test",
++        ApplicationRole.TECHNICIAN);
++
++    var monthly = frequencies.list().stream()
++        .filter(f -> f.code().equals("MONTHLY")).findFirst().orElseThrow().id();
++    var checksheetId = checksheets.create(staff,
++        new CreateChecksheetCommand(machine.getId(), monthly, null)).id();
++    var categoryId = checklist.createCategory(staff,
++        new CreateCategoryCommand(checksheetId, "Hydraulics", 0)).id();
++    var measurementItemId = checklist.createItem(staff, new CreateItemCommand(checksheetId,
++        categoryId, 1, "Oil pressure", "Gauge", PmItemInputType.MEASUREMENT, "bar",
++        new BigDecimal("3.0"), new BigDecimal("5.0"), new BigDecimal("7.0"), false,
++        null, null)).id();
++    var okNgItemId = checklist.createItem(staff, new CreateItemCommand(checksheetId,
++        categoryId, 2, "Visual leak check", "Eyes", PmItemInputType.OK_NG, null,
++        null, null, null, false, null, null)).id();
++    checksheets.approve(leader, checksheetId,
++        new ApproveChecksheetCommand(LocalDate.of(2026, 1, 15)));
++
++    var scheduleId = schedules.create(staff,
++        new CreateScheduleCommand(plant.getId(), machine.getId(), checksheetId, 2027)).id();
++    schedules.submit(staff, scheduleId);
++    schedules.approveSpv(leader, scheduleId);
++    schedules.approveProd(leader, scheduleId);
++    schedules.activate(leader, scheduleId);
++    var generated = workOrders.generate(leader, scheduleId);
++    var wo = generated.getFirst();
++    workOrders.assign(leader, wo.id(), technicianId);
++    var started = workOrders.start(tech, wo.id());
++    return new Fixture(plant, machine, leader, staff, tech, technicianId, leaderId, checksheetId,
++        measurementItemId, okNgItemId, scheduleId, started);
++  }
++
++  /** Runs the real 19-5 chain to a completed+verified execution with one NG photo item. */
++  private ExecutionView completedVerified(Fixture fx) {
++    var execution = executions.start(fx.tech(), fx.workOrder().id());
++    executions.fill(fx.tech(), execution.id(), fx.measurementItemId(),
++        new FillExecutionCommand(new BigDecimal("5.2"), null, null, null, null, false, null));
++    executions.fill(fx.tech(), execution.id(), fx.okNgItemId(),
++        new FillExecutionCommand(null, null, true, "Weep at seal", "pm/evidence/ng-1.jpg",
++            false, null));
++    executions.complete(fx.tech(), execution.id());
++    return executions.verify(fx.leader(), execution.id(), null);
++  }
++
++  private UUID seedSignature(UUID userId, String objectKey) {
++    var now = Instant.now();
++    return userSignatures.saveAndFlush(new UserSignatureEntity(UUID.randomUUID(), userId,
++        "test", objectKey, "image/png", 0, null, now, now)).getId();
++  }
++
++  @Test
++  @DisplayName("19.6-INT-001 P0 full report: header + sequence-ordered rows + presigned NG photo + both signature blocks")
++  void fullReport() {
++    var fx = fixture();
++    var techSigId = seedSignature(fx.technicianId(), "signatures/tech.png");
++    var spvSigId = seedSignature(fx.leaderId(), "signatures/leader.png");
++    var execution = completedVerified(fx);
++    // verify() ran without a signature id; re-verify state is terminal, so stamp both
++    // signature ids directly (the report reads whatever the row carries).
++    var now = Instant.now();
++    var e = executionRows.findById(execution.id()).orElseThrow();
++    executionRows.saveAndFlush(new PmExecutionEntity(e.getId(), e.getPmWoId(),
++        e.getScheduleDateId(), e.getTechnicianId(), e.getSpvVerifierId(), techSigId, now,
++        spvSigId, e.getSpvSignedAt(), e.getStartedAt(), e.getCompletedAt(), e.hasNgItems(),
++        e.getNgCount(), e.getFindingWoId(), e.getCreatedAt(), now));
++    when(objectStorage.presignGetUrl("signatures/tech.png"))
++        .thenReturn("https://garage/tech.png");
++    when(objectStorage.presignGetUrl("signatures/leader.png"))
++        .thenReturn("https://garage/leader.png");
++    when(objectStorage.presignGetUrl("pm/evidence/ng-1.jpg"))
++        .thenReturn("https://garage/ng.jpg");
++
++    var report = reports.get(fx.tech(), execution.id());
++
++    var header = report.header();
++    assertThat(header.executionId()).isEqualTo(execution.id());
++    assertThat(header.pmWoId()).isEqualTo(fx.workOrder().id());
++    assertThat(header.machineId()).isEqualTo(fx.machine().getId());
++    assertThat(header.machineCode()).isEqualTo(fx.machine().getCode());
++    assertThat(header.machineName()).isEqualTo("Report Machine");
++    assertThat(header.plantCode()).isEqualTo(fx.plant().getCode());
++    assertThat(header.scheduledDate()).isEqualTo(LocalDate.of(2027, 1, 15));
++    assertThat(header.frequencyCode()).isEqualTo("MONTHLY");
++    assertThat(header.checksheetRevision()).isEqualTo(1);
++    assertThat(header.status()).isEqualTo("VERIFIED");
++    assertThat(header.hasNgItems()).isTrue();
++    assertThat(header.ngCount()).isEqualTo(1);
++    assertThat(header.findingWoId()).isNull();
++
++    assertThat(report.items()).hasSize(2);
++    assertThat(report.items()).extracting(
++        com.syncro.maintenance.preventive.api.PreventiveDtos.PmExecutionReportItemView::sequence)
++        .containsExactly(1, 2);
++    var first = report.items().getFirst();
++    assertThat(first.categoryName()).isEqualTo("Hydraulics");
++    assertThat(first.parameterText()).isEqualTo("Oil pressure");
++    assertThat(first.inputType()).isEqualTo("MEASUREMENT");
++    assertThat(first.lsl()).isEqualByComparingTo("3.0");
++    assertThat(first.usl()).isEqualByComparingTo("7.0");
++    assertThat(first.actualValue()).isEqualByComparingTo("5.2");
++    assertThat(first.ng()).isFalse();
++    assertThat(first.ngPhotoPresignedUrl()).isNull();
++    var second = report.items().get(1);
++    assertThat(second.ng()).isTrue();
++    assertThat(second.ngNotes()).isEqualTo("Weep at seal");
++    assertThat(second.ngPhotoPresignedUrl()).isEqualTo("https://garage/ng.jpg");
++
++    assertThat(report.signatures().technician()).isNotNull();
++    assertThat(report.signatures().technician().userId()).isEqualTo(fx.technicianId());
++    assertThat(report.signatures().technician().displayName()).isEqualTo("Tech One");
++    assertThat(report.signatures().technician().signaturePresignedUrl())
++        .isEqualTo("https://garage/tech.png");
++    assertThat(report.signatures().technician().signedAt()).isNotNull();
++    assertThat(report.signatures().spv()).isNotNull();
++    assertThat(report.signatures().spv().userId()).isEqualTo(fx.leaderId());
++    // Leader has no display_name — falls back to login_identifier (14-3 pattern).
++    assertThat(report.signatures().spv().displayName())
++        .startsWith("rpt-leader-").endsWith("@test");
++    assertThat(report.signatures().spv().signaturePresignedUrl())
++        .isEqualTo("https://garage/leader.png");
++  }
++
++  @Test
++  @DisplayName("19.6-INT-002 P0 unsigned execution: signature blocks null, status RUNNING")
++  void unsignedExecution() {
++    var fx = fixture();
++    var execution = executions.start(fx.tech(), fx.workOrder().id());
++    executions.fill(fx.tech(), execution.id(), fx.measurementItemId(),
++        new FillExecutionCommand(new BigDecimal("5"), null, null, null, null, false, null));
++
++    var report = reports.get(fx.tech(), execution.id());
++
++    assertThat(report.header().status()).isEqualTo("RUNNING");
++    assertThat(report.header().completedAt()).isNull();
++    assertThat(report.signatures().technician()).isNull();
++    assertThat(report.signatures().spv()).isNull();
++  }
++
++  @Test
++  @DisplayName("19.6-INT-002b P0 completed but unverified: status COMPLETED")
++  void completedUnverified() {
++    var fx = fixture();
++    var execution = executions.start(fx.tech(), fx.workOrder().id());
++    executions.fill(fx.tech(), execution.id(), fx.measurementItemId(),
++        new FillExecutionCommand(new BigDecimal("5"), null, null, null, null, false, null));
++    executions.complete(fx.tech(), execution.id());
++
++    assertThat(reports.get(fx.tech(), execution.id()).header().status()).isEqualTo("COMPLETED");
++  }
++
++  @Test
++  @DisplayName("19.6-INT-003 P0 deleted signature object: report still 200 with null signaturePresignedUrl")
++  void deletedSignatureObject() {
++    var fx = fixture();
++    var spvSigId = seedSignature(fx.leaderId(), "signatures/gone.png");
++    var execution = executions.start(fx.tech(), fx.workOrder().id());
++    executions.fill(fx.tech(), execution.id(), fx.measurementItemId(),
++        new FillExecutionCommand(new BigDecimal("5"), null, null, null, null, false, null));
++    executions.complete(fx.tech(), execution.id());
++    executions.verify(fx.leader(), execution.id(), spvSigId);
++    when(objectStorage.presignGetUrl("signatures/gone.png"))
++        .thenThrow(new ObjectStorageException("object gone"));
++
++    var report = reports.get(fx.tech(), execution.id());
++
++    assertThat(report.header().status()).isEqualTo("VERIFIED");
++    assertThat(report.signatures().spv()).isNotNull();
++    assertThat(report.signatures().spv().signaturePresignedUrl()).isNull();
++    assertThat(report.signatures().spv().signedAt()).isNotNull();
++  }
++
++  @Test
++  @DisplayName("19.6-INT-004 P0 external ng_photo_url (scheme or scheme-less domain) is echoed verbatim, never presigned")
++  void externalNgPhotoUrl() {
++    var fx = fixture();
++    var execution = executions.start(fx.tech(), fx.workOrder().id());
++    executions.fill(fx.tech(), execution.id(), fx.okNgItemId(),
++        new FillExecutionCommand(null, null, true, "Weep", "https://external.example/x.jpg",
++            false, null));
++    // A scheme-less domain-like value must also echo verbatim (P2 heuristic): its
++    // first path segment carries a dot, so it is never treated as an object key.
++    executions.fill(fx.tech(), execution.id(), fx.measurementItemId(),
++        new FillExecutionCommand(new BigDecimal("9.5"), null, true, "Out of bounds",
++            "photos.example.com/x.jpg", false, null));
++    when(objectStorage.presignGetUrl(anyString()))
++        .thenThrow(new AssertionError("external URL must not be presigned"));
++
++    var report = reports.get(fx.tech(), execution.id());
++
++    assertThat(report.items().get(1).ngPhotoPresignedUrl())
++        .isEqualTo("https://external.example/x.jpg");
++    assertThat(report.items().getFirst().ngPhotoPresignedUrl())
++        .isEqualTo("photos.example.com/x.jpg");
++  }
++
++  @Test
++  @DisplayName("19.6-INT-005 P0 out-of-scope reader 403; unknown id 404; in-scope leader and SUPER_ADMIN read")
++  void gateParityWith195() {
++    var fx = fixture();
++    var execution = completedVerified(fx);
++
++    // In-scope leader reads (19-5 posture).
++    assertThat(reports.get(fx.leader(), execution.id()).header().executionId())
++        .isEqualTo(execution.id());
++
++    var now = Instant.now();
++    var otherPlant = plants.saveAndFlush(new PlantEntity(UUID.randomUUID(),
++        "Z-RPT-" + UUID.randomUUID().toString().substring(0, 8), "Other", now, now));
++    var otherGroup = machineGroups.saveAndFlush(new MachineGroupEntity(
++        UUID.randomUUID(), otherPlant, "Other Group", now, now));
++    var otherMachine = machines.saveAndFlush(new MachineEntity(UUID.randomUUID(), otherPlant,
++        otherGroup, "MC-RPTO-" + UUID.randomUUID().toString().substring(0, 8), "Other M",
++        MachineStatus.ACTIVE, null, null, null, null, now, now));
++    var otherId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(otherId, "rpt-other-" + UUID.randomUUID() + "@test",
++        "hash", ApplicationRole.SECTION_LEADER, true, now, now));
++    responsibilities.saveAndFlush(new MachineResponsibilityEntity(UUID.randomUUID(),
++        otherMachine.getId(), otherId, ResponsibilityLevel.LEADER, now, now));
++    var otherLeader = new AuthenticatedUser(otherId.toString(), "rpt-other@test",
++        ApplicationRole.SECTION_LEADER);
++    assertThatThrownBy(() -> reports.get(otherLeader, execution.id()))
++        .isInstanceOf(PmExecutionForbiddenException.class);
++
++    assertThatThrownBy(() -> reports.get(fx.tech(), UUID.randomUUID()))
++        .isInstanceOf(PmExecutionNotFoundException.class);
++
++    var adminId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(adminId, "rpt-admin-" + UUID.randomUUID() + "@test",
++        "hash", ApplicationRole.SUPER_ADMIN, true, now, now));
++    var admin = new AuthenticatedUser(adminId.toString(), "rpt-admin@test",
++        ApplicationRole.SUPER_ADMIN);
++    assertThat(reports.get(admin, execution.id()).header().status()).isEqualTo("VERIFIED");
++  }
++}
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmAuthzEnforcementParityTest.java b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmAuthzEnforcementParityTest.java
+new file mode 100644
+index 0000000..90532af
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmAuthzEnforcementParityTest.java
+@@ -0,0 +1,58 @@
++package com.syncro.maintenance.preventive.api;
++
++import static org.assertj.core.api.Assertions.assertThat;
++
++import java.io.IOException;
++import java.io.UncheckedIOException;
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.util.Arrays;
++import java.util.List;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++
++/**
++ * Pins the OPA rollout parity for the PM surface (stories 19-4/19-5/19-6): every
++ * path in the rego pm_work_order_paths and pm_execution_paths sets must also appear
++ * in SYNCRO_AUTHZ_ENFORCED_PATHS in syncro/.env.example, or the endpoint ships
++ * unenforced. Plain file read — no Spring context; the rego suite covers the policy
++ * side, this covers the env rollout side. (MqttAuthEnforcementIntegrationTest's
++ * resolution pattern: tests run from syncro/apps/backend, so ../.. is syncro/.)
++ */
++class PmAuthzEnforcementParityTest {
++
++  private static final List<String> REGO_PM_PATHS = List.of(
++      // pm_work_order_paths (story 19-4)
++      "/api/v1/pm-work-orders",
++      "/api/v1/pm-work-orders/*",
++      "/api/v1/pm-work-orders/generate",
++      "/api/v1/pm-work-orders/sweep-overdue",
++      "/api/v1/pm-work-orders/*/assign",
++      "/api/v1/pm-work-orders/*/start",
++      "/api/v1/pm-work-orders/*/complete",
++      // pm_execution_paths (stories 19-5, 19-6)
++      "/api/v1/pm-executions",
++      "/api/v1/pm-executions/*",
++      "/api/v1/pm-executions/start",
++      "/api/v1/pm-executions/*/items/*/fill",
++      "/api/v1/pm-executions/*/complete",
++      "/api/v1/pm-executions/*/verify",
++      "/api/v1/pm-executions/*/report");
++
++  @Test
++  @DisplayName("19.6-UNIT-001 P0 SYNCRO_AUTHZ_ENFORCED_PATHS carries every rego pm-work-orders and pm-executions path")
++  void enforcedPathsCoverTheRegoPmSets() throws IOException {
++    var envFile = Path.of("..", "..", ".env.example").toAbsolutePath().normalize();
++    assertThat(envFile).exists();
++    var line = Files.readAllLines(envFile).stream()
++        .filter(l -> l.startsWith("SYNCRO_AUTHZ_ENFORCED_PATHS="))
++        .findFirst()
++        .orElseThrow(() -> new IllegalStateException("SYNCRO_AUTHZ_ENFORCED_PATHS missing from .env.example"));
++    // Exact comma-separated entry match — substring checks would let
++    // /api/v1/pm-executions "cover" /api/v1/pm-executions/*/report.
++    var entries = Arrays.stream(line.substring("SYNCRO_AUTHZ_ENFORCED_PATHS=".length()).split(","))
++        .map(String::trim)
++        .toList();
++    assertThat(entries).containsAll(REGO_PM_PATHS);
++  }
++}
