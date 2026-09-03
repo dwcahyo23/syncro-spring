@@ -159,11 +159,27 @@ public class PmWorkOrderEntity {
     this.updatedAt = updatedAt;
   }
 
+  /** Start transition (F6): stamps the execution start time. */
+  public void start(Instant startedAt, Instant updatedAt) {
+    this.startedAt = startedAt;
+    this.status = PmWorkOrderStatus.IN_PROGRESS;
+    this.updatedAt = updatedAt;
+  }
+
   /** Completion transition (F6): stamps the completion time and certificate. */
   public void complete(Instant completedAt, String certificateUrl, Instant updatedAt) {
     this.completedAt = completedAt;
     this.certificateUrl = certificateUrl;
     this.status = PmWorkOrderStatus.COMPLETED;
+    this.updatedAt = updatedAt;
+  }
+
+  /**
+   * Overdue sweep transition (F6): only the status and updated_at move —
+   * started_at/completed_at and the assignment stay untouched.
+   */
+  public void markOverdue(Instant updatedAt) {
+    this.status = PmWorkOrderStatus.OVERDUE;
     this.updatedAt = updatedAt;
   }
 }

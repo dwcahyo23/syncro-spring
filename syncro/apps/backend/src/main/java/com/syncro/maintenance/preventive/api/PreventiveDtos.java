@@ -3,6 +3,7 @@ package com.syncro.maintenance.preventive.api;
 import com.syncro.maintenance.preventive.domain.PmItemInputType;
 import com.syncro.maintenance.preventive.domain.PmScheduleDateStatus;
 import com.syncro.maintenance.preventive.domain.PmScheduleStatus;
+import com.syncro.maintenance.preventive.domain.PmWorkOrderStatus;
 import com.syncro.maintenance.preventive.domain.PreventiveCategory;
 import com.syncro.maintenance.preventive.domain.ScheduleType;
 import jakarta.validation.constraints.Max;
@@ -233,5 +234,31 @@ public final class PreventiveDtos {
 
   public record ScheduleDateView(UUID id, UUID scheduleId, LocalDate plannedDate,
       PmScheduleDateStatus status, Instant createdAt, Instant updatedAt) {
+  }
+
+  // -------------------------------------------------------------------------
+  // PM work orders (story 19-4)
+  // -------------------------------------------------------------------------
+
+  public record GenerateWorkOrdersRequest(
+      @NotNull UUID scheduleId) {
+  }
+
+  public record AssignWorkOrderRequest(
+      @NotNull UUID technicianId) {
+  }
+
+  public record CompleteWorkOrderRequest(
+      @Size(max = 2000) String certificateUrl) {
+  }
+
+  public record WorkOrderView(UUID id, UUID machineId, UUID templateId, UUID frequencyId,
+      String frequencyCode, String frequencyName, Integer templateRevision,
+      PmWorkOrderStatus status, UUID assignedTechnicianId, LocalDate scheduledDate,
+      Instant startedAt, Instant completedAt, String certificateUrl, Instant createdAt,
+      Instant updatedAt) {
+  }
+
+  public record SweepOverdueView(int overdueCount) {
   }
 }

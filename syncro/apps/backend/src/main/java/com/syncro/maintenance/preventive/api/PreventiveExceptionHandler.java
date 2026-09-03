@@ -53,7 +53,7 @@ import tools.jackson.databind.exc.InvalidFormatException;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(assignableTypes = {PreventiveProgramController.class, PreventiveScheduleController.class,
     PmFrequencyController.class, PmChecksheetController.class, PmChecklistCategoryController.class,
-    PmChecklistItemController.class, PmScheduleController.class})
+    PmChecklistItemController.class, PmScheduleController.class, PmWorkOrderController.class})
 public class PreventiveExceptionHandler {
 
   private final Clock clock;
@@ -411,6 +411,57 @@ public class PreventiveExceptionHandler {
   @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.PlantNotFoundException.class)
   ResponseEntity<ErrorResponse> pmSchedulePlantNotFound() {
     return error(HttpStatus.NOT_FOUND, "PLANT_NOT_FOUND", "Plant was not found.", Map.of());
+  }
+
+  // -------------------------------------------------------------------------
+  // Story 19-4: PM work orders
+  // -------------------------------------------------------------------------
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmWorkOrderService.PmWorkOrderForbiddenException.class)
+  ResponseEntity<ErrorResponse> pmWorkOrderForbidden() {
+    return error(HttpStatus.FORBIDDEN, "FORBIDDEN",
+        "You do not have permission to access this resource.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmWorkOrderService.PmWorkOrderNotFoundException.class)
+  ResponseEntity<ErrorResponse> pmWorkOrderNotFound() {
+    return error(HttpStatus.NOT_FOUND, "PM_WORK_ORDER_NOT_FOUND",
+        "PM work order was not found.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmWorkOrderService.PmScheduleNotFoundException.class)
+  ResponseEntity<ErrorResponse> pmWorkOrderScheduleNotFound() {
+    return error(HttpStatus.NOT_FOUND, "PM_SCHEDULE_NOT_FOUND",
+        "PM schedule was not found.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmWorkOrderService.MachineNotFoundException.class)
+  ResponseEntity<ErrorResponse> pmWorkOrderMachineNotFound() {
+    return error(HttpStatus.NOT_FOUND, "MACHINE_NOT_FOUND", "Machine was not found.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmWorkOrderService.TechnicianNotFoundException.class)
+  ResponseEntity<ErrorResponse> pmWorkOrderTechnicianNotFound() {
+    return error(HttpStatus.NOT_FOUND, "TECHNICIAN_NOT_FOUND",
+        "Technician was not found.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmWorkOrderService.WorkOrderPeriodExistsException.class)
+  ResponseEntity<ErrorResponse> workOrderPeriodExists() {
+    return error(HttpStatus.CONFLICT, "WORK_ORDER_PERIOD_EXISTS",
+        "A PM work order already exists for this machine, template and scheduled date.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmWorkOrderService.InvalidWorkOrderTransitionException.class)
+  ResponseEntity<ErrorResponse> invalidWorkOrderTransition() {
+    return error(HttpStatus.CONFLICT, "INVALID_WORK_ORDER_TRANSITION",
+        "The PM work order is not in the expected state for this action.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmWorkOrderService.InvalidScheduleStateException.class)
+  ResponseEntity<ErrorResponse> invalidScheduleState() {
+    return error(HttpStatus.CONFLICT, "INVALID_SCHEDULE_STATE",
+        "The PM schedule is not ACTIVE and cannot generate work orders.", Map.of());
   }
 
   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message,

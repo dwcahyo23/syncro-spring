@@ -35,7 +35,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-25
-last_updated: 2026-09-03
+last_updated: 2026-09-04
+# updated: 2026-09-04 Epic 19 — 19-4 PM Work Orders done (V10 + lifecycle + concurrency tests)
 # updated: 2026-09-03 (3) Epic 19 — 19-3 PM Schedules & Schedule Dates done
 # updated: 2026-09-03 (2) Epic 19 — 19-2 PM Checklist Categories & Items done
 # updated: 2026-09-03 Epic 19 in-progress — 19-1 PM Frequencies & Checksheets done
@@ -262,7 +263,7 @@ development_status:
   19-1-pm-frequencies-checksheets: done
   19-2-pm-checklist-categories-items: done
   19-3-pm-schedules-dates: done
-  19-4-pm-work-orders: backlog
+  19-4-pm-work-orders: done
   19-5-pm-executions-items: backlog
   epic-19-retrospective: optional
 
