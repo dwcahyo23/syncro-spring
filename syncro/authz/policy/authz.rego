@@ -414,8 +414,10 @@ pm_work_order_paths := {
 # requireAssignee/requireExecutionTechnician/requireLeaderMutationAccess (rego cannot
 # see the body, the assignment or the execution state). A single `*` matches exactly
 # one path segment, so each depth is enumerated explicitly: collection (list), /{id}
-# (get), /start, /{id}/items/{itemId}/fill, /{id}/complete, /{id}/verify. Reads (GET)
-# flow through generic read_allowed. Machine scope is service-side.
+# (get), /start, /{id}/items/{itemId}/fill, /{id}/complete, /{id}/verify, and (story
+# 19-6) /{id}/report — the print-report read gate is service-side (19-5 posture), the
+# rego entry keeps the enforced-path surface complete. Reads (GET) flow through
+# generic read_allowed. Machine scope is service-side.
 pm_execution_paths := {
   "/api/v1/pm-executions",
   "/api/v1/pm-executions/*",
@@ -423,6 +425,7 @@ pm_execution_paths := {
   "/api/v1/pm-executions/*/items/*/fill",
   "/api/v1/pm-executions/*/complete",
   "/api/v1/pm-executions/*/verify",
+  "/api/v1/pm-executions/*/report",
 }
 
 # Org-maintenance departments (spec-org-maintenance-model): mutations are the

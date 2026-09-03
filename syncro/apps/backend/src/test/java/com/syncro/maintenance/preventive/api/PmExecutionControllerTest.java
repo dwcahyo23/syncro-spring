@@ -16,7 +16,13 @@ import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.auth.infrastructure.JwtAuthenticationFilter;
 import com.syncro.config.SecurityConfig;
 import com.syncro.config.TimeConfig;
+import com.syncro.maintenance.preventive.api.PreventiveDtos.PmExecutionReportHeaderView;
+import com.syncro.maintenance.preventive.api.PreventiveDtos.PmExecutionReportItemView;
+import com.syncro.maintenance.preventive.api.PreventiveDtos.PmExecutionReportSignatureView;
+import com.syncro.maintenance.preventive.api.PreventiveDtos.PmExecutionReportSignaturesView;
+import com.syncro.maintenance.preventive.api.PreventiveDtos.PmExecutionReportView;
 import com.syncro.maintenance.preventive.application.PmChecklistService;
+import com.syncro.maintenance.preventive.application.PmExecutionReportService;
 import com.syncro.maintenance.preventive.application.PmExecutionService;
 import com.syncro.maintenance.preventive.application.PmExecutionService.ExecutionItemView;
 import com.syncro.maintenance.preventive.application.PmExecutionService.ExecutionView;
@@ -58,12 +64,16 @@ class PmExecutionControllerTest {
   private PmExecutionService executions;
 
   @MockitoBean
+  private PmExecutionReportService reports;
+
+  @MockitoBean
   private JwtTokenService jwtTokenService;
 
   private static final UUID EXEC_ID = UUID.fromString("11111111-2222-3333-4444-555555555555");
   private static final UUID WO_ID = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
   private static final UUID ITEM_ID = UUID.fromString("ffffffff-eeee-dddd-cccc-bbbbbbbbbbbb");
   private static final UUID TECH_ID = UUID.fromString("44444444-3333-2222-1111-000000000000");
+  private static final UUID MACHINE_ID = UUID.fromString("66666666-7777-8888-9999-000000000000");
   private static final UUID SIG_ID = UUID.fromString("55555555-6666-7777-8888-999999999999");
   private static final Instant NOW = Instant.parse("2026-09-01T08:00:00Z");
 
@@ -388,6 +398,67 @@ class PmExecutionControllerTest {
         .andExpect(jsonPath("$.code").value("INVALID_PATH_VALUE"));
   }
 
+  // -------------------------------------------------------------------------
+  // Story 19-6: print report endpoint
+  // -------------------------------------------------------------------------
+
+  @Test
+  @DisplayName("19.6-API-001 P0 report returns 200 with header/items/signature aggregate shape")
+  void report() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    when(reports.get(eq(user), eq(EXEC_ID))).thenReturn(reportView());
+
+    mockMvc.perform(get("/api/v1/pm-executions/{id}/report", EXEC_ID)
+            .with(auth(user)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.header.executionId").value(EXEC_ID.toString()))
+        .andExpect(jsonPath("$.header.machineId").value(MACHINE_ID.toString()))
+        .andExpect(jsonPath("$.header.machineCode").value("GM1"))
+        .andExpect(jsonPath("$.header.plantCode").value("JBF19"))
+        .andExpect(jsonPath("$.header.status").value("VERIFIED"))
+        .andExpect(jsonPath("$.items[0].sequence").value(1))
+        .andExpect(jsonPath("$.items[0].ngPhotoPresignedUrl")
+            .value("https://garage/ng.jpg"))
+        .andExpect(jsonPath("$.signatures.technician.displayName").value("Tech One"))
+        .andExpect(jsonPath("$.signatures.spv")
+            .value(org.hamcrest.Matchers.nullValue()));
+  }
+
+  @Test
+  @DisplayName("19.6-API-002 P0 report out-of-scope → 403 FORBIDDEN")
+  void reportForbidden() throws Exception {
+    var user = user(ApplicationRole.TECHNICIAN);
+    when(reports.get(eq(user), eq(EXEC_ID)))
+        .thenThrow(new PmExecutionService.PmExecutionForbiddenException());
+
+    mockMvc.perform(get("/api/v1/pm-executions/{id}/report", EXEC_ID)
+            .with(auth(user)))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+  }
+
+  @Test
+  @DisplayName("19.6-API-003 P0 report unknown execution → 404 PM_EXECUTION_NOT_FOUND")
+  void reportNotFound() throws Exception {
+    var user = user(ApplicationRole.AUDITOR);
+    when(reports.get(eq(user), eq(EXEC_ID)))
+        .thenThrow(new PmExecutionService.PmExecutionNotFoundException());
+
+    mockMvc.perform(get("/api/v1/pm-executions/{id}/report", EXEC_ID)
+            .with(auth(user)))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.code").value("PM_EXECUTION_NOT_FOUND"));
+  }
+
+  @Test
+  @DisplayName("19.6-API-004 P0 report malformed UUID → 400 INVALID_PATH_VALUE")
+  void reportMalformedPathValue() throws Exception {
+    mockMvc.perform(get("/api/v1/pm-executions/{id}/report", "not-a-uuid")
+            .with(auth(ApplicationRole.AUDITOR)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("INVALID_PATH_VALUE"));
+  }
+
   @Test
   @DisplayName("19.5-API-019 P0 malformed UUID body field → 400 VALIDATION_ERROR")
   void startMalformedBody() throws Exception {
@@ -409,6 +480,20 @@ class PmExecutionControllerTest {
         verified ? SIG_ID : null, null, null, verified ? SIG_ID : null,
         verified ? NOW : null, NOW, completed ? NOW : null, hasNg, ngCount, findingWoId,
         NOW, NOW, List.of(itemView()));
+  }
+
+  private static PmExecutionReportView reportView() {
+    var header = new PmExecutionReportHeaderView(EXEC_ID, WO_ID, MACHINE_ID, "GM1", "Press A",
+        "JBF19", java.time.LocalDate.of(2027, 1, 15), "MONTHLY", "Monthly", 1, NOW, NOW,
+        "VERIFIED", true, 1, null);
+    var item = new PmExecutionReportItemView(1, "Hydraulics", "Oil pressure", "Gauge",
+        "MEASUREMENT", false, "bar", new BigDecimal("3.0"), new BigDecimal("5.0"),
+        new BigDecimal("7.0"), new BigDecimal("9.5"), null, true, "Weep at seal",
+        "https://garage/ng.jpg", false, null);
+    var tech = new PmExecutionReportSignatureView(TECH_ID, "Tech One",
+        "https://garage/tech.png", NOW);
+    return new PmExecutionReportView(header, List.of(item),
+        new PmExecutionReportSignaturesView(tech, null));
   }
 
   private static ExecutionItemView itemView() {

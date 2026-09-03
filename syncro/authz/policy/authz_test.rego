@@ -1824,6 +1824,43 @@ test_auditor_pm_execution_get_read_allowed if {
   authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666"}
 }
 
+# -- PM execution print report (story 19-6, FR-133): GET is a read (any-authenticated,
+#    service gate is authoritative); the /{id}/report depth is in pm_execution_paths so
+#    the coarse mutation set mirrors the rest of the surface (same role set allowed,
+#    others denied) --
+
+test_auditor_pm_execution_report_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/report"}
+}
+
+test_technician_pm_execution_report_post_allowed if {
+  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/report"}
+}
+
+test_section_leader_pm_execution_report_post_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/report"}
+}
+
+test_manager_pm_execution_report_post_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/report"}
+}
+
+test_maintenance_leader_pm_execution_report_post_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/report"}
+}
+
+test_staff_pm_execution_report_post_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/report"}
+}
+
+test_auditor_pm_execution_report_post_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/report"}
+}
+
+test_anonymous_pm_execution_report_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "GET /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/report"}
+}
+
 test_anonymous_pm_execution_denied if {
   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/pm-executions/start"}
 }

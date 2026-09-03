@@ -4,8 +4,10 @@ import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.maintenance.preventive.api.PreventiveDtos.ExecutionItemView;
 import com.syncro.maintenance.preventive.api.PreventiveDtos.ExecutionView;
 import com.syncro.maintenance.preventive.api.PreventiveDtos.FillExecutionItemRequest;
+import com.syncro.maintenance.preventive.api.PreventiveDtos.PmExecutionReportView;
 import com.syncro.maintenance.preventive.api.PreventiveDtos.StartExecutionRequest;
 import com.syncro.maintenance.preventive.api.PreventiveDtos.VerifyExecutionRequest;
+import com.syncro.maintenance.preventive.application.PmExecutionReportService;
 import com.syncro.maintenance.preventive.application.PmExecutionService;
 import com.syncro.maintenance.preventive.application.PmExecutionService.FillExecutionCommand;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,9 +40,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class PmExecutionController {
 
   private final PmExecutionService executions;
+  private final PmExecutionReportService reports;
 
-  public PmExecutionController(PmExecutionService executions) {
+  public PmExecutionController(PmExecutionService executions, PmExecutionReportService reports) {
     this.executions = executions;
+    this.reports = reports;
   }
 
   @Operation(operationId = "startPmExecution", summary = "Start an execution on an IN_PROGRESS PM work order (one per work order)")
@@ -139,6 +143,27 @@ public class PmExecutionController {
   public ExecutionView get(@AuthenticationPrincipal AuthenticatedUser user,
       @PathVariable UUID id) {
     return toView(executions.get(user, id));
+  }
+
+  /**
+   * Aggregate preventive print report (GET /{id}/report): header, sequence-ordered
+   * item rows with presigned NG photos, and the technician/SPV signature blocks for
+   * the WYSIWYG browser-print page (story 19-6, FR-133). Same read gate as get().
+   */
+  @Operation(operationId = "getPmExecutionReport", summary = "Aggregate PM execution print report (WYSIWYG browser print)")
+  @ApiResponses({
+      @ApiResponse(responseCode = "200", description = "Print report returned",
+          content = @Content(schema = @Schema(implementation = PmExecutionReportView.class))),
+      @ApiResponse(responseCode = "400", description = "Malformed path value"),
+      @ApiResponse(responseCode = "401", description = "Authentication required"),
+      @ApiResponse(responseCode = "403", description = "Forbidden (out of scope)"),
+      @ApiResponse(responseCode = "404",
+          description = "Execution not found (PM_EXECUTION_NOT_FOUND; orphaned rows surface PM_WORK_ORDER_NOT_FOUND / MACHINE_NOT_FOUND)")
+  })
+  @GetMapping("/{id}/report")
+  public PmExecutionReportView report(@AuthenticationPrincipal AuthenticatedUser user,
+      @PathVariable UUID id) {
+    return reports.get(user, id);
   }
 
   private static ExecutionView toView(

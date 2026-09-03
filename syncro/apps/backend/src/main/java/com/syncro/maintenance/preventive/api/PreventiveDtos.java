@@ -6,6 +6,7 @@ import com.syncro.maintenance.preventive.domain.PmScheduleStatus;
 import com.syncro.maintenance.preventive.domain.PmWorkOrderStatus;
 import com.syncro.maintenance.preventive.domain.PreventiveCategory;
 import com.syncro.maintenance.preventive.domain.ScheduleType;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -297,5 +298,49 @@ public final class PreventiveDtos {
       UUID spvSignatureId, Instant spvSignedAt, Instant startedAt, Instant completedAt,
       boolean hasNgItems, int ngCount, String findingWoId, Instant createdAt, Instant updatedAt,
       List<ExecutionItemView> items) {
+  }
+
+  // -------------------------------------------------------------------------
+  // PM preventive print report (story 19-6, FR-133)
+  // -------------------------------------------------------------------------
+
+  /** Execution + machine/plant + WO period header for the print report. */
+  public record PmExecutionReportHeaderView(UUID executionId, UUID pmWoId, UUID machineId,
+      String machineCode, String machineName, String plantCode, LocalDate scheduledDate,
+      String frequencyCode, String frequencyName,
+      /** Sourced from the PM work order's template_revision (denormalized checksheet revision). */
+      Integer checksheetRevision,
+      Instant startedAt, Instant completedAt,
+      @Schema(description = "Derived execution lifecycle status",
+          allowableValues = {"RUNNING", "COMPLETED", "VERIFIED"}) String status,
+      boolean hasNgItems, int ngCount, String findingWoId) {
+  }
+
+  /** One snapshotted checklist row (sequence-ordered) with bounds, result and NG evidence. */
+  public record PmExecutionReportItemView(int sequence, String categoryName, String parameterText,
+      String checkMethod, String inputType, boolean criticalFlag, String unit, BigDecimal lsl,
+      BigDecimal nominal, BigDecimal usl, BigDecimal actualValue, Boolean ok, boolean ng,
+      String ngNotes,
+      @Schema(description = "presigned GET URL for object-key values; external URLs echoed verbatim; null when presign fails")
+      String ngPhotoPresignedUrl, boolean blocked, String blockedWoCode) {
+  }
+
+  /** One signer block (technician or SPV); null when that side has not signed. */
+  public record PmExecutionReportSignatureView(UUID userId, String displayName,
+      String signaturePresignedUrl, Instant signedAt) {
+  }
+
+  /** The two signature blocks of the print report. */
+  public record PmExecutionReportSignaturesView(PmExecutionReportSignatureView technician,
+      PmExecutionReportSignatureView spv) {
+  }
+
+  /**
+   * Aggregate preventive print report (WYSIWYG browser print, 14-3 precedent). The
+   * company logo is a separate settings read (GET /api/v1/settings/logo), not part
+   * of this aggregate.
+   */
+  public record PmExecutionReportView(PmExecutionReportHeaderView header,
+      List<PmExecutionReportItemView> items, PmExecutionReportSignaturesView signatures) {
   }
 }

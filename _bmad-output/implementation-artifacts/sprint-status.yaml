@@ -36,6 +36,8 @@
 
 generated: 2026-05-25
 last_updated: 2026-09-04
+# updated: 2026-09-04 (2) Epic 19 DONE — 19-6 PM Preventive Print Report done (derived story closing FR-133; no migration)
+# updated: 2026-09-04 Epic 19 — 19-5 PM Executions done (V11 + finding WO + SPV verify)
 # updated: 2026-09-04 Epic 19 — 19-4 PM Work Orders done (V10 + lifecycle + concurrency tests)
 # updated: 2026-09-03 (3) Epic 19 — 19-3 PM Schedules & Schedule Dates done
 # updated: 2026-09-03 (2) Epic 19 — 19-2 PM Checklist Categories & Items done
@@ -259,12 +261,13 @@ development_status:
   epic-18-retrospective: optional
 
   # Epic 19: Preventive PM Execution Model
-  epic-19: in-progress
+  epic-19: done
   19-1-pm-frequencies-checksheets: done
   19-2-pm-checklist-categories-items: done
   19-3-pm-schedules-dates: done
   19-4-pm-work-orders: done
   19-5-pm-executions-items: done
+  19-6-pm-preventive-print-report: done
   epic-19-retrospective: optional
 
   # Epic 20: KPI Materialization
