@@ -1,6 +1,8 @@
 package com.syncro.maintenance.preventive.api;
 
 import com.syncro.maintenance.preventive.domain.PmItemInputType;
+import com.syncro.maintenance.preventive.domain.PmScheduleDateStatus;
+import com.syncro.maintenance.preventive.domain.PmScheduleStatus;
 import com.syncro.maintenance.preventive.domain.PreventiveCategory;
 import com.syncro.maintenance.preventive.domain.ScheduleType;
 import jakarta.validation.constraints.Max;
@@ -204,5 +206,32 @@ public final class PreventiveDtos {
       BigDecimal lsl, BigDecimal nominal, BigDecimal usl, boolean isCriticalFlag,
       String referenceDocument, UUID calibrationInstrumentId, Instant createdAt,
       Instant updatedAt) {
+  }
+
+  // -------------------------------------------------------------------------
+  // PM schedules & schedule dates (story 19-3)
+  // -------------------------------------------------------------------------
+
+  public record CreateScheduleRequest(
+      @NotNull UUID plantId,
+      @NotNull UUID machineId,
+      @NotNull UUID checksheetId,
+      @NotNull @Min(2000) @Max(2999) Integer year) {
+  }
+
+  public record ScheduleDateTransitionRequest(
+      @NotNull PmScheduleDateStatus status) {
+  }
+
+  public record ScheduleView(UUID id, UUID plantId, UUID machineId, UUID checksheetId,
+      int checksheetRevisionNo, UUID frequencyId, String frequencyCode, String frequencyName,
+      int year, PmScheduleStatus status, UUID submittedBy, Instant submittedAt,
+      UUID approvedBySpv, Instant approvedAtSpv, UUID approvedByProd, Instant approvedAtProd,
+      Map<String, Object> warnings, Instant createdAt, Instant updatedAt,
+      List<ScheduleDateView> dates) {
+  }
+
+  public record ScheduleDateView(UUID id, UUID scheduleId, LocalDate plannedDate,
+      PmScheduleDateStatus status, Instant createdAt, Instant updatedAt) {
   }
 }

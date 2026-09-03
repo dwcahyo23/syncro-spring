@@ -201,6 +201,13 @@ public class PmScheduleEntity {
     this.updatedAt = updatedAt;
   }
 
+  /** Submit stamps the submitter (F5 submit path). */
+  public void markSubmitted(UUID submittedBy, Instant submittedAt, Instant updatedAt) {
+    this.submittedBy = submittedBy;
+    this.submittedAt = submittedAt;
+    this.updatedAt = updatedAt;
+  }
+
   /** Status transition with the actor (F5 submit/approve/activate paths). */
   public void transitionTo(PmScheduleStatus status, Instant updatedAt) {
     this.status = status;

@@ -1205,3 +1205,57 @@ origin: code review of spec-19-1-pm-frequencies-checksheets (edge-case-hunter), 
 location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmFrequencyService.java:79-99
 reason: Deactivating a frequency does not check whether active checksheets still reference it; the create guard blocks new checksheets but existing active pointers remain on an inactive frequency. Spec is silent on the in-use guard; adding one is a behavior change that needs a product decision (reject vs cascade-deactivate).
 status: open
+
+### DW-151: MEASUREMENT item may be half-specified (one bound or no unit)
+origin: code review of spec-19-2-pm-checklist-categories-items (edge-case-hunter), 2026-09-03
+location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecklistService.java:368-374
+reason: requireBounds validates lsl≤usl only when BOTH are present; a MEASUREMENT item with one bound or no unit persists. The spec's "lsl≤usl when both bounds present" wording permits this; tightening to require unit+both bounds is a contract change for the frontend — decide with product before 19-5 execution renders half-specified rows.
+status: open
+
+### DW-152: nominal value outside the lsl..usl interval accepted
+origin: code review of spec-19-2-pm-checklist-categories-items (edge-case-hunter), 2026-09-03
+location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecklistService.java:368-374
+reason: A MEASUREMENT item can carry nominal outside [lsl, usl], producing contradictory bounds at execution time (19-5). Spec is silent; adding the check is a behavior change.
+status: open
+
+### DW-153: deleting an item referenced by future execution rows would orphan measurements
+origin: code review of spec-19-2-pm-checklist-categories-items (edge-case-hunter), 2026-09-03
+location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecklistService.java:248-257
+reason: pm_execution_items FK (ON DELETE SET NULL) arrives with story 19-5; deleting a checklist item after executions exist would silently null recorded measurements. Add the existsByChecklistItemId guard when the execution module ships.
+status: open
+
+### DW-154: concurrent createItem + deleteCategory orphan race
+origin: code review of spec-19-2-pm-checklist-categories-items (edge-case-hunter), 2026-09-03
+location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecklistService.java:142-149
+reason: An item created between findByCategoryId and the category delete commit is orphaned by the FK SET NULL without the audit UPDATE the design promises. Low probability; FK backstop prevents corruption.
+status: open
+
+### DW-155: PUT cannot clear a category/calibration reference (omitted vs null indistinguishable)
+origin: code review of spec-19-2-pm-checklist-categories-items (edge-case-hunter), 2026-09-03
+location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecklistService.java:222-227
+reason: The PUT null-merge keeps the current value when the field is omitted, so a client can never detach an item from its category or calibration instrument via update. Documented limitation of the null-merge idiom; a sentinel/clear flag is a contract change.
+status: open
+
+### DW-156: .env.example SYNCRO_AUTHZ_ENFORCED_PATHS typo would go unnoticed
+origin: code review of spec-19-2-pm-checklist-categories-items (verification-gap), 2026-09-03
+location: syncro/.env.example + syncro/apps/backend/src/test/java/com/syncro/AbstractPostgresIntegrationTest.java:50
+reason: Every backend test runs with SYNCRO_AUTHZ_ENFORCED_PATHS= empty, so a typo in the new PM patterns leaves the endpoints unenforced while all suites stay green. Matches the repo-wide pattern since 9.5; a parity test (extract rego path sets vs env list) would close it.
+status: open
+
+### DW-157: duplicate sequence under concurrent item creates tolerated by design
+origin: code review of spec-19-2-pm-checklist-categories-items (intent-alignment), 2026-09-03
+location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecklistService.java:173-174
+reason: V1 has no unique constraint on (checksheet_id, sequence); two concurrent creates can both compute max+1 and persist the same sequence. Ordering remains sequence-asc (stable enough for 19-5 rendering); a unique constraint or row lock is the fix if ordering integrity ever matters.
+status: open
+
+### DW-158: submit does not verify the submitter is the schedule's creator
+origin: code review of spec-19-3-pm-schedules-dates (blind-hunter), 2026-09-03
+location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmScheduleService.java:submit
+reason: A SECTION_LEADER/MANAGER_MAINTENANCE can submit a DRAFT created by a STAFF member, stamping themselves as submitted_by. F5/spec never says submit is creator-only, so the mixed four-role create/submit gate plus per-role stamps makes submitted_by's meaning ambiguous. Needs a product decision (creator-only vs any-in-scope) before tightening.
+status: open
+
+### DW-159: date-transition error message omits legal from-states
+origin: code review of spec-19-3-pm-schedules-dates (blind-hunter), 2026-09-03
+location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveExceptionHandler.java (InvalidScheduleDateTransitionException mapping)
+reason: All invalid date transitions map to one generic 409 message with no indication of the legal from-states for the requested target (four statuses, three legal edges). API-consistency gap shared with 19-1's INVALID_CHECKSHEET_TRANSITION; enriching the message is a contract change.
+status: open

@@ -1586,6 +1586,102 @@ test_anonymous_pm_checklist_denied if {
   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/pm-checklist-items"}
 }
 
+# -- PM schedules (story 19-3, blueprint F5): four-role mutation allow set on the
+#    collection, /{id}, and all action subpaths; TECHNICIAN/AUDITOR/anonymous denied;
+#    reads any-authenticated -----------------------------------------------------
+
+test_manager_pm_schedule_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/pm-schedules"}
+}
+
+test_section_leader_pm_schedule_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/pm-schedules"}
+}
+
+test_maintenance_leader_pm_schedule_submit_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/submit"}
+}
+
+test_staff_pm_schedule_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/pm-schedules"}
+}
+
+test_manager_pm_schedule_approve_spv_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/approve-spv"}
+}
+
+test_section_leader_pm_schedule_approve_prod_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/approve-prod"}
+}
+
+test_maintenance_leader_pm_schedule_approve_prod_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/approve-prod"}
+}
+
+test_manager_pm_schedule_approve_prod_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/approve-prod"}
+}
+
+test_staff_pm_schedule_approve_prod_allowed_at_rego if {
+  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/approve-prod"}
+}
+
+test_technician_pm_schedule_approve_prod_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/approve-prod"}
+}
+
+test_auditor_pm_schedule_approve_prod_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/approve-prod"}
+}
+
+test_super_admin_pm_schedule_approve_prod_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/approve-prod"}
+}
+
+test_maintenance_leader_pm_schedule_activate_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/activate"}
+}
+
+test_super_admin_pm_schedule_activate_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/activate"}
+}
+
+test_manager_pm_schedule_date_transition_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/dates/7b7c6d5e-1111-2222-3333-444455556666/transition"}
+}
+
+test_section_leader_pm_schedule_date_transition_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/dates/7b7c6d5e-1111-2222-3333-444455556666/transition"}
+}
+
+test_technician_pm_schedule_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-schedules"}
+}
+
+test_technician_pm_schedule_approve_spv_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/approve-spv"}
+}
+
+test_technician_pm_schedule_date_transition_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/dates/7b7c6d5e-1111-2222-3333-444455556666/transition"}
+}
+
+test_auditor_pm_schedule_submit_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/submit"}
+}
+
+test_auditor_pm_schedule_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-schedules"}
+}
+
+test_auditor_pm_schedule_get_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_anonymous_pm_schedule_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/pm-schedules"}
+}
+
 # -- Anonymous (no userId): default deny everywhere ------------------------
 
 test_anonymous_admin_only_denied if {

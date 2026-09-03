@@ -1,0 +1,2394 @@
+diff --git a/syncro/.env.example b/syncro/.env.example
+index aa89d2f..5b529c4 100644
+--- a/syncro/.env.example
++++ b/syncro/.env.example
+@@ -75,8 +75,9 @@ NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+ 
+ # Authz coarse gate (9.5 rolls out enforcement on the org/maintenance/sync surface;
+ # 18-x adds the inventory surface; 19-1 adds the PM frequencies/checksheets surface; 19-2 adds the PM checklist surface;
++# 19-3 adds the PM schedules/schedule-dates surface;
+ # health/actuator stay public and are deliberately excluded)
+-SYNCRO_AUTHZ_ENFORCED_PATHS=/api/v1/plants/**,/api/v1/machine-groups/**,/api/v1/sections/**,/api/v1/teams/**,/api/v1/machine-responsibilities/**,/api/v1/machines/**,/api/v1/machine-sparepart-installations/**,/api/v1/spareparts/**,/api/v1/sparepart-taxonomies/**,/api/v1/alerts/**,/api/v1/audit-log/**,/api/v1/setup-completeness/**,/api/v1/telemetry/**,/api/v1/notification/templates/**,/api/v1/notification/worker/**,/api/v1/work-order-categories/**,/api/v1/workorders/**,/api/v1/workorders/*/transition,/api/v1/workorders/*/sessions,/api/v1/workorders/*/sessions/stop,/api/v1/workorders/*/attachments,/api/v1/workorders/*/attachments/*,/api/v1/workorders/*/report,/api/v1/workorders/*/report/cpk,/api/v1/workorders/*/todos,/api/v1/workorders/*/todos/*,/api/v1/workorders/*/todos/*/assign,/api/v1/workorders/*/todos/*/complete,/api/v1/workorders/*/todos/*/reorder,/api/v1/workorders/*/ratings,/api/v1/workorders/*/ratings/technician,/api/v1/workorders/*/ratings/workorder,/api/v1/rating-dimensions,/api/v1/rating-dimensions/*,/api/v1/preventive-programs,/api/v1/preventive-programs/*,/api/v1/preventive-programs/*/generate,/api/v1/preventive-schedules,/api/v1/preventive-schedules/*/checklist,/api/v1/preventive-schedules/*/evidence,/api/v1/preventive-schedules/*/evidence/*,/api/v1/preventive-schedules/*/approve,/api/v1/preventive-schedules/*/skip,/api/v1/sparepart-requests,/api/v1/sparepart-requests/*/transition,/api/v1/sparepart-requests/*/mre,/api/v1/sparepart-requests/*/approve,/api/v1/sparepart-requests/*/complete,/api/v1/sparepart-stock,/api/v1/sparepart-stock/*,/api/v1/sparepart-stock/*/adjust,/api/v1/departments,/api/v1/departments/*,/api/v1/departments/*/members,/api/v1/sections/*/leader,/api/v1/auth/users/*,/api/v1/sync/**,/api/v1/inventory-locations/**,/api/v1/inventory-locations/*/stock-balances,/api/v1/inventory-locations/*/stock-balances/*,/api/v1/inventory-locations/*/stock-balances/*/adjust,/api/v1/inventory-transfers,/api/v1/inventory-transfers/*,/api/v1/inventory-transfers/*/approve,/api/v1/inventory-transfers/*/reject,/api/v1/pm-frequencies/**,/api/v1/pm-checksheets/**,/api/v1/pm-checklist-categories/**,/api/v1/pm-checklist-items/**
++SYNCRO_AUTHZ_ENFORCED_PATHS=/api/v1/plants/**,/api/v1/machine-groups/**,/api/v1/sections/**,/api/v1/teams/**,/api/v1/machine-responsibilities/**,/api/v1/machines/**,/api/v1/machine-sparepart-installations/**,/api/v1/spareparts/**,/api/v1/sparepart-taxonomies/**,/api/v1/alerts/**,/api/v1/audit-log/**,/api/v1/setup-completeness/**,/api/v1/telemetry/**,/api/v1/notification/templates/**,/api/v1/notification/worker/**,/api/v1/work-order-categories/**,/api/v1/workorders/**,/api/v1/workorders/*/transition,/api/v1/workorders/*/sessions,/api/v1/workorders/*/sessions/stop,/api/v1/workorders/*/attachments,/api/v1/workorders/*/attachments/*,/api/v1/workorders/*/report,/api/v1/workorders/*/report/cpk,/api/v1/workorders/*/todos,/api/v1/workorders/*/todos/*,/api/v1/workorders/*/todos/*/assign,/api/v1/workorders/*/todos/*/complete,/api/v1/workorders/*/todos/*/reorder,/api/v1/workorders/*/ratings,/api/v1/workorders/*/ratings/technician,/api/v1/workorders/*/ratings/workorder,/api/v1/rating-dimensions,/api/v1/rating-dimensions/*,/api/v1/preventive-programs,/api/v1/preventive-programs/*,/api/v1/preventive-programs/*/generate,/api/v1/preventive-schedules,/api/v1/preventive-schedules/*/checklist,/api/v1/preventive-schedules/*/evidence,/api/v1/preventive-schedules/*/evidence/*,/api/v1/preventive-schedules/*/approve,/api/v1/preventive-schedules/*/skip,/api/v1/sparepart-requests,/api/v1/sparepart-requests/*/transition,/api/v1/sparepart-requests/*/mre,/api/v1/sparepart-requests/*/approve,/api/v1/sparepart-requests/*/complete,/api/v1/sparepart-stock,/api/v1/sparepart-stock/*,/api/v1/sparepart-stock/*/adjust,/api/v1/departments,/api/v1/departments/*,/api/v1/departments/*/members,/api/v1/sections/*/leader,/api/v1/auth/users/*,/api/v1/sync/**,/api/v1/inventory-locations/**,/api/v1/inventory-locations/*/stock-balances,/api/v1/inventory-locations/*/stock-balances/*,/api/v1/inventory-locations/*/stock-balances/*/adjust,/api/v1/inventory-transfers,/api/v1/inventory-transfers/*,/api/v1/inventory-transfers/*/approve,/api/v1/inventory-transfers/*/reject,/api/v1/pm-frequencies/**,/api/v1/pm-checksheets/**,/api/v1/pm-checklist-categories/**,/api/v1/pm-checklist-items/**,/api/v1/pm-schedules/**,/api/v1/pm-schedules/*/submit,/api/v1/pm-schedules/*/approve-spv,/api/v1/pm-schedules/*/approve-prod,/api/v1/pm-schedules/*/activate,/api/v1/pm-schedules/*/dates/*/transition
+ SYNCRO_AUTHZ_DEGRADED_ALLOWLIST=/api/v1/health,/actuator/**
+ 
+ # Authz decision-log retention (days) for the authz_decisions purge job
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java b/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
+index c6b2df3..50b1f57 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
+@@ -60,5 +60,7 @@ public enum AuditEntityType {
+   PM_FREQUENCY,
+   PM_CHECKSHEET,
+   PM_CHECKLIST_CATEGORY,
+-  PM_CHECKLIST_ITEM
++  PM_CHECKLIST_ITEM,
++  PM_SCHEDULE,
++  PM_SCHEDULE_DATE
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java
+index bd1a289..c0c324b 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java
+@@ -1,6 +1,8 @@
+ package com.syncro.maintenance.preventive.api;
+ 
+ import com.syncro.maintenance.preventive.domain.PmItemInputType;
++import com.syncro.maintenance.preventive.domain.PmScheduleDateStatus;
++import com.syncro.maintenance.preventive.domain.PmScheduleStatus;
+ import com.syncro.maintenance.preventive.domain.PreventiveCategory;
+ import com.syncro.maintenance.preventive.domain.ScheduleType;
+ import jakarta.validation.constraints.Max;
+@@ -205,4 +207,31 @@ public final class PreventiveDtos {
+       String referenceDocument, UUID calibrationInstrumentId, Instant createdAt,
+       Instant updatedAt) {
+   }
++
++  // -------------------------------------------------------------------------
++  // PM schedules & schedule dates (story 19-3)
++  // -------------------------------------------------------------------------
++
++  public record CreateScheduleRequest(
++      @NotNull UUID plantId,
++      @NotNull UUID machineId,
++      @NotNull UUID checksheetId,
++      @NotNull @Min(2000) @Max(2999) Integer year) {
++  }
++
++  public record ScheduleDateTransitionRequest(
++      @NotNull PmScheduleDateStatus status) {
++  }
++
++  public record ScheduleView(UUID id, UUID plantId, UUID machineId, UUID checksheetId,
++      int checksheetRevisionNo, UUID frequencyId, String frequencyCode, String frequencyName,
++      int year, PmScheduleStatus status, UUID submittedBy, Instant submittedAt,
++      UUID approvedBySpv, Instant approvedAtSpv, UUID approvedByProd, Instant approvedAtProd,
++      Map<String, Object> warnings, Instant createdAt, Instant updatedAt,
++      List<ScheduleDateView> dates) {
++  }
++
++  public record ScheduleDateView(UUID id, UUID scheduleId, LocalDate plannedDate,
++      PmScheduleDateStatus status, Instant createdAt, Instant updatedAt) {
++  }
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveExceptionHandler.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveExceptionHandler.java
+index a963d72..c7a9f2d 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveExceptionHandler.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveExceptionHandler.java
+@@ -52,7 +52,7 @@ import tools.jackson.databind.exc.InvalidFormatException;
+ @Order(Ordered.HIGHEST_PRECEDENCE)
+ @RestControllerAdvice(assignableTypes = {PreventiveProgramController.class, PreventiveScheduleController.class,
+     PmFrequencyController.class, PmChecksheetController.class, PmChecklistCategoryController.class,
+-    PmChecklistItemController.class})
++    PmChecklistItemController.class, PmScheduleController.class})
+ public class PreventiveExceptionHandler {
+ 
+   private final Clock clock;
+@@ -323,6 +323,81 @@ public class PreventiveExceptionHandler {
+         exception.getFieldErrors());
+   }
+ 
++  // -------------------------------------------------------------------------
++  // Story 19-3: PM schedules & schedule dates
++  // -------------------------------------------------------------------------
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.PmScheduleForbiddenException.class)
++  ResponseEntity<ErrorResponse> pmScheduleForbidden() {
++    return error(HttpStatus.FORBIDDEN, "FORBIDDEN",
++        "You do not have permission to access this resource.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.PmScheduleNotFoundException.class)
++  ResponseEntity<ErrorResponse> pmScheduleNotFound() {
++    return error(HttpStatus.NOT_FOUND, "PM_SCHEDULE_NOT_FOUND",
++        "PM schedule was not found.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.PmScheduleDateNotFoundException.class)
++  ResponseEntity<ErrorResponse> pmScheduleDateNotFound() {
++    return error(HttpStatus.NOT_FOUND, "PM_SCHEDULE_DATE_NOT_FOUND",
++        "PM schedule date was not found.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.MachineNotFoundException.class)
++  ResponseEntity<ErrorResponse> pmScheduleMachineNotFound() {
++    return error(HttpStatus.NOT_FOUND, "MACHINE_NOT_FOUND", "Machine was not found.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.PmChecksheetNotFoundException.class)
++  ResponseEntity<ErrorResponse> pmScheduleChecksheetNotFound() {
++    return error(HttpStatus.NOT_FOUND, "PM_CHECKSHEET_NOT_FOUND",
++        "PM checksheet was not found.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.PmFrequencyNotFoundException.class)
++  ResponseEntity<ErrorResponse> pmScheduleFrequencyNotFound() {
++    return error(HttpStatus.NOT_FOUND, "PM_FREQUENCY_NOT_FOUND",
++        "PM frequency was not found.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.ScheduleAlreadyExistsException.class)
++  ResponseEntity<ErrorResponse> scheduleAlreadyExists() {
++    return error(HttpStatus.CONFLICT, "SCHEDULE_ALREADY_EXISTS",
++        "A PM schedule already exists for this plant, machine, checksheet and year.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.InvalidChecksheetStateException.class)
++  ResponseEntity<ErrorResponse> invalidChecksheetState() {
++    return error(HttpStatus.CONFLICT, "INVALID_CHECKSHEET_STATE",
++        "The checksheet is not approved or is not the current active revision for this machine and frequency.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.InvalidScheduleTransitionException.class)
++  ResponseEntity<ErrorResponse> invalidScheduleTransition() {
++    return error(HttpStatus.CONFLICT, "INVALID_SCHEDULE_TRANSITION",
++        "The schedule is not in the expected state for this action.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.InvalidScheduleDateTransitionException.class)
++  ResponseEntity<ErrorResponse> invalidScheduleDateTransition() {
++    return error(HttpStatus.CONFLICT, "INVALID_SCHEDULE_DATE_TRANSITION",
++        "The schedule date is not in the expected state for this transition.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.ScheduleValidationException.class)
++  ResponseEntity<ErrorResponse> scheduleValidation(
++      com.syncro.maintenance.preventive.application.PmScheduleService.ScheduleValidationException exception) {
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
++        exception.getFieldErrors());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.PlantNotFoundException.class)
++  ResponseEntity<ErrorResponse> pmSchedulePlantNotFound() {
++    return error(HttpStatus.NOT_FOUND, "PLANT_NOT_FOUND", "Plant was not found.", Map.of());
++  }
++
+   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message,
+       Map<String, String> fieldErrors) {
+     return ResponseEntity.status(status)
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmScheduleEntity.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmScheduleEntity.java
+index d158b17..62318a3 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmScheduleEntity.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmScheduleEntity.java
+@@ -201,6 +201,13 @@ public class PmScheduleEntity {
+     this.updatedAt = updatedAt;
+   }
+ 
++  /** Submit stamps the submitter (F5 submit path). */
++  public void markSubmitted(UUID submittedBy, Instant submittedAt, Instant updatedAt) {
++    this.submittedBy = submittedBy;
++    this.submittedAt = submittedAt;
++    this.updatedAt = updatedAt;
++  }
++
+   /** Status transition with the actor (F5 submit/approve/activate paths). */
+   public void transitionTo(PmScheduleStatus status, Instant updatedAt) {
+     this.status = status;
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
+index 3a2e604..e50cb73 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
+@@ -49,11 +49,11 @@ class V1BaseSchemaMigrationTest {
+   // -------------------------------------------------------------------------
+ 
+   @Test
+-  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V8 additive migrations")
++  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V9 additive migrations")
+   void migrationsApplied() {
+     var rows = jdbc.queryForList(
+         "SELECT version, script, success FROM flyway_schema_history ORDER BY installed_rank");
+-    assertThat(rows).hasSize(8);
++    assertThat(rows).hasSize(9);
+     assertThat(rows.get(0).get("version")).isEqualTo("1");
+     assertThat(rows.get(0).get("script")).isEqualTo("V1__orm_foundation_schema.sql");
+     assertThat(rows.get(0).get("success")).isEqualTo(true);
+@@ -78,6 +78,9 @@ class V1BaseSchemaMigrationTest {
+     assertThat(rows.get(7).get("version")).isEqualTo("8");
+     assertThat(rows.get(7).get("script")).isEqualTo("V8__pm_checklist_audit_types.sql");
+     assertThat(rows.get(7).get("success")).isEqualTo(true);
++    assertThat(rows.get(8).get("version")).isEqualTo("9");
++    assertThat(rows.get(8).get("script")).isEqualTo("V9__pm_schedule_audit_types.sql");
++    assertThat(rows.get(8).get("success")).isEqualTo(true);
+   }
+ 
+   // -------------------------------------------------------------------------
+@@ -552,6 +555,41 @@ class V1BaseSchemaMigrationTest {
+         "SIGNATURE_USE");
+   }
+ 
++  /**
++   * Story 19-3: V9 extends the CHECK additively with PM_SCHEDULE/PM_SCHEDULE_DATE so
++   * {@code AuditEntityType.PM_SCHEDULE} / {@code AuditEntityType.PM_SCHEDULE_DATE} can
++   * be persisted. Every prior value — including the V8 PM_CHECKLIST_CATEGORY/
++   * PM_CHECKLIST_ITEM pair — survives the extension.
++   */
++  @Test
++  @DisplayName("19.3-DB-002 P0 audit_log entity_type CHECK accepts PM_SCHEDULE/PM_SCHEDULE_DATE after V9")
++  void auditEntityTypeAcceptsPmScheduleTypes() {
++    var check = jdbc.queryForMap(
++        "SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint "
++            + "WHERE conname = 'ck_audit_log_entity_type'");
++    var def = (String) check.get("def");
++    assertThat(def).contains("PM_SCHEDULE", "PM_SCHEDULE_DATE");
++    // every prior value survives the additive V9 extension.
++    assertThat(def).contains("PM_CHECKLIST_CATEGORY", "PM_CHECKLIST_ITEM",
++        "PM_FREQUENCY", "PM_CHECKSHEET",
++        "WORK_ORDER_QUALITY_RATING", "WORK_LOG_RATING", "WORK_LOG",
++        "WORK_ASSIGNMENT", "WORK_ORDER", "REPAIR_SESSION", "WORKORDER_SIGNATURE",
++        "SPAREPART_STOCK", "SYNC_RUN", "SYNC_QUARANTINE", "MACHINE_AREA",
++        "USER_ROLE_BINDING", "PLANT_WORKING_CALENDAR",
++        "PLANT", "MACHINE_GROUP", "MACHINE", "SPAREPART_TAXONOMY",
++        "SPAREPART", "INSTALLATION", "RESPONSIBILITY", "ALERT",
++        "SPAREPART_PRICE_ENTRY", "SECTION", "TEAM", "WORK_ORDER_CATEGORY",
++        "WORKORDER_ATTACHMENT", "WORK_ORDER_TODO", "WORKORDER_RATING",
++        "RATING_DIMENSION", "PREVENTIVE_PROGRAM", "PREVENTIVE_SCHEDULE",
++        "PREVENTIVE_CHECKLIST", "PREVENTIVE_ATTACHMENT",
++        "SPAREPART_REQUEST", "DEPARTMENT", "DEPARTMENT_USER", "USER",
++        "INVENTORY_LOCATION", "INVENTORY_STOCK_BALANCE",
++        "INVENTORY_TRANSFER", "INVENTORY_RESERVATION",
++        "JOB_TITLE", "SYSTEM_ROLE", "ROLE_PERMISSION_MAPPING",
++        "MENU_FEATURE", "DOMAIN_CONTEXT", "USER_JOB_BINDING",
++        "SIGNATURE_USE");
++  }
++
+   // -------------------------------------------------------------------------
+   // Helpers
+   // -------------------------------------------------------------------------
+diff --git a/syncro/authz/policy/authz.rego b/syncro/authz/policy/authz.rego
+index ba32a52..650e80a 100644
+--- a/syncro/authz/policy/authz.rego
++++ b/syncro/authz/policy/authz.rego
+@@ -364,6 +364,26 @@ pm_checklist_paths := {
+   "/api/v1/pm-checklist-items/*",
+ }
+ 
++# PM schedules & schedule dates (story 19-3, blueprint F5): create/submit for the
++# four-role set; approve-spv/approve-prod/activate for the leader subset
++# (SECTION_LEADER, MAINTENANCE_LEADER, MANAGER_MAINTENANCE — STAFF_MAINTENANCE
++# passes rego on the mutation paths but is denied the leader steps in service).
++# The transition endpoint gates on schedule ACTIVE in service. A single `*` matches
++# exactly one path segment, so each depth is enumerated explicitly: collection
++# (list/create), /{id} (get), /{id}/submit, /{id}/approve-spv, /{id}/approve-prod,
++# /{id}/activate, /{id}/dates/{dateId}/transition. Reads (GET) flow through
++# generic read_allowed. Plant/group scope is service-side (rego cannot see the
++# machine's plant).
++pm_schedule_paths := {
++  "/api/v1/pm-schedules",
++  "/api/v1/pm-schedules/*",
++  "/api/v1/pm-schedules/*/submit",
++  "/api/v1/pm-schedules/*/approve-spv",
++  "/api/v1/pm-schedules/*/approve-prod",
++  "/api/v1/pm-schedules/*/activate",
++  "/api/v1/pm-schedules/*/dates/*/transition",
++}
++
+ # Org-maintenance departments (spec-org-maintenance-model): mutations are the
+ # Phase 1 gate (SUPER_ADMIN|MANAGER_MAINTENANCE). Reads flow through generic
+ # read_allowed. Members replace + section leader assignment + user-master updates
+@@ -1115,6 +1135,33 @@ mutation_allowed if {
+   path_matches(pm_checklist_paths)
+ }
+ 
++# PM schedules (story 19-3): create/submit for the four-role set; the approve-spv/
++# approve-prod/activate leader subset is narrowed in service (STAFF_MAINTENANCE is
++# denied the leader steps there, not in rego — the coarse fence stays four-role).
++mutation_allowed if {
++  input.subject.roles[_] == "MANAGER_MAINTENANCE"
++  is_mutation
++  path_matches(pm_schedule_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "SECTION_LEADER"
++  is_mutation
++  path_matches(pm_schedule_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "MAINTENANCE_LEADER"
++  is_mutation
++  path_matches(pm_schedule_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "STAFF_MAINTENANCE"
++  is_mutation
++  path_matches(pm_schedule_paths)
++}
++
+ mutation_allowed if {
+   input.subject.roles[_] == "MANAGER_MAINTENANCE"
+   is_mutation
+diff --git a/syncro/authz/policy/authz_test.rego b/syncro/authz/policy/authz_test.rego
+index 842303c..8e4bd58 100644
+--- a/syncro/authz/policy/authz_test.rego
++++ b/syncro/authz/policy/authz_test.rego
+@@ -1586,6 +1586,78 @@ test_anonymous_pm_checklist_denied if {
+   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/pm-checklist-items"}
+ }
+ 
++# -- PM schedules (story 19-3, blueprint F5): four-role mutation allow set on the
++#    collection, /{id}, and all action subpaths; TECHNICIAN/AUDITOR/anonymous denied;
++#    reads any-authenticated -----------------------------------------------------
++
++test_manager_pm_schedule_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/pm-schedules"}
++}
++
++test_section_leader_pm_schedule_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/pm-schedules"}
++}
++
++test_maintenance_leader_pm_schedule_submit_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/submit"}
++}
++
++test_staff_pm_schedule_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/pm-schedules"}
++}
++
++test_manager_pm_schedule_approve_spv_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/approve-spv"}
++}
++
++test_section_leader_pm_schedule_approve_prod_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/approve-prod"}
++}
++
++test_maintenance_leader_pm_schedule_activate_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/activate"}
++}
++
++test_super_admin_pm_schedule_activate_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/activate"}
++}
++
++test_manager_pm_schedule_date_transition_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/dates/7b7c6d5e-1111-2222-3333-444455556666/transition"}
++}
++
++test_section_leader_pm_schedule_date_transition_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/dates/7b7c6d5e-1111-2222-3333-444455556666/transition"}
++}
++
++test_technician_pm_schedule_create_denied if {
++  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-schedules"}
++}
++
++test_technician_pm_schedule_approve_spv_denied if {
++  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/approve-spv"}
++}
++
++test_technician_pm_schedule_date_transition_denied if {
++  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/dates/7b7c6d5e-1111-2222-3333-444455556666/transition"}
++}
++
++test_auditor_pm_schedule_submit_denied if {
++  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666/submit"}
++}
++
++test_auditor_pm_schedule_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-schedules"}
++}
++
++test_auditor_pm_schedule_get_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-schedules/7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_anonymous_pm_schedule_denied if {
++  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/pm-schedules"}
++}
++
+ # -- Anonymous (no userId): default deny everywhere ------------------------
+ 
+ test_anonymous_admin_only_denied if {
+--- NEW FILE: _bmad-output/implementation-artifacts/spec-19-3-pm-schedules-dates.md ---
+diff --git a/_bmad-output/implementation-artifacts/spec-19-3-pm-schedules-dates.md b/_bmad-output/implementation-artifacts/spec-19-3-pm-schedules-dates.md
+new file mode 100644
+index 0000000..ff89bb8
+--- /dev/null
++++ b/_bmad-output/implementation-artifacts/spec-19-3-pm-schedules-dates.md
+@@ -0,0 +1,118 @@
++---
++title: 'Story 19-3: PM Schedules & Schedule Dates'
++type: 'feature'
++created: '2026-09-03'
++status: 'in-progress'
++review_loop_iteration: 0
++baseline_revision: '6202e50'
++followup_review_recommended: false
++context:
++  - '_bmad-output/project-context.md'
++  - '_bmad-output/implementation-artifacts/epic-19-context.md'
++warnings: []
++deferred: []
++---
++
++<intent-contract>
++
++## Intent
++
++**Problem:** `pm_schedules`/`pm_schedule_dates` (blueprint F5) exist in V1 with bare 15-2 entities but no service or API — a yearly PM plan cannot be created, its per-date instances materialized, or moved through the SPV → production approval workflow, so 19-1/19-2 content never becomes executable preventive dates.
++
++**Approach:** Add PmScheduleService + REST `/api/v1/pm-schedules` implementing: create a yearly schedule (snapshots checksheet + revision + frequency code/name, materializes the year's schedule dates from the server clock), sequential approval (DRAFT → PENDING_SPV_APPROVAL → PENDING_PRODUCTION_APPROVAL → APPROVED → ACTIVE) with per-approval actor/timestamp audit, and date-status updates (SCHEDULED → EXECUTED/MISSED/RESCHEDULED via explicit transitions). V9 additive migration extends the audit entity_type CHECK with PM_SCHEDULE/PM_SCHEDULE_DATE.
++
++## Boundaries & Constraints
++
++**Always:**
++- V9 additive migration only (V1..V8 untouched): extend ck_audit_log_entity_type with PM_SCHEDULE, PM_SCHEDULE_DATE (V6/V7/V8 pattern) + matching AuditEntityType enum values in the same change. No schema changes.
++- API `/api/v1/pm-schedules`: POST {plantId,machineId,checksheetId,year} → creates schedule (status DRAFT) + materializes dates; GET list ?year=&status= (scope-filtered); GET /{id} (schedule + dates, scope-filtered); POST /{id}/submit → DRAFT→PENDING_SPV_APPROVAL; POST /{id}/approve-spv → PENDING_SPV_APPROVAL→PENDING_PRODUCTION_APPROVAL; POST /{id}/approve-prod → PENDING_PRODUCTION_APPROVAL→APPROVED; POST /{id}/activate → APPROVED→ACTIVE; POST /{id}/dates/{dateId}/transition {status} → SCHEDULED↔{EXECUTED,MISSED,RESCHEDULED} (RESCHEDULED requires newDate? → NO, status only in this story). camelCase.
++- Create validation: plant+machine exist; machine belongs to plant; checksheet exists and is APPROVED (approvedBy != null) and is the ACTIVE pointer's target for (machine, frequency) — else 409 INVALID_CHECKSHEET_STATE; unique (plant, machine, checksheet, year) → 409 SCHEDULE_ALREADY_EXISTS; year 2000-2999.
++- Date materialization (from checksheet's effective_date or the current date from Clock, whichever is later — the F5 anchor): frequency MONTHLY → one date per month of the year (day = min(anchor day, days-in-month), PreventiveProgramService.nextAnchor clamping pattern); ANNUAL → one date (anchor month/day in the target year). Duplicate planned_date within a schedule → 400. All dates start SCHEDULED.
++- Approvals are strictly sequential: any out-of-order transition → 409 INVALID_SCHEDULE_TRANSITION. Each transition stamps actor + timestamp (submitted_by/submitted_at, approved_by_spv/approved_at_spv, approved_by_prod/approved_at_prod) and writes an audit record with previous/new status. Only APPROVED schedules can be activated; only ACTIVE schedules expose the date-transition endpoint.
++- Date transition guards: EXECUTED/MISSED only from SCHEDULED; RESCHEDULED from SCHEDULED or EXECUTED; terminal per date? NO — statuses are repeatable (a rescheduled date can be executed). Invalid transition → 409 INVALID_SCHEDULE_DATE_TRANSITION. Date mutations audit-logged.
++- Gates: schedule create/submit by STAFF_MAINTENANCE/SECTION_LEADER/MAINTENANCE_LEADER/MANAGER_MAINTENANCE with machine plant/group scope (SUPER_ADMIN bypass); approve-spv/approve-prod/activate require a leader role (SECTION_LEADER/MAINTENANCE_LEADER/MANAGER_MAINTENANCE/SUPER_ADMIN); reads scope-filtered like 19-1/19-2.
++- Audit: CREATE/UPDATE records with actor + previous/new values (all UUIDs stringified).
++- OPA: new pm_schedule_paths {"/api/v1/pm-schedules", "/api/v1/pm-schedules/*", "/api/v1/pm-schedules/*/submit", "/api/v1/pm-schedules/*/approve-spv", "/api/v1/pm-schedules/*/approve-prod", "/api/v1/pm-schedules/*/activate", "/api/v1/pm-schedules/*/dates/*/transition"} with the four-role mutation allow blocks (approve sub-paths leader-only in service, rego coarse fence); update authz.rego + authz_test.rego; add to SYNCRO_AUTHZ_ENFORCED_PATHS in .env.example.
++- Errors: VALIDATION_ERROR (400), FORBIDDEN (403), PM_SCHEDULE_NOT_FOUND / PM_CHECKSHEET_NOT_FOUND / MACHINE_NOT_FOUND / PLANT_NOT_FOUND / PM_SCHEDULE_DATE_NOT_FOUND (404), SCHEDULE_ALREADY_EXISTS / INVALID_SCHEDULE_TRANSITION / INVALID_SCHEDULE_DATE_TRANSITION / INVALID_CHECKSHEET_STATE (409).
++- warnings JSONB: leave null this story (19-4/19-5 populate); column exists.
++- TypeScript strict; no frontend work.
++
++**Block If:**
++- No unambiguous anchor date source exists for date materialization (effective_date vs clock) → HALT blocked.
++
++**Never:**
++- No edits to V1..V8; no execution surface (19-5); no auto-workorder generation (19-4); no calendar/dashboard endpoints (FR-172 is Epic 14); no scheduler; no deletion of schedules.
++
++## I/O & Edge-Case Matrix
++
++| Scenario | Input / State | Expected Output / Behavior | Error Handling |
++|----------|--------------|---------------------------|----------------|
++| Create MONTHLY schedule | approved checksheet (MONTHLY, effective 2026-01-15), year 2027 | 201 DRAFT; 12 dates (15th of each month) | unapproved checksheet → 409; duplicate (plant,machine,checksheet,year) → 409 |
++| Create ANNUAL schedule | ANNUAL checksheet, year 2027 | 201 DRAFT; 1 date (anchor day/month) | — |
++| Submit | DRAFT submit | PENDING_SPV_APPROVAL; submitted_by/at stamped | out-of-order → 409 |
++| Approve SPV | PENDING_SPV_APPROVAL | PENDING_PRODUCTION_APPROVAL; stamps | staff → 403; out-of-order → 409 |
++| Approve PROD | PENDING_PRODUCTION_APPROVAL | APPROVED; stamps | — |
++| Activate | APPROVED | ACTIVE | from non-APPROVED → 409 |
++| Date transition | ACTIVE, SCHEDULED date → EXECUTED | status EXECUTED; audit | not ACTIVE → 409; invalid from-state → 409 |
++| Out-of-scope | leader of plant A on machine B | 403 mutations, invisible reads | — |
++| Duplicate date | materialization collides (impossible for MONTHLY distinct months) | — | 400 if crafted |
++
++</intent-contract>
++
++## Code Map
++
++### Existing (reuse)
++- `syncro/apps/backend/src/main/resources/db/migration/V1__orm_foundation_schema.sql:1176-1220` -- pm_schedules + pm_schedule_dates DDL + CHECKs + uniques. READ-ONLY.
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmScheduleEntity.java`, `PmScheduleDateEntity.java` + repositories -- bare 15-2 entities; add mutators (transition methods, stamp methods) + queries (byPlantMachineChecksheetYear, byScheduleIdOrderByPlannedDateAsc).
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PreventiveProgramService.java:196-221` -- nextAnchor/clamp pattern for date materialization.
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecksheetService.java` + `PmChecklistService.java` -- 19-1/19-2 gate/audit/scope patterns to copy exactly.
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/ActiveChecksheetRepository.java` -- verify the checksheet is the active pointer target.
++- `syncro/apps/backend/src/main/java/com/syncro/authz/policy/authz.rego` + `authz_test.rego` -- path-set pattern.
++- `syncro/.env.example` -- SYNCRO_AUTHZ_ENFORCED_PATHS.
++- Tests: `PmChecklistServiceIntegrationTest` / `PmChecksheetServiceIntegrationTest` (fixture pattern), `PmChecklistControllerTest` (MockMvc error-path pattern), `V1BaseSchemaMigrationTest` (migration count → 9).
++
++### New
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmScheduleService.java` (+ commands/views/exceptions).
++- `syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmScheduleController.java`, DTO records in PreventiveDtos, handlers in PreventiveExceptionHandler.
++- `syncro/apps/backend/src/main/resources/db/migration/V9__pm_schedule_audit_types.sql`.
++- Tests: `PmScheduleServiceIntegrationTest.java`, `PmScheduleControllerTest.java`.
++
++## Tasks & Acceptance
++
++**Execution:**
++- `V9__pm_schedule_audit_types.sql` -- CHECK extend -- audit parity
++- `AuditEntityType.java` -- PM_SCHEDULE, PM_SCHEDULE_DATE -- same change as V9
++- `PmScheduleEntity/PmScheduleDateEntity` + repositories -- mutators + queries -- service needs
++- `PmScheduleService.java` -- create+materialize, transitions, gates, audit -- core
++- `PmScheduleController.java` + DTOs + handler -- API surface
++- `syncro/authz/policy/authz.rego` + `authz_test.rego` + `.env.example` -- path set + wiring -- OPA parity
++- `V1BaseSchemaMigrationTest.java` -- V9 assertions -- migration evidence
++- Integration + controller tests -- every matrix row -- AC evidence
++
++**Acceptance Criteria:**
++- Given an approved active checksheet (MONTHLY), when a schedule is created for a year, then a DRAFT schedule with 12 dates (monthly, clamped) persists with frequency snapshot + audit CREATE.
++- Given a DRAFT schedule, when submit → approve-spv → approve-prod → activate, then the statuses advance strictly in order with actor/timestamp stamps and per-step audit UPDATE rows.
++- Given any out-of-order transition, then 409 INVALID_SCHEDULE_TRANSITION; given a leader-only approval by STAFF, then 403.
++- Given an ACTIVE schedule, when a SCHEDULED date transitions to EXECUTED, then the date updates and is audit-logged; invalid from-state → 409.
++- Given an unapproved checksheet or a duplicate schedule, then 409 with the stable codes.
++- Given a full per-class test run + OPA suite, then all green.
++
++## Spec Change Log
++
++## Review Triage Log
++
++## Design Notes
++
++- Anchor for date materialization: the checksheet's effective_date when present, else LocalDate.now(clock) — the earliest an approved revision can anchor a plan. MONTHLY iterates the 12 months of the target year clamping the anchor day (Feb 29/30/31 short-month handling, PreventiveProgramService.nextAnchor pattern); ANNUAL emits one date at the anchor month/day in the target year.
++- Approvals stamp columns per F5 (submitted_by/at, approved_by_spv/at, approved_by_prod/at) — no generic actor columns; the audit record carries previous/new status + actor.
++- The transition endpoint is gated on schedule ACTIVE; date statuses are repeatable (RESCHEDULED → EXECUTED allowed) — no terminal state per date.
++
++## Verification
++
++**Commands:**
++- `cd syncro/apps/backend && mvn -q test -Dtest=PmScheduleServiceIntegrationTest,PmScheduleControllerTest,V1BaseSchemaMigrationTest` (per class if the shared container dies) -- expected: all pass
++- `cd syncro/apps/backend && mvn -q test -Dtest=PmChecksheetServiceIntegrationTest,PmChecklistServiceIntegrationTest` -- expected: 19-1/19-2 regression green
++- OPA via `docker run --rm -v <authz>/policy:/policy openpolicyagent/opa:1.19.1-debug test /policy` -- expected: pass with new path sets
++
++**Manual checks:**
++- `git diff --stat -- syncro/apps/backend/src/main/resources/db/migration` shows only V9 added.
+--- NEW FILE: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmScheduleController.java ---
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmScheduleController.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmScheduleController.java
+new file mode 100644
+index 0000000..62e4eb0
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmScheduleController.java
+@@ -0,0 +1,181 @@
++package com.syncro.maintenance.preventive.api;
++
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.CreateScheduleRequest;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.ScheduleDateTransitionRequest;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.ScheduleDateView;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.ScheduleView;
++import com.syncro.maintenance.preventive.application.PmScheduleService;
++import com.syncro.maintenance.preventive.application.PmScheduleService.CreateScheduleCommand;
++import com.syncro.maintenance.preventive.domain.PmScheduleStatus;
++import io.swagger.v3.oas.annotations.Operation;
++import io.swagger.v3.oas.annotations.media.Content;
++import io.swagger.v3.oas.annotations.media.Schema;
++import io.swagger.v3.oas.annotations.responses.ApiResponse;
++import io.swagger.v3.oas.annotations.responses.ApiResponses;
++import io.swagger.v3.oas.annotations.tags.Tag;
++import jakarta.validation.Valid;
++import java.net.URI;
++import java.util.List;
++import java.util.UUID;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.security.core.annotation.AuthenticationPrincipal;
++import org.springframework.validation.annotation.Validated;
++import org.springframework.web.bind.annotation.GetMapping;
++import org.springframework.web.bind.annotation.PathVariable;
++import org.springframework.web.bind.annotation.PostMapping;
++import org.springframework.web.bind.annotation.RequestBody;
++import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RequestParam;
++import org.springframework.web.bind.annotation.RestController;
++
++/** PM yearly schedule & schedule-date API (story 19-3, blueprint F5). */
++@Tag(name = "pm-schedules")
++@Validated
++@RestController
++@RequestMapping("/api/v1/pm-schedules")
++public class PmScheduleController {
++
++  private final PmScheduleService schedules;
++
++  public PmScheduleController(PmScheduleService schedules) {
++    this.schedules = schedules;
++  }
++
++  @Operation(operationId = "createPmSchedule", summary = "Create a yearly schedule (DRAFT) with materialized dates")
++  @ApiResponses({
++      @ApiResponse(responseCode = "201", description = "Schedule created",
++          content = @Content(schema = @Schema(implementation = ScheduleView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Machine, checksheet or frequency not found"),
++      @ApiResponse(responseCode = "409", description = "Schedule already exists, invalid checksheet state, or invalid transition")
++  })
++  @PostMapping
++  public ResponseEntity<ScheduleView> create(@AuthenticationPrincipal AuthenticatedUser user,
++      @Valid @RequestBody CreateScheduleRequest request) {
++    var view = schedules.create(user, new CreateScheduleCommand(
++        request.plantId(), request.machineId(), request.checksheetId(), request.year()));
++    return ResponseEntity.status(HttpStatus.CREATED)
++        .location(URI.create("/api/v1/pm-schedules/" + view.id()))
++        .body(toView(view));
++  }
++
++  @Operation(operationId = "listPmSchedules", summary = "List schedules (filter by year, status)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Schedules returned",
++          content = @Content(schema = @Schema(implementation = ScheduleView.class))),
++      @ApiResponse(responseCode = "401", description = "Authentication required")
++  })
++  @GetMapping
++  public List<ScheduleView> list(@AuthenticationPrincipal AuthenticatedUser user,
++      @RequestParam(required = false) Integer year,
++      @RequestParam(required = false) PmScheduleStatus status) {
++    return schedules.list(user, year, status).stream()
++        .map(PmScheduleController::toView).toList();
++  }
++
++  @Operation(operationId = "getPmSchedule", summary = "Get a schedule with its dates")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Schedule returned",
++          content = @Content(schema = @Schema(implementation = ScheduleView.class))),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Schedule not found")
++  })
++  @GetMapping("/{id}")
++  public ScheduleView get(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID id) {
++    return toView(schedules.get(user, id));
++  }
++
++  @Operation(operationId = "submitPmSchedule", summary = "Submit a DRAFT schedule for SPV approval")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Schedule submitted",
++          content = @Content(schema = @Schema(implementation = ScheduleView.class))),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Schedule not found"),
++      @ApiResponse(responseCode = "409", description = "Invalid transition")
++  })
++  @PostMapping("/{id}/submit")
++  public ScheduleView submit(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID id) {
++    return toView(schedules.submit(user, id));
++  }
++
++  @Operation(operationId = "approveSpvPmSchedule", summary = "Approve schedule (SPV step)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Schedule approved by SPV",
++          content = @Content(schema = @Schema(implementation = ScheduleView.class))),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Schedule not found"),
++      @ApiResponse(responseCode = "409", description = "Invalid transition")
++  })
++  @PostMapping("/{id}/approve-spv")
++  public ScheduleView approveSpv(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID id) {
++    return toView(schedules.approveSpv(user, id));
++  }
++
++  @Operation(operationId = "approveProdPmSchedule", summary = "Approve schedule (production step)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Schedule approved by production",
++          content = @Content(schema = @Schema(implementation = ScheduleView.class))),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Schedule not found"),
++      @ApiResponse(responseCode = "409", description = "Invalid transition")
++  })
++  @PostMapping("/{id}/approve-prod")
++  public ScheduleView approveProd(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID id) {
++    return toView(schedules.approveProd(user, id));
++  }
++
++  @Operation(operationId = "activatePmSchedule", summary = "Activate an approved schedule")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Schedule activated",
++          content = @Content(schema = @Schema(implementation = ScheduleView.class))),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Schedule not found"),
++      @ApiResponse(responseCode = "409", description = "Invalid transition")
++  })
++  @PostMapping("/{id}/activate")
++  public ScheduleView activate(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable UUID id) {
++    return toView(schedules.activate(user, id));
++  }
++
++  @Operation(operationId = "transitionPmScheduleDate", summary = "Transition a schedule date to SCHEDULED/EXECUTED/MISSED/RESCHEDULED")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Date transitioned",
++          content = @Content(schema = @Schema(implementation = ScheduleDateView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Schedule or date not found"),
++      @ApiResponse(responseCode = "409", description = "Invalid date transition")
++  })
++  @PostMapping("/{scheduleId}/dates/{dateId}/transition")
++  public ScheduleDateView transitionDate(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID scheduleId, @PathVariable UUID dateId,
++      @Valid @RequestBody ScheduleDateTransitionRequest request) {
++    return toDateView(schedules.transitionDate(user, scheduleId, dateId, request.status()));
++  }
++
++  private static ScheduleView toView(
++      com.syncro.maintenance.preventive.application.PmScheduleService.ScheduleView v) {
++    return new ScheduleView(v.id(), v.plantId(), v.machineId(), v.checksheetId(),
++        v.checksheetRevisionNo(), v.frequencyId(), v.frequencyCode(), v.frequencyName(),
++        v.year(), v.status(), v.submittedBy(), v.submittedAt(), v.approvedBySpv(),
++        v.approvedAtSpv(), v.approvedByProd(), v.approvedAtProd(), v.warnings(),
++        v.createdAt(), v.updatedAt(),
++        v.dates().stream().map(PmScheduleController::toDateView).toList());
++  }
++
++  private static ScheduleDateView toDateView(
++      com.syncro.maintenance.preventive.application.PmScheduleService.ScheduleDateView v) {
++    return new ScheduleDateView(v.id(), v.scheduleId(), v.plannedDate(), v.status(),
++        v.createdAt(), v.updatedAt());
++  }
++}
+--- NEW FILE: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmScheduleService.java ---
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmScheduleService.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmScheduleService.java
+new file mode 100644
+index 0000000..d397d02
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmScheduleService.java
+@@ -0,0 +1,620 @@
++package com.syncro.maintenance.preventive.application;
++
++import com.syncro.audit.application.AuditLogWriter;
++import com.syncro.audit.application.AuditRecord;
++import com.syncro.audit.domain.AuditAction;
++import com.syncro.audit.domain.AuditEntityType;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.PlantRepository;
++import com.syncro.maintenance.preventive.domain.PmScheduleDateStatus;
++import com.syncro.maintenance.preventive.domain.PmScheduleStatus;
++import com.syncro.maintenance.preventive.infrastructure.db.ActiveChecksheetEntity;
++import com.syncro.maintenance.preventive.infrastructure.db.ActiveChecksheetId;
++import com.syncro.maintenance.preventive.infrastructure.db.ActiveChecksheetRepository;
++import com.syncro.maintenance.preventive.infrastructure.db.PmChecksheetEntity;
++import com.syncro.maintenance.preventive.infrastructure.db.PmChecksheetRepository;
++import com.syncro.maintenance.preventive.infrastructure.db.PmFrequencyEntity;
++import com.syncro.maintenance.preventive.infrastructure.db.PmFrequencyRepository;
++import com.syncro.maintenance.preventive.infrastructure.db.PmScheduleDateEntity;
++import com.syncro.maintenance.preventive.infrastructure.db.PmScheduleDateRepository;
++import com.syncro.maintenance.preventive.infrastructure.db.PmScheduleEntity;
++import com.syncro.maintenance.preventive.infrastructure.db.PmScheduleRepository;
++import com.syncro.machine.infrastructure.MachineEntity;
++import com.syncro.machine.infrastructure.MachineRepository;
++import com.syncro.org.application.OperationalScope;
++import com.syncro.org.application.OperationalScopeService;
++import java.time.Clock;
++import java.time.Instant;
++import java.time.LocalDate;
++import java.time.YearMonth;
++import java.util.ArrayList;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++import org.springframework.dao.DataIntegrityViolationException;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++
++/**
++ * PM yearly schedule + schedule-date service (story 19-3, blueprint F5). Creates a
++ * yearly plan that snapshots an approved checksheet (revision, frequency code/name)
++ * and materializes the year's {@code pm_schedule_dates} from the checksheet's
++ * {@code effective_date} anchor (or the current date when the revision has none — the
++ * earliest an approved revision can anchor a plan). Frequencies MONTHLY (one clamped
++ * date per month of the target year) and ANNUAL (one date at the anchor month/day in
++ * the target year) only — matching the V7 MONTHLY/ANNUAL seed and the F5 calendar
++ * model.
++ *
++ * <p>Approvals are strictly sequential: DRAFT → PENDING_SPV_APPROVAL (submit) →
++ * PENDING_PRODUCTION_APPROVAL (approve-spv) → APPROVED (approve-prod) → ACTIVE
++ * (activate). Each step stamps its actor/timestamp column (submitted_by/at,
++ * approved_by_spv/at, approved_by_prod/at) and writes an audit UPDATE with the
++ * previous/new status. Only ACTIVE schedules expose the per-date transition endpoint;
++ * date statuses are repeatable (a RESCHEDULED date can later be EXECUTED) — no
++ * terminal per-date state.
++ *
++ * <p>Gates: create/submit by STAFF_MAINTENANCE/SECTION_LEADER/MAINTENANCE_LEADER/
++ * MANAGER_MAINTENANCE (SUPER_ADMIN bypass); approve-spv/approve-prod/activate require
++ * a leader role (SECTION_LEADER/MAINTENANCE_LEADER/MANAGER_MAINTENANCE/SUPER_ADMIN).
++ * Machine plant/group scope resolves through the machine (19-1 requireMutationAccess
++ * pattern); reads are scope-filtered so scoped data never leaks across plant/group
++ * boundaries.
++ */
++@Service
++public class PmScheduleService {
++
++  private static final String SCHEDULE_UNIQUE_CONSTRAINT =
++      "uq_pm_schedules_plant_machine_checksheet_year";
++  private static final String DATE_UNIQUE_CONSTRAINT =
++      "uq_pm_schedule_dates_schedule_planned_date";
++
++  private final PmScheduleRepository schedules;
++  private final PmScheduleDateRepository dates;
++  private final PmChecksheetRepository checksheets;
++  private final PmFrequencyRepository frequencies;
++  private final MachineRepository machines;
++  private final ActiveChecksheetRepository activeChecksheets;
++  private final PlantRepository plants;
++  private final AuditLogWriter auditLog;
++  private final OperationalScopeService scopes;
++  private final Clock clock;
++
++  public PmScheduleService(PmScheduleRepository schedules, PmScheduleDateRepository dates,
++      PmChecksheetRepository checksheets, PmFrequencyRepository frequencies,
++      MachineRepository machines, ActiveChecksheetRepository activeChecksheets,
++      PlantRepository plants, AuditLogWriter auditLog, OperationalScopeService scopes,
++      Clock clock) {
++    this.schedules = schedules;
++    this.dates = dates;
++    this.checksheets = checksheets;
++    this.frequencies = frequencies;
++    this.machines = machines;
++    this.activeChecksheets = activeChecksheets;
++    this.plants = plants;
++    this.auditLog = auditLog;
++    this.scopes = scopes;
++    this.clock = clock;
++  }
++
++  // -------------------------------------------------------------------------
++  // Create (schedule + date materialization)
++  // -------------------------------------------------------------------------
++
++  @Transactional
++  public ScheduleView create(AuthenticatedUser user, CreateScheduleCommand command) {
++    if (!plants.existsById(command.plantId())) {
++      throw new PlantNotFoundException();
++    }
++    var machine = loadMachine(command.machineId());
++    requireMutationAccess(user, machine);
++    if (!machine.getPlant().getId().equals(command.plantId())) {
++      throw new ScheduleValidationException(Map.of("machineId", "Machine does not belong to this plant."));
++    }
++    var checksheet = loadChecksheet(command.checksheetId());
++    if (checksheet.getApprovedBy() == null) {
++      throw new InvalidChecksheetStateException();
++    }
++    var frequency = loadFrequency(checksheet.getFrequencyId());
++    requireActivePointer(machine, checksheet);
++    if (schedules.findByPlantIdAndMachineIdAndChecksheetIdAndYear(
++        command.plantId(), machine.getId(), checksheet.getId(), command.year()).isPresent()) {
++      throw new ScheduleAlreadyExistsException();
++    }
++    var now = Instant.now(clock);
++    var entity = new PmScheduleEntity(
++        UUID.randomUUID(), machine.getPlant().getId(), machine.getId(),
++        checksheet.getId(), checksheet.getRevisionNo(), checksheet.getFrequencyId(),
++        frequency.getCode(), frequency.getName(), command.year(), PmScheduleStatus.DRAFT,
++        null, null, null, null, null, null, null, now, now);
++    var saved = saveSchedule(entity);
++    var materialized = materializeDates(saved, checksheet);
++    auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.PM_SCHEDULE,
++        saved.getId(), label(saved, machine), machine.getPlant().getId(), null,
++        scheduleValues(saved), null));
++    return toView(saved, materialized);
++  }
++
++  // -------------------------------------------------------------------------
++  // List / Get (scope-filtered reads)
++  // -------------------------------------------------------------------------
++
++  @Transactional(readOnly = true)
++  public List<ScheduleView> list(AuthenticatedUser user, Integer year, PmScheduleStatus status) {
++    var scope = scopes.derive(user);
++    var rows = schedules.findAll().stream()
++        .filter(s -> year == null || s.getYear() == year)
++        .filter(s -> status == null || s.getStatus() == status)
++        .sorted(java.util.Comparator.comparing(PmScheduleEntity::getCreatedAt).reversed()
++            .thenComparing(PmScheduleEntity::getId))
++        .toList();
++    if (scope.plantIds() == null) {
++      return rows.stream().map(s -> toView(s, dates.findByScheduleIdOrderByPlannedDateAsc(s.getId())))
++          .toList();
++    }
++    var result = new ArrayList<ScheduleView>();
++    for (var schedule : rows) {
++      var machine = machines.findByIdWithPlantAndGroup(schedule.getMachineId());
++      if (machine.isPresent() && inScope(scope, machine.get())) {
++        result.add(toView(schedule, dates.findByScheduleIdOrderByPlannedDateAsc(schedule.getId())));
++      }
++    }
++    return result;
++  }
++
++  @Transactional(readOnly = true)
++  public ScheduleView get(AuthenticatedUser user, UUID id) {
++    var entity = loadSchedule(id);
++    var machine = loadMachine(entity.getMachineId());
++    if (!canRead(user, machine)) {
++      throw new PmScheduleForbiddenException();
++    }
++    return toView(entity, dates.findByScheduleIdOrderByPlannedDateAsc(entity.getId()));
++  }
++
++  // -------------------------------------------------------------------------
++  // Approval chain: submit → approve-spv → approve-prod → activate
++  // -------------------------------------------------------------------------
++
++  @Transactional
++  public ScheduleView submit(AuthenticatedUser user, UUID id) {
++    var entity = loadSchedule(id);
++    requireMutationAccess(user, loadMachine(entity.getMachineId()));
++    requireState(entity, PmScheduleStatus.DRAFT);
++    var previous = scheduleValues(entity);
++    var now = Instant.now(clock);
++    entity.markSubmitted(UUID.fromString(user.id()), now, now);
++    entity.transitionTo(PmScheduleStatus.PENDING_SPV_APPROVAL, now);
++    var saved = schedules.saveAndFlush(entity);
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PM_SCHEDULE,
++        saved.getId(), machineLabelOrId(saved), plantIdOrNull(entity),
++        previous, scheduleValues(saved), null));
++    return toView(saved, dates.findByScheduleIdOrderByPlannedDateAsc(saved.getId()));
++  }
++
++  @Transactional
++  public ScheduleView approveSpv(AuthenticatedUser user, UUID id) {
++    var entity = loadSchedule(id);
++    requireLeaderRole(user);
++    requireMutationAccess(user, loadMachine(entity.getMachineId()));
++    requireState(entity, PmScheduleStatus.PENDING_SPV_APPROVAL);
++    var previous = scheduleValues(entity);
++    var now = Instant.now(clock);
++    entity.approveBySpv(UUID.fromString(user.id()), now, now);
++    entity.transitionTo(PmScheduleStatus.PENDING_PRODUCTION_APPROVAL, now);
++    var saved = schedules.saveAndFlush(entity);
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PM_SCHEDULE,
++        saved.getId(), machineLabelOrId(saved), plantIdOrNull(entity),
++        previous, scheduleValues(saved), null));
++    return toView(saved, dates.findByScheduleIdOrderByPlannedDateAsc(saved.getId()));
++  }
++
++  @Transactional
++  public ScheduleView approveProd(AuthenticatedUser user, UUID id) {
++    var entity = loadSchedule(id);
++    requireLeaderRole(user);
++    requireMutationAccess(user, loadMachine(entity.getMachineId()));
++    requireState(entity, PmScheduleStatus.PENDING_PRODUCTION_APPROVAL);
++    var previous = scheduleValues(entity);
++    var now = Instant.now(clock);
++    entity.approveByProd(UUID.fromString(user.id()), now, now);
++    entity.transitionTo(PmScheduleStatus.APPROVED, now);
++    var saved = schedules.saveAndFlush(entity);
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PM_SCHEDULE,
++        saved.getId(), machineLabelOrId(saved), plantIdOrNull(entity),
++        previous, scheduleValues(saved), null));
++    return toView(saved, dates.findByScheduleIdOrderByPlannedDateAsc(saved.getId()));
++  }
++
++  @Transactional
++  public ScheduleView activate(AuthenticatedUser user, UUID id) {
++    var entity = loadSchedule(id);
++    requireLeaderRole(user);
++    requireMutationAccess(user, loadMachine(entity.getMachineId()));
++    requireState(entity, PmScheduleStatus.APPROVED);
++    var previous = scheduleValues(entity);
++    var now = Instant.now(clock);
++    entity.transitionTo(PmScheduleStatus.ACTIVE, now);
++    var saved = schedules.saveAndFlush(entity);
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PM_SCHEDULE,
++        saved.getId(), "s@" + machineLabelOrId(entity), plantIdOrNull(entity),
++        previous, scheduleValues(saved), null));
++    return toView(saved, dates.findByScheduleIdOrderByPlannedDateAsc(saved.getId()));
++  }
++
++  // -------------------------------------------------------------------------
++  // Schedule-date transition (only on ACTIVE schedules)
++  // -------------------------------------------------------------------------
++
++  @Transactional
++  public ScheduleDateView transitionDate(AuthenticatedUser user, UUID scheduleId, UUID dateId,
++      PmScheduleDateStatus targetStatus) {
++    if (targetStatus == null) {
++      throw new ScheduleValidationException(Map.of("status", "status is required."));
++    }
++    var entity = loadSchedule(scheduleId);
++    requireMutationAccess(user, loadMachine(entity.getMachineId()));
++    if (entity.getStatus() != PmScheduleStatus.ACTIVE) {
++      throw new InvalidScheduleDateTransitionException();
++    }
++    var dateEntity = loadScheduleDate(dateId);
++    if (!dateEntity.getScheduleId().equals(scheduleId)) {
++      throw new PmScheduleDateNotFoundException();
++    }
++    requireDateTransition(dateEntity.getStatus(), targetStatus);
++    var previous = dateValues(dateEntity);
++    dateEntity.transitionTo(targetStatus, Instant.now(clock));
++    var saved = dates.saveAndFlush(dateEntity);
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PM_SCHEDULE_DATE,
++        saved.getId(), dateLabel(saved), plantIdOrNull(entity),
++        previous, dateValues(saved), null));
++    return toDateView(saved);
++  }
++
++  // -------------------------------------------------------------------------
++  // Validation helpers
++  // -------------------------------------------------------------------------
++
++  private static void requireState(PmScheduleEntity entity, PmScheduleStatus expected) {
++    if (entity.getStatus() != expected) {
++      throw new InvalidScheduleTransitionException();
++    }
++  }
++
++  /**
++   * Date outcome rule (F5, spec design notes): EXECUTED from SCHEDULED or RESCHEDULED
++   * (statuses are repeatable — a rescheduled date can be executed); MISSED only from
++   * SCHEDULED; RESCHEDULED from SCHEDULED or EXECUTED. There is no terminal per-date
++   * state and no transition back into SCHEDULED.
++   */
++  private static void requireDateTransition(PmScheduleDateStatus from, PmScheduleDateStatus to) {
++    if (to == PmScheduleDateStatus.SCHEDULED) {
++      throw new InvalidScheduleDateTransitionException();
++    }
++    if (to == PmScheduleDateStatus.RESCHEDULED) {
++      if (from == PmScheduleDateStatus.EXECUTED || from == PmScheduleDateStatus.SCHEDULED) {
++        return;
++      }
++      throw new InvalidScheduleDateTransitionException();
++    }
++    if (to == PmScheduleDateStatus.EXECUTED) {
++      if (from == PmScheduleDateStatus.SCHEDULED || from == PmScheduleDateStatus.RESCHEDULED) {
++        return;
++      }
++      throw new InvalidScheduleDateTransitionException();
++    }
++    if (from != PmScheduleDateStatus.SCHEDULED) {
++      throw new InvalidScheduleDateTransitionException();
++    }
++  }
++
++  private void requireActivePointer(MachineEntity machine, PmChecksheetEntity checksheet) {
++    var pointer = activeChecksheets
++        .findByIdMachineIdAndIdFrequencyId(machine.getId(), checksheet.getFrequencyId())
++        .orElseThrow(InvalidChecksheetStateException::new);
++    if (!pointer.getChecksheetId().equals(checksheet.getId())) {
++      throw new InvalidChecksheetStateException();
++    }
++  }
++
++  /**
++   * Materializes the year's planned dates from the checksheet's anchor — the
++   * {@code effective_date} when present, else the current date from the injected
++   * clock (the earliest an approved revision can anchor a plan). MONTHLY: one date
++   * per month of the target year at {@code min(anchorDay, daysInMonth)} (Feb 29/30/31
++   * and short-month clamping — PreventiveProgramService.nextAnchor pattern). ANNUAL:
++   * one date at the anchor month/day in the target year. All dates start SCHEDULED.
++   */
++  private List<PmScheduleDateEntity> materializeDates(PmScheduleEntity schedule,
++      PmChecksheetEntity checksheet) {
++    var frequency = loadFrequency(checksheet.getFrequencyId());
++    var anchor = checksheet.getEffectiveDate() != null
++        ? checksheet.getEffectiveDate()
++        : LocalDate.now(clock);
++    var anchorDay = anchor.getDayOfMonth();
++    var targetYear = schedule.getYear();
++    List<LocalDate> planned = new ArrayList<>();
++    if (isMonthly(frequency)) {
++      for (var month = 1; month <= 12; month++) {
++        planned.add(clamp(YearMonth.of(targetYear, month), anchorDay));
++      }
++    } else {
++      planned.add(clamp(YearMonth.of(targetYear, anchor.getMonthValue()), anchorDay));
++    }
++    // Duplicate planned_date within a schedule is impossible for MONTHLY (distinct
++    // months) but a crafted ANNUAL anchor must still not collide — the V1 unique
++    // constraint is the backstop; surface a 400 rather than a 500.
++    var now = Instant.now(clock);
++    var rows = new ArrayList<PmScheduleDateEntity>();
++    for (var plannedDate : planned) {
++      var row = new PmScheduleDateEntity(UUID.randomUUID(), schedule.getId(), plannedDate,
++          PmScheduleDateStatus.SCHEDULED, now, now);
++      rows.add(saveDate(row));
++    }
++    return rows;
++  }
++
++  private boolean isMonthly(PmFrequencyEntity frequency) {
++    return "MONTHLY".equals(frequency.getCode());
++  }
++
++  private static LocalDate clamp(YearMonth yearMonth, int dayOfMonth) {
++    return yearMonth.atDay(Math.min(dayOfMonth, yearMonth.lengthOfMonth()));
++  }
++
++  // -------------------------------------------------------------------------
++  // Gates & scope
++  // -------------------------------------------------------------------------
++
++  /** Read gate: SUPER_ADMIN unrestricted; everyone else needs the machine in scope. */
++  private boolean canRead(AuthenticatedUser user, MachineEntity machine) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return true;
++    }
++    return inScope(scopes.derive(user), machine);
++  }
++
++  /** Gate: create/submit by STAFF+ with machine plant/group scope; SUPER_ADMIN bypass. */
++  private void requireMutationAccess(AuthenticatedUser user, MachineEntity machine) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    var scope = scopes.derive(user);
++    switch (user.applicationRole()) {
++      case SECTION_LEADER -> {
++        if (!groupInScope(scope, machine)) {
++          throw new PmScheduleForbiddenException();
++        }
++      }
++      case MAINTENANCE_LEADER, MANAGER_MAINTENANCE -> {
++        if (!plantInScope(scope, machine) && !groupInScope(scope, machine)) {
++          throw new PmScheduleForbiddenException();
++        }
++      }
++      case STAFF_MAINTENANCE -> {
++        if (!plantInScope(scope, machine)) {
++          throw new PmScheduleForbiddenException();
++        }
++      }
++      default -> throw new PmScheduleForbiddenException();
++    }
++  }
++
++  /** Approve-spv/approve-prod/activate require a leader role (19-1 approve parity). */
++  private void requireLeaderRole(AuthenticatedUser user) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    switch (user.applicationRole()) {
++      case SECTION_LEADER, MAINTENANCE_LEADER, MANAGER_MAINTENANCE -> {}
++      default -> throw new PmScheduleForbiddenException();
++    }
++  }
++
++  private boolean inScope(OperationalScope scope, MachineEntity machine) {
++    return plantInScope(scope, machine) || groupInScope(scope, machine);
++  }
++
++  private boolean plantInScope(OperationalScope scope, MachineEntity machine) {
++    return scope.plantIds() != null && scope.plantIds().contains(machine.getPlant().getId());
++  }
++
++  private boolean groupInScope(OperationalScope scope, MachineEntity machine) {
++    return scope.machineGroupIds().contains(machine.getMachineGroup().getId())
++        || scope.activeTeamIds().contains(machine.getMachineGroup().getId());
++  }
++
++  // -------------------------------------------------------------------------
++  // Loaders & saves
++  // -------------------------------------------------------------------------
++
++  private MachineEntity loadMachine(UUID machineId) {
++    return machines.findByIdWithPlantAndGroup(machineId)
++        .orElseThrow(MachineNotFoundException::new);
++  }
++
++  private PmChecksheetEntity loadChecksheet(UUID checksheetId) {
++    return checksheets.findById(checksheetId).orElseThrow(PmChecksheetNotFoundException::new);
++  }
++
++  private PmFrequencyEntity loadFrequency(UUID frequencyId) {
++    return frequencies.findById(frequencyId).orElseThrow(PmFrequencyNotFoundException::new);
++  }
++
++  private PmScheduleEntity loadSchedule(UUID id) {
++    return schedules.findById(id).orElseThrow(PmScheduleNotFoundException::new);
++  }
++
++  private PmScheduleDateEntity loadScheduleDate(UUID id) {
++    return dates.findById(id).orElseThrow(PmScheduleDateNotFoundException::new);
++  }
++
++  /** Race backstop: uq_pm_schedules_plant_machine_checksheet_year → 409. */
++  private PmScheduleEntity saveSchedule(PmScheduleEntity entity) {
++    try {
++      return schedules.saveAndFlush(entity);
++    } catch (DataIntegrityViolationException exception) {
++      var message = String.valueOf(exception.getMostSpecificCause().getMessage()).toLowerCase();
++      if (message.contains(SCHEDULE_UNIQUE_CONSTRAINT)) {
++        throw new ScheduleAlreadyExistsException();
++      }
++      throw exception;
++    }
++  }
++
++  /** Backstop for duplicate planned dates within one schedule → 400 (should not happen). */
++  private PmScheduleDateEntity saveDate(PmScheduleDateEntity entity) {
++    try {
++      return dates.saveAndFlush(entity);
++    } catch (DataIntegrityViolationException exception) {
++      var message = String.valueOf(exception.getMostSpecificCause().getMessage()).toLowerCase();
++      if (message.contains(DATE_UNIQUE_CONSTRAINT)) {
++        throw new ScheduleValidationException(Map.of("year", "Duplicate planned date."));
++      }
++      throw exception;
++    }
++  }
++
++  // -------------------------------------------------------------------------
++  // Audit value maps & views (all UUIDs stringified — 19-1 pattern)
++  // -------------------------------------------------------------------------
++
++  private static String machineLabelOrId(PmScheduleEntity entity) {
++    return entity.getMachineId().toString().substring(0, 8);
++  }
++
++  private static UUID plantIdOrNull(PmScheduleEntity entity) {
++    return entity.getPlantId();
++  }
++
++  private static String label(PmScheduleEntity entity, MachineEntity machine) {
++    return entity.getYear() + "@" + (machine != null ? machine.getCode() : "?");
++  }
++
++  private static String dateLabel(PmScheduleDateEntity entity) {
++    return entity.getPlannedDate().toString();
++  }
++
++  private static Map<String, Object> scheduleValues(PmScheduleEntity entity) {
++    var values = new LinkedHashMap<String, Object>();
++    values.put("id", entity.getId().toString());
++    values.put("plantId", entity.getPlantId() != null ? entity.getPlantId().toString() : null);
++    values.put("machineId", entity.getMachineId().toString());
++    values.put("checksheetId", entity.getChecksheetId().toString());
++    values.put("checksheetRevisionNo", entity.getChecksheetRevisionNo());
++    values.put("frequencyId", entity.getFrequencyId().toString());
++    values.put("frequencyCode", entity.getFrequencyCode());
++    values.put("frequencyName", entity.getFrequencyName());
++    values.put("year", entity.getYear());
++    values.put("status", entity.getStatus().name());
++    values.put("submittedBy", entity.getSubmittedBy() != null ? entity.getSubmittedBy().toString() : null);
++    values.put("submittedAt", entity.getSubmittedAt() != null ? entity.getSubmittedAt().toString() : null);
++    values.put("approvedBySpv", entity.getApprovedBySpv() != null ? entity.getApprovedBySpv().toString() : null);
++    values.put("approvedAtSpv", entity.getApprovedAtSpv() != null ? entity.getApprovedAtSpv().toString() : null);
++    values.put("approvedByProd", entity.getApprovedByProd() != null ? entity.getApprovedByProd().toString() : null);
++    values.put("approvedAtProd", entity.getApprovedAtProd() != null ? entity.getApprovedAtProd().toString() : null);
++    values.put("warnings", entity.getWarnings() != null ? entity.getWarnings() : null);
++    values.put("createdAt", entity.getCreatedAt().toString());
++    values.put("updatedAt", entity.getUpdatedAt().toString());
++    return values;
++  }
++
++  private static Map<String, Object> dateValues(PmScheduleDateEntity entity) {
++    var values = new LinkedHashMap<String, Object>();
++    values.put("id", entity.getId().toString());
++    values.put("scheduleId", entity.getScheduleId().toString());
++    values.put("plannedDate", entity.getPlannedDate().toString());
++    values.put("status", entity.getStatus().name());
++    values.put("createdAt", entity.getCreatedAt().toString());
++    values.put("updatedAt", entity.getUpdatedAt().toString());
++    return values;
++  }
++
++  private static ScheduleView toView(PmScheduleEntity entity, List<PmScheduleDateEntity> rows) {
++    return new ScheduleView(entity.getId(), entity.getPlantId(), entity.getMachineId(),
++        entity.getChecksheetId(), entity.getChecksheetRevisionNo(), entity.getFrequencyId(),
++        entity.getFrequencyCode(), entity.getFrequencyName(), entity.getYear(),
++        entity.getStatus(), entity.getSubmittedBy(), entity.getSubmittedAt(),
++        entity.getApprovedBySpv(), entity.getApprovedAtSpv(), entity.getApprovedByProd(),
++        entity.getApprovedAtProd(), entity.getWarnings(), entity.getCreatedAt(),
++        entity.getUpdatedAt(), rows.stream().map(PmScheduleService::toDateView).toList());
++  }
++
++  private static ScheduleDateView toDateView(PmScheduleDateEntity entity) {
++    return new ScheduleDateView(entity.getId(), entity.getScheduleId(), entity.getPlannedDate(),
++        entity.getStatus(), entity.getCreatedAt(), entity.getUpdatedAt());
++  }
++
++  // -------------------------------------------------------------------------
++  // Commands & views
++  // -------------------------------------------------------------------------
++
++  public record CreateScheduleCommand(UUID plantId, UUID machineId, UUID checksheetId, int year) {
++  }
++
++  public record ScheduleView(UUID id, UUID plantId, UUID machineId, UUID checksheetId,
++      int checksheetRevisionNo, UUID frequencyId, String frequencyCode, String frequencyName,
++      int year, PmScheduleStatus status, UUID submittedBy, Instant submittedAt,
++      UUID approvedBySpv, Instant approvedAtSpv, UUID approvedByProd, Instant approvedAtProd,
++      Map<String, Object> warnings, Instant createdAt, Instant updatedAt,
++      List<ScheduleDateView> dates) {
++  }
++
++  public record ScheduleDateView(UUID id, UUID scheduleId, LocalDate plannedDate,
++      PmScheduleDateStatus status, Instant createdAt, Instant updatedAt) {
++  }
++
++  // -------------------------------------------------------------------------
++  // Exceptions
++  // -------------------------------------------------------------------------
++
++  public static class PmScheduleNotFoundException extends RuntimeException {
++  }
++
++  public static class PlantNotFoundException extends RuntimeException {
++  }
++
++  public static class PmScheduleDateNotFoundException extends RuntimeException {
++  }
++
++  public static class MachineNotFoundException extends RuntimeException {
++  }
++
++  public static class PmChecksheetNotFoundException extends RuntimeException {
++  }
++
++  public static class PmFrequencyNotFoundException extends RuntimeException {
++  }
++
++  public static class PmScheduleForbiddenException extends RuntimeException {
++  }
++
++  public static class ScheduleAlreadyExistsException extends RuntimeException {
++  }
++
++  /** Unapproved checksheet or not the active pointer's target → 409. */
++  public static class InvalidChecksheetStateException extends RuntimeException {
++  }
++
++  /** Any out-of-order approval step → 409. */
++  public static class InvalidScheduleTransitionException extends RuntimeException {
++  }
++
++  /** Invalid date outcome transition (or schedule not ACTIVE) → 409. */
++  public static class InvalidScheduleDateTransitionException extends RuntimeException {
++  }
++
++  /** Field-level errors (e.g. missing status) → 400 VALIDATION_ERROR. */
++  public static class ScheduleValidationException extends RuntimeException {
++    private final Map<String, String> fieldErrors;
++
++    public ScheduleValidationException(Map<String, String> fieldErrors) {
++      this.fieldErrors = new LinkedHashMap<>(fieldErrors);
++    }
++
++    public Map<String, String> getFieldErrors() {
++      return fieldErrors;
++    }
++  }
++}
+--- NEW FILE: syncro/apps/backend/src/main/resources/db/migration/V9__pm_schedule_audit_types.sql ---
+diff --git a/syncro/apps/backend/src/main/resources/db/migration/V9__pm_schedule_audit_types.sql b/syncro/apps/backend/src/main/resources/db/migration/V9__pm_schedule_audit_types.sql
+new file mode 100644
+index 0000000..71e75ef
+--- /dev/null
++++ b/syncro/apps/backend/src/main/resources/db/migration/V9__pm_schedule_audit_types.sql
+@@ -0,0 +1,34 @@
++-- ============================================================================
++-- V9: PM schedule & schedule date audit entity types (story 19-3, blueprint F5)
++-- Additive-only migration extending the ck_audit_log_entity_type CHECK with
++-- PM_SCHEDULE and PM_SCHEDULE_DATE that
++-- AuditEntityType.PM_SCHEDULE / AuditEntityType.PM_SCHEDULE_DATE
++-- write (the doc comment on that enum requires the Java enum and the SQL CHECK
++-- to move together in one change). No schema changes to pm_schedules /
++-- pm_schedule_dates — both tables already carry every F5 column in V1.
++-- ============================================================================
++
++ALTER TABLE audit_log
++  DROP CONSTRAINT ck_audit_log_entity_type;
++
++ALTER TABLE audit_log
++  ADD CONSTRAINT ck_audit_log_entity_type CHECK (entity_type IN
++    ('PLANT', 'MACHINE_GROUP', 'MACHINE', 'SPAREPART_TAXONOMY',
++     'SPAREPART', 'INSTALLATION', 'RESPONSIBILITY', 'ALERT',
++     'SPAREPART_PRICE_ENTRY', 'SECTION', 'TEAM', 'WORK_ORDER_CATEGORY',
++     'WORK_ORDER', 'REPAIR_SESSION', 'WORKORDER_ATTACHMENT',
++     'WORK_ORDER_TODO', 'WORKORDER_RATING', 'RATING_DIMENSION',
++     'PREVENTIVE_PROGRAM', 'PREVENTIVE_SCHEDULE',
++     'PREVENTIVE_CHECKLIST', 'PREVENTIVE_ATTACHMENT',
++     'SPAREPART_REQUEST', 'DEPARTMENT', 'DEPARTMENT_USER', 'USER',
++     'INVENTORY_LOCATION', 'INVENTORY_STOCK_BALANCE',
++     'INVENTORY_TRANSFER', 'INVENTORY_RESERVATION',
++     'MACHINE_AREA', 'JOB_TITLE', 'SYSTEM_ROLE', 'ROLE_PERMISSION_MAPPING',
++     'MENU_FEATURE', 'DOMAIN_CONTEXT', 'USER_JOB_BINDING', 'USER_ROLE_BINDING',
++     'PLANT_WORKING_CALENDAR', 'SIGNATURE_USE',
++     'SPAREPART_STOCK', 'SYNC_RUN', 'SYNC_QUARANTINE', 'WORKORDER_SIGNATURE',
++     'WORK_ASSIGNMENT', 'WORK_LOG', 'WORK_LOG_RATING',
++     'WORK_ORDER_QUALITY_RATING',
++     'PM_FREQUENCY', 'PM_CHECKSHEET',
++     'PM_CHECKLIST_CATEGORY', 'PM_CHECKLIST_ITEM',
++     'PM_SCHEDULE', 'PM_SCHEDULE_DATE'));
+--- NEW FILE: syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmScheduleControllerTest.java ---
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmScheduleControllerTest.java b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmScheduleControllerTest.java
+new file mode 100644
+index 0000000..fb0ea9c
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmScheduleControllerTest.java
+@@ -0,0 +1,447 @@
++package com.syncro.maintenance.preventive.api;
++
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.eq;
++import static org.mockito.Mockito.doThrow;
++import static org.mockito.Mockito.when;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
++
++import com.syncro.TestJsonConfig;
++import com.syncro.auth.application.JwtTokenService;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.JwtAuthenticationFilter;
++import com.syncro.config.SecurityConfig;
++import com.syncro.config.TimeConfig;
++import com.syncro.maintenance.preventive.application.PmScheduleService;
++import com.syncro.maintenance.preventive.application.PmScheduleService.ScheduleDateView;
++import com.syncro.maintenance.preventive.application.PmScheduleService.ScheduleView;
++import com.syncro.maintenance.preventive.domain.PmScheduleDateStatus;
++import com.syncro.maintenance.preventive.domain.PmScheduleStatus;
++import java.time.Instant;
++import java.time.LocalDate;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
++import org.springframework.context.annotation.Import;
++import org.springframework.http.MediaType;
++import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
++import org.springframework.security.core.authority.SimpleGrantedAuthority;
++import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
++import org.springframework.test.context.bean.override.mockito.MockitoBean;
++import org.springframework.test.web.servlet.MockMvc;
++import org.springframework.test.web.servlet.request.RequestPostProcessor;
++
++/**
++ * Story 19-3 MockMvc contract test: DTO shape, status codes, and every new
++ * exception→HTTP mapping for the /api/v1/pm-schedules surface (PmChecksheetControllerTest
++ * error-path pattern — the service is stubbed to throw and the handler asserts status + code).
++ */
++@WebMvcTest(PmScheduleController.class)
++@Import({SecurityConfig.class, PreventiveExceptionHandler.class, JwtAuthenticationFilter.class,
++    TimeConfig.class, TestJsonConfig.class})
++class PmScheduleControllerTest {
++
++  @Autowired
++  private MockMvc mockMvc;
++
++  @MockitoBean
++  private PmScheduleService schedules;
++
++  @MockitoBean
++  private JwtTokenService jwtTokenService;
++
++  private static final UUID SCHEDULE_ID = UUID.fromString("11111111-2222-3333-4444-555555555555");
++  private static final UUID DATE_ID = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
++  private static final UUID PLANT_ID = UUID.fromString("ffffffff-eeee-dddd-cccc-bbbbbbbbbbbb");
++  private static final UUID MACHINE_ID = UUID.fromString("99999999-8888-7777-6666-555555555555");
++  private static final UUID CS_ID = UUID.fromString("44444444-3333-2222-1111-000000000000");
++  private static final Instant NOW = Instant.parse("2026-09-01T08:00:00Z");
++
++  // -------------------------------------------------------------------------
++  // Happy paths
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.3-API-001 P0 create schedule returns 201 with view shape")
++  void createSchedule() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(schedules.create(eq(user), any())).thenReturn(view(PmScheduleStatus.DRAFT));
++
++    mockMvc.perform(post("/api/v1/pm-schedules")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"plantId\":\"" + PLANT_ID + "\",\"machineId\":\"" + MACHINE_ID
++                + "\",\"checksheetId\":\"" + CS_ID + "\",\"year\":2027}"))
++        .andExpect(status().isCreated())
++        .andExpect(jsonPath("$.id").value(SCHEDULE_ID.toString()))
++        .andExpect(jsonPath("$.year").value(2027))
++        .andExpect(jsonPath("$.status").value("DRAFT"))
++        .andExpect(jsonPath("$.dates[0].status").value("SCHEDULED"));
++  }
++
++  @Test
++  @DisplayName("19.3-API-002 P0 create schedule missing year → 400 VALIDATION_ERROR")
++  void createScheduleMissingYear() throws Exception {
++    mockMvc.perform(post("/api/v1/pm-schedules")
++            .with(auth(ApplicationRole.STAFF_MAINTENANCE))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"plantId\":\"" + PLANT_ID + "\",\"machineId\":\"" + MACHINE_ID
++                + "\",\"checksheetId\":\"" + CS_ID + "\"}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.year").exists());
++  }
++
++  @Test
++  @DisplayName("19.3-API-003 P0 create schedule year out of range → 400 VALIDATION_ERROR")
++  void createScheduleYearOutOfRange() throws Exception {
++    mockMvc.perform(post("/api/v1/pm-schedules")
++            .with(auth(ApplicationRole.STAFF_MAINTENANCE))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"plantId\":\"" + PLANT_ID + "\",\"machineId\":\"" + MACHINE_ID
++                + "\",\"checksheetId\":\"" + CS_ID + "\",\"year\":1999}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
++  }
++
++  @Test
++  @DisplayName("19.3-API-004 P0 list schedules returns 200 with filters")
++  void listSchedules() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(schedules.list(eq(user), eq(2027), eq(PmScheduleStatus.DRAFT)))
++        .thenReturn(List.of(view(PmScheduleStatus.DRAFT)));
++
++    mockMvc.perform(get("/api/v1/pm-schedules")
++            .param("year", "2027")
++            .param("status", "DRAFT")
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$[0].year").value(2027))
++        .andExpect(jsonPath("$[0].status").value("DRAFT"));
++  }
++
++  @Test
++  @DisplayName("19.3-API-005 P0 get schedule returns 200 with dates")
++  void getSchedule() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(schedules.get(eq(user), eq(SCHEDULE_ID))).thenReturn(view(PmScheduleStatus.ACTIVE));
++
++    mockMvc.perform(get("/api/v1/pm-schedules/{id}", SCHEDULE_ID)
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.status").value("ACTIVE"))
++        .andExpect(jsonPath("$.dates[0].id").value(DATE_ID.toString()));
++  }
++
++  @Test
++  @DisplayName("19.3-API-006 P0 submit returns 200 PENDING_SPV_APPROVAL")
++  void submitSchedule() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(schedules.submit(eq(user), eq(SCHEDULE_ID)))
++        .thenReturn(view(PmScheduleStatus.PENDING_SPV_APPROVAL));
++
++    mockMvc.perform(post("/api/v1/pm-schedules/{id}/submit", SCHEDULE_ID)
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.status").value("PENDING_SPV_APPROVAL"));
++  }
++
++  @Test
++  @DisplayName("19.3-API-007 P0 approve-spv returns 200 PENDING_PRODUCTION_APPROVAL")
++  void approveSpv() throws Exception {
++    var user = user(ApplicationRole.SECTION_LEADER);
++    when(schedules.approveSpv(eq(user), eq(SCHEDULE_ID)))
++        .thenReturn(view(PmScheduleStatus.PENDING_PRODUCTION_APPROVAL));
++
++    mockMvc.perform(post("/api/v1/pm-schedules/{id}/approve-spv", SCHEDULE_ID)
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.status").value("PENDING_PRODUCTION_APPROVAL"));
++  }
++
++  @Test
++  @DisplayName("19.3-API-008 P0 approve-prod returns 200 APPROVED")
++  void approveProd() throws Exception {
++    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
++    when(schedules.approveProd(eq(user), eq(SCHEDULE_ID)))
++        .thenReturn(view(PmScheduleStatus.APPROVED));
++
++    mockMvc.perform(post("/api/v1/pm-schedules/{id}/approve-prod", SCHEDULE_ID)
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.status").value("APPROVED"));
++  }
++
++  @Test
++  @DisplayName("19.3-API-009 P0 activate returns 200 ACTIVE")
++  void activateSchedule() throws Exception {
++    var user = user(ApplicationRole.MAINTENANCE_LEADER);
++    when(schedules.activate(eq(user), eq(SCHEDULE_ID)))
++        .thenReturn(view(PmScheduleStatus.ACTIVE));
++
++    mockMvc.perform(post("/api/v1/pm-schedules/{id}/activate", SCHEDULE_ID)
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.status").value("ACTIVE"));
++  }
++
++  @Test
++  @DisplayName("19.3-API-010 P0 date transition returns 200 with updated status")
++  void transitionDate() throws Exception {
++    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
++    when(schedules.transitionDate(eq(user), eq(SCHEDULE_ID), eq(DATE_ID),
++        eq(PmScheduleDateStatus.EXECUTED)))
++        .thenReturn(dateView(PmScheduleDateStatus.EXECUTED));
++
++    mockMvc.perform(post("/api/v1/pm-schedules/{id}/dates/{dateId}/transition", SCHEDULE_ID, DATE_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"status\":\"EXECUTED\"}"))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.id").value(DATE_ID.toString()))
++        .andExpect(jsonPath("$.status").value("EXECUTED"));
++  }
++
++  @Test
++  @DisplayName("19.3-API-011 P0 date transition unknown status → 400 VALIDATION_ERROR")
++  void transitionDateUnknownStatus() throws Exception {
++    mockMvc.perform(post("/api/v1/pm-schedules/{id}/dates/{dateId}/transition", SCHEDULE_ID, DATE_ID)
++            .with(auth(ApplicationRole.MANAGER_MAINTENANCE))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"status\":\"DONE\"}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
++  }
++
++  // -------------------------------------------------------------------------
++  // Error paths — every new exception→HTTP mapping (stubbed service throws)
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.3-API-012 P0 unknown schedule → 404 PM_SCHEDULE_NOT_FOUND")
++  void getUnknownSchedule() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(schedules.get(eq(user), eq(SCHEDULE_ID)))
++        .thenThrow(new PmScheduleService.PmScheduleNotFoundException());
++
++    mockMvc.perform(get("/api/v1/pm-schedules/{id}", SCHEDULE_ID)
++            .with(auth(user)))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("PM_SCHEDULE_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("19.3-API-013 P0 unknown date → 404 PM_SCHEDULE_DATE_NOT_FOUND")
++  void transitionDateNotFound() throws Exception {
++    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
++    when(schedules.transitionDate(eq(user), eq(SCHEDULE_ID), eq(DATE_ID), any()))
++        .thenThrow(new PmScheduleService.PmScheduleDateNotFoundException());
++
++    mockMvc.perform(post("/api/v1/pm-schedules/{id}/dates/{dateId}/transition", SCHEDULE_ID, DATE_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"status\":\"EXECUTED\"}"))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("PM_SCHEDULE_DATE_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("19.3-API-014 P0 duplicate schedule → 409 SCHEDULE_ALREADY_EXISTS")
++  void createScheduleAlreadyExists() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(schedules.create(eq(user), any()))
++        .thenThrow(new PmScheduleService.ScheduleAlreadyExistsException());
++
++    mockMvc.perform(post("/api/v1/pm-schedules")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"plantId\":\"" + PLANT_ID + "\",\"machineId\":\"" + MACHINE_ID
++                + "\",\"checksheetId\":\"" + CS_ID + "\",\"year\":2027}"))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("SCHEDULE_ALREADY_EXISTS"));
++  }
++
++  @Test
++  @DisplayName("19.3-API-015 P0 invalid checksheet state → 409 INVALID_CHECKSHEET_STATE")
++  void createScheduleInvalidChecksheetState() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(schedules.create(eq(user), any()))
++        .thenThrow(new PmScheduleService.InvalidChecksheetStateException());
++
++    mockMvc.perform(post("/api/v1/pm-schedules")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"plantId\":\"" + PLANT_ID + "\",\"machineId\":\"" + MACHINE_ID
++                + "\",\"checksheetId\":\"" + CS_ID + "\",\"year\":2027}"))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("INVALID_CHECKSHEET_STATE"));
++  }
++
++  @Test
++  @DisplayName("19.3-API-016 P0 out-of-order approval → 409 INVALID_SCHEDULE_TRANSITION")
++  void approveSpvInvalidTransition() throws Exception {
++    var user = user(ApplicationRole.SECTION_LEADER);
++    doThrow(new PmScheduleService.InvalidScheduleTransitionException())
++        .when(schedules).approveSpv(eq(user), eq(SCHEDULE_ID));
++
++    mockMvc.perform(post("/api/v1/pm-schedules/{id}/approve-spv", SCHEDULE_ID)
++            .with(auth(user)))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("INVALID_SCHEDULE_TRANSITION"));
++  }
++
++  @Test
++  @DisplayName("19.3-API-017 P0 invalid date transition → 409 INVALID_SCHEDULE_DATE_TRANSITION")
++  void transitionDateInvalid() throws Exception {
++    var user = user(ApplicationRole.MANAGER_MAINTENANCE);
++    when(schedules.transitionDate(eq(user), eq(SCHEDULE_ID), eq(DATE_ID), any()))
++        .thenThrow(new PmScheduleService.InvalidScheduleDateTransitionException());
++
++    mockMvc.perform(post("/api/v1/pm-schedules/{id}/dates/{dateId}/transition", SCHEDULE_ID, DATE_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"status\":\"MISSED\"}"))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("INVALID_SCHEDULE_DATE_TRANSITION"));
++  }
++
++  @Test
++  @DisplayName("19.3-API-018 P0 forbidden → 403 FORBIDDEN")
++  void submitForbidden() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    when(schedules.submit(eq(user), eq(SCHEDULE_ID)))
++        .thenThrow(new PmScheduleService.PmScheduleForbiddenException());
++
++    mockMvc.perform(post("/api/v1/pm-schedules/{id}/submit", SCHEDULE_ID)
++            .with(auth(user)))
++        .andExpect(status().isForbidden())
++        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
++  }
++
++  @Test
++  @DisplayName("19.3-API-019 P0 unknown machine → 404 MACHINE_NOT_FOUND")
++  void createScheduleMachineNotFound() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(schedules.create(eq(user), any()))
++        .thenThrow(new PmScheduleService.MachineNotFoundException());
++
++    mockMvc.perform(post("/api/v1/pm-schedules")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"plantId\":\"" + PLANT_ID + "\",\"machineId\":\"" + MACHINE_ID
++                + "\",\"checksheetId\":\"" + CS_ID + "\",\"year\":2027}"))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("MACHINE_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("19.3-API-020 P0 unknown checksheet → 404 PM_CHECKSHEET_NOT_FOUND")
++  void createScheduleChecksheetNotFound() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(schedules.create(eq(user), any()))
++        .thenThrow(new PmScheduleService.PmChecksheetNotFoundException());
++
++    mockMvc.perform(post("/api/v1/pm-schedules")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"plantId\":\"" + PLANT_ID + "\",\"machineId\":\"" + MACHINE_ID
++                + "\",\"checksheetId\":\"" + CS_ID + "\",\"year\":2027}"))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("PM_CHECKSHEET_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("19.3-API-021 P0 unknown plant → 404 PLANT_NOT_FOUND")
++  void createSchedulePlantNotFound() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(schedules.create(eq(user), any()))
++        .thenThrow(new PmScheduleService.PlantNotFoundException());
++
++    mockMvc.perform(post("/api/v1/pm-schedules")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"plantId\":\"" + PLANT_ID + "\",\"machineId\":\"" + MACHINE_ID
++                + "\",\"checksheetId\":\"" + CS_ID + "\",\"year\":2027}"))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("PLANT_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("19.3-API-022 P0 machine of another plant → 400 VALIDATION_ERROR")
++  void createScheduleMachineWrongPlant() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(schedules.create(eq(user), any())).thenThrow(
++        new PmScheduleService.ScheduleValidationException(
++            Map.of("machineId", "Machine does not belong to this plant.")));
++
++    mockMvc.perform(post("/api/v1/pm-schedules")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"plantId\":\"" + PLANT_ID + "\",\"machineId\":\"" + MACHINE_ID
++                + "\",\"checksheetId\":\"" + CS_ID + "\",\"year\":2027}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.machineId").exists());
++  }
++
++  @Test
++  @DisplayName("19.3-API-023 P0 malformed UUID path value → 400 INVALID_PATH_VALUE")
++  void getScheduleMalformedPathValue() throws Exception {
++    mockMvc.perform(get("/api/v1/pm-schedules/{id}", "not-a-uuid")
++            .with(auth(ApplicationRole.AUDITOR)))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("INVALID_PATH_VALUE"));
++  }
++
++  @Test
++  @DisplayName("19.3-API-024 P0 malformed UUID query param → 400 INVALID_QUERY_VALUE")
++  void listSchedulesMalformedQueryValue() throws Exception {
++    mockMvc.perform(get("/api/v1/pm-schedules")
++            .param("year", "not-a-year")
++            .with(auth(ApplicationRole.AUDITOR)))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("INVALID_QUERY_VALUE"));
++  }
++
++  // -------------------------------------------------------------------------
++  // Fixtures
++  // -------------------------------------------------------------------------
++
++  private static ScheduleView view(PmScheduleStatus status) {
++    return new ScheduleView(SCHEDULE_ID, PLANT_ID, MACHINE_ID, CS_ID, 1,
++        UUID.randomUUID(), "MONTHLY", "Monthly", 2027, status,
++        status == PmScheduleStatus.PENDING_SPV_APPROVAL ? UUID.randomUUID() : null,
++        status == PmScheduleStatus.PENDING_SPV_APPROVAL ? NOW : null,
++        status == PmScheduleStatus.PENDING_PRODUCTION_APPROVAL ? UUID.randomUUID() : null,
++        status == PmScheduleStatus.PENDING_PRODUCTION_APPROVAL ? NOW : null,
++        status == PmScheduleStatus.APPROVED ? UUID.randomUUID() : null,
++        status == PmScheduleStatus.APPROVED ? NOW : null,
++        null, NOW, NOW, List.of(dateView(PmScheduleDateStatus.SCHEDULED)));
++  }
++
++  private static ScheduleDateView dateView(PmScheduleDateStatus status) {
++    return new ScheduleDateView(DATE_ID, SCHEDULE_ID, LocalDate.of(2027, 1, 15), status, NOW, NOW);
++  }
++
++  private static AuthenticatedUser user(ApplicationRole role) {
++    return new AuthenticatedUser(UUID.randomUUID().toString(), role.name().toLowerCase() + "@syncro.dev", role);
++  }
++
++  private static RequestPostProcessor auth(AuthenticatedUser user) {
++    return SecurityMockMvcRequestPostProcessors.authentication(new UsernamePasswordAuthenticationToken(
++        user, null,
++        List.of(new SimpleGrantedAuthority("ROLE_" + user.applicationRole().name()))));
++  }
++
++  private static RequestPostProcessor auth(ApplicationRole role) {
++    return auth(user(role));
++  }
++}
+--- NEW FILE: syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/application/PmScheduleServiceIntegrationTest.java ---
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/application/PmScheduleServiceIntegrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/application/PmScheduleServiceIntegrationTest.java
+new file mode 100644
+index 0000000..d3bda47
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/application/PmScheduleServiceIntegrationTest.java
+@@ -0,0 +1,548 @@
++package com.syncro.maintenance.preventive.application;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.api.Assertions.assertThatThrownBy;
++
++import com.syncro.AbstractPostgresIntegrationTest;
++import com.syncro.audit.domain.AuditAction;
++import com.syncro.audit.domain.AuditEntityType;
++import com.syncro.audit.infrastructure.AuditLogRepository;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.AuthUserEntity;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentEntity;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
++import com.syncro.auth.infrastructure.AuthUserRepository;
++import com.syncro.auth.infrastructure.PlantEntity;
++import com.syncro.auth.infrastructure.PlantRepository;
++import com.syncro.machine.domain.MachineStatus;
++import com.syncro.machine.domain.ResponsibilityLevel;
++import com.syncro.machine.infrastructure.MachineEntity;
++import com.syncro.machine.infrastructure.MachineRepository;
++import com.syncro.machine.infrastructure.MachineResponsibilityEntity;
++import com.syncro.machine.infrastructure.MachineResponsibilityRepository;
++import com.syncro.masterdata.infrastructure.MachineGroupEntity;
++import com.syncro.masterdata.infrastructure.MachineGroupRepository;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.ApproveChecksheetCommand;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.CreateChecksheetCommand;
++import com.syncro.maintenance.preventive.application.PmScheduleService.CreateScheduleCommand;
++import com.syncro.maintenance.preventive.domain.PmScheduleDateStatus;
++import com.syncro.maintenance.preventive.domain.PmScheduleStatus;
++import java.time.Clock;
++import java.time.Instant;
++import java.time.LocalDate;
++import java.util.UUID;
++import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++
++/**
++ * Story 19-3 integration test: PM yearly schedules + schedule dates against a real
++ * Postgres container (blueprint F5). Covers create-with-materialization (MONTHLY
++ * clamped dates / ANNUAL single date, effective-date anchor + clock fallback), the
++ * strict approval chain (submit → approve-spv → approve-prod → activate) with actor/
++ * timestamp stamps and per-step audit rows, out-of-order transition rejection, the
++ * leader-only approval gate, ACTIVE-gated date transitions with repeatable statuses,
++ * unapproved/non-active checksheet rejection, duplicate schedule rejection, and
++ * scope-filtered reads.
++ */
++class PmScheduleServiceIntegrationTest extends AbstractPostgresIntegrationTest {
++
++  private static final Instant T0 = Instant.parse("2026-09-01T08:00:00Z");
++
++  @Autowired
++  private PmScheduleService schedules;
++  @Autowired
++  private PmChecksheetService checksheets;
++  @Autowired
++  private PmFrequencyService frequencies;
++  @Autowired
++  private PlantRepository plants;
++  @Autowired
++  private MachineGroupRepository machineGroups;
++  @Autowired
++  private MachineRepository machines;
++  @Autowired
++  private AuthUserRepository users;
++  @Autowired
++  private AuthUserPlantAssignmentRepository assignments;
++  @Autowired
++  private MachineResponsibilityRepository responsibilities;
++  @Autowired
++  private AuditLogRepository auditLogs;
++  /** The same Clock bean the service uses — timestamp asserts never use wall clock. */
++  @Autowired
++  private Clock clock;
++
++  private PlantEntity plant;
++  private MachineEntity machine;
++  private MachineEntity machine2;
++  private AuthenticatedUser leaderUser;
++  private AuthenticatedUser staffUser;
++  private AuthenticatedUser managerUser;
++  private UUID monthlyFrequencyId;
++  private UUID annualFrequencyId;
++
++  @BeforeEach
++  void setUp() {
++    plant = plants.saveAndFlush(new PlantEntity(
++        UUID.randomUUID(), "P" + UUID.randomUUID().toString().substring(0, 8), "Plant", T0, T0));
++    var group = machineGroups.saveAndFlush(new MachineGroupEntity(
++        UUID.randomUUID(), plant, "Group", T0, T0));
++    machine = machines.saveAndFlush(new MachineEntity(
++        UUID.randomUUID(), plant, group, "MC-" + UUID.randomUUID().toString().substring(0, 8),
++        "Machine", MachineStatus.ACTIVE, null, null, null, null, T0, T0));
++    machine2 = machines.saveAndFlush(new MachineEntity(
++        UUID.randomUUID(), plant, group, "MC-" + UUID.randomUUID().toString().substring(0, 8),
++        "Machine 2", MachineStatus.ACTIVE, null, null, null, null, T0, T0));
++
++    var leaderId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(
++        leaderId, "leader-" + UUID.randomUUID() + "@test", "hash",
++        ApplicationRole.SECTION_LEADER, true, T0, T0));
++    assignments.saveAndFlush(new AuthUserPlantAssignmentEntity(leaderId, plant.getId(), T0));
++    responsibilities.saveAndFlush(new MachineResponsibilityEntity(
++        UUID.randomUUID(), machine.getId(), leaderId, ResponsibilityLevel.LEADER, T0, T0));
++    leaderUser = new AuthenticatedUser(leaderId.toString(), "leader@test",
++        ApplicationRole.SECTION_LEADER);
++
++    var staffId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(
++        staffId, "staff-" + UUID.randomUUID() + "@test", "hash",
++        ApplicationRole.STAFF_MAINTENANCE, true, T0, T0));
++    assignments.saveAndFlush(new AuthUserPlantAssignmentEntity(staffId, plant.getId(), T0));
++    staffUser = new AuthenticatedUser(staffId.toString(), "staff@test",
++        ApplicationRole.STAFF_MAINTENANCE);
++
++    var managerId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(
++        managerId, "manager-" + UUID.randomUUID() + "@test", "hash",
++        ApplicationRole.MANAGER_MAINTENANCE, true, T0, T0));
++    assignments.saveAndFlush(new AuthUserPlantAssignmentEntity(managerId, plant.getId(), T0));
++    managerUser = new AuthenticatedUser(managerId.toString(), "manager@test",
++        ApplicationRole.MANAGER_MAINTENANCE);
++
++    // V7 seeds MONTHLY/ANNUAL.
++    monthlyFrequencyId = frequencies.list().stream()
++        .filter(f -> f.code().equals("MONTHLY")).findFirst().orElseThrow().id();
++    annualFrequencyId = frequencies.list().stream()
++        .filter(f -> f.code().equals("ANNUAL")).findFirst().orElseThrow().id();
++  }
++
++  /** Approves a checksheet with an explicit effective date → deterministic anchor. */
++  private UUID approvedChecksheet(UUID frequencyId, LocalDate effectiveDate) {
++    return approvedChecksheet(machine, frequencyId, effectiveDate);
++  }
++
++  /** Approves a checksheet on a given machine (each machine = one chain per frequency). */
++  private UUID approvedChecksheet(MachineEntity target, UUID frequencyId, LocalDate effectiveDate) {
++    var id = checksheets.create(staffUser,
++        new CreateChecksheetCommand(target.getId(), frequencyId, null)).id();
++    checksheets.approve(leaderUser, id, new ApproveChecksheetCommand(effectiveDate));
++    return id;
++  }
++
++  // -------------------------------------------------------------------------
++  // AC1: create materializes dates (MONTHLY clamped / ANNUAL single)
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.3-INT-001 P0 MONTHLY schedule materializes 12 clamped dates at the effective-date anchor")
++  void createMonthlyMaterializesTwelveDates() {
++    var checksheetId = approvedChecksheet(monthlyFrequencyId, LocalDate.of(2026, 1, 15));
++    var view = schedules.create(staffUser,
++        new CreateScheduleCommand(plant.getId(), machine.getId(), checksheetId, 2027));
++
++    assertThat(view.status()).isEqualTo(PmScheduleStatus.DRAFT);
++    assertThat(view.checksheetRevisionNo()).isEqualTo(1);
++    assertThat(view.frequencyCode()).isEqualTo("MONTHLY");
++    assertThat(view.year()).isEqualTo(2027);
++    assertThat(view.dates()).hasSize(12);
++    assertThat(view.dates()).extracting(d -> d.plannedDate())
++        .containsExactly(
++            LocalDate.of(2027, 1, 15), LocalDate.of(2027, 2, 15), LocalDate.of(2027, 3, 15),
++            LocalDate.of(2027, 4, 15), LocalDate.of(2027, 5, 15), LocalDate.of(2027, 6, 15),
++            LocalDate.of(2027, 7, 15), LocalDate.of(2027, 8, 15), LocalDate.of(2027, 9, 15),
++            LocalDate.of(2027, 10, 15), LocalDate.of(2027, 11, 15), LocalDate.of(2027, 12, 15));
++    assertThat(view.dates()).allMatch(d -> d.status() == PmScheduleDateStatus.SCHEDULED);
++
++    var audit = auditLogs.findByEntityIdOrderByCreatedAtAsc(view.id());
++    assertThat(audit).anySatisfy(entry -> {
++      assertThat(entry.getEntityType()).isEqualTo(AuditEntityType.PM_SCHEDULE);
++      assertThat(entry.getAction()).isEqualTo(AuditAction.CREATE);
++      assertThat(entry.getPlantId()).isEqualTo(plant.getId());
++    });
++  }
++
++  @Test
++  @DisplayName("19.3-INT-002 P0 ANNUAL schedule materializes one date at the anchor month/day")
++  void createAnnualMaterializesOneDate() {
++    var checksheetId = approvedChecksheet(annualFrequencyId, LocalDate.of(2026, 6, 30));
++    var view = schedules.create(staffUser,
++        new CreateScheduleCommand(plant.getId(), machine.getId(), checksheetId, 2028));
++
++    assertThat(view.status()).isEqualTo(PmScheduleStatus.DRAFT);
++    assertThat(view.frequencyCode()).isEqualTo("ANNUAL");
++    assertThat(view.dates()).hasSize(1);
++    assertThat(view.dates().getFirst().plannedDate()).isEqualTo(LocalDate.of(2028, 6, 30));
++  }
++
++  @Test
++  @DisplayName("19.3-INT-003 P0 Feb 29 anchor clamps to Feb 28 on non-leap years and Feb 29 on leap years")
++  void monthlyClampsFeb29Anchor() {
++    var checksheetId = approvedChecksheet(monthlyFrequencyId, LocalDate.of(2024, 2, 29));
++    var view = schedules.create(staffUser,
++        new CreateScheduleCommand(plant.getId(), machine.getId(), checksheetId, 2027));
++
++    assertThat(view.dates()).hasSize(12);
++    assertThat(view.dates().get(1).plannedDate()).isEqualTo(LocalDate.of(2027, 2, 28));
++    assertThat(view.dates().get(0).plannedDate()).isEqualTo(LocalDate.of(2027, 1, 29));
++    // April (30 days) clamps a 31-day anchor — on a second machine because 19-1
++    // allows only ONE checksheet chain per (machine, frequency).
++    var viewLeap = schedules.create(staffUser,
++        new CreateScheduleCommand(plant.getId(), machine2.getId(),
++            approvedChecksheet(machine2, monthlyFrequencyId, LocalDate.of(2024, 1, 31)), 2028));
++    assertThat(viewLeap.dates().get(3).plannedDate()).isEqualTo(LocalDate.of(2028, 4, 30));
++  }
++
++  @Test
++  @DisplayName("19.3-INT-004 P0 checksheet without effectiveDate anchors on today from the injected clock")
++  void createWithoutEffectiveDateAnchorsOnClock() {
++    var checksheetId = checksheets.create(staffUser,
++        new CreateChecksheetCommand(machine.getId(), monthlyFrequencyId, null)).id();
++    checksheets.approve(leaderUser, checksheetId, new ApproveChecksheetCommand(null));
++
++    var view = schedules.create(staffUser,
++        new CreateScheduleCommand(plant.getId(), machine.getId(), checksheetId, 2027));
++    var anchorDay = LocalDate.now(clock).getDayOfMonth();
++    assertThat(view.dates()).hasSize(12);
++    // The anchor day is today's day-of-month — same injected clock, never wall clock.
++    assertThat(view.dates().getFirst().plannedDate())
++        .isEqualTo(LocalDate.of(2027, 1, Math.min(anchorDay, 31)));
++  }
++
++  // -------------------------------------------------------------------------
++  // AC2: strict approval chain with stamps + audit
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.3-INT-005 P0 submit → approve-spv → approve-prod → activate advances strictly with stamps and audit rows")
++  void approvalChainAdvancesWithStamps() {
++    var checksheetId = approvedChecksheet(monthlyFrequencyId, LocalDate.of(2026, 1, 15));
++    var created = schedules.create(staffUser,
++        new CreateScheduleCommand(plant.getId(), machine.getId(), checksheetId, 2027));
++
++    var submitted = schedules.submit(staffUser, created.id());
++    assertThat(submitted.status()).isEqualTo(PmScheduleStatus.PENDING_SPV_APPROVAL);
++    assertThat(submitted.submittedBy()).isNotNull();
++    assertThat(submitted.submittedAt()).isNotNull();
++
++    var spv = schedules.approveSpv(leaderUser, created.id());
++    assertThat(spv.status()).isEqualTo(PmScheduleStatus.PENDING_PRODUCTION_APPROVAL);
++    assertThat(spv.approvedBySpv()).isEqualTo(UUID.fromString(leaderUser.id()));
++    assertThat(spv.approvedAtSpv()).isNotNull();
++
++    var prod = schedules.approveProd(managerUser, created.id());
++    assertThat(prod.status()).isEqualTo(PmScheduleStatus.APPROVED);
++    assertThat(prod.approvedByProd()).isEqualTo(UUID.fromString(managerUser.id()));
++    assertThat(prod.approvedAtProd()).isNotNull();
++
++    var active = schedules.activate(leaderUser, created.id());
++    assertThat(active.status()).isEqualTo(PmScheduleStatus.ACTIVE);
++
++    // Per-step audit UPDATE rows with previous/new status (all UUIDs stringified).
++    var audit = auditLogs.findByEntityIdOrderByCreatedAtAsc(created.id());
++    assertThat(audit).filteredOn(e -> e.getAction() == AuditAction.UPDATE).hasSize(4);
++    assertThat(audit).allSatisfy(entry ->
++        assertThat(entry.getEntityType()).isEqualTo(AuditEntityType.PM_SCHEDULE));
++    assertThat(audit).anySatisfy(entry -> {
++      assertThat(entry.getNewValue()).contains("PENDING_SPV_APPROVAL");
++      assertThat(entry.getPreviousValue()).contains("DRAFT");
++    });
++    assertThat(audit).anySatisfy(entry -> {
++      assertThat(entry.getNewValue()).contains("ACTIVE");
++      assertThat(entry.getPreviousValue()).contains("APPROVED");
++    });
++  }
++
++  @Test
++  @DisplayName("19.3-INT-006 P0 any out-of-order transition is rejected with 409 semantics")
++  void outOfOrderTransitionsRejected() {
++    var checksheetId = approvedChecksheet(monthlyFrequencyId, LocalDate.of(2026, 1, 15));
++    var created = schedules.create(staffUser,
++        new CreateScheduleCommand(plant.getId(), machine.getId(), checksheetId, 2027));
++
++    // Approve-spv before submit.
++    assertThatThrownBy(() -> schedules.approveSpv(leaderUser, created.id()))
++        .isInstanceOf(PmScheduleService.InvalidScheduleTransitionException.class);
++    // Activate before approval.
++    assertThatThrownBy(() -> schedules.activate(leaderUser, created.id()))
++        .isInstanceOf(PmScheduleService.InvalidScheduleTransitionException.class);
++    // Double submit.
++    schedules.submit(staffUser, created.id());
++    assertThatThrownBy(() -> schedules.submit(staffUser, created.id()))
++        .isInstanceOf(PmScheduleService.InvalidScheduleTransitionException.class);
++    // Submit after the chain has moved on.
++    schedules.approveSpv(leaderUser, created.id());
++    assertThatThrownBy(() -> schedules.submit(staffUser, created.id()))
++        .isInstanceOf(PmScheduleService.InvalidScheduleTransitionException.class);
++    // Approve-spv twice.
++    schedules.approveProd(managerUser, created.id());
++    assertThatThrownBy(() -> schedules.approveSpv(leaderUser, created.id()))
++        .isInstanceOf(PmScheduleService.InvalidScheduleTransitionException.class);
++  }
++
++  @Test
++  @DisplayName("19.3-INT-007 P0 STAFF_MAINTENANCE can submit but cannot approve-spv/approve-prod/activate")
++  void staffCannotApprove() {
++    var checksheetId = approvedChecksheet(monthlyFrequencyId, LocalDate.of(2026, 1, 15));
++    var created = schedules.create(staffUser,
++        new CreateScheduleCommand(plant.getId(), machine.getId(), checksheetId, 2027));
++
++    schedules.submit(staffUser, created.id());
++    assertThatThrownBy(() -> schedules.approveSpv(staffUser, created.id()))
++        .isInstanceOf(PmScheduleService.PmScheduleForbiddenException.class);
++
++    schedules.approveSpv(leaderUser, created.id());
++    assertThatThrownBy(() -> schedules.approveProd(staffUser, created.id()))
++        .isInstanceOf(PmScheduleService.PmScheduleForbiddenException.class);
++
++    schedules.approveProd(leaderUser, created.id());
++    assertThatThrownBy(() -> schedules.activate(staffUser, created.id()))
++        .isInstanceOf(PmScheduleService.PmScheduleForbiddenException.class);
++  }
++
++  @Test
++  @DisplayName("19.3-INT-008 P0 SUPER_ADMIN with no assignments bypasses every gate end-to-end")
++  void superAdminBypassesEveryGate() {
++    var adminId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(
++        adminId, "admin-" + UUID.randomUUID() + "@test", "hash",
++        ApplicationRole.SUPER_ADMIN, true, T0, T0));
++    // Deliberately NO plant assignment and NO machine responsibility.
++    var admin = new AuthenticatedUser(adminId.toString(), "admin@test",
++        ApplicationRole.SUPER_ADMIN);
++
++    var checksheetId = approvedChecksheet(monthlyFrequencyId, LocalDate.of(2026, 1, 15));
++    var created = schedules.create(admin,
++        new CreateScheduleCommand(plant.getId(), machine.getId(), checksheetId, 2027));
++    var submitted = schedules.submit(admin, created.id());
++    var spv = schedules.approveSpv(admin, created.id());
++    var prod = schedules.approveProd(admin, created.id());
++    var active = schedules.activate(admin, created.id());
++    assertThat(submitted.status()).isEqualTo(PmScheduleStatus.PENDING_SPV_APPROVAL);
++    assertThat(spv.status()).isEqualTo(PmScheduleStatus.PENDING_PRODUCTION_APPROVAL);
++    assertThat(prod.status()).isEqualTo(PmScheduleStatus.APPROVED);
++    assertThat(active.status()).isEqualTo(PmScheduleStatus.ACTIVE);
++    assertThat(schedules.get(admin, created.id()).id()).isEqualTo(created.id());
++    assertThat(schedules.list(admin, 2027, null)).hasSize(1);
++  }
++
++  // -------------------------------------------------------------------------
++  // AC4: date transitions on ACTIVE schedules
++  // -------------------------------------------------------------------------
++
++  private UUID activeScheduleId() {
++    return activeScheduleId(machine);
++  }
++
++  private UUID activeScheduleId(MachineEntity target) {
++    var checksheetId = approvedChecksheet(target, monthlyFrequencyId, LocalDate.of(2026, 1, 15));
++    var created = schedules.create(staffUser,
++        new CreateScheduleCommand(plant.getId(), target.getId(), checksheetId, 2027));
++    schedules.submit(staffUser, created.id());
++    schedules.approveSpv(leaderUser, created.id());
++    schedules.approveProd(leaderUser, created.id());
++    schedules.activate(leaderUser, created.id());
++    return created.id();
++  }
++
++  @Test
++  @DisplayName("19.3-INT-009 P0 SCHEDULED date → EXECUTED on an ACTIVE schedule updates + audits")
++  void scheduledDateExecuted() {
++    var scheduleId = activeScheduleId();
++    var dateId = schedules.get(leaderUser, scheduleId).dates().getFirst().id();
++
++    var executed = schedules.transitionDate(leaderUser, scheduleId, dateId,
++        PmScheduleDateStatus.EXECUTED);
++    assertThat(executed.status()).isEqualTo(PmScheduleDateStatus.EXECUTED);
++
++    var audit = auditLogs.findByEntityIdOrderByCreatedAtAsc(dateId);
++    assertThat(audit).anySatisfy(entry -> {
++      assertThat(entry.getEntityType()).isEqualTo(AuditEntityType.PM_SCHEDULE_DATE);
++      assertThat(entry.getAction()).isEqualTo(AuditAction.UPDATE);
++      assertThat(entry.getPreviousValue()).contains("SCHEDULED");
++      assertThat(entry.getNewValue()).contains("EXECUTED");
++      assertThat(entry.getPlantId()).isEqualTo(plant.getId());
++    });
++  }
++
++  @Test
++  @DisplayName("19.3-INT-010 P0 RESCHEDULED → EXECUTED is allowed (repeatable statuses); invalid from-states rejected")
++  void dateTransitionsRepeatableAndGuarded() {
++    var scheduleId = activeScheduleId();
++    var dateId = schedules.get(leaderUser, scheduleId).dates().getFirst().id();
++
++    // EXECUTED → MISSED is invalid (EXECUTED/MISSED only from SCHEDULED).
++    schedules.transitionDate(leaderUser, scheduleId, dateId, PmScheduleDateStatus.EXECUTED);
++    assertThatThrownBy(() -> schedules.transitionDate(leaderUser, scheduleId, dateId,
++        PmScheduleDateStatus.MISSED))
++        .isInstanceOf(PmScheduleService.InvalidScheduleDateTransitionException.class);
++
++    // EXECUTED → RESCHEDULED is allowed.
++    var rescheduled = schedules.transitionDate(leaderUser, scheduleId, dateId,
++        PmScheduleDateStatus.RESCHEDULED);
++    assertThat(rescheduled.status()).isEqualTo(PmScheduleDateStatus.RESCHEDULED);
++
++    // RESCHEDULED → EXECUTED is allowed (no terminal state).
++    var reExecuted = schedules.transitionDate(leaderUser, scheduleId, dateId,
++        PmScheduleDateStatus.EXECUTED);
++    assertThat(reExecuted.status()).isEqualTo(PmScheduleDateStatus.EXECUTED);
++
++    // SCHEDULED → SCHEDULED is a no-op and rejected.
++    var secondDateId = schedules.get(leaderUser, scheduleId).dates().get(1).id();
++    assertThatThrownBy(() -> schedules.transitionDate(leaderUser, scheduleId, secondDateId,
++        PmScheduleDateStatus.SCHEDULED))
++        .isInstanceOf(PmScheduleService.InvalidScheduleDateTransitionException.class);
++  }
++
++  @Test
++  @DisplayName("19.3-INT-011 P0 date transition on a non-ACTIVE schedule is rejected")
++  void dateTransitionRequiresActiveSchedule() {
++    var checksheetId = approvedChecksheet(monthlyFrequencyId, LocalDate.of(2026, 1, 15));
++    var created = schedules.create(staffUser,
++        new CreateScheduleCommand(plant.getId(), machine.getId(), checksheetId, 2027));
++    var dateId = created.dates().getFirst().id();
++
++    assertThatThrownBy(() -> schedules.transitionDate(leaderUser, created.id(), dateId,
++        PmScheduleDateStatus.EXECUTED))
++        .isInstanceOf(PmScheduleService.InvalidScheduleDateTransitionException.class);
++  }
++
++  @Test
++  @DisplayName("19.3-INT-012 P0 date transition for another schedule's date is a 404")
++  void dateTransitionForeignDateNotFound() {
++    var scheduleId = activeScheduleId();
++    var otherScheduleId = activeScheduleId(machine2);
++    var foreignDateId = schedules.get(leaderUser, otherScheduleId).dates().getFirst().id();
++
++    assertThatThrownBy(() -> schedules.transitionDate(leaderUser, scheduleId, foreignDateId,
++        PmScheduleDateStatus.EXECUTED))
++        .isInstanceOf(PmScheduleService.PmScheduleDateNotFoundException.class);
++  }
++
++  // -------------------------------------------------------------------------
++  // AC5: create guards — unapproved checksheet, duplicate, plant/machine
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.3-INT-013 P0 unapproved checksheet → 409 INVALID_CHECKSHEET_STATE")
++  void unapprovedChecksheetRejected() {
++    var checksheetId = checksheets.create(staffUser,
++        new CreateChecksheetCommand(machine.getId(), monthlyFrequencyId, null)).id();
++
++    assertThatThrownBy(() -> schedules.create(staffUser,
++        new CreateScheduleCommand(plant.getId(), machine.getId(), checksheetId, 2027)))
++        .isInstanceOf(PmScheduleService.InvalidChecksheetStateException.class);
++  }
++
++  @Test
++  @DisplayName("19.3-INT-014 P0 approved but non-active checksheet → 409 INVALID_CHECKSHEET_STATE")
++  void nonActivePointerChecksheetRejected() {
++    var r1 = approvedChecksheet(monthlyFrequencyId, LocalDate.of(2026, 1, 15));
++    // A newer revision supersedes r1 — the pointer now targets r2.
++    var r2 = checksheets.revise(leaderUser, r1, new PmChecksheetService.ReviseChecksheetCommand("newer")).id();
++    checksheets.approve(leaderUser, r2, new ApproveChecksheetCommand(LocalDate.of(2026, 3, 1)));
++
++    assertThatThrownBy(() -> schedules.create(staffUser,
++        new CreateScheduleCommand(plant.getId(), machine.getId(), r1, 2027)))
++        .isInstanceOf(PmScheduleService.InvalidChecksheetStateException.class);
++  }
++
++  @Test
++  @DisplayName("19.3-INT-015 P0 duplicate (plant, machine, checksheet, year) → 409 SCHEDULE_ALREADY_EXISTS")
++  void duplicateScheduleRejected() {
++    var checksheetId = approvedChecksheet(monthlyFrequencyId, LocalDate.of(2026, 1, 15));
++    schedules.create(staffUser,
++        new CreateScheduleCommand(plant.getId(), machine.getId(), checksheetId, 2027));
++
++    assertThatThrownBy(() -> schedules.create(staffUser,
++        new CreateScheduleCommand(plant.getId(), machine.getId(), checksheetId, 2027)))
++        .isInstanceOf(PmScheduleService.ScheduleAlreadyExistsException.class);
++  }
++
++  @Test
++  @DisplayName("19.3-INT-016 P0 unknown plant / unknown machine / machine of another plant are rejected")
++  void createReferencesResolved() {
++    var checksheetId = approvedChecksheet(monthlyFrequencyId, LocalDate.of(2026, 1, 15));
++
++    assertThatThrownBy(() -> schedules.create(staffUser,
++        new CreateScheduleCommand(UUID.randomUUID(), machine.getId(), checksheetId, 2027)))
++        .isInstanceOf(PmScheduleService.PlantNotFoundException.class);
++    assertThatThrownBy(() -> schedules.create(staffUser,
++        new CreateScheduleCommand(plant.getId(), UUID.randomUUID(), checksheetId, 2027)))
++        .isInstanceOf(PmScheduleService.MachineNotFoundException.class);
++    assertThatThrownBy(() -> schedules.create(staffUser,
++        new CreateScheduleCommand(plant.getId(), machine.getId(), UUID.randomUUID(), 2027)))
++        .isInstanceOf(PmScheduleService.PmChecksheetNotFoundException.class);
++
++    var otherPlant = plants.saveAndFlush(new PlantEntity(
++        UUID.randomUUID(), "X" + UUID.randomUUID().toString().substring(0, 8), "Other", T0, T0));
++    assertThatThrownBy(() -> schedules.create(staffUser,
++        new CreateScheduleCommand(otherPlant.getId(), machine.getId(), checksheetId, 2027)))
++        .isInstanceOf(PmScheduleService.ScheduleValidationException.class);
++  }
++
++  // -------------------------------------------------------------------------
++  // AC: scope-filtered reads
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.3-INT-017 P0 out-of-scope user cannot read or mutate another plant's schedule")
++  void outOfScopeInvisibleAndForbidden() {
++    var checksheetId = approvedChecksheet(monthlyFrequencyId, LocalDate.of(2026, 1, 15));
++    var created = schedules.create(staffUser,
++        new CreateScheduleCommand(plant.getId(), machine.getId(), checksheetId, 2027));
++
++    var otherPlant = plants.saveAndFlush(new PlantEntity(
++        UUID.randomUUID(), "Y" + UUID.randomUUID().toString().substring(0, 8), "Other", T0, T0));
++    var otherGroup = machineGroups.saveAndFlush(new MachineGroupEntity(
++        UUID.randomUUID(), otherPlant, "Other Group", T0, T0));
++    var otherMachine = machines.saveAndFlush(new MachineEntity(
++        UUID.randomUUID(), otherPlant, otherGroup,
++        "MC-" + UUID.randomUUID().toString().substring(0, 8), "Other Machine",
++        MachineStatus.ACTIVE, null, null, null, null, T0, T0));
++    var otherId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(
++        otherId, "other-" + UUID.randomUUID() + "@test", "hash",
++        ApplicationRole.SECTION_LEADER, true, T0, T0));
++    responsibilities.saveAndFlush(new MachineResponsibilityEntity(
++        UUID.randomUUID(), otherMachine.getId(), otherId, ResponsibilityLevel.LEADER, T0, T0));
++    var otherUser = new AuthenticatedUser(otherId.toString(), "other@test",
++        ApplicationRole.SECTION_LEADER);
++
++    assertThat(schedules.list(otherUser, null, null)).isEmpty();
++    assertThatThrownBy(() -> schedules.get(otherUser, created.id()))
++        .isInstanceOf(PmScheduleService.PmScheduleForbiddenException.class);
++    assertThatThrownBy(() -> schedules.submit(otherUser, created.id()))
++        .isInstanceOf(PmScheduleService.PmScheduleForbiddenException.class);
++  }
++
++  @Test
++  @DisplayName("19.3-INT-018 P0 list filters by year and status, ordered newest first")
++  void listFiltersAndOrdering() {
++    var checksheetId = approvedChecksheet(monthlyFrequencyId, LocalDate.of(2026, 1, 15));
++    var s2027 = schedules.create(staffUser,
++        new CreateScheduleCommand(plant.getId(), machine.getId(), checksheetId, 2027));
++    var s2028 = schedules.create(staffUser,
++        new CreateScheduleCommand(plant.getId(), machine.getId(), checksheetId, 2028));
++
++    assertThat(schedules.list(staffUser, 2027, null))
++        .extracting(s -> s.id()).containsExactly(s2027.id());
++    assertThat(schedules.list(staffUser, null, PmScheduleStatus.DRAFT))
++        .extracting(s -> s.id()).containsExactlyInAnyOrder(s2027.id(), s2028.id());
++    assertThat(schedules.list(staffUser, null, null))
++        .extracting(s -> s.id()).containsExactly(s2028.id(), s2027.id());
++  }
++}

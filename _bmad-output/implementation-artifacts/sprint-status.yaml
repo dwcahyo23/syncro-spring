@@ -36,6 +36,7 @@
 
 generated: 2026-05-25
 last_updated: 2026-09-03
+# updated: 2026-09-03 (3) Epic 19 — 19-3 PM Schedules & Schedule Dates done
 # updated: 2026-09-03 (2) Epic 19 — 19-2 PM Checklist Categories & Items done
 # updated: 2026-09-03 Epic 19 in-progress — 19-1 PM Frequencies & Checksheets done
 # updated: 2026-09-02 Epic 18 — 18-1 done (1f886ad), 18-2 done (8198456), 18-3 done; 18-4/18-5 next
@@ -260,7 +261,7 @@ development_status:
   epic-19: in-progress
   19-1-pm-frequencies-checksheets: done
   19-2-pm-checklist-categories-items: done
-  19-3-pm-schedules-dates: backlog
+  19-3-pm-schedules-dates: done
   19-4-pm-work-orders: backlog
   19-5-pm-executions-items: backlog
   epic-19-retrospective: optional

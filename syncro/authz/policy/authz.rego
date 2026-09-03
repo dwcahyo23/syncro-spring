@@ -364,6 +364,26 @@ pm_checklist_paths := {
   "/api/v1/pm-checklist-items/*",
 }
 
+# PM schedules & schedule dates (story 19-3, blueprint F5): create/submit for the
+# four-role set; approve-spv/approve-prod/activate for the leader subset
+# (SECTION_LEADER, MAINTENANCE_LEADER, MANAGER_MAINTENANCE — STAFF_MAINTENANCE
+# passes rego on the mutation paths but is denied the leader steps in service).
+# The transition endpoint gates on schedule ACTIVE in service. A single `*` matches
+# exactly one path segment, so each depth is enumerated explicitly: collection
+# (list/create), /{id} (get), /{id}/submit, /{id}/approve-spv, /{id}/approve-prod,
+# /{id}/activate, /{id}/dates/{dateId}/transition. Reads (GET) flow through
+# generic read_allowed. Plant/group scope is service-side (rego cannot see the
+# machine's plant).
+pm_schedule_paths := {
+  "/api/v1/pm-schedules",
+  "/api/v1/pm-schedules/*",
+  "/api/v1/pm-schedules/*/submit",
+  "/api/v1/pm-schedules/*/approve-spv",
+  "/api/v1/pm-schedules/*/approve-prod",
+  "/api/v1/pm-schedules/*/activate",
+  "/api/v1/pm-schedules/*/dates/*/transition",
+}
+
 # Org-maintenance departments (spec-org-maintenance-model): mutations are the
 # Phase 1 gate (SUPER_ADMIN|MANAGER_MAINTENANCE). Reads flow through generic
 # read_allowed. Members replace + section leader assignment + user-master updates
@@ -1113,6 +1133,33 @@ mutation_allowed if {
   input.subject.roles[_] == "STAFF_MAINTENANCE"
   is_mutation
   path_matches(pm_checklist_paths)
+}
+
+# PM schedules (story 19-3): create/submit for the four-role set; the approve-spv/
+# approve-prod/activate leader subset is narrowed in service (STAFF_MAINTENANCE is
+# denied the leader steps there, not in rego — the coarse fence stays four-role).
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(pm_schedule_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(pm_schedule_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(pm_schedule_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STAFF_MAINTENANCE"
+  is_mutation
+  path_matches(pm_schedule_paths)
 }
 
 mutation_allowed if {

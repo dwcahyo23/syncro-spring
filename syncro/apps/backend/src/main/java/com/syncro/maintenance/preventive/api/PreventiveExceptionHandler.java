@@ -31,6 +31,7 @@ import com.syncro.maintenance.preventive.application.PmFrequencyService.Duplicat
 import com.syncro.maintenance.preventive.application.PmFrequencyService.FrequencyValidationException;
 import com.syncro.maintenance.preventive.application.PmFrequencyService.PmFrequencyForbiddenException;
 import com.syncro.maintenance.preventive.application.PmFrequencyService.PmFrequencyNotFoundException;
+import jakarta.validation.ConstraintViolationException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -52,7 +53,7 @@ import tools.jackson.databind.exc.InvalidFormatException;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(assignableTypes = {PreventiveProgramController.class, PreventiveScheduleController.class,
     PmFrequencyController.class, PmChecksheetController.class, PmChecklistCategoryController.class,
-    PmChecklistItemController.class})
+    PmChecklistItemController.class, PmScheduleController.class})
 public class PreventiveExceptionHandler {
 
   private final Clock clock;
@@ -66,6 +67,20 @@ public class PreventiveExceptionHandler {
     var fieldErrors = new LinkedHashMap<String, String>();
     for (var error : exception.getBindingResult().getFieldErrors()) {
       fieldErrors.putIfAbsent(error.getField(), "Invalid value.");
+    }
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", fieldErrors);
+  }
+
+  /**
+   * Bean-validation failures on controller-level params (e.g. a {@code year} query
+   * parameter outside its declared bounds) surface as ConstraintViolationException
+   * under @Validated — map to the standard envelope (Inventory handlers parity).
+   */
+  @ExceptionHandler(ConstraintViolationException.class)
+  ResponseEntity<ErrorResponse> constraintViolation(ConstraintViolationException exception) {
+    var fieldErrors = new LinkedHashMap<String, String>();
+    for (var violation : exception.getConstraintViolations()) {
+      fieldErrors.putIfAbsent(violation.getPropertyPath().toString(), violation.getMessage());
     }
     return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", fieldErrors);
   }
@@ -321,6 +336,81 @@ public class PreventiveExceptionHandler {
       com.syncro.maintenance.preventive.application.PmChecklistService.ChecklistValidationException exception) {
     return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
         exception.getFieldErrors());
+  }
+
+  // -------------------------------------------------------------------------
+  // Story 19-3: PM schedules & schedule dates
+  // -------------------------------------------------------------------------
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.PmScheduleForbiddenException.class)
+  ResponseEntity<ErrorResponse> pmScheduleForbidden() {
+    return error(HttpStatus.FORBIDDEN, "FORBIDDEN",
+        "You do not have permission to access this resource.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.PmScheduleNotFoundException.class)
+  ResponseEntity<ErrorResponse> pmScheduleNotFound() {
+    return error(HttpStatus.NOT_FOUND, "PM_SCHEDULE_NOT_FOUND",
+        "PM schedule was not found.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.PmScheduleDateNotFoundException.class)
+  ResponseEntity<ErrorResponse> pmScheduleDateNotFound() {
+    return error(HttpStatus.NOT_FOUND, "PM_SCHEDULE_DATE_NOT_FOUND",
+        "PM schedule date was not found.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.MachineNotFoundException.class)
+  ResponseEntity<ErrorResponse> pmScheduleMachineNotFound() {
+    return error(HttpStatus.NOT_FOUND, "MACHINE_NOT_FOUND", "Machine was not found.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.PmChecksheetNotFoundException.class)
+  ResponseEntity<ErrorResponse> pmScheduleChecksheetNotFound() {
+    return error(HttpStatus.NOT_FOUND, "PM_CHECKSHEET_NOT_FOUND",
+        "PM checksheet was not found.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.PmFrequencyNotFoundException.class)
+  ResponseEntity<ErrorResponse> pmScheduleFrequencyNotFound() {
+    return error(HttpStatus.NOT_FOUND, "PM_FREQUENCY_NOT_FOUND",
+        "PM frequency was not found.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.ScheduleAlreadyExistsException.class)
+  ResponseEntity<ErrorResponse> scheduleAlreadyExists() {
+    return error(HttpStatus.CONFLICT, "SCHEDULE_ALREADY_EXISTS",
+        "A PM schedule already exists for this plant, machine, checksheet and year.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.InvalidChecksheetStateException.class)
+  ResponseEntity<ErrorResponse> invalidChecksheetState() {
+    return error(HttpStatus.CONFLICT, "INVALID_CHECKSHEET_STATE",
+        "The checksheet is not approved or is not the current active revision for this machine and frequency.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.InvalidScheduleTransitionException.class)
+  ResponseEntity<ErrorResponse> invalidScheduleTransition() {
+    return error(HttpStatus.CONFLICT, "INVALID_SCHEDULE_TRANSITION",
+        "The schedule is not in the expected state for this action.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.InvalidScheduleDateTransitionException.class)
+  ResponseEntity<ErrorResponse> invalidScheduleDateTransition() {
+    return error(HttpStatus.CONFLICT, "INVALID_SCHEDULE_DATE_TRANSITION",
+        "The schedule date is not in the expected state for this transition.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.ScheduleValidationException.class)
+  ResponseEntity<ErrorResponse> scheduleValidation(
+      com.syncro.maintenance.preventive.application.PmScheduleService.ScheduleValidationException exception) {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
+        exception.getFieldErrors());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmScheduleService.PlantNotFoundException.class)
+  ResponseEntity<ErrorResponse> pmSchedulePlantNotFound() {
+    return error(HttpStatus.NOT_FOUND, "PLANT_NOT_FOUND", "Plant was not found.", Map.of());
   }
 
   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message,
