@@ -49,11 +49,11 @@ class V1BaseSchemaMigrationTest {
   // -------------------------------------------------------------------------
 
   @Test
-  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V10 additive migrations")
+  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V11 additive migrations")
   void migrationsApplied() {
     var rows = jdbc.queryForList(
         "SELECT version, script, success FROM flyway_schema_history ORDER BY installed_rank");
-    assertThat(rows).hasSize(10);
+    assertThat(rows).hasSize(11);
     assertThat(rows.get(0).get("version")).isEqualTo("1");
     assertThat(rows.get(0).get("script")).isEqualTo("V1__orm_foundation_schema.sql");
     assertThat(rows.get(0).get("success")).isEqualTo(true);
@@ -84,6 +84,9 @@ class V1BaseSchemaMigrationTest {
     assertThat(rows.get(9).get("version")).isEqualTo("10");
     assertThat(rows.get(9).get("script")).isEqualTo("V10__pm_work_order_audit_and_period_index.sql");
     assertThat(rows.get(9).get("success")).isEqualTo(true);
+    assertThat(rows.get(10).get("version")).isEqualTo("11");
+    assertThat(rows.get(10).get("script")).isEqualTo("V11__pm_execution_audit_types.sql");
+    assertThat(rows.get(10).get("success")).isEqualTo(true);
   }
 
   // -------------------------------------------------------------------------
@@ -642,6 +645,42 @@ class V1BaseSchemaMigrationTest {
     assertThat(def).contains("UNIQUE");
     assertThat(def).contains("machine_id", "template_id", "scheduled_date");
     assertThat(def).contains("WHERE ((template_id IS NOT NULL) AND (scheduled_date IS NOT NULL))");
+  }
+
+  /**
+   * Story 19-5: V11 extends the CHECK additively with PM_EXECUTION/PM_EXECUTION_ITEM
+   * so {@code AuditEntityType.PM_EXECUTION} / {@code AuditEntityType.PM_EXECUTION_ITEM}
+   * can be persisted. Every prior value — including the V10 PM_WORK_ORDER — survives
+   * the extension.
+   */
+  @Test
+  @DisplayName("19.5-DB-001 P0 audit_log entity_type CHECK accepts PM_EXECUTION/PM_EXECUTION_ITEM after V11")
+  void auditEntityTypeAcceptsPmExecutionTypes() {
+    var check = jdbc.queryForMap(
+        "SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint "
+            + "WHERE conname = 'ck_audit_log_entity_type'");
+    var def = (String) check.get("def");
+    assertThat(def).contains("PM_EXECUTION", "PM_EXECUTION_ITEM");
+    // every prior value survives the additive V11 extension.
+    assertThat(def).contains("PM_WORK_ORDER", "PM_SCHEDULE", "PM_SCHEDULE_DATE",
+        "PM_CHECKLIST_CATEGORY", "PM_CHECKLIST_ITEM",
+        "PM_FREQUENCY", "PM_CHECKSHEET",
+        "WORK_ORDER_QUALITY_RATING", "WORK_LOG_RATING", "WORK_LOG",
+        "WORK_ASSIGNMENT", "WORK_ORDER", "REPAIR_SESSION", "WORKORDER_SIGNATURE",
+        "SPAREPART_STOCK", "SYNC_RUN", "SYNC_QUARANTINE", "MACHINE_AREA",
+        "USER_ROLE_BINDING", "PLANT_WORKING_CALENDAR",
+        "PLANT", "MACHINE_GROUP", "MACHINE", "SPAREPART_TAXONOMY",
+        "SPAREPART", "INSTALLATION", "RESPONSIBILITY", "ALERT",
+        "SPAREPART_PRICE_ENTRY", "SECTION", "TEAM", "WORK_ORDER_CATEGORY",
+        "WORKORDER_ATTACHMENT", "WORK_ORDER_TODO", "WORKORDER_RATING",
+        "RATING_DIMENSION", "PREVENTIVE_PROGRAM", "PREVENTIVE_SCHEDULE",
+        "PREVENTIVE_CHECKLIST", "PREVENTIVE_ATTACHMENT",
+        "SPAREPART_REQUEST", "DEPARTMENT", "DEPARTMENT_USER", "USER",
+        "INVENTORY_LOCATION", "INVENTORY_STOCK_BALANCE",
+        "INVENTORY_TRANSFER", "INVENTORY_RESERVATION",
+        "JOB_TITLE", "SYSTEM_ROLE", "ROLE_PERMISSION_MAPPING",
+        "MENU_FEATURE", "DOMAIN_CONTEXT", "USER_JOB_BINDING",
+        "SIGNATURE_USE");
   }
 
   // -------------------------------------------------------------------------

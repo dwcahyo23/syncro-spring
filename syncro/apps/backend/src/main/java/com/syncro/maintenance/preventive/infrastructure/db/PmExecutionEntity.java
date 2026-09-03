@@ -170,4 +170,13 @@ public class PmExecutionEntity {
     this.ngCount = ngCount;
     this.updatedAt = updatedAt;
   }
+
+  /**
+   * Links the corrective finding workorder (F7, story 19-5): the VARCHAR(50)
+   * work_orders reference created for a critical NG item at completion.
+   */
+  public void setFindingWoId(String findingWoId, Instant updatedAt) {
+    this.findingWoId = findingWoId;
+    this.updatedAt = updatedAt;
+  }
 }

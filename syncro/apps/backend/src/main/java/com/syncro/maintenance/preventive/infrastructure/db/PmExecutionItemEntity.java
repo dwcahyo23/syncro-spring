@@ -272,14 +272,33 @@ public class PmExecutionItemEntity {
   public void fill(BigDecimal actualValue, Boolean ok, boolean ng, String ngNotes,
       boolean blocked, String blockedWoCode, String blockingWoId, Instant filledAt,
       Instant updatedAt) {
+    fill(actualValue, ok, ng, ngNotes, null, blocked, blockedWoCode, blockingWoId, filledAt,
+        updatedAt);
+  }
+
+  /** Fills the result with NG photo evidence (F8, story 19-5). */
+  public void fill(BigDecimal actualValue, Boolean ok, boolean ng, String ngNotes,
+      String ngPhotoUrl, boolean blocked, String blockedWoCode, String blockingWoId,
+      Instant filledAt, Instant updatedAt) {
     this.actualValue = actualValue;
     this.ok = ok;
     this.ng = ng;
     this.ngNotes = ngNotes;
+    this.ngPhotoUrl = ngPhotoUrl;
     this.blocked = blocked;
     this.blockedWoCode = blockedWoCode;
     this.blockingWoId = blockingWoId;
     this.filledAt = filledAt;
+    this.updatedAt = updatedAt;
+  }
+
+  /**
+   * Links the corrective blocking workorder (F8, story 19-5): stamped at execution
+   * completion for every critical NG item; the technician's own blocked flag and
+   * code stay untouched.
+   */
+  public void linkBlockingWo(String blockingWoId, Instant updatedAt) {
+    this.blockingWoId = blockingWoId;
     this.updatedAt = updatedAt;
   }
 }

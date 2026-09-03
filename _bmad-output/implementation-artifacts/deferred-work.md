@@ -1259,3 +1259,9 @@ origin: code review of spec-19-3-pm-schedules-dates (blind-hunter), 2026-09-03
 location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveExceptionHandler.java (InvalidScheduleDateTransitionException mapping)
 reason: All invalid date transitions map to one generic 409 message with no indication of the legal from-states for the requested target (four statuses, three legal edges). API-consistency gap shared with 19-1's INVALID_CHECKSHEET_TRANSITION; enriching the message is a contract change.
 status: open
+
+### DW-147: PmChecklistService.itemLabel has the same surrogate-pair crash as 19-5's fixed site
+origin: code review of spec-19-5-pm-executions-items (implementer found while writing PATCH 9), 2026-09-04
+location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecklistService.java (itemLabel, ~line 487)
+reason: length()-vs-codePointCount bug identical to the one patched in PmExecutionService.itemLabel (19-5 PATCH 6). Creating a checklist item whose parameterText has surrogate-heavy text with UTF-16 length > 255 but code points <= 255 crashes with IndexOutOfBoundsException. Out of 19-5 scope; needs a small follow-up fix + test mirroring 19.5-INT-017.
+status: open

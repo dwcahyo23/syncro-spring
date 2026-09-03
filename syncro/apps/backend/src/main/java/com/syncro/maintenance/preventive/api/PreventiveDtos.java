@@ -261,4 +261,41 @@ public final class PreventiveDtos {
 
   public record SweepOverdueView(int overdueCount) {
   }
+
+  // -------------------------------------------------------------------------
+  // PM executions & execution items (story 19-5)
+  // -------------------------------------------------------------------------
+
+  public record StartExecutionRequest(
+      @NotNull UUID pmWoId) {
+  }
+
+  public record FillExecutionItemRequest(
+      BigDecimal actualValue,
+      Boolean ok,
+      Boolean ng,
+      @Size(max = 4000) String ngNotes,
+      @Size(max = 2000) String ngPhotoUrl,
+      Boolean blocked,
+      @Size(max = 50) String blockingWoCode) {
+  }
+
+  public record VerifyExecutionRequest(
+      UUID spvSignatureId) {
+  }
+
+  public record ExecutionItemView(UUID id, UUID executionId, UUID checklistItemId, int sequence,
+      String categoryName, String parameterText, String checkMethod, PmItemInputType inputType,
+      boolean isCriticalFlag, String unit, BigDecimal lsl, BigDecimal nominal, BigDecimal usl,
+      BigDecimal actualValue, Boolean isOk, boolean isNg, String ngNotes, String ngPhotoUrl,
+      boolean isBlocked, String blockedWoCode, String blockingWoId, Instant filledAt,
+      Instant createdAt, Instant updatedAt) {
+  }
+
+  public record ExecutionView(UUID id, UUID pmWoId, UUID scheduleDateId, UUID technicianId,
+      UUID spvVerifierId, UUID technicianSignatureId, Instant technicianSignedAt,
+      UUID spvSignatureId, Instant spvSignedAt, Instant startedAt, Instant completedAt,
+      boolean hasNgItems, int ngCount, String findingWoId, Instant createdAt, Instant updatedAt,
+      List<ExecutionItemView> items) {
+  }
 }

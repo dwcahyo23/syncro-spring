@@ -53,7 +53,8 @@ import tools.jackson.databind.exc.InvalidFormatException;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(assignableTypes = {PreventiveProgramController.class, PreventiveScheduleController.class,
     PmFrequencyController.class, PmChecksheetController.class, PmChecklistCategoryController.class,
-    PmChecklistItemController.class, PmScheduleController.class, PmWorkOrderController.class})
+    PmChecklistItemController.class, PmScheduleController.class, PmWorkOrderController.class,
+    PmExecutionController.class})
 public class PreventiveExceptionHandler {
 
   private final Clock clock;
@@ -462,6 +463,47 @@ public class PreventiveExceptionHandler {
   ResponseEntity<ErrorResponse> invalidScheduleState() {
     return error(HttpStatus.CONFLICT, "INVALID_SCHEDULE_STATE",
         "The PM schedule is not ACTIVE and cannot generate work orders.", Map.of());
+  }
+
+  // -------------------------------------------------------------------------
+  // Story 19-5: PM executions & execution items
+  // -------------------------------------------------------------------------
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmExecutionService.PmExecutionForbiddenException.class)
+  ResponseEntity<ErrorResponse> pmExecutionForbidden() {
+    return error(HttpStatus.FORBIDDEN, "FORBIDDEN",
+        "You do not have permission to access this resource.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmExecutionService.PmExecutionNotFoundException.class)
+  ResponseEntity<ErrorResponse> pmExecutionNotFound() {
+    return error(HttpStatus.NOT_FOUND, "PM_EXECUTION_NOT_FOUND",
+        "PM execution was not found.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmExecutionService.ExecutionAlreadyExistsException.class)
+  ResponseEntity<ErrorResponse> executionAlreadyExists() {
+    return error(HttpStatus.CONFLICT, "EXECUTION_ALREADY_EXISTS",
+        "An execution already exists for this PM work order.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmExecutionService.InvalidExecutionStateException.class)
+  ResponseEntity<ErrorResponse> invalidExecutionState() {
+    return error(HttpStatus.CONFLICT, "INVALID_EXECUTION_STATE",
+        "The PM work order is not IN_PROGRESS and cannot start an execution.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmExecutionService.InvalidExecutionTransitionException.class)
+  ResponseEntity<ErrorResponse> invalidExecutionTransition() {
+    return error(HttpStatus.CONFLICT, "INVALID_EXECUTION_TRANSITION",
+        "The PM execution is not in the expected state for this action.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmExecutionService.ExecutionValidationException.class)
+  ResponseEntity<ErrorResponse> executionValidation(
+      com.syncro.maintenance.preventive.application.PmExecutionService.ExecutionValidationException exception) {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
+        exception.getFieldErrors());
   }
 
   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message,

@@ -1759,6 +1759,75 @@ test_anonymous_pm_work_order_denied if {
   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/pm-work-orders/generate"}
 }
 
+# -- PM executions (story 19-5, blueprint F7/F8): four-role coarse allow set (the
+#    three leader roles + TECHNICIAN as the assignee-scoped executor) on the
+#    collection, /{id}, /start, /{id}/items/{itemId}/fill, /{id}/complete and
+#    /{id}/verify; STAFF_MAINTENANCE/AUDITOR/anonymous denied; reads any-authenticated --
+
+test_technician_pm_execution_start_allowed if {
+  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-executions/start"}
+}
+
+test_technician_pm_execution_fill_allowed if {
+  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/items/8c8d9e0f-1111-2222-3333-444455556666/fill"}
+}
+
+test_technician_pm_execution_complete_allowed if {
+  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/complete"}
+}
+
+test_section_leader_pm_execution_verify_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/verify"}
+}
+
+test_manager_pm_execution_verify_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/verify"}
+}
+
+test_maintenance_leader_pm_execution_start_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/pm-executions/start"}
+}
+
+test_super_admin_pm_execution_start_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/pm-executions/start"}
+}
+
+test_super_admin_pm_execution_verify_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/verify"}
+}
+
+test_staff_pm_execution_start_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/pm-executions/start"}
+}
+
+test_staff_pm_execution_fill_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/items/8c8d9e0f-1111-2222-3333-444455556666/fill"}
+}
+
+test_auditor_pm_execution_complete_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/complete"}
+}
+
+test_auditor_pm_execution_verify_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666/verify"}
+}
+
+test_storekeeper_pm_execution_start_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u8"}, "action": "POST /api/v1/pm-executions/start"}
+}
+
+test_auditor_pm_execution_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-executions"}
+}
+
+test_auditor_pm_execution_get_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-executions/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_anonymous_pm_execution_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/pm-executions/start"}
+}
+
 # -- Anonymous (no userId): default deny everywhere ------------------------
 
 test_anonymous_admin_only_denied if {

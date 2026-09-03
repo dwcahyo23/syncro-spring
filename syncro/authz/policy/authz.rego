@@ -405,6 +405,26 @@ pm_work_order_paths := {
   "/api/v1/pm-work-orders/*/complete",
 }
 
+# PM executions & execution items (story 19-5, blueprint F7/F8): start/fill/complete
+# are assignee-scoped in service (the execution's technician — TECHNICIAN is the
+# realistic executor); verify is leader-gated (SECTION_LEADER, MAINTENANCE_LEADER,
+# MANAGER_MAINTENANCE). The coarse rego set is the union of both gates: the three
+# leader roles + TECHNICIAN (SUPER_ADMIN via the generic bypass). STAFF_MAINTENANCE
+# and the other roles stay default-deny — parity with PmExecutionService
+# requireAssignee/requireExecutionTechnician/requireLeaderMutationAccess (rego cannot
+# see the body, the assignment or the execution state). A single `*` matches exactly
+# one path segment, so each depth is enumerated explicitly: collection (list), /{id}
+# (get), /start, /{id}/items/{itemId}/fill, /{id}/complete, /{id}/verify. Reads (GET)
+# flow through generic read_allowed. Machine scope is service-side.
+pm_execution_paths := {
+  "/api/v1/pm-executions",
+  "/api/v1/pm-executions/*",
+  "/api/v1/pm-executions/start",
+  "/api/v1/pm-executions/*/items/*/fill",
+  "/api/v1/pm-executions/*/complete",
+  "/api/v1/pm-executions/*/verify",
+}
+
 # Org-maintenance departments (spec-org-maintenance-model): mutations are the
 # Phase 1 gate (SUPER_ADMIN|MANAGER_MAINTENANCE). Reads flow through generic
 # read_allowed. Members replace + section leader assignment + user-master updates
@@ -1209,6 +1229,34 @@ mutation_allowed if {
   input.subject.roles[_] == "TECHNICIAN"
   is_mutation
   path_matches(pm_work_order_paths)
+}
+
+# PM executions (story 19-5): four-role coarse allow set — the three leader roles
+# (verify, narrowed by scope in service) plus TECHNICIAN (the assignee-scoped
+# start/fill/complete executor). STAFF_MAINTENANCE and the other roles stay
+# default-deny; the service gate is authoritative for scope and technician.
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(pm_execution_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(pm_execution_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(pm_execution_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "TECHNICIAN"
+  is_mutation
+  path_matches(pm_execution_paths)
 }
 
 mutation_allowed if {
