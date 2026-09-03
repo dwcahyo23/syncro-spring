@@ -1,0 +1,2277 @@
+diff --git a/syncro/.env.example b/syncro/.env.example
+index f4e8de3..aa89d2f 100644
+--- a/syncro/.env.example
++++ b/syncro/.env.example
+@@ -74,9 +74,9 @@ SYNCRO_AUTH_LOCAL_ADMIN_PASSWORD=CHANGE_ME_strong_password
+ NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+ 
+ # Authz coarse gate (9.5 rolls out enforcement on the org/maintenance/sync surface;
+-# 18-x adds the inventory surface; 19-1 adds the PM frequencies/checksheets surface;
++# 18-x adds the inventory surface; 19-1 adds the PM frequencies/checksheets surface; 19-2 adds the PM checklist surface;
+ # health/actuator stay public and are deliberately excluded)
+-SYNCRO_AUTHZ_ENFORCED_PATHS=/api/v1/plants/**,/api/v1/machine-groups/**,/api/v1/sections/**,/api/v1/teams/**,/api/v1/machine-responsibilities/**,/api/v1/machines/**,/api/v1/machine-sparepart-installations/**,/api/v1/spareparts/**,/api/v1/sparepart-taxonomies/**,/api/v1/alerts/**,/api/v1/audit-log/**,/api/v1/setup-completeness/**,/api/v1/telemetry/**,/api/v1/notification/templates/**,/api/v1/notification/worker/**,/api/v1/work-order-categories/**,/api/v1/workorders/**,/api/v1/workorders/*/transition,/api/v1/workorders/*/sessions,/api/v1/workorders/*/sessions/stop,/api/v1/workorders/*/attachments,/api/v1/workorders/*/attachments/*,/api/v1/workorders/*/report,/api/v1/workorders/*/report/cpk,/api/v1/workorders/*/todos,/api/v1/workorders/*/todos/*,/api/v1/workorders/*/todos/*/assign,/api/v1/workorders/*/todos/*/complete,/api/v1/workorders/*/todos/*/reorder,/api/v1/workorders/*/ratings,/api/v1/workorders/*/ratings/technician,/api/v1/workorders/*/ratings/workorder,/api/v1/rating-dimensions,/api/v1/rating-dimensions/*,/api/v1/preventive-programs,/api/v1/preventive-programs/*,/api/v1/preventive-programs/*/generate,/api/v1/preventive-schedules,/api/v1/preventive-schedules/*/checklist,/api/v1/preventive-schedules/*/evidence,/api/v1/preventive-schedules/*/evidence/*,/api/v1/preventive-schedules/*/approve,/api/v1/preventive-schedules/*/skip,/api/v1/sparepart-requests,/api/v1/sparepart-requests/*/transition,/api/v1/sparepart-requests/*/mre,/api/v1/sparepart-requests/*/approve,/api/v1/sparepart-requests/*/complete,/api/v1/sparepart-stock,/api/v1/sparepart-stock/*,/api/v1/sparepart-stock/*/adjust,/api/v1/departments,/api/v1/departments/*,/api/v1/departments/*/members,/api/v1/sections/*/leader,/api/v1/auth/users/*,/api/v1/sync/**,/api/v1/inventory-locations/**,/api/v1/inventory-locations/*/stock-balances,/api/v1/inventory-locations/*/stock-balances/*,/api/v1/inventory-locations/*/stock-balances/*/adjust,/api/v1/inventory-transfers,/api/v1/inventory-transfers/*,/api/v1/inventory-transfers/*/approve,/api/v1/inventory-transfers/*/reject,/api/v1/pm-frequencies/**,/api/v1/pm-checksheets/**
++SYNCRO_AUTHZ_ENFORCED_PATHS=/api/v1/plants/**,/api/v1/machine-groups/**,/api/v1/sections/**,/api/v1/teams/**,/api/v1/machine-responsibilities/**,/api/v1/machines/**,/api/v1/machine-sparepart-installations/**,/api/v1/spareparts/**,/api/v1/sparepart-taxonomies/**,/api/v1/alerts/**,/api/v1/audit-log/**,/api/v1/setup-completeness/**,/api/v1/telemetry/**,/api/v1/notification/templates/**,/api/v1/notification/worker/**,/api/v1/work-order-categories/**,/api/v1/workorders/**,/api/v1/workorders/*/transition,/api/v1/workorders/*/sessions,/api/v1/workorders/*/sessions/stop,/api/v1/workorders/*/attachments,/api/v1/workorders/*/attachments/*,/api/v1/workorders/*/report,/api/v1/workorders/*/report/cpk,/api/v1/workorders/*/todos,/api/v1/workorders/*/todos/*,/api/v1/workorders/*/todos/*/assign,/api/v1/workorders/*/todos/*/complete,/api/v1/workorders/*/todos/*/reorder,/api/v1/workorders/*/ratings,/api/v1/workorders/*/ratings/technician,/api/v1/workorders/*/ratings/workorder,/api/v1/rating-dimensions,/api/v1/rating-dimensions/*,/api/v1/preventive-programs,/api/v1/preventive-programs/*,/api/v1/preventive-programs/*/generate,/api/v1/preventive-schedules,/api/v1/preventive-schedules/*/checklist,/api/v1/preventive-schedules/*/evidence,/api/v1/preventive-schedules/*/evidence/*,/api/v1/preventive-schedules/*/approve,/api/v1/preventive-schedules/*/skip,/api/v1/sparepart-requests,/api/v1/sparepart-requests/*/transition,/api/v1/sparepart-requests/*/mre,/api/v1/sparepart-requests/*/approve,/api/v1/sparepart-requests/*/complete,/api/v1/sparepart-stock,/api/v1/sparepart-stock/*,/api/v1/sparepart-stock/*/adjust,/api/v1/departments,/api/v1/departments/*,/api/v1/departments/*/members,/api/v1/sections/*/leader,/api/v1/auth/users/*,/api/v1/sync/**,/api/v1/inventory-locations/**,/api/v1/inventory-locations/*/stock-balances,/api/v1/inventory-locations/*/stock-balances/*,/api/v1/inventory-locations/*/stock-balances/*/adjust,/api/v1/inventory-transfers,/api/v1/inventory-transfers/*,/api/v1/inventory-transfers/*/approve,/api/v1/inventory-transfers/*/reject,/api/v1/pm-frequencies/**,/api/v1/pm-checksheets/**,/api/v1/pm-checklist-categories/**,/api/v1/pm-checklist-items/**
+ SYNCRO_AUTHZ_DEGRADED_ALLOWLIST=/api/v1/health,/actuator/**
+ 
+ # Authz decision-log retention (days) for the authz_decisions purge job
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java b/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
+index 4895c8a..c6b2df3 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
+@@ -58,5 +58,7 @@ public enum AuditEntityType {
+   WORK_LOG_RATING,
+   WORK_ORDER_QUALITY_RATING,
+   PM_FREQUENCY,
+-  PM_CHECKSHEET
++  PM_CHECKSHEET,
++  PM_CHECKLIST_CATEGORY,
++  PM_CHECKLIST_ITEM
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java
+index fab7338..bd1a289 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveDtos.java
+@@ -1,5 +1,6 @@
+ package com.syncro.maintenance.preventive.api;
+ 
++import com.syncro.maintenance.preventive.domain.PmItemInputType;
+ import com.syncro.maintenance.preventive.domain.PreventiveCategory;
+ import com.syncro.maintenance.preventive.domain.ScheduleType;
+ import jakarta.validation.constraints.Max;
+@@ -7,6 +8,7 @@ import jakarta.validation.constraints.Min;
+ import jakarta.validation.constraints.NotBlank;
+ import jakarta.validation.constraints.NotNull;
+ import jakarta.validation.constraints.Size;
++import java.math.BigDecimal;
+ import java.time.Instant;
+ import java.time.LocalDate;
+ import java.util.List;
+@@ -146,4 +148,61 @@ public final class PreventiveDtos {
+   public record ActiveChecksheetView(UUID checksheetId, UUID machineId, UUID frequencyId,
+       int revisionNo) {
+   }
++
++  // -------------------------------------------------------------------------
++  // PM checklist categories & items (story 19-2)
++  // -------------------------------------------------------------------------
++
++  public record CreateChecklistCategoryRequest(
++      @NotNull UUID checksheetId,
++      @NotBlank @Size(max = 200) String name,
++      Integer sortOrder) {
++  }
++
++  public record UpdateChecklistCategoryRequest(
++      @NotBlank @Size(max = 200) String name,
++      Integer sortOrder) {
++  }
++
++  public record ChecklistCategoryView(UUID id, UUID checksheetId, String name, int sortOrder,
++      Instant createdAt, Instant updatedAt) {
++  }
++
++  public record CreateChecklistItemRequest(
++      @NotNull UUID checksheetId,
++      UUID categoryId,
++      Integer sequence,
++      @NotBlank @Size(max = 500) String parameterText,
++      @Size(max = 200) String checkMethod,
++      @NotNull PmItemInputType inputType,
++      @Size(max = 50) String unit,
++      BigDecimal lsl,
++      BigDecimal nominal,
++      BigDecimal usl,
++      Boolean isCriticalFlag,
++      @Size(max = 255) String referenceDocument,
++      UUID calibrationInstrumentId) {
++  }
++
++  public record UpdateChecklistItemRequest(
++      UUID categoryId,
++      Integer sequence,
++      @NotBlank @Size(max = 500) String parameterText,
++      @Size(max = 200) String checkMethod,
++      @NotNull PmItemInputType inputType,
++      @Size(max = 50) String unit,
++      BigDecimal lsl,
++      BigDecimal nominal,
++      BigDecimal usl,
++      Boolean isCriticalFlag,
++      @Size(max = 255) String referenceDocument,
++      UUID calibrationInstrumentId) {
++  }
++
++  public record ChecklistItemView(UUID id, UUID checksheetId, UUID categoryId, int sequence,
++      String parameterText, String checkMethod, PmItemInputType inputType, String unit,
++      BigDecimal lsl, BigDecimal nominal, BigDecimal usl, boolean isCriticalFlag,
++      String referenceDocument, UUID calibrationInstrumentId, Instant createdAt,
++      Instant updatedAt) {
++  }
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveExceptionHandler.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveExceptionHandler.java
+index bc4394f..a963d72 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveExceptionHandler.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveExceptionHandler.java
+@@ -18,6 +18,9 @@ import com.syncro.maintenance.preventive.application.PreventiveProgramService.Ma
+ import com.syncro.maintenance.preventive.application.PreventiveProgramService.PreventiveForbiddenException;
+ import com.syncro.maintenance.preventive.application.PreventiveProgramService.PreventiveValidationException;
+ import com.syncro.maintenance.preventive.application.PreventiveProgramService.ProgramNotFoundException;
++import com.syncro.maintenance.preventive.application.PmChecklistService.CalibrationInstrumentNotFoundException;
++import com.syncro.maintenance.preventive.application.PmChecklistService.PmChecklistCategoryNotFoundException;
++import com.syncro.maintenance.preventive.application.PmChecklistService.PmChecklistItemNotFoundException;
+ import com.syncro.maintenance.preventive.application.PmChecksheetService.ActiveChecksheetNotFoundException;
+ import com.syncro.maintenance.preventive.application.PmChecksheetService.ChecksheetAlreadyExistsException;
+ import com.syncro.maintenance.preventive.application.PmChecksheetService.ChecksheetValidationException;
+@@ -48,7 +51,8 @@ import tools.jackson.databind.exc.InvalidFormatException;
+ 
+ @Order(Ordered.HIGHEST_PRECEDENCE)
+ @RestControllerAdvice(assignableTypes = {PreventiveProgramController.class, PreventiveScheduleController.class,
+-    PmFrequencyController.class, PmChecksheetController.class})
++    PmFrequencyController.class, PmChecksheetController.class, PmChecklistCategoryController.class,
++    PmChecklistItemController.class})
+ public class PreventiveExceptionHandler {
+ 
+   private final Clock clock;
+@@ -290,6 +294,35 @@ public class PreventiveExceptionHandler {
+         exception.getFieldErrors());
+   }
+ 
++  // -------------------------------------------------------------------------
++  // Story 19-2: PM checklist categories & items
++  // -------------------------------------------------------------------------
++
++  @ExceptionHandler(PmChecklistCategoryNotFoundException.class)
++  ResponseEntity<ErrorResponse> pmChecklistCategoryNotFound() {
++    return error(HttpStatus.NOT_FOUND, "PM_CHECKLIST_CATEGORY_NOT_FOUND",
++        "PM checklist category was not found.", Map.of());
++  }
++
++  @ExceptionHandler(PmChecklistItemNotFoundException.class)
++  ResponseEntity<ErrorResponse> pmChecklistItemNotFound() {
++    return error(HttpStatus.NOT_FOUND, "PM_CHECKLIST_ITEM_NOT_FOUND",
++        "PM checklist item was not found.", Map.of());
++  }
++
++  @ExceptionHandler(CalibrationInstrumentNotFoundException.class)
++  ResponseEntity<ErrorResponse> calibrationInstrumentNotFound() {
++    return error(HttpStatus.NOT_FOUND, "CALIBRATION_INSTRUMENT_NOT_FOUND",
++        "Calibration instrument was not found.", Map.of());
++  }
++
++  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmChecklistService.ChecklistValidationException.class)
++  ResponseEntity<ErrorResponse> checklistItemValidation(
++      com.syncro.maintenance.preventive.application.PmChecklistService.ChecklistValidationException exception) {
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
++        exception.getFieldErrors());
++  }
++
+   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message,
+       Map<String, String> fieldErrors) {
+     return ResponseEntity.status(status)
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmChecklistCategoryEntity.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmChecklistCategoryEntity.java
+index c9e0c46..f0bb81b 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmChecklistCategoryEntity.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmChecklistCategoryEntity.java
+@@ -70,4 +70,11 @@ public class PmChecklistCategoryEntity {
+   public Instant getUpdatedAt() {
+     return updatedAt;
+   }
++
++  /** Edit (story 19-2): rename and/or reorder the category within its checksheet. */
++  public void update(String name, int sortOrder, Instant updatedAt) {
++    this.name = name;
++    this.sortOrder = sortOrder;
++    this.updatedAt = updatedAt;
++  }
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmChecklistItemEntity.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmChecklistItemEntity.java
+index c74e4ff..33e70bd 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmChecklistItemEntity.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmChecklistItemEntity.java
+@@ -159,4 +159,34 @@ public class PmChecklistItemEntity {
+   public Instant getUpdatedAt() {
+     return updatedAt;
+   }
++
++  /** Edit (story 19-2): replaces every mutable field of the item in one PUT. */
++  public void update(UUID categoryId, int sequence, String parameterText, String checkMethod,
++      PmItemInputType inputType, String unit, BigDecimal lsl, BigDecimal nominal, BigDecimal usl,
++      boolean criticalFlag, String referenceDocument, UUID calibrationInstrumentId,
++      Instant updatedAt) {
++    this.categoryId = categoryId;
++    this.sequence = sequence;
++    this.parameterText = parameterText;
++    this.checkMethod = checkMethod;
++    this.inputType = inputType;
++    this.unit = unit;
++    this.lsl = lsl;
++    this.nominal = nominal;
++    this.usl = usl;
++    this.criticalFlag = criticalFlag;
++    this.referenceDocument = referenceDocument;
++    this.calibrationInstrumentId = calibrationInstrumentId;
++    this.updatedAt = updatedAt;
++  }
++
++  /**
++   * Orphaning (story 19-2): category delete nulls the reference service-side so the
++   * audit trail records which items were orphaned (rather than relying on the FK's
++   * ON DELETE SET NULL).
++   */
++  public void clearCategory(Instant updatedAt) {
++    this.categoryId = null;
++    this.updatedAt = updatedAt;
++  }
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmChecklistItemRepository.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmChecklistItemRepository.java
+index 8175e9b..27438bc 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmChecklistItemRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmChecklistItemRepository.java
+@@ -1,11 +1,24 @@
+ package com.syncro.maintenance.preventive.infrastructure.db;
+ 
+ import java.util.List;
++import java.util.Optional;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
++import org.springframework.data.jpa.repository.Query;
++import org.springframework.data.repository.query.Param;
+ 
+ /** Persistence for {@code pm_checklist_items} (blueprint F4, story 15-2). */
+ public interface PmChecklistItemRepository extends JpaRepository<PmChecklistItemEntity, UUID> {
+ 
+   List<PmChecklistItemEntity> findByChecksheetIdOrderBySequenceAsc(UUID checksheetId);
++
++  List<PmChecklistItemEntity> findByChecksheetIdAndCategoryIdOrderBySequenceAsc(UUID checksheetId,
++      UUID categoryId);
++
++  /** Items grouped under a category — orphaned (category_id nulled) on category delete. */
++  List<PmChecklistItemEntity> findByCategoryId(UUID categoryId);
++
++  /** Highest sequence in a checksheet; empty when it has no items (default-sequence max+1). */
++  @Query("select max(i.sequence) from PmChecklistItemEntity i where i.checksheetId = :checksheetId")
++  Optional<Integer> findMaxSequence(@Param("checksheetId") UUID checksheetId);
+ }
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
+index 8a4ac1d..3a2e604 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
+@@ -49,11 +49,11 @@ class V1BaseSchemaMigrationTest {
+   // -------------------------------------------------------------------------
+ 
+   @Test
+-  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V7 additive migrations")
++  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V8 additive migrations")
+   void migrationsApplied() {
+     var rows = jdbc.queryForList(
+         "SELECT version, script, success FROM flyway_schema_history ORDER BY installed_rank");
+-    assertThat(rows).hasSize(7);
++    assertThat(rows).hasSize(8);
+     assertThat(rows.get(0).get("version")).isEqualTo("1");
+     assertThat(rows.get(0).get("script")).isEqualTo("V1__orm_foundation_schema.sql");
+     assertThat(rows.get(0).get("success")).isEqualTo(true);
+@@ -75,6 +75,9 @@ class V1BaseSchemaMigrationTest {
+     assertThat(rows.get(6).get("version")).isEqualTo("7");
+     assertThat(rows.get(6).get("script")).isEqualTo("V7__pm_frequencies_seed_and_audit_types.sql");
+     assertThat(rows.get(6).get("success")).isEqualTo(true);
++    assertThat(rows.get(7).get("version")).isEqualTo("8");
++    assertThat(rows.get(7).get("script")).isEqualTo("V8__pm_checklist_audit_types.sql");
++    assertThat(rows.get(7).get("success")).isEqualTo(true);
+   }
+ 
+   // -------------------------------------------------------------------------
+@@ -515,6 +518,40 @@ class V1BaseSchemaMigrationTest {
+     assertThat(rows.stream().allMatch(m -> Boolean.TRUE.equals(m.get("is_active")))).isTrue();
+   }
+ 
++  /**
++   * Story 19-2: V8 extends the CHECK additively with PM_CHECKLIST_CATEGORY/
++   * PM_CHECKLIST_ITEM so {@code AuditEntityType.PM_CHECKLIST_CATEGORY} /
++   * {@code AuditEntityType.PM_CHECKLIST_ITEM} can be persisted. Every prior value —
++   * including the V7 PM_FREQUENCY/PM_CHECKSHEET pair — survives the extension.
++   */
++  @Test
++  @DisplayName("19.2-DB-001 P0 audit_log entity_type CHECK accepts PM_CHECKLIST_CATEGORY/PM_CHECKLIST_ITEM after V8")
++  void auditEntityTypeAcceptsPmChecklistTypes() {
++    var check = jdbc.queryForMap(
++        "SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint "
++            + "WHERE conname = 'ck_audit_log_entity_type'");
++    var def = (String) check.get("def");
++    assertThat(def).contains("PM_CHECKLIST_CATEGORY", "PM_CHECKLIST_ITEM");
++    // every prior value survives the additive V8 extension.
++    assertThat(def).contains("PM_FREQUENCY", "PM_CHECKSHEET",
++        "WORK_ORDER_QUALITY_RATING", "WORK_LOG_RATING", "WORK_LOG",
++        "WORK_ASSIGNMENT", "WORK_ORDER", "REPAIR_SESSION", "WORKORDER_SIGNATURE",
++        "SPAREPART_STOCK", "SYNC_RUN", "SYNC_QUARANTINE", "MACHINE_AREA",
++        "USER_ROLE_BINDING", "PLANT_WORKING_CALENDAR",
++        "PLANT", "MACHINE_GROUP", "MACHINE", "SPAREPART_TAXONOMY",
++        "SPAREPART", "INSTALLATION", "RESPONSIBILITY", "ALERT",
++        "SPAREPART_PRICE_ENTRY", "SECTION", "TEAM", "WORK_ORDER_CATEGORY",
++        "WORKORDER_ATTACHMENT", "WORK_ORDER_TODO", "WORKORDER_RATING",
++        "RATING_DIMENSION", "PREVENTIVE_PROGRAM", "PREVENTIVE_SCHEDULE",
++        "PREVENTIVE_CHECKLIST", "PREVENTIVE_ATTACHMENT",
++        "SPAREPART_REQUEST", "DEPARTMENT", "DEPARTMENT_USER", "USER",
++        "INVENTORY_LOCATION", "INVENTORY_STOCK_BALANCE",
++        "INVENTORY_TRANSFER", "INVENTORY_RESERVATION",
++        "JOB_TITLE", "SYSTEM_ROLE", "ROLE_PERMISSION_MAPPING",
++        "MENU_FEATURE", "DOMAIN_CONTEXT", "USER_JOB_BINDING",
++        "SIGNATURE_USE");
++  }
++
+   // -------------------------------------------------------------------------
+   // Helpers
+   // -------------------------------------------------------------------------
+diff --git a/syncro/authz/policy/authz.rego b/syncro/authz/policy/authz.rego
+index 53fc0d2..ba32a52 100644
+--- a/syncro/authz/policy/authz.rego
++++ b/syncro/authz/policy/authz.rego
+@@ -350,6 +350,20 @@ pm_checksheet_paths := {
+   "/api/v1/pm-checksheets/*/approve",
+ }
+ 
++# PM checklist categories & items (story 19-2, blueprint F4): define/edit of check
++# content against an unapproved checksheet revision for the same four-role set as
++# pm_checksheet_paths (SUPER_ADMIN via the generic bypass). A single `*` matches
++# exactly one path segment: collection (list/create) and /{id} (get/update/delete).
++# The service gate is authoritative for the checksheet's machine scope and the
++# approved-revision freeze (rego cannot see the checksheet state). Reads (GET) flow
++# through generic read_allowed.
++pm_checklist_paths := {
++  "/api/v1/pm-checklist-categories",
++  "/api/v1/pm-checklist-categories/*",
++  "/api/v1/pm-checklist-items",
++  "/api/v1/pm-checklist-items/*",
++}
++
+ # Org-maintenance departments (spec-org-maintenance-model): mutations are the
+ # Phase 1 gate (SUPER_ADMIN|MANAGER_MAINTENANCE). Reads flow through generic
+ # read_allowed. Members replace + section leader assignment + user-master updates
+@@ -1074,6 +1088,33 @@ mutation_allowed if {
+   path_matches(pm_checksheet_paths)
+ }
+ 
++# PM checklist categories & items (story 19-2): the same four-role allow set as
++# pm_checksheet_paths — define/edit is staff-level; scope and the approved-revision
++# freeze are service-side.
++mutation_allowed if {
++  input.subject.roles[_] == "MANAGER_MAINTENANCE"
++  is_mutation
++  path_matches(pm_checklist_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "SECTION_LEADER"
++  is_mutation
++  path_matches(pm_checklist_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "MAINTENANCE_LEADER"
++  is_mutation
++  path_matches(pm_checklist_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "STAFF_MAINTENANCE"
++  is_mutation
++  path_matches(pm_checklist_paths)
++}
++
+ mutation_allowed if {
+   input.subject.roles[_] == "MANAGER_MAINTENANCE"
+   is_mutation
+diff --git a/syncro/authz/policy/authz_test.rego b/syncro/authz/policy/authz_test.rego
+index 5bb3094..842303c 100644
+--- a/syncro/authz/policy/authz_test.rego
++++ b/syncro/authz/policy/authz_test.rego
+@@ -1530,6 +1530,62 @@ test_anonymous_pm_checksheet_denied if {
+   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/pm-checksheets"}
+ }
+ 
++# -- PM checklist categories & items (story 19-2, blueprint F4): four-role mutation
++#    allow set on both collections and /{id}; TECHNICIAN/AUDITOR/anonymous denied;
++#    reads any-authenticated -----------------------------------------------------
++
++test_manager_pm_checklist_category_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/pm-checklist-categories"}
++}
++
++test_section_leader_pm_checklist_category_update_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "PUT /api/v1/pm-checklist-categories/7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_maintenance_leader_pm_checklist_category_delete_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "DELETE /api/v1/pm-checklist-categories/7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_staff_pm_checklist_item_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/pm-checklist-items"}
++}
++
++test_staff_pm_checklist_item_update_allowed if {
++  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "PUT /api/v1/pm-checklist-items/7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_super_admin_pm_checklist_item_delete_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "DELETE /api/v1/pm-checklist-items/7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_technician_pm_checklist_category_create_denied if {
++  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-checklist-categories"}
++}
++
++test_technician_pm_checklist_item_create_denied if {
++  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-checklist-items"}
++}
++
++test_auditor_pm_checklist_category_update_denied if {
++  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "PUT /api/v1/pm-checklist-categories/7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_auditor_pm_checklist_item_delete_denied if {
++  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "DELETE /api/v1/pm-checklist-items/7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_auditor_pm_checklist_category_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-checklist-categories"}
++}
++
++test_auditor_pm_checklist_item_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-checklist-items/7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_anonymous_pm_checklist_denied if {
++  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/pm-checklist-items"}
++}
++
+ # -- Anonymous (no userId): default deny everywhere ------------------------
+ 
+ test_anonymous_admin_only_denied if {
+--- NEW FILE: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmChecklistCategoryController.java ---
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmChecklistCategoryController.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmChecklistCategoryController.java
+new file mode 100644
+index 0000000..4b34c41
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmChecklistCategoryController.java
+@@ -0,0 +1,122 @@
++package com.syncro.maintenance.preventive.api;
++
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.ChecklistCategoryView;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.CreateChecklistCategoryRequest;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.UpdateChecklistCategoryRequest;
++import com.syncro.maintenance.preventive.application.PmChecklistService;
++import com.syncro.maintenance.preventive.application.PmChecklistService.CreateCategoryCommand;
++import com.syncro.maintenance.preventive.application.PmChecklistService.UpdateCategoryCommand;
++import io.swagger.v3.oas.annotations.Operation;
++import io.swagger.v3.oas.annotations.media.Content;
++import io.swagger.v3.oas.annotations.media.Schema;
++import io.swagger.v3.oas.annotations.responses.ApiResponse;
++import io.swagger.v3.oas.annotations.responses.ApiResponses;
++import jakarta.validation.Valid;
++import java.net.URI;
++import java.util.List;
++import java.util.UUID;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.security.core.annotation.AuthenticationPrincipal;
++import org.springframework.validation.annotation.Validated;
++import org.springframework.web.bind.annotation.DeleteMapping;
++import org.springframework.web.bind.annotation.GetMapping;
++import org.springframework.web.bind.annotation.PathVariable;
++import org.springframework.web.bind.annotation.PostMapping;
++import org.springframework.web.bind.annotation.PutMapping;
++import org.springframework.web.bind.annotation.RequestBody;
++import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RequestParam;
++import org.springframework.web.bind.annotation.RestController;
++
++/**
++ * PM checklist category API (story 19-2, blueprint F4). Categories are defined and
++ * edited against an UNAPPROVED checksheet revision — approved revisions are frozen
++ * (409 INVALID_CHECKSHEET_TRANSITION); corrections go through 19-1's revise flow.
++ */
++@Validated
++@RestController
++@RequestMapping("/api/v1/pm-checklist-categories")
++public class PmChecklistCategoryController {
++
++  private final PmChecklistService checklist;
++
++  public PmChecklistCategoryController(PmChecklistService checklist) {
++    this.checklist = checklist;
++  }
++
++  @Operation(operationId = "createPmChecklistCategory", summary = "Create a checklist category on an unapproved checksheet revision")
++  @ApiResponses({
++      @ApiResponse(responseCode = "201", description = "Category created",
++          content = @Content(schema = @Schema(implementation = ChecklistCategoryView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "PM checksheet not found"),
++      @ApiResponse(responseCode = "409", description = "Checksheet revision is approved (immutable)")
++  })
++  @PostMapping
++  public ResponseEntity<ChecklistCategoryView> create(@AuthenticationPrincipal AuthenticatedUser user,
++      @Valid @RequestBody CreateChecklistCategoryRequest request) {
++    var view = checklist.createCategory(user, new CreateCategoryCommand(request.checksheetId(),
++        request.name(), request.sortOrder()));
++    return ResponseEntity.status(HttpStatus.CREATED)
++        .location(URI.create("/api/v1/pm-checklist-categories/" + view.id()))
++        .body(toView(view));
++  }
++
++  @Operation(operationId = "listPmChecklistCategories", summary = "List a checksheet's categories (sort_order asc)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Categories returned",
++          content = @Content(schema = @Schema(implementation = ChecklistCategoryView.class))),
++      @ApiResponse(responseCode = "400", description = "Missing or invalid checksheetId"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "PM checksheet not found")
++  })
++  @GetMapping
++  public List<ChecklistCategoryView> list(@AuthenticationPrincipal AuthenticatedUser user,
++      @RequestParam UUID checksheetId) {
++    return checklist.listCategories(user, checksheetId).stream()
++        .map(PmChecklistCategoryController::toView).toList();
++  }
++
++  @Operation(operationId = "updatePmChecklistCategory", summary = "Rename/reorder a category (unapproved revision only)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Category updated",
++          content = @Content(schema = @Schema(implementation = ChecklistCategoryView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Category or checksheet not found"),
++      @ApiResponse(responseCode = "409", description = "Checksheet revision is approved (immutable)")
++  })
++  @PutMapping("/{id}")
++  public ChecklistCategoryView update(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id, @Valid @RequestBody UpdateChecklistCategoryRequest request) {
++    return toView(checklist.updateCategory(user, id,
++        new UpdateCategoryCommand(request.name(), request.sortOrder())));
++  }
++
++  @Operation(operationId = "deletePmChecklistCategory", summary = "Delete a category (its items are orphaned, categoryId nulled)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "204", description = "Category deleted"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Category or checksheet not found"),
++      @ApiResponse(responseCode = "409", description = "Checksheet revision is approved (immutable)")
++  })
++  @DeleteMapping("/{id}")
++  public ResponseEntity<Void> delete(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id) {
++    checklist.deleteCategory(user, id);
++    return ResponseEntity.noContent().build();
++  }
++
++  private static ChecklistCategoryView toView(
++      com.syncro.maintenance.preventive.application.PmChecklistService.CategoryView v) {
++    return new ChecklistCategoryView(v.id(), v.checksheetId(), v.name(), v.sortOrder(),
++        v.createdAt(), v.updatedAt());
++  }
++}
+--- NEW FILE: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmChecklistItemController.java ---
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmChecklistItemController.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmChecklistItemController.java
+new file mode 100644
+index 0000000..902ad9e
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PmChecklistItemController.java
+@@ -0,0 +1,147 @@
++package com.syncro.maintenance.preventive.api;
++
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.ChecklistItemView;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.CreateChecklistItemRequest;
++import com.syncro.maintenance.preventive.api.PreventiveDtos.UpdateChecklistItemRequest;
++import com.syncro.maintenance.preventive.application.PmChecklistService;
++import com.syncro.maintenance.preventive.application.PmChecklistService.CreateItemCommand;
++import com.syncro.maintenance.preventive.application.PmChecklistService.UpdateItemCommand;
++import io.swagger.v3.oas.annotations.Operation;
++import io.swagger.v3.oas.annotations.media.Content;
++import io.swagger.v3.oas.annotations.media.Schema;
++import io.swagger.v3.oas.annotations.responses.ApiResponse;
++import io.swagger.v3.oas.annotations.responses.ApiResponses;
++import jakarta.validation.Valid;
++import java.net.URI;
++import java.util.List;
++import java.util.UUID;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.security.core.annotation.AuthenticationPrincipal;
++import org.springframework.validation.annotation.Validated;
++import org.springframework.web.bind.annotation.DeleteMapping;
++import org.springframework.web.bind.annotation.GetMapping;
++import org.springframework.web.bind.annotation.PathVariable;
++import org.springframework.web.bind.annotation.PostMapping;
++import org.springframework.web.bind.annotation.PutMapping;
++import org.springframework.web.bind.annotation.RequestBody;
++import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RequestParam;
++import org.springframework.web.bind.annotation.RestController;
++
++/**
++ * PM checklist item API (story 19-2, blueprint F4). Items are defined and edited
++ * against an UNAPPROVED checksheet revision — approved revisions are frozen
++ * (409 INVALID_CHECKSHEET_TRANSITION). MEASUREMENT items carry unit + lsl/nominal/usl
++ * bounds; OK_NG items carry the boolean outcome. sequence defaults to max+1 within
++ * the checksheet when omitted.
++ */
++@Validated
++@RestController
++@RequestMapping("/api/v1/pm-checklist-items")
++public class PmChecklistItemController {
++
++  private final PmChecklistService checklist;
++
++  public PmChecklistItemController(PmChecklistService checklist) {
++    this.checklist = checklist;
++  }
++
++  @Operation(operationId = "createPmChecklistItem", summary = "Create a checklist item on an unapproved checksheet revision")
++  @ApiResponses({
++      @ApiResponse(responseCode = "201", description = "Item created",
++          content = @Content(schema = @Schema(implementation = ChecklistItemView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Checksheet, category or calibration instrument not found"),
++      @ApiResponse(responseCode = "409", description = "Checksheet revision is approved (immutable)")
++  })
++  @PostMapping
++  public ResponseEntity<ChecklistItemView> create(@AuthenticationPrincipal AuthenticatedUser user,
++      @Valid @RequestBody CreateChecklistItemRequest request) {
++    var view = checklist.createItem(user, new CreateItemCommand(request.checksheetId(),
++        request.categoryId(), request.sequence(), request.parameterText(),
++        request.checkMethod(), request.inputType(), request.unit(), request.lsl(),
++        request.nominal(), request.usl(), request.isCriticalFlag(),
++        request.referenceDocument(), request.calibrationInstrumentId()));
++    return ResponseEntity.status(HttpStatus.CREATED)
++        .location(URI.create("/api/v1/pm-checklist-items/" + view.id()))
++        .body(toView(view));
++  }
++
++  @Operation(operationId = "listPmChecklistItems", summary = "List a checksheet's items (sequence asc; optional categoryId filter)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Items returned",
++          content = @Content(schema = @Schema(implementation = ChecklistItemView.class))),
++      @ApiResponse(responseCode = "400", description = "Missing or invalid checksheetId"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "PM checksheet not found")
++  })
++  @GetMapping
++  public List<ChecklistItemView> list(@AuthenticationPrincipal AuthenticatedUser user,
++      @RequestParam UUID checksheetId,
++      @RequestParam(required = false) UUID categoryId) {
++    return checklist.listItems(user, checksheetId, categoryId).stream()
++        .map(PmChecklistItemController::toView).toList();
++  }
++
++  @Operation(operationId = "getPmChecklistItem", summary = "Get a checklist item")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Item returned",
++          content = @Content(schema = @Schema(implementation = ChecklistItemView.class))),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Item or checksheet not found")
++  })
++  @GetMapping("/{id}")
++  public ChecklistItemView get(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id) {
++    return toView(checklist.getItem(user, id));
++  }
++
++  @Operation(operationId = "updatePmChecklistItem", summary = "Edit a checklist item (unapproved revision only)")
++  @ApiResponses({
++      @ApiResponse(responseCode = "200", description = "Item updated",
++          content = @Content(schema = @Schema(implementation = ChecklistItemView.class))),
++      @ApiResponse(responseCode = "400", description = "Validation failed"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Item, checksheet, category or calibration instrument not found"),
++      @ApiResponse(responseCode = "409", description = "Checksheet revision is approved (immutable)")
++  })
++  @PutMapping("/{id}")
++  public ChecklistItemView update(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id, @Valid @RequestBody UpdateChecklistItemRequest request) {
++    return toView(checklist.updateItem(user, id, new UpdateItemCommand(request.categoryId(),
++        request.sequence(), request.parameterText(), request.checkMethod(), request.inputType(),
++        request.unit(), request.lsl(), request.nominal(), request.usl(),
++        request.isCriticalFlag(), request.referenceDocument(),
++        request.calibrationInstrumentId())));
++  }
++
++  @Operation(operationId = "deletePmChecklistItem", summary = "Delete a checklist item")
++  @ApiResponses({
++      @ApiResponse(responseCode = "204", description = "Item deleted"),
++      @ApiResponse(responseCode = "401", description = "Authentication required"),
++      @ApiResponse(responseCode = "403", description = "Forbidden"),
++      @ApiResponse(responseCode = "404", description = "Item or checksheet not found"),
++      @ApiResponse(responseCode = "409", description = "Checksheet revision is approved (immutable)")
++  })
++  @DeleteMapping("/{id}")
++  public ResponseEntity<Void> delete(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable UUID id) {
++    checklist.deleteItem(user, id);
++    return ResponseEntity.noContent().build();
++  }
++
++  private static ChecklistItemView toView(
++      com.syncro.maintenance.preventive.application.PmChecklistService.ItemView v) {
++    return new ChecklistItemView(v.id(), v.checksheetId(), v.categoryId(), v.sequence(),
++        v.parameterText(), v.checkMethod(), v.inputType(), v.unit(), v.lsl(), v.nominal(),
++        v.usl(), v.criticalFlag(), v.referenceDocument(), v.calibrationInstrumentId(),
++        v.createdAt(), v.updatedAt());
++  }
++}
+--- NEW FILE: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecklistService.java ---
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecklistService.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecklistService.java
+new file mode 100644
+index 0000000..7dcbaf8
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecklistService.java
+@@ -0,0 +1,543 @@
++package com.syncro.maintenance.preventive.application;
++
++import com.syncro.audit.application.AuditLogWriter;
++import com.syncro.audit.application.AuditRecord;
++import com.syncro.audit.domain.AuditAction;
++import com.syncro.audit.domain.AuditEntityType;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.compliance.infrastructure.db.CalibrationInstrumentRepository;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.InvalidChecksheetTransitionException;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.MachineNotFoundException;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.PmChecksheetForbiddenException;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.PmChecksheetNotFoundException;
++import com.syncro.maintenance.preventive.domain.PmItemInputType;
++import com.syncro.maintenance.preventive.infrastructure.db.PmChecklistCategoryEntity;
++import com.syncro.maintenance.preventive.infrastructure.db.PmChecklistCategoryRepository;
++import com.syncro.maintenance.preventive.infrastructure.db.PmChecklistItemEntity;
++import com.syncro.maintenance.preventive.infrastructure.db.PmChecklistItemRepository;
++import com.syncro.maintenance.preventive.infrastructure.db.PmChecksheetEntity;
++import com.syncro.maintenance.preventive.infrastructure.db.PmChecksheetRepository;
++import com.syncro.machine.infrastructure.MachineEntity;
++import com.syncro.machine.infrastructure.MachineRepository;
++import com.syncro.org.application.OperationalScope;
++import com.syncro.org.application.OperationalScopeService;
++import java.math.BigDecimal;
++import java.time.Clock;
++import java.time.Instant;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++
++/**
++ * PM checklist categories &amp; items service (story 19-2, blueprint F4). Defines and
++ * edits the actual check content — ordered categories and items (MEASUREMENT with
++ * unit/lsl/nominal/usl bounds or OK_NG) — against an UNAPPROVED checksheet revision.
++ * Approved revisions are frozen: every mutation first re-checks the owning checksheet's
++ * {@code approvedBy == null} and surfaces 409 INVALID_CHECKSHEET_TRANSITION otherwise
++ * (corrections go through 19-1's revise flow; the revision chain preserves history).
++ *
++ * <p>Gates: same four-role set + machine plant/group scope as 19-1 create/revise
++ * (SUPER_ADMIN bypass), resolved through the checksheet's machine via the
++ * requireMutationAccess pattern; reads are scope-filtered the same way 19-1 list/get
++ * filter, so scoped data never leaks across plant/group boundaries.
++ *
++ * <p>Item sequence defaults to max+1 within the checksheet, computed in-transaction.
++ * V1 carries no unique constraint on (checksheet_id, sequence), so concurrent creates
++ * may produce duplicate sequence values — tolerated by design (ordering is by sequence
++ * asc, stable-enough for 19-5 rendering).
++ *
++ * <p>Category delete nulls {@code item.categoryId} explicitly service-side (rather than
++ * relying on the FK's ON DELETE SET NULL) so the audit trail records which items were
++ * orphaned.
++ */
++@Service
++public class PmChecklistService {
++
++  private final PmChecksheetRepository checksheets;
++  private final PmChecklistCategoryRepository categories;
++  private final PmChecklistItemRepository items;
++  private final MachineRepository machines;
++  private final CalibrationInstrumentRepository calibrationInstruments;
++  private final AuditLogWriter auditLog;
++  private final OperationalScopeService scopes;
++  private final Clock clock;
++
++  public PmChecklistService(PmChecksheetRepository checksheets,
++      PmChecklistCategoryRepository categories, PmChecklistItemRepository items,
++      MachineRepository machines, CalibrationInstrumentRepository calibrationInstruments,
++      AuditLogWriter auditLog, OperationalScopeService scopes, Clock clock) {
++    this.checksheets = checksheets;
++    this.categories = categories;
++    this.items = items;
++    this.machines = machines;
++    this.calibrationInstruments = calibrationInstruments;
++    this.auditLog = auditLog;
++    this.scopes = scopes;
++    this.clock = clock;
++  }
++
++  // -------------------------------------------------------------------------
++  // Categories
++  // -------------------------------------------------------------------------
++
++  @Transactional
++  public CategoryView createCategory(AuthenticatedUser user, CreateCategoryCommand command) {
++    var context = requireMutationContext(user, command.checksheetId());
++    var name = requireText(command.name(), "name", 200);
++    var sortOrder = command.sortOrder() != null ? command.sortOrder() : 0;
++    requireNonNegativeSortOrder(sortOrder);
++    var now = Instant.now(clock);
++    var entity = new PmChecklistCategoryEntity(UUID.randomUUID(), context.checksheet().getId(),
++        name, sortOrder, now, now);
++    var saved = categories.saveAndFlush(entity);
++    auditLog.record(user, new AuditRecord(AuditAction.CREATE,
++        AuditEntityType.PM_CHECKLIST_CATEGORY, saved.getId(), saved.getName(),
++        context.machine().getPlant().getId(), null, categoryValues(saved), null));
++    return toCategoryView(saved);
++  }
++
++  @Transactional(readOnly = true)
++  public List<CategoryView> listCategories(AuthenticatedUser user, UUID checksheetId) {
++    var checksheet = loadChecksheet(checksheetId);
++    var machine = loadMachine(checksheet.getMachineId());
++    // 19-1 list idiom: out-of-scope rows are invisible (empty), not a 403 probe.
++    if (!canRead(user, machine)) {
++      return List.of();
++    }
++    return categories.findByChecksheetIdOrderBySortOrderAsc(checksheet.getId()).stream()
++        .map(PmChecklistService::toCategoryView)
++        .toList();
++  }
++
++  @Transactional
++  public CategoryView updateCategory(AuthenticatedUser user, UUID id,
++      UpdateCategoryCommand command) {
++    var category = loadCategory(id);
++    var context = requireMutationContext(user, category.getChecksheetId());
++    var name = requireText(command.name(), "name", 200);
++    // Null-merge parity with 19-1 frequency update: an omitted sortOrder keeps the
++    // current value.
++    var sortOrder = command.sortOrder() != null ? command.sortOrder() : category.getSortOrder();
++    requireNonNegativeSortOrder(sortOrder);
++    var previous = categoryValues(category);
++    category.update(name, sortOrder, Instant.now(clock));
++    var saved = categories.saveAndFlush(category);
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE,
++        AuditEntityType.PM_CHECKLIST_CATEGORY, saved.getId(), saved.getName(),
++        context.machine().getPlant().getId(), previous, categoryValues(saved), null));
++    return toCategoryView(saved);
++  }
++
++  @Transactional
++  public void deleteCategory(AuthenticatedUser user, UUID id) {
++    var category = loadCategory(id);
++    var context = requireMutationContext(user, category.getChecksheetId());
++    var now = Instant.now(clock);
++    // Orphan referencing items explicitly (service-side, before the delete) so each
++    // orphaning is audit-logged — the FK's ON DELETE SET NULL would do it silently.
++    for (var item : items.findByCategoryId(category.getId())) {
++      var itemPrevious = itemValues(item);
++      item.clearCategory(now);
++      items.saveAndFlush(item);
++      auditLog.record(user, new AuditRecord(AuditAction.UPDATE,
++          AuditEntityType.PM_CHECKLIST_ITEM, item.getId(), itemLabel(item),
++          context.machine().getPlant().getId(), itemPrevious, itemValues(item), null));
++    }
++    var previous = categoryValues(category);
++    categories.delete(category);
++    categories.flush();
++    auditLog.record(user, new AuditRecord(AuditAction.DELETE,
++        AuditEntityType.PM_CHECKLIST_CATEGORY, category.getId(), category.getName(),
++        context.machine().getPlant().getId(), previous, null, null));
++  }
++
++  // -------------------------------------------------------------------------
++  // Items
++  // -------------------------------------------------------------------------
++
++  @Transactional
++  public ItemView createItem(AuthenticatedUser user, CreateItemCommand command) {
++    var context = requireMutationContext(user, command.checksheetId());
++    var parameterText = requireText(command.parameterText(), "parameterText", 500);
++    if (command.inputType() == null) {
++      throw new ChecklistValidationException(Map.of("inputType", "inputType is required."));
++    }
++    var categoryId = resolveCategoryId(command.checksheetId(), command.categoryId());
++    var calibrationInstrumentId = resolveCalibrationInstrument(command.calibrationInstrumentId());
++    requireBounds(command.inputType(), command.lsl(), command.usl());
++    // PUT-style explicit sequence wins; otherwise default to max+1 within the checksheet.
++    var sequence = command.sequence() != null ? command.sequence()
++        : items.findMaxSequence(context.checksheet().getId()).orElse(0) + 1;
++    var now = Instant.now(clock);
++    var entity = new PmChecklistItemEntity(UUID.randomUUID(), context.checksheet().getId(),
++        categoryId, sequence, parameterText, normalizeOptional(command.checkMethod()),
++        command.inputType(), normalizeOptional(command.unit()), command.lsl(), command.nominal(),
++        command.usl(), command.isCriticalFlag() != null && command.isCriticalFlag(),
++        normalizeOptional(command.referenceDocument()), calibrationInstrumentId, now, now);
++    var saved = items.saveAndFlush(entity);
++    auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.PM_CHECKLIST_ITEM,
++        saved.getId(), itemLabel(saved), context.machine().getPlant().getId(), null,
++        itemValues(saved), null));
++    return toItemView(saved);
++  }
++
++  @Transactional(readOnly = true)
++  public List<ItemView> listItems(AuthenticatedUser user, UUID checksheetId, UUID categoryId) {
++    var checksheet = loadChecksheet(checksheetId);
++    var machine = loadMachine(checksheet.getMachineId());
++    if (!canRead(user, machine)) {
++      return List.of();
++    }
++    List<PmChecklistItemEntity> rows = categoryId != null
++        ? items.findByChecksheetIdAndCategoryIdOrderBySequenceAsc(checksheet.getId(), categoryId)
++        : items.findByChecksheetIdOrderBySequenceAsc(checksheet.getId());
++    return rows.stream().map(PmChecklistService::toItemView).toList();
++  }
++
++  @Transactional(readOnly = true)
++  public ItemView getItem(AuthenticatedUser user, UUID id) {
++    var item = loadItem(id);
++    var machine = loadMachine(loadChecksheet(item.getChecksheetId()).getMachineId());
++    // 19-1 get idiom: direct access to an out-of-scope resource is a 403.
++    if (!canRead(user, machine)) {
++      throw new PmChecksheetForbiddenException();
++    }
++    return toItemView(item);
++  }
++
++  @Transactional
++  public ItemView updateItem(AuthenticatedUser user, UUID id, UpdateItemCommand command) {
++    var item = loadItem(id);
++    var context = requireMutationContext(user, item.getChecksheetId());
++    var parameterText = requireText(command.parameterText(), "parameterText", 500);
++    if (command.inputType() == null) {
++      throw new ChecklistValidationException(Map.of("inputType", "inputType is required."));
++    }
++    // Null-merge (19-1 frequency-update idiom): an omitted optional field keeps its
++    // current value; a provided value replaces it (blank optional text clears).
++    var categoryId = command.categoryId() != null
++        ? resolveCategoryId(context.checksheet().getId(), command.categoryId())
++        : item.getCategoryId();
++    var calibrationInstrumentId = command.calibrationInstrumentId() != null
++        ? resolveCalibrationInstrument(command.calibrationInstrumentId())
++        : item.getCalibrationInstrumentId();
++    var sequence = command.sequence() != null ? command.sequence() : item.getSequence();
++    var lsl = command.lsl() != null ? command.lsl() : item.getLsl();
++    var usl = command.usl() != null ? command.usl() : item.getUsl();
++    requireBounds(command.inputType(), lsl, usl);
++    var previous = itemValues(item);
++    item.update(categoryId, sequence, parameterText,
++        mergeOptionalText(command.checkMethod(), item.getCheckMethod()), command.inputType(),
++        mergeOptionalText(command.unit(), item.getUnit()), lsl,
++        command.nominal() != null ? command.nominal() : item.getNominal(), usl,
++        command.isCriticalFlag() != null ? command.isCriticalFlag() : item.isCriticalFlag(),
++        mergeOptionalText(command.referenceDocument(), item.getReferenceDocument()),
++        calibrationInstrumentId, Instant.now(clock));
++    var saved = items.saveAndFlush(item);
++    auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PM_CHECKLIST_ITEM,
++        saved.getId(), itemLabel(saved), context.machine().getPlant().getId(), previous,
++        itemValues(saved), null));
++    return toItemView(saved);
++  }
++
++  @Transactional
++  public void deleteItem(AuthenticatedUser user, UUID id) {
++    var item = loadItem(id);
++    var context = requireMutationContext(user, item.getChecksheetId());
++    var previous = itemValues(item);
++    items.delete(item);
++    items.flush();
++    auditLog.record(user, new AuditRecord(AuditAction.DELETE, AuditEntityType.PM_CHECKLIST_ITEM,
++        item.getId(), itemLabel(item), context.machine().getPlant().getId(), previous, null,
++        null));
++  }
++
++  // -------------------------------------------------------------------------
++  // Gates & context
++  // -------------------------------------------------------------------------
++
++  /**
++   * Mutation precondition: checksheet exists (404), the actor passes the 19-1
++   * four-role + machine-scope gate (403), and the revision is unapproved (409).
++   */
++  private MutationContext requireMutationContext(AuthenticatedUser user, UUID checksheetId) {
++    var checksheet = loadChecksheet(checksheetId);
++    var machine = loadMachine(checksheet.getMachineId());
++    requireMutationAccess(user, machine);
++    if (checksheet.getApprovedBy() != null) {
++      throw new InvalidChecksheetTransitionException();
++    }
++    return new MutationContext(checksheet, machine);
++  }
++
++  /** Read gate: SUPER_ADMIN unrestricted; everyone else needs the machine in scope. */
++  private boolean canRead(AuthenticatedUser user, MachineEntity machine) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return true;
++    }
++    return inScope(scopes.derive(user), machine);
++  }
++
++  /** Gate: same four-role set + machine-plant/group scope as 19-1 (SUPER_ADMIN bypass). */
++  private void requireMutationAccess(AuthenticatedUser user, MachineEntity machine) {
++    if (user.applicationRole() == ApplicationRole.SUPER_ADMIN) {
++      return;
++    }
++    var scope = scopes.derive(user);
++    switch (user.applicationRole()) {
++      case SECTION_LEADER -> {
++        if (!groupInScope(scope, machine)) {
++          throw new PmChecksheetForbiddenException();
++        }
++      }
++      case MAINTENANCE_LEADER, MANAGER_MAINTENANCE -> {
++        if (!plantInScope(scope, machine) && !groupInScope(scope, machine)) {
++          throw new PmChecksheetForbiddenException();
++        }
++      }
++      case STAFF_MAINTENANCE -> {
++        if (!plantInScope(scope, machine)) {
++          throw new PmChecksheetForbiddenException();
++        }
++      }
++      default -> throw new PmChecksheetForbiddenException();
++    }
++  }
++
++  private boolean inScope(OperationalScope scope, MachineEntity machine) {
++    return plantInScope(scope, machine) || groupInScope(scope, machine);
++  }
++
++  private boolean plantInScope(OperationalScope scope, MachineEntity machine) {
++    return scope.plantIds() != null && scope.plantIds().contains(machine.getPlant().getId());
++  }
++
++  private boolean groupInScope(OperationalScope scope, MachineEntity machine) {
++    return scope.machineGroupIds().contains(machine.getMachineGroup().getId())
++        || scope.activeTeamIds().contains(machine.getMachineGroup().getId());
++  }
++
++  // -------------------------------------------------------------------------
++  // Validation helpers
++  // -------------------------------------------------------------------------
++
++  /** null → null; blank → null; otherwise trimmed. */
++  private static String normalizeOptional(String value) {
++    if (value == null || value.isBlank()) {
++      return null;
++    }
++    return value.trim();
++  }
++
++  /** PUT null-merge for optional text: omitted keeps the current value, provided (even blank) replaces. */
++  private static String mergeOptionalText(String provided, String current) {
++    return provided != null ? normalizeOptional(provided) : current;
++  }
++
++  /**
++   * Blank-after-trim and over-long values are rejected here rather than at the DB
++   * CHECK (ck_pm_checklist_categories_name_not_blank /
++   * ck_pm_checklist_items_parameter_not_blank), which would surface as a 500 —
++   * @NotBlank passes on "   ", so the service is the last boundary that can
++   * produce a 400 VALIDATION_ERROR (19-1 lesson).
++   */
++  private static String requireText(String value, String field, int maxLength) {
++    var trimmed = value == null ? "" : value.trim();
++    if (trimmed.isEmpty()) {
++      throw new ChecklistValidationException(Map.of(field, field + " must not be blank."));
++    }
++    if (trimmed.length() > maxLength) {
++      throw new ChecklistValidationException(
++          Map.of(field, field + " must be at most " + maxLength + " characters."));
++    }
++    return trimmed;
++  }
++
++  private static void requireNonNegativeSortOrder(int sortOrder) {
++    if (sortOrder < 0) {
++      throw new ChecklistValidationException(
++          Map.of("sortOrder", "sortOrder must be zero or greater."));
++    }
++  }
++
++  /** MEASUREMENT with both bounds present → lsl ≤ usl (BigDecimal compare, never float). */
++  private static void requireBounds(PmItemInputType inputType, BigDecimal lsl, BigDecimal usl) {
++    if (inputType == PmItemInputType.MEASUREMENT && lsl != null && usl != null
++        && lsl.compareTo(usl) > 0) {
++      throw new ChecklistValidationException(
++          Map.of("lsl", "lsl must be less than or equal to usl."));
++    }
++  }
++
++  /**
++   * Optional category reference: unknown id → 404; an existing category from another
++   * checksheet → 400 (items and their category must share one revision).
++   */
++  private UUID resolveCategoryId(UUID checksheetId, UUID categoryId) {
++    if (categoryId == null) {
++      return null;
++    }
++    var category = categories.findById(categoryId)
++        .orElseThrow(PmChecklistCategoryNotFoundException::new);
++    if (!category.getChecksheetId().equals(checksheetId)) {
++      throw new ChecklistValidationException(
++          Map.of("categoryId", "Category belongs to a different checksheet."));
++    }
++    return category.getId();
++  }
++
++  /** Optional calibration reference: present but unknown → 404 CALIBRATION_INSTRUMENT_NOT_FOUND. */
++  private UUID resolveCalibrationInstrument(UUID calibrationInstrumentId) {
++    if (calibrationInstrumentId == null) {
++      return null;
++    }
++    // Cross-module repo read (MachineRepository precedent): existence check only.
++    if (!calibrationInstruments.existsById(calibrationInstrumentId)) {
++      throw new CalibrationInstrumentNotFoundException();
++    }
++    return calibrationInstrumentId;
++  }
++
++  // -------------------------------------------------------------------------
++  // Loaders
++  // -------------------------------------------------------------------------
++
++  private PmChecksheetEntity loadChecksheet(UUID id) {
++    return checksheets.findById(id).orElseThrow(PmChecksheetNotFoundException::new);
++  }
++
++  private PmChecklistCategoryEntity loadCategory(UUID id) {
++    return categories.findById(id).orElseThrow(PmChecklistCategoryNotFoundException::new);
++  }
++
++  private PmChecklistItemEntity loadItem(UUID id) {
++    return items.findById(id).orElseThrow(PmChecklistItemNotFoundException::new);
++  }
++
++  private MachineEntity loadMachine(UUID machineId) {
++    return machines.findByIdWithPlantAndGroup(machineId)
++        .orElseThrow(MachineNotFoundException::new);
++  }
++
++  // -------------------------------------------------------------------------
++  // Audit value maps & views (all UUIDs stringified — 19-1 pattern)
++  // -------------------------------------------------------------------------
++
++  private static Map<String, Object> categoryValues(PmChecklistCategoryEntity entity) {
++    var values = new LinkedHashMap<String, Object>();
++    values.put("id", entity.getId().toString());
++    values.put("checksheetId", entity.getChecksheetId().toString());
++    values.put("name", entity.getName());
++    values.put("sortOrder", entity.getSortOrder());
++    values.put("createdAt", entity.getCreatedAt().toString());
++    values.put("updatedAt", entity.getUpdatedAt().toString());
++    return values;
++  }
++
++  private static Map<String, Object> itemValues(PmChecklistItemEntity entity) {
++    var values = new LinkedHashMap<String, Object>();
++    values.put("id", entity.getId().toString());
++    values.put("checksheetId", entity.getChecksheetId().toString());
++    values.put("categoryId", entity.getCategoryId() != null ? entity.getCategoryId().toString() : null);
++    values.put("sequence", entity.getSequence());
++    values.put("parameterText", entity.getParameterText());
++    values.put("checkMethod", entity.getCheckMethod());
++    values.put("inputType", entity.getInputType().name());
++    values.put("unit", entity.getUnit());
++    values.put("lsl", entity.getLsl() != null ? entity.getLsl().toPlainString() : null);
++    values.put("nominal", entity.getNominal() != null ? entity.getNominal().toPlainString() : null);
++    values.put("usl", entity.getUsl() != null ? entity.getUsl().toPlainString() : null);
++    values.put("isCriticalFlag", entity.isCriticalFlag());
++    values.put("referenceDocument", entity.getReferenceDocument());
++    values.put("calibrationInstrumentId", entity.getCalibrationInstrumentId() != null
++        ? entity.getCalibrationInstrumentId().toString() : null);
++    values.put("createdAt", entity.getCreatedAt().toString());
++    values.put("updatedAt", entity.getUpdatedAt().toString());
++    return values;
++  }
++
++  /** entity_label is VARCHAR(255) NOT NULL — parameterText (≤500) is truncated. */
++  private static String itemLabel(PmChecklistItemEntity entity) {
++    var text = entity.getParameterText();
++    return text.length() <= 255 ? text : text.substring(0, 255);
++  }
++
++  private static CategoryView toCategoryView(PmChecklistCategoryEntity entity) {
++    return new CategoryView(entity.getId(), entity.getChecksheetId(), entity.getName(),
++        entity.getSortOrder(), entity.getCreatedAt(), entity.getUpdatedAt());
++  }
++
++  private static ItemView toItemView(PmChecklistItemEntity entity) {
++    return new ItemView(entity.getId(), entity.getChecksheetId(), entity.getCategoryId(),
++        entity.getSequence(), entity.getParameterText(), entity.getCheckMethod(),
++        entity.getInputType(), entity.getUnit(), entity.getLsl(), entity.getNominal(),
++        entity.getUsl(), entity.isCriticalFlag(), entity.getReferenceDocument(),
++        entity.getCalibrationInstrumentId(), entity.getCreatedAt(), entity.getUpdatedAt());
++  }
++
++  // -------------------------------------------------------------------------
++  // Commands & views
++  // -------------------------------------------------------------------------
++
++  private record MutationContext(PmChecksheetEntity checksheet, MachineEntity machine) {
++  }
++
++  public record CreateCategoryCommand(UUID checksheetId, String name, Integer sortOrder) {
++  }
++
++  public record UpdateCategoryCommand(String name, Integer sortOrder) {
++  }
++
++  public record CategoryView(UUID id, UUID checksheetId, String name, int sortOrder,
++      Instant createdAt, Instant updatedAt) {
++  }
++
++  public record CreateItemCommand(UUID checksheetId, UUID categoryId, Integer sequence,
++      String parameterText, String checkMethod, PmItemInputType inputType, String unit,
++      BigDecimal lsl, BigDecimal nominal, BigDecimal usl, Boolean isCriticalFlag,
++      String referenceDocument, UUID calibrationInstrumentId) {
++  }
++
++  public record UpdateItemCommand(UUID categoryId, Integer sequence, String parameterText,
++      String checkMethod, PmItemInputType inputType, String unit, BigDecimal lsl,
++      BigDecimal nominal, BigDecimal usl, Boolean isCriticalFlag, String referenceDocument,
++      UUID calibrationInstrumentId) {
++  }
++
++  public record ItemView(UUID id, UUID checksheetId, UUID categoryId, int sequence,
++      String parameterText, String checkMethod, PmItemInputType inputType, String unit,
++      BigDecimal lsl, BigDecimal nominal, BigDecimal usl, boolean criticalFlag,
++      String referenceDocument, UUID calibrationInstrumentId, Instant createdAt,
++      Instant updatedAt) {
++  }
++
++  // -------------------------------------------------------------------------
++  // Exceptions
++  // -------------------------------------------------------------------------
++
++  public static class PmChecklistCategoryNotFoundException extends RuntimeException {
++  }
++
++  public static class PmChecklistItemNotFoundException extends RuntimeException {
++  }
++
++  public static class CalibrationInstrumentNotFoundException extends RuntimeException {
++  }
++
++  /** Blank/over-long/bounds/category-mismatch fields → 400 VALIDATION_ERROR. */
++  public static class ChecklistValidationException extends RuntimeException {
++    private final Map<String, String> fieldErrors;
++
++    public ChecklistValidationException(Map<String, String> fieldErrors) {
++      this.fieldErrors = new LinkedHashMap<>(fieldErrors);
++    }
++
++    public Map<String, String> getFieldErrors() {
++      return fieldErrors;
++    }
++  }
++}
+--- NEW FILE: syncro/apps/backend/src/main/resources/db/migration/V8__pm_checklist_audit_types.sql ---
+diff --git a/syncro/apps/backend/src/main/resources/db/migration/V8__pm_checklist_audit_types.sql b/syncro/apps/backend/src/main/resources/db/migration/V8__pm_checklist_audit_types.sql
+new file mode 100644
+index 0000000..0bc5e4b
+--- /dev/null
++++ b/syncro/apps/backend/src/main/resources/db/migration/V8__pm_checklist_audit_types.sql
+@@ -0,0 +1,33 @@
++-- ============================================================================
++-- V8: PM checklist audit entity types (story 19-2, blueprint F4)
++-- Additive-only migration extending the ck_audit_log_entity_type CHECK with
++-- PM_CHECKLIST_CATEGORY and PM_CHECKLIST_ITEM that
++-- AuditEntityType.PM_CHECKLIST_CATEGORY / AuditEntityType.PM_CHECKLIST_ITEM
++-- write (the doc comment on that enum requires the Java enum and the SQL CHECK
++-- to move together in one change). No schema changes to pm_checklist_categories
++-- / pm_checklist_items — both tables already carry every F4 column in V1.
++-- ============================================================================
++
++ALTER TABLE audit_log
++  DROP CONSTRAINT ck_audit_log_entity_type;
++
++ALTER TABLE audit_log
++  ADD CONSTRAINT ck_audit_log_entity_type CHECK (entity_type IN
++    ('PLANT', 'MACHINE_GROUP', 'MACHINE', 'SPAREPART_TAXONOMY',
++     'SPAREPART', 'INSTALLATION', 'RESPONSIBILITY', 'ALERT',
++     'SPAREPART_PRICE_ENTRY', 'SECTION', 'TEAM', 'WORK_ORDER_CATEGORY',
++     'WORK_ORDER', 'REPAIR_SESSION', 'WORKORDER_ATTACHMENT',
++     'WORK_ORDER_TODO', 'WORKORDER_RATING', 'RATING_DIMENSION',
++     'PREVENTIVE_PROGRAM', 'PREVENTIVE_SCHEDULE',
++     'PREVENTIVE_CHECKLIST', 'PREVENTIVE_ATTACHMENT',
++     'SPAREPART_REQUEST', 'DEPARTMENT', 'DEPARTMENT_USER', 'USER',
++     'INVENTORY_LOCATION', 'INVENTORY_STOCK_BALANCE',
++     'INVENTORY_TRANSFER', 'INVENTORY_RESERVATION',
++     'MACHINE_AREA', 'JOB_TITLE', 'SYSTEM_ROLE', 'ROLE_PERMISSION_MAPPING',
++     'MENU_FEATURE', 'DOMAIN_CONTEXT', 'USER_JOB_BINDING', 'USER_ROLE_BINDING',
++     'PLANT_WORKING_CALENDAR', 'SIGNATURE_USE',
++     'SPAREPART_STOCK', 'SYNC_RUN', 'SYNC_QUARANTINE', 'WORKORDER_SIGNATURE',
++     'WORK_ASSIGNMENT', 'WORK_LOG', 'WORK_LOG_RATING',
++     'WORK_ORDER_QUALITY_RATING',
++     'PM_FREQUENCY', 'PM_CHECKSHEET',
++     'PM_CHECKLIST_CATEGORY', 'PM_CHECKLIST_ITEM'));
+--- NEW FILE: syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmChecklistControllerTest.java ---
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmChecklistControllerTest.java b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmChecklistControllerTest.java
+new file mode 100644
+index 0000000..8625005
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmChecklistControllerTest.java
+@@ -0,0 +1,428 @@
++package com.syncro.maintenance.preventive.api;
++
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.eq;
++import static org.mockito.Mockito.doThrow;
++import static org.mockito.Mockito.when;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
++
++import com.syncro.TestJsonConfig;
++import com.syncro.auth.application.JwtTokenService;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.JwtAuthenticationFilter;
++import com.syncro.config.SecurityConfig;
++import com.syncro.config.TimeConfig;
++import com.syncro.maintenance.preventive.application.PmChecklistService;
++import com.syncro.maintenance.preventive.application.PmChecklistService.CategoryView;
++import com.syncro.maintenance.preventive.application.PmChecklistService.ItemView;
++import com.syncro.maintenance.preventive.application.PmChecksheetService;
++import com.syncro.maintenance.preventive.domain.PmItemInputType;
++import java.math.BigDecimal;
++import java.time.Instant;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
++import org.springframework.context.annotation.Import;
++import org.springframework.http.MediaType;
++import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
++import org.springframework.security.core.authority.SimpleGrantedAuthority;
++import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
++import org.springframework.test.context.bean.override.mockito.MockitoBean;
++import org.springframework.test.web.servlet.MockMvc;
++import org.springframework.test.web.servlet.request.RequestPostProcessor;
++
++/**
++ * Story 19-2 MockMvc contract test: DTO shape, status codes, and every new
++ * exception→HTTP mapping for the pm-checklist-categories / pm-checklist-items
++ * surface (PmChecksheetControllerTest error-path pattern).
++ */
++@WebMvcTest({PmChecklistCategoryController.class, PmChecklistItemController.class})
++@Import({SecurityConfig.class, PreventiveExceptionHandler.class, JwtAuthenticationFilter.class,
++    TimeConfig.class, TestJsonConfig.class})
++class PmChecklistControllerTest {
++
++  @Autowired
++  private MockMvc mockMvc;
++
++  @MockitoBean
++  private PmChecklistService checklist;
++
++  @MockitoBean
++  private JwtTokenService jwtTokenService;
++
++  private static final UUID CS_ID = UUID.fromString("11111111-2222-3333-4444-555555555555");
++  private static final UUID CAT_ID = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
++  private static final UUID ITEM_ID = UUID.fromString("ffffffff-eeee-dddd-cccc-bbbbbbbbbbbb");
++  private static final Instant NOW = Instant.parse("2026-09-01T08:00:00Z");
++
++  // -------------------------------------------------------------------------
++  // Categories
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.2-API-001 P0 create category returns 201 with view shape")
++  void createCategory() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(checklist.createCategory(eq(user), any())).thenReturn(categoryView());
++
++    mockMvc.perform(post("/api/v1/pm-checklist-categories")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"checksheetId\":\"" + CS_ID + "\",\"name\":\"Lubrication\",\"sortOrder\":1}"))
++        .andExpect(status().isCreated())
++        .andExpect(jsonPath("$.id").value(CAT_ID.toString()))
++        .andExpect(jsonPath("$.checksheetId").value(CS_ID.toString()))
++        .andExpect(jsonPath("$.name").value("Lubrication"))
++        .andExpect(jsonPath("$.sortOrder").value(1));
++  }
++
++  @Test
++  @DisplayName("19.2-API-002 P0 create category missing checksheetId → 400 VALIDATION_ERROR")
++  void createCategoryMissingChecksheetId() throws Exception {
++    mockMvc.perform(post("/api/v1/pm-checklist-categories")
++            .with(auth(ApplicationRole.STAFF_MAINTENANCE))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"name\":\"Lubrication\"}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.checksheetId").exists());
++  }
++
++  @Test
++  @DisplayName("19.2-API-003 P0 list categories returns 200")
++  void listCategories() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(checklist.listCategories(eq(user), eq(CS_ID))).thenReturn(List.of(categoryView()));
++
++    mockMvc.perform(get("/api/v1/pm-checklist-categories")
++            .param("checksheetId", CS_ID.toString())
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$[0].name").value("Lubrication"));
++  }
++
++  @Test
++  @DisplayName("19.2-API-004 P0 update category returns 200")
++  void updateCategory() throws Exception {
++    var user = user(ApplicationRole.SECTION_LEADER);
++    when(checklist.updateCategory(eq(user), eq(CAT_ID), any())).thenReturn(categoryView());
++
++    mockMvc.perform(put("/api/v1/pm-checklist-categories/{id}", CAT_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"name\":\"Lubrication\",\"sortOrder\":2}"))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.name").value("Lubrication"));
++  }
++
++  @Test
++  @DisplayName("19.2-API-005 P0 delete category returns 204")
++  void deleteCategory() throws Exception {
++    var user = user(ApplicationRole.SECTION_LEADER);
++    mockMvc.perform(delete("/api/v1/pm-checklist-categories/{id}", CAT_ID)
++            .with(auth(user)))
++        .andExpect(status().isNoContent());
++  }
++
++  @Test
++  @DisplayName("19.2-API-006 P0 unknown category → 404 PM_CHECKLIST_CATEGORY_NOT_FOUND")
++  void updateCategoryNotFound() throws Exception {
++    var user = user(ApplicationRole.SECTION_LEADER);
++    when(checklist.updateCategory(eq(user), eq(CAT_ID), any()))
++        .thenThrow(new PmChecklistService.PmChecklistCategoryNotFoundException());
++
++    mockMvc.perform(put("/api/v1/pm-checklist-categories/{id}", CAT_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"name\":\"X\"}"))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("PM_CHECKLIST_CATEGORY_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("19.2-API-007 P0 unknown checksheet on create → 404 PM_CHECKSHEET_NOT_FOUND")
++  void createCategoryChecksheetNotFound() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(checklist.createCategory(eq(user), any()))
++        .thenThrow(new PmChecksheetService.PmChecksheetNotFoundException());
++
++    mockMvc.perform(post("/api/v1/pm-checklist-categories")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"checksheetId\":\"" + CS_ID + "\",\"name\":\"X\"}"))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("PM_CHECKSHEET_NOT_FOUND"));
++  }
++
++  // -------------------------------------------------------------------------
++  // Items
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.2-API-008 P0 create MEASUREMENT item returns 201 with bounds as decimals")
++  void createItem() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(checklist.createItem(eq(user), any())).thenReturn(itemView());
++
++    mockMvc.perform(post("/api/v1/pm-checklist-items")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"checksheetId\":\"" + CS_ID + "\",\"categoryId\":\"" + CAT_ID
++                + "\",\"parameterText\":\"Bearing temperature\",\"inputType\":\"MEASUREMENT\","
++                + "\"unit\":\"C\",\"lsl\":10,\"nominal\":55,\"usl\":100,\"isCriticalFlag\":true}"))
++        .andExpect(status().isCreated())
++        .andExpect(jsonPath("$.id").value(ITEM_ID.toString()))
++        .andExpect(jsonPath("$.sequence").value(1))
++        .andExpect(jsonPath("$.inputType").value("MEASUREMENT"))
++        .andExpect(jsonPath("$.lsl").value(10))
++        .andExpect(jsonPath("$.usl").value(100))
++        .andExpect(jsonPath("$.isCriticalFlag").value(true));
++  }
++
++  @Test
++  @DisplayName("19.2-API-009 P0 create item missing parameterText → 400 VALIDATION_ERROR")
++  void createItemMissingParameterText() throws Exception {
++    mockMvc.perform(post("/api/v1/pm-checklist-items")
++            .with(auth(ApplicationRole.STAFF_MAINTENANCE))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"checksheetId\":\"" + CS_ID + "\",\"inputType\":\"OK_NG\"}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.parameterText").exists());
++  }
++
++  @Test
++  @DisplayName("19.2-API-010 P0 unknown inputType enum → 400 VALIDATION_ERROR on inputType")
++  void createItemUnknownInputType() throws Exception {
++    mockMvc.perform(post("/api/v1/pm-checklist-items")
++            .with(auth(ApplicationRole.STAFF_MAINTENANCE))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"checksheetId\":\"" + CS_ID + "\",\"parameterText\":\"X\","
++                + "\"inputType\":\"BOGUS\"}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.inputType").exists());
++  }
++
++  @Test
++  @DisplayName("19.2-API-011 P0 lsl > usl → 400 VALIDATION_ERROR with fieldErrors")
++  void createItemInvertedBounds() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(checklist.createItem(eq(user), any())).thenThrow(
++        new PmChecklistService.ChecklistValidationException(
++            Map.of("lsl", "lsl must be less than or equal to usl.")));
++
++    mockMvc.perform(post("/api/v1/pm-checklist-items")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"checksheetId\":\"" + CS_ID + "\",\"parameterText\":\"X\","
++                + "\"inputType\":\"MEASUREMENT\",\"lsl\":10,\"usl\":5}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.lsl").exists());
++  }
++
++  @Test
++  @DisplayName("19.2-API-012 P0 foreign category → 400 VALIDATION_ERROR with fieldErrors")
++  void createItemForeignCategory() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(checklist.createItem(eq(user), any())).thenThrow(
++        new PmChecklistService.ChecklistValidationException(
++            Map.of("categoryId", "Category belongs to a different checksheet.")));
++
++    mockMvc.perform(post("/api/v1/pm-checklist-items")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"checksheetId\":\"" + CS_ID + "\",\"categoryId\":\"" + CAT_ID
++                + "\",\"parameterText\":\"X\",\"inputType\":\"OK_NG\"}"))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.categoryId").exists());
++  }
++
++  @Test
++  @DisplayName("19.2-API-013 P0 unknown calibration instrument → 404 CALIBRATION_INSTRUMENT_NOT_FOUND")
++  void createItemCalibrationNotFound() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(checklist.createItem(eq(user), any()))
++        .thenThrow(new PmChecklistService.CalibrationInstrumentNotFoundException());
++
++    mockMvc.perform(post("/api/v1/pm-checklist-items")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"checksheetId\":\"" + CS_ID + "\",\"parameterText\":\"X\","
++                + "\"inputType\":\"OK_NG\",\"calibrationInstrumentId\":\"" + CAT_ID + "\"}"))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("CALIBRATION_INSTRUMENT_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("19.2-API-014 P0 mutation on approved revision → 409 INVALID_CHECKSHEET_TRANSITION")
++  void createItemApprovedChecksheet() throws Exception {
++    var user = user(ApplicationRole.STAFF_MAINTENANCE);
++    when(checklist.createItem(eq(user), any()))
++        .thenThrow(new PmChecksheetService.InvalidChecksheetTransitionException());
++
++    mockMvc.perform(post("/api/v1/pm-checklist-items")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"checksheetId\":\"" + CS_ID + "\",\"parameterText\":\"X\","
++                + "\"inputType\":\"OK_NG\"}"))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("INVALID_CHECKSHEET_TRANSITION"));
++  }
++
++  @Test
++  @DisplayName("19.2-API-015 P0 list items with categoryId filter returns 200")
++  void listItems() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(checklist.listItems(eq(user), eq(CS_ID), eq(CAT_ID))).thenReturn(List.of(itemView()));
++
++    mockMvc.perform(get("/api/v1/pm-checklist-items")
++            .param("checksheetId", CS_ID.toString())
++            .param("categoryId", CAT_ID.toString())
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$[0].parameterText").value("Bearing temperature"));
++  }
++
++  @Test
++  @DisplayName("19.2-API-016 P0 get item returns 200")
++  void getItem() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(checklist.getItem(eq(user), eq(ITEM_ID))).thenReturn(itemView());
++
++    mockMvc.perform(get("/api/v1/pm-checklist-items/{id}", ITEM_ID)
++            .with(auth(user)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.id").value(ITEM_ID.toString()));
++  }
++
++  @Test
++  @DisplayName("19.2-API-017 P0 update item returns 200")
++  void updateItem() throws Exception {
++    var user = user(ApplicationRole.SECTION_LEADER);
++    when(checklist.updateItem(eq(user), eq(ITEM_ID), any())).thenReturn(itemView());
++
++    mockMvc.perform(put("/api/v1/pm-checklist-items/{id}", ITEM_ID)
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"parameterText\":\"Bearing temperature\",\"inputType\":\"MEASUREMENT\","
++                + "\"lsl\":10,\"usl\":100}"))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.inputType").value("MEASUREMENT"));
++  }
++
++  @Test
++  @DisplayName("19.2-API-018 P0 delete item returns 204")
++  void deleteItem() throws Exception {
++    mockMvc.perform(delete("/api/v1/pm-checklist-items/{id}", ITEM_ID)
++            .with(auth(ApplicationRole.SECTION_LEADER)))
++        .andExpect(status().isNoContent());
++  }
++
++  @Test
++  @DisplayName("19.2-API-019 P0 unknown item → 404 PM_CHECKLIST_ITEM_NOT_FOUND")
++  void getItemNotFound() throws Exception {
++    var user = user(ApplicationRole.AUDITOR);
++    when(checklist.getItem(eq(user), eq(ITEM_ID)))
++        .thenThrow(new PmChecklistService.PmChecklistItemNotFoundException());
++
++    mockMvc.perform(get("/api/v1/pm-checklist-items/{id}", ITEM_ID)
++            .with(auth(user)))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("PM_CHECKLIST_ITEM_NOT_FOUND"));
++  }
++
++  @Test
++  @DisplayName("19.2-API-020 P0 forbidden role maps to 403 FORBIDDEN")
++  void createCategoryForbidden() throws Exception {
++    var user = user(ApplicationRole.TECHNICIAN);
++    when(checklist.createCategory(eq(user), any()))
++        .thenThrow(new PmChecksheetService.PmChecksheetForbiddenException());
++
++    mockMvc.perform(post("/api/v1/pm-checklist-categories")
++            .with(auth(user))
++            .contentType(MediaType.APPLICATION_JSON)
++            .content("{\"checksheetId\":\"" + CS_ID + "\",\"name\":\"X\"}"))
++        .andExpect(status().isForbidden())
++        .andExpect(jsonPath("$.code").value("FORBIDDEN"));
++  }
++
++  @Test
++  @DisplayName("19.2-API-021 P0 missing checksheetId query param maps to 400 VALIDATION_ERROR")
++  void listCategoriesMissingParameter() throws Exception {
++    mockMvc.perform(get("/api/v1/pm-checklist-categories")
++            .with(auth(ApplicationRole.AUDITOR)))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.checksheetId").exists());
++  }
++
++  @Test
++  @DisplayName("19.2-API-022 P0 malformed UUID query param maps to 400 INVALID_QUERY_VALUE")
++  void listItemsMalformedQueryValue() throws Exception {
++    mockMvc.perform(get("/api/v1/pm-checklist-items")
++            .param("checksheetId", "not-a-uuid")
++            .with(auth(ApplicationRole.AUDITOR)))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("INVALID_QUERY_VALUE"));
++  }
++
++  @Test
++  @DisplayName("19.2-API-023 P0 malformed UUID path value maps to 400 INVALID_PATH_VALUE")
++  void getItemMalformedPathValue() throws Exception {
++    mockMvc.perform(get("/api/v1/pm-checklist-items/{id}", "not-a-uuid")
++            .with(auth(ApplicationRole.AUDITOR)))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("INVALID_PATH_VALUE"));
++  }
++
++  @Test
++  @DisplayName("19.2-API-024 P0 delete category on approved revision → 409")
++  void deleteCategoryApproved() throws Exception {
++    var user = user(ApplicationRole.SECTION_LEADER);
++    doThrow(new PmChecksheetService.InvalidChecksheetTransitionException())
++        .when(checklist).deleteCategory(eq(user), eq(CAT_ID));
++
++    mockMvc.perform(delete("/api/v1/pm-checklist-categories/{id}", CAT_ID)
++            .with(auth(user)))
++        .andExpect(status().isConflict())
++        .andExpect(jsonPath("$.code").value("INVALID_CHECKSHEET_TRANSITION"));
++  }
++
++  private static CategoryView categoryView() {
++    return new CategoryView(CAT_ID, CS_ID, "Lubrication", 1, NOW, NOW);
++  }
++
++  private static ItemView itemView() {
++    return new ItemView(ITEM_ID, CS_ID, CAT_ID, 1, "Bearing temperature", null,
++        PmItemInputType.MEASUREMENT, "C", new BigDecimal("10"), new BigDecimal("55"),
++        new BigDecimal("100"), true, null, null, NOW, NOW);
++  }
++
++  private static AuthenticatedUser user(ApplicationRole role) {
++    return new AuthenticatedUser(UUID.randomUUID().toString(),
++        role.name().toLowerCase() + "@syncro.dev", role);
++  }
++
++  private static RequestPostProcessor auth(AuthenticatedUser user) {
++    return SecurityMockMvcRequestPostProcessors.authentication(new UsernamePasswordAuthenticationToken(
++        user, null,
++        List.of(new SimpleGrantedAuthority("ROLE_" + user.applicationRole().name()))));
++  }
++
++  private static RequestPostProcessor auth(ApplicationRole role) {
++    return auth(user(role));
++  }
++}
+--- NEW FILE: syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/application/PmChecklistServiceIntegrationTest.java ---
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/application/PmChecklistServiceIntegrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/application/PmChecklistServiceIntegrationTest.java
+new file mode 100644
+index 0000000..ef5f41d
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/application/PmChecklistServiceIntegrationTest.java
+@@ -0,0 +1,513 @@
++package com.syncro.maintenance.preventive.application;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.api.Assertions.assertThatThrownBy;
++
++import com.syncro.AbstractPostgresIntegrationTest;
++import com.syncro.audit.domain.AuditAction;
++import com.syncro.audit.domain.AuditEntityType;
++import com.syncro.audit.infrastructure.AuditLogRepository;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.AuthUserEntity;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentEntity;
++import com.syncro.auth.infrastructure.AuthUserPlantAssignmentRepository;
++import com.syncro.auth.infrastructure.AuthUserRepository;
++import com.syncro.auth.infrastructure.PlantEntity;
++import com.syncro.auth.infrastructure.PlantRepository;
++import com.syncro.compliance.domain.CalibrationStatus;
++import com.syncro.compliance.infrastructure.db.CalibrationInstrumentEntity;
++import com.syncro.compliance.infrastructure.db.CalibrationInstrumentRepository;
++import com.syncro.maintenance.preventive.application.PmChecklistService.CreateCategoryCommand;
++import com.syncro.maintenance.preventive.application.PmChecklistService.CreateItemCommand;
++import com.syncro.maintenance.preventive.application.PmChecklistService.UpdateCategoryCommand;
++import com.syncro.maintenance.preventive.application.PmChecklistService.UpdateItemCommand;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.ApproveChecksheetCommand;
++import com.syncro.maintenance.preventive.application.PmChecksheetService.CreateChecksheetCommand;
++import com.syncro.maintenance.preventive.domain.PmItemInputType;
++import com.syncro.machine.domain.MachineStatus;
++import com.syncro.machine.domain.ResponsibilityLevel;
++import com.syncro.machine.infrastructure.MachineEntity;
++import com.syncro.machine.infrastructure.MachineRepository;
++import com.syncro.machine.infrastructure.MachineResponsibilityEntity;
++import com.syncro.machine.infrastructure.MachineResponsibilityRepository;
++import com.syncro.masterdata.infrastructure.MachineGroupEntity;
++import com.syncro.masterdata.infrastructure.MachineGroupRepository;
++import java.math.BigDecimal;
++import java.time.Clock;
++import java.time.Instant;
++import java.time.LocalDate;
++import java.util.UUID;
++import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++
++/**
++ * Story 19-2 integration test: PM checklist categories &amp; items against a real
++ * Postgres container (blueprint F4). Covers define/edit of categories and ordered
++ * items against an unapproved checksheet revision, the approved-revision freeze
++ * (409), MEASUREMENT bounds validation, foreign-category and unknown-calibration
++ * rejection, scope-filtered reads, the four-role gates with SUPER_ADMIN bypass,
++ * category-delete orphaning, and the audit trail.
++ */
++class PmChecklistServiceIntegrationTest extends AbstractPostgresIntegrationTest {
++
++  private static final Instant T0 = Instant.parse("2026-09-01T08:00:00Z");
++
++  @Autowired
++  private PmChecklistService checklist;
++  @Autowired
++  private PmChecksheetService checksheets;
++  @Autowired
++  private PmFrequencyService frequencies;
++  @Autowired
++  private PlantRepository plants;
++  @Autowired
++  private MachineGroupRepository machineGroups;
++  @Autowired
++  private MachineRepository machines;
++  @Autowired
++  private AuthUserRepository users;
++  @Autowired
++  private AuthUserPlantAssignmentRepository assignments;
++  @Autowired
++  private MachineResponsibilityRepository responsibilities;
++  @Autowired
++  private CalibrationInstrumentRepository calibrationInstruments;
++  @Autowired
++  private AuditLogRepository auditLogs;
++  /** The same Clock bean the service uses — timestamp asserts never use wall clock. */
++  @Autowired
++  private Clock clock;
++
++  private PlantEntity plant;
++  private MachineEntity machine;
++  private AuthenticatedUser leaderUser;
++  private AuthenticatedUser staffUser;
++  private UUID checksheetId;
++  private UUID frequencyId;
++
++  @BeforeEach
++  void setUp() {
++    plant = plants.saveAndFlush(new PlantEntity(
++        UUID.randomUUID(), "P" + UUID.randomUUID().toString().substring(0, 8), "Plant", T0, T0));
++    var group = machineGroups.saveAndFlush(new MachineGroupEntity(
++        UUID.randomUUID(), plant, "Group", T0, T0));
++    machine = machines.saveAndFlush(new MachineEntity(
++        UUID.randomUUID(), plant, group, "MC-" + UUID.randomUUID().toString().substring(0, 8),
++        "Machine", MachineStatus.ACTIVE, null, null, null, null, T0, T0));
++
++    var leaderId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(
++        leaderId, "leader-" + UUID.randomUUID() + "@test", "hash",
++        ApplicationRole.SECTION_LEADER, true, T0, T0));
++    assignments.saveAndFlush(new AuthUserPlantAssignmentEntity(leaderId, plant.getId(), T0));
++    responsibilities.saveAndFlush(new MachineResponsibilityEntity(
++        UUID.randomUUID(), machine.getId(), leaderId, ResponsibilityLevel.LEADER, T0, T0));
++    leaderUser = new AuthenticatedUser(leaderId.toString(), "leader@test",
++        ApplicationRole.SECTION_LEADER);
++
++    var staffId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(
++        staffId, "staff-" + UUID.randomUUID() + "@test", "hash",
++        ApplicationRole.STAFF_MAINTENANCE, true, T0, T0));
++    assignments.saveAndFlush(new AuthUserPlantAssignmentEntity(staffId, plant.getId(), T0));
++    staffUser = new AuthenticatedUser(staffId.toString(), "staff@test",
++        ApplicationRole.STAFF_MAINTENANCE);
++
++    // V7 seeds MONTHLY/ANNUAL; resolve the MONTHLY id and create an unapproved r1.
++    frequencyId = frequencies.list().stream()
++        .filter(f -> f.code().equals("MONTHLY"))
++        .findFirst().orElseThrow().id();
++    checksheetId = checksheets.create(staffUser,
++        new CreateChecksheetCommand(machine.getId(), frequencyId, null)).id();
++  }
++
++  // -------------------------------------------------------------------------
++  // AC1: define categories + items on an unapproved revision
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.2-INT-001 P0 create category + MEASUREMENT/OK_NG items: persist in order, bounds/criticality intact, audit CREATE rows")
++  void createCategoriesAndItemsPersistsAndAudits() {
++    var category = checklist.createCategory(staffUser,
++        new CreateCategoryCommand(checksheetId, "Lubrication", 1));
++    assertThat(category.name()).isEqualTo("Lubrication");
++    assertThat(category.sortOrder()).isEqualTo(1);
++    assertThat(category.checksheetId()).isEqualTo(checksheetId);
++
++    var measurement = checklist.createItem(staffUser, new CreateItemCommand(checksheetId,
++        category.id(), null, "Bearing temperature", "Infrared gun", PmItemInputType.MEASUREMENT,
++        "C", new BigDecimal("10"), new BigDecimal("55"), new BigDecimal("100"),
++        true, "MAN-0042", null));
++    var okNg = checklist.createItem(staffUser, new CreateItemCommand(checksheetId,
++        category.id(), null, "Belt tension visual check", null, PmItemInputType.OK_NG,
++        null, null, null, null, false, null, null));
++
++    assertThat(measurement.sequence()).isEqualTo(1);
++    assertThat(measurement.inputType()).isEqualTo(PmItemInputType.MEASUREMENT);
++    assertThat(measurement.lsl()).isEqualByComparingTo("10");
++    assertThat(measurement.nominal()).isEqualByComparingTo("55");
++    assertThat(measurement.usl()).isEqualByComparingTo("100");
++    assertThat(measurement.criticalFlag()).isTrue();
++    assertThat(okNg.sequence()).isEqualTo(2);
++    assertThat(okNg.inputType()).isEqualTo(PmItemInputType.OK_NG);
++    assertThat(okNg.lsl()).isNull();
++    assertThat(okNg.criticalFlag()).isFalse();
++
++    // Ordered reads: categories by sort_order, items by sequence.
++    var items = checklist.listItems(staffUser, checksheetId, null);
++    assertThat(items).extracting(PmChecklistService.ItemView::sequence)
++        .containsExactly(1, 2);
++    assertThat(checklist.listItems(staffUser, checksheetId, category.id())).hasSize(2);
++    assertThat(checklist.listCategories(staffUser, checksheetId))
++        .extracting(PmChecklistService.CategoryView::name).containsExactly("Lubrication");
++
++    // Audit CREATE rows with actor + new values (UUIDs stringified).
++    var categoryAudit = auditLogs.findByEntityIdOrderByCreatedAtAsc(category.id());
++    assertThat(categoryAudit).anySatisfy(entry -> {
++      assertThat(entry.getEntityType()).isEqualTo(AuditEntityType.PM_CHECKLIST_CATEGORY);
++      assertThat(entry.getAction()).isEqualTo(AuditAction.CREATE);
++      assertThat(entry.getActorId()).isEqualTo(UUID.fromString(staffUser.id()));
++      assertThat(entry.getNewValue()).contains("\"checksheetId\":\"" + checksheetId + "\"");
++    });
++    var itemAudit = auditLogs.findByEntityIdOrderByCreatedAtAsc(measurement.id());
++    assertThat(itemAudit).anySatisfy(entry -> {
++      assertThat(entry.getEntityType()).isEqualTo(AuditEntityType.PM_CHECKLIST_ITEM);
++      assertThat(entry.getAction()).isEqualTo(AuditAction.CREATE);
++      assertThat(entry.getNewValue()).contains("\"lsl\":\"10\"").contains("\"usl\":\"100\"");
++    });
++  }
++
++  @Test
++  @DisplayName("19.2-INT-002 P0 sequence defaults to max+1 within the checksheet; explicit sequence wins")
++  void sequenceDefaultsToMaxPlusOne() {
++    checklist.createItem(staffUser, new CreateItemCommand(checksheetId, null, 50,
++        "Explicit seq", null, PmItemInputType.OK_NG, null, null, null, null, null, null, null));
++    var auto1 = checklist.createItem(staffUser, new CreateItemCommand(checksheetId, null, null,
++        "Auto 1", null, PmItemInputType.OK_NG, null, null, null, null, null, null, null));
++    var auto2 = checklist.createItem(staffUser, new CreateItemCommand(checksheetId, null, null,
++        "Auto 2", null, PmItemInputType.OK_NG, null, null, null, null, null, null, null));
++    assertThat(auto1.sequence()).isEqualTo(51);
++    assertThat(auto2.sequence()).isEqualTo(52);
++  }
++
++  @Test
++  @DisplayName("19.2-INT-003 P0 item without category is allowed (categoryId optional)")
++  void itemWithoutCategoryAllowed() {
++    var item = checklist.createItem(staffUser, new CreateItemCommand(checksheetId, null, null,
++        "Loose check", null, PmItemInputType.OK_NG, null, null, null, null, null, null, null));
++    assertThat(item.categoryId()).isNull();
++    assertThat(checklist.getItem(staffUser, item.id()).id()).isEqualTo(item.id());
++  }
++
++  // -------------------------------------------------------------------------
++  // AC2: approved revisions are frozen
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.2-INT-004 P0 every mutation on an approved revision → 409 INVALID_CHECKSHEET_TRANSITION, nothing changes")
++  void approvedRevisionFreezesChecklist() {
++    var category = checklist.createCategory(staffUser,
++        new CreateCategoryCommand(checksheetId, "Hydraulics", 1));
++    var item = checklist.createItem(staffUser, new CreateItemCommand(checksheetId, category.id(),
++        null, "Oil level", null, PmItemInputType.OK_NG, null, null, null, null, null, null, null));
++
++    checksheets.approve(leaderUser, checksheetId,
++        new ApproveChecksheetCommand(LocalDate.now(clock)));
++
++    assertThatThrownBy(() -> checklist.createCategory(leaderUser,
++        new CreateCategoryCommand(checksheetId, "Late category", 2)))
++        .isInstanceOf(PmChecksheetService.InvalidChecksheetTransitionException.class);
++    assertThatThrownBy(() -> checklist.createItem(leaderUser, new CreateItemCommand(checksheetId,
++        null, null, "Late item", null, PmItemInputType.OK_NG, null, null, null, null,
++        null, null, null)))
++        .isInstanceOf(PmChecksheetService.InvalidChecksheetTransitionException.class);
++    assertThatThrownBy(() -> checklist.updateCategory(leaderUser, category.id(),
++        new UpdateCategoryCommand("Renamed", null)))
++        .isInstanceOf(PmChecksheetService.InvalidChecksheetTransitionException.class);
++    assertThatThrownBy(() -> checklist.updateItem(leaderUser, item.id(),
++        new UpdateItemCommand(null, null, "Renamed", null, PmItemInputType.OK_NG, null,
++            null, null, null, null, null, null)))
++        .isInstanceOf(PmChecksheetService.InvalidChecksheetTransitionException.class);
++    assertThatThrownBy(() -> checklist.deleteCategory(leaderUser, category.id()))
++        .isInstanceOf(PmChecksheetService.InvalidChecksheetTransitionException.class);
++    assertThatThrownBy(() -> checklist.deleteItem(leaderUser, item.id()))
++        .isInstanceOf(PmChecksheetService.InvalidChecksheetTransitionException.class);
++
++    // Nothing changed: the pre-approval content is intact.
++    assertThat(checklist.listCategories(staffUser, checksheetId)).hasSize(1);
++    assertThat(checklist.listItems(staffUser, checksheetId, null)).hasSize(1);
++  }
++
++  // -------------------------------------------------------------------------
++  // AC3: validation & reference errors
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.2-INT-005 P0 MEASUREMENT with lsl > usl → 400 VALIDATION_ERROR; equal bounds allowed")
++  void measurementBoundsRejectedWhenInverted() {
++    assertThatThrownBy(() -> checklist.createItem(staffUser, new CreateItemCommand(checksheetId,
++        null, null, "Pressure", null, PmItemInputType.MEASUREMENT, "bar",
++        new BigDecimal("10"), null, new BigDecimal("5"), null, null, null)))
++        .isInstanceOf(PmChecklistService.ChecklistValidationException.class);
++    // lsl == usl is legal (lsl ≤ usl).
++    var ok = checklist.createItem(staffUser, new CreateItemCommand(checksheetId,
++        null, null, "Pressure", null, PmItemInputType.MEASUREMENT, "bar",
++        new BigDecimal("5"), null, new BigDecimal("5"), null, null, null));
++    assertThat(ok.lsl()).isEqualByComparingTo("5");
++    // Bounds on an OK_NG item are not checked (only MEASUREMENT with both bounds).
++    var okNg = checklist.createItem(staffUser, new CreateItemCommand(checksheetId,
++        null, null, "Visual", null, PmItemInputType.OK_NG, null,
++        new BigDecimal("10"), null, new BigDecimal("5"), null, null, null));
++    assertThat(okNg.inputType()).isEqualTo(PmItemInputType.OK_NG);
++  }
++
++  @Test
++  @DisplayName("19.2-INT-006 P0 category from another checksheet → 400; unknown category → 404")
++  void foreignCategoryRejectedUnknownCategoryNotFound() {
++    // Second checksheet on a second machine (same plant).
++    var otherGroup = machineGroups.saveAndFlush(new MachineGroupEntity(
++        UUID.randomUUID(), plant, "Group 2", T0, T0));
++    var otherMachine = machines.saveAndFlush(new MachineEntity(
++        UUID.randomUUID(), plant, otherGroup,
++        "MC-" + UUID.randomUUID().toString().substring(0, 8), "Other", MachineStatus.ACTIVE,
++        null, null, null, null, T0, T0));
++    var otherChecksheet = checksheets.create(staffUser,
++        new CreateChecksheetCommand(otherMachine.getId(), frequencyId, null)).id();
++    var foreignCategory = checklist.createCategory(staffUser,
++        new CreateCategoryCommand(otherChecksheet, "Foreign", 1));
++
++    assertThatThrownBy(() -> checklist.createItem(staffUser, new CreateItemCommand(checksheetId,
++        foreignCategory.id(), null, "Bad ref", null, PmItemInputType.OK_NG, null, null, null,
++        null, null, null, null)))
++        .isInstanceOf(PmChecklistService.ChecklistValidationException.class);
++    assertThatThrownBy(() -> checklist.createItem(staffUser, new CreateItemCommand(checksheetId,
++        UUID.randomUUID(), null, "Unknown ref", null, PmItemInputType.OK_NG, null, null, null,
++        null, null, null, null)))
++        .isInstanceOf(PmChecklistService.PmChecklistCategoryNotFoundException.class);
++  }
++
++  @Test
++  @DisplayName("19.2-INT-007 P0 unknown calibration instrument → 404; existing one persists on the item")
++  void calibrationInstrumentReference() {
++    var instrument = calibrationInstruments.saveAndFlush(new CalibrationInstrumentEntity(
++        UUID.randomUUID(), "CI-" + UUID.randomUUID().toString().substring(0, 8), "Torque wrench",
++        "TW-500", null, null, 365, null, LocalDate.of(2027, 1, 1), null,
++        CalibrationStatus.VALID, T0, T0));
++    var item = checklist.createItem(staffUser, new CreateItemCommand(checksheetId, null, null,
++        "Flange torque", "Torque wrench", PmItemInputType.MEASUREMENT, "Nm",
++        new BigDecimal("80"), new BigDecimal("100"), new BigDecimal("120"), null, null,
++        instrument.getId()));
++    assertThat(item.calibrationInstrumentId()).isEqualTo(instrument.getId());
++
++    assertThatThrownBy(() -> checklist.createItem(staffUser, new CreateItemCommand(checksheetId,
++        null, null, "Bad ref", null, PmItemInputType.OK_NG, null, null, null, null, null, null,
++        UUID.randomUUID())))
++        .isInstanceOf(PmChecklistService.CalibrationInstrumentNotFoundException.class);
++  }
++
++  @Test
++  @DisplayName("19.2-INT-008 P0 blank/over-long text rejected at the service (400), unknown checksheet/item → 404")
++  void textGuardsAndUnknownReferences() {
++    assertThatThrownBy(() -> checklist.createCategory(staffUser,
++        new CreateCategoryCommand(checksheetId, "   ", 1)))
++        .isInstanceOf(PmChecklistService.ChecklistValidationException.class);
++    assertThatThrownBy(() -> checklist.createItem(staffUser, new CreateItemCommand(checksheetId,
++        null, null, " ".repeat(501), null, PmItemInputType.OK_NG, null, null, null, null,
++        null, null, null)))
++        .isInstanceOf(PmChecklistService.ChecklistValidationException.class);
++    assertThatThrownBy(() -> checklist.createCategory(staffUser,
++        new CreateCategoryCommand(UUID.randomUUID(), "Orphan", 1)))
++        .isInstanceOf(PmChecksheetService.PmChecksheetNotFoundException.class);
++    assertThatThrownBy(() -> checklist.getItem(staffUser, UUID.randomUUID()))
++        .isInstanceOf(PmChecklistService.PmChecklistItemNotFoundException.class);
++    assertThatThrownBy(() -> checklist.updateCategory(staffUser, UUID.randomUUID(),
++        new UpdateCategoryCommand("Ghost", null)))
++        .isInstanceOf(PmChecklistService.PmChecklistCategoryNotFoundException.class);
++  }
++
++  // -------------------------------------------------------------------------
++  // AC4: gates & scope
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.2-INT-009 P0 out-of-scope leader: 403 on mutations, invisible on scoped reads")
++  void outOfScopeLeaderRejectedAndInvisible() {
++    checklist.createCategory(staffUser, new CreateCategoryCommand(checksheetId, "Hidden", 1));
++
++    // A SECTION_LEADER of a DIFFERENT plant/group — no scope on this machine.
++    var otherPlant = plants.saveAndFlush(new PlantEntity(
++        UUID.randomUUID(), "X" + UUID.randomUUID().toString().substring(0, 8), "Other", T0, T0));
++    var otherGroup = machineGroups.saveAndFlush(new MachineGroupEntity(
++        UUID.randomUUID(), otherPlant, "Other Group", T0, T0));
++    var otherMachine = machines.saveAndFlush(new MachineEntity(
++        UUID.randomUUID(), otherPlant, otherGroup,
++        "MC-" + UUID.randomUUID().toString().substring(0, 8), "Other Machine",
++        MachineStatus.ACTIVE, null, null, null, null, T0, T0));
++    var otherId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(otherId, "other-" + UUID.randomUUID() + "@test",
++        "hash", ApplicationRole.SECTION_LEADER, true, T0, T0));
++    responsibilities.saveAndFlush(new MachineResponsibilityEntity(
++        UUID.randomUUID(), otherMachine.getId(), otherId, ResponsibilityLevel.LEADER, T0, T0));
++    var otherUser = new AuthenticatedUser(otherId.toString(), "other@test",
++        ApplicationRole.SECTION_LEADER);
++
++    assertThatThrownBy(() -> checklist.createCategory(otherUser,
++        new CreateCategoryCommand(checksheetId, "Nope", 1)))
++        .isInstanceOf(PmChecksheetService.PmChecksheetForbiddenException.class);
++    assertThatThrownBy(() -> checklist.createItem(otherUser, new CreateItemCommand(checksheetId,
++        null, null, "Nope", null, PmItemInputType.OK_NG, null, null, null, null, null, null,
++        null)))
++        .isInstanceOf(PmChecksheetService.PmChecksheetForbiddenException.class);
++    // Scoped reads: the checksheet's content is invisible (empty list), and a direct
++    // get of a known item id is a 403.
++    var existing = checklist.createItem(staffUser, new CreateItemCommand(checksheetId, null,
++        null, "Visible to owner", null, PmItemInputType.OK_NG, null, null, null, null, null,
++        null, null));
++    assertThat(checklist.listCategories(otherUser, checksheetId)).isEmpty();
++    assertThat(checklist.listItems(otherUser, checksheetId, null)).isEmpty();
++    assertThatThrownBy(() -> checklist.getItem(otherUser, existing.id()))
++        .isInstanceOf(PmChecksheetService.PmChecksheetForbiddenException.class);
++  }
++
++  @Test
++  @DisplayName("19.2-INT-010 P0 STAFF_MAINTENANCE in scope may define and edit (staff-level surface)")
++  void staffInScopeCanDefineAndEdit() {
++    var category = checklist.createCategory(staffUser,
++        new CreateCategoryCommand(checksheetId, "Electrical", 1));
++    var item = checklist.createItem(staffUser, new CreateItemCommand(checksheetId, category.id(),
++        null, "Terminal tightness", null, PmItemInputType.OK_NG, null, null, null, null, null,
++        null, null));
++    var renamed = checklist.updateCategory(staffUser, category.id(),
++        new UpdateCategoryCommand("Electrical - HV", null));
++    assertThat(renamed.name()).isEqualTo("Electrical - HV");
++    var edited = checklist.updateItem(staffUser, item.id(), new UpdateItemCommand(null, null,
++        "Terminal tightness (torque marked)", null, PmItemInputType.OK_NG, null, null, null,
++        null, true, null, null));
++    assertThat(edited.criticalFlag()).isTrue();
++    checklist.deleteItem(staffUser, edited.id());
++    assertThat(checklist.listItems(staffUser, checksheetId, null)).isEmpty();
++  }
++
++  @Test
++  @DisplayName("19.2-INT-011 P0 SUPER_ADMIN with no assignments bypasses every gate (create/read/update/delete)")
++  void superAdminBypassesScope() {
++    var adminId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(adminId, "admin-" + UUID.randomUUID() + "@test",
++        "hash", ApplicationRole.SUPER_ADMIN, true, T0, T0));
++    // Deliberately NO plant assignment and NO machine responsibility.
++    var admin = new AuthenticatedUser(adminId.toString(), "admin@test",
++        ApplicationRole.SUPER_ADMIN);
++
++    var category = checklist.createCategory(admin,
++        new CreateCategoryCommand(checksheetId, "Admin category", 1));
++    var item = checklist.createItem(admin, new CreateItemCommand(checksheetId, category.id(),
++        null, "Admin item", null, PmItemInputType.OK_NG, null, null, null, null, null, null,
++        null));
++    assertThat(checklist.listCategories(admin, checksheetId)).hasSize(1);
++    assertThat(checklist.getItem(admin, item.id()).parameterText()).isEqualTo("Admin item");
++    checklist.updateItem(admin, item.id(), new UpdateItemCommand(null, null, "Renamed by admin",
++        null, PmItemInputType.OK_NG, null, null, null, null, null, null, null));
++    checklist.deleteItem(admin, item.id());
++    checklist.deleteCategory(admin, category.id());
++    assertThat(checklist.listCategories(admin, checksheetId)).isEmpty();
++  }
++
++  @Test
++  @DisplayName("19.2-INT-012 P0 TECHNICIAN (below the four-role set) is denied mutations")
++  void technicianDenied() {
++    var techId = UUID.randomUUID();
++    users.saveAndFlush(new AuthUserEntity(techId, "tech-" + UUID.randomUUID() + "@test",
++        "hash", ApplicationRole.TECHNICIAN, true, T0, T0));
++    assignments.saveAndFlush(new AuthUserPlantAssignmentEntity(techId, plant.getId(), T0));
++    var tech = new AuthenticatedUser(techId.toString(), "tech@test", ApplicationRole.TECHNICIAN);
++
++    assertThatThrownBy(() -> checklist.createCategory(tech,
++        new CreateCategoryCommand(checksheetId, "Nope", 1)))
++        .isInstanceOf(PmChecksheetService.PmChecksheetForbiddenException.class);
++  }
++
++  // -------------------------------------------------------------------------
++  // Category delete orphaning & update null-merge
++  // -------------------------------------------------------------------------
++
++  @Test
++  @DisplayName("19.2-INT-013 P0 category delete nulls item.categoryId explicitly; orphaning is audit-logged")
++  void categoryDeleteOrphansItemsWithAudit() {
++    var category = checklist.createCategory(staffUser,
++        new CreateCategoryCommand(checksheetId, "Pneumatics", 1));
++    var item = checklist.createItem(staffUser, new CreateItemCommand(checksheetId, category.id(),
++        null, "Air pressure", null, PmItemInputType.MEASUREMENT, "bar", new BigDecimal("4"),
++        null, new BigDecimal("8"), null, null, null));
++
++    checklist.deleteCategory(staffUser, category.id());
++
++    var orphaned = checklist.getItem(staffUser, item.id());
++    assertThat(orphaned.categoryId()).isNull();
++    assertThat(checklist.listCategories(staffUser, checksheetId)).isEmpty();
++
++    // The orphaning UPDATE carries previous (categoryId set) and new (null) values.
++    assertThat(auditLogs.findByEntityIdOrderByCreatedAtAsc(item.id()))
++        .anySatisfy(entry -> {
++          assertThat(entry.getEntityType()).isEqualTo(AuditEntityType.PM_CHECKLIST_ITEM);
++          assertThat(entry.getAction()).isEqualTo(AuditAction.UPDATE);
++          assertThat(entry.getPreviousValue()).contains("\"categoryId\":\"" + category.id() + "\"");
++          assertThat(entry.getNewValue()).contains("\"categoryId\":null");
++        });
++    // The category itself gets a DELETE row with previous values.
++    assertThat(auditLogs.findByEntityIdOrderByCreatedAtAsc(category.id()))
++        .anySatisfy(entry -> {
++          assertThat(entry.getAction()).isEqualTo(AuditAction.DELETE);
++          assertThat(entry.getPreviousValue()).contains("\"name\":\"Pneumatics\"");
++        });
++  }
++
++  @Test
++  @DisplayName("19.2-INT-014 P0 item update null-merges omitted optionals and is audited with previous/new")
++  void itemUpdateNullMergeAndAudit() {
++    var category = checklist.createCategory(staffUser,
++        new CreateCategoryCommand(checksheetId, "Cooling", 1));
++    var item = checklist.createItem(staffUser, new CreateItemCommand(checksheetId, category.id(),
++        3, "Coolant pH", "Litmus", PmItemInputType.MEASUREMENT, "pH", new BigDecimal("6"),
++        new BigDecimal("7"), new BigDecimal("8"), true, "SPEC-9", null));
++
++    // PUT with only parameterText + inputType: category/sequence/bounds/criticality keep values.
++    var updated = checklist.updateItem(staffUser, item.id(), new UpdateItemCommand(null, null,
++        "Coolant pH (weekly)", null, PmItemInputType.MEASUREMENT, null, null, null, null,
++        null, null, null));
++    assertThat(updated.categoryId()).isEqualTo(category.id());
++    assertThat(updated.sequence()).isEqualTo(3);
++    assertThat(updated.lsl()).isEqualByComparingTo("6");
++    assertThat(updated.usl()).isEqualByComparingTo("8");
++    assertThat(updated.criticalFlag()).isTrue();
++    assertThat(updated.unit()).isEqualTo("pH");
++    assertThat(updated.createdAt()).isEqualTo(item.createdAt());
++
++    assertThat(auditLogs.findByEntityIdOrderByCreatedAtAsc(item.id()))
++        .anySatisfy(entry -> {
++          assertThat(entry.getAction()).isEqualTo(AuditAction.UPDATE);
++          assertThat(entry.getPreviousValue()).contains("Coolant pH\"");
++          assertThat(entry.getNewValue()).contains("Coolant pH (weekly)");
++        });
++  }
++
++  @Test
++  @DisplayName("19.2-INT-015 P0 item delete is audited with previous values")
++  void itemDeleteAudited() {
++    var item = checklist.createItem(staffUser, new CreateItemCommand(checksheetId, null, null,
++        "Temporary", null, PmItemInputType.OK_NG, null, null, null, null, null, null, null));
++    checklist.deleteItem(staffUser, item.id());
++
++    assertThatThrownBy(() -> checklist.getItem(staffUser, item.id()))
++        .isInstanceOf(PmChecklistService.PmChecklistItemNotFoundException.class);
++    assertThat(auditLogs.findByEntityIdOrderByCreatedAtAsc(item.id()))
++        .anySatisfy(entry -> {
++          assertThat(entry.getEntityType()).isEqualTo(AuditEntityType.PM_CHECKLIST_ITEM);
++          assertThat(entry.getAction()).isEqualTo(AuditAction.DELETE);
++          assertThat(entry.getPreviousValue()).contains("\"parameterText\":\"Temporary\"");
++          assertThat(entry.getNewValue()).isNull();
++        });
++  }
++}

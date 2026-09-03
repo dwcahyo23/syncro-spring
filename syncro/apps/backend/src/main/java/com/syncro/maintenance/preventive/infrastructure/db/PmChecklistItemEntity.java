@@ -159,4 +159,34 @@ public class PmChecklistItemEntity {
   public Instant getUpdatedAt() {
     return updatedAt;
   }
+
+  /** Edit (story 19-2): replaces every mutable field of the item in one PUT. */
+  public void update(UUID categoryId, int sequence, String parameterText, String checkMethod,
+      PmItemInputType inputType, String unit, BigDecimal lsl, BigDecimal nominal, BigDecimal usl,
+      boolean criticalFlag, String referenceDocument, UUID calibrationInstrumentId,
+      Instant updatedAt) {
+    this.categoryId = categoryId;
+    this.sequence = sequence;
+    this.parameterText = parameterText;
+    this.checkMethod = checkMethod;
+    this.inputType = inputType;
+    this.unit = unit;
+    this.lsl = lsl;
+    this.nominal = nominal;
+    this.usl = usl;
+    this.criticalFlag = criticalFlag;
+    this.referenceDocument = referenceDocument;
+    this.calibrationInstrumentId = calibrationInstrumentId;
+    this.updatedAt = updatedAt;
+  }
+
+  /**
+   * Orphaning (story 19-2): category delete nulls the reference service-side so the
+   * audit trail records which items were orphaned (rather than relying on the FK's
+   * ON DELETE SET NULL).
+   */
+  public void clearCategory(Instant updatedAt) {
+    this.categoryId = null;
+    this.updatedAt = updatedAt;
+  }
 }

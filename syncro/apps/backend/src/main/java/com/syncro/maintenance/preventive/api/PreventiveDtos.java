@@ -1,5 +1,6 @@
 package com.syncro.maintenance.preventive.api;
 
+import com.syncro.maintenance.preventive.domain.PmItemInputType;
 import com.syncro.maintenance.preventive.domain.PreventiveCategory;
 import com.syncro.maintenance.preventive.domain.ScheduleType;
 import jakarta.validation.constraints.Max;
@@ -7,6 +8,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -145,5 +147,62 @@ public final class PreventiveDtos {
 
   public record ActiveChecksheetView(UUID checksheetId, UUID machineId, UUID frequencyId,
       int revisionNo) {
+  }
+
+  // -------------------------------------------------------------------------
+  // PM checklist categories & items (story 19-2)
+  // -------------------------------------------------------------------------
+
+  public record CreateChecklistCategoryRequest(
+      @NotNull UUID checksheetId,
+      @NotBlank @Size(max = 200) String name,
+      Integer sortOrder) {
+  }
+
+  public record UpdateChecklistCategoryRequest(
+      @NotBlank @Size(max = 200) String name,
+      Integer sortOrder) {
+  }
+
+  public record ChecklistCategoryView(UUID id, UUID checksheetId, String name, int sortOrder,
+      Instant createdAt, Instant updatedAt) {
+  }
+
+  public record CreateChecklistItemRequest(
+      @NotNull UUID checksheetId,
+      UUID categoryId,
+      Integer sequence,
+      @NotBlank @Size(max = 500) String parameterText,
+      @Size(max = 200) String checkMethod,
+      @NotNull PmItemInputType inputType,
+      @Size(max = 50) String unit,
+      BigDecimal lsl,
+      BigDecimal nominal,
+      BigDecimal usl,
+      Boolean isCriticalFlag,
+      @Size(max = 255) String referenceDocument,
+      UUID calibrationInstrumentId) {
+  }
+
+  public record UpdateChecklistItemRequest(
+      UUID categoryId,
+      Integer sequence,
+      @NotBlank @Size(max = 500) String parameterText,
+      @Size(max = 200) String checkMethod,
+      @NotNull PmItemInputType inputType,
+      @Size(max = 50) String unit,
+      BigDecimal lsl,
+      BigDecimal nominal,
+      BigDecimal usl,
+      Boolean isCriticalFlag,
+      @Size(max = 255) String referenceDocument,
+      UUID calibrationInstrumentId) {
+  }
+
+  public record ChecklistItemView(UUID id, UUID checksheetId, UUID categoryId, int sequence,
+      String parameterText, String checkMethod, PmItemInputType inputType, String unit,
+      BigDecimal lsl, BigDecimal nominal, BigDecimal usl, boolean isCriticalFlag,
+      String referenceDocument, UUID calibrationInstrumentId, Instant createdAt,
+      Instant updatedAt) {
   }
 }

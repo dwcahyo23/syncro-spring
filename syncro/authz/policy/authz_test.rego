@@ -1530,6 +1530,62 @@ test_anonymous_pm_checksheet_denied if {
   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/pm-checksheets"}
 }
 
+# -- PM checklist categories & items (story 19-2, blueprint F4): four-role mutation
+#    allow set on both collections and /{id}; TECHNICIAN/AUDITOR/anonymous denied;
+#    reads any-authenticated -----------------------------------------------------
+
+test_manager_pm_checklist_category_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/pm-checklist-categories"}
+}
+
+test_section_leader_pm_checklist_category_update_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "PUT /api/v1/pm-checklist-categories/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_maintenance_leader_pm_checklist_category_delete_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "DELETE /api/v1/pm-checklist-categories/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_staff_pm_checklist_item_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/pm-checklist-items"}
+}
+
+test_staff_pm_checklist_item_update_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "PUT /api/v1/pm-checklist-items/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_super_admin_pm_checklist_item_delete_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "DELETE /api/v1/pm-checklist-items/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_technician_pm_checklist_category_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-checklist-categories"}
+}
+
+test_technician_pm_checklist_item_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/pm-checklist-items"}
+}
+
+test_auditor_pm_checklist_category_update_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "PUT /api/v1/pm-checklist-categories/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_auditor_pm_checklist_item_delete_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "DELETE /api/v1/pm-checklist-items/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_auditor_pm_checklist_category_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-checklist-categories"}
+}
+
+test_auditor_pm_checklist_item_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/pm-checklist-items/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_anonymous_pm_checklist_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/pm-checklist-items"}
+}
+
 # -- Anonymous (no userId): default deny everywhere ------------------------
 
 test_anonymous_admin_only_denied if {

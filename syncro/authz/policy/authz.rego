@@ -350,6 +350,20 @@ pm_checksheet_paths := {
   "/api/v1/pm-checksheets/*/approve",
 }
 
+# PM checklist categories & items (story 19-2, blueprint F4): define/edit of check
+# content against an unapproved checksheet revision for the same four-role set as
+# pm_checksheet_paths (SUPER_ADMIN via the generic bypass). A single `*` matches
+# exactly one path segment: collection (list/create) and /{id} (get/update/delete).
+# The service gate is authoritative for the checksheet's machine scope and the
+# approved-revision freeze (rego cannot see the checksheet state). Reads (GET) flow
+# through generic read_allowed.
+pm_checklist_paths := {
+  "/api/v1/pm-checklist-categories",
+  "/api/v1/pm-checklist-categories/*",
+  "/api/v1/pm-checklist-items",
+  "/api/v1/pm-checklist-items/*",
+}
+
 # Org-maintenance departments (spec-org-maintenance-model): mutations are the
 # Phase 1 gate (SUPER_ADMIN|MANAGER_MAINTENANCE). Reads flow through generic
 # read_allowed. Members replace + section leader assignment + user-master updates
@@ -1072,6 +1086,33 @@ mutation_allowed if {
   input.subject.roles[_] == "STAFF_MAINTENANCE"
   is_mutation
   path_matches(pm_checksheet_paths)
+}
+
+# PM checklist categories & items (story 19-2): the same four-role allow set as
+# pm_checksheet_paths — define/edit is staff-level; scope and the approved-revision
+# freeze are service-side.
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(pm_checklist_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(pm_checklist_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(pm_checklist_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STAFF_MAINTENANCE"
+  is_mutation
+  path_matches(pm_checklist_paths)
 }
 
 mutation_allowed if {

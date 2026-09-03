@@ -18,6 +18,9 @@ import com.syncro.maintenance.preventive.application.PreventiveProgramService.Ma
 import com.syncro.maintenance.preventive.application.PreventiveProgramService.PreventiveForbiddenException;
 import com.syncro.maintenance.preventive.application.PreventiveProgramService.PreventiveValidationException;
 import com.syncro.maintenance.preventive.application.PreventiveProgramService.ProgramNotFoundException;
+import com.syncro.maintenance.preventive.application.PmChecklistService.CalibrationInstrumentNotFoundException;
+import com.syncro.maintenance.preventive.application.PmChecklistService.PmChecklistCategoryNotFoundException;
+import com.syncro.maintenance.preventive.application.PmChecklistService.PmChecklistItemNotFoundException;
 import com.syncro.maintenance.preventive.application.PmChecksheetService.ActiveChecksheetNotFoundException;
 import com.syncro.maintenance.preventive.application.PmChecksheetService.ChecksheetAlreadyExistsException;
 import com.syncro.maintenance.preventive.application.PmChecksheetService.ChecksheetValidationException;
@@ -48,7 +51,8 @@ import tools.jackson.databind.exc.InvalidFormatException;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(assignableTypes = {PreventiveProgramController.class, PreventiveScheduleController.class,
-    PmFrequencyController.class, PmChecksheetController.class})
+    PmFrequencyController.class, PmChecksheetController.class, PmChecklistCategoryController.class,
+    PmChecklistItemController.class})
 public class PreventiveExceptionHandler {
 
   private final Clock clock;
@@ -286,6 +290,35 @@ public class PreventiveExceptionHandler {
 
   @ExceptionHandler(ChecksheetValidationException.class)
   ResponseEntity<ErrorResponse> checksheetValidation(ChecksheetValidationException exception) {
+    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
+        exception.getFieldErrors());
+  }
+
+  // -------------------------------------------------------------------------
+  // Story 19-2: PM checklist categories & items
+  // -------------------------------------------------------------------------
+
+  @ExceptionHandler(PmChecklistCategoryNotFoundException.class)
+  ResponseEntity<ErrorResponse> pmChecklistCategoryNotFound() {
+    return error(HttpStatus.NOT_FOUND, "PM_CHECKLIST_CATEGORY_NOT_FOUND",
+        "PM checklist category was not found.", Map.of());
+  }
+
+  @ExceptionHandler(PmChecklistItemNotFoundException.class)
+  ResponseEntity<ErrorResponse> pmChecklistItemNotFound() {
+    return error(HttpStatus.NOT_FOUND, "PM_CHECKLIST_ITEM_NOT_FOUND",
+        "PM checklist item was not found.", Map.of());
+  }
+
+  @ExceptionHandler(CalibrationInstrumentNotFoundException.class)
+  ResponseEntity<ErrorResponse> calibrationInstrumentNotFound() {
+    return error(HttpStatus.NOT_FOUND, "CALIBRATION_INSTRUMENT_NOT_FOUND",
+        "Calibration instrument was not found.", Map.of());
+  }
+
+  @ExceptionHandler(com.syncro.maintenance.preventive.application.PmChecklistService.ChecklistValidationException.class)
+  ResponseEntity<ErrorResponse> checklistItemValidation(
+      com.syncro.maintenance.preventive.application.PmChecklistService.ChecklistValidationException exception) {
     return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
         exception.getFieldErrors());
   }

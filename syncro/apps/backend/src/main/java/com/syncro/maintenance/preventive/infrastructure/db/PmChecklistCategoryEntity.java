@@ -70,4 +70,11 @@ public class PmChecklistCategoryEntity {
   public Instant getUpdatedAt() {
     return updatedAt;
   }
+
+  /** Edit (story 19-2): rename and/or reorder the category within its checksheet. */
+  public void update(String name, int sortOrder, Instant updatedAt) {
+    this.name = name;
+    this.sortOrder = sortOrder;
+    this.updatedAt = updatedAt;
+  }
 }
