@@ -1,0 +1,2117 @@
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiQueryService.java b/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiQueryService.java
+index ac56df7..8991b8f 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiQueryService.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiQueryService.java
+@@ -4,34 +4,46 @@ import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
+ import com.syncro.kpi.domain.KpiAggregateRefreshStatus;
+ import com.syncro.kpi.domain.KpiType;
+ import com.syncro.kpi.infrastructure.db.KpiAggregateRefreshLogRepository;
++import com.syncro.kpi.infrastructure.db.KpiMarMonthlyEntity;
+ import com.syncro.kpi.infrastructure.db.KpiMarMonthlyRepository;
++import com.syncro.kpi.infrastructure.db.KpiMonthlyBreakdownEntity;
+ import com.syncro.kpi.infrastructure.db.KpiMonthlyBreakdownRepository;
++import com.syncro.kpi.infrastructure.db.KpiMtbfMonthlyEntity;
+ import com.syncro.kpi.infrastructure.db.KpiMtbfMonthlyRepository;
++import com.syncro.kpi.infrastructure.db.KpiMttrMonthlyEntity;
+ import com.syncro.kpi.infrastructure.db.KpiMttrMonthlyRepository;
++import com.syncro.kpi.infrastructure.db.KpiPmCompletionMonthlyEntity;
+ import com.syncro.kpi.infrastructure.db.KpiPmCompletionMonthlyRepository;
+ import com.syncro.kpi.infrastructure.db.KpiTargetEntity;
+ import com.syncro.kpi.infrastructure.db.KpiTargetRepository;
++import com.syncro.kpi.infrastructure.db.KpiTechnicianMonthlyEntity;
+ import com.syncro.kpi.infrastructure.db.KpiTechnicianMonthlyRepository;
+ import com.syncro.org.application.OperationalScope;
+ import java.math.BigDecimal;
+ import java.time.Instant;
+ import java.time.LocalDate;
++import java.util.Collection;
+ import java.util.Comparator;
++import java.util.HashMap;
+ import java.util.HashSet;
+ import java.util.List;
++import java.util.Map;
+ import java.util.UUID;
++import java.util.function.Function;
+ import org.springframework.stereotype.Service;
+ import org.springframework.transaction.annotation.Transactional;
+ 
+ /**
+- * Scope-filtered reads of materialized KPI rows (story 20-1, AD-20). Dashboards read
++ * Scope-filtered reads of materialized KPI rows (story 20-1, AD-20) with the
++ * actual-vs-target verdict computed server-side (story 20-2). Dashboards read
+  * precomputed monthly rows here — never on-the-fly computation (spec "Never"). A month
+  * with no row is an explicit INSUFFICIENT_DATA response, never a fabricated zero.
+  *
+  * <p>Every read is filtered by the caller's organizational scope (AD-2): leaders see
+- * their machine groups, managers their plants, global roles everything. The actual-vs-
+- * target comparison joins {@code kpi_targets} for the requested plant/month and
+- * returns a stable status string (non-color-only communication, epic-20 UX rule).
++ * their machine groups, managers their plants, global roles everything. The verdict is
++ * joined per row (every plant-level row carries its plant's target status), not only
++ * when the caller passes {@code plantId}, and is a stable uppercase contract string —
++ * the frontend renders labels from it and never branches on color (epic-20 UX rule).
+  */
+ @Service
+ public class KpiQueryService {
+@@ -40,6 +52,16 @@ public class KpiQueryService {
+   public static final String STATUS_AVAILABLE = "AVAILABLE";
+   public static final String STATUS_INSUFFICIENT_DATA = "INSUFFICIENT_DATA";
+ 
++  /** Actual-vs-target verdict per row (story 20-2, uppercase contract strings). */
++  public static final String VERDICT_ON_TARGET = "ON_TARGET";
++  public static final String VERDICT_BELOW_TARGET = "BELOW_TARGET";
++  public static final String VERDICT_ABOVE_TARGET = "ABOVE_TARGET";
++  public static final String VERDICT_NO_TARGET = "NO_TARGET";
++
++  /** Direction flags for {@link #verdict} — MTBF/percentages higher-better, MTTR/breakdown lower-better. */
++  private static final boolean HIGHER_IS_BETTER = true;
++  private static final boolean LOWER_IS_BETTER = false;
++
+   private final KpiScopeService scopeService;
+   private final KpiSourceDataReader source;
+   private final KpiMonthlyBreakdownRepository breakdowns;
+@@ -70,28 +92,34 @@ public class KpiQueryService {
+   }
+ 
+   // ---------------------------------------------------------------------------
+-  // Views (API read models — records, camelCase JSON)
++  // Views (API read models — records, camelCase JSON). Story 20-2 adds the
++  // per-row targetValue/targetStatus pair to every row record (additive).
+   // ---------------------------------------------------------------------------
+ 
+-  public record MtbfRow(UUID plantId, UUID machineId, BigDecimal mtbfDays) {
++  public record MtbfRow(UUID plantId, UUID machineId, BigDecimal mtbfDays,
++      BigDecimal targetValue, String targetStatus) {
+   }
+ 
+-  public record MttrRow(UUID plantId, BigDecimal wallClockMinutes, BigDecimal actualWorkingMinutes) {
++  public record MttrRow(UUID plantId, BigDecimal wallClockMinutes,
++      BigDecimal actualWorkingMinutes, BigDecimal targetValue, String targetStatus) {
+   }
+ 
+   public record MarRow(UUID plantId, int plannedAvailableMinutes, int downtimeMinutes,
+-      BigDecimal marPercent, String sourceStatus, String sourceMessage) {
++      BigDecimal marPercent, String sourceStatus, String sourceMessage,
++      BigDecimal targetValue, String targetStatus) {
+   }
+ 
+   public record PmCompletionRow(UUID plantId, BigDecimal completionRate, int completedCount,
+-      int plannedCount, String sourceStatus, String sourceMessage) {
++      int plannedCount, String sourceStatus, String sourceMessage,
++      BigDecimal targetValue, String targetStatus) {
+   }
+ 
+   public record TechnicianRow(UUID plantId, UUID technicianId, BigDecimal averageRating,
+-      int totalWo, BigDecimal firstTimeFixRate) {
++      int totalWo, BigDecimal firstTimeFixRate, BigDecimal targetValue, String targetStatus) {
+   }
+ 
+-  public record BreakdownRow(UUID plantId, int count) {
++  public record BreakdownRow(UUID plantId, int count, BigDecimal targetValue,
++      String targetStatus) {
+   }
+ 
+   public record TargetView(UUID plantId, LocalDate month, Integer monthlyBreakdownTarget,
+@@ -123,7 +151,9 @@ public class KpiQueryService {
+   /**
+    * Scope-filtered materialized read for one KPI type/month. {@code plantId} optionally
+    * narrows the response to one plant (must be in scope). No rows in scope → explicit
+-   * INSUFFICIENT_DATA with empty lists (never a fabricated zero).
++   * INSUFFICIENT_DATA with empty lists (never a fabricated zero). Every returned row
++   * carries its plant's target verdict (story 20-2), joined per row regardless of
++   * whether the caller passed {@code plantId}.
+    */
+   @Transactional(readOnly = true)
+   public MaterializedResponse materialized(AuthenticatedUser user, KpiType type, LocalDate month,
+@@ -145,12 +175,21 @@ public class KpiQueryService {
+         // plants' rows; leaders additionally see rows of machines in their groups.
+         var scopedMachines = scope.plantIds() == null ? null
+             : new HashSet<>(source.findMachineIdsByGroupIds(scopeService.groupIds(scope)));
+-        var rows = mtbfMonthlies.findByMonth(month).stream()
++        var entities = mtbfMonthlies.findByMonth(month).stream()
+             .filter(r -> visiblePlant(scope, r.getPlantId())
+                 || (scopedMachines != null && scopedMachines.contains(r.getMachineId())))
+             .filter(r -> plantId == null || plantId.equals(r.getPlantId()))
+-            .map(r -> new MtbfRow(r.getPlantId(), r.getMachineId(), r.getMtbfDays()))
+-            .sorted(Comparator.comparing(MtbfRow::machineId))
++            .sorted(Comparator.comparing(KpiMtbfMonthlyEntity::getMachineId))
++            .toList();
++        var plantTargets = targetsByPlant(
++            entities.stream().map(KpiMtbfMonthlyEntity::getPlantId).toList(), month);
++        var rows = entities.stream()
++            .map(r -> {
++              var mtbfTarget = targetValue(plantTargets.get(r.getPlantId()),
++                  KpiTargetEntity::getMtbfTargetDays);
++              return new MtbfRow(r.getPlantId(), r.getMachineId(), r.getMtbfDays(), mtbfTarget,
++                  verdict(r.getMtbfDays(), mtbfTarget, HIGHER_IS_BETTER));
++            })
+             .toList();
+         yield rows.isEmpty()
+             ? MaterializedResponse.insufficient(type, month, target, refresh)
+@@ -158,12 +197,25 @@ public class KpiQueryService {
+                 List.of(), List.of(), List.of(), List.of(), List.of(), target, refresh);
+       }
+       case MTTR -> {
+-        var rows = mttrMonthlies.findByMonth(month).stream()
++        var entities = mttrMonthlies.findByMonth(month).stream()
+             .filter(r -> visiblePlant(scope, r.getPlantId()))
+             .filter(r -> plantId == null || plantId.equals(r.getPlantId()))
+-            .map(r -> new MttrRow(r.getPlantId(), r.getWallClockMttrMinutes(),
+-                r.getActualWorkingMttrMinutes()))
+-            .sorted(Comparator.comparing(MttrRow::plantId))
++            .sorted(Comparator.comparing(KpiMttrMonthlyEntity::getPlantId))
++            .toList();
++        var plantTargets = targetsByPlant(
++            entities.stream().map(KpiMttrMonthlyEntity::getPlantId).toList(), month);
++        var rows = entities.stream()
++            .map(r -> {
++              // Verdict follows the reference dashboard: actual-working when present,
++              // wall-clock otherwise; both null → INSUFFICIENT_DATA (never fabricated).
++              var actual = r.getActualWorkingMttrMinutes() != null
++                  ? r.getActualWorkingMttrMinutes() : r.getWallClockMttrMinutes();
++              var mttrTarget = targetValue(plantTargets.get(r.getPlantId()),
++                  KpiTargetEntity::getMttrTargetMinutes);
++              return new MttrRow(r.getPlantId(), r.getWallClockMttrMinutes(),
++                  r.getActualWorkingMttrMinutes(), mttrTarget,
++                  verdict(actual, mttrTarget, LOWER_IS_BETTER));
++            })
+             .toList();
+         yield rows.isEmpty()
+             ? MaterializedResponse.insufficient(type, month, target, refresh)
+@@ -171,13 +223,17 @@ public class KpiQueryService {
+                 List.of(), List.of(), List.of(), List.of(), target, refresh);
+       }
+       case MAR -> {
+-        var rows = marMonthlies.findByMonth(month).stream()
++        var entities = marMonthlies.findByMonth(month).stream()
+             .filter(r -> visiblePlant(scope, r.getPlantId()))
+             .filter(r -> plantId == null || plantId.equals(r.getPlantId()))
++            .sorted(Comparator.comparing(KpiMarMonthlyEntity::getPlantId))
++            .toList();
++        // kpi_target carries no MAR column (the OEE percents are baseline factors, not
++        // MAR targets) — rows render actuals with NO_TARGET, never a fabricated verdict.
++        var rows = entities.stream()
+             .map(r -> new MarRow(r.getPlantId(), r.getPlannedAvailableMinutes(),
+                 r.getDowntimeMinutes(), r.getMarPercent(), r.getSourceStatus(),
+-                r.getSourceMessage()))
+-            .sorted(Comparator.comparing(MarRow::plantId))
++                r.getSourceMessage(), null, VERDICT_NO_TARGET))
+             .toList();
+         yield rows.isEmpty()
+             ? MaterializedResponse.insufficient(type, month, target, refresh)
+@@ -185,13 +241,16 @@ public class KpiQueryService {
+                 rows, List.of(), List.of(), List.of(), target, refresh);
+       }
+       case PM_COMPLETION -> {
+-        var rows = pmCompletionMonthlies.findByMonth(month).stream()
++        var entities = pmCompletionMonthlies.findByMonth(month).stream()
+             .filter(r -> visiblePlant(scope, r.getPlantId()))
+             .filter(r -> plantId == null || plantId.equals(r.getPlantId()))
++            .sorted(Comparator.comparing(KpiPmCompletionMonthlyEntity::getPlantId))
++            .toList();
++        // No PM-completion column in kpi_target → NO_TARGET (same rule as MAR).
++        var rows = entities.stream()
+             .map(r -> new PmCompletionRow(r.getPlantId(), r.getCompletionRate(),
+                 r.getCompletedCount(), r.getPlannedCount(), r.getSourceStatus(),
+-                r.getSourceMessage()))
+-            .sorted(Comparator.comparing(PmCompletionRow::plantId))
++                r.getSourceMessage(), null, VERDICT_NO_TARGET))
+             .toList();
+         yield rows.isEmpty()
+             ? MaterializedResponse.insufficient(type, month, target, refresh)
+@@ -199,12 +258,16 @@ public class KpiQueryService {
+                 List.of(), rows, List.of(), List.of(), target, refresh);
+       }
+       case TECHNICIAN -> {
+-        var rows = technicianMonthlies.findByMonth(month).stream()
++        var entities = technicianMonthlies.findByMonth(month).stream()
+             .filter(r -> visiblePlant(scope, r.getPlantId()))
+             .filter(r -> plantId == null || plantId.equals(r.getPlantId()))
++            .sorted(Comparator.comparing(KpiTechnicianMonthlyEntity::getTechnicianId))
++            .toList();
++        // Technician metrics have no target column in kpi_target → always NO_TARGET
++        // (spec design note); rows still render actuals.
++        var rows = entities.stream()
+             .map(r -> new TechnicianRow(r.getPlantId(), r.getTechnicianId(), r.getAverageRating(),
+-                r.getTotalWo(), r.getFirstTimeFixRate()))
+-            .sorted(Comparator.comparing(TechnicianRow::technicianId))
++                r.getTotalWo(), r.getFirstTimeFixRate(), null, VERDICT_NO_TARGET))
+             .toList();
+         yield rows.isEmpty()
+             ? MaterializedResponse.insufficient(type, month, target, refresh)
+@@ -212,11 +275,21 @@ public class KpiQueryService {
+                 List.of(), List.of(), rows, List.of(), target, refresh);
+       }
+       case BREAKDOWN -> {
+-        var rows = breakdowns.findByMonth(month).stream()
++        var entities = breakdowns.findByMonth(month).stream()
+             .filter(r -> visiblePlant(scope, r.getPlantId()))
+             .filter(r -> plantId == null || plantId.equals(r.getPlantId()))
+-            .map(r -> new BreakdownRow(r.getPlantId(), r.getCount()))
+-            .sorted(Comparator.comparing(BreakdownRow::plantId))
++            .sorted(Comparator.comparing(KpiMonthlyBreakdownEntity::getPlantId))
++            .toList();
++        var plantTargets = targetsByPlant(
++            entities.stream().map(KpiMonthlyBreakdownEntity::getPlantId).toList(), month);
++        var rows = entities.stream()
++            .map(r -> {
++              var breakdownTarget = targetValue(plantTargets.get(r.getPlantId()),
++                  t -> t.getMonthlyBreakdownTarget() == null ? null
++                      : BigDecimal.valueOf(t.getMonthlyBreakdownTarget()));
++              return new BreakdownRow(r.getPlantId(), r.getCount(), breakdownTarget,
++                  verdict(BigDecimal.valueOf(r.getCount()), breakdownTarget, LOWER_IS_BETTER));
++            })
+             .toList();
+         yield rows.isEmpty()
+             ? MaterializedResponse.insufficient(type, month, target, refresh)
+@@ -234,6 +307,48 @@ public class KpiQueryService {
+     return scope.plantIds() == null || scope.plantIds().contains(plantId);
+   }
+ 
++  /**
++   * Story 20-2: one {@code findByPlantIdAndMonth} per distinct plant in the result set
++   * (small N; no N+1 concern at pilot scale).
++   * ponytail: per-plant lookup, batch query if a sweep ever returns many plants.
++   */
++  private Map<UUID, KpiTargetEntity> targetsByPlant(Collection<UUID> plantIds, LocalDate month) {
++    var byPlant = new HashMap<UUID, KpiTargetEntity>();
++    var seen = new HashSet<UUID>();
++    for (var plant : plantIds) {
++      if (seen.add(plant)) {
++        targets.findByPlantIdAndMonth(plant, month).ifPresent(t -> byPlant.put(plant, t));
++      }
++    }
++    return byPlant;
++  }
++
++  private static <T> T targetValue(KpiTargetEntity target,
++      Function<KpiTargetEntity, T> getter) {
++    return target == null ? null : getter.apply(target);
++  }
++
++  /**
++   * Server-side actual-vs-target verdict (story 20-2). Direction per metric: MTBF and
++   * percentage metrics higher-better ({@code actual >= target} → ON_TARGET, else
++   * BELOW_TARGET); MTTR and breakdown count lower-better ({@code actual <= target} →
++   * ON_TARGET, else ABOVE_TARGET). Missing target → NO_TARGET; missing actual →
++   * INSUFFICIENT_DATA — never a fabricated verdict (spec "Always").
++   */
++  private static String verdict(BigDecimal actual, BigDecimal target, boolean higherIsBetter) {
++    if (target == null) {
++      return VERDICT_NO_TARGET;
++    }
++    if (actual == null) {
++      return STATUS_INSUFFICIENT_DATA;
++    }
++    int comparison = actual.compareTo(target);
++    if (higherIsBetter ? comparison >= 0 : comparison <= 0) {
++      return VERDICT_ON_TARGET;
++    }
++    return higherIsBetter ? VERDICT_BELOW_TARGET : VERDICT_ABOVE_TARGET;
++  }
++
+   private static TargetView toTargetView(KpiTargetEntity t) {
+     return new TargetView(t.getPlantId(), t.getMonth(), t.getMonthlyBreakdownTarget(),
+         t.getMtbfTargetDays(), t.getMttrTargetMinutes(), t.getOeeQualityPercent(),
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/kpi/api/KpiTargetControllerTest.java b/syncro/apps/backend/src/test/java/com/syncro/kpi/api/KpiTargetControllerTest.java
+new file mode 100644
+index 0000000..283a152
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/kpi/api/KpiTargetControllerTest.java
+@@ -0,0 +1,157 @@
++package com.syncro.kpi.api;
++
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.eq;
++import static org.mockito.Mockito.when;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
++
++import com.syncro.TestJsonConfig;
++import com.syncro.auth.application.JwtTokenService;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.JwtAuthenticationFilter;
++import com.syncro.config.SecurityConfig;
++import com.syncro.config.TimeConfig;
++import com.syncro.kpi.application.KpiQueryService;
++import com.syncro.kpi.application.KpiTargetService;
++import com.syncro.kpi.domain.KpiType;
++import java.math.BigDecimal;
++import java.time.Instant;
++import java.time.LocalDate;
++import java.util.List;
++import java.util.UUID;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
++import org.springframework.context.annotation.Import;
++import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
++import org.springframework.security.core.authority.SimpleGrantedAuthority;
++import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
++import org.springframework.test.context.bean.override.mockito.MockitoBean;
++import org.springframework.test.web.servlet.MockMvc;
++import org.springframework.test.web.servlet.request.RequestPostProcessor;
++
++/**
++ * Story 20-2 review: pins the serialized verdict contract — the hand-written frontend
++ * interfaces read {@code targetValue}/{@code targetStatus} from this JSON, and no other
++ * test crosses the serialization boundary (unit tests use record accessors; the frontend
++ * mocks the hook). Field-name drift must fail here (SparepartAlertControllerTest pattern).
++ */
++@WebMvcTest(KpiTargetController.class)
++@Import({SecurityConfig.class, KpiExceptionHandler.class, JwtAuthenticationFilter.class,
++    TimeConfig.class, TestJsonConfig.class})
++class KpiTargetControllerTest {
++
++  private static final LocalDate AUG = LocalDate.of(2026, 8, 1);
++
++  @Autowired
++  private MockMvc mockMvc;
++
++  @MockitoBean
++  private KpiTargetService targetService;
++
++  @MockitoBean
++  private KpiQueryService queryService;
++
++  @MockitoBean
++  private JwtTokenService jwtTokenService;
++
++  private static RequestPostProcessor auth(AuthenticatedUser user) {
++    var principal = new UsernamePasswordAuthenticationToken(user, null,
++        List.of(new SimpleGrantedAuthority("ROLE_" + user.applicationRole().name())));
++    return SecurityMockMvcRequestPostProcessors.authentication(principal);
++  }
++
++  @Test
++  @DisplayName("20.2-API-001 P0: materialized MTBF JSON carries targetValue/targetStatus contract fields")
++  void materializedVerdictJsonContract() throws Exception {
++    var admin = new AuthenticatedUser(UUID.randomUUID().toString(), "admin@syncro.test",
++        ApplicationRole.SUPER_ADMIN);
++    var plantId = UUID.randomUUID();
++    var machineId = UUID.randomUUID();
++    when(queryService.materialized(any(), eq(KpiType.MTBF), eq(AUG), eq(plantId)))
++        .thenReturn(new KpiQueryService.MaterializedResponse("mtbf", AUG,
++            KpiQueryService.STATUS_AVAILABLE,
++            List.of(new KpiQueryService.MtbfRow(plantId, machineId, new BigDecimal("10.42"),
++                new BigDecimal("8.00"), KpiQueryService.VERDICT_ON_TARGET)),
++            List.of(), List.of(), List.of(), List.of(), List.of(), null, null));
++
++    mockMvc.perform(get("/api/v1/kpi/materialized/mtbf")
++            .param("month", AUG.toString())
++            .param("plantId", plantId.toString())
++            .with(auth(admin)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.type").value("mtbf"))
++        .andExpect(jsonPath("$.status").value("AVAILABLE"))
++        .andExpect(jsonPath("$.mtbfRows[0].plantId").value(plantId.toString()))
++        .andExpect(jsonPath("$.mtbfRows[0].mtbfDays").value(10.42))
++        .andExpect(jsonPath("$.mtbfRows[0].targetValue").value(8.00))
++        .andExpect(jsonPath("$.mtbfRows[0].targetStatus").value("ON_TARGET"));
++  }
++
++  @Test
++  @DisplayName("20.2-API-002 P1: unknown type path segment maps to the stable 404 envelope")
++  void unknownTypeStableEnvelope() throws Exception {
++    var admin = new AuthenticatedUser(UUID.randomUUID().toString(), "admin@syncro.test",
++        ApplicationRole.SUPER_ADMIN);
++
++    mockMvc.perform(get("/api/v1/kpi/materialized/nonsense")
++            .param("month", AUG.toString())
++            .with(auth(admin)))
++        .andExpect(status().isNotFound())
++        .andExpect(jsonPath("$.code").value("KPI_TYPE_NOT_FOUND"))
++        .andExpect(jsonPath("$.message").isString())
++        .andExpect(jsonPath("$.timestamp").value(org.hamcrest.Matchers.matchesPattern(
++            "\\d{4}-\\d{2}-\\d{2}T.*")))
++        .andExpect(jsonPath("$.traceId").isNotEmpty());
++  }
++
++  @Test
++  @DisplayName("20.2-API-003 P1: out-of-range target body maps to VALIDATION_ERROR with fieldErrors")
++  void targetValidationEnvelope() throws Exception {
++    var admin = new AuthenticatedUser(UUID.randomUUID().toString(), "admin@syncro.test",
++        ApplicationRole.SUPER_ADMIN);
++
++    mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
++            .put("/api/v1/kpi/targets")
++            .contentType("application/json")
++            .content("""
++                {"plantId":"%s","month":"2026-08-01","monthlyBreakdownTarget":5,
++                 "mtbfTargetDays":null,"mttrTargetMinutes":null,
++                 "oeeQualityPercent":150,"oeePerformancePercent":null}"""
++                .formatted(UUID.randomUUID()))
++            .with(auth(admin)))
++        .andExpect(status().isBadRequest())
++        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
++        .andExpect(jsonPath("$.fieldErrors.oeeQualityPercent").isNotEmpty());
++  }
++
++  @Test
++  @DisplayName("20.2-API-004 P1: refresh-log timestamp serializes as ISO instant")
++  void refreshViewSerializes() throws Exception {
++    var admin = new AuthenticatedUser(UUID.randomUUID().toString(), "admin@syncro.test",
++        ApplicationRole.SUPER_ADMIN);
++    var plantId = UUID.randomUUID();
++    when(queryService.materialized(any(), eq(KpiType.BREAKDOWN), eq(AUG), eq(plantId)))
++        .thenReturn(new KpiQueryService.MaterializedResponse("breakdown", AUG,
++            KpiQueryService.STATUS_AVAILABLE,
++            List.of(), List.of(), List.of(), List.of(), List.of(),
++            List.of(new KpiQueryService.BreakdownRow(plantId, 5, BigDecimal.valueOf(3),
++                KpiQueryService.VERDICT_ABOVE_TARGET)),
++            null, new KpiQueryService.RefreshView("breakdown:2026-08",
++                com.syncro.kpi.domain.KpiAggregateRefreshStatus.SUCCESS,
++                Instant.parse("2026-09-01T03:00:00Z"), "traceId=t rows=1")));
++
++    mockMvc.perform(get("/api/v1/kpi/materialized/breakdown")
++            .param("month", AUG.toString())
++            .param("plantId", plantId.toString())
++            .with(auth(admin)))
++        .andExpect(status().isOk())
++        .andExpect(jsonPath("$.breakdownRows[0].targetStatus").value("ABOVE_TARGET"))
++        .andExpect(jsonPath("$.refresh.status").value("SUCCESS"))
++        .andExpect(jsonPath("$.refresh.refreshedAt").value("2026-09-01T03:00:00Z"));
++  }
++}
+\ No newline at end of file
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/kpi/application/KpiQueryServiceTest.java b/syncro/apps/backend/src/test/java/com/syncro/kpi/application/KpiQueryServiceTest.java
+index 5902dd1..19afed9 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/kpi/application/KpiQueryServiceTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/kpi/application/KpiQueryServiceTest.java
+@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
+ import static org.assertj.core.api.Assertions.assertThatThrownBy;
+ import static org.mockito.ArgumentMatchers.any;
+ import static org.mockito.ArgumentMatchers.anyList;
++import static org.mockito.Mockito.times;
++import static org.mockito.Mockito.verify;
++import static org.mockito.Mockito.verifyNoInteractions;
+ import static org.mockito.Mockito.when;
+ 
+ import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
+@@ -14,12 +17,15 @@ import com.syncro.kpi.infrastructure.db.KpiAggregateRefreshLogEntity;
+ import com.syncro.kpi.infrastructure.db.KpiAggregateRefreshLogRepository;
+ import com.syncro.kpi.infrastructure.db.KpiMarMonthlyEntity;
+ import com.syncro.kpi.infrastructure.db.KpiMarMonthlyRepository;
++import com.syncro.kpi.infrastructure.db.KpiMonthlyBreakdownEntity;
+ import com.syncro.kpi.infrastructure.db.KpiMonthlyBreakdownRepository;
+ import com.syncro.kpi.infrastructure.db.KpiMtbfMonthlyEntity;
+ import com.syncro.kpi.infrastructure.db.KpiMtbfMonthlyRepository;
+ import com.syncro.kpi.infrastructure.db.KpiMttrMonthlyEntity;
+ import com.syncro.kpi.infrastructure.db.KpiMttrMonthlyRepository;
++import com.syncro.kpi.infrastructure.db.KpiPmCompletionMonthlyEntity;
+ import com.syncro.kpi.infrastructure.db.KpiPmCompletionMonthlyRepository;
++import com.syncro.kpi.infrastructure.db.KpiTechnicianMonthlyEntity;
+ import com.syncro.kpi.infrastructure.db.KpiTargetEntity;
+ import com.syncro.kpi.infrastructure.db.KpiTargetRepository;
+ import com.syncro.kpi.infrastructure.db.KpiTechnicianMonthlyRepository;
+@@ -216,4 +222,290 @@ class KpiQueryServiceTest {
+     assertThat(response.refresh().status()).isEqualTo(KpiAggregateRefreshStatus.SUCCESS);
+     assertThat(response.refresh().message()).contains("traceId=t");
+   }
++
++  // ---------------------------------------------------------------------------
++  // Story 20-2: server-side actual-vs-target verdict matrix
++  // ---------------------------------------------------------------------------
++
++  private final AuthenticatedUser admin = new AuthenticatedUser(
++      UUID.randomUUID().toString(), "admin@syncro.test", ApplicationRole.SUPER_ADMIN);
++
++  private OperationalScope adminScope() {
++    var scope = new OperationalScope(null, Set.of(), Set.of());
++    when(scopeService.derive(admin)).thenReturn(scope);
++    return scope;
++  }
++
++  private static KpiTargetEntity target(UUID plant, Integer breakdown, BigDecimal mtbfDays,
++      BigDecimal mttrMinutes) {
++    return new KpiTargetEntity(UUID.randomUUID(), plant, AUG, breakdown, mtbfDays, mttrMinutes,
++        null, null, null, T0, T0);
++  }
++
++  @Test
++  @DisplayName("20-2-VERDICT-001 P0: MTBF 10.42 days vs target 8.00 → ON_TARGET (higher-better)")
++  void mtbfAboveTargetIsOnTarget() {
++    adminScope();
++    when(mtbfMonthlies.findByMonth(AUG)).thenReturn(List.of(new KpiMtbfMonthlyEntity(
++        UUID.randomUUID(), plantA, machineA, AUG, new BigDecimal("10.42"), T0, T0)));
++    when(targets.findByPlantIdAndMonth(plantA, AUG)).thenReturn(Optional.of(
++        target(plantA, null, new BigDecimal("8.00"), null)));
++    when(refreshLogs.findByRefreshKey("mtbf:2026-08")).thenReturn(Optional.empty());
++
++    var response = service.materialized(admin, KpiType.MTBF, AUG, null);
++
++    var row = response.mtbfRows().get(0);
++    assertThat(row.mtbfDays()).isEqualByComparingTo(new BigDecimal("10.42"));
++    assertThat(row.targetValue()).isEqualByComparingTo(new BigDecimal("8.00"));
++    assertThat(row.targetStatus()).isEqualTo(KpiQueryService.VERDICT_ON_TARGET);
++  }
++
++  @Test
++  @DisplayName("20-2-VERDICT-002 P0: MTBF below target → BELOW_TARGET; equal counts as ON_TARGET")
++  void mtbfBelowTargetIsBelowTarget() {
++    adminScope();
++    when(mtbfMonthlies.findByMonth(AUG)).thenReturn(List.of(
++        new KpiMtbfMonthlyEntity(UUID.randomUUID(), plantA, machineA, AUG,
++            new BigDecimal("5.00"), T0, T0),
++        new KpiMtbfMonthlyEntity(UUID.randomUUID(), plantA, machineB, AUG,
++            new BigDecimal("8.00"), T0, T0)));
++    when(targets.findByPlantIdAndMonth(plantA, AUG)).thenReturn(Optional.of(
++        target(plantA, null, new BigDecimal("8.00"), null)));
++    when(refreshLogs.findByRefreshKey("mtbf:2026-08")).thenReturn(Optional.empty());
++
++    var response = service.materialized(admin, KpiType.MTBF, AUG, null);
++
++    // Rows sort by machineId (random UUIDs) — assert per machine, not by index.
++    assertThat(response.mtbfRows().stream()
++        .filter(r -> r.machineId().equals(machineA)).findFirst().orElseThrow().targetStatus())
++        .isEqualTo(KpiQueryService.VERDICT_BELOW_TARGET);
++    assertThat(response.mtbfRows().stream()
++        .filter(r -> r.machineId().equals(machineB)).findFirst().orElseThrow().targetStatus())
++        .isEqualTo(KpiQueryService.VERDICT_ON_TARGET);
++  }
++
++  @Test
++  @DisplayName("20-2-VERDICT-003 P0: MTTR 75 min vs target 60 → ABOVE_TARGET (lower-better)")
++  void mttrWorseThanTargetIsAboveTarget() {
++    adminScope();
++    when(mttrMonthlies.findByMonth(AUG)).thenReturn(List.of(new KpiMttrMonthlyEntity(
++        UUID.randomUUID(), plantA, AUG, new BigDecimal("75.00"), new BigDecimal("75.00"),
++        T0, T0)));
++    when(targets.findByPlantIdAndMonth(plantA, AUG)).thenReturn(Optional.of(
++        target(plantA, null, null, new BigDecimal("60.00"))));
++    when(refreshLogs.findByRefreshKey("mttr:2026-08")).thenReturn(Optional.empty());
++
++    var response = service.materialized(admin, KpiType.MTTR, AUG, null);
++
++    var row = response.mttrRows().get(0);
++    assertThat(row.targetValue()).isEqualByComparingTo(new BigDecimal("60.00"));
++    assertThat(row.targetStatus()).isEqualTo(KpiQueryService.VERDICT_ABOVE_TARGET);
++  }
++
++  @Test
++  @DisplayName("20-2-VERDICT-004 P0: MTTR at/below target → ON_TARGET; verdict follows actual-working when present")
++  void mttrOnTargetAndActualWorkingPreferred() {
++    adminScope();
++    // wall-clock 90 would miss a 60 target; actual-working 45 meets it — the verdict
++    // follows the reference dashboard's actual-working ?? wall-clock precedence.
++    when(mttrMonthlies.findByMonth(AUG)).thenReturn(List.of(new KpiMttrMonthlyEntity(
++        UUID.randomUUID(), plantA, AUG, new BigDecimal("90.00"), new BigDecimal("45.00"),
++        T0, T0)));
++    when(targets.findByPlantIdAndMonth(plantA, AUG)).thenReturn(Optional.of(
++        target(plantA, null, null, new BigDecimal("60.00"))));
++    when(refreshLogs.findByRefreshKey("mttr:2026-08")).thenReturn(Optional.empty());
++
++    var response = service.materialized(admin, KpiType.MTTR, AUG, null);
++
++    assertThat(response.mttrRows().get(0).targetStatus())
++        .isEqualTo(KpiQueryService.VERDICT_ON_TARGET);
++  }
++
++  @Test
++  @DisplayName("20-2-VERDICT-005 P0: no target configured → NO_TARGET, actual still shown")
++  void missingTargetIsNoTarget() {
++    adminScope();
++    when(mtbfMonthlies.findByMonth(AUG)).thenReturn(List.of(new KpiMtbfMonthlyEntity(
++        UUID.randomUUID(), plantA, machineA, AUG, new BigDecimal("12.00"), T0, T0)));
++    when(targets.findByPlantIdAndMonth(plantA, AUG)).thenReturn(Optional.empty());
++    when(refreshLogs.findByRefreshKey("mtbf:2026-08")).thenReturn(Optional.empty());
++
++    var response = service.materialized(admin, KpiType.MTBF, AUG, null);
++
++    var row = response.mtbfRows().get(0);
++    assertThat(row.mtbfDays()).isEqualByComparingTo(new BigDecimal("12.00"));
++    assertThat(row.targetValue()).isNull();
++    assertThat(row.targetStatus()).isEqualTo(KpiQueryService.VERDICT_NO_TARGET);
++  }
++
++  @Test
++  @DisplayName("20-2-VERDICT-006 P0: target present but actual null → INSUFFICIENT_DATA, never a fabricated verdict")
++  void nullActualIsInsufficientData() {
++    adminScope();
++    when(mttrMonthlies.findByMonth(AUG)).thenReturn(List.of(new KpiMttrMonthlyEntity(
++        UUID.randomUUID(), plantA, AUG, null, null, T0, T0)));
++    when(targets.findByPlantIdAndMonth(plantA, AUG)).thenReturn(Optional.of(
++        target(plantA, null, null, new BigDecimal("60.00"))));
++    when(refreshLogs.findByRefreshKey("mttr:2026-08")).thenReturn(Optional.empty());
++
++    var response = service.materialized(admin, KpiType.MTTR, AUG, null);
++
++    var row = response.mttrRows().get(0);
++    assertThat(row.wallClockMinutes()).isNull();
++    assertThat(row.targetStatus()).isEqualTo(KpiQueryService.STATUS_INSUFFICIENT_DATA);
++  }
++
++  @Test
++  @DisplayName("20-2-JOIN-001 P0: per-row join without plantId param — each plant row carries its own verdict")
++  void perRowJoinWithoutPlantIdParam() {
++    adminScope();
++    when(mttrMonthlies.findByMonth(AUG)).thenReturn(List.of(
++        new KpiMttrMonthlyEntity(UUID.randomUUID(), plantA, AUG, new BigDecimal("45.00"),
++            new BigDecimal("45.00"), T0, T0),
++        new KpiMttrMonthlyEntity(UUID.randomUUID(), plantB, AUG, new BigDecimal("90.00"),
++            new BigDecimal("90.00"), T0, T0)));
++    // Only plantA has a target — plantB's row must still render with NO_TARGET.
++    when(targets.findByPlantIdAndMonth(plantA, AUG)).thenReturn(Optional.of(
++        target(plantA, null, null, new BigDecimal("60.00"))));
++    when(targets.findByPlantIdAndMonth(plantB, AUG)).thenReturn(Optional.empty());
++    when(refreshLogs.findByRefreshKey("mttr:2026-08")).thenReturn(Optional.empty());
++
++    var response = service.materialized(admin, KpiType.MTTR, AUG, null);
++
++    assertThat(response.target()).isNull(); // raw target view stays param-driven (20-1 shape)
++    assertThat(response.mttrRows()).hasSize(2);
++    // Rows sort by plantId (random UUIDs) — assert per plant, not by index.
++    assertThat(response.mttrRows().stream()
++        .filter(r -> r.plantId().equals(plantA)).findFirst().orElseThrow().targetStatus())
++        .isEqualTo(KpiQueryService.VERDICT_ON_TARGET);
++    assertThat(response.mttrRows().stream()
++        .filter(r -> r.plantId().equals(plantB)).findFirst().orElseThrow().targetStatus())
++        .isEqualTo(KpiQueryService.VERDICT_NO_TARGET);
++  }
++
++  @Test
++  @DisplayName("20-2-JOIN-002 P1: one target lookup per distinct plant, not per row")
++  void targetLookupDedupedPerPlant() {
++    adminScope();
++    when(mtbfMonthlies.findByMonth(AUG)).thenReturn(List.of(
++        new KpiMtbfMonthlyEntity(UUID.randomUUID(), plantA, machineA, AUG,
++            new BigDecimal("10.00"), T0, T0),
++        new KpiMtbfMonthlyEntity(UUID.randomUUID(), plantA, machineB, AUG,
++            new BigDecimal("20.00"), T0, T0)));
++    when(targets.findByPlantIdAndMonth(plantA, AUG)).thenReturn(Optional.of(
++        target(plantA, null, new BigDecimal("8.00"), null)));
++    when(refreshLogs.findByRefreshKey("mtbf:2026-08")).thenReturn(Optional.empty());
++
++    service.materialized(admin, KpiType.MTBF, AUG, null);
++
++    verify(targets, times(1)).findByPlantIdAndMonth(plantA, AUG);
++  }
++
++  @Test
++  @DisplayName("20-2-VERDICT-007 P0: breakdown count vs monthly target (lower-better)")
++  void breakdownVerdictLowerBetter() {
++    adminScope();
++    when(breakdowns.findByMonth(AUG)).thenReturn(List.of(
++        new KpiMonthlyBreakdownEntity(UUID.randomUUID(), plantA, AUG, 2, T0, T0),
++        new KpiMonthlyBreakdownEntity(UUID.randomUUID(), plantB, AUG, 5, T0, T0)));
++    when(targets.findByPlantIdAndMonth(plantA, AUG)).thenReturn(Optional.of(
++        target(plantA, 3, null, null)));
++    when(targets.findByPlantIdAndMonth(plantB, AUG)).thenReturn(Optional.of(
++        target(plantB, 3, null, null)));
++    when(refreshLogs.findByRefreshKey("breakdown:2026-08")).thenReturn(Optional.empty());
++
++    var response = service.materialized(admin, KpiType.BREAKDOWN, AUG, null);
++
++    // Rows sort by plantId (random UUIDs) — assert per plant, not by index.
++    var rowA = response.breakdownRows().stream()
++        .filter(r -> r.plantId().equals(plantA)).findFirst().orElseThrow();
++    assertThat(rowA.targetValue()).isEqualByComparingTo(new BigDecimal("3"));
++    assertThat(rowA.targetStatus()).isEqualTo(KpiQueryService.VERDICT_ON_TARGET);
++    assertThat(response.breakdownRows().stream()
++        .filter(r -> r.plantId().equals(plantB)).findFirst().orElseThrow().targetStatus())
++        .isEqualTo(KpiQueryService.VERDICT_ABOVE_TARGET);
++  }
++
++  @Test
++  @DisplayName("20-2-VERDICT-008 P1: technician rows always NO_TARGET (no target column); actuals still render")
++  void technicianRowsAlwaysNoTarget() {
++    adminScope();
++    when(technicianMonthlies.findByMonth(AUG)).thenReturn(List.of(
++        new KpiTechnicianMonthlyEntity(UUID.randomUUID(), plantA, UUID.randomUUID(), AUG,
++            new BigDecimal("4.50"), 7, new BigDecimal("85.00"), T0, T0)));
++    when(refreshLogs.findByRefreshKey("technician:2026-08")).thenReturn(Optional.empty());
++
++    var response = service.materialized(admin, KpiType.TECHNICIAN, AUG, null);
++
++    var row = response.technicianRows().get(0);
++    assertThat(row.averageRating()).isEqualByComparingTo(new BigDecimal("4.50"));
++    assertThat(row.targetValue()).isNull();
++    assertThat(row.targetStatus()).isEqualTo(KpiQueryService.VERDICT_NO_TARGET);
++    verifyNoInteractions(targets);
++  }
++
++  @Test
++  @DisplayName("20-2-VERDICT-009 P1: MAR/PM rows carry NO_TARGET (kpi_target has no comparable column)")
++  void marAndPmRowsAreNoTarget() {
++    adminScope();
++    when(marMonthlies.findByMonth(AUG)).thenReturn(List.of(new KpiMarMonthlyEntity(
++        UUID.randomUUID(), plantA, AUG, 10_000, 500, new BigDecimal("95.00"), "AVAILABLE",
++        null, T0, T0)));
++    when(refreshLogs.findByRefreshKey("mar:2026-08")).thenReturn(Optional.empty());
++
++    var mar = service.materialized(admin, KpiType.MAR, AUG, null);
++    assertThat(mar.marRows().get(0).marPercent()).isEqualByComparingTo(new BigDecimal("95.00"));
++    assertThat(mar.marRows().get(0).targetStatus()).isEqualTo(KpiQueryService.VERDICT_NO_TARGET);
++
++    when(pmCompletionMonthlies.findByMonth(AUG)).thenReturn(List.of(
++        new KpiPmCompletionMonthlyEntity(UUID.randomUUID(), plantA, AUG, new BigDecimal("90.00"),
++            9, 10, "AVAILABLE", null, T0, T0)));
++    when(refreshLogs.findByRefreshKey("pm-completion:2026-08")).thenReturn(Optional.empty());
++
++    var pm = service.materialized(admin, KpiType.PM_COMPLETION, AUG, null);
++    assertThat(pm.pmCompletionRows().get(0).completionRate())
++        .isEqualByComparingTo(new BigDecimal("90.00"));
++    assertThat(pm.pmCompletionRows().get(0).targetStatus())
++        .isEqualTo(KpiQueryService.VERDICT_NO_TARGET);
++  }
++
++  @Test
++  @DisplayName("20-2-VERDICT-010 P0: lower-better equality boundary — actual == target → ON_TARGET")
++  void lowerBetterEqualityIsOnTarget() {
++    adminScope();
++    // Review 20-2: VERDICT-007 only covers strictly-below (2 vs 3). Flipping `<=` to `<`
++    // in verdict() must fail here — plants exactly at target are the common "met the goal"
++    // state and must not render as a miss.
++    when(breakdowns.findByMonth(AUG)).thenReturn(List.of(
++        new KpiMonthlyBreakdownEntity(UUID.randomUUID(), plantA, AUG, 3, T0, T0)));
++    when(targets.findByPlantIdAndMonth(plantA, AUG)).thenReturn(Optional.of(
++        target(plantA, 3, null, null)));
++    when(refreshLogs.findByRefreshKey("breakdown:2026-08")).thenReturn(Optional.empty());
++
++    var response = service.materialized(admin, KpiType.BREAKDOWN, AUG, null);
++
++    assertThat(response.breakdownRows().get(0).targetStatus())
++        .isEqualTo(KpiQueryService.VERDICT_ON_TARGET);
++  }
++
++  @Test
++  @DisplayName("20-2-VERDICT-011 P0: MTTR with null actual-working falls back to wall-clock")
++  void mttrWallClockFallbackWhenActualWorkingNull() {
++    adminScope();
++    // Review 20-2: every other MTTR fixture has both variants equal or both null, so the
++    // `actualWorking ?? wallClock` precedence is undistinguishable. Wall-clock 75 vs a 60
++    // target must yield ABOVE_TARGET — deleting the fallback would flip this to
++    // INSUFFICIENT_DATA and silently downgrade real data.
++    when(mttrMonthlies.findByMonth(AUG)).thenReturn(List.of(new KpiMttrMonthlyEntity(
++        UUID.randomUUID(), plantA, AUG, new BigDecimal("75.00"), null, T0, T0)));
++    when(targets.findByPlantIdAndMonth(plantA, AUG)).thenReturn(Optional.of(
++        target(plantA, null, null, new BigDecimal("60.00"))));
++    when(refreshLogs.findByRefreshKey("mttr:2026-08")).thenReturn(Optional.empty());
++
++    var response = service.materialized(admin, KpiType.MTTR, AUG, null);
++
++    var row = response.mttrRows().get(0);
++    assertThat(row.actualWorkingMinutes()).isNull();
++    assertThat(row.targetStatus()).isEqualTo(KpiQueryService.VERDICT_ABOVE_TARGET);
++  }
+ }
+diff --git a/syncro/apps/web/src/features/analytics/analytics-page-content.test.tsx b/syncro/apps/web/src/features/analytics/analytics-page-content.test.tsx
+index 6b293a2..f40883a 100644
+--- a/syncro/apps/web/src/features/analytics/analytics-page-content.test.tsx
++++ b/syncro/apps/web/src/features/analytics/analytics-page-content.test.tsx
+@@ -1,7 +1,7 @@
+ import type { ReactNode } from "react";
+ 
+ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+-import { fireEvent, render, screen } from "@testing-library/react";
++import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+ import { beforeEach, describe, expect, it, vi } from "vitest";
+ 
+ import { AnalyticsPageContent } from "./analytics-page-content";
+@@ -82,6 +82,138 @@ vi.mock("@/features/analytics/hooks/use-technician-kpi", () => ({
+   }),
+ }));
+ 
++// ---------------------------------------------------------------------------
++// Story 20-2: materialized monthly KPI + target hooks (contract-shaped fixtures)
++// ---------------------------------------------------------------------------
++
++type MonthlyTargetStatus = "ON_TARGET" | "BELOW_TARGET" | "ABOVE_TARGET" | "NO_TARGET" | "INSUFFICIENT_DATA";
++
++interface MonthlyResponse {
++  type: string;
++  month: string;
++  status: "AVAILABLE" | "INSUFFICIENT_DATA";
++  mtbfRows: Array<{
++    plantId: string;
++    machineId: string;
++    mtbfDays: number | null;
++    targetValue: number | null;
++    targetStatus: MonthlyTargetStatus;
++  }>;
++  mttrRows: Array<{
++    plantId: string;
++    wallClockMinutes: number | null;
++    actualWorkingMinutes: number | null;
++    targetValue: number | null;
++    targetStatus: MonthlyTargetStatus;
++  }>;
++  marRows: Array<{
++    plantId: string;
++    plannedAvailableMinutes: number;
++    downtimeMinutes: number;
++    marPercent: number | null;
++    sourceStatus: string | null;
++    sourceMessage: string | null;
++    targetValue: number | null;
++    targetStatus: MonthlyTargetStatus;
++  }>;
++  pmCompletionRows: Array<{
++    plantId: string;
++    completionRate: number | null;
++    completedCount: number;
++    plannedCount: number;
++    sourceStatus: string | null;
++    sourceMessage: string | null;
++    targetValue: number | null;
++    targetStatus: MonthlyTargetStatus;
++  }>;
++  technicianRows: Array<{
++    plantId: string;
++    technicianId: string;
++    averageRating: number | null;
++    totalWo: number;
++    firstTimeFixRate: number | null;
++    targetValue: number | null;
++    targetStatus: MonthlyTargetStatus;
++  }>;
++  breakdownRows: Array<{
++    plantId: string;
++    count: number;
++    targetValue: number | null;
++    targetStatus: MonthlyTargetStatus;
++  }>;
++  target: {
++    plantId: string;
++    month: string;
++    monthlyBreakdownTarget: number | null;
++    mtbfTargetDays: number | null;
++    mttrTargetMinutes: number | null;
++    oeeQualityPercent: number | null;
++    oeePerformancePercent: number | null;
++  } | null;
++  refresh: {
++    refreshKey: string;
++    status: "RUNNING" | "SUCCESS" | "FAILED";
++    refreshedAt: string;
++    message: string | null;
++  } | null;
++}
++
++function insufficientMonthly(type: string): MonthlyResponse {
++  return {
++    type,
++    month: "2026-09-01",
++    status: "INSUFFICIENT_DATA",
++    mtbfRows: [],
++    mttrRows: [],
++    marRows: [],
++    pmCompletionRows: [],
++    technicianRows: [],
++    breakdownRows: [],
++    target: null,
++    refresh: null,
++  };
++}
++
++let mockMonthly: Record<string, MonthlyResponse> = {};
++let mockMonthlyLoading = false;
++let mockMonthlyError = false;
++const mockMonthlyRefetch = vi.fn();
++
++vi.mock("@/features/analytics/hooks/use-kpi-materialized", () => ({
++  kpiMaterializedQueryPrefix: "/api/v1/kpi/materialized",
++  kpiMaterializedQueryKey: (type: string, month: string, plantId?: string) => [
++    "/api/v1/kpi/materialized",
++    type,
++    month,
++    plantId ?? "all",
++  ],
++  useKpiMaterialized: (type: string) => ({
++    data: mockMonthlyLoading || mockMonthlyError ? undefined : (mockMonthly[type] ?? insufficientMonthly(type)),
++    isLoading: mockMonthlyLoading,
++    isError: mockMonthlyError,
++    isFetching: false,
++    refetch: mockMonthlyRefetch,
++  }),
++}));
++
++const mockTargetsMutate = vi.fn();
++
++vi.mock("@/features/analytics/hooks/use-kpi-targets", () => ({
++  kpiTargetsQueryPrefix: "/api/v1/kpi/targets",
++  useKpiTargets: () => ({ data: [], isLoading: false, isError: false, refetch: vi.fn() }),
++  useUpsertKpiTarget: () => ({ mutate: mockTargetsMutate, isPending: false }),
++}));
++
++let mockAuthUser: { id: string; loginIdentifier: string; applicationRole: string } | null = {
++  id: "u-1",
++  loginIdentifier: "manager@syncro.test",
++  applicationRole: "MANAGER_MAINTENANCE",
++};
++
++vi.mock("@/lib/auth/use-auth-user", () => ({
++  useAuthUser: () => mockAuthUser,
++}));
++
+ // ---------------------------------------------------------------------------
+ // Test wrapper
+ // ---------------------------------------------------------------------------
+@@ -147,6 +279,11 @@ describe("AnalyticsPageContent", () => {
+     mockKpiData = null;
+     mockKpiLoading = false;
+     mockKpiError = false;
++    mockMonthly = {};
++    mockMonthlyLoading = false;
++    mockMonthlyError = false;
++    mockTargetsMutate.mockClear();
++    mockAuthUser = { id: "u-1", loginIdentifier: "manager@syncro.test", applicationRole: "MANAGER_MAINTENANCE" };
+     queryClient.clear();
+   });
+ 
+@@ -282,4 +419,241 @@ describe("AnalyticsPageContent", () => {
+     renderPage();
+     expect(screen.getByText("No plants assigned to your account. Contact your administrator.")).toBeTruthy();
+   });
++
++  // -------------------------------------------------------------------------
++  // Story 20-2: Monthly KPI tab (materialized actual-vs-target consumption)
++  // -------------------------------------------------------------------------
++
++  function openMonthlyTab() {
++    fireEvent.click(screen.getByText("Monthly KPI"));
++  }
++
++  it("renders monthly actual vs target rows with text verdict badges (non-color-only)", () => {
++    mockMonthly = {
++      mtbf: {
++        ...insufficientMonthly("mtbf"),
++        status: "AVAILABLE",
++        mtbfRows: [
++          {
++            plantId: "p1",
++            machineId: "m-aaaa-1111",
++            mtbfDays: 10.42,
++            targetValue: 8.0,
++            targetStatus: "ON_TARGET",
++          },
++          {
++            plantId: "p1",
++            machineId: "m-bbbb-2222",
++            mtbfDays: 5.0,
++            targetValue: 8.0,
++            targetStatus: "BELOW_TARGET",
++          },
++        ],
++      },
++      mttr: {
++        ...insufficientMonthly("mttr"),
++        status: "AVAILABLE",
++        mttrRows: [
++          {
++            plantId: "p1",
++            wallClockMinutes: 75.0,
++            actualWorkingMinutes: 75.0,
++            targetValue: 60.0,
++            targetStatus: "ABOVE_TARGET",
++          },
++        ],
++      },
++      breakdown: {
++        ...insufficientMonthly("breakdown"),
++        status: "AVAILABLE",
++        breakdownRows: [{ plantId: "p1", count: 2, targetValue: 3.0, targetStatus: "ON_TARGET" }],
++      },
++    };
++    renderPage();
++    openMonthlyTab();
++
++    // Verdicts render as text labels, never color-only.
++    expect(screen.getAllByText("On target").length).toBeGreaterThanOrEqual(2);
++    expect(screen.getByText("Below target")).toBeTruthy();
++    expect(screen.getByText("Above target")).toBeTruthy();
++    // Actual vs target values render from the backend payload (no client-side math).
++    expect(screen.getByText("10.42 d")).toBeTruthy();
++    expect(screen.getAllByText("8.00 d").length).toBe(2); // both MTBF rows share the 8.00 target
++    expect(screen.getByText("75 min")).toBeTruthy();
++    expect(screen.getByText("60 min")).toBeTruthy();
++    expect(screen.getByText("2")).toBeTruthy(); // breakdown count
++    expect(screen.getByText("3")).toBeTruthy(); // breakdown target
++  });
++
++  it("renders NO_TARGET rows with an explicit text badge", () => {
++    mockMonthly = {
++      technician: {
++        ...insufficientMonthly("technician"),
++        status: "AVAILABLE",
++        technicianRows: [
++          {
++            plantId: "p1",
++            technicianId: "t-cccc-3333",
++            averageRating: 4.5,
++            totalWo: 7,
++            firstTimeFixRate: 85.0,
++            targetValue: null,
++            targetStatus: "NO_TARGET",
++          },
++        ],
++      },
++    };
++    renderPage();
++    openMonthlyTab();
++
++    expect(screen.getByText("No target")).toBeTruthy();
++    // Actuals still render (combined cell: rating · WO · first-time-fix).
++    expect(screen.getByText(/4\.5 \/ 5 · 7 WO · 85\.0%/)).toBeTruthy();
++  });
++
++  it("renders an explicit insufficient-data badge for months without rows (never zeros)", () => {
++    mockMonthly = {}; // every type → INSUFFICIENT_DATA
++    renderPage();
++    openMonthlyTab();
++
++    expect(screen.getAllByText("Insufficient data").length).toBeGreaterThanOrEqual(6);
++    expect(screen.queryByText("0.00 d")).toBeNull();
++    expect(screen.queryByText("0 min")).toBeNull();
++  });
++
++  it("surfaces FAILED refresh evidence as a warning", () => {
++    mockMonthly = {
++      mtbf: {
++        ...insufficientMonthly("mtbf"),
++        status: "AVAILABLE",
++        mtbfRows: [
++          {
++            plantId: "p1",
++            machineId: "m-aaaa-1111",
++            mtbfDays: 12.0,
++            targetValue: null,
++            targetStatus: "NO_TARGET",
++          },
++        ],
++        refresh: {
++          refreshKey: "mtbf:2026-09",
++          status: "FAILED",
++          refreshedAt: "2026-09-01T00:00:00Z",
++          message: "IllegalStateException",
++        },
++      },
++    };
++    renderPage();
++    openMonthlyTab();
++
++    expect(screen.getByText("Refresh failed")).toBeTruthy();
++    expect(screen.getByText(/may be stale/)).toBeTruthy();
++  });
++
++  it("shows the Configure targets button for MANAGER_MAINTENANCE and opens the dialog", () => {
++    mockAuthUser = { id: "u-1", loginIdentifier: "manager@syncro.test", applicationRole: "MANAGER_MAINTENANCE" };
++    renderPage();
++    openMonthlyTab();
++
++    fireEvent.click(screen.getByText("Configure targets"));
++    expect(screen.getByText("Configure KPI targets")).toBeTruthy();
++    expect(screen.getByText("Monthly breakdown target")).toBeTruthy();
++    expect(screen.getByText("MTBF target (days)")).toBeTruthy();
++    expect(screen.getByText("MTTR target (minutes)")).toBeTruthy();
++    expect(screen.getByText("OEE quality (%)")).toBeTruthy();
++    expect(screen.getByText("OEE performance (%)")).toBeTruthy();
++  });
++
++  it("hides the Configure targets affordance for TECHNICIAN (server-side gate is authoritative)", () => {
++    mockAuthUser = { id: "u-2", loginIdentifier: "tech@syncro.test", applicationRole: "TECHNICIAN" };
++    renderPage();
++    openMonthlyTab();
++
++    expect(screen.queryByText("Configure targets")).toBeNull();
++  });
++
++  it("shows the Configure targets button for SUPER_ADMIN", () => {
++    mockAuthUser = { id: "u-3", loginIdentifier: "admin@syncro.test", applicationRole: "SUPER_ADMIN" };
++    renderPage();
++    openMonthlyTab();
++
++    expect(screen.getByText("Configure targets")).toBeTruthy();
++  });
++
++  it("renders monthly loading and error states", () => {
++    mockMonthlyLoading = true;
++    const { unmount } = renderPage();
++    openMonthlyTab();
++    // Loading: skeletons only — no verdict rows, no insufficient-data badges.
++    expect(screen.queryByText("Insufficient data")).toBeNull();
++    expect(screen.queryByText("On target")).toBeNull();
++    unmount();
++
++    mockMonthlyLoading = false;
++    mockMonthlyError = true;
++    renderPage();
++    openMonthlyTab();
++    expect(screen.getAllByText(/Failed to load/).length).toBeGreaterThanOrEqual(1);
++    expect(screen.getAllByText("Retry").length).toBeGreaterThanOrEqual(1);
++  });
++
++  it("renders MTTR wall-clock actual when actual-working is null (fallback precedence)", () => {
++    // Review 20-2: the other MTTR fixture has both variants equal, so the
++    // `actualWorking ?? wallClock` display fallback is undistinguishable. A null
++    // actual-working must render the wall-clock value, not an em-dash.
++    mockMonthly = {
++      mttr: {
++        ...insufficientMonthly("mttr"),
++        status: "AVAILABLE",
++        mttrRows: [
++          {
++            plantId: "p1",
++            wallClockMinutes: 75.0,
++            actualWorkingMinutes: null,
++            targetValue: 60.0,
++            targetStatus: "ABOVE_TARGET",
++          },
++        ],
++      },
++    };
++    renderPage();
++    openMonthlyTab();
++
++    expect(screen.getByText("75 min")).toBeTruthy();
++    expect(screen.getByText("Above target")).toBeTruthy();
++  });
++
++  it("submits the target dialog with null for empty fields (20-1 partial-update semantics)", async () => {
++    // Review 20-2: the write path was never exercised — an empty field must send null
++    // (keep stored value), not 0 (which would silently overwrite a configured target).
++    renderPage();
++    openMonthlyTab();
++    fireEvent.click(screen.getByText("Configure targets"));
++
++    fireEvent.change(screen.getByLabelText("MTBF target (days)"), { target: { value: "30.5" } });
++    fireEvent.click(screen.getByText("Save target"));
++
++    // zodResolver validation is async — wait for the submit callback to land.
++    await waitFor(() => expect(mockTargetsMutate).toHaveBeenCalledTimes(1));
++    const payload = mockTargetsMutate.mock.calls[0][0] as Record<string, unknown>;
++    expect(payload.plantId).toBe("p1");
++    expect(payload.mtbfTargetDays).toBe(30.5);
++    expect(payload.monthlyBreakdownTarget).toBeNull();
++    expect(payload.mttrTargetMinutes).toBeNull();
++    expect(payload.oeeQualityPercent).toBeNull();
++    expect(payload.oeePerformancePercent).toBeNull();
++  });
++
++  it("rejects a fractional monthly breakdown target client-side", async () => {
++    // Review 20-2: backend column is Integer; the dialog must not send 2.5.
++    renderPage();
++    openMonthlyTab();
++    fireEvent.click(screen.getByText("Configure targets"));
++
++    fireEvent.change(screen.getByLabelText("Monthly breakdown target"), { target: { value: "2.5" } });
++    fireEvent.click(screen.getByText("Save target"));
++
++    await waitFor(() => expect(screen.getByText("Must be a whole number.")).toBeTruthy());
++    expect(mockTargetsMutate).not.toHaveBeenCalled();
++  });
+ });
+diff --git a/syncro/apps/web/src/features/analytics/analytics-page-content.tsx b/syncro/apps/web/src/features/analytics/analytics-page-content.tsx
+index bc9b577..87eecd2 100644
+--- a/syncro/apps/web/src/features/analytics/analytics-page-content.tsx
++++ b/syncro/apps/web/src/features/analytics/analytics-page-content.tsx
+@@ -4,12 +4,19 @@ import { useState } from "react";
+ 
+ import { Activity, Gauge, RefreshCw, UserRound } from "lucide-react";
+ 
++import { MonthPicker } from "@/components/month-picker";
+ import { Badge } from "@/components/ui/badge";
+ import { Button } from "@/components/ui/button";
+ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+ import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+ import { Skeleton } from "@/components/ui/skeleton";
+ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
++import { KpiTargetDialog } from "@/features/analytics/components/kpi-target-dialog";
++import {
++  type KpiMaterializedResponse,
++  type KpiTargetStatus,
++  useKpiMaterialized,
++} from "@/features/analytics/hooks/use-kpi-materialized";
+ import { useMtbfMttr } from "@/features/analytics/hooks/use-mtbf-mttr";
+ import { useTechnicianKpi } from "@/features/analytics/hooks/use-technician-kpi";
+ import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
+@@ -40,12 +47,34 @@ function formatStars(value: number | null): string {
+   return `${value.toFixed(1)} / 5`;
+ }
+ 
++function formatDays(value: number | null): string {
++  if (value === null || value === undefined || !Number.isFinite(value)) {
++    return "—";
++  }
++  return `${value.toFixed(2)} d`;
++}
++
++function formatMinutes(value: number | null): string {
++  if (value === null || value === undefined || !Number.isFinite(value)) {
++    return "—";
++  }
++  return `${value.toFixed(0)} min`;
++}
++
++function formatCount(value: number | null): string {
++  if (value === null || value === undefined || !Number.isFinite(value)) {
++    return "—";
++  }
++  return String(value);
++}
++
+ /**
+  * Analytics dashboards (story 14-2, FR-173/FR-174): MTBF/MTTR reliability cards and the
+- * technician KPI table. Every value is backend-computed; this page only renders.
+- * UX-DR-019 states: loading, error, empty, insufficient-data (explicit badge, never a
+- * fabricated value), and stale (non-color-only text label). Freshness window and
+- * computedAt render from the backend payload.
++ * technician KPI table. Story 20-2 adds the "Monthly KPI" tab consuming the materialized
++ * monthly rows with the backend-computed actual-vs-target verdict. Every value is
++ * backend-computed; this page only renders. UX-DR-019 states: loading, error, empty,
++ * insufficient-data (explicit badge, never a fabricated value), and stale (non-color-only
++ * text label). Freshness window and computedAt render from the backend payload.
+  */
+ export function AnalyticsPageContent() {
+   const { scope, activePlantId, loadError } = usePlantScope();
+@@ -55,7 +84,24 @@ export function AnalyticsPageContent() {
+   const mtbfMttrQuery = useMtbfMttr(plantId, isEnabled);
+   const kpiQuery = useTechnicianKpi(plantId, isEnabled);
+ 
+-  const [activeTab, setActiveTab] = useState<"mtbf" | "kpi">("mtbf");
++  const [activeTab, setActiveTab] = useState<"mtbf" | "kpi" | "monthly">("mtbf");
++
++  // Monthly KPI tab (story 20-2): calendar month, normalized to first-of-month for the
++  // materialized endpoint. Default = current month (client component — no SSR mismatch).
++  const [monthValue, setMonthValue] = useState(() => {
++    const now = new Date();
++    return { month: now.getMonth(), year: now.getFullYear() };
++  });
++  const monthKey = `${monthValue.year}-${String(monthValue.month + 1).padStart(2, "0")}-01`;
++  const monthlyEnabled = isEnabled && activeTab === "monthly";
++
++  const mtbfMonthly = useKpiMaterialized("mtbf", monthKey, plantId, monthlyEnabled);
++  const mttrMonthly = useKpiMaterialized("mttr", monthKey, plantId, monthlyEnabled);
++  const marMonthly = useKpiMaterialized("mar", monthKey, plantId, monthlyEnabled);
++  const pmMonthly = useKpiMaterialized("pm-completion", monthKey, plantId, monthlyEnabled);
++  const technicianMonthly = useKpiMaterialized("technician", monthKey, plantId, monthlyEnabled);
++  const breakdownMonthly = useKpiMaterialized("breakdown", monthKey, plantId, monthlyEnabled);
++  const monthlyQueries = [mtbfMonthly, mttrMonthly, marMonthly, pmMonthly, technicianMonthly, breakdownMonthly];
+ 
+   if (loadError) {
+     return <AnalyticsShell>Plant scope unavailable. Try again or contact your administrator.</AnalyticsShell>;
+@@ -75,6 +121,10 @@ export function AnalyticsPageContent() {
+ 
+   const mtbfData = mtbfMttrQuery.data;
+   const kpiData = kpiQuery.data;
++  const plantLabel = (id: string): string => {
++    const plant = scope?.availablePlants.find((p) => p.id === id);
++    return plant ? plant.code : `${id.slice(0, 8)}…`;
++  };
+ 
+   return (
+     <AnalyticsShell>
+@@ -82,6 +132,7 @@ export function AnalyticsPageContent() {
+         <div className="flex items-center gap-1 rounded-lg border bg-muted/40 p-1">
+           <TabButton active={activeTab === "mtbf"} onClick={() => setActiveTab("mtbf")} label="MTBF / MTTR" />
+           <TabButton active={activeTab === "kpi"} onClick={() => setActiveTab("kpi")} label="Technician KPI" />
++          <TabButton active={activeTab === "monthly"} onClick={() => setActiveTab("monthly")} label="Monthly KPI" />
+         </div>
+         <Button
+           variant="outline"
+@@ -89,12 +140,19 @@ export function AnalyticsPageContent() {
+           onClick={() => {
+             void mtbfMttrQuery.refetch();
+             void kpiQuery.refetch();
++            for (const query of monthlyQueries) {
++              void query.refetch();
++            }
+           }}
+-          disabled={mtbfMttrQuery.isLoading || kpiQuery.isLoading}
++          disabled={mtbfMttrQuery.isLoading || kpiQuery.isLoading || monthlyQueries.some((q) => q.isLoading)}
+         >
+           <RefreshCw
+             aria-hidden="true"
+-            className={mtbfMttrQuery.isFetching || kpiQuery.isFetching ? "animate-spin" : undefined}
++            className={
++              mtbfMttrQuery.isFetching || kpiQuery.isFetching || monthlyQueries.some((q) => q.isFetching)
++                ? "animate-spin"
++                : undefined
++            }
+           />
+           Refresh
+         </Button>
+@@ -264,10 +322,223 @@ export function AnalyticsPageContent() {
+           )}
+         </div>
+       )}
++
++      {activeTab === "monthly" && (
++        <div className="space-y-6">
++          <div className="flex flex-wrap items-center justify-between gap-3">
++            <div className="flex items-center gap-3">
++              <span className="text-muted-foreground text-sm">Month</span>
++              <MonthPicker value={monthValue} onChange={setMonthValue} />
++            </div>
++            <KpiTargetDialog month={monthKey} />
++          </div>
++
++          <MonthlyKpiSection
++            title="MTBF (days)"
++            description="Mean time between failures per machine, materialized monthly."
++            query={mtbfMonthly}
++            entityHeader="Machine"
++            rows={(data) =>
++              data.mtbfRows.map((row) => ({
++                key: row.machineId,
++                entity: `${plantLabel(row.plantId)} / ${row.machineId.slice(0, 8)}…`,
++                actual: formatDays(row.mtbfDays),
++                target: formatDays(row.targetValue),
++                status: row.targetStatus,
++              }))
++            }
++          />
++          <MonthlyKpiSection
++            title="MTTR (minutes)"
++            description="Mean time to repair per plant (actual-working when available, else wall-clock)."
++            query={mttrMonthly}
++            entityHeader="Plant"
++            rows={(data) =>
++              data.mttrRows.map((row) => ({
++                key: row.plantId,
++                entity: plantLabel(row.plantId),
++                actual: formatMinutes(row.actualWorkingMinutes ?? row.wallClockMinutes),
++                target: formatMinutes(row.targetValue),
++                status: row.targetStatus,
++              }))
++            }
++          />
++          <MonthlyKpiSection
++            title="Breakdown count"
++            description="Closed breakdown workorders per plant against the monthly target (lower is better)."
++            query={breakdownMonthly}
++            entityHeader="Plant"
++            rows={(data) =>
++              data.breakdownRows.map((row) => ({
++                key: row.plantId,
++                entity: plantLabel(row.plantId),
++                actual: formatCount(row.count),
++                target: formatCount(row.targetValue),
++                status: row.targetStatus,
++              }))
++            }
++          />
++          <MonthlyKpiSection
++            title="MAR (%)"
++            description="Machine availability ratio per plant from telemetry ingest state."
++            query={marMonthly}
++            entityHeader="Plant"
++            rows={(data) =>
++              data.marRows.map((row) => ({
++                key: row.plantId,
++                entity: plantLabel(row.plantId),
++                actual: formatPct(row.marPercent),
++                target: formatPct(row.targetValue),
++                status: row.targetStatus,
++              }))
++            }
++          />
++          <MonthlyKpiSection
++            title="PM completion (%)"
++            description="Preventive maintenance completion rate per plant (completed / planned)."
++            query={pmMonthly}
++            entityHeader="Plant"
++            rows={(data) =>
++              data.pmCompletionRows.map((row) => ({
++                key: row.plantId,
++                entity: plantLabel(row.plantId),
++                actual: formatPct(row.completionRate),
++                target: formatPct(row.targetValue),
++                status: row.targetStatus,
++              }))
++            }
++          />
++          <MonthlyKpiSection
++            title="Technician performance"
++            description="Monthly materialized technician performance (ratings 1–5, workorders, first-time-fix)."
++            query={technicianMonthly}
++            entityHeader="Technician"
++            rows={(data) =>
++              data.technicianRows.map((row) => ({
++                key: row.technicianId,
++                entity: `${plantLabel(row.plantId)} / ${row.technicianId.slice(0, 8)}…`,
++                actual: `${formatStars(row.averageRating)} · ${row.totalWo} WO · ${formatPct(row.firstTimeFixRate)}`,
++                target: "—",
++                status: row.targetStatus,
++              }))
++            }
++          />
++        </div>
++      )}
+     </AnalyticsShell>
+   );
+ }
+ 
++/** Display labels for the backend verdict contract strings (branching is on the string). */
++const TARGET_STATUS_LABELS: Record<KpiTargetStatus, string> = {
++  ON_TARGET: "On target",
++  BELOW_TARGET: "Below target",
++  ABOVE_TARGET: "Above target",
++  NO_TARGET: "No target",
++  INSUFFICIENT_DATA: "Insufficient data",
++};
++
++function TargetStatusBadge({ status }: { status: KpiTargetStatus }) {
++  // Text label always renders — color/variant is decoration only (WCAG, epic-20 UX rule).
++  return (
++    <Badge variant={status === "ON_TARGET" ? "default" : "secondary"}>{TARGET_STATUS_LABELS[status] ?? status}</Badge>
++  );
++}
++
++interface MonthlyRowView {
++  key: string;
++  entity: string;
++  actual: string;
++  target: string;
++  status: KpiTargetStatus;
++}
++
++/**
++ * One actual-vs-target section of the Monthly KPI tab (story 20-2). Renders only:
++ * verdicts, insufficient-data and FAILED-refresh evidence come from the backend
++ * response; no KPI math here.
++ */
++function MonthlyKpiSection({
++  title,
++  description,
++  query,
++  entityHeader,
++  rows,
++}: {
++  title: string;
++  description: string;
++  query: ReturnType<typeof useKpiMaterialized>;
++  entityHeader: string;
++  rows: (data: KpiMaterializedResponse) => MonthlyRowView[];
++}) {
++  const data = query.data;
++  return (
++    <Card>
++      <CardHeader>
++        <CardTitle>{title}</CardTitle>
++        <CardDescription>{description}</CardDescription>
++      </CardHeader>
++      <CardContent>
++        {query.isLoading && <Skeleton className="h-24 w-full" />}
++
++        {query.isError && (
++          <div className="flex flex-col items-center gap-3 py-6">
++            <p className="text-muted-foreground text-sm">Failed to load {title}.</p>
++            <Button variant="outline" size="sm" onClick={() => void query.refetch()}>
++              Retry
++            </Button>
++          </div>
++        )}
++
++        {!query.isLoading && !query.isError && data && (
++          <div className="space-y-3">
++            {data.refresh?.status === "FAILED" && (
++              <p className="status-icon-warning flex flex-wrap items-center gap-2" role="status">
++                <Badge variant="destructive">Refresh failed</Badge>
++                Latest monthly refresh failed — the rows below may be stale.
++                {data.refresh.message ? ` (${data.refresh.message})` : ""}
++              </p>
++            )}
++
++            {data.status === "INSUFFICIENT_DATA" ? (
++              <div className="flex flex-col items-center gap-2 py-6">
++                <Badge variant="outline">Insufficient data</Badge>
++                <p className="text-muted-foreground text-sm">
++                  No materialized {title} rows exist for this month yet — the monthly refresh has not produced data.
++                  Values are never fabricated.
++                </p>
++              </div>
++            ) : (
++              <Table>
++                <TableHeader>
++                  <TableRow>
++                    <TableHead>{entityHeader}</TableHead>
++                    <TableHead>Actual</TableHead>
++                    <TableHead>Target</TableHead>
++                    <TableHead>Status</TableHead>
++                  </TableRow>
++                </TableHeader>
++                <TableBody>
++                  {rows(data).map((row) => (
++                    <TableRow key={row.key}>
++                      <TableCell className="font-medium">{row.entity}</TableCell>
++                      <TableCell className="tabular-nums">{row.actual}</TableCell>
++                      <TableCell className="tabular-nums">{row.target}</TableCell>
++                      <TableCell>
++                        <TargetStatusBadge status={row.status} />
++                      </TableCell>
++                    </TableRow>
++                  ))}
++                </TableBody>
++              </Table>
++            )}
++          </div>
++        )}
++      </CardContent>
++    </Card>
++  );
++}
++
+ function TabButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+   return (
+     <button
+diff --git a/syncro/apps/web/src/features/analytics/components/kpi-target-dialog.tsx b/syncro/apps/web/src/features/analytics/components/kpi-target-dialog.tsx
+new file mode 100644
+index 0000000..fbb522a
+--- /dev/null
++++ b/syncro/apps/web/src/features/analytics/components/kpi-target-dialog.tsx
+@@ -0,0 +1,259 @@
++"use client";
++
++import { useEffect, useMemo, useRef, useState } from "react";
++
++import { zodResolver } from "@hookform/resolvers/zod";
++import { Controller, useForm } from "react-hook-form";
++import { z } from "zod";
++
++import { Button } from "@/components/ui/button";
++import {
++  Dialog,
++  DialogContent,
++  DialogDescription,
++  DialogFooter,
++  DialogHeader,
++  DialogTitle,
++  DialogTrigger,
++} from "@/components/ui/dialog";
++import { Input } from "@/components/ui/input";
++import { Label } from "@/components/ui/label";
++import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
++import { useKpiTargets, useUpsertKpiTarget } from "@/features/analytics/hooks/use-kpi-targets";
++import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
++import { useAuthUser } from "@/lib/auth/use-auth-user";
++
++/**
++ * KPI target configuration dialog (story 20-2). Writes through the 20-1
++ * {@code PUT /api/v1/kpi/targets} upsert — role-gated server-side
++ * (SUPER_ADMIN/MANAGER_MAINTENANCE) and audit-logged there; this component only
++ * hides the trigger for roles the backend rejects (visibility is UX, not security).
++ * Zod ranges mirror the backend DTO validation (@PositiveOrZero / 0..100 percents);
++ * an empty field sends null, which the 20-1 partial-update semantics keep as the
++ * stored value. Non-native shadcn/Radix controls per the project UI rule.
++ */
++
++const optionalNumber = (max: number | null) =>
++  z
++    .string()
++    .trim()
++    .transform((value) => (value === "" ? null : Number(value)))
++    .refine((value) => value === null || (Number.isFinite(value) && value >= 0 && (max === null || value <= max)), {
++      message: max === null ? "Must be a number of 0 or more." : `Must be a number between 0 and ${max}.`,
++    });
++
++const targetFormSchema = z
++  .object({
++    monthlyBreakdownTarget: optionalNumber(null),
++    mtbfTargetDays: optionalNumber(null),
++    mttrTargetMinutes: optionalNumber(null),
++    oeeQualityPercent: optionalNumber(100),
++    oeePerformancePercent: optionalNumber(100),
++  })
++  // Backend column is Integer — reject fractions with the error pinned to the field
++  // (a field-level .refine() lands at the root path and never reaches fieldState).
++  .superRefine((values, ctx) => {
++    if (values.monthlyBreakdownTarget !== null && !Number.isInteger(values.monthlyBreakdownTarget)) {
++      ctx.addIssue({ code: "custom", path: ["monthlyBreakdownTarget"], message: "Must be a whole number." });
++    }
++  });
++
++type TargetFormInput = {
++  monthlyBreakdownTarget: string;
++  mtbfTargetDays: string;
++  mttrTargetMinutes: string;
++  oeeQualityPercent: string;
++  oeePerformancePercent: string;
++};
++
++const NUMBER_FIELDS = [
++  {
++    name: "monthlyBreakdownTarget",
++    label: "Monthly breakdown target",
++    hint: "Maximum breakdown workorders per month (lower is better).",
++    step: "1",
++  },
++  { name: "mtbfTargetDays", label: "MTBF target (days)", hint: "Higher is better.", step: "0.01" },
++  { name: "mttrTargetMinutes", label: "MTTR target (minutes)", hint: "Lower is better.", step: "0.01" },
++  { name: "oeeQualityPercent", label: "OEE quality (%)", hint: "0–100. OEE baseline factor.", step: "0.01" },
++  {
++    name: "oeePerformancePercent",
++    label: "OEE performance (%)",
++    hint: "0–100. OEE baseline factor.",
++    step: "0.01",
++  },
++] as const satisfies ReadonlyArray<{
++  name: keyof TargetFormInput;
++  label: string;
++  hint: string;
++  step: string;
++}>;
++
++function formatMonthLabel(monthKey: string): string {
++  const [year, month] = monthKey.split("-");
++  const date = new Date(Number(year), Number(month) - 1, 1);
++  return date.toLocaleString(undefined, { month: "long", year: "numeric" });
++}
++
++export function KpiTargetDialog({ month }: { month: string }) {
++  const user = useAuthUser();
++  const canConfigure = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGER_MAINTENANCE";
++
++  const { scope, activePlantId } = usePlantScope();
++  const plants = scope?.availablePlants ?? [];
++  const [open, setOpen] = useState(false);
++  const [plantId, setPlantId] = useState<string>("");
++
++  useEffect(() => {
++    if (!plantId && plants.length > 0) {
++      setPlantId(activePlantId && plants.some((p) => p.id === activePlantId) ? activePlantId : plants[0].id);
++    }
++  }, [plantId, plants, activePlantId]);
++
++  const targetsQuery = useKpiTargets(plantId, canConfigure && open);
++  const upsert = useUpsertKpiTarget();
++
++  const existing = useMemo(() => targetsQuery.data?.find((t) => t.month === month) ?? null, [targetsQuery.data, month]);
++
++  const form = useForm<TargetFormInput, unknown, z.output<typeof targetFormSchema>>({
++    resolver: zodResolver(targetFormSchema),
++    defaultValues: {
++      monthlyBreakdownTarget: "",
++      mtbfTargetDays: "",
++      mttrTargetMinutes: "",
++      oeeQualityPercent: "",
++      oeePerformancePercent: "",
++    },
++  });
++
++  // Prefill from the stored target once per open/plant/month after the query resolves;
++  // null stored values render as empty fields ("leave empty to keep current value").
++  // Guarded so a late-resolving fetch never clobbers values the user already typed.
++  const prefilledFor = useRef<string | null>(null);
++  useEffect(() => {
++    if (!open) {
++      prefilledFor.current = null;
++      return;
++    }
++    if (targetsQuery.data === undefined) {
++      return;
++    }
++    const key = `${plantId}:${month}`;
++    if (prefilledFor.current === key) {
++      return;
++    }
++    prefilledFor.current = key;
++    form.reset({
++      monthlyBreakdownTarget: existing?.monthlyBreakdownTarget?.toString() ?? "",
++      mtbfTargetDays: existing?.mtbfTargetDays?.toString() ?? "",
++      mttrTargetMinutes: existing?.mttrTargetMinutes?.toString() ?? "",
++      oeeQualityPercent: existing?.oeeQualityPercent?.toString() ?? "",
++      oeePerformancePercent: existing?.oeePerformancePercent?.toString() ?? "",
++    });
++  }, [open, plantId, month, targetsQuery.data, existing, form]);
++
++  if (!canConfigure) {
++    return null;
++  }
++
++  const onSubmit = form.handleSubmit((values) => {
++    if (!plantId) {
++      return;
++    }
++    upsert.mutate(
++      {
++        plantId,
++        month,
++        monthlyBreakdownTarget: values.monthlyBreakdownTarget,
++        mtbfTargetDays: values.mtbfTargetDays,
++        mttrTargetMinutes: values.mttrTargetMinutes,
++        oeeQualityPercent: values.oeeQualityPercent,
++        oeePerformancePercent: values.oeePerformancePercent,
++      },
++      { onSuccess: () => setOpen(false) },
++    );
++  });
++
++  return (
++    <Dialog open={open} onOpenChange={setOpen}>
++      <DialogTrigger asChild>
++        <Button variant="outline" size="sm">
++          Configure targets
++        </Button>
++      </DialogTrigger>
++      <DialogContent className="sm:max-w-lg">
++        <DialogHeader>
++          <DialogTitle>Configure KPI targets</DialogTitle>
++          <DialogDescription>
++            Targets for {formatMonthLabel(month)}. Values are validated server-side and every change is audit-logged.
++            Leave a field empty to keep its current value.
++          </DialogDescription>
++        </DialogHeader>
++
++        <form onSubmit={onSubmit} noValidate className="space-y-4">
++          {targetsQuery.isError && (
++            <p className="status-icon-warning text-destructive text-sm" role="alert">
++              Failed to load the current targets — the fields below start empty. Saving still keeps any stored value for
++              fields you leave empty.
++            </p>
++          )}
++
++          <div className="space-y-1.5">
++            <Label htmlFor="kpi-target-plant">Plant</Label>
++            <Select value={plantId} onValueChange={setPlantId}>
++              <SelectTrigger id="kpi-target-plant" className="w-full">
++                <SelectValue placeholder="Select a plant" />
++              </SelectTrigger>
++              <SelectContent>
++                {plants.map((plant) => (
++                  <SelectItem key={plant.id} value={plant.id}>
++                    {plant.code} — {plant.name}
++                  </SelectItem>
++                ))}
++              </SelectContent>
++            </Select>
++          </div>
++
++          {NUMBER_FIELDS.map((field) => (
++            <div key={field.name} className="space-y-1.5">
++              <Label htmlFor={`kpi-target-${field.name}`}>{field.label}</Label>
++              <Controller
++                control={form.control}
++                name={field.name}
++                render={({ field: input, fieldState }) => (
++                  <>
++                    <Input
++                      id={`kpi-target-${field.name}`}
++                      type="number"
++                      min={0}
++                      step={field.step}
++                      inputMode="decimal"
++                      value={input.value}
++                      onChange={(event) => input.onChange(event.target.value)}
++                      onBlur={input.onBlur}
++                      ref={input.ref}
++                      aria-invalid={fieldState.invalid}
++                      aria-describedby={`kpi-target-${field.name}-hint`}
++                    />
++                    <p id={`kpi-target-${field.name}-hint`} className="text-muted-foreground text-xs">
++                      {fieldState.error?.message ?? field.hint}
++                    </p>
++                  </>
++                )}
++              />
++            </div>
++          ))}
++
++          <DialogFooter>
++            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
++              Cancel
++            </Button>
++            <Button type="submit" disabled={upsert.isPending}>
++              {upsert.isPending ? "Saving…" : "Save target"}
++            </Button>
++          </DialogFooter>
++        </form>
++      </DialogContent>
++    </Dialog>
++  );
++}
+diff --git a/syncro/apps/web/src/features/analytics/hooks/use-kpi-materialized.ts b/syncro/apps/web/src/features/analytics/hooks/use-kpi-materialized.ts
+new file mode 100644
+index 0000000..61ee412
+--- /dev/null
++++ b/syncro/apps/web/src/features/analytics/hooks/use-kpi-materialized.ts
+@@ -0,0 +1,135 @@
++"use client";
++
++import { useQuery } from "@tanstack/react-query";
++
++import { syncroFetch } from "@/lib/api/orval-mutator";
++
++/**
++ * Materialized monthly KPI contract (story 20-2, reading the 20-1 endpoint
++ * {@code GET /api/v1/kpi/materialized/{type}?month=&plantId=}). The endpoint is absent
++ * from the committed OpenAPI snapshot, so this is a hand-written hook following the
++ * 14-2 dashboard pattern. All computation — including the actual-vs-target verdict —
++ * is backend-owned; this hook only renders. Gated on {@code enabled} so no fetch races
++ * the plant-scope store or a hidden tab.
++ */
++
++export type KpiMaterializedType = "mtbf" | "mttr" | "mar" | "pm-completion" | "technician" | "breakdown";
++
++/** Backend-computed verdict (stable uppercase contract string, story 20-2). */
++export type KpiTargetStatus = "ON_TARGET" | "BELOW_TARGET" | "ABOVE_TARGET" | "NO_TARGET" | "INSUFFICIENT_DATA";
++
++export interface KpiMtbfRow {
++  plantId: string;
++  machineId: string;
++  mtbfDays: number | null;
++  targetValue: number | null;
++  targetStatus: KpiTargetStatus;
++}
++
++export interface KpiMttrRow {
++  plantId: string;
++  wallClockMinutes: number | null;
++  actualWorkingMinutes: number | null;
++  targetValue: number | null;
++  targetStatus: KpiTargetStatus;
++}
++
++export interface KpiMarRow {
++  plantId: string;
++  plannedAvailableMinutes: number;
++  downtimeMinutes: number;
++  marPercent: number | null;
++  sourceStatus: string | null;
++  sourceMessage: string | null;
++  targetValue: number | null;
++  targetStatus: KpiTargetStatus;
++}
++
++export interface KpiPmCompletionRow {
++  plantId: string;
++  completionRate: number | null;
++  completedCount: number;
++  plannedCount: number;
++  sourceStatus: string | null;
++  sourceMessage: string | null;
++  targetValue: number | null;
++  targetStatus: KpiTargetStatus;
++}
++
++export interface KpiTechnicianRow {
++  plantId: string;
++  technicianId: string;
++  averageRating: number | null;
++  totalWo: number;
++  firstTimeFixRate: number | null;
++  targetValue: number | null;
++  targetStatus: KpiTargetStatus;
++}
++
++export interface KpiBreakdownRow {
++  plantId: string;
++  count: number;
++  targetValue: number | null;
++  targetStatus: KpiTargetStatus;
++}
++
++export interface KpiMaterializedTargetView {
++  plantId: string;
++  month: string;
++  monthlyBreakdownTarget: number | null;
++  mtbfTargetDays: number | null;
++  mttrTargetMinutes: number | null;
++  oeeQualityPercent: number | null;
++  oeePerformancePercent: number | null;
++}
++
++export interface KpiRefreshView {
++  refreshKey: string;
++  status: "RUNNING" | "SUCCESS" | "FAILED";
++  refreshedAt: string;
++  message: string | null;
++}
++
++export interface KpiMaterializedResponse {
++  type: string;
++  month: string;
++  status: "AVAILABLE" | "INSUFFICIENT_DATA";
++  mtbfRows: KpiMtbfRow[];
++  mttrRows: KpiMttrRow[];
++  marRows: KpiMarRow[];
++  pmCompletionRows: KpiPmCompletionRow[];
++  technicianRows: KpiTechnicianRow[];
++  breakdownRows: KpiBreakdownRow[];
++  target: KpiMaterializedTargetView | null;
++  refresh: KpiRefreshView | null;
++}
++
++/** Shared query-key prefix so a target mutation can invalidate every materialized read. */
++export const kpiMaterializedQueryPrefix = "/api/v1/kpi/materialized";
++
++export function kpiMaterializedQueryKey(type: KpiMaterializedType, month: string, plantId?: string) {
++  return [kpiMaterializedQueryPrefix, type, month, plantId ?? "all"];
++}
++
++export function useKpiMaterialized(type: KpiMaterializedType, month: string, plantId?: string, enabled?: boolean) {
++  const params = new URLSearchParams({ month });
++  if (plantId) {
++    params.set("plantId", plantId);
++  }
++
++  return useQuery<KpiMaterializedResponse>({
++    queryKey: kpiMaterializedQueryKey(type, month, plantId),
++    queryFn: async () => {
++      const response = await syncroFetch<{ data: KpiMaterializedResponse }>(
++        `${kpiMaterializedQueryPrefix}/${type}?${params.toString()}`,
++        { method: "GET" },
++      );
++      return response.data;
++    },
++    enabled: enabled ?? true,
++    // Materialized rows only change when the monthly refresh job runs (or a target is
++    // upserted, which invalidates this key) — a short client freshness window is enough.
++    staleTime: 60 * 1000,
++    retry: false,
++  });
++}
+diff --git a/syncro/apps/web/src/features/analytics/hooks/use-kpi-targets.ts b/syncro/apps/web/src/features/analytics/hooks/use-kpi-targets.ts
+new file mode 100644
+index 0000000..893ae93
+--- /dev/null
++++ b/syncro/apps/web/src/features/analytics/hooks/use-kpi-targets.ts
+@@ -0,0 +1,92 @@
++"use client";
++
++import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
++import { toast } from "sonner";
++
++import { kpiMaterializedQueryPrefix } from "@/features/analytics/hooks/use-kpi-materialized";
++import { SyncroApiError, syncroFetch } from "@/lib/api/orval-mutator";
++
++/**
++ * KPI target configuration contract (story 20-2, reusing the 20-1 endpoints
++ * {@code GET/PUT /api/v1/kpi/targets}). Absent from the committed OpenAPI snapshot,
++ * so hand-written following the 14-2 dashboard pattern. The PUT is the 20-1 upsert —
++ * role-gated server-side (SUPER_ADMIN/MANAGER_MAINTENANCE) and audit-logged there;
++ * the frontend only hides the affordance, never enforces it. A successful upsert
++ * invalidates the target list and every materialized read so the next read reflects
++ * the new verdict (AC3).
++ */
++
++export interface KpiTargetView {
++  id: string;
++  plantId: string;
++  plantCode: string | null;
++  month: string;
++  monthlyBreakdownTarget: number | null;
++  mtbfTargetDays: number | null;
++  mttrTargetMinutes: number | null;
++  oeeQualityPercent: number | null;
++  oeePerformancePercent: number | null;
++  createdBy: string | null;
++  createdAt: string;
++  updatedAt: string;
++}
++
++export interface KpiTargetUpsertRequest {
++  plantId: string;
++  month: string;
++  monthlyBreakdownTarget: number | null;
++  mtbfTargetDays: number | null;
++  mttrTargetMinutes: number | null;
++  oeeQualityPercent: number | null;
++  oeePerformancePercent: number | null;
++}
++
++export const kpiTargetsQueryPrefix = "/api/v1/kpi/targets";
++
++export function kpiTargetsQueryKey(plantId: string) {
++  return [kpiTargetsQueryPrefix, plantId];
++}
++
++export function useKpiTargets(plantId: string | undefined, enabled?: boolean) {
++  return useQuery<KpiTargetView[]>({
++    queryKey: kpiTargetsQueryKey(plantId ?? "none"),
++    queryFn: async () => {
++      const response = await syncroFetch<{ data: KpiTargetView[] }>(
++        `${kpiTargetsQueryPrefix}?plantId=${encodeURIComponent(plantId ?? "")}`,
++        { method: "GET" },
++      );
++      return response.data;
++    },
++    enabled: (enabled ?? true) && Boolean(plantId),
++    staleTime: 60 * 1000,
++    retry: false,
++  });
++}
++
++export function useUpsertKpiTarget() {
++  const queryClient = useQueryClient();
++
++  return useMutation({
++    mutationFn: async (request: KpiTargetUpsertRequest) => {
++      const response = await syncroFetch<{ data: KpiTargetView }>(kpiTargetsQueryPrefix, {
++        method: "PUT",
++        body: JSON.stringify(request),
++      });
++      return response.data;
++    },
++    onSuccess: () => {
++      // Revalidation: the stored target must show up in the next materialized read
++      // (verdict) and in the target list (dialog prefill).
++      void queryClient.invalidateQueries({ queryKey: [kpiTargetsQueryPrefix] });
++      void queryClient.invalidateQueries({ queryKey: [kpiMaterializedQueryPrefix] });
++      toast.success("KPI target saved.");
++    },
++    onError: (error: unknown) => {
++      const message =
++        error instanceof SyncroApiError && error.status === 403
++          ? "You do not have permission to configure KPI targets."
++          : "Failed to save the KPI target.";
++      toast.error(message);
++    },
++  });
++}
+diff --git a/syncro/apps/web/src/features/organization/components/role-mapping.test.tsx b/syncro/apps/web/src/features/organization/components/role-mapping.test.tsx
+index 191ff12..26f9702 100644
+--- a/syncro/apps/web/src/features/organization/components/role-mapping.test.tsx
++++ b/syncro/apps/web/src/features/organization/components/role-mapping.test.tsx
+@@ -24,7 +24,16 @@ vi.mock("@/lib/auth/use-auth-user", () => ({
+   useAuthUser: () => mockUser,
+ }));
+ 
+-let mockUsers = {
++// Pre-existing tsc fix (story 20-2): the loading-state test below assigns
++// `data: undefined`, so the mock's data field must be typed as optional.
++let mockUsers: {
++  data: {
++    data: Array<{ id: string; loginIdentifier: string; displayName: string; applicationRole: string }>;
++  } | undefined;
++  isLoading: boolean;
++  isError: boolean;
++  refetch: ReturnType<typeof vi.fn>;
++} = {
+   data: {
+     data: [
+       { id: "u1", loginIdentifier: "tech@syncro.dev", displayName: "Technician", applicationRole: "TECHNICIAN" },
+diff --git a/syncro/apps/web/src/types/vendor.d.ts b/syncro/apps/web/src/types/vendor.d.ts
+index 76ec778..33f4fb6 100644
+--- a/syncro/apps/web/src/types/vendor.d.ts
++++ b/syncro/apps/web/src/types/vendor.d.ts
+@@ -2,23 +2,6 @@ declare module "simple-icons" {
+   export type SimpleIcon = { title: string; path: string };
+ }
+ 
+-declare module "react-hook-form" {
+-  export type FieldError = { message?: string };
+-  export type FieldState = { invalid: boolean; error?: FieldError };
+-  export type ControllerRenderProps = {
+-    name: string;
+-    value: string | number | readonly string[] | undefined;
+-    onChange: (value: unknown) => void;
+-    onBlur: () => void;
+-    ref: (instance: unknown) => void;
+-  };
+-  export function useForm<T>(options?: unknown): {
+-    control: unknown;
+-    handleSubmit: (handler: (data: T) => void) => (event?: unknown) => void;
+-  };
+-  export function Controller(props: {
+-    control: unknown;
+-    name: string;
+-    render: (context: { field: ControllerRenderProps; fieldState: FieldState }) => React.ReactNode;
+-  }): React.ReactNode;
+-}
++// react-hook-form previously had a hand-written module shim here; removed for
++// story 20-2 because the real package (7.84.0) ships its own types and the shim
++// shadowed them (same fix pattern as the lucide-react shim in 3-8).
