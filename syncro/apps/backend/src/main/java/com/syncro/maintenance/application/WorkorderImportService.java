@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,15 +54,18 @@ public class WorkorderImportService {
   private final WorkOrderStatusHistoryRepository statusHistory;
   private final AuditLogWriter auditLog;
   private final FieldClassificationService fieldClassification;
+  private final ApplicationEventPublisher events;
   private final Clock clock;
 
   public WorkorderImportService(WorkOrderRepository workOrders,
       WorkOrderStatusHistoryRepository statusHistory, AuditLogWriter auditLog,
-      FieldClassificationService fieldClassification, Clock clock) {
+      FieldClassificationService fieldClassification, ApplicationEventPublisher events,
+      Clock clock) {
     this.workOrders = workOrders;
     this.statusHistory = statusHistory;
     this.auditLog = auditLog;
     this.fieldClassification = fieldClassification;
+    this.events = events;
     this.clock = clock;
   }
 
@@ -133,6 +137,9 @@ public class WorkorderImportService {
       statusHistory.saveAndFlush(historyRow(sheetNo, fromStatus, toStatus, now));
       auditLog.recordSystem(new AuditRecord(AuditAction.UPDATE, AuditEntityType.WORK_ORDER,
           auditEntityId(sheetNo), sheetNo, null, previous, auditValues(saved), null));
+      // Sync mutation invalidates analytics (AD-6/AD-20, story 20-1): the kpi module
+      // re-materializes the affected months AFTER_COMMIT — never inside this transaction.
+      events.publishEvent(new WorkorderSyncedEvent(sheetNo, toMachineId, traceId()));
       return UpsertResult.updated();
     }
 
@@ -144,6 +151,7 @@ public class WorkorderImportService {
     statusHistory.saveAndFlush(historyRow(sheetNo, null, status, now));
     auditLog.recordSystem(new AuditRecord(AuditAction.CREATE, AuditEntityType.WORK_ORDER,
         auditEntityId(sheetNo), sheetNo, null, null, auditValues(saved), null));
+    events.publishEvent(new WorkorderSyncedEvent(sheetNo, machineId, traceId()));
     return UpsertResult.created();
   }
 

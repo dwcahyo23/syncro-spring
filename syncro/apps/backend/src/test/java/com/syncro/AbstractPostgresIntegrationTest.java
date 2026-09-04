@@ -54,7 +54,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
     "syncro.auth.jwt.ttl-minutes=30",
     "syncro.auth.local-admin.enabled=false",
     "syncro.auth.local-admin.login-identifier=admin@syncro.dev",
-    "syncro.auth.local-admin.password=test-password"
+    "syncro.auth.local-admin.password=test-password",
+    // KPI refresh off in tests: the sync-invalidation listener would otherwise sweep
+    // committed KPI rows into the shared reused container after every sync-batch commit.
+    // Story 20-1's own integration test drives KpiMaterializationService directly.
+    "syncro.kpi.enabled=false"
 })
 public abstract class AbstractPostgresIntegrationTest {
 

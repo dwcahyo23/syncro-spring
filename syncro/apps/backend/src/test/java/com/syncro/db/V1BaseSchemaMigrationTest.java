@@ -49,11 +49,11 @@ class V1BaseSchemaMigrationTest {
   // -------------------------------------------------------------------------
 
   @Test
-  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V11 additive migrations")
+  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V12 additive migrations")
   void migrationsApplied() {
     var rows = jdbc.queryForList(
         "SELECT version, script, success FROM flyway_schema_history ORDER BY installed_rank");
-    assertThat(rows).hasSize(11);
+    assertThat(rows).hasSize(12);
     assertThat(rows.get(0).get("version")).isEqualTo("1");
     assertThat(rows.get(0).get("script")).isEqualTo("V1__orm_foundation_schema.sql");
     assertThat(rows.get(0).get("success")).isEqualTo(true);
@@ -87,6 +87,9 @@ class V1BaseSchemaMigrationTest {
     assertThat(rows.get(10).get("version")).isEqualTo("11");
     assertThat(rows.get(10).get("script")).isEqualTo("V11__pm_execution_audit_types.sql");
     assertThat(rows.get(10).get("success")).isEqualTo(true);
+    assertThat(rows.get(11).get("version")).isEqualTo("12");
+    assertThat(rows.get(11).get("script")).isEqualTo("V12__kpi_target_audit_type.sql");
+    assertThat(rows.get(11).get("success")).isEqualTo(true);
   }
 
   // -------------------------------------------------------------------------
@@ -681,6 +684,20 @@ class V1BaseSchemaMigrationTest {
         "JOB_TITLE", "SYSTEM_ROLE", "ROLE_PERMISSION_MAPPING",
         "MENU_FEATURE", "DOMAIN_CONTEXT", "USER_JOB_BINDING",
         "SIGNATURE_USE");
+  }
+
+  @Test
+  @DisplayName("20.1-DB-001 P0 audit_log entity_type CHECK accepts KPI_TARGET after V12")
+  void auditEntityTypeAcceptsKpiTarget() {
+    var check = jdbc.queryForMap(
+        "SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint "
+            + "WHERE conname = 'ck_audit_log_entity_type'");
+    var def = (String) check.get("def");
+    assertThat(def).contains("KPI_TARGET");
+    // every prior value survives the additive V12 extension.
+    assertThat(def).contains("PM_EXECUTION", "PM_EXECUTION_ITEM", "PM_WORK_ORDER",
+        "WORK_ORDER_QUALITY_RATING", "WORK_LOG_RATING", "WORK_LOG", "WORK_ASSIGNMENT",
+        "PLANT", "MACHINE", "ALERT", "SPAREPART_REQUEST", "SIGNATURE_USE");
   }
 
   // -------------------------------------------------------------------------

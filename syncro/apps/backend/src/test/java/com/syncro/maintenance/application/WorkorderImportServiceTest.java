@@ -52,6 +52,8 @@ class WorkorderImportServiceTest {
   private AuditLogWriter auditLog;
   @Mock
   private FieldClassificationService fieldClassification;
+  @Mock
+  private org.springframework.context.ApplicationEventPublisher events;
 
   private WorkorderImportService service;
   private final UUID machineId = UUID.randomUUID();
@@ -67,7 +69,7 @@ class WorkorderImportServiceTest {
     lenient().when(fieldClassification.isMaster("parent_id")).thenReturn(true);
     lenient().when(fieldClassification.isMaster("description")).thenReturn(true);
     service = new WorkorderImportService(workOrders, statusHistory, auditLog,
-        fieldClassification, CLOCK);
+        fieldClassification, events, CLOCK);
   }
 
   @Test
@@ -107,6 +109,12 @@ class WorkorderImportServiceTest {
     assertThat(audit.action()).isEqualTo(AuditAction.CREATE);
     assertThat(audit.entityType()).isEqualTo(AuditEntityType.WORK_ORDER);
     assertThat(audit.entityLabel()).isEqualTo("EXT-00001");
+
+    // Story 20-1 (AD-6/AD-20): sync create invalidates analytics via WorkorderSyncedEvent.
+    var eventCaptor = ArgumentCaptor.forClass(WorkorderSyncedEvent.class);
+    verify(events).publishEvent(eventCaptor.capture());
+    assertThat(eventCaptor.getValue().workOrderId()).isEqualTo("EXT-00001");
+    assertThat(eventCaptor.getValue().machineId()).isEqualTo(machineId);
   }
 
   @Test
@@ -147,6 +155,9 @@ class WorkorderImportServiceTest {
     assertThat(auditCaptor.getValue().action()).isEqualTo(AuditAction.UPDATE);
     assertThat(auditCaptor.getValue().previousValue()).containsEntry("status", "OPEN");
     assertThat(auditCaptor.getValue().newValue()).containsEntry("status", "IN_PROGRESS");
+
+    // Story 20-1: sync update also invalidates analytics.
+    verify(events).publishEvent(any(WorkorderSyncedEvent.class));
   }
 
   @Test
@@ -166,6 +177,8 @@ class WorkorderImportServiceTest {
     verify(workOrders, never()).saveAndFlush(any());
     verify(statusHistory, never()).saveAndFlush(any());
     verify(auditLog, never()).recordSystem(any());
+    // Story 20-1: a stale no-op must not invalidate analytics.
+    verify(events, never()).publishEvent(any());
   }
 
   @Test

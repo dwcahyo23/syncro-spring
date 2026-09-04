@@ -1,5 +1,6 @@
 package com.syncro.kpi.infrastructure.db;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,4 +9,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface KpiMonthlyBreakdownRepository extends JpaRepository<KpiMonthlyBreakdownEntity, UUID> {
 
   Optional<KpiMonthlyBreakdownEntity> findByPlantIdAndMonth(UUID plantId, java.time.LocalDate month);
+
+  List<KpiMonthlyBreakdownEntity> findByMonth(java.time.LocalDate month);
 }

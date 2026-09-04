@@ -6,7 +6,10 @@ import com.syncro.AbstractPostgresIntegrationTest;
 import com.syncro.auth.infrastructure.AuthUserEntity;
 import com.syncro.auth.infrastructure.AuthUserRepository;
 import com.syncro.auth.domain.ApplicationRole;
+import com.syncro.kpi.application.KpiMaterializationService;
 import com.syncro.kpi.domain.KpiAggregateRefreshStatus;
+import com.syncro.kpi.domain.KpiSourceStatus;
+import com.syncro.kpi.domain.KpiType;
 import com.syncro.auth.infrastructure.PlantEntity;
 import com.syncro.auth.infrastructure.PlantRepository;
 import java.math.BigDecimal;
@@ -22,6 +25,11 @@ import org.springframework.beans.factory.annotation.Autowired;
  * round-trips targets, monthlies, and the refresh log — the BigDecimal/Instant/
  * nullable semantics of the I/O matrix. All values are backend-materialized: no
  * floating-point, month normalized to the first of the month.
+ *
+ * <p>Story 20-1 extension: an end-to-end refresh round-trip against the real database —
+ * seeded workorder/work-log/rating/PM data through the actual source adapter and
+ * {@link KpiMaterializationService}, asserting materialized rows, the refresh-log
+ * RUNNING→SUCCESS evidence, and idempotent re-runs (the spec's I/O matrix rows).
  */
 class KpiEntityConventionIntegrationTest extends AbstractPostgresIntegrationTest {
 
@@ -53,6 +61,24 @@ class KpiEntityConventionIntegrationTest extends AbstractPostgresIntegrationTest
   private KpiPmCompletionMonthlyRepository pmCompletionMonthlies;
   @Autowired
   private KpiAggregateRefreshLogRepository refreshLogs;
+  @Autowired
+  private KpiMaterializationService materialization;
+  @Autowired
+  private com.syncro.maintenance.infrastructure.db.WorkOrderRepository workOrders;
+  @Autowired
+  private com.syncro.maintenance.infrastructure.db.WorkOrderStatusHistoryRepository statusHistory;
+  @Autowired
+  private com.syncro.maintenance.infrastructure.db.WorkLogRepository workLogs;
+  @Autowired
+  private com.syncro.maintenance.infrastructure.db.WorkLogRatingRepository workLogRatings;
+  @Autowired
+  private com.syncro.maintenance.infrastructure.db.WorkLogRatingCriterionRepository ratingCriteria;
+  @Autowired
+  private com.syncro.maintenance.infrastructure.db.WorkOrderCategoryRepository categories;
+  @Autowired
+  private com.syncro.maintenance.preventive.infrastructure.db.PmWorkOrderRepository pmWorkOrders;
+  @Autowired
+  private com.syncro.maintenance.preventive.infrastructure.db.PmExecutionRepository pmExecutions;
 
   private PlantEntity plant() {
     var code = "K" + UUID.randomUUID().toString().substring(0, 8);
@@ -104,7 +130,7 @@ class KpiEntityConventionIntegrationTest extends AbstractPostgresIntegrationTest
         new BigDecimal("60.20"), T0, T0));
     var mar = marMonthlies.saveAndFlush(new KpiMarMonthlyEntity(
         UUID.randomUUID(), plant.getId(), AUG, 600, 45, new BigDecimal("92.50"),
-        "PARTIAL", "telemetry gap on 2 machines", T0, T0));
+        "COMPLETE", "telemetry gap on 2 machines", T0, T0));
     var tech = technicianMonthlies.saveAndFlush(new KpiTechnicianMonthlyEntity(
         UUID.randomUUID(), plant.getId(), user.getId(), AUG, new BigDecimal("4.33"), 12,
         new BigDecimal("87.00"), T0, T0));
@@ -128,7 +154,7 @@ class KpiEntityConventionIntegrationTest extends AbstractPostgresIntegrationTest
     assertThat(reloadedMar.getPlannedAvailableMinutes()).isEqualTo(600);
     assertThat(reloadedMar.getDowntimeMinutes()).isEqualTo(45);
     assertThat(reloadedMar.getMarPercent()).isEqualByComparingTo(new BigDecimal("92.5"));
-    assertThat(reloadedMar.getSourceStatus()).isEqualTo("PARTIAL");
+    assertThat(reloadedMar.getSourceStatus()).isEqualTo("COMPLETE");
     assertThat(reloadedMar.getSourceMessage()).isEqualTo("telemetry gap on 2 machines");
 
     var reloadedTech = technicianMonthlies.findById(tech.getId()).orElseThrow();
@@ -164,5 +190,149 @@ class KpiEntityConventionIntegrationTest extends AbstractPostgresIntegrationTest
     assertThat(reloaded.getStatus()).isEqualTo(KpiAggregateRefreshStatus.SUCCESS);
     assertThat(reloaded.getMessage()).isEqualTo("3 rows");
     assertThat(reloaded.getRefreshedAt()).isEqualTo(T1);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Story 20-1: end-to-end monthly refresh against the real database
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void monthlyRefreshMaterializesAllKpiTypesAndIsIdempotent() {
+    var plant = plant();
+    var machine = machine(plant);
+    var technician = users.saveAndFlush(new AuthUserEntity(
+        UUID.randomUUID(), "kpi-tech-" + UUID.randomUUID() + "@syncro.test", "hash",
+        ApplicationRole.TECHNICIAN, true, T0, T0));
+    var breakdown = categories.saveAndFlush(new com.syncro.maintenance.infrastructure.db
+        .WorkOrderCategoryEntity(UUID.randomUUID(), "01", "Breakdown", null, T0, T0));
+    var criterion = ratingCriteria.saveAndFlush(
+        new com.syncro.maintenance.infrastructure.db.WorkLogRatingCriterionEntity(
+            UUID.randomUUID(), "Quality", null, 1, 5, plant.getId(), true, 0, null, T0, T0));
+
+    // Two CLOSED breakdown WOs on one machine, stopped Aug 10 and Aug 20 (woStopAt via
+    // PENDING_REVIEW history) → MTBF gap 10 days; WO-1 has two work logs (60+30 wall
+    // minutes), WO-2 one (60) → MTTR wall mean 75; ratings 4 and 5 → avg 4.50;
+    // first-time-fix 1/2 → 50%. A third CLOSED WO (KPI-WO-3) has NO PENDING_REVIEW
+    // history — its stop derives from updatedAt (Aug 31 08:00, the sync edge case the
+    // query comment calls out) → gaps 10.00 + 10.8333 days → MTBF 10.42, count 3.
+    var wo1 = workOrders.saveAndFlush(new com.syncro.maintenance.infrastructure.db.WorkOrderEntity(
+        "KPI-WO-1", "INTERNAL", null,
+        com.syncro.maintenance.domain.workorder.WorkOrderStatus.CLOSED, breakdown.getId(),
+        machine.getId(), "stop 1", 0L, null, technician.getId(), null, T0, T0));
+    var wo2 = workOrders.saveAndFlush(new com.syncro.maintenance.infrastructure.db.WorkOrderEntity(
+        "KPI-WO-2", "INTERNAL", null,
+        com.syncro.maintenance.domain.workorder.WorkOrderStatus.CLOSED, breakdown.getId(),
+        machine.getId(), "stop 2", 0L, null, technician.getId(), null, T0, T0));
+    workOrders.saveAndFlush(new com.syncro.maintenance.infrastructure.db.WorkOrderEntity(
+        "KPI-WO-3", "EXTERNAL", null,
+        com.syncro.maintenance.domain.workorder.WorkOrderStatus.CLOSED, breakdown.getId(),
+        machine.getId(), "sync-closed stop, no history", 0L, null, technician.getId(), null,
+        T0, Instant.parse("2026-08-31T08:00:00Z")));
+    statusHistory.saveAndFlush(new com.syncro.maintenance.infrastructure.db
+        .WorkOrderStatusHistoryEntity(UUID.randomUUID(), wo1.getId(), null, "PENDING_REVIEW",
+        "MANUAL", technician.getId().toString(), "trace-1",
+        Instant.parse("2026-08-10T12:00:00Z")));
+    statusHistory.saveAndFlush(new com.syncro.maintenance.infrastructure.db
+        .WorkOrderStatusHistoryEntity(UUID.randomUUID(), wo2.getId(), null, "PENDING_REVIEW",
+        "MANUAL", technician.getId().toString(), "trace-2",
+        Instant.parse("2026-08-20T12:00:00Z")));
+    var log1 = workLogs.saveAndFlush(new com.syncro.maintenance.infrastructure.db.WorkLogEntity(
+        UUID.randomUUID(), null, wo1.getId(), technician.getId(),
+        Instant.parse("2026-08-10T08:00:00Z"), Instant.parse("2026-08-10T09:00:00Z"),
+        com.syncro.maintenance.domain.workorder.WorkLogStoppedReason.COMPLETED, "fix", null, null,
+        T0, T0));
+    workLogs.saveAndFlush(new com.syncro.maintenance.infrastructure.db.WorkLogEntity(
+        UUID.randomUUID(), null, wo1.getId(), technician.getId(),
+        Instant.parse("2026-08-10T10:00:00Z"), Instant.parse("2026-08-10T10:30:00Z"),
+        com.syncro.maintenance.domain.workorder.WorkLogStoppedReason.COMPLETED, "fix 2", null, null,
+        T0, T0));
+    workLogs.saveAndFlush(new com.syncro.maintenance.infrastructure.db.WorkLogEntity(
+        UUID.randomUUID(), null, wo2.getId(), technician.getId(),
+        Instant.parse("2026-08-20T08:00:00Z"), Instant.parse("2026-08-20T09:00:00Z"),
+        com.syncro.maintenance.domain.workorder.WorkLogStoppedReason.COMPLETED, "fix", null, null,
+        T0, T0));
+    workLogRatings.saveAndFlush(new com.syncro.maintenance.infrastructure.db.WorkLogRatingEntity(
+        UUID.randomUUID(), log1.getId(), criterion.getId(), 4, technician.getId(), T0, null));
+    workLogRatings.saveAndFlush(new com.syncro.maintenance.infrastructure.db.WorkLogRatingEntity(
+        UUID.randomUUID(), workLogs.findByWorkOrderIdOrderByStartTimeAsc(wo2.getId()).get(0).getId(),
+        criterion.getId(), 5, technician.getId(), T0, null));
+
+    // PM: two planned workorders in August, one completed execution.
+    var pmWo1 = pmWorkOrders.saveAndFlush(
+        new com.syncro.maintenance.preventive.infrastructure.db.PmWorkOrderEntity(
+            UUID.randomUUID(), machine.getId(), null, null, null, null, null,
+            com.syncro.maintenance.preventive.domain.PmWorkOrderStatus.COMPLETED,
+            technician.getId(), LocalDate.of(2026, 8, 5),
+            Instant.parse("2026-08-06T01:00:00Z"), Instant.parse("2026-08-06T02:00:00Z"), null,
+            T0, T0));
+    pmWorkOrders.saveAndFlush(new com.syncro.maintenance.preventive.infrastructure.db
+        .PmWorkOrderEntity(UUID.randomUUID(), machine.getId(), null, null, null, null, null,
+        com.syncro.maintenance.preventive.domain.PmWorkOrderStatus.SCHEDULED, technician.getId(),
+        LocalDate.of(2026, 8, 15), null, null, null, T0, T0));
+    pmExecutions.saveAndFlush(new com.syncro.maintenance.preventive.infrastructure.db
+        .PmExecutionEntity(UUID.randomUUID(), pmWo1.getId(), null, technician.getId(), null, null,
+        null, null, null, Instant.parse("2026-08-06T01:00:00Z"),
+        Instant.parse("2026-08-06T02:00:00Z"), false, 0, null, T0, T0));
+
+    var outcomes = materialization.refreshMonth(AUG);
+    assertThat(outcomes).allSatisfy(o -> assertThat(o.status())
+        .isEqualTo(KpiAggregateRefreshStatus.SUCCESS));
+
+    // MTBF: stops ordered by woStopAt (Aug10, Aug20, Aug31-08:00 via updatedAt fallback —
+    // no PENDING_REVIEW history) → gaps 10.00 + 10.8333 days → mean 10.42.
+    var mtbf = mtbfMonthlies.findByMachineIdAndMonth(machine.getId(), AUG).orElseThrow();
+    assertThat(mtbf.getMtbfDays()).isEqualByComparingTo(new BigDecimal("10.42"));
+
+    // MTTR: cumulative per WO (90 + 60) / 2 = 75.00 wall. v1 whole-working-day calendar
+    // would give 1440 per log, but review 20-1 clamps working <= wall per log → 75.00.
+    var mttr = mttrMonthlies.findByPlantIdAndMonth(plant.getId(), AUG).orElseThrow();
+    assertThat(mttr.getWallClockMttrMinutes()).isEqualByComparingTo(new BigDecimal("75.00"));
+    assertThat(mttr.getActualWorkingMttrMinutes()).isEqualByComparingTo(new BigDecimal("75.00"));
+
+    // MAR: no telemetry availability source → explicit INSUFFICIENT_DATA, never zero.
+    var mar = marMonthlies.findByPlantIdAndMonth(plant.getId(), AUG).orElseThrow();
+    assertThat(mar.getMarPercent()).isNull();
+    assertThat(mar.getSourceStatus()).isEqualTo(KpiSourceStatus.INSUFFICIENT_DATA.name());
+
+    // PM completion: 1/2 = 50.00%.
+    var pm = pmCompletionMonthlies.findByPlantIdAndMonth(plant.getId(), AUG).orElseThrow();
+    assertThat(pm.getCompletionRate()).isEqualByComparingTo(new BigDecimal("50.00"));
+    assertThat(pm.getCompletedCount()).isEqualTo(1);
+    assertThat(pm.getPlannedCount()).isEqualTo(2);
+    assertThat(pm.getSourceStatus()).isEqualTo(KpiSourceStatus.COMPLETE.name());
+
+    // Technician: avg 4.50, total_wo 2, FTF 50.00.
+    var tech = technicianMonthlies
+        .findByPlantIdAndTechnicianIdAndMonth(plant.getId(), technician.getId(), AUG).orElseThrow();
+    assertThat(tech.getAverageRating()).isEqualByComparingTo(new BigDecimal("4.50"));
+    assertThat(tech.getTotalWo()).isEqualTo(2);
+    assertThat(tech.getFirstTimeFixRate()).isEqualByComparingTo(new BigDecimal("50.00"));
+
+    // Breakdown count: 3 stops in August (the third via the updatedAt fallback).
+    assertThat(breakdowns.findByPlantIdAndMonth(plant.getId(), AUG).orElseThrow().getCount())
+        .isEqualTo(3);
+
+    // Refresh-log evidence: RUNNING→SUCCESS with traceId per type.
+    var log = refreshLogs.findByRefreshKey("mtbf:2026-08").orElseThrow();
+    assertThat(log.getStatus()).isEqualTo(KpiAggregateRefreshStatus.SUCCESS);
+    assertThat(log.getMessage()).contains("traceId=");
+
+    // Idempotent re-run: same row id, scoped to this test's machine (the shared reused
+    // container may hold other tests' August rows — review 20-1).
+    var mtbfId = mtbf.getId();
+    var rerun = materialization.refreshType(KpiType.MTBF, AUG);
+    assertThat(rerun.status()).isEqualTo(KpiAggregateRefreshStatus.SUCCESS);
+    assertThat(mtbfMonthlies.findByMachineIdAndMonth(machine.getId(), AUG).orElseThrow().getId())
+        .isEqualTo(mtbfId);
+  }
+
+  /** Machine with plant+group — MTBF rows need a real machines FK (V1). */
+  private com.syncro.machine.infrastructure.MachineEntity machine(PlantEntity plant) {
+    var group = machineGroups.saveAndFlush(new com.syncro.masterdata.infrastructure.MachineGroupEntity(
+        UUID.randomUUID(), plant, "Group " + UUID.randomUUID().toString().substring(0, 6), T0, T0));
+    return machines.saveAndFlush(new com.syncro.machine.infrastructure.MachineEntity(
+        UUID.randomUUID(), plant, group, "KPI-" + UUID.randomUUID().toString().substring(0, 8),
+        "KPI Machine", com.syncro.machine.domain.MachineStatus.ACTIVE, null, null, null, null,
+        T0, T0));
   }
 }

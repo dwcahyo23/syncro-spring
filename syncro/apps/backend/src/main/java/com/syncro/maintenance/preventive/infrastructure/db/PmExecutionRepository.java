@@ -28,4 +28,23 @@ public interface PmExecutionRepository extends JpaRepository<PmExecutionEntity, 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("select e from PmExecutionEntity e where e.id = :id")
   Optional<PmExecutionEntity> findByIdForUpdate(@Param("id") UUID id);
+
+  /**
+   * Story 20-1 (AD-19/FR-170): completed PM executions whose PM workorder is scheduled
+   * inside the month window — the PM-completion numerator. Review 20-1: attribution uses
+   * the WO's scheduled month (same key as the planned denominator), so a WO scheduled in
+   * July and completed in August counts into July's rate, never above 100%.
+   * Plant resolves through the PM workorder → machine → plant.
+   */
+  @Query("""
+      select count(e) from PmExecutionEntity e
+      join PmWorkOrderEntity w on w.id = e.pmWoId
+      join MachineEntity m on m.id = w.machineId
+      where m.plant.id = :plantId
+        and w.scheduledDate >= :monthFrom and w.scheduledDate < :monthTo
+        and e.completedAt is not null
+      """)
+  long countCompletedForPlantInMonth(@Param("plantId") UUID plantId,
+      @Param("monthFrom") java.time.LocalDate monthFrom,
+      @Param("monthTo") java.time.LocalDate monthTo);
 }

@@ -1265,3 +1265,33 @@ origin: code review of spec-19-5-pm-executions-items (implementer found while wr
 location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecklistService.java (itemLabel, ~line 487)
 reason: length()-vs-codePointCount bug identical to the one patched in PmExecutionService.itemLabel (19-5 PATCH 6). Creating a checklist item whose parameterText has surrogate-heavy text with UTF-16 length > 255 but code points <= 255 crashes with IndexOutOfBoundsException. Out of 19-5 scope; needs a small follow-up fix + test mirroring 19.5-INT-017.
 status: open
+
+### DW-160: MAR telemetry availability source not wired (always INSUFFICIENT_DATA)
+origin: code review of spec-20-1-kpi-materialized-tables (acceptance-auditor), 2026-09-04
+location: syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/KpiSourceDataJpaAdapter.java:findMarInputs
+reason: No persisted per-plant telemetry availability source exists (AD-12 — machines may run without telemetry), so findMarInputs returns empty and every MAR refresh writes an explicit INSUFFICIENT_DATA row. Spec-compliant (never a fabricated value), but the mar_percent formula is unreachable in production until an availability source is designed (InfluxDB uptime derivation or plant-calendar planned minutes).
+status: open
+
+### DW-161: 14-2 dashboards still compute MTBF/MTTR/technician on-the-fly
+origin: code review of spec-20-1-kpi-materialized-tables (acceptance-auditor), 2026-09-04
+location: syncro/apps/backend/src/main/java/com/syncro/maintenance/application/DashboardAnalyticsService.java
+reason: Story 20-1 ships the materialized read API (GET /api/v1/kpi/materialized/{type}); rewiring the 14-2 rolling-30-day live endpoints to monthly materialized rows changes their contract semantics (fleet-hours vs per-machine-days) and is story 20-2's scope ("KPI Targets & Dashboard Consumption"). KEEP the 14-2 endpoint untouched until 20-2.
+status: open
+
+### DW-162: KPI source reads unbounded (full-history scan per sweep)
+origin: code review of spec-20-1-kpi-materialized-tables (blind-hunter), 2026-09-04
+location: syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiMaterializationService.java:refreshMtbf/refreshMttr
+reason: findBreakdownStops(Instant.EPOCH, to) and findClosedBreakdownRepairLogs() load all history per pass (MTBF needs prior stops for gap continuity, but a bounded lookback window — e.g. 13 months — would cap the scan). Acceptable at pilot data volume; add date bounds when history grows.
+status: open
+
+### DW-163: backdated sync corrections outside the lookback window never re-materialized
+origin: code review of spec-20-1-kpi-materialized-tables (edge-case-hunter), 2026-09-04
+location: syncro/apps/backend/src/main/java/com/syncro/kpi/scheduled/KpiRefreshScheduler.java:runSweep
+reason: The sync-invalidation sweep covers current month + lookbackMonths (default 3). A synced row stopped before that window is not re-materialized until a manual refresh. WorkorderSyncedEvent carries no woStopAt; deriving the affected month from the event would close it.
+status: open
+
+### DW-164: kpi module imports maintenance application event directly
+origin: code review of spec-20-1-kpi-materialized-tables (blind-hunter), 2026-09-04
+location: syncro/apps/backend/src/main/java/com/syncro/kpi/scheduled/KpiRefreshScheduler.java:5
+reason: KpiRefreshScheduler imports com.syncro.maintenance.application.WorkorderSyncedEvent, coupling kpi→maintenance's application package. Matches the existing cross-module event pattern (notification/alert modules do the same), so consistent; a shared events contract package would be the cleaner fix if more consumers appear.
+status: open

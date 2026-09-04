@@ -170,6 +170,14 @@ syncro:
     # Redis cache TTL for computed dashboard analytics (MTBF/MTTR, technician KPI).
     # Env-overridable via SYNCRO_DASHBOARD_ANALYTICS_TTL (default: 30 minutes).
     analytics-ttl: ${SYNCRO_DASHBOARD_ANALYTICS_TTL:PT30M}
+  kpi:
+    # Monthly KPI materialization (story 20-1, AD-20). Master switch for the scheduler
+    # and the sync-invalidation listener.
+    enabled: ${SYNCRO_KPI_ENABLED:true}
+    # Cron for the scheduled refresh sweep (default: daily 03:00 UTC).
+    refresh-cron: ${SYNCRO_KPI_REFRESH_CRON:0 0 3 * * *}
+    # Past months re-materialized per sweep (late corrections, backdated sync rows).
+    lookback-months: ${SYNCRO_KPI_LOOKBACK_MONTHS:1}
   sync:
     # External workorder sync pipeline (story 13-1, AD-7/FR-150). Disabled by default:
     # the app boots without an external DB. Flip to true and supply syncro.sync.datasource.*

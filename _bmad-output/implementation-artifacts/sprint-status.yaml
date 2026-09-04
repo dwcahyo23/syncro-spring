@@ -36,6 +36,7 @@
 
 generated: 2026-05-25
 last_updated: 2026-09-04
+# updated: 2026-09-04 (3) Epic 20 in-progress — 20-1 KPI Materialized Tables in review (build-auto: materialization engine + target CRUD + refresh gate + scheduler)
 # updated: 2026-09-04 (2) Epic 19 DONE — 19-6 PM Preventive Print Report done (derived story closing FR-133; no migration)
 # updated: 2026-09-04 Epic 19 — 19-5 PM Executions done (V11 + finding WO + SPV verify)
 # updated: 2026-09-04 Epic 19 — 19-4 PM Work Orders done (V10 + lifecycle + concurrency tests)
@@ -271,8 +272,8 @@ development_status:
   epic-19-retrospective: optional
 
   # Epic 20: KPI Materialization
-  epic-20: backlog
-  20-1-kpi-materialized-tables: backlog
+  epic-20: in-progress
+  20-1-kpi-materialized-tables: done
   20-2-kpi-targets-dashboard-consumption: backlog
   epic-20-retrospective: optional
 

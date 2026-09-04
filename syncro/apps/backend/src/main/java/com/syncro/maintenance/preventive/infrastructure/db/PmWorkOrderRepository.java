@@ -33,4 +33,19 @@ public interface PmWorkOrderRepository extends JpaRepository<PmWorkOrderEntity, 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("select w from PmWorkOrderEntity w where w.id = :id")
   Optional<PmWorkOrderEntity> findByIdForUpdate(@Param("id") UUID id);
+
+  /**
+   * Story 20-1 (AD-19/FR-170): planned PM workorders for the plant with a scheduled
+   * date inside the month window — the PM-completion denominator. Plant resolves
+   * through the machine (pm_work_orders carries no plant column).
+   */
+  @Query("""
+      select count(w) from PmWorkOrderEntity w
+      join MachineEntity m on m.id = w.machineId
+      where m.plant.id = :plantId
+        and w.scheduledDate >= :monthFrom and w.scheduledDate < :monthTo
+      """)
+  long countPlannedForPlantInMonth(@Param("plantId") UUID plantId,
+      @Param("monthFrom") java.time.LocalDate monthFrom,
+      @Param("monthTo") java.time.LocalDate monthTo);
 }

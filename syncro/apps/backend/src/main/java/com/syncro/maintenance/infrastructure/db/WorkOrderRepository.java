@@ -392,6 +392,32 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrderEntity, Stri
       @Param("to") Instant to);
 
   // -------------------------------------------------------------------------
+  // KPI materialization source reads (20-1, AD-6/AD-20)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Story 20-1 (AD-6): stopped breakdown workorders (category code {@code 01}, status
+   * CLOSED) with the DERIVED {@code woStopAt} — the latest PENDING_REVIEW transition
+   * from {@code work_order_status_history}, {@code updatedAt} fallback (the sync edge
+   * case), exactly the 14-2 key. The month window is applied by the adapter so the
+   * derived stop time and the filter share one expression. Ordering is NOT guaranteed —
+   * MTBF consumers must sort by {@code woStopAt}, never by id (the reference bug).
+   */
+  @Query("""
+      select new com.syncro.maintenance.infrastructure.db.KpiSourceRows$BreakdownStopRow(
+        w.id, w.machineId, m.plant.id, coalesce(max(h.transitionedAt), w.updatedAt))
+      from WorkOrderEntity w
+      join WorkOrderCategoryEntity c on c.id = w.categoryId
+      join MachineEntity m on m.id = w.machineId
+      left join WorkOrderStatusHistoryEntity h on h.workOrderId = w.id and h.toStatus = 'PENDING_REVIEW'
+      where c.code = :breakdownCode and w.status = :closedStatus
+      group by w.id, w.machineId, m.plant.id, w.updatedAt
+      """)
+  List<KpiSourceRows.BreakdownStopRow> findBreakdownStops(
+      @Param("breakdownCode") String breakdownCode,
+      @Param("closedStatus") WorkOrderStatus closedStatus);
+
+  // -------------------------------------------------------------------------
   // Projection interfaces for group-by results
   // -------------------------------------------------------------------------
 
