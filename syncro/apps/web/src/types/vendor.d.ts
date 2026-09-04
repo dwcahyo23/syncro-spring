@@ -2,23 +2,6 @@ declare module "simple-icons" {
   export type SimpleIcon = { title: string; path: string };
 }
 
-declare module "react-hook-form" {
-  export type FieldError = { message?: string };
-  export type FieldState = { invalid: boolean; error?: FieldError };
-  export type ControllerRenderProps = {
-    name: string;
-    value: string | number | readonly string[] | undefined;
-    onChange: (value: unknown) => void;
-    onBlur: () => void;
-    ref: (instance: unknown) => void;
-  };
-  export function useForm<T>(options?: unknown): {
-    control: unknown;
-    handleSubmit: (handler: (data: T) => void) => (event?: unknown) => void;
-  };
-  export function Controller(props: {
-    control: unknown;
-    name: string;
-    render: (context: { field: ControllerRenderProps; fieldState: FieldState }) => React.ReactNode;
-  }): React.ReactNode;
-}
+// react-hook-form previously had a hand-written module shim here; removed for
+// story 20-2 because the real package (7.84.0) ships its own types and the shim
+// shadowed them (same fix pattern as the lucide-react shim in 3-8).

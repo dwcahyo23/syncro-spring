@@ -24,7 +24,16 @@ vi.mock("@/lib/auth/use-auth-user", () => ({
   useAuthUser: () => mockUser,
 }));
 
-let mockUsers = {
+// Pre-existing tsc fix (story 20-2): the loading-state test below assigns
+// `data: undefined`, so the mock's data field must be typed as optional.
+let mockUsers: {
+  data: {
+    data: Array<{ id: string; loginIdentifier: string; displayName: string; applicationRole: string }>;
+  } | undefined;
+  isLoading: boolean;
+  isError: boolean;
+  refetch: ReturnType<typeof vi.fn>;
+} = {
   data: {
     data: [
       { id: "u1", loginIdentifier: "tech@syncro.dev", displayName: "Technician", applicationRole: "TECHNICIAN" },

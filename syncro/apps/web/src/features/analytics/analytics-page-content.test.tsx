@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AnalyticsPageContent } from "./analytics-page-content";
@@ -83,6 +83,138 @@ vi.mock("@/features/analytics/hooks/use-technician-kpi", () => ({
 }));
 
 // ---------------------------------------------------------------------------
+// Story 20-2: materialized monthly KPI + target hooks (contract-shaped fixtures)
+// ---------------------------------------------------------------------------
+
+type MonthlyTargetStatus = "ON_TARGET" | "BELOW_TARGET" | "ABOVE_TARGET" | "NO_TARGET" | "INSUFFICIENT_DATA";
+
+interface MonthlyResponse {
+  type: string;
+  month: string;
+  status: "AVAILABLE" | "INSUFFICIENT_DATA";
+  mtbfRows: Array<{
+    plantId: string;
+    machineId: string;
+    mtbfDays: number | null;
+    targetValue: number | null;
+    targetStatus: MonthlyTargetStatus;
+  }>;
+  mttrRows: Array<{
+    plantId: string;
+    wallClockMinutes: number | null;
+    actualWorkingMinutes: number | null;
+    targetValue: number | null;
+    targetStatus: MonthlyTargetStatus;
+  }>;
+  marRows: Array<{
+    plantId: string;
+    plannedAvailableMinutes: number;
+    downtimeMinutes: number;
+    marPercent: number | null;
+    sourceStatus: string | null;
+    sourceMessage: string | null;
+    targetValue: number | null;
+    targetStatus: MonthlyTargetStatus;
+  }>;
+  pmCompletionRows: Array<{
+    plantId: string;
+    completionRate: number | null;
+    completedCount: number;
+    plannedCount: number;
+    sourceStatus: string | null;
+    sourceMessage: string | null;
+    targetValue: number | null;
+    targetStatus: MonthlyTargetStatus;
+  }>;
+  technicianRows: Array<{
+    plantId: string;
+    technicianId: string;
+    averageRating: number | null;
+    totalWo: number;
+    firstTimeFixRate: number | null;
+    targetValue: number | null;
+    targetStatus: MonthlyTargetStatus;
+  }>;
+  breakdownRows: Array<{
+    plantId: string;
+    count: number;
+    targetValue: number | null;
+    targetStatus: MonthlyTargetStatus;
+  }>;
+  target: {
+    plantId: string;
+    month: string;
+    monthlyBreakdownTarget: number | null;
+    mtbfTargetDays: number | null;
+    mttrTargetMinutes: number | null;
+    oeeQualityPercent: number | null;
+    oeePerformancePercent: number | null;
+  } | null;
+  refresh: {
+    refreshKey: string;
+    status: "RUNNING" | "SUCCESS" | "FAILED";
+    refreshedAt: string;
+    message: string | null;
+  } | null;
+}
+
+function insufficientMonthly(type: string): MonthlyResponse {
+  return {
+    type,
+    month: "2026-09-01",
+    status: "INSUFFICIENT_DATA",
+    mtbfRows: [],
+    mttrRows: [],
+    marRows: [],
+    pmCompletionRows: [],
+    technicianRows: [],
+    breakdownRows: [],
+    target: null,
+    refresh: null,
+  };
+}
+
+let mockMonthly: Record<string, MonthlyResponse> = {};
+let mockMonthlyLoading = false;
+let mockMonthlyError = false;
+const mockMonthlyRefetch = vi.fn();
+
+vi.mock("@/features/analytics/hooks/use-kpi-materialized", () => ({
+  kpiMaterializedQueryPrefix: "/api/v1/kpi/materialized",
+  kpiMaterializedQueryKey: (type: string, month: string, plantId?: string) => [
+    "/api/v1/kpi/materialized",
+    type,
+    month,
+    plantId ?? "all",
+  ],
+  useKpiMaterialized: (type: string) => ({
+    data: mockMonthlyLoading || mockMonthlyError ? undefined : (mockMonthly[type] ?? insufficientMonthly(type)),
+    isLoading: mockMonthlyLoading,
+    isError: mockMonthlyError,
+    isFetching: false,
+    refetch: mockMonthlyRefetch,
+  }),
+}));
+
+const mockTargetsMutate = vi.fn();
+
+vi.mock("@/features/analytics/hooks/use-kpi-targets", () => ({
+  kpiTargetsQueryPrefix: "/api/v1/kpi/targets",
+  useKpiTargets: () => ({ data: [], isLoading: false, isError: false, refetch: vi.fn() }),
+  useUpsertKpiTarget: () => ({ mutate: mockTargetsMutate, isPending: false }),
+}));
+
+let mockAuthUser: { id: string; loginIdentifier: string; applicationRole: string } | null = {
+  id: "u-1",
+  loginIdentifier: "manager@syncro.test",
+  applicationRole: "MANAGER_MAINTENANCE",
+};
+
+vi.mock("@/lib/auth/use-auth-user", () => ({
+  useAuthUser: () => mockAuthUser,
+}));
+
+// ---------------------------------------------------------------------------
 // Test wrapper
 // ---------------------------------------------------------------------------
 
@@ -147,6 +279,11 @@ describe("AnalyticsPageContent", () => {
     mockKpiData = null;
     mockKpiLoading = false;
     mockKpiError = false;
+    mockMonthly = {};
+    mockMonthlyLoading = false;
+    mockMonthlyError = false;
+    mockTargetsMutate.mockClear();
+    mockAuthUser = { id: "u-1", loginIdentifier: "manager@syncro.test", applicationRole: "MANAGER_MAINTENANCE" };
     queryClient.clear();
   });
 
@@ -281,5 +418,242 @@ describe("AnalyticsPageContent", () => {
     mockScope = { mode: "EMPTY", availablePlants: [], emptyReason: "NO_PLANTS_ASSIGNED" };
     renderPage();
     expect(screen.getByText("No plants assigned to your account. Contact your administrator.")).toBeTruthy();
+  });
+
+  // -------------------------------------------------------------------------
+  // Story 20-2: Monthly KPI tab (materialized actual-vs-target consumption)
+  // -------------------------------------------------------------------------
+
+  function openMonthlyTab() {
+    fireEvent.click(screen.getByText("Monthly KPI"));
+  }
+
+  it("renders monthly actual vs target rows with text verdict badges (non-color-only)", () => {
+    mockMonthly = {
+      mtbf: {
+        ...insufficientMonthly("mtbf"),
+        status: "AVAILABLE",
+        mtbfRows: [
+          {
+            plantId: "p1",
+            machineId: "m-aaaa-1111",
+            mtbfDays: 10.42,
+            targetValue: 8.0,
+            targetStatus: "ON_TARGET",
+          },
+          {
+            plantId: "p1",
+            machineId: "m-bbbb-2222",
+            mtbfDays: 5.0,
+            targetValue: 8.0,
+            targetStatus: "BELOW_TARGET",
+          },
+        ],
+      },
+      mttr: {
+        ...insufficientMonthly("mttr"),
+        status: "AVAILABLE",
+        mttrRows: [
+          {
+            plantId: "p1",
+            wallClockMinutes: 75.0,
+            actualWorkingMinutes: 75.0,
+            targetValue: 60.0,
+            targetStatus: "ABOVE_TARGET",
+          },
+        ],
+      },
+      breakdown: {
+        ...insufficientMonthly("breakdown"),
+        status: "AVAILABLE",
+        breakdownRows: [{ plantId: "p1", count: 2, targetValue: 3.0, targetStatus: "ON_TARGET" }],
+      },
+    };
+    renderPage();
+    openMonthlyTab();
+
+    // Verdicts render as text labels, never color-only.
+    expect(screen.getAllByText("On target").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("Below target")).toBeTruthy();
+    expect(screen.getByText("Above target")).toBeTruthy();
+    // Actual vs target values render from the backend payload (no client-side math).
+    expect(screen.getByText("10.42 d")).toBeTruthy();
+    expect(screen.getAllByText("8.00 d").length).toBe(2); // both MTBF rows share the 8.00 target
+    expect(screen.getByText("75 min")).toBeTruthy();
+    expect(screen.getByText("60 min")).toBeTruthy();
+    expect(screen.getByText("2")).toBeTruthy(); // breakdown count
+    expect(screen.getByText("3")).toBeTruthy(); // breakdown target
+  });
+
+  it("renders NO_TARGET rows with an explicit text badge", () => {
+    mockMonthly = {
+      technician: {
+        ...insufficientMonthly("technician"),
+        status: "AVAILABLE",
+        technicianRows: [
+          {
+            plantId: "p1",
+            technicianId: "t-cccc-3333",
+            averageRating: 4.5,
+            totalWo: 7,
+            firstTimeFixRate: 85.0,
+            targetValue: null,
+            targetStatus: "NO_TARGET",
+          },
+        ],
+      },
+    };
+    renderPage();
+    openMonthlyTab();
+
+    expect(screen.getByText("No target")).toBeTruthy();
+    // Actuals still render (combined cell: rating · WO · first-time-fix).
+    expect(screen.getByText(/4\.5 \/ 5 · 7 WO · 85\.0%/)).toBeTruthy();
+  });
+
+  it("renders an explicit insufficient-data badge for months without rows (never zeros)", () => {
+    mockMonthly = {}; // every type → INSUFFICIENT_DATA
+    renderPage();
+    openMonthlyTab();
+
+    expect(screen.getAllByText("Insufficient data").length).toBeGreaterThanOrEqual(6);
+    expect(screen.queryByText("0.00 d")).toBeNull();
+    expect(screen.queryByText("0 min")).toBeNull();
+  });
+
+  it("surfaces FAILED refresh evidence as a warning", () => {
+    mockMonthly = {
+      mtbf: {
+        ...insufficientMonthly("mtbf"),
+        status: "AVAILABLE",
+        mtbfRows: [
+          {
+            plantId: "p1",
+            machineId: "m-aaaa-1111",
+            mtbfDays: 12.0,
+            targetValue: null,
+            targetStatus: "NO_TARGET",
+          },
+        ],
+        refresh: {
+          refreshKey: "mtbf:2026-09",
+          status: "FAILED",
+          refreshedAt: "2026-09-01T00:00:00Z",
+          message: "IllegalStateException",
+        },
+      },
+    };
+    renderPage();
+    openMonthlyTab();
+
+    expect(screen.getByText("Refresh failed")).toBeTruthy();
+    expect(screen.getByText(/may be stale/)).toBeTruthy();
+  });
+
+  it("shows the Configure targets button for MANAGER_MAINTENANCE and opens the dialog", () => {
+    mockAuthUser = { id: "u-1", loginIdentifier: "manager@syncro.test", applicationRole: "MANAGER_MAINTENANCE" };
+    renderPage();
+    openMonthlyTab();
+
+    fireEvent.click(screen.getByText("Configure targets"));
+    expect(screen.getByText("Configure KPI targets")).toBeTruthy();
+    expect(screen.getByText("Monthly breakdown target")).toBeTruthy();
+    expect(screen.getByText("MTBF target (days)")).toBeTruthy();
+    expect(screen.getByText("MTTR target (minutes)")).toBeTruthy();
+    expect(screen.getByText("OEE quality (%)")).toBeTruthy();
+    expect(screen.getByText("OEE performance (%)")).toBeTruthy();
+  });
+
+  it("hides the Configure targets affordance for TECHNICIAN (server-side gate is authoritative)", () => {
+    mockAuthUser = { id: "u-2", loginIdentifier: "tech@syncro.test", applicationRole: "TECHNICIAN" };
+    renderPage();
+    openMonthlyTab();
+
+    expect(screen.queryByText("Configure targets")).toBeNull();
+  });
+
+  it("shows the Configure targets button for SUPER_ADMIN", () => {
+    mockAuthUser = { id: "u-3", loginIdentifier: "admin@syncro.test", applicationRole: "SUPER_ADMIN" };
+    renderPage();
+    openMonthlyTab();
+
+    expect(screen.getByText("Configure targets")).toBeTruthy();
+  });
+
+  it("renders monthly loading and error states", () => {
+    mockMonthlyLoading = true;
+    const { unmount } = renderPage();
+    openMonthlyTab();
+    // Loading: skeletons only — no verdict rows, no insufficient-data badges.
+    expect(screen.queryByText("Insufficient data")).toBeNull();
+    expect(screen.queryByText("On target")).toBeNull();
+    unmount();
+
+    mockMonthlyLoading = false;
+    mockMonthlyError = true;
+    renderPage();
+    openMonthlyTab();
+    expect(screen.getAllByText(/Failed to load/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Retry").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders MTTR wall-clock actual when actual-working is null (fallback precedence)", () => {
+    // Review 20-2: the other MTTR fixture has both variants equal, so the
+    // `actualWorking ?? wallClock` display fallback is undistinguishable. A null
+    // actual-working must render the wall-clock value, not an em-dash.
+    mockMonthly = {
+      mttr: {
+        ...insufficientMonthly("mttr"),
+        status: "AVAILABLE",
+        mttrRows: [
+          {
+            plantId: "p1",
+            wallClockMinutes: 75.0,
+            actualWorkingMinutes: null,
+            targetValue: 60.0,
+            targetStatus: "ABOVE_TARGET",
+          },
+        ],
+      },
+    };
+    renderPage();
+    openMonthlyTab();
+
+    expect(screen.getByText("75 min")).toBeTruthy();
+    expect(screen.getByText("Above target")).toBeTruthy();
+  });
+
+  it("submits the target dialog with null for empty fields (20-1 partial-update semantics)", async () => {
+    // Review 20-2: the write path was never exercised — an empty field must send null
+    // (keep stored value), not 0 (which would silently overwrite a configured target).
+    renderPage();
+    openMonthlyTab();
+    fireEvent.click(screen.getByText("Configure targets"));
+
+    fireEvent.change(screen.getByLabelText("MTBF target (days)"), { target: { value: "30.5" } });
+    fireEvent.click(screen.getByText("Save target"));
+
+    // zodResolver validation is async — wait for the submit callback to land.
+    await waitFor(() => expect(mockTargetsMutate).toHaveBeenCalledTimes(1));
+    const payload = mockTargetsMutate.mock.calls[0][0] as Record<string, unknown>;
+    expect(payload.plantId).toBe("p1");
+    expect(payload.mtbfTargetDays).toBe(30.5);
+    expect(payload.monthlyBreakdownTarget).toBeNull();
+    expect(payload.mttrTargetMinutes).toBeNull();
+    expect(payload.oeeQualityPercent).toBeNull();
+    expect(payload.oeePerformancePercent).toBeNull();
+  });
+
+  it("rejects a fractional monthly breakdown target client-side", async () => {
+    // Review 20-2: backend column is Integer; the dialog must not send 2.5.
+    renderPage();
+    openMonthlyTab();
+    fireEvent.click(screen.getByText("Configure targets"));
+
+    fireEvent.change(screen.getByLabelText("Monthly breakdown target"), { target: { value: "2.5" } });
+    fireEvent.click(screen.getByText("Save target"));
+
+    await waitFor(() => expect(screen.getByText("Must be a whole number.")).toBeTruthy());
+    expect(mockTargetsMutate).not.toHaveBeenCalled();
   });
 });

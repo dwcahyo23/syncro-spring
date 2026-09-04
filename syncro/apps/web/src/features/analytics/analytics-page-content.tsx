@@ -4,12 +4,19 @@ import { useState } from "react";
 
 import { Activity, Gauge, RefreshCw, UserRound } from "lucide-react";
 
+import { MonthPicker } from "@/components/month-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { KpiTargetDialog } from "@/features/analytics/components/kpi-target-dialog";
+import {
+  type KpiMaterializedResponse,
+  type KpiTargetStatus,
+  useKpiMaterialized,
+} from "@/features/analytics/hooks/use-kpi-materialized";
 import { useMtbfMttr } from "@/features/analytics/hooks/use-mtbf-mttr";
 import { useTechnicianKpi } from "@/features/analytics/hooks/use-technician-kpi";
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
@@ -40,12 +47,34 @@ function formatStars(value: number | null): string {
   return `${value.toFixed(1)} / 5`;
 }
 
+function formatDays(value: number | null): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return "—";
+  }
+  return `${value.toFixed(2)} d`;
+}
+
+function formatMinutes(value: number | null): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return "—";
+  }
+  return `${value.toFixed(0)} min`;
+}
+
+function formatCount(value: number | null): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return "—";
+  }
+  return String(value);
+}
+
 /**
  * Analytics dashboards (story 14-2, FR-173/FR-174): MTBF/MTTR reliability cards and the
- * technician KPI table. Every value is backend-computed; this page only renders.
- * UX-DR-019 states: loading, error, empty, insufficient-data (explicit badge, never a
- * fabricated value), and stale (non-color-only text label). Freshness window and
- * computedAt render from the backend payload.
+ * technician KPI table. Story 20-2 adds the "Monthly KPI" tab consuming the materialized
+ * monthly rows with the backend-computed actual-vs-target verdict. Every value is
+ * backend-computed; this page only renders. UX-DR-019 states: loading, error, empty,
+ * insufficient-data (explicit badge, never a fabricated value), and stale (non-color-only
+ * text label). Freshness window and computedAt render from the backend payload.
  */
 export function AnalyticsPageContent() {
   const { scope, activePlantId, loadError } = usePlantScope();
@@ -55,7 +84,24 @@ export function AnalyticsPageContent() {
   const mtbfMttrQuery = useMtbfMttr(plantId, isEnabled);
   const kpiQuery = useTechnicianKpi(plantId, isEnabled);
 
-  const [activeTab, setActiveTab] = useState<"mtbf" | "kpi">("mtbf");
+  const [activeTab, setActiveTab] = useState<"mtbf" | "kpi" | "monthly">("mtbf");
+
+  // Monthly KPI tab (story 20-2): calendar month, normalized to first-of-month for the
+  // materialized endpoint. Default = current month (client component — no SSR mismatch).
+  const [monthValue, setMonthValue] = useState(() => {
+    const now = new Date();
+    return { month: now.getMonth(), year: now.getFullYear() };
+  });
+  const monthKey = `${monthValue.year}-${String(monthValue.month + 1).padStart(2, "0")}-01`;
+  const monthlyEnabled = isEnabled && activeTab === "monthly";
+
+  const mtbfMonthly = useKpiMaterialized("mtbf", monthKey, plantId, monthlyEnabled);
+  const mttrMonthly = useKpiMaterialized("mttr", monthKey, plantId, monthlyEnabled);
+  const marMonthly = useKpiMaterialized("mar", monthKey, plantId, monthlyEnabled);
+  const pmMonthly = useKpiMaterialized("pm-completion", monthKey, plantId, monthlyEnabled);
+  const technicianMonthly = useKpiMaterialized("technician", monthKey, plantId, monthlyEnabled);
+  const breakdownMonthly = useKpiMaterialized("breakdown", monthKey, plantId, monthlyEnabled);
+  const monthlyQueries = [mtbfMonthly, mttrMonthly, marMonthly, pmMonthly, technicianMonthly, breakdownMonthly];
 
   if (loadError) {
     return <AnalyticsShell>Plant scope unavailable. Try again or contact your administrator.</AnalyticsShell>;
@@ -75,6 +121,10 @@ export function AnalyticsPageContent() {
 
   const mtbfData = mtbfMttrQuery.data;
   const kpiData = kpiQuery.data;
+  const plantLabel = (id: string): string => {
+    const plant = scope?.availablePlants.find((p) => p.id === id);
+    return plant ? plant.code : `${id.slice(0, 8)}…`;
+  };
 
   return (
     <AnalyticsShell>
@@ -82,6 +132,7 @@ export function AnalyticsPageContent() {
         <div className="flex items-center gap-1 rounded-lg border bg-muted/40 p-1">
           <TabButton active={activeTab === "mtbf"} onClick={() => setActiveTab("mtbf")} label="MTBF / MTTR" />
           <TabButton active={activeTab === "kpi"} onClick={() => setActiveTab("kpi")} label="Technician KPI" />
+          <TabButton active={activeTab === "monthly"} onClick={() => setActiveTab("monthly")} label="Monthly KPI" />
         </div>
         <Button
           variant="outline"
@@ -89,12 +140,19 @@ export function AnalyticsPageContent() {
           onClick={() => {
             void mtbfMttrQuery.refetch();
             void kpiQuery.refetch();
+            for (const query of monthlyQueries) {
+              void query.refetch();
+            }
           }}
-          disabled={mtbfMttrQuery.isLoading || kpiQuery.isLoading}
+          disabled={mtbfMttrQuery.isLoading || kpiQuery.isLoading || monthlyQueries.some((q) => q.isLoading)}
         >
           <RefreshCw
             aria-hidden="true"
-            className={mtbfMttrQuery.isFetching || kpiQuery.isFetching ? "animate-spin" : undefined}
+            className={
+              mtbfMttrQuery.isFetching || kpiQuery.isFetching || monthlyQueries.some((q) => q.isFetching)
+                ? "animate-spin"
+                : undefined
+            }
           />
           Refresh
         </Button>
@@ -264,7 +322,220 @@ export function AnalyticsPageContent() {
           )}
         </div>
       )}
+
+      {activeTab === "monthly" && (
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="text-muted-foreground text-sm">Month</span>
+              <MonthPicker value={monthValue} onChange={setMonthValue} />
+            </div>
+            <KpiTargetDialog month={monthKey} />
+          </div>
+
+          <MonthlyKpiSection
+            title="MTBF (days)"
+            description="Mean time between failures per machine, materialized monthly."
+            query={mtbfMonthly}
+            entityHeader="Machine"
+            rows={(data) =>
+              data.mtbfRows.map((row) => ({
+                key: row.machineId,
+                entity: `${plantLabel(row.plantId)} / ${row.machineId.slice(0, 8)}…`,
+                actual: formatDays(row.mtbfDays),
+                target: formatDays(row.targetValue),
+                status: row.targetStatus,
+              }))
+            }
+          />
+          <MonthlyKpiSection
+            title="MTTR (minutes)"
+            description="Mean time to repair per plant (actual-working when available, else wall-clock)."
+            query={mttrMonthly}
+            entityHeader="Plant"
+            rows={(data) =>
+              data.mttrRows.map((row) => ({
+                key: row.plantId,
+                entity: plantLabel(row.plantId),
+                actual: formatMinutes(row.actualWorkingMinutes ?? row.wallClockMinutes),
+                target: formatMinutes(row.targetValue),
+                status: row.targetStatus,
+              }))
+            }
+          />
+          <MonthlyKpiSection
+            title="Breakdown count"
+            description="Closed breakdown workorders per plant against the monthly target (lower is better)."
+            query={breakdownMonthly}
+            entityHeader="Plant"
+            rows={(data) =>
+              data.breakdownRows.map((row) => ({
+                key: row.plantId,
+                entity: plantLabel(row.plantId),
+                actual: formatCount(row.count),
+                target: formatCount(row.targetValue),
+                status: row.targetStatus,
+              }))
+            }
+          />
+          <MonthlyKpiSection
+            title="MAR (%)"
+            description="Machine availability ratio per plant from telemetry ingest state."
+            query={marMonthly}
+            entityHeader="Plant"
+            rows={(data) =>
+              data.marRows.map((row) => ({
+                key: row.plantId,
+                entity: plantLabel(row.plantId),
+                actual: formatPct(row.marPercent),
+                target: formatPct(row.targetValue),
+                status: row.targetStatus,
+              }))
+            }
+          />
+          <MonthlyKpiSection
+            title="PM completion (%)"
+            description="Preventive maintenance completion rate per plant (completed / planned)."
+            query={pmMonthly}
+            entityHeader="Plant"
+            rows={(data) =>
+              data.pmCompletionRows.map((row) => ({
+                key: row.plantId,
+                entity: plantLabel(row.plantId),
+                actual: formatPct(row.completionRate),
+                target: formatPct(row.targetValue),
+                status: row.targetStatus,
+              }))
+            }
+          />
+          <MonthlyKpiSection
+            title="Technician performance"
+            description="Monthly materialized technician performance (ratings 1–5, workorders, first-time-fix)."
+            query={technicianMonthly}
+            entityHeader="Technician"
+            rows={(data) =>
+              data.technicianRows.map((row) => ({
+                key: row.technicianId,
+                entity: `${plantLabel(row.plantId)} / ${row.technicianId.slice(0, 8)}…`,
+                actual: `${formatStars(row.averageRating)} · ${row.totalWo} WO · ${formatPct(row.firstTimeFixRate)}`,
+                target: "—",
+                status: row.targetStatus,
+              }))
+            }
+          />
+        </div>
+      )}
     </AnalyticsShell>
+  );
+}
+
+/** Display labels for the backend verdict contract strings (branching is on the string). */
+const TARGET_STATUS_LABELS: Record<KpiTargetStatus, string> = {
+  ON_TARGET: "On target",
+  BELOW_TARGET: "Below target",
+  ABOVE_TARGET: "Above target",
+  NO_TARGET: "No target",
+  INSUFFICIENT_DATA: "Insufficient data",
+};
+
+function TargetStatusBadge({ status }: { status: KpiTargetStatus }) {
+  // Text label always renders — color/variant is decoration only (WCAG, epic-20 UX rule).
+  return (
+    <Badge variant={status === "ON_TARGET" ? "default" : "secondary"}>{TARGET_STATUS_LABELS[status] ?? status}</Badge>
+  );
+}
+
+interface MonthlyRowView {
+  key: string;
+  entity: string;
+  actual: string;
+  target: string;
+  status: KpiTargetStatus;
+}
+
+/**
+ * One actual-vs-target section of the Monthly KPI tab (story 20-2). Renders only:
+ * verdicts, insufficient-data and FAILED-refresh evidence come from the backend
+ * response; no KPI math here.
+ */
+function MonthlyKpiSection({
+  title,
+  description,
+  query,
+  entityHeader,
+  rows,
+}: {
+  title: string;
+  description: string;
+  query: ReturnType<typeof useKpiMaterialized>;
+  entityHeader: string;
+  rows: (data: KpiMaterializedResponse) => MonthlyRowView[];
+}) {
+  const data = query.data;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {query.isLoading && <Skeleton className="h-24 w-full" />}
+
+        {query.isError && (
+          <div className="flex flex-col items-center gap-3 py-6">
+            <p className="text-muted-foreground text-sm">Failed to load {title}.</p>
+            <Button variant="outline" size="sm" onClick={() => void query.refetch()}>
+              Retry
+            </Button>
+          </div>
+        )}
+
+        {!query.isLoading && !query.isError && data && (
+          <div className="space-y-3">
+            {data.refresh?.status === "FAILED" && (
+              <p className="status-icon-warning flex flex-wrap items-center gap-2" role="status">
+                <Badge variant="destructive">Refresh failed</Badge>
+                Latest monthly refresh failed — the rows below may be stale.
+                {data.refresh.message ? ` (${data.refresh.message})` : ""}
+              </p>
+            )}
+
+            {data.status === "INSUFFICIENT_DATA" ? (
+              <div className="flex flex-col items-center gap-2 py-6">
+                <Badge variant="outline">Insufficient data</Badge>
+                <p className="text-muted-foreground text-sm">
+                  No materialized {title} rows exist for this month yet — the monthly refresh has not produced data.
+                  Values are never fabricated.
+                </p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{entityHeader}</TableHead>
+                    <TableHead>Actual</TableHead>
+                    <TableHead>Target</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows(data).map((row) => (
+                    <TableRow key={row.key}>
+                      <TableCell className="font-medium">{row.entity}</TableCell>
+                      <TableCell className="tabular-nums">{row.actual}</TableCell>
+                      <TableCell className="tabular-nums">{row.target}</TableCell>
+                      <TableCell>
+                        <TargetStatusBadge status={row.status} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

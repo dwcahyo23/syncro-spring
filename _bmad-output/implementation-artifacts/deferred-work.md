@@ -1295,3 +1295,15 @@ origin: code review of spec-20-1-kpi-materialized-tables (blind-hunter), 2026-09
 location: syncro/apps/backend/src/main/java/com/syncro/kpi/scheduled/KpiRefreshScheduler.java:5
 reason: KpiRefreshScheduler imports com.syncro.maintenance.application.WorkorderSyncedEvent, coupling kpi→maintenance's application package. Matches the existing cross-module event pattern (notification/alert modules do the same), so consistent; a shared events contract package would be the cleaner fix if more consumers appear.
 status: open
+
+### DW-165: KPI target dialog cannot clear a stored target
+origin: code review of spec-20-2-kpi-targets-dashboard-consumption (acceptance-auditor), 2026-09-04
+location: syncro/apps/web/src/features/analytics/components/kpi-target-dialog.tsx
+reason: Empty field sends null, which the 20-1 partial-update keeps as the stored value — a mis-entered target can be overwritten but never removed. Spec never required a clear path; needs a product decision (explicit clear affordance vs null-means-clear semantics).
+status: open
+
+### DW-166: KPI endpoints absent from the committed OpenAPI snapshot
+origin: code review of spec-20-2-kpi-targets-dashboard-consumption (verification-gap), 2026-09-04
+location: syncro/apps/web/openapi.json
+reason: /api/v1/kpi/* endpoints are consumed via hand-written hooks (same precedent as the 14-2 dashboard endpoints), so the frontend TS interfaces are pinned only by human agreement with the backend records. A MockMvc jsonPath test now pins the verdict contract (20-2 patch), but snapshot regeneration for the kpi module remains a separate chore.
+status: open
