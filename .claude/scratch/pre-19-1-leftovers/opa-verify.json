@@ -1,0 +1,3012 @@
+[
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1297,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_actions_auditor_has_read_only",
+    "duration": 1639921
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 191,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_workorder_create_allowed",
+    "duration": 2404424
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 199,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_production_leader_workorder_create_allowed",
+    "duration": 2378921
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 195,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_workorder_create_allowed",
+    "duration": 2965100
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 442,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_workorder_evidence_delete_allowed",
+    "duration": 367649
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 329,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_workorder_transition_allowed",
+    "duration": 4205266
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 735,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_storekeeper_workorder_worklog_rating_denied",
+    "duration": 4456000
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 383,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_workorder_session_stop_allowed",
+    "duration": 4765842
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 446,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_evidence_upload_denied",
+    "duration": 939626
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 454,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_evidence_read_allowed",
+    "duration": 1033139
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 450,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_production_leader_workorder_evidence_delete_denied",
+    "duration": 1740235
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 430,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_workorder_evidence_put_allowed",
+    "duration": 4495206
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 458,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_evidence_single_read_allowed",
+    "duration": 1147455
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 434,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_maintenance_leader_workorder_evidence_delete_allowed",
+    "duration": 3834217
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 465,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_workorder_report_put_allowed",
+    "duration": 3337650
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 438,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_workorder_evidence_upload_allowed",
+    "duration": 6319351
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 469,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_workorder_report_put_allowed",
+    "duration": 4375390
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 493,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_report_put_denied",
+    "duration": 2468533
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 269,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_workorder_assignment_create_denied",
+    "duration": 11802591
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 497,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_report_get_allowed",
+    "duration": 2028674
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 501,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_cpk_upload_denied",
+    "duration": 999635
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 473,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_workorder_report_put_allowed",
+    "duration": 6882428
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 505,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_production_leader_workorder_report_put_denied",
+    "duration": 1771639
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 485,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_workorder_cpk_upload_allowed",
+    "duration": 7394097
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 489,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_workorder_cpk_delete_allowed",
+    "duration": 5323918
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 477,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_maintenance_leader_workorder_report_put_allowed",
+    "duration": 7810353
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 532,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_workorder_todo_delete_allowed",
+    "duration": 949928
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 512,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_workorder_todo_create_allowed",
+    "duration": 3153925
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 536,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_todo_create_denied",
+    "duration": 3047311
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 481,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_workorder_report_put_allowed",
+    "duration": 11801791
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 516,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_workorder_todo_create_allowed",
+    "duration": 6393862
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 520,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_workorder_todo_assign_allowed",
+    "duration": 6350756
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 540,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_todo_assign_denied",
+    "duration": 4366188
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 560,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_anonymous_workorder_todo_denied",
+    "duration": 433559
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 544,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_production_leader_workorder_todo_complete_denied",
+    "duration": 4274976
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 548,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_todo_read_allowed",
+    "duration": 3394457
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 556,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_workorder_kanban_read_allowed",
+    "duration": 1288573
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 524,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_maintenance_leader_workorder_todo_complete_allowed",
+    "duration": 7183768
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 552,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_todo_single_read_allowed",
+    "duration": 2667260
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 589,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_workorder_rating_allowed",
+    "duration": 327444
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 528,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_workorder_todo_reorder_allowed",
+    "duration": 7930169
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 585,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_production_leader_workorder_rating_workorder_allowed",
+    "duration": 1356283
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 597,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_rating_denied",
+    "duration": 1170858
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 609,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_rating_dimension_create_allowed",
+    "duration": 788106
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 605,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_ratings_page_read_allowed",
+    "duration": 1449495
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 601,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_rating_read_allowed",
+    "duration": 2078280
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 581,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_workorder_rating_workorder_allowed",
+    "duration": 3949833
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 577,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_maintenance_leader_workorder_rating_technician_allowed",
+    "duration": 5921398
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 629,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_anonymous_workorder_rating_denied",
+    "duration": 1208563
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 593,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_workorder_rating_denied",
+    "duration": 6864525
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 573,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_workorder_rating_technician_allowed",
+    "duration": 7971674
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 625,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_rating_dimension_read_allowed",
+    "duration": 2732769
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 621,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_rating_dimension_delete_denied",
+    "duration": 4698534
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 569,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_workorder_rating_technician_allowed",
+    "duration": 9363362
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 617,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_rating_dimension_put_denied",
+    "duration": 9033918
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 652,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_workorder_worklog_create_allowed",
+    "duration": 4244472
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 660,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_workorder_worklog_update_allowed",
+    "duration": 584079
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 640,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_workorder_worklog_create_allowed",
+    "duration": 7098057
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 656,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_workorder_worklog_update_allowed",
+    "duration": 6201636
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 648,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_workorder_worklog_create_allowed",
+    "duration": 6897529
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 644,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_maintenance_leader_workorder_worklog_update_allowed",
+    "duration": 7915767
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 668,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_worklog_update_denied",
+    "duration": 2329914
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 613,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_rating_dimension_create_denied",
+    "duration": 12773422
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 684,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_anonymous_workorder_worklog_denied",
+    "duration": 404455
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 664,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_worklog_create_denied",
+    "duration": 2882889
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 636,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_workorder_worklog_create_allowed",
+    "duration": 9261948
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 676,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_inventory_workorder_worklog_create_denied",
+    "duration": 1653423
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 672,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_production_leader_workorder_worklog_create_denied",
+    "duration": 1938261
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 688,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_worklog_read_allowed",
+    "duration": 990833
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 680,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_storekeeper_workorder_worklog_create_denied",
+    "duration": 1690828
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 692,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_worklog_single_read_allowed",
+    "duration": 977131
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 719,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_workorder_worklog_rating_allowed",
+    "duration": 274537
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 727,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_worklog_rating_denied",
+    "duration": 1968666
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1282,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_actions_manager_has_read_write",
+    "duration": 547774
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 715,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_production_leader_workorder_worklog_rating_allowed",
+    "duration": 3094717
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 731,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_inventory_workorder_worklog_rating_denied",
+    "duration": 3917127
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 277,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_assignment_create_denied",
+    "duration": 2144989
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 703,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_workorder_worklog_rating_allowed",
+    "duration": 7322186
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 711,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_workorder_worklog_rating_allowed",
+    "duration": 6968839
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 281,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_anonymous_workorder_assignment_denied",
+    "duration": 507968
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 699,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_workorder_worklog_rating_allowed",
+    "duration": 7663533
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 707,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_maintenance_leader_workorder_worklog_rating_allowed",
+    "duration": 7557919
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 293,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_workorder_assignment_drop_allowed",
+    "duration": 265236
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 285,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_assignment_read_allowed",
+    "duration": 942527
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 273,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_production_leader_workorder_assignment_create_denied",
+    "duration": 4614522
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 399,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_workorder_session_stop_allowed",
+    "duration": 332044
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 403,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_session_start_denied",
+    "duration": 963830
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 723,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_workorder_worklog_rating_denied",
+    "duration": 8641365
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 297,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_workorder_assignment_drop_denied",
+    "duration": 6100822
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 289,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_maintenance_leader_workorder_assignment_drop_allowed",
+    "duration": 2271306
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 407,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_session_stop_denied",
+    "duration": 1032139
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 415,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_workorder_session_read_allowed",
+    "duration": 1631520
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 391,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_maintenance_leader_workorder_session_stop_allowed",
+    "duration": 2704164
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 411,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_production_leader_workorder_session_start_denied",
+    "duration": 2825080
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 309,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_production_leader_workorder_assign_denied",
+    "duration": 2776274
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 387,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_workorder_session_start_allowed",
+    "duration": 5043879
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 203,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_maintenance_leader_workorder_create_allowed",
+    "duration": 2395423
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 395,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_workorder_session_start_allowed",
+    "duration": 5380925
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 305,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_inventory_workorder_assignment_create_denied",
+    "duration": 3479669
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 301,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_storekeeper_workorder_assignment_create_denied",
+    "duration": 4278677
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 215,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_workorder_assign_allowed",
+    "duration": 480265
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 211,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_workorder_assign_allowed",
+    "duration": 3764008
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 227,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_create_denied",
+    "duration": 2994004
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 231,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_workorder_assign_denied",
+    "duration": 6987842
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 317,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_list_read_allowed",
+    "duration": 963930
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 207,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_workorder_create_allowed",
+    "duration": 4837452
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 223,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_workorder_assign_denied",
+    "duration": 3876623
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 426,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_workorder_evidence_upload_allowed",
+    "duration": 3550579
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 219,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_workorder_create_denied",
+    "duration": 4461701
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 313,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_workorder_read_allowed",
+    "duration": 1345082
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 353,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_transition_denied",
+    "duration": 980632
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 321,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_workorder_list_read_allowed",
+    "duration": 1072145
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 349,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_workorder_transition_allowed",
+    "duration": 330044
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 49,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_sparepart_reject_allowed",
+    "duration": 1773039
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 422,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_workorder_evidence_upload_allowed",
+    "duration": 5131592
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 333,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_workorder_transition_allowed",
+    "duration": 3545478
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 337,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_workorder_transition_allowed",
+    "duration": 3503372
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 365,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_storekeeper_workorder_transition_denied",
+    "duration": 3735704
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 739,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_anonymous_workorder_worklog_rating_denied",
+    "duration": 848014
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 357,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_production_leader_workorder_transition_denied",
+    "duration": 3480269
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 341,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_maintenance_leader_workorder_transition_allowed",
+    "duration": 4116955
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 361,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_inventory_workorder_transition_denied",
+    "duration": 3978336
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 754,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_worklog_criterion_create_allowed",
+    "duration": 485465
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 758,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_worklog_criterion_update_allowed",
+    "duration": 593780
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 762,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_worklog_criterion_delete_allowed",
+    "duration": 635686
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 21,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_alert_mutation_allowed",
+    "duration": 1024638
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 743,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_worklog_rating_read_allowed",
+    "duration": 2588948
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 747,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_workorder_worklog_rating_read_allowed",
+    "duration": 2579047
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 13,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_core_mutation_allowed",
+    "duration": 1622819
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 25,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_read_allowed",
+    "duration": 333845
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 345,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_workorder_transition_allowed",
+    "duration": 7053951
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1014,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_sparepart_request_approve_allowed",
+    "duration": 6652397
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 17,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_admin_only_allowed",
+    "duration": 2642857
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 782,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_anonymous_worklog_criterion_denied",
+    "duration": 417357
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 31,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_core_mutation_allowed",
+    "duration": 1199762
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 778,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_worklog_criterion_read_allowed",
+    "duration": 1045941
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 35,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_core_mutation_put_allowed",
+    "duration": 1389787
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 774,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_worklog_criterion_delete_denied",
+    "duration": 2349217
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 770,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_worklog_criterion_put_denied",
+    "duration": 3343851
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 39,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_core_mutation_delete_allowed",
+    "duration": 1486201
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 45,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_sparepart_approve_allowed",
+    "duration": 1485800
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 375,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_workorder_session_stop_allowed",
+    "duration": 3271541
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 249,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_workorder_assignment_create_allowed",
+    "duration": 528772
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 371,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_workorder_session_start_allowed",
+    "duration": 5156195
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 806,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_production_leader_workorder_quality_rating_allowed",
+    "duration": 5391827
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 810,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_workorder_quality_rating_allowed",
+    "duration": 1726133
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 766,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_worklog_criterion_create_denied",
+    "duration": 8923903
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 802,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_workorder_quality_rating_allowed",
+    "duration": 6126226
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 790,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_workorder_quality_rating_allowed",
+    "duration": 8164400
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 794,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_workorder_quality_rating_allowed",
+    "duration": 7910166
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 818,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_quality_rating_denied",
+    "duration": 1029039
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 798,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_maintenance_leader_workorder_quality_rating_allowed",
+    "duration": 7934470
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 237,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_workorder_assignment_create_allowed",
+    "duration": 2270106
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 814,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_workorder_quality_rating_denied",
+    "duration": 3082315
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 830,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_anonymous_workorder_quality_rating_denied",
+    "duration": 1094747
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 822,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_inventory_workorder_quality_rating_denied",
+    "duration": 2799478
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 826,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_storekeeper_workorder_quality_rating_denied",
+    "duration": 2961800
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 834,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_quality_rating_read_allowed",
+    "duration": 1775639
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 245,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_maintenance_leader_workorder_assignment_create_allowed",
+    "duration": 4450100
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 838,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_workorder_quality_rating_criteria_read_allowed",
+    "duration": 2388622
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 253,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_workorder_assignment_drop_allowed",
+    "duration": 4928164
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 241,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_workorder_assignment_create_allowed",
+    "duration": 7182568
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1154,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_storekeeper_inventory_location_create_denied",
+    "duration": 4552614
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 257,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_workorder_assignment_drop_allowed",
+    "duration": 6467772
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1018,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_maintenance_leader_sparepart_request_approve_allowed",
+    "duration": 3290043
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1026,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_sparepart_request_approve_allowed",
+    "duration": 911423
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1050,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_anonymous_sparepart_request_approve_denied",
+    "duration": 396854
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1046,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_sparepart_request_approve_denied",
+    "duration": 937727
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1022,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_sparepart_request_approve_allowed",
+    "duration": 2856385
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1038,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_inventory_sparepart_request_approve_denied",
+    "duration": 1648822
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1042,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_storekeeper_sparepart_request_approve_denied",
+    "duration": 1635220
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1065,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_sparepart_request_complete_allowed",
+    "duration": 261335
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1057,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_inventory_sparepart_request_complete_allowed",
+    "duration": 1355083
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1061,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_storekeeper_sparepart_request_complete_allowed",
+    "duration": 1279973
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1030,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_sparepart_request_approve_denied",
+    "duration": 3744105
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1085,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_anonymous_sparepart_request_complete_denied",
+    "duration": 406055
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1081,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_sparepart_request_complete_denied",
+    "duration": 964330
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1103,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_sparepart_stock_create_allowed",
+    "duration": 1370885
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1034,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_sparepart_request_approve_denied",
+    "duration": 6605690
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1091,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_inventory_sparepart_stock_create_allowed",
+    "duration": 3270241
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1069,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_sparepart_request_complete_denied",
+    "duration": 4277976
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1095,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_storekeeper_sparepart_stock_update_allowed",
+    "duration": 4018241
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 842,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_workorder_quality_rating_criteria_read_allowed",
+    "duration": 1529807
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1099,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_inventory_sparepart_stock_adjust_allowed",
+    "duration": 4244472
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 850,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_anonymous_workorder_quality_rating_criteria_read_denied",
+    "duration": 870317
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1077,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_sparepart_request_complete_denied",
+    "duration": 7146364
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1073,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_sparepart_request_complete_denied",
+    "duration": 7724641
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1119,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_sparepart_stock_read_allowed",
+    "duration": 1815844
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1107,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_sparepart_stock_mutation_denied",
+    "duration": 4148159
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 874,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_preventive_program_create_allowed",
+    "duration": 296840
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 878,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_preventive_program_create_denied",
+    "duration": 4497606
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1115,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_sparepart_stock_mutation_denied",
+    "duration": 7595923
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 866,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_maintenance_leader_preventive_program_generate_allowed",
+    "duration": 6948336
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 862,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_preventive_program_update_allowed",
+    "duration": 7819454
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 858,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_preventive_program_create_allowed",
+    "duration": 8192704
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 882,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_preventive_program_update_denied",
+    "duration": 2285108
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 890,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_anonymous_preventive_program_denied",
+    "duration": 396553
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 870,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_preventive_program_delete_allowed",
+    "duration": 7655032
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 886,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_preventive_schedules_read_allowed",
+    "duration": 1753236
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 846,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_workorder_quality_rating_criteria_mutation_denied",
+    "duration": 10286987
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 61,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_waha_mutation_allowed",
+    "duration": 966030
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 57,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_shift_config_mutation_allowed",
+    "duration": 1220665
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 53,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_inventory_sparepart_approve_denied",
+    "duration": 1712931
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 69,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_alert_mutation_allowed",
+    "duration": 1164957
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1111,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_sparepart_stock_mutation_denied",
+    "duration": 14794294
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 900,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_preventive_schedule_evidence_allowed",
+    "duration": 5645261
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 912,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_preventive_schedule_checklist_denied",
+    "duration": 4620122
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 904,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_maintenance_leader_preventive_schedule_approve_allowed",
+    "duration": 6948637
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1127,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_anonymous_sparepart_stock_denied",
+    "duration": 1283673
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 65,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_read_allowed",
+    "duration": 6263244
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 916,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_preventive_schedule_approve_denied",
+    "duration": 3719401
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1123,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_sparepart_stock_reorder_read_allowed",
+    "duration": 3146024
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 908,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_preventive_schedule_skip_allowed",
+    "duration": 6940035
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 73,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_admin_only_denied",
+    "duration": 2695963
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 77,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_admin_only_worker_denied",
+    "duration": 1709731
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 896,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_preventive_schedule_checklist_allowed",
+    "duration": 9633698
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 83,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_read_allowed",
+    "duration": 1397088
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1150,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_inventory_location_create_allowed",
+    "duration": 317143
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1134,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_inventory_location_create_allowed",
+    "duration": 2421427
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1142,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_inventory_inventory_location_create_allowed",
+    "duration": 1658824
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 95,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_admin_only_denied",
+    "duration": 2400723
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 91,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_alert_mutation_allowed",
+    "duration": 2550644
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 101,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_read_allowed",
+    "duration": 2311112
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1146,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_inventory_inventory_location_update_allowed",
+    "duration": 3691697
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1138,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_inventory_location_update_allowed",
+    "duration": 5211203
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 261,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_workorder_assignment_create_denied",
+    "duration": 4436597
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1221,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_section_leader_clear_allowed",
+    "duration": 1136353
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 922,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_sparepart_request_create_allowed",
+    "duration": 5162396
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 926,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_sparepart_request_create_allowed",
+    "duration": 3132423
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 87,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_core_mutation_denied",
+    "duration": 6872927
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1170,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_inventory_location_read_allowed",
+    "duration": 891320
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 930,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_maintenance_leader_sparepart_request_create_allowed",
+    "duration": 3231335
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1158,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_storekeeper_inventory_location_update_denied",
+    "duration": 1347982
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1178,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_anonymous_inventory_location_denied",
+    "duration": 380351
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 265,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_workorder_assignment_drop_denied",
+    "duration": 4346886
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 934,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_sparepart_request_create_allowed",
+    "duration": 1226866
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1197,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_department_create_allowed",
+    "duration": 299940
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1174,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_inventory_location_get_read_allowed",
+    "duration": 1032939
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1166,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_inventory_location_update_denied",
+    "duration": 2024773
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1162,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_inventory_location_create_denied",
+    "duration": 2476434
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1209,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_department_delete_denied",
+    "duration": 813609
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 105,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_core_mutation_denied",
+    "duration": 8012580
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1253,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_anonymous_department_denied",
+    "duration": 819811
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1213,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_department_read_allowed",
+    "duration": 5489540
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1205,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_department_members_denied",
+    "duration": 6355357
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1201,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_department_mutation_denied",
+    "duration": 6511878
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1225,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_section_leader_assign_denied",
+    "duration": 3647191
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1237,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_user_master_update_allowed",
+    "duration": 301040
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1229,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_section_leader_clear_denied",
+    "duration": 1103649
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1189,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_department_members_allowed",
+    "duration": 7992477
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1193,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_department_delete_allowed",
+    "duration": 8370228
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 109,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_alert_mutation_allowed",
+    "duration": 861916
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1245,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_user_master_update_denied",
+    "duration": 1710431
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 113,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_admin_only_denied",
+    "duration": 2233401
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 127,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_leader_alert_mutation_allowed",
+    "duration": 1299275
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 119,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_leader_read_allowed",
+    "duration": 3510673
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1185,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_department_create_allowed",
+    "duration": 12310560
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 137,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_read_allowed",
+    "duration": 2821081
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1249,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_user_master_read_allowed",
+    "duration": 1273972
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 141,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_core_mutation_denied",
+    "duration": 1531006
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1241,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_user_master_update_denied",
+    "duration": 5996909
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 131,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_leader_admin_only_denied",
+    "duration": 3476169
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1271,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_anonymous_missing_subject_denied",
+    "duration": 306141
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1259,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_anonymous_admin_only_denied",
+    "duration": 337945
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1263,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_anonymous_read_denied",
+    "duration": 357448
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1267,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_anonymous_empty_input_denied",
+    "duration": 305541
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 145,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_alert_mutation_allowed",
+    "duration": 824712
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1217,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_section_leader_assign_allowed",
+    "duration": 13144772
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 379,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_workorder_session_start_allowed",
+    "duration": 1422892
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 156,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_category_post_allowed",
+    "duration": 940626
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 172,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_maintenance_leader_category_put_allowed",
+    "duration": 1076045
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 180,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_category_mutation_allowed",
+    "duration": 312342
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 123,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_leader_core_mutation_denied",
+    "duration": 6955537
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 168,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_category_get_allowed",
+    "duration": 1056242
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 946,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_anonymous_sparepart_request_denied",
+    "duration": 1139554
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 184,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_category_read_allowed",
+    "duration": 2263205
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 942,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_sparepart_request_create_denied",
+    "duration": 2074280
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 176,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_category_post_allowed",
+    "duration": 2987103
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 160,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_category_post_denied",
+    "duration": 3853520
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 164,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_category_put_denied",
+    "duration": 3780009
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1233,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_user_master_update_allowed",
+    "duration": 11822293
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 976,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_storekeeper_sparepart_request_transition_allowed",
+    "duration": 4889559
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 968,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_sparepart_request_transition_allowed",
+    "duration": 2750271
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 952,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_manager_sparepart_request_transition_allowed",
+    "duration": 4204967
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 972,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_inventory_sparepart_request_transition_allowed",
+    "duration": 2256204
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 992,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_sparepart_request_transition_denied",
+    "duration": 1719132
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 980,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_inventory_sparepart_request_mre_allowed",
+    "duration": 901421
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 988,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_super_admin_sparepart_request_transition_allowed",
+    "duration": 293240
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 956,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_section_leader_sparepart_request_transition_allowed",
+    "duration": 3961934
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1287,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_actions_technician_has_read_only",
+    "duration": 318043
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 964,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_staff_sparepart_request_transition_allowed",
+    "duration": 3319748
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1277,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_actions_super_admin_has_full",
+    "duration": 318743
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 960,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_maintenance_leader_sparepart_request_transition_allowed",
+    "duration": 4067948
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1292,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_actions_staff_has_read_only",
+    "duration": 285039
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1004,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_anonymous_sparepart_request_transition_denied",
+    "duration": 410355
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 984,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_storekeeper_sparepart_request_mre_allowed",
+    "duration": 1010736
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 149,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_admin_only_denied",
+    "duration": 1000935
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1000,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_sparepart_request_mre_denied",
+    "duration": 869017
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 938,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_technician_sparepart_request_create_allowed",
+    "duration": 813910
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 1008,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_auditor_sparepart_request_transition_read_allowed",
+    "duration": 891621
+  },
+  {
+    "location": {
+      "file": "/policy/authz_test.rego",
+      "row": 996,
+      "col": 1
+    },
+    "package": "data.syncro.authz_test",
+    "name": "test_production_leader_sparepart_request_transition_denied",
+    "duration": 1477199
+  }
+]

@@ -1,0 +1,604 @@
+/policy/authz_test.rego:1297:
+data.syncro.authz_test.test_actions_auditor_has_read_only: PASS (1.771494ms)
+/policy/authz_test.rego:57:
+data.syncro.authz_test.test_manager_shift_config_mutation_allowed: PASS (3.442632ms)
+/policy/authz_test.rego:53:
+data.syncro.authz_test.test_inventory_sparepart_approve_denied: PASS (6.5948ms)
+/policy/authz_test.rego:91:
+data.syncro.authz_test.test_staff_alert_mutation_allowed: PASS (6.392987ms)
+/policy/authz_test.rego:131:
+data.syncro.authz_test.test_leader_admin_only_denied: PASS (8.467051ms)
+/policy/authz_test.rego:95:
+data.syncro.authz_test.test_staff_admin_only_denied: PASS (8.195999ms)
+/policy/authz_test.rego:61:
+data.syncro.authz_test.test_manager_waha_mutation_allowed: PASS (3.905892ms)
+/policy/authz_test.rego:411:
+data.syncro.authz_test.test_production_leader_workorder_session_start_denied: PASS (7.338618ms)
+/policy/authz_test.rego:69:
+data.syncro.authz_test.test_manager_alert_mutation_allowed: PASS (1.930283ms)
+/policy/authz_test.rego:49:
+data.syncro.authz_test.test_manager_sparepart_reject_allowed: PASS (9.237884ms)
+/policy/authz_test.rego:65:
+data.syncro.authz_test.test_manager_read_allowed: PASS (9.732561ms)
+/policy/authz_test.rego:137:
+data.syncro.authz_test.test_auditor_read_allowed: PASS (4.13442ms)
+/policy/authz_test.rego:141:
+data.syncro.authz_test.test_auditor_core_mutation_denied: PASS (3.767314ms)
+/policy/authz_test.rego:145:
+data.syncro.authz_test.test_auditor_alert_mutation_allowed: PASS (3.34948ms)
+/policy/authz_test.rego:73:
+data.syncro.authz_test.test_manager_admin_only_denied: PASS (12.896037ms)
+/policy/authz_test.rego:83:
+data.syncro.authz_test.test_staff_read_allowed: PASS (11.807726ms)
+/policy/authz_test.rego:149:
+data.syncro.authz_test.test_auditor_admin_only_denied: PASS (6.530165ms)
+/policy/authz_test.rego:156:
+data.syncro.authz_test.test_section_leader_category_post_allowed: PASS (6.387284ms)
+/policy/authz_test.rego:160:
+data.syncro.authz_test.test_technician_category_post_denied: PASS (6.099222ms)
+/policy/authz_test.rego:180:
+data.syncro.authz_test.test_super_admin_category_mutation_allowed: PASS (378.412µs)
+/policy/authz_test.rego:164:
+data.syncro.authz_test.test_technician_category_put_denied: PASS (6.16536ms)
+/policy/authz_test.rego:168:
+data.syncro.authz_test.test_auditor_category_get_allowed: PASS (3.076326ms)
+/policy/authz_test.rego:77:
+data.syncro.authz_test.test_manager_admin_only_worker_denied: PASS (16.406807ms)
+/policy/authz_test.rego:87:
+data.syncro.authz_test.test_staff_core_mutation_denied: PASS (15.142297ms)
+/policy/authz_test.rego:191:
+data.syncro.authz_test.test_staff_workorder_create_allowed: PASS (1.299029ms)
+/policy/authz_test.rego:273:
+data.syncro.authz_test.test_production_leader_workorder_assignment_create_denied: PASS (15.685101ms)
+/policy/authz_test.rego:184:
+data.syncro.authz_test.test_technician_category_read_allowed: PASS (2.057455ms)
+/policy/authz_test.rego:203:
+data.syncro.authz_test.test_maintenance_leader_workorder_create_allowed: PASS (1.431604ms)
+/policy/authz_test.rego:195:
+data.syncro.authz_test.test_section_leader_workorder_create_allowed: PASS (3.111646ms)
+/policy/authz_test.rego:215:
+data.syncro.authz_test.test_super_admin_workorder_assign_allowed: PASS (660.971µs)
+/policy/authz_test.rego:199:
+data.syncro.authz_test.test_production_leader_workorder_create_allowed: PASS (2.97597ms)
+/policy/authz_test.rego:211:
+data.syncro.authz_test.test_section_leader_workorder_assign_allowed: PASS (3.093736ms)
+/policy/authz_test.rego:227:
+data.syncro.authz_test.test_auditor_workorder_create_denied: PASS (2.104481ms)
+/policy/authz_test.rego:172:
+data.syncro.authz_test.test_maintenance_leader_category_put_allowed: PASS (11.176771ms)
+/policy/authz_test.rego:176:
+data.syncro.authz_test.test_manager_category_post_allowed: PASS (13.482065ms)
+/policy/authz_test.rego:249:
+data.syncro.authz_test.test_super_admin_workorder_assignment_create_allowed: PASS (2.782162ms)
+/policy/authz_test.rego:223:
+data.syncro.authz_test.test_technician_workorder_assign_denied: PASS (12.306606ms)
+/policy/authz_test.rego:219:
+data.syncro.authz_test.test_technician_workorder_create_denied: PASS (13.393215ms)
+/policy/authz_test.rego:207:
+data.syncro.authz_test.test_manager_workorder_create_allowed: PASS (16.244015ms)
+/policy/authz_test.rego:241:
+data.syncro.authz_test.test_manager_workorder_assignment_create_allowed: PASS (10.718614ms)
+/policy/authz_test.rego:245:
+data.syncro.authz_test.test_maintenance_leader_workorder_assignment_create_allowed: PASS (10.455567ms)
+/policy/authz_test.rego:237:
+data.syncro.authz_test.test_section_leader_workorder_assignment_create_allowed: PASS (14.446906ms)
+/policy/authz_test.rego:850:
+data.syncro.authz_test.test_anonymous_workorder_quality_rating_criteria_read_denied: PASS (958.538µs)
+/policy/authz_test.rego:415:
+data.syncro.authz_test.test_staff_workorder_session_read_allowed: PASS (3.651249ms)
+/policy/authz_test.rego:422:
+data.syncro.authz_test.test_technician_workorder_evidence_upload_allowed: PASS (3.155371ms)
+/policy/authz_test.rego:261:
+data.syncro.authz_test.test_technician_workorder_assignment_create_denied: PASS (8.655857ms)
+/policy/authz_test.rego:426:
+data.syncro.authz_test.test_staff_workorder_evidence_upload_allowed: PASS (2.399947ms)
+/policy/authz_test.rego:257:
+data.syncro.authz_test.test_manager_workorder_assignment_drop_allowed: PASS (10.568831ms)
+/policy/authz_test.rego:231:
+data.syncro.authz_test.test_staff_workorder_assign_denied: PASS (21.448235ms)
+/policy/authz_test.rego:442:
+data.syncro.authz_test.test_super_admin_workorder_evidence_delete_allowed: PASS (731.511µs)
+/policy/authz_test.rego:253:
+data.syncro.authz_test.test_section_leader_workorder_assignment_drop_allowed: PASS (13.047421ms)
+/policy/authz_test.rego:265:
+data.syncro.authz_test.test_technician_workorder_assignment_drop_denied: PASS (11.26272ms)
+/policy/authz_test.rego:269:
+data.syncro.authz_test.test_staff_workorder_assignment_create_denied: PASS (10.609153ms)
+/policy/authz_test.rego:446:
+data.syncro.authz_test.test_auditor_workorder_evidence_upload_denied: PASS (1.050189ms)
+/policy/authz_test.rego:430:
+data.syncro.authz_test.test_section_leader_workorder_evidence_put_allowed: PASS (9.025765ms)
+/policy/authz_test.rego:109:
+data.syncro.authz_test.test_technician_alert_mutation_allowed: PASS (1.789304ms)
+/policy/authz_test.rego:450:
+data.syncro.authz_test.test_production_leader_workorder_evidence_delete_denied: PASS (5.774641ms)
+/policy/authz_test.rego:434:
+data.syncro.authz_test.test_maintenance_leader_workorder_evidence_delete_allowed: PASS (11.060107ms)
+/policy/authz_test.rego:105:
+data.syncro.authz_test.test_technician_core_mutation_denied: PASS (7.14661ms)
+/policy/authz_test.rego:454:
+data.syncro.authz_test.test_auditor_workorder_evidence_read_allowed: PASS (5.819466ms)
+/policy/authz_test.rego:438:
+data.syncro.authz_test.test_manager_workorder_evidence_upload_allowed: PASS (11.023886ms)
+/policy/authz_test.rego:113:
+data.syncro.authz_test.test_technician_admin_only_denied: PASS (4.593577ms)
+/policy/authz_test.rego:101:
+data.syncro.authz_test.test_technician_read_allowed: PASS (9.824313ms)
+/policy/authz_test.rego:458:
+data.syncro.authz_test.test_auditor_workorder_evidence_single_read_allowed: PASS (3.930305ms)
+/policy/authz_test.rego:127:
+data.syncro.authz_test.test_leader_alert_mutation_allowed: PASS (3.031301ms)
+/policy/authz_test.rego:469:
+data.syncro.authz_test.test_staff_workorder_report_put_allowed: PASS (5.162897ms)
+/policy/authz_test.rego:119:
+data.syncro.authz_test.test_leader_read_allowed: PASS (6.650231ms)
+/policy/authz_test.rego:465:
+data.syncro.authz_test.test_technician_workorder_report_put_allowed: PASS (6.581393ms)
+/policy/authz_test.rego:473:
+data.syncro.authz_test.test_section_leader_workorder_report_put_allowed: PASS (8.269341ms)
+/policy/authz_test.rego:485:
+data.syncro.authz_test.test_technician_workorder_cpk_upload_allowed: PASS (5.1693ms)
+/policy/authz_test.rego:481:
+data.syncro.authz_test.test_manager_workorder_report_put_allowed: PASS (7.37904ms)
+/policy/authz_test.rego:13:
+data.syncro.authz_test.test_super_admin_core_mutation_allowed: PASS (661.271µs)
+/policy/authz_test.rego:17:
+data.syncro.authz_test.test_super_admin_admin_only_allowed: PASS (385.016µs)
+/policy/authz_test.rego:493:
+data.syncro.authz_test.test_auditor_workorder_report_put_denied: PASS (3.489458ms)
+/policy/authz_test.rego:489:
+data.syncro.authz_test.test_section_leader_workorder_cpk_delete_allowed: PASS (6.212587ms)
+/policy/authz_test.rego:497:
+data.syncro.authz_test.test_auditor_workorder_report_get_allowed: PASS (7.43037ms)
+/policy/authz_test.rego:349:
+data.syncro.authz_test.test_super_admin_workorder_transition_allowed: PASS (1.876553ms)
+/policy/authz_test.rego:123:
+data.syncro.authz_test.test_leader_core_mutation_denied: PASS (15.225243ms)
+/policy/authz_test.rego:353:
+data.syncro.authz_test.test_auditor_workorder_transition_denied: PASS (1.805714ms)
+/policy/authz_test.rego:361:
+data.syncro.authz_test.test_inventory_workorder_transition_denied: PASS (1.854441ms)
+/policy/authz_test.rego:345:
+data.syncro.authz_test.test_manager_workorder_transition_allowed: PASS (4.133119ms)
+/policy/authz_test.rego:477:
+data.syncro.authz_test.test_maintenance_leader_workorder_report_put_allowed: PASS (15.008322ms)
+/policy/authz_test.rego:501:
+data.syncro.authz_test.test_auditor_workorder_cpk_upload_denied: PASS (7.463088ms)
+/policy/authz_test.rego:505:
+data.syncro.authz_test.test_production_leader_workorder_report_put_denied: PASS (1.937487ms)
+/policy/authz_test.rego:375:
+data.syncro.authz_test.test_staff_workorder_session_stop_allowed: PASS (2.519714ms)
+/policy/authz_test.rego:512:
+data.syncro.authz_test.test_technician_workorder_todo_create_allowed: PASS (6.721171ms)
+/policy/authz_test.rego:21:
+data.syncro.authz_test.test_super_admin_alert_mutation_allowed: PASS (620.048µs)
+/policy/authz_test.rego:532:
+data.syncro.authz_test.test_super_admin_workorder_todo_delete_allowed: PASS (635.657µs)
+/policy/authz_test.rego:25:
+data.syncro.authz_test.test_super_admin_read_allowed: PASS (544.306µs)
+/policy/authz_test.rego:357:
+data.syncro.authz_test.test_production_leader_workorder_transition_denied: PASS (13.165487ms)
+/policy/authz_test.rego:365:
+data.syncro.authz_test.test_storekeeper_workorder_transition_denied: PASS (12.741549ms)
+/policy/authz_test.rego:536:
+data.syncro.authz_test.test_auditor_workorder_todo_create_denied: PASS (2.072062ms)
+/policy/authz_test.rego:516:
+data.syncro.authz_test.test_staff_workorder_todo_create_allowed: PASS (11.186577ms)
+/policy/authz_test.rego:371:
+data.syncro.authz_test.test_staff_workorder_session_start_allowed: PASS (14.88125ms)
+/policy/authz_test.rego:528:
+data.syncro.authz_test.test_manager_workorder_todo_reorder_allowed: PASS (10.94324ms)
+/policy/authz_test.rego:35:
+data.syncro.authz_test.test_manager_core_mutation_put_allowed: PASS (5.673383ms)
+/policy/authz_test.rego:524:
+data.syncro.authz_test.test_maintenance_leader_workorder_todo_complete_allowed: PASS (15.682601ms)
+/policy/authz_test.rego:31:
+data.syncro.authz_test.test_manager_core_mutation_allowed: PASS (7.246966ms)
+/policy/authz_test.rego:520:
+data.syncro.authz_test.test_section_leader_workorder_todo_assign_allowed: PASS (16.585007ms)
+/policy/authz_test.rego:540:
+data.syncro.authz_test.test_auditor_workorder_todo_assign_denied: PASS (2.320803ms)
+/policy/authz_test.rego:45:
+data.syncro.authz_test.test_manager_sparepart_approve_allowed: PASS (6.257811ms)
+/policy/authz_test.rego:39:
+data.syncro.authz_test.test_manager_core_mutation_delete_allowed: PASS (7.232059ms)
+/policy/authz_test.rego:548:
+data.syncro.authz_test.test_auditor_workorder_todo_read_allowed: PASS (1.023174ms)
+/policy/authz_test.rego:560:
+data.syncro.authz_test.test_anonymous_workorder_todo_denied: PASS (756.825µs)
+/policy/authz_test.rego:552:
+data.syncro.authz_test.test_auditor_workorder_todo_single_read_allowed: PASS (1.35376ms)
+/policy/authz_test.rego:544:
+data.syncro.authz_test.test_production_leader_workorder_todo_complete_denied: PASS (3.386101ms)
+/policy/authz_test.rego:703:
+data.syncro.authz_test.test_section_leader_workorder_worklog_rating_allowed: PASS (5.174404ms)
+/policy/authz_test.rego:589:
+data.syncro.authz_test.test_super_admin_workorder_rating_allowed: PASS (546.006µs)
+/policy/authz_test.rego:569:
+data.syncro.authz_test.test_section_leader_workorder_rating_technician_allowed: PASS (3.427724ms)
+/policy/authz_test.rego:556:
+data.syncro.authz_test.test_staff_workorder_kanban_read_allowed: PASS (4.286305ms)
+/policy/authz_test.rego:577:
+data.syncro.authz_test.test_maintenance_leader_workorder_rating_technician_allowed: PASS (3.740299ms)
+/policy/authz_test.rego:597:
+data.syncro.authz_test.test_auditor_workorder_rating_denied: PASS (1.185566ms)
+/policy/authz_test.rego:585:
+data.syncro.authz_test.test_production_leader_workorder_rating_workorder_allowed: PASS (4.61599ms)
+/policy/authz_test.rego:601:
+data.syncro.authz_test.test_auditor_workorder_rating_read_allowed: PASS (3.298251ms)
+/policy/authz_test.rego:581:
+data.syncro.authz_test.test_staff_workorder_rating_workorder_allowed: PASS (6.55678ms)
+/policy/authz_test.rego:609:
+data.syncro.authz_test.test_super_admin_rating_dimension_create_allowed: PASS (4.858127ms)
+/policy/authz_test.rego:573:
+data.syncro.authz_test.test_manager_workorder_rating_technician_allowed: PASS (9.469314ms)
+/policy/authz_test.rego:629:
+data.syncro.authz_test.test_anonymous_workorder_rating_denied: PASS (2.045148ms)
+/policy/authz_test.rego:605:
+data.syncro.authz_test.test_auditor_workorder_ratings_page_read_allowed: PASS (7.781566ms)
+/policy/authz_test.rego:593:
+data.syncro.authz_test.test_technician_workorder_rating_denied: PASS (9.55266ms)
+/policy/authz_test.rego:625:
+data.syncro.authz_test.test_auditor_rating_dimension_read_allowed: PASS (5.628058ms)
+/policy/authz_test.rego:652:
+data.syncro.authz_test.test_technician_workorder_worklog_create_allowed: PASS (2.58315ms)
+/policy/authz_test.rego:644:
+data.syncro.authz_test.test_maintenance_leader_workorder_worklog_update_allowed: PASS (6.477835ms)
+/policy/authz_test.rego:660:
+data.syncro.authz_test.test_super_admin_workorder_worklog_update_allowed: PASS (429.241µs)
+/policy/authz_test.rego:640:
+data.syncro.authz_test.test_section_leader_workorder_worklog_create_allowed: PASS (8.859071ms)
+/policy/authz_test.rego:656:
+data.syncro.authz_test.test_technician_workorder_worklog_update_allowed: PASS (3.003685ms)
+/policy/authz_test.rego:648:
+data.syncro.authz_test.test_staff_workorder_worklog_create_allowed: PASS (7.384644ms)
+/policy/authz_test.rego:617:
+data.syncro.authz_test.test_section_leader_rating_dimension_put_denied: PASS (14.95119ms)
+/policy/authz_test.rego:664:
+data.syncro.authz_test.test_auditor_workorder_worklog_create_denied: PASS (1.47943ms)
+/policy/authz_test.rego:621:
+data.syncro.authz_test.test_technician_rating_dimension_delete_denied: PASS (15.975565ms)
+/policy/authz_test.rego:672:
+data.syncro.authz_test.test_production_leader_workorder_worklog_create_denied: PASS (3.88468ms)
+/policy/authz_test.rego:668:
+data.syncro.authz_test.test_auditor_workorder_worklog_update_denied: PASS (5.340297ms)
+/policy/authz_test.rego:680:
+data.syncro.authz_test.test_storekeeper_workorder_worklog_create_denied: PASS (5.288468ms)
+/policy/authz_test.rego:692:
+data.syncro.authz_test.test_auditor_workorder_worklog_single_read_allowed: PASS (2.409452ms)
+/policy/authz_test.rego:684:
+data.syncro.authz_test.test_anonymous_workorder_worklog_denied: PASS (1.680843ms)
+/policy/authz_test.rego:688:
+data.syncro.authz_test.test_auditor_workorder_worklog_read_allowed: PASS (3.389602ms)
+/policy/authz_test.rego:636:
+data.syncro.authz_test.test_manager_workorder_worklog_create_allowed: PASS (20.558336ms)
+/policy/authz_test.rego:676:
+data.syncro.authz_test.test_inventory_workorder_worklog_create_denied: PASS (11.794819ms)
+/policy/authz_test.rego:309:
+data.syncro.authz_test.test_production_leader_workorder_assign_denied: PASS (5.865992ms)
+/policy/authz_test.rego:317:
+data.syncro.authz_test.test_auditor_workorder_list_read_allowed: PASS (3.167277ms)
+/policy/authz_test.rego:289:
+data.syncro.authz_test.test_maintenance_leader_workorder_assignment_drop_allowed: PASS (8.246928ms)
+/policy/authz_test.rego:341:
+data.syncro.authz_test.test_maintenance_leader_workorder_transition_allowed: PASS (7.089578ms)
+/policy/authz_test.rego:313:
+data.syncro.authz_test.test_staff_workorder_read_allowed: PASS (7.232759ms)
+/policy/authz_test.rego:699:
+data.syncro.authz_test.test_manager_workorder_worklog_rating_allowed: PASS (11.326456ms)
+/policy/authz_test.rego:333:
+data.syncro.authz_test.test_technician_workorder_transition_allowed: PASS (1.596396ms)
+/policy/authz_test.rego:305:
+data.syncro.authz_test.test_inventory_workorder_assignment_create_denied: PASS (10.943641ms)
+/policy/authz_test.rego:293:
+data.syncro.authz_test.test_super_admin_workorder_assignment_drop_allowed: PASS (333.387µs)
+/policy/authz_test.rego:613:
+data.syncro.authz_test.test_manager_rating_dimension_create_denied: PASS (34.944209ms)
+/policy/authz_test.rego:321:
+data.syncro.authz_test.test_technician_workorder_list_read_allowed: PASS (3.196693ms)
+/policy/authz_test.rego:281:
+data.syncro.authz_test.test_anonymous_workorder_assignment_denied: PASS (417.134µs)
+/policy/authz_test.rego:329:
+data.syncro.authz_test.test_staff_workorder_transition_allowed: PASS (3.993141ms)
+/policy/authz_test.rego:337:
+data.syncro.authz_test.test_section_leader_workorder_transition_allowed: PASS (3.58061ms)
+/policy/authz_test.rego:874:
+data.syncro.authz_test.test_super_admin_preventive_program_create_allowed: PASS (828.965µs)
+/policy/authz_test.rego:297:
+data.syncro.authz_test.test_staff_workorder_assignment_drop_denied: PASS (3.893885ms)
+/policy/authz_test.rego:882:
+data.syncro.authz_test.test_auditor_preventive_program_update_denied: PASS (2.488996ms)
+/policy/authz_test.rego:878:
+data.syncro.authz_test.test_technician_preventive_program_create_denied: PASS (6.683251ms)
+/policy/authz_test.rego:301:
+data.syncro.authz_test.test_storekeeper_workorder_assignment_create_denied: PASS (9.64001ms)
+/policy/authz_test.rego:886:
+data.syncro.authz_test.test_auditor_preventive_schedules_read_allowed: PASS (5.616051ms)
+/policy/authz_test.rego:890:
+data.syncro.authz_test.test_anonymous_preventive_program_denied: PASS (1.884558ms)
+/policy/authz_test.rego:1077:
+data.syncro.authz_test.test_section_leader_sparepart_request_complete_denied: PASS (12.167627ms)
+/policy/authz_test.rego:866:
+data.syncro.authz_test.test_maintenance_leader_preventive_program_generate_allowed: PASS (11.196983ms)
+/policy/authz_test.rego:862:
+data.syncro.authz_test.test_section_leader_preventive_program_update_allowed: PASS (16.827843ms)
+/policy/authz_test.rego:912:
+data.syncro.authz_test.test_technician_preventive_schedule_checklist_denied: PASS (4.657414ms)
+/policy/authz_test.rego:870:
+data.syncro.authz_test.test_staff_preventive_program_delete_allowed: PASS (20.046849ms)
+/policy/authz_test.rego:858:
+data.syncro.authz_test.test_manager_preventive_program_create_allowed: PASS (22.796393ms)
+/policy/authz_test.rego:922:
+data.syncro.authz_test.test_manager_sparepart_request_create_allowed: PASS (2.369429ms)
+/policy/authz_test.rego:904:
+data.syncro.authz_test.test_maintenance_leader_preventive_schedule_approve_allowed: PASS (9.974397ms)
+/policy/authz_test.rego:908:
+data.syncro.authz_test.test_staff_preventive_schedule_skip_allowed: PASS (9.181952ms)
+/policy/authz_test.rego:916:
+data.syncro.authz_test.test_auditor_preventive_schedule_approve_denied: PASS (6.278123ms)
+/policy/authz_test.rego:946:
+data.syncro.authz_test.test_anonymous_sparepart_request_denied: PASS (494.577µs)
+/policy/authz_test.rego:896:
+data.syncro.authz_test.test_manager_preventive_schedule_checklist_allowed: PASS (15.16671ms)
+/policy/authz_test.rego:938:
+data.syncro.authz_test.test_technician_sparepart_request_create_allowed: PASS (1.23079ms)
+/policy/authz_test.rego:934:
+data.syncro.authz_test.test_staff_sparepart_request_create_allowed: PASS (1.294426ms)
+/policy/authz_test.rego:930:
+data.syncro.authz_test.test_maintenance_leader_sparepart_request_create_allowed: PASS (1.804113ms)
+/policy/authz_test.rego:942:
+data.syncro.authz_test.test_auditor_sparepart_request_create_denied: PASS (1.519553ms)
+/policy/authz_test.rego:926:
+data.syncro.authz_test.test_section_leader_sparepart_request_create_allowed: PASS (5.778543ms)
+/policy/authz_test.rego:956:
+data.syncro.authz_test.test_section_leader_sparepart_request_transition_allowed: PASS (4.723351ms)
+/policy/authz_test.rego:952:
+data.syncro.authz_test.test_manager_sparepart_request_transition_allowed: PASS (5.121373ms)
+/policy/authz_test.rego:960:
+data.syncro.authz_test.test_maintenance_leader_sparepart_request_transition_allowed: PASS (4.863229ms)
+/policy/authz_test.rego:968:
+data.syncro.authz_test.test_technician_sparepart_request_transition_allowed: PASS (5.14989ms)
+/policy/authz_test.rego:964:
+data.syncro.authz_test.test_staff_sparepart_request_transition_allowed: PASS (5.664479ms)
+/policy/authz_test.rego:980:
+data.syncro.authz_test.test_inventory_sparepart_request_mre_allowed: PASS (2.096677ms)
+/policy/authz_test.rego:988:
+data.syncro.authz_test.test_super_admin_sparepart_request_transition_allowed: PASS (716.703µs)
+/policy/authz_test.rego:976:
+data.syncro.authz_test.test_storekeeper_sparepart_request_transition_allowed: PASS (4.502227ms)
+/policy/authz_test.rego:984:
+data.syncro.authz_test.test_storekeeper_sparepart_request_mre_allowed: PASS (2.124993ms)
+/policy/authz_test.rego:900:
+data.syncro.authz_test.test_section_leader_preventive_schedule_evidence_allowed: PASS (20.999584ms)
+/policy/authz_test.rego:1000:
+data.syncro.authz_test.test_auditor_sparepart_request_mre_denied: PASS (1.953296ms)
+/policy/authz_test.rego:992:
+data.syncro.authz_test.test_auditor_sparepart_request_transition_denied: PASS (3.435027ms)
+/policy/authz_test.rego:972:
+data.syncro.authz_test.test_inventory_sparepart_request_transition_allowed: PASS (9.73056ms)
+/policy/authz_test.rego:1004:
+data.syncro.authz_test.test_anonymous_sparepart_request_transition_denied: PASS (3.883679ms)
+/policy/authz_test.rego:1026:
+data.syncro.authz_test.test_super_admin_sparepart_request_approve_allowed: PASS (2.464283ms)
+/policy/authz_test.rego:1008:
+data.syncro.authz_test.test_auditor_sparepart_request_transition_read_allowed: PASS (4.406573ms)
+/policy/authz_test.rego:1022:
+data.syncro.authz_test.test_section_leader_sparepart_request_approve_allowed: PASS (4.316422ms)
+/policy/authz_test.rego:1014:
+data.syncro.authz_test.test_manager_sparepart_request_approve_allowed: PASS (5.839977ms)
+/policy/authz_test.rego:1038:
+data.syncro.authz_test.test_inventory_sparepart_request_approve_denied: PASS (1.808714ms)
+/policy/authz_test.rego:1046:
+data.syncro.authz_test.test_auditor_sparepart_request_approve_denied: PASS (1.098716ms)
+/policy/authz_test.rego:1042:
+data.syncro.authz_test.test_storekeeper_sparepart_request_approve_denied: PASS (2.746241ms)
+/policy/authz_test.rego:1057:
+data.syncro.authz_test.test_inventory_sparepart_request_complete_allowed: PASS (1.269412ms)
+/policy/authz_test.rego:1050:
+data.syncro.authz_test.test_anonymous_sparepart_request_approve_denied: PASS (1.875753ms)
+/policy/authz_test.rego:1065:
+data.syncro.authz_test.test_super_admin_sparepart_request_complete_allowed: PASS (337.289µs)
+/policy/authz_test.rego:1030:
+data.syncro.authz_test.test_technician_sparepart_request_approve_denied: PASS (6.87876ms)
+/policy/authz_test.rego:1018:
+data.syncro.authz_test.test_maintenance_leader_sparepart_request_approve_allowed: PASS (4.079089ms)
+/policy/authz_test.rego:1061:
+data.syncro.authz_test.test_storekeeper_sparepart_request_complete_allowed: PASS (1.486334ms)
+/policy/authz_test.rego:996:
+data.syncro.authz_test.test_production_leader_sparepart_request_transition_denied: PASS (10.724418ms)
+/policy/authz_test.rego:719:
+data.syncro.authz_test.test_super_admin_workorder_worklog_rating_allowed: PASS (3.144465ms)
+/policy/authz_test.rego:1069:
+data.syncro.authz_test.test_technician_sparepart_request_complete_denied: PASS (6.622817ms)
+/policy/authz_test.rego:727:
+data.syncro.authz_test.test_auditor_workorder_worklog_rating_denied: PASS (3.116249ms)
+/policy/authz_test.rego:794:
+data.syncro.authz_test.test_section_leader_workorder_quality_rating_allowed: PASS (7.69842ms)
+/policy/authz_test.rego:711:
+data.syncro.authz_test.test_staff_workorder_worklog_rating_allowed: PASS (7.939355ms)
+/policy/authz_test.rego:739:
+data.syncro.authz_test.test_anonymous_workorder_worklog_rating_denied: PASS (1.856542ms)
+/policy/authz_test.rego:715:
+data.syncro.authz_test.test_production_leader_workorder_worklog_rating_allowed: PASS (10.278167ms)
+/policy/authz_test.rego:731:
+data.syncro.authz_test.test_inventory_workorder_worklog_rating_denied: PASS (4.95398ms)
+/policy/authz_test.rego:754:
+data.syncro.authz_test.test_super_admin_worklog_criterion_create_allowed: PASS (743.617µs)
+/policy/authz_test.rego:762:
+data.syncro.authz_test.test_super_admin_worklog_criterion_delete_allowed: PASS (889.6µs)
+/policy/authz_test.rego:743:
+data.syncro.authz_test.test_auditor_workorder_worklog_rating_read_allowed: PASS (2.860605ms)
+/policy/authz_test.rego:735:
+data.syncro.authz_test.test_storekeeper_workorder_worklog_rating_denied: PASS (6.16616ms)
+/policy/authz_test.rego:1034:
+data.syncro.authz_test.test_staff_sparepart_request_approve_denied: PASS (17.96198ms)
+/policy/authz_test.rego:747:
+data.syncro.authz_test.test_technician_workorder_worklog_rating_read_allowed: PASS (4.199656ms)
+/policy/authz_test.rego:758:
+data.syncro.authz_test.test_super_admin_worklog_criterion_update_allowed: PASS (3.183286ms)
+/policy/authz_test.rego:1073:
+data.syncro.authz_test.test_staff_sparepart_request_complete_denied: PASS (16.398602ms)
+/policy/authz_test.rego:723:
+data.syncro.authz_test.test_technician_workorder_worklog_rating_denied: PASS (13.909705ms)
+/policy/authz_test.rego:782:
+data.syncro.authz_test.test_anonymous_worklog_criterion_denied: PASS (4.269997ms)
+/policy/authz_test.rego:778:
+data.syncro.authz_test.test_auditor_worklog_criterion_read_allowed: PASS (4.877437ms)
+/policy/authz_test.rego:383:
+data.syncro.authz_test.test_technician_workorder_session_stop_allowed: PASS (1.703255ms)
+/policy/authz_test.rego:395:
+data.syncro.authz_test.test_manager_workorder_session_start_allowed: PASS (3.471048ms)
+/policy/authz_test.rego:834:
+data.syncro.authz_test.test_auditor_workorder_quality_rating_read_allowed: PASS (1.055092ms)
+/policy/authz_test.rego:387:
+data.syncro.authz_test.test_section_leader_workorder_session_start_allowed: PASS (2.773456ms)
+/policy/authz_test.rego:770:
+data.syncro.authz_test.test_section_leader_worklog_criterion_put_denied: PASS (8.362693ms)
+/policy/authz_test.rego:391:
+data.syncro.authz_test.test_maintenance_leader_workorder_session_stop_allowed: PASS (2.527118ms)
+/policy/authz_test.rego:810:
+data.syncro.authz_test.test_super_admin_workorder_quality_rating_allowed: PASS (346.395µs)
+/policy/authz_test.rego:818:
+data.syncro.authz_test.test_auditor_workorder_quality_rating_denied: PASS (3.497463ms)
+/policy/authz_test.rego:806:
+data.syncro.authz_test.test_production_leader_workorder_quality_rating_allowed: PASS (4.553555ms)
+/policy/authz_test.rego:798:
+data.syncro.authz_test.test_maintenance_leader_workorder_quality_rating_allowed: PASS (6.908377ms)
+/policy/authz_test.rego:814:
+data.syncro.authz_test.test_technician_workorder_quality_rating_denied: PASS (6.446017ms)
+/policy/authz_test.rego:774:
+data.syncro.authz_test.test_technician_worklog_criterion_delete_denied: PASS (15.111379ms)
+/policy/authz_test.rego:802:
+data.syncro.authz_test.test_staff_workorder_quality_rating_allowed: PASS (8.721294ms)
+/policy/authz_test.rego:826:
+data.syncro.authz_test.test_storekeeper_workorder_quality_rating_denied: PASS (3.005886ms)
+/policy/authz_test.rego:399:
+data.syncro.authz_test.test_super_admin_workorder_session_stop_allowed: PASS (622.15µs)
+/policy/authz_test.rego:842:
+data.syncro.authz_test.test_auditor_workorder_quality_rating_criteria_read_allowed: PASS (3.555295ms)
+/policy/authz_test.rego:403:
+data.syncro.authz_test.test_auditor_workorder_session_start_denied: PASS (4.612489ms)
+/policy/authz_test.rego:766:
+data.syncro.authz_test.test_manager_worklog_criterion_create_denied: PASS (21.440231ms)
+/policy/authz_test.rego:830:
+data.syncro.authz_test.test_anonymous_workorder_quality_rating_denied: PASS (4.308818ms)
+/policy/authz_test.rego:790:
+data.syncro.authz_test.test_manager_workorder_quality_rating_allowed: PASS (19.676441ms)
+/policy/authz_test.rego:407:
+data.syncro.authz_test.test_auditor_workorder_session_stop_denied: PASS (6.412798ms)
+/policy/authz_test.rego:838:
+data.syncro.authz_test.test_technician_workorder_quality_rating_criteria_read_allowed: PASS (6.743485ms)
+/policy/authz_test.rego:277:
+data.syncro.authz_test.test_auditor_workorder_assignment_create_denied: PASS (1.160351ms)
+/policy/authz_test.rego:1081:
+data.syncro.authz_test.test_auditor_sparepart_request_complete_denied: PASS (1.055192ms)
+/policy/authz_test.rego:1085:
+data.syncro.authz_test.test_anonymous_sparepart_request_complete_denied: PASS (724.807µs)
+/policy/authz_test.rego:1091:
+data.syncro.authz_test.test_inventory_sparepart_stock_create_allowed: PASS (1.917877ms)
+/policy/authz_test.rego:1103:
+data.syncro.authz_test.test_super_admin_sparepart_stock_create_allowed: PASS (380.814µs)
+/policy/authz_test.rego:1099:
+data.syncro.authz_test.test_inventory_sparepart_stock_adjust_allowed: PASS (1.770894ms)
+/policy/authz_test.rego:1095:
+data.syncro.authz_test.test_storekeeper_sparepart_stock_update_allowed: PASS (2.482793ms)
+/policy/authz_test.rego:1119:
+data.syncro.authz_test.test_auditor_sparepart_stock_read_allowed: PASS (1.055392ms)
+/policy/authz_test.rego:846:
+data.syncro.authz_test.test_manager_workorder_quality_rating_criteria_mutation_denied: PASS (8.850767ms)
+/policy/authz_test.rego:1107:
+data.syncro.authz_test.test_technician_sparepart_stock_mutation_denied: PASS (2.93965ms)
+/policy/authz_test.rego:1287:
+data.syncro.authz_test.test_actions_technician_has_read_only: PASS (329.785µs)
+/policy/authz_test.rego:1263:
+data.syncro.authz_test.test_anonymous_read_denied: PASS (442.749µs)
+/policy/authz_test.rego:285:
+data.syncro.authz_test.test_auditor_workorder_assignment_read_allowed: PASS (8.880383ms)
+/policy/authz_test.rego:1282:
+data.syncro.authz_test.test_actions_manager_has_read_write: PASS (380.814µs)
+/policy/authz_test.rego:1267:
+data.syncro.authz_test.test_anonymous_empty_input_denied: PASS (448.051µs)
+/policy/authz_test.rego:1271:
+data.syncro.authz_test.test_anonymous_missing_subject_denied: PASS (401.825µs)
+/policy/authz_test.rego:822:
+data.syncro.authz_test.test_inventory_workorder_quality_rating_denied: PASS (18.632255ms)
+/policy/authz_test.rego:1292:
+data.syncro.authz_test.test_actions_staff_has_read_only: PASS (1.030678ms)
+/policy/authz_test.rego:1277:
+data.syncro.authz_test.test_actions_super_admin_has_full: PASS (422.737µs)
+/policy/authz_test.rego:1127:
+data.syncro.authz_test.test_anonymous_sparepart_stock_denied: PASS (993.057µs)
+/policy/authz_test.rego:1259:
+data.syncro.authz_test.test_anonymous_admin_only_denied: PASS (4.196155ms)
+/policy/authz_test.rego:1123:
+data.syncro.authz_test.test_auditor_sparepart_stock_reorder_read_allowed: PASS (1.911473ms)
+/policy/authz_test.rego:707:
+data.syncro.authz_test.test_maintenance_leader_workorder_worklog_rating_allowed: PASS (8.824852ms)
+/policy/authz_test.rego:1142:
+data.syncro.authz_test.test_inventory_inventory_location_create_allowed: PASS (4.16934ms)
+/policy/authz_test.rego:1115:
+data.syncro.authz_test.test_section_leader_sparepart_stock_mutation_denied: PASS (9.732962ms)
+/policy/authz_test.rego:1178:
+data.syncro.authz_test.test_anonymous_inventory_location_denied: PASS (1.144942ms)
+/policy/authz_test.rego:1166:
+data.syncro.authz_test.test_technician_inventory_location_update_denied: PASS (6.270418ms)
+/policy/authz_test.rego:1174:
+data.syncro.authz_test.test_auditor_inventory_location_get_read_allowed: PASS (5.735619ms)
+/policy/authz_test.rego:1170:
+data.syncro.authz_test.test_auditor_inventory_location_read_allowed: PASS (9.200663ms)
+/policy/authz_test.rego:1229:
+data.syncro.authz_test.test_auditor_section_leader_clear_denied: PASS (2.802573ms)
+/policy/authz_test.rego:1111:
+data.syncro.authz_test.test_manager_sparepart_stock_mutation_denied: PASS (16.770611ms)
+/policy/authz_test.rego:1138:
+data.syncro.authz_test.test_manager_inventory_location_update_allowed: PASS (9.280308ms)
+/policy/authz_test.rego:1150:
+data.syncro.authz_test.test_super_admin_inventory_location_create_allowed: PASS (2.87021ms)
+/policy/authz_test.rego:1221:
+data.syncro.authz_test.test_super_admin_section_leader_clear_allowed: PASS (391.619µs)
+/policy/authz_test.rego:1213:
+data.syncro.authz_test.test_auditor_department_read_allowed: PASS (4.908454ms)
+/policy/authz_test.rego:1237:
+data.syncro.authz_test.test_super_admin_user_master_update_allowed: PASS (322.481µs)
+/policy/authz_test.rego:1197:
+data.syncro.authz_test.test_super_admin_department_create_allowed: PASS (480.469µs)
+/policy/authz_test.rego:1146:
+data.syncro.authz_test.test_inventory_inventory_location_update_allowed: PASS (1.869249ms)
+/policy/authz_test.rego:1154:
+data.syncro.authz_test.test_storekeeper_inventory_location_create_denied: PASS (2.392443ms)
+/policy/authz_test.rego:1185:
+data.syncro.authz_test.test_manager_department_create_allowed: PASS (19.453316ms)
+/policy/authz_test.rego:1225:
+data.syncro.authz_test.test_technician_section_leader_assign_denied: PASS (8.237122ms)
+/policy/authz_test.rego:1158:
+data.syncro.authz_test.test_storekeeper_inventory_location_update_denied: PASS (2.277578ms)
+/policy/authz_test.rego:1249:
+data.syncro.authz_test.test_auditor_user_master_read_allowed: PASS (1.636619ms)
+/policy/authz_test.rego:1245:
+data.syncro.authz_test.test_auditor_user_master_update_denied: PASS (3.227511ms)
+/policy/authz_test.rego:1217:
+data.syncro.authz_test.test_manager_section_leader_assign_allowed: PASS (13.402421ms)
+/policy/authz_test.rego:1134:
+data.syncro.authz_test.test_manager_inventory_location_create_allowed: PASS (21.930006ms)
+/policy/authz_test.rego:1193:
+data.syncro.authz_test.test_manager_department_delete_allowed: PASS (9.74737ms)
+/policy/authz_test.rego:1201:
+data.syncro.authz_test.test_staff_department_mutation_denied: PASS (6.683151ms)
+/policy/authz_test.rego:1189:
+data.syncro.authz_test.test_manager_department_members_allowed: PASS (12.678514ms)
+/policy/authz_test.rego:1253:
+data.syncro.authz_test.test_anonymous_department_denied: PASS (778.437µs)
+/policy/authz_test.rego:1209:
+data.syncro.authz_test.test_auditor_department_delete_denied: PASS (3.860566ms)
+/policy/authz_test.rego:1162:
+data.syncro.authz_test.test_technician_inventory_location_create_denied: PASS (8.705485ms)
+/policy/authz_test.rego:1205:
+data.syncro.authz_test.test_technician_department_members_denied: PASS (9.312926ms)
+/policy/authz_test.rego:379:
+data.syncro.authz_test.test_technician_workorder_session_start_allowed: PASS (3.558697ms)
+/policy/authz_test.rego:1241:
+data.syncro.authz_test.test_technician_user_master_update_denied: PASS (5.891906ms)
+/policy/authz_test.rego:1233:
+data.syncro.authz_test.test_manager_user_master_update_allowed: PASS (23.410737ms)
+--------------------------------------------------------------------------------
+PASS: 301/301

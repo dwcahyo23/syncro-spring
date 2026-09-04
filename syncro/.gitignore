@@ -8,6 +8,7 @@
 *.pfx
 *.crt
 *.cer
+*.log
 *secret*
 *secrets*
 *credentials*

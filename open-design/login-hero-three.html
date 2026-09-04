@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Syncro — Sign in</title>
+<style>
+  /* ===== SyncroApp locked tokens ===== */
+  :root{
+    --pri:#2563EB;          /* Signal Blue */
+    --cyan:#0891B2;         /* Telemetry Cyan */
+    --ok:#16A34A;
+    --danger:#DC2626;
+    --canvas:#F8FAFC;
+    --ink:#0F172A;
+    --muted:#64748B;
+    --line:#E2E8F0;
+    --stage-dark:#0B1220;
+    --stage-ink:#F8FAFC;
+    --stage-line:rgba(248,250,252,.10);
+    --ease:cubic-bezier(.16,1,.3,1);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:"SF Pro Display","SF Pro Text",-apple-system,"Segoe UI",Roboto,sans-serif;
+    background:var(--canvas);color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace}
+
+  /* ===== Shell ===== */
+  .shell{display:grid;grid-template-columns:1.2fr 1fr;min-height:100dvh}
+  @media (max-width:960px){
+    .shell{grid-template-columns:1fr}
+    .hero{display:none}
+    .panel{padding:40px 32px}
+  }
+  @media (max-width:480px){
+    .panel{padding:32px 24px}
+  }
+
+  /* ===== Hero — PredictiveArcCanvas · signal-particles stage ===== */
+  .hero{
+    position:relative;overflow:hidden;
+    background:#0a0a0a; /* signal-particles dark stage — exact source */
+    color:var(--stage-ink);
+    border-right:1px solid var(--stage-line);
+  }
+  /* source classes: absolute inset-0 z-0 w-full h-full opacity-80 */
+  #particle-canvas{position:absolute;inset:0;z-index:1;width:100%;height:100%;opacity:.8;display:block}
+  /* Aura wave behind particles — CSS-only stand-in for the source's remote
+     aura JPG (supabase asset, not localized: no hotlink). One static brand
+     glow kept under the canvas; no looping ambient motion. */
+  .hero-aura{
+    position:absolute;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(640px 420px at 68% 30%, rgba(37,99,235,.16), transparent 70%),
+      #0a0a0a;
+  }
+  .hero-copy{
+    position:absolute;left:0;right:0;bottom:0;z-index:2;padding:48px 44px 40px;
+    pointer-events:none;
+  }
+  .brand{display:flex;align-items:center;gap:12px;padding:36px 44px 0;position:relative;z-index:2}
+  .brand svg{flex:none}
+  .brand-name{font-size:17px;font-weight:600;letter-spacing:.2px}
+
+  .hero-eyebrow{
+    font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--cyan);font-weight:600;margin-bottom:14px;
+  }
+  .hero-h1{font-size:40px;line-height:1.12;font-weight:600;letter-spacing:-.02em;max-width:16ch}
+  .hero-sub{margin-top:12px;font-size:14px;line-height:1.6;color:rgba(248,250,252,.72);max-width:44ch}
+
+  /* ===== Form panel ===== */
+  .panel{display:flex;align-items:center;justify-content:center;padding:48px}
+  .form-wrap{width:100%;max-width:400px}
+  .form-eyebrow{
+    font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--pri);font-weight:600;margin-bottom:8px;
+  }
+  h2{font-size:26px;font-weight:700;letter-spacing:-.01em}
+
+  form{margin-top:28px}
+  .field{margin-bottom:16px}
+  label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;letter-spacing:.01em}
+  .control{position:relative}
+  .control-icon{
+    position:absolute;left:14px;top:50%;transform:translateY(-50%);
+    color:var(--muted);pointer-events:none;
+    transition:color .18s var(--ease);
+  }
+  .control:focus-within .control-icon{color:var(--pri)}
+  .input{
+    width:100%;height:48px;border-radius:14px;
+    border:1px solid var(--line);background:#fff;color:var(--ink);
+    font:inherit;font-size:15px;padding:0 14px;
+    transition:border-color .18s var(--ease),box-shadow .18s var(--ease);
+    outline:none;caret-color:var(--pri);
+  }
+  .input.has-icon{padding-left:42px}
+  .input.has-trailing{padding-right:50px}
+  .input::placeholder{color:var(--muted)}
+  .input:hover{border-color:#CBD5E1}
+  .input:focus{border-color:var(--pri);box-shadow:0 0 0 3px rgba(37,99,235,.18)}
+  .input:-webkit-autofill{
+    -webkit-box-shadow:0 0 0 40px #fff inset;
+    -webkit-text-fill-color:var(--ink);
+  }
+  .reveal{
+    position:absolute;right:4px;top:50%;transform:translateY(-50%);
+    width:40px;height:40px;border:none;border-radius:10px;
+    background:transparent;color:var(--muted);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition:background .18s var(--ease),color .18s var(--ease);
+  }
+  .ic-eye-off{display:none}
+  .reveal:hover{background:var(--canvas);color:var(--ink)}
+  .reveal:focus-visible{outline:2px solid var(--pri);outline-offset:1px}
+
+  .btn{
+    width:100%;height:50px;margin-top:8px;border:none;border-radius:14px;
+    background:var(--pri);color:#fff;font:inherit;font-size:15px;font-weight:600;letter-spacing:.02em;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    transition:background .18s var(--ease),transform .18s var(--ease),box-shadow .18s var(--ease);
+  }
+  .btn-arrow{transition:transform .18s var(--ease)}
+  .btn:hover{background:#1D4ED8;box-shadow:0 6px 18px rgba(37,99,235,.28)}
+  .btn:hover .btn-arrow{transform:translateX(3px)}
+  .btn:active{transform:translateY(1px)}
+  .btn.is-loading .btn-arrow{display:none}
+  .btn.is-loading::before{
+    content:"";width:16px;height:16px;border-radius:50%;
+    border:2px solid rgba(255,255,255,.45);border-top-color:#fff;
+    animation:spin .7s linear infinite;
+  }
+  .btn:disabled{background:#93B4F5;cursor:not-allowed;box-shadow:none}
+  .btn:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+  .input:focus-visible{outline:2px solid var(--pri);outline-offset:1px}
+
+  .alert{
+    display:none;margin-top:14px;padding:11px 14px;border-radius:12px;
+    border:1px solid rgba(220,38,38,.35);background:rgba(220,38,38,.08);
+    color:#B91C1C;font-size:13px;line-height:1.5;
+  }
+  .alert.show{display:flex;align-items:flex-start;gap:8px;animation:alertIn .32s var(--ease)}
+  .alert svg{flex:none;margin-top:2px}
+  @keyframes alertIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .foot{margin-top:28px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+  .foot b{color:var(--ink);font-weight:600}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none!important;transition:none!important}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ================= HERO ================= -->
+  <section class="hero" data-od-id="login-hero">
+    <!-- PredictiveArcCanvas · variant="signal-particles" · mode="dark"
+         ThreeUI registered source rev SHA-256 fa86582fc870
+         engine: sources/signal-particles.html SHA-256 613a2005d187… (verified) -->
+    <div class="hero-aura" aria-hidden="true" data-od-id="login-aura"></div>
+    <canvas id="particle-canvas" aria-hidden="true"></canvas>
+
+    <div class="brand" data-od-id="login-brand">
+      <!-- Orbit mono logo — inline SVG, currentColor → stage ink -->
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style="color:var(--stage-ink)" aria-hidden="true">
+        <circle cx="14" cy="14" r="12.5" stroke="currentColor" stroke-width="1.6"/>
+        <circle cx="14" cy="14" r="4" fill="currentColor"/>
+        <circle cx="24.2" cy="8.5" r="2.4" fill="#0891B2"/>
+      </svg>
+      <span class="brand-name">Syncro</span>
+    </div>
+
+    <div class="hero-copy" data-od-id="login-hero-copy">
+      <div class="hero-eyebrow mono">Syncro · Live Machine Channel</div>
+      <h1 class="hero-h1">One channel for every machine that never sleeps.</h1>
+      <p class="hero-sub">Machine setup, live health, and spare-part alerts — command the factory floor from your pocket.</p>
+    </div>
+  </section>
+
+  <!-- ================= PANEL ================= -->
+  <section class="panel" data-od-id="login-panel">
+    <div class="form-wrap" data-od-id="login-form-wrap">
+      <div class="form-eyebrow mono">Secure access</div>
+      <h2 data-od-id="login-heading">Sign in to Syncro</h2>
+
+      <form id="loginForm" novalidate>
+        <div class="field">
+          <label for="loginIdentifier">Email</label>
+          <div class="control">
+            <svg class="control-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect width="20" height="16" x="2" y="4" rx="2"/>
+              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+            </svg>
+            <input class="input has-icon" id="loginIdentifier" name="loginIdentifier" type="email"
+                   autocomplete="username" placeholder="admin@syncro.local" required>
+          </div>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="control">
+            <svg class="control-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect width="18" height="11" x="3" y="11" rx="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <input class="input has-icon has-trailing" id="password" name="password" type="password"
+                   autocomplete="current-password" placeholder="••••••••••" required>
+            <button class="reveal" id="reveal" type="button" aria-label="Show password" aria-pressed="false">
+              <svg class="ic-eye" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              <svg class="ic-eye-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
+                <path d="M10.73 5.08A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a13.2 13.2 0 0 1-1.67 2.68"/>
+                <path d="M6.61 6.61A13.5 13.5 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.39-1.61"/>
+                <line x1="2" x2="22" y1="2" y2="22"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="alert" id="alert" role="alert">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" x2="12" y1="8" y2="12"/>
+            <line x1="12" x2="12.01" y1="16" y2="16"/>
+          </svg>
+          <span>Invalid sign-in. Double-check your email and password.</span>
+        </div>
+        <button class="btn" id="btn" type="submit">
+          <span>Sign in</span>
+          <svg class="btn-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>
+          </svg>
+        </button>
+      </form>
+
+      <p class="foot"><b>© 2026 Syncro.</b> Industrial IoT Platform.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+/* PredictiveArcCanvas — variant "signal-particles"
+   Engine extracted verbatim from ThreeUI sources/signal-particles.html
+   (Canvas 2D: spacing 16 · dotRadius 1.5 · dual sine wave).
+   Deliberate deviation from source: highlight colors brand-bound to the
+   SyncroApp locked palette (#2563EB / #0891B2) — the source's off-palette
+   blue (#3b82f6) and purple (#8b5cf6) violate the anti-purple brand lock.
+   speed follows the batch control contract (window.__SF_CONTROLS.speed). */
+(function(){
+  var canvas = document.getElementById('particle-canvas');
+  if(!canvas) return;
+  // configured usage: variant signal-particles · mode dark · speed 1.00 · hue 0 · saturation 1.00 · brightness 1.00
+  window.__SF_CONTROLS = { mode:'dark', speed:1.0, opacity:1 };
+
+  var ctx = canvas.getContext('2d');
+  var width = 0, height = 0, sizeRetries = 0;
+
+  var spacing = 16;
+  var dotRadius = 1.5;
+  var time = 0;
+
+  function resize(){
+    var hero = canvas.parentNode;
+    var w = canvas.clientWidth  || (hero && hero.clientWidth)  || 0;
+    var h = canvas.clientHeight || (hero && hero.clientHeight) || 0;
+    if(w > 0){ width = canvas.width = w; }
+    if(h > 0){ height = canvas.height = h; }
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function draw(){
+    /* Canvas can measure 0 on first paint (fonts/iframe still laying out)
+       or while the hero is hidden at <=960px — retry instead of
+       freezing on an empty frame. */
+    if(width < 2 || height < 2){
+      resize();
+      if((width < 2 || height < 2) && sizeRetries++ < 120){
+        requestAnimationFrame(draw);
+        return;
+      }
+    }
+    ctx.clearRect(0, 0, width, height);
+
+    var cols = Math.floor(width / spacing);
+    var rows = Math.floor(height / spacing);
+
+    var offsetX = (width - cols * spacing) / 2;
+    var offsetY = (height - rows * spacing) / 2;
+
+    for (var i = 0; i <= cols; i++) {
+      for (var j = 0; j <= rows; j++) {
+        var x = offsetX + i * spacing;
+        var y = offsetY + j * spacing;
+
+        var nx = i * 0.1;
+        var ny = j * 0.1;
+
+        var wave1 = Math.sin(nx + time * 0.5) * Math.cos(ny - time * 0.3);
+        var wave2 = Math.sin(nx * 0.5 - ny * 0.5 + time * 0.8);
+        var value = wave1 + wave2;
+
+        if (value > 0.1) {
+          ctx.beginPath();
+          ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
+
+          var highlightCheck = Math.sin(i * 12.34) * Math.cos(j * 56.78);
+
+          if (highlightCheck > 0.98) {
+            ctx.fillStyle = '#2563EB'; // Signal Blue highlight (brand-bound; source used #3b82f6)
+          } else if (highlightCheck < -0.98) {
+            ctx.fillStyle = '#0891B2'; // Telemetry Cyan highlight (brand-bound; source purple #8b5cf6 removed — anti-purple lock)
+          } else {
+            var alpha = Math.min(0.6, (value - 0.1) * 0.8);
+            ctx.fillStyle = 'rgba(148, 163, 184, ' + alpha + ')';
+          }
+
+          ctx.fill();
+        }
+      }
+    }
+
+    time += 0.02 * ((window.__SF_CONTROLS && window.__SF_CONTROLS.speed) || 1);
+    requestAnimationFrame(draw); // ponytail: user lock — decorative hero canvas always animates
+  }
+
+  draw();
+})();
+</script>
+
+<script>
+/* Login demo behavior: mirrors login-form.tsx (error state + submit lock) */
+(function(){
+  const form    = document.getElementById('loginForm');
+  const btn     = document.getElementById('btn');
+  const alertEl = document.getElementById('alert');
+  const reveal  = document.getElementById('reveal');
+  const pwd     = document.getElementById('password');
+
+  /* show/hide password */
+  reveal.addEventListener('click', function(){
+    const show = pwd.type === 'password';
+    pwd.type = show ? 'text' : 'password';
+    reveal.querySelector('.ic-eye').style.display    = show ? 'none' : '';
+    reveal.querySelector('.ic-eye-off').style.display = show ? '' : 'none';
+    reveal.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    reveal.setAttribute('aria-pressed', String(show));
+  });
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    if(!form.reportValidity()) return;
+    alertEl.classList.remove('show');
+    btn.disabled = true; btn.classList.add('is-loading');
+    btn.querySelector('span').textContent = 'Signing in...';
+    setTimeout(function(){ // ponytail: no backend here — demo error path only
+      alertEl.classList.add('show');
+      btn.disabled = false; btn.classList.remove('is-loading');
+      btn.querySelector('span').textContent = 'Sign in';
+    }, 900);
+  });
+})();
+</script>
+</body>
+</html>
