@@ -1,0 +1,3547 @@
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java b/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
+index dfbe9c6..23e08b5 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
+@@ -65,5 +65,6 @@ public enum AuditEntityType {
+   PM_SCHEDULE_DATE,
+   PM_WORK_ORDER,
+   PM_EXECUTION,
+-  PM_EXECUTION_ITEM
++  PM_EXECUTION_ITEM,
++  KPI_TARGET
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/config/KpiProperties.java b/syncro/apps/backend/src/main/java/com/syncro/config/KpiProperties.java
+new file mode 100644
+index 0000000..6da2d3f
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/config/KpiProperties.java
+@@ -0,0 +1,29 @@
++package com.syncro.config;
++
++import org.springframework.boot.context.properties.ConfigurationProperties;
++import org.springframework.boot.context.properties.bind.DefaultValue;
++
++/**
++ * KPI materialization configuration (story 20-1, AD-20). Typed binding per the spine
++ * config rule — the scheduler cron and lookback are env-overridable, never hardcoded.
++ *
++ * @param refreshCron Spring cron for the monthly refresh sweep (default 03:00 UTC daily)
++ * @param enabled     master switch for the scheduler + sync-invalidation listener
++ * @param lookbackMonths how many past months a scheduled/invalidated pass re-materializes
++ *                       (late corrections and backdated sync rows land in prior months)
++ */
++@ConfigurationProperties(prefix = "syncro.kpi")
++public record KpiProperties(
++    @DefaultValue("0 0 3 * * *") String refreshCron,
++    @DefaultValue("true") boolean enabled,
++    @DefaultValue("1") int lookbackMonths) {
++
++  public KpiProperties {
++    if (refreshCron == null || refreshCron.isBlank()) {
++      throw new IllegalArgumentException("syncro.kpi.refresh-cron must not be blank");
++    }
++    if (lookbackMonths < 0) {
++      throw new IllegalArgumentException("syncro.kpi.lookback-months must be >= 0");
++    }
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/kpi/api/KpiExceptionHandler.java b/syncro/apps/backend/src/main/java/com/syncro/kpi/api/KpiExceptionHandler.java
+new file mode 100644
+index 0000000..c6c66a1
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/kpi/api/KpiExceptionHandler.java
+@@ -0,0 +1,83 @@
++package com.syncro.kpi.api;
++
++import com.syncro.auth.application.PlantScopeService.PlantAccessDeniedException;
++import com.syncro.kpi.api.KpiTargetController.UnknownKpiTypeException;
++import com.syncro.kpi.application.KpiQueryService.KpiPlantForbiddenException;
++import com.syncro.kpi.application.KpiTargetService.PlantNotFoundForTargetException;
++import com.syncro.kpi.application.KpiTargetService.TargetConflictException;
++import com.syncro.kpi.application.KpiTargetService.TargetMutationForbiddenException;
++import java.time.Clock;
++import java.time.Instant;
++import java.util.LinkedHashMap;
++import java.util.Map;
++import java.util.UUID;
++import org.springframework.core.Ordered;
++import org.springframework.core.annotation.Order;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.web.bind.MethodArgumentNotValidException;
++import org.springframework.web.bind.MissingServletRequestParameterException;
++import org.springframework.web.bind.annotation.ExceptionHandler;
++import org.springframework.web.bind.annotation.RestControllerAdvice;
++
++/** Stable error envelope for the KPI API (story 20-1) — codes, never exception names. */
++@Order(Ordered.HIGHEST_PRECEDENCE)
++@RestControllerAdvice(assignableTypes = KpiTargetController.class)
++public class KpiExceptionHandler {
++
++  public record ErrorResponse(String code, String message, Map<String, String> fieldErrors,
++      String timestamp, String traceId) {
++  }
++
++  private final Clock clock;
++
++  public KpiExceptionHandler(Clock clock) {
++    this.clock = clock;
++  }
++
++  @ExceptionHandler({TargetMutationForbiddenException.class, PlantAccessDeniedException.class,
++      KpiPlantForbiddenException.class})
++  ResponseEntity<ErrorResponse> forbidden() {
++    return error(HttpStatus.FORBIDDEN, "FORBIDDEN",
++        "You do not have permission to access this resource.", Map.of());
++  }
++
++  @ExceptionHandler(MethodArgumentNotValidException.class)
++  ResponseEntity<ErrorResponse> validationError(MethodArgumentNotValidException exception) {
++    var fieldErrors = new LinkedHashMap<String, String>();
++    for (var fieldError : exception.getBindingResult().getFieldErrors()) {
++      fieldErrors.putIfAbsent(fieldError.getField(), "Invalid value.");
++    }
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.", fieldErrors);
++  }
++
++  @ExceptionHandler(MissingServletRequestParameterException.class)
++  ResponseEntity<ErrorResponse> missingParameter(MissingServletRequestParameterException exception) {
++    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Validation failed.",
++        Map.of(exception.getParameterName(), "Invalid value."));
++  }
++
++  @ExceptionHandler(TargetConflictException.class)
++  ResponseEntity<ErrorResponse> targetConflict() {
++    return error(HttpStatus.CONFLICT, "KPI_TARGET_CONFLICT",
++        "A concurrent update already created this target. Retry the request.", Map.of());
++  }
++
++  @ExceptionHandler(PlantNotFoundForTargetException.class)
++  ResponseEntity<ErrorResponse> plantNotFound() {
++    return error(HttpStatus.NOT_FOUND, "PLANT_NOT_FOUND", "Plant was not found.", Map.of());
++  }
++
++  @ExceptionHandler(UnknownKpiTypeException.class)
++  ResponseEntity<ErrorResponse> unknownType() {
++    return error(HttpStatus.NOT_FOUND, "KPI_TYPE_NOT_FOUND",
++        "Unknown KPI type. Use mtbf, mttr, mar, pm-completion, technician, or breakdown.",
++        Map.of());
++  }
++
++  private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message,
++      Map<String, String> fieldErrors) {
++    return ResponseEntity.status(status).body(new ErrorResponse(code, message, fieldErrors,
++        Instant.now(clock).toString(), UUID.randomUUID().toString()));
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/kpi/api/KpiTargetController.java b/syncro/apps/backend/src/main/java/com/syncro/kpi/api/KpiTargetController.java
+new file mode 100644
+index 0000000..80079db
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/kpi/api/KpiTargetController.java
+@@ -0,0 +1,87 @@
++package com.syncro.kpi.api;
++
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.kpi.application.KpiQueryService;
++import com.syncro.kpi.application.KpiTargetService;
++import com.syncro.kpi.domain.KpiType;
++import io.swagger.v3.oas.annotations.Operation;
++import jakarta.validation.Valid;
++import jakarta.validation.constraints.DecimalMax;
++import jakarta.validation.constraints.DecimalMin;
++import jakarta.validation.constraints.NotNull;
++import jakarta.validation.constraints.PositiveOrZero;
++import java.math.BigDecimal;
++import java.time.LocalDate;
++import java.util.List;
++import java.util.UUID;
++import org.springframework.format.annotation.DateTimeFormat;
++import org.springframework.security.core.annotation.AuthenticationPrincipal;
++import org.springframework.web.bind.annotation.GetMapping;
++import org.springframework.web.bind.annotation.PathVariable;
++import org.springframework.web.bind.annotation.PutMapping;
++import org.springframework.web.bind.annotation.RequestBody;
++import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RequestParam;
++import org.springframework.web.bind.annotation.RestController;
++
++/**
++ * KPI REST surface (story 20-1): plant-scoped target configuration and scope-filtered
++ * materialized reads. Controllers only bind/validate and delegate — no business rules,
++ * no transactions, no repository access (spine API rule).
++ */
++@RestController
++@RequestMapping("/api/v1/kpi")
++public class KpiTargetController {
++
++  private final KpiTargetService targetService;
++  private final KpiQueryService queryService;
++
++  public KpiTargetController(KpiTargetService targetService, KpiQueryService queryService) {
++    this.targetService = targetService;
++    this.queryService = queryService;
++  }
++
++  @Operation(operationId = "listKpiTargets", summary = "List KPI targets for a plant")
++  @GetMapping("/targets")
++  public List<KpiTargetService.TargetView> listTargets(@AuthenticationPrincipal AuthenticatedUser user,
++      @RequestParam UUID plantId) {
++    return targetService.list(user, plantId);
++  }
++
++  @Operation(operationId = "upsertKpiTarget", summary = "Create or update a plant/month KPI target")
++  @PutMapping("/targets")
++  public KpiTargetService.TargetView upsertTarget(@AuthenticationPrincipal AuthenticatedUser user,
++      @Valid @RequestBody UpsertTargetRequest request) {
++    return targetService.upsert(user, new KpiTargetService.TargetCommand(
++        request.plantId(), request.month(), request.monthlyBreakdownTarget(),
++        request.mtbfTargetDays(), request.mttrTargetMinutes(), request.oeeQualityPercent(),
++        request.oeePerformancePercent()));
++  }
++
++  @Operation(operationId = "getMaterializedKpi", summary = "Read materialized monthly KPI rows in scope")
++  @GetMapping("/materialized/{type}")
++  public KpiQueryService.MaterializedResponse materialized(@AuthenticationPrincipal AuthenticatedUser user,
++      @PathVariable String type,
++      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate month,
++      @RequestParam(required = false) UUID plantId) {
++    var kpiType = KpiType.fromPath(type);
++    if (kpiType == null) {
++      throw new UnknownKpiTypeException();
++    }
++    return queryService.materialized(user, kpiType, month.withDayOfMonth(1), plantId);
++  }
++
++  public record UpsertTargetRequest(
++      @NotNull UUID plantId,
++      @NotNull LocalDate month,
++      @PositiveOrZero Integer monthlyBreakdownTarget,
++      @PositiveOrZero BigDecimal mtbfTargetDays,
++      @PositiveOrZero BigDecimal mttrTargetMinutes,
++      @DecimalMin("0") @DecimalMax("100") BigDecimal oeeQualityPercent,
++      @DecimalMin("0") @DecimalMax("100") BigDecimal oeePerformancePercent) {
++  }
++
++  /** Unknown materialized type path segment. */
++  public static class UnknownKpiTypeException extends RuntimeException {
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiCalendarReader.java b/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiCalendarReader.java
+new file mode 100644
+index 0000000..1ee8872
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiCalendarReader.java
+@@ -0,0 +1,22 @@
++package com.syncro.kpi.application;
++
++import java.time.Instant;
++import java.util.UUID;
++
++/**
++ * Plant working-calendar port for the actual-working MTTR variant (story 20-1,
++ * blueprint A12). Implemented by the org module's JPA adapter — calendar data is
++ * owned by org, the kpi module only asks "how many business minutes fall in this
++ * interval for this plant". v1 counts whole calendar days as working/non-working per
++ * the plant's workweek mode minus exception dates; shift-aware minute math is a
++ * documented future refinement (spec design note).
++ */
++public interface KpiCalendarReader {
++
++  /**
++   * Business minutes between the two instants for the plant's working calendar.
++   * Falls back to a five-day workweek when the plant has no calendar for a year in
++   * range (documented default — never zero, which would fabricate an infinite MTTR).
++   */
++  long workingMinutes(UUID plantId, Instant from, Instant to);
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiMaterializationService.java b/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiMaterializationService.java
+new file mode 100644
+index 0000000..3d1d602
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiMaterializationService.java
+@@ -0,0 +1,455 @@
++package com.syncro.kpi.application;
++
++import com.syncro.authz.application.PolicyDecisionPoint;
++import com.syncro.kpi.domain.KpiAggregateRefreshStatus;
++import com.syncro.kpi.domain.KpiSourceStatus;
++import com.syncro.kpi.domain.KpiType;
++import com.syncro.kpi.infrastructure.db.KpiMarMonthlyEntity;
++import com.syncro.kpi.infrastructure.db.KpiMarMonthlyRepository;
++import com.syncro.kpi.infrastructure.db.KpiMonthlyBreakdownEntity;
++import com.syncro.kpi.infrastructure.db.KpiMonthlyBreakdownRepository;
++import com.syncro.kpi.infrastructure.db.KpiMtbfMonthlyEntity;
++import com.syncro.kpi.infrastructure.db.KpiMtbfMonthlyRepository;
++import com.syncro.kpi.infrastructure.db.KpiMttrMonthlyEntity;
++import com.syncro.kpi.infrastructure.db.KpiMttrMonthlyRepository;
++import com.syncro.kpi.infrastructure.db.KpiPmCompletionMonthlyEntity;
++import com.syncro.kpi.infrastructure.db.KpiPmCompletionMonthlyRepository;
++import com.syncro.kpi.infrastructure.db.KpiTechnicianMonthlyEntity;
++import com.syncro.kpi.infrastructure.db.KpiTechnicianMonthlyRepository;
++import com.syncro.kpi.application.KpiSourceDataReader.BreakdownStop;
++import com.syncro.kpi.application.KpiSourceDataReader.MarInputs;
++import com.syncro.kpi.application.KpiSourceDataReader.RepairLogInterval;
++import com.syncro.kpi.application.KpiSourceDataReader.TechnicianLog;
++import com.syncro.kpi.application.KpiSourceDataReader.TechnicianRating;
++import java.math.BigDecimal;
++import java.math.RoundingMode;
++import java.time.Clock;
++import java.time.Duration;
++import java.time.Instant;
++import java.time.LocalDate;
++import java.time.ZoneOffset;
++import java.util.ArrayList;
++import java.util.Comparator;
++import java.util.HashMap;
++import java.util.HashSet;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.Set;
++import java.util.UUID;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.PlatformTransactionManager;
++import org.springframework.transaction.support.TransactionTemplate;
++
++/**
++ * Monthly KPI materialization (story 20-1, AD-6/AD-20). Recomputes MTBF, MTTR, MAR,
++ * PM completion, technician, and breakdown-count rows for one calendar month and
++ * upserts them per month/scope — idempotent by the V1 unique constraints. Every pass
++ * is gated and evidenced through {@link KpiRefreshGate} (refresh_key per type/month,
++ * traceId + row count in the message).
++ *
++ * <p>Formulas (spec "Always" boundaries):
++ * <ul>
++ *   <li>MTBF — per machine, consecutive CLOSED breakdown stops ordered by the derived
++ *       {@code woStopAt} (never by id — the reference bug); mean gap in days, each gap
++ *       attributed to the month of its later stop. Machines with fewer than 2 stops
++ *       get no row (explicit insufficient-data downstream).</li>
++ *   <li>MTTR — per plant/month, mean of per-WO cumulative work-log durations;
++ *       wall-clock = calendar minutes, actual-working = business minutes per the plant
++ *       working calendar. NULL values when no logs exist.</li>
++ *   <li>MAR — (planned_available - downtime) / planned_available × 100 from the
++ *       telemetry ingest state; no source → INSUFFICIENT_DATA row, never a zero.</li>
++ *   <li>PM completion — completed/planned × 100 from PM execution data; no planned
++ *       → INSUFFICIENT_DATA.</li>
++ *   <li>Technician — average of 1–5 work-log ratings, distinct workorder count, and
++ *       first-time-fix rate (WOs with exactly one work log / total).</li>
++ * </ul>
++ */
++@Service
++public class KpiMaterializationService {
++
++  private static final Logger log = LoggerFactory.getLogger(KpiMaterializationService.class);
++  private static final int SCALE = 2;
++  private static final BigDecimal MINUTES_PER_DAY = BigDecimal.valueOf(24L * 60L);
++  private static final BigDecimal HUNDRED = BigDecimal.valueOf(100L);
++
++  private final KpiSourceDataReader source;
++  private final KpiCalendarReader calendar;
++  private final KpiRefreshGate gate;
++  private final KpiMonthlyBreakdownRepository breakdowns;
++  private final KpiMtbfMonthlyRepository mtbfMonthlies;
++  private final KpiMttrMonthlyRepository mttrMonthlies;
++  private final KpiMarMonthlyRepository marMonthlies;
++  private final KpiTechnicianMonthlyRepository technicianMonthlies;
++  private final KpiPmCompletionMonthlyRepository pmCompletionMonthlies;
++  private final Clock clock;
++  /**
++   * The compute runs through a TransactionTemplate (not {@code @Transactional}) because
++   * {@link #refreshType} calls it internally — a proxy annotation would be bypassed by
++   * self-invocation (NotificationDispatchService pattern).
++   */
++  private final TransactionTemplate transactionTemplate;
++
++  public KpiMaterializationService(KpiSourceDataReader source, KpiCalendarReader calendar,
++      KpiRefreshGate gate, KpiMonthlyBreakdownRepository breakdowns,
++      KpiMtbfMonthlyRepository mtbfMonthlies, KpiMttrMonthlyRepository mttrMonthlies,
++      KpiMarMonthlyRepository marMonthlies, KpiTechnicianMonthlyRepository technicianMonthlies,
++      KpiPmCompletionMonthlyRepository pmCompletionMonthlies, Clock clock,
++      PlatformTransactionManager transactionManager) {
++    this.source = source;
++    this.calendar = calendar;
++    this.gate = gate;
++    this.breakdowns = breakdowns;
++    this.mtbfMonthlies = mtbfMonthlies;
++    this.mttrMonthlies = mttrMonthlies;
++    this.marMonthlies = marMonthlies;
++    this.technicianMonthlies = technicianMonthlies;
++    this.pmCompletionMonthlies = pmCompletionMonthlies;
++    this.clock = clock;
++    this.transactionTemplate = new TransactionTemplate(transactionManager);
++  }
++
++  /** Outcome of one refresh pass for one KPI type/month. */
++  public record RefreshOutcome(KpiType type, LocalDate month, KpiAggregateRefreshStatus status,
++      String message) {
++
++    static RefreshOutcome skipped(KpiType type, LocalDate month) {
++      return new RefreshOutcome(type, month, KpiAggregateRefreshStatus.RUNNING,
++          "refresh already in flight for " + type.refreshKey(month));
++    }
++  }
++
++  /** Refreshes every KPI type for the month; each type gets its own gated pass. */
++  public List<RefreshOutcome> refreshMonth(LocalDate month) {
++    var outcomes = new ArrayList<RefreshOutcome>();
++    for (var type : KpiType.values()) {
++      outcomes.add(refreshType(type, month));
++    }
++    return outcomes;
++  }
++
++  /**
++   * One gated refresh pass: RUNNING blocks a concurrent same-key pass; SUCCESS/FAILED
++   * transitions are logged with traceId + row-count evidence. The compute runs in a
++   * transaction so a failure rolls back partial upserts while the FAILED marker
++   * (REQUIRES_NEW) survives.
++   */
++  public RefreshOutcome refreshType(KpiType type, LocalDate month) {
++    var key = type.refreshKey(month);
++    if (!gate.tryStart(key)) {
++      log.info("[KPI] refresh {} already RUNNING — skipping concurrent pass", key);
++      return RefreshOutcome.skipped(type, month);
++    }
++    var traceId = PolicyDecisionPoint.currentTraceId();
++    try {
++      var rows = transactionTemplate.execute(status -> compute(type, month));
++      var message = "traceId=" + traceId + " rows=" + rows;
++      gate.finish(key, KpiAggregateRefreshStatus.SUCCESS, message);
++      log.info("[KPI] refresh {} SUCCESS {}", key, message);
++      return new RefreshOutcome(type, month, KpiAggregateRefreshStatus.SUCCESS, message);
++    } catch (RuntimeException exception) {
++      var message = "traceId=" + traceId + " error=" + safeMessage(exception);
++      gate.finish(key, KpiAggregateRefreshStatus.FAILED, message);
++      log.error("[KPI] refresh {} FAILED {}", key, message, exception);
++      return new RefreshOutcome(type, month, KpiAggregateRefreshStatus.FAILED, message);
++    }
++  }
++
++  private int compute(KpiType type, LocalDate month) {
++    var from = month.atStartOfDay().toInstant(ZoneOffset.UTC);
++    var to = month.plusMonths(1).atStartOfDay().toInstant(ZoneOffset.UTC);
++    return switch (type) {
++      case BREAKDOWN -> refreshBreakdown(month, from, to);
++      case MTBF -> refreshMtbf(month, from, to);
++      case MTTR -> refreshMttr(month, from, to);
++      case MAR -> refreshMar(month, from, to);
++      case PM_COMPLETION -> refreshPmCompletion(month, from, to);
++      case TECHNICIAN -> refreshTechnician(month, from, to);
++    };
++  }
++
++  // ---------------------------------------------------------------------------
++  // Per-type refreshes
++  // ---------------------------------------------------------------------------
++
++  private int refreshBreakdown(LocalDate month, Instant from, Instant to) {
++    var stops = source.findBreakdownStops(from, to);
++    var countByPlant = new LinkedHashMap<UUID, Integer>();
++    for (var stop : stops) {
++      countByPlant.merge(stop.plantId(), 1, Integer::sum);
++    }
++    var now = Instant.now(clock);
++    int rows = 0;
++    for (var plantId : source.findAllPlantIds()) {
++      var count = countByPlant.getOrDefault(plantId, 0);
++      var existing = breakdowns.findByPlantIdAndMonth(plantId, month);
++      var entity = new KpiMonthlyBreakdownEntity(
++          existing.map(KpiMonthlyBreakdownEntity::getId).orElseGet(UUID::randomUUID),
++          plantId, month, count,
++          existing.map(KpiMonthlyBreakdownEntity::getCreatedAt).orElse(now), now);
++      breakdowns.saveAndFlush(entity);
++      rows++;
++    }
++    return rows;
++  }
++
++  private int refreshMtbf(LocalDate month, Instant from, Instant to) {
++    // Full stop history per machine (window only selects the month's gaps); ordering
++    // by the derived woStopAt is the spec's explicit fix for the reference id-ordering bug.
++    var allStops = source.findBreakdownStops(Instant.EPOCH, to);
++    var byMachine = new LinkedHashMap<UUID, List<BreakdownStop>>();
++    var machinePlant = new HashMap<UUID, UUID>();
++    for (var stop : allStops) {
++      byMachine.computeIfAbsent(stop.machineId(), k -> new ArrayList<>()).add(stop);
++      machinePlant.put(stop.machineId(), stop.plantId());
++    }
++    var now = Instant.now(clock);
++    int rows = 0;
++    var computedMachines = new HashSet<UUID>();
++    for (var entry : byMachine.entrySet()) {
++      var stops = entry.getValue().stream()
++          .sorted(Comparator.comparing(BreakdownStop::woStopAt))
++          .toList();
++      if (stops.size() < 2) {
++        continue; // explicit insufficient-data: no row, never a fabricated value
++      }
++      BigDecimal totalDays = BigDecimal.ZERO;
++      int gaps = 0;
++      for (int i = 1; i < stops.size(); i++) {
++        var gapMinutes = Duration.between(stops.get(i - 1).woStopAt(), stops.get(i).woStopAt()).toMinutes();
++        if (gapMinutes <= 0) {
++          continue;
++        }
++        var gapMonth = LocalDate.ofInstant(stops.get(i).woStopAt(), ZoneOffset.UTC)
++            .withDayOfMonth(1);
++        if (gapMonth.equals(month)) {
++          totalDays = totalDays.add(BigDecimal.valueOf(gapMinutes).divide(MINUTES_PER_DAY, 6, RoundingMode.HALF_UP));
++          gaps++;
++        }
++      }
++      if (gaps == 0) {
++        continue;
++      }
++      var mtbfDays = totalDays.divide(BigDecimal.valueOf(gaps), SCALE, RoundingMode.HALF_UP);
++      var machineId = entry.getKey();
++      var existing = mtbfMonthlies.findByMachineIdAndMonth(machineId, month);
++      var entity = new KpiMtbfMonthlyEntity(
++          existing.map(KpiMtbfMonthlyEntity::getId).orElseGet(UUID::randomUUID),
++          machinePlant.get(machineId), machineId, month, mtbfDays,
++          existing.map(KpiMtbfMonthlyEntity::getCreatedAt).orElse(now), now);
++      mtbfMonthlies.saveAndFlush(entity);
++      computedMachines.add(machineId);
++      rows++;
++    }
++    // Review 20-1: a machine that dropped below two stops after a data correction must
++    // not keep serving a stale row — delete month rows absent from the computed set.
++    mtbfMonthlies.findByMonth(month).stream()
++        .filter(r -> !computedMachines.contains(r.getMachineId()))
++        .forEach(mtbfMonthlies::delete);
++    return rows;
++  }
++
++  private int refreshMttr(LocalDate month, Instant from, Instant to) {
++    var stops = source.findBreakdownStops(Instant.EPOCH, to);
++    var stopByWorkOrder = new HashMap<String, BreakdownStop>();
++    for (var stop : stops) {
++      stopByWorkOrder.put(stop.workOrderId(), stop);
++    }
++    // Cumulative per workorder FIRST (spec: MTTR = cumulative work-log durations per
++    // workorder), then the mean across the plant's workorders stopped in this month.
++    var wallByWorkOrder = new LinkedHashMap<String, BigDecimal>();
++    var workingByWorkOrder = new LinkedHashMap<String, BigDecimal>();
++    for (var interval : source.findClosedBreakdownRepairLogs()) {
++      var stop = stopByWorkOrder.get(interval.workOrderId());
++      if (stop == null || !stop.woStopAt().isBefore(to)
++          || !LocalDate.ofInstant(stop.woStopAt(), ZoneOffset.UTC).withDayOfMonth(1).equals(month)) {
++        continue;
++      }
++      var wall = BigDecimal.valueOf(
++          Duration.between(interval.startTime(), interval.endTime()).toMinutes());
++      // Review 20-1: the v1 calendar counts whole working days, so business minutes can
++      // exceed the interval's wall duration — clamp working <= wall per log.
++      var working = BigDecimal.valueOf(
++          calendar.workingMinutes(interval.plantId(), interval.startTime(), interval.endTime()))
++          .min(wall);
++      wallByWorkOrder.merge(interval.workOrderId(), wall, BigDecimal::add);
++      workingByWorkOrder.merge(interval.workOrderId(), working, BigDecimal::add);
++    }
++    var wallByPlant = new HashMap<UUID, List<BigDecimal>>();
++    var workingByPlant = new HashMap<UUID, List<BigDecimal>>();
++    for (var entry : wallByWorkOrder.entrySet()) {
++      var plantId = stopByWorkOrder.get(entry.getKey()).plantId();
++      wallByPlant.computeIfAbsent(plantId, k -> new ArrayList<>()).add(entry.getValue());
++      workingByPlant.computeIfAbsent(plantId, k -> new ArrayList<>())
++          .add(workingByWorkOrder.get(entry.getKey()));
++    }
++    var now = Instant.now(clock);
++    int rows = 0;
++    for (var plantId : source.findAllPlantIds()) {
++      BigDecimal wallMean = mean(wallByPlant.get(plantId));
++      BigDecimal workingMean = mean(workingByPlant.get(plantId));
++      var existing = mttrMonthlies.findByPlantIdAndMonth(plantId, month);
++      var entity = new KpiMttrMonthlyEntity(
++          existing.map(KpiMttrMonthlyEntity::getId).orElseGet(UUID::randomUUID),
++          plantId, month, wallMean, workingMean,
++          existing.map(KpiMttrMonthlyEntity::getCreatedAt).orElse(now), now);
++      mttrMonthlies.saveAndFlush(entity);
++      rows++;
++    }
++    return rows;
++  }
++
++  private int refreshMar(LocalDate month, Instant from, Instant to) {
++    var now = Instant.now(clock);
++    int rows = 0;
++    for (var plantId : source.findAllPlantIds()) {
++      var inputs = source.findMarInputs(plantId, from, to);
++      BigDecimal marPercent = null;
++      String sourceStatus;
++      String sourceMessage;
++      long planned = 0L;
++      long downtime = 0L;
++      if (inputs.isPresent() && inputs.get().plannedAvailableMinutes() > 0) {
++        var in = inputs.get();
++        planned = in.plannedAvailableMinutes();
++        downtime = in.downtimeMinutes();
++        // Review 20-1: downtime exceeding planned (bad telemetry) must not persist a
++        // negative availability ratio — clamp to [0, 100].
++        marPercent = BigDecimal.valueOf(Math.max(0L, planned - downtime))
++            .multiply(HUNDRED)
++            .divide(BigDecimal.valueOf(planned), SCALE, RoundingMode.HALF_UP)
++            .min(HUNDRED);
++        sourceStatus = KpiSourceStatus.COMPLETE.name();
++        sourceMessage = null;
++      } else {
++        sourceStatus = KpiSourceStatus.INSUFFICIENT_DATA.name();
++        sourceMessage = inputs.isEmpty()
++            ? "no telemetry availability source for month " + month
++            : "planned available minutes is zero for month " + month;
++      }
++      var existing = marMonthlies.findByPlantIdAndMonth(plantId, month);
++      var entity = new KpiMarMonthlyEntity(
++          existing.map(KpiMarMonthlyEntity::getId).orElseGet(UUID::randomUUID),
++          plantId, month, clampInt(planned), clampInt(downtime), marPercent, sourceStatus,
++          sourceMessage, existing.map(KpiMarMonthlyEntity::getCreatedAt).orElse(now), now);
++      marMonthlies.saveAndFlush(entity);
++      rows++;
++    }
++    return rows;
++  }
++
++  private int refreshPmCompletion(LocalDate month, Instant from, Instant to) {
++    var now = Instant.now(clock);
++    int rows = 0;
++    for (var plantId : source.findAllPlantIds()) {
++      var planned = source.countPmPlanned(plantId, month, month.plusMonths(1));
++      var completed = source.countPmCompleted(plantId, month, month.plusMonths(1));
++      BigDecimal rate = null;
++      String sourceStatus;
++      String sourceMessage;
++      if (planned == 0) {
++        sourceStatus = KpiSourceStatus.INSUFFICIENT_DATA.name();
++        sourceMessage = "no planned PM workorders for month " + month;
++      } else {
++        // Review 20-1: completed executions can exceed planned when a WO scheduled in a
++        // prior month completes in this one — clamp the rate to 100.
++        rate = BigDecimal.valueOf(completed).multiply(HUNDRED)
++            .divide(BigDecimal.valueOf(planned), SCALE, RoundingMode.HALF_UP)
++            .min(HUNDRED);
++        sourceStatus = KpiSourceStatus.COMPLETE.name();
++        sourceMessage = null;
++      }
++      var existing = pmCompletionMonthlies.findByPlantIdAndMonth(plantId, month);
++      var entity = new KpiPmCompletionMonthlyEntity(
++          existing.map(KpiPmCompletionMonthlyEntity::getId).orElseGet(UUID::randomUUID),
++          plantId, month, rate, clampInt(completed), clampInt(planned), sourceStatus,
++          sourceMessage, existing.map(KpiPmCompletionMonthlyEntity::getCreatedAt).orElse(now), now);
++      pmCompletionMonthlies.saveAndFlush(entity);
++      rows++;
++    }
++    return rows;
++  }
++
++  private int refreshTechnician(LocalDate month, Instant from, Instant to) {
++    var logs = source.findTechnicianLogs(from, to);
++    var ratings = source.findTechnicianRatings(from, to);
++
++    // total_wo: distinct workorders per (plant, technician); logCount per workorder for FTF.
++    // Review 20-1: keyed by (plant, technician) — a technician working in two plants gets
++    // one row per plant (matching the uq_kpi_technician_monthlies constraint), never a
++    // first-plant-wins fold.
++    var wosByTechPlant = new LinkedHashMap<UUID, Map<UUID, Set<String>>>();
++    var logCountByWorkOrder = new HashMap<String, Integer>();
++    for (var row : logs) {
++      wosByTechPlant.computeIfAbsent(row.technicianId(), k -> new LinkedHashMap<>())
++          .computeIfAbsent(row.plantId(), k -> new HashSet<>()).add(row.workOrderId());
++      logCountByWorkOrder.merge(row.workOrderId(), 1, Integer::sum);
++    }
++    var ratingSumByTechPlant = new HashMap<UUID, Map<UUID, long[]>>();
++    for (var row : ratings) {
++      var byPlant = ratingSumByTechPlant.computeIfAbsent(row.technicianId(), k -> new HashMap<>());
++      var acc = byPlant.computeIfAbsent(row.plantId(), k -> new long[2]);
++      acc[0] += row.score();
++      acc[1] += 1;
++    }
++
++    var now = Instant.now(clock);
++    int rows = 0;
++    var computedKeys = new HashSet<String>();
++    for (var techEntry : wosByTechPlant.entrySet()) {
++      var technicianId = techEntry.getKey();
++      for (var plantEntry : techEntry.getValue().entrySet()) {
++        var plantId = plantEntry.getKey();
++        var wos = plantEntry.getValue();
++        BigDecimal averageRating = null;
++        var acc = ratingSumByTechPlant.getOrDefault(technicianId, Map.of()).get(plantId);
++        if (acc != null && acc[1] > 0) {
++          averageRating = BigDecimal.valueOf(acc[0]).divide(BigDecimal.valueOf(acc[1]),
++              SCALE, RoundingMode.HALF_UP);
++        }
++        var firstTimeFix = wos.stream().filter(wo -> logCountByWorkOrder.getOrDefault(wo, 0) == 1).count();
++        BigDecimal ftfRate = wos.isEmpty() ? null
++            : BigDecimal.valueOf(firstTimeFix).multiply(HUNDRED)
++                .divide(BigDecimal.valueOf(wos.size()), SCALE, RoundingMode.HALF_UP);
++        var existing = technicianMonthlies.findByPlantIdAndTechnicianIdAndMonth(plantId, technicianId, month);
++        var entity = new KpiTechnicianMonthlyEntity(
++            existing.map(KpiTechnicianMonthlyEntity::getId).orElseGet(UUID::randomUUID),
++            plantId, technicianId, month, averageRating, wos.size(), ftfRate,
++            existing.map(KpiTechnicianMonthlyEntity::getCreatedAt).orElse(now), now);
++        technicianMonthlies.saveAndFlush(entity);
++        computedKeys.add(plantId + ":" + technicianId);
++        rows++;
++      }
++    }
++    // Review 20-1: delete month rows whose (plant, technician) is absent from the
++    // computed set — a technician whose logs were corrected away must not keep a stale row.
++    technicianMonthlies.findByMonth(month).stream()
++        .filter(r -> !computedKeys.contains(r.getPlantId() + ":" + r.getTechnicianId()))
++        .forEach(technicianMonthlies::delete);
++    return rows;
++  }
++
++  // ---------------------------------------------------------------------------
++  // Helpers
++  // ---------------------------------------------------------------------------
++
++  private static BigDecimal mean(List<BigDecimal> values) {
++    if (values == null || values.isEmpty()) {
++      return null; // explicit insufficient-data downstream, never a fabricated zero
++    }
++    var total = values.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
++    return total.divide(BigDecimal.valueOf(values.size()), SCALE, RoundingMode.HALF_UP);
++  }
++
++  private static int clampInt(long value) {
++    return (int) Math.min(Integer.MAX_VALUE, Math.max(0L, value));
++  }
++
++  private static String safeMessage(RuntimeException exception) {
++    // Review 20-1: the refresh-log message is returned by the materialized-read API —
++    // store only the exception class name; the full detail goes to the server log.
++    return exception.getClass().getSimpleName();
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiQueryService.java b/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiQueryService.java
+new file mode 100644
+index 0000000..ac56df7
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiQueryService.java
+@@ -0,0 +1,246 @@
++package com.syncro.kpi.application;
++
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.kpi.domain.KpiAggregateRefreshStatus;
++import com.syncro.kpi.domain.KpiType;
++import com.syncro.kpi.infrastructure.db.KpiAggregateRefreshLogRepository;
++import com.syncro.kpi.infrastructure.db.KpiMarMonthlyRepository;
++import com.syncro.kpi.infrastructure.db.KpiMonthlyBreakdownRepository;
++import com.syncro.kpi.infrastructure.db.KpiMtbfMonthlyRepository;
++import com.syncro.kpi.infrastructure.db.KpiMttrMonthlyRepository;
++import com.syncro.kpi.infrastructure.db.KpiPmCompletionMonthlyRepository;
++import com.syncro.kpi.infrastructure.db.KpiTargetEntity;
++import com.syncro.kpi.infrastructure.db.KpiTargetRepository;
++import com.syncro.kpi.infrastructure.db.KpiTechnicianMonthlyRepository;
++import com.syncro.org.application.OperationalScope;
++import java.math.BigDecimal;
++import java.time.Instant;
++import java.time.LocalDate;
++import java.util.Comparator;
++import java.util.HashSet;
++import java.util.List;
++import java.util.UUID;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++
++/**
++ * Scope-filtered reads of materialized KPI rows (story 20-1, AD-20). Dashboards read
++ * precomputed monthly rows here — never on-the-fly computation (spec "Never"). A month
++ * with no row is an explicit INSUFFICIENT_DATA response, never a fabricated zero.
++ *
++ * <p>Every read is filtered by the caller's organizational scope (AD-2): leaders see
++ * their machine groups, managers their plants, global roles everything. The actual-vs-
++ * target comparison joins {@code kpi_targets} for the requested plant/month and
++ * returns a stable status string (non-color-only communication, epic-20 UX rule).
++ */
++@Service
++public class KpiQueryService {
++
++  /** Read status of a materialized response (uppercase contract string). */
++  public static final String STATUS_AVAILABLE = "AVAILABLE";
++  public static final String STATUS_INSUFFICIENT_DATA = "INSUFFICIENT_DATA";
++
++  private final KpiScopeService scopeService;
++  private final KpiSourceDataReader source;
++  private final KpiMonthlyBreakdownRepository breakdowns;
++  private final KpiMtbfMonthlyRepository mtbfMonthlies;
++  private final KpiMttrMonthlyRepository mttrMonthlies;
++  private final KpiMarMonthlyRepository marMonthlies;
++  private final KpiTechnicianMonthlyRepository technicianMonthlies;
++  private final KpiPmCompletionMonthlyRepository pmCompletionMonthlies;
++  private final KpiTargetRepository targets;
++  private final KpiAggregateRefreshLogRepository refreshLogs;
++
++  public KpiQueryService(KpiScopeService scopeService, KpiSourceDataReader source,
++      KpiMonthlyBreakdownRepository breakdowns, KpiMtbfMonthlyRepository mtbfMonthlies,
++      KpiMttrMonthlyRepository mttrMonthlies, KpiMarMonthlyRepository marMonthlies,
++      KpiTechnicianMonthlyRepository technicianMonthlies,
++      KpiPmCompletionMonthlyRepository pmCompletionMonthlies, KpiTargetRepository targets,
++      KpiAggregateRefreshLogRepository refreshLogs) {
++    this.scopeService = scopeService;
++    this.source = source;
++    this.breakdowns = breakdowns;
++    this.mtbfMonthlies = mtbfMonthlies;
++    this.mttrMonthlies = mttrMonthlies;
++    this.marMonthlies = marMonthlies;
++    this.technicianMonthlies = technicianMonthlies;
++    this.pmCompletionMonthlies = pmCompletionMonthlies;
++    this.targets = targets;
++    this.refreshLogs = refreshLogs;
++  }
++
++  // ---------------------------------------------------------------------------
++  // Views (API read models — records, camelCase JSON)
++  // ---------------------------------------------------------------------------
++
++  public record MtbfRow(UUID plantId, UUID machineId, BigDecimal mtbfDays) {
++  }
++
++  public record MttrRow(UUID plantId, BigDecimal wallClockMinutes, BigDecimal actualWorkingMinutes) {
++  }
++
++  public record MarRow(UUID plantId, int plannedAvailableMinutes, int downtimeMinutes,
++      BigDecimal marPercent, String sourceStatus, String sourceMessage) {
++  }
++
++  public record PmCompletionRow(UUID plantId, BigDecimal completionRate, int completedCount,
++      int plannedCount, String sourceStatus, String sourceMessage) {
++  }
++
++  public record TechnicianRow(UUID plantId, UUID technicianId, BigDecimal averageRating,
++      int totalWo, BigDecimal firstTimeFixRate) {
++  }
++
++  public record BreakdownRow(UUID plantId, int count) {
++  }
++
++  public record TargetView(UUID plantId, LocalDate month, Integer monthlyBreakdownTarget,
++      BigDecimal mtbfTargetDays, BigDecimal mttrTargetMinutes, BigDecimal oeeQualityPercent,
++      BigDecimal oeePerformancePercent) {
++  }
++
++  public record RefreshView(String refreshKey, KpiAggregateRefreshStatus status,
++      Instant refreshedAt, String message) {
++  }
++
++  public record MaterializedResponse(String type, LocalDate month, String status,
++      List<MtbfRow> mtbfRows, List<MttrRow> mttrRows, List<MarRow> marRows,
++      List<PmCompletionRow> pmCompletionRows, List<TechnicianRow> technicianRows,
++      List<BreakdownRow> breakdownRows, TargetView target, RefreshView refresh) {
++
++    /** Explicit insufficient-data response — empty lists, never fabricated zeros. */
++    static MaterializedResponse insufficient(KpiType type, LocalDate month, TargetView target,
++        RefreshView refresh) {
++      return new MaterializedResponse(type.key(), month, STATUS_INSUFFICIENT_DATA,
++          List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), target, refresh);
++    }
++  }
++
++  // ---------------------------------------------------------------------------
++  // Reads
++  // ---------------------------------------------------------------------------
++
++  /**
++   * Scope-filtered materialized read for one KPI type/month. {@code plantId} optionally
++   * narrows the response to one plant (must be in scope). No rows in scope → explicit
++   * INSUFFICIENT_DATA with empty lists (never a fabricated zero).
++   */
++  @Transactional(readOnly = true)
++  public MaterializedResponse materialized(AuthenticatedUser user, KpiType type, LocalDate month,
++      UUID plantId) {
++    var scope = scopeService.derive(user);
++    if (plantId != null && !scopeService.plantVisible(scope, plantId)) {
++      throw new KpiPlantForbiddenException();
++    }
++    var refresh = refreshLogs.findByRefreshKey(type.refreshKey(month))
++        .map(l -> new RefreshView(l.getRefreshKey(), l.getStatus(), l.getRefreshedAt(),
++            l.getMessage()))
++        .orElse(null);
++    var target = plantId == null ? null
++        : targets.findByPlantIdAndMonth(plantId, month).map(KpiQueryService::toTargetView).orElse(null);
++
++    return switch (type) {
++      case MTBF -> {
++        // Same OR semantics as the 14-2 analytics filter: plant-scoped users see their
++        // plants' rows; leaders additionally see rows of machines in their groups.
++        var scopedMachines = scope.plantIds() == null ? null
++            : new HashSet<>(source.findMachineIdsByGroupIds(scopeService.groupIds(scope)));
++        var rows = mtbfMonthlies.findByMonth(month).stream()
++            .filter(r -> visiblePlant(scope, r.getPlantId())
++                || (scopedMachines != null && scopedMachines.contains(r.getMachineId())))
++            .filter(r -> plantId == null || plantId.equals(r.getPlantId()))
++            .map(r -> new MtbfRow(r.getPlantId(), r.getMachineId(), r.getMtbfDays()))
++            .sorted(Comparator.comparing(MtbfRow::machineId))
++            .toList();
++        yield rows.isEmpty()
++            ? MaterializedResponse.insufficient(type, month, target, refresh)
++            : new MaterializedResponse(type.key(), month, STATUS_AVAILABLE, rows,
++                List.of(), List.of(), List.of(), List.of(), List.of(), target, refresh);
++      }
++      case MTTR -> {
++        var rows = mttrMonthlies.findByMonth(month).stream()
++            .filter(r -> visiblePlant(scope, r.getPlantId()))
++            .filter(r -> plantId == null || plantId.equals(r.getPlantId()))
++            .map(r -> new MttrRow(r.getPlantId(), r.getWallClockMttrMinutes(),
++                r.getActualWorkingMttrMinutes()))
++            .sorted(Comparator.comparing(MttrRow::plantId))
++            .toList();
++        yield rows.isEmpty()
++            ? MaterializedResponse.insufficient(type, month, target, refresh)
++            : new MaterializedResponse(type.key(), month, STATUS_AVAILABLE, List.of(), rows,
++                List.of(), List.of(), List.of(), List.of(), target, refresh);
++      }
++      case MAR -> {
++        var rows = marMonthlies.findByMonth(month).stream()
++            .filter(r -> visiblePlant(scope, r.getPlantId()))
++            .filter(r -> plantId == null || plantId.equals(r.getPlantId()))
++            .map(r -> new MarRow(r.getPlantId(), r.getPlannedAvailableMinutes(),
++                r.getDowntimeMinutes(), r.getMarPercent(), r.getSourceStatus(),
++                r.getSourceMessage()))
++            .sorted(Comparator.comparing(MarRow::plantId))
++            .toList();
++        yield rows.isEmpty()
++            ? MaterializedResponse.insufficient(type, month, target, refresh)
++            : new MaterializedResponse(type.key(), month, STATUS_AVAILABLE, List.of(), List.of(),
++                rows, List.of(), List.of(), List.of(), target, refresh);
++      }
++      case PM_COMPLETION -> {
++        var rows = pmCompletionMonthlies.findByMonth(month).stream()
++            .filter(r -> visiblePlant(scope, r.getPlantId()))
++            .filter(r -> plantId == null || plantId.equals(r.getPlantId()))
++            .map(r -> new PmCompletionRow(r.getPlantId(), r.getCompletionRate(),
++                r.getCompletedCount(), r.getPlannedCount(), r.getSourceStatus(),
++                r.getSourceMessage()))
++            .sorted(Comparator.comparing(PmCompletionRow::plantId))
++            .toList();
++        yield rows.isEmpty()
++            ? MaterializedResponse.insufficient(type, month, target, refresh)
++            : new MaterializedResponse(type.key(), month, STATUS_AVAILABLE, List.of(), List.of(),
++                List.of(), rows, List.of(), List.of(), target, refresh);
++      }
++      case TECHNICIAN -> {
++        var rows = technicianMonthlies.findByMonth(month).stream()
++            .filter(r -> visiblePlant(scope, r.getPlantId()))
++            .filter(r -> plantId == null || plantId.equals(r.getPlantId()))
++            .map(r -> new TechnicianRow(r.getPlantId(), r.getTechnicianId(), r.getAverageRating(),
++                r.getTotalWo(), r.getFirstTimeFixRate()))
++            .sorted(Comparator.comparing(TechnicianRow::technicianId))
++            .toList();
++        yield rows.isEmpty()
++            ? MaterializedResponse.insufficient(type, month, target, refresh)
++            : new MaterializedResponse(type.key(), month, STATUS_AVAILABLE, List.of(), List.of(),
++                List.of(), List.of(), rows, List.of(), target, refresh);
++      }
++      case BREAKDOWN -> {
++        var rows = breakdowns.findByMonth(month).stream()
++            .filter(r -> visiblePlant(scope, r.getPlantId()))
++            .filter(r -> plantId == null || plantId.equals(r.getPlantId()))
++            .map(r -> new BreakdownRow(r.getPlantId(), r.getCount()))
++            .sorted(Comparator.comparing(BreakdownRow::plantId))
++            .toList();
++        yield rows.isEmpty()
++            ? MaterializedResponse.insufficient(type, month, target, refresh)
++            : new MaterializedResponse(type.key(), month, STATUS_AVAILABLE, List.of(), List.of(),
++                List.of(), List.of(), List.of(), rows, target, refresh);
++      }
++    };
++  }
++
++  // ---------------------------------------------------------------------------
++  // Helpers
++  // ---------------------------------------------------------------------------
++
++  private boolean visiblePlant(OperationalScope scope, UUID plantId) {
++    return scope.plantIds() == null || scope.plantIds().contains(plantId);
++  }
++
++  private static TargetView toTargetView(KpiTargetEntity t) {
++    return new TargetView(t.getPlantId(), t.getMonth(), t.getMonthlyBreakdownTarget(),
++        t.getMtbfTargetDays(), t.getMttrTargetMinutes(), t.getOeeQualityPercent(),
++        t.getOeePerformancePercent());
++  }
++
++  /** Scope-denied when the requested plant is outside the caller's derived scope. */
++  public static class KpiPlantForbiddenException extends RuntimeException {
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiRefreshGate.java b/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiRefreshGate.java
+new file mode 100644
+index 0000000..970ebfc
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiRefreshGate.java
+@@ -0,0 +1,86 @@
++package com.syncro.kpi.application;
++
++import com.syncro.kpi.domain.KpiAggregateRefreshStatus;
++import com.syncro.kpi.infrastructure.db.KpiAggregateRefreshLogEntity;
++import com.syncro.kpi.infrastructure.db.KpiAggregateRefreshLogRepository;
++import java.time.Clock;
++import java.time.Duration;
++import java.time.Instant;
++import java.util.UUID;
++import org.springframework.dao.DataIntegrityViolationException;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Propagation;
++import org.springframework.transaction.annotation.Transactional;
++
++/**
++ * Refresh-log gating for KPI materialization (story 20-1, blueprint G7, AD-20). One
++ * row per {@code refresh_key} (e.g. {@code mtbf:2026-08}): RUNNING marks an in-flight
++ * pass and blocks a concurrent refresh of the same key; SUCCESS/FAILED allows retry.
++ *
++ * <p>Both methods commit in their own transaction ({@code REQUIRES_NEW}) so the
++ * RUNNING marker is visible to a concurrent caller before the (possibly long) compute
++ * finishes, and a FAILED outcome survives the compute transaction's rollback.
++ *
++ * <p>Review hardening (20-1): the claim takes a pessimistic row lock so two concurrent
++ * passes cannot both observe a non-RUNNING row; a first insert racing the unique
++ * constraint falls back to the locked claim; and a RUNNING marker older than
++ * {@link #STALE_RUNNING_AFTER} is reclaimed, so a crashed pass cannot wedge a key
++ * forever.
++ */
++@Service
++public class KpiRefreshGate {
++
++  /** A RUNNING marker older than this is treated as a crashed pass and reclaimed. */
++  static final Duration STALE_RUNNING_AFTER = Duration.ofHours(2);
++
++  private final KpiAggregateRefreshLogRepository logs;
++  private final Clock clock;
++
++  public KpiRefreshGate(KpiAggregateRefreshLogRepository logs, Clock clock) {
++    this.logs = logs;
++    this.clock = clock;
++  }
++
++  /**
++   * Claims the key for a refresh pass. Returns false when a live RUNNING pass already
++   * owns it (concurrent refresh skipped); otherwise flips the row to RUNNING and
++   * returns true. Stale RUNNING rows (crashed pass) are reclaimed.
++   */
++  @Transactional(propagation = Propagation.REQUIRES_NEW)
++  public boolean tryStart(String refreshKey) {
++    var now = Instant.now(clock);
++    var existing = logs.findByRefreshKeyForUpdate(refreshKey);
++    if (existing.isPresent()) {
++      return claim(existing.get(), now);
++    }
++    try {
++      logs.saveAndFlush(new KpiAggregateRefreshLogEntity(UUID.randomUUID(), refreshKey, now,
++          KpiAggregateRefreshStatus.RUNNING, null));
++      return true;
++    } catch (DataIntegrityViolationException race) {
++      // A concurrent pass inserted the row first and owns the RUNNING marker — skip;
++      // that pass materializes this key. (ponytail: no retry-in-new-tx; the sweep is
++      // idempotent and the next pass covers any miss.)
++      return false;
++    }
++  }
++
++  private boolean claim(KpiAggregateRefreshLogEntity log, Instant now) {
++    if (log.getStatus() == KpiAggregateRefreshStatus.RUNNING
++        && !log.getRefreshedAt().isBefore(now.minus(STALE_RUNNING_AFTER))) {
++      return false;
++    }
++    log.finish(KpiAggregateRefreshStatus.RUNNING, null, now);
++    logs.saveAndFlush(log);
++    return true;
++  }
++
++  /** Terminal outcome with window/status evidence (traceId + row count in the message). */
++  @Transactional(propagation = Propagation.REQUIRES_NEW)
++  public void finish(String refreshKey, KpiAggregateRefreshStatus status, String message) {
++    logs.findByRefreshKey(refreshKey).ifPresent(log -> {
++      log.finish(status, message, Instant.now(clock));
++      logs.saveAndFlush(log);
++    });
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiScopeService.java b/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiScopeService.java
+new file mode 100644
+index 0000000..0caa3e3
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiScopeService.java
+@@ -0,0 +1,51 @@
++package com.syncro.kpi.application;
++
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.org.application.OperationalScope;
++import com.syncro.org.application.OperationalScopeService;
++import java.util.List;
++import java.util.UUID;
++import org.springframework.stereotype.Service;
++
++/**
++ * Organizational scope for KPI reads (story 20-1, AD-2). Thin consumer of the org
++ * module's single scope-derivation service — the kpi module never recomputes scope
++ * (AD-2 forbids divergent scope sets). The derived dimensions are applied to
++ * materialized-row filtering in {@link KpiQueryService}: leaders see their machine
++ * groups, managers their plants, global roles everything.
++ */
++@Service
++public class KpiScopeService {
++
++  private final OperationalScopeService scopes;
++
++  public KpiScopeService(OperationalScopeService scopes) {
++    this.scopes = scopes;
++  }
++
++  /** The caller's derived scope ({plantIds, machineGroupIds, activeTeamIds}). */
++  public OperationalScope derive(AuthenticatedUser user) {
++    return scopes.derive(user);
++  }
++
++  /**
++   * Whether the scope restricts reads to the given plant. SUPER_ADMIN (null plantIds)
++   * sees all; a restricted user sees a plant only when it is in their plantIds or they
++   * lead a group inside it (group membership is resolved by the caller against rows).
++   */
++  public boolean plantVisible(OperationalScope scope, UUID plantId) {
++    return scope.plantIds() == null || scope.plantIds().contains(plantId);
++  }
++
++  /** Machine-group ids in scope (leader groups + active team groups), as a list for queries. */
++  public List<UUID> groupIds(OperationalScope scope) {
++    var merged = new java.util.LinkedHashSet<UUID>();
++    if (scope.machineGroupIds() != null) {
++      merged.addAll(scope.machineGroupIds());
++    }
++    if (scope.activeTeamIds() != null) {
++      merged.addAll(scope.activeTeamIds());
++    }
++    return List.copyOf(merged);
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiSourceDataReader.java b/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiSourceDataReader.java
+new file mode 100644
+index 0000000..5c78731
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiSourceDataReader.java
+@@ -0,0 +1,84 @@
++package com.syncro.kpi.application;
++
++import java.time.Instant;
++import java.time.LocalDate;
++import java.util.List;
++import java.util.Optional;
++import java.util.UUID;
++
++/**
++ * Source-data port for KPI materialization (story 20-1, AD-6/AD-20). Implemented by
++ * the maintenance module's JPA adapter — the kpi module never reaches into another
++ * module's repositories (modular-monolith invariant); raw rows cross the boundary as
++ * plain records and ALL KPI arithmetic stays in {@link KpiMaterializationService}.
++ *
++ * <p>Windows are half-open {@code [from, to)} UTC instants; the monthly window is the
++ * calendar month normalized to its first-of-month DATE (spec boundary).
++ */
++public interface KpiSourceDataReader {
++
++  /**
++   * Stopped breakdown workorders (category {@code 01}, status CLOSED) with the derived
++   * {@code woStopAt} inside the window — the MTBF/breakdown-count source. Ordering is
++   * NOT guaranteed; consumers must sort by {@code woStopAt} (the reference impl's
++   * id-ordering bug is explicitly prevented here).
++   */
++  List<BreakdownStop> findBreakdownStops(Instant from, Instant to);
++
++  /**
++   * Closed-breakdown work-log intervals (both endpoints non-null) — the MTTR source.
++   * Window filtering happens in the service against the stop map so the derived
++   * {@code woStopAt} stays the single attribution key.
++   */
++  List<RepairLogInterval> findClosedBreakdownRepairLogs();
++
++  /** Work-log activity rows (log started in window) — the technician total_wo/FTF source. */
++  List<TechnicianLog> findTechnicianLogs(Instant from, Instant to);
++
++  /** Work-log rating rows for logs started in window — the technician average_rating source. */
++  List<TechnicianRating> findTechnicianRatings(Instant from, Instant to);
++
++  /** Planned PM workorders for the plant with a scheduled date in the month window. */
++  long countPmPlanned(UUID plantId, LocalDate monthFrom, LocalDate monthTo);
++
++  /**
++   * Completed PM workorders for the plant whose scheduled date falls in the month window
++   * (review 20-1: same attribution key as {@link #countPmPlanned}, so the rate can never
++   * exceed 100% from a cross-month completion).
++   */
++  long countPmCompleted(UUID plantId, LocalDate monthFrom, LocalDate monthTo);
++
++  /**
++   * Telemetry ingest availability inputs for MAR (planned/downtime minutes). Empty when
++   * no persisted telemetry availability source covers the month — the service then
++   * writes an explicit INSUFFICIENT_DATA row (never a fabricated value, AD-12).
++   */
++  Optional<MarInputs> findMarInputs(UUID plantId, Instant from, Instant to);
++
++  /** All plant ids — the per-plant refresh iteration (MAR/PM/breakdown rows per plant). */
++  List<UUID> findAllPlantIds();
++
++  /** Machine ids belonging to the given machine groups — MTBF row scope filtering. */
++  List<UUID> findMachineIdsByGroupIds(List<UUID> groupIds);
++
++  /** One stopped breakdown workorder: id, machine, plant, and the derived stop instant. */
++  record BreakdownStop(String workOrderId, UUID machineId, UUID plantId, Instant woStopAt) {
++  }
++
++  /** One closed-breakdown work-log interval attributed to its workorder and plant. */
++  record RepairLogInterval(String workOrderId, UUID plantId, UUID machineId, Instant startTime,
++      Instant endTime) {
++  }
++
++  /** One technician work-log attribution (plant, technician, workorder). */
++  record TechnicianLog(UUID technicianId, UUID plantId, String workOrderId) {
++  }
++
++  /** One technician work-log rating score (1–5) on a log started in the window. */
++  record TechnicianRating(UUID technicianId, UUID plantId, String workOrderId, int score) {
++  }
++
++  /** Telemetry-derived availability minutes for one plant-month. */
++  record MarInputs(long plannedAvailableMinutes, long downtimeMinutes) {
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiTargetService.java b/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiTargetService.java
+new file mode 100644
+index 0000000..f3d3fb2
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiTargetService.java
+@@ -0,0 +1,162 @@
++package com.syncro.kpi.application;
++
++import com.syncro.audit.application.AuditLogWriter;
++import com.syncro.audit.application.AuditRecord;
++import com.syncro.audit.domain.AuditAction;
++import com.syncro.audit.domain.AuditEntityType;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.application.PlantScopeService;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.PlantRepository;
++import com.syncro.kpi.infrastructure.db.KpiTargetEntity;
++import com.syncro.kpi.infrastructure.db.KpiTargetRepository;
++import java.math.BigDecimal;
++import java.time.Clock;
++import java.time.Instant;
++import java.time.LocalDate;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.UUID;
++import org.springframework.dao.DataIntegrityViolationException;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++
++/**
++ * KPI target CRUD per plant/month (story 20-1, blueprint G1). Mutations are
++ * SUPER_ADMIN/MANAGER_MAINTENANCE with plant access and audit-logged with previous
++ * and new values (spec "Always": target mutations audit-logged). Reads are any
++ * authenticated user within plant scope. {@code month} is normalized to the first of
++ * the month — the same key the materialized rows use for actual-vs-target joins.
++ */
++@Service
++public class KpiTargetService {
++
++  private final KpiTargetRepository targets;
++  private final PlantRepository plants;
++  private final PlantScopeService plantScopes;
++  private final AuditLogWriter auditLog;
++  private final Clock clock;
++
++  public KpiTargetService(KpiTargetRepository targets, PlantRepository plants,
++      PlantScopeService plantScopes, AuditLogWriter auditLog, Clock clock) {
++    this.targets = targets;
++    this.plants = plants;
++    this.plantScopes = plantScopes;
++    this.auditLog = auditLog;
++    this.clock = clock;
++  }
++
++  public record TargetCommand(UUID plantId, LocalDate month, Integer monthlyBreakdownTarget,
++      BigDecimal mtbfTargetDays, BigDecimal mttrTargetMinutes, BigDecimal oeeQualityPercent,
++      BigDecimal oeePerformancePercent) {
++  }
++
++  public record TargetView(UUID id, UUID plantId, String plantCode, LocalDate month,
++      Integer monthlyBreakdownTarget, BigDecimal mtbfTargetDays, BigDecimal mttrTargetMinutes,
++      BigDecimal oeeQualityPercent, BigDecimal oeePerformancePercent, UUID createdBy,
++      Instant createdAt, Instant updatedAt) {
++  }
++
++  @Transactional(readOnly = true)
++  public List<TargetView> list(AuthenticatedUser user, UUID plantId) {
++    requirePlantOrSuperAdmin(user, plantId);
++    return targets.findByPlantIdOrderByMonthAsc(plantId).stream()
++        .map(t -> toView(t, plantCode(t.getPlantId())))
++        .toList();
++  }
++
++  @Transactional
++  public TargetView upsert(AuthenticatedUser user, TargetCommand command) {
++    requireMutationRole(user);
++    requirePlantOrSuperAdmin(user, command.plantId());
++    if (!plants.existsById(command.plantId())) {
++      throw new PlantNotFoundForTargetException();
++    }
++    var month = command.month().withDayOfMonth(1);
++    var now = Instant.now(clock);
++    // Review 20-1: locked read serializes concurrent updates on the same (plant, month);
++    // an insert-vs-insert race still hits the unique constraint and maps to 409 below.
++    var existing = targets.findByPlantIdAndMonthForUpdate(command.plantId(), month);
++    if (existing.isPresent()) {
++      var previous = existing.get();
++      var previousValues = auditValues(previous);
++      // Review 20-1: partial update — null request fields keep the stored value.
++      var updated = new KpiTargetEntity(previous.getId(), previous.getPlantId(), month,
++          command.monthlyBreakdownTarget() != null ? command.monthlyBreakdownTarget()
++              : previous.getMonthlyBreakdownTarget(),
++          command.mtbfTargetDays() != null ? command.mtbfTargetDays() : previous.getMtbfTargetDays(),
++          command.mttrTargetMinutes() != null ? command.mttrTargetMinutes()
++              : previous.getMttrTargetMinutes(),
++          command.oeeQualityPercent() != null ? command.oeeQualityPercent()
++              : previous.getOeeQualityPercent(),
++          command.oeePerformancePercent() != null ? command.oeePerformancePercent()
++              : previous.getOeePerformancePercent(),
++          previous.getCreatedBy(), previous.getCreatedAt(), now);
++      var saved = targets.saveAndFlush(updated);
++      auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.KPI_TARGET,
++          saved.getId(), saved.getPlantId() + ":" + month, saved.getPlantId(), previousValues,
++          auditValues(saved), null));
++      return toView(saved, plantCode(saved.getPlantId()));
++    }
++    try {
++      var created = targets.saveAndFlush(new KpiTargetEntity(UUID.randomUUID(), command.plantId(),
++          month, command.monthlyBreakdownTarget(), command.mtbfTargetDays(),
++          command.mttrTargetMinutes(), command.oeeQualityPercent(), command.oeePerformancePercent(),
++          UUID.fromString(user.id()), now, now));
++      auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.KPI_TARGET,
++          created.getId(), created.getPlantId() + ":" + month, created.getPlantId(), null,
++          auditValues(created), null));
++      return toView(created, plantCode(created.getPlantId()));
++    } catch (DataIntegrityViolationException race) {
++      // Concurrent create won the unique constraint — surface a stable conflict code.
++      throw new TargetConflictException();
++    }
++  }
++
++  private void requireMutationRole(AuthenticatedUser user) {
++    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN
++        && user.applicationRole() != ApplicationRole.MANAGER_MAINTENANCE) {
++      throw new TargetMutationForbiddenException();
++    }
++  }
++
++  private void requirePlantOrSuperAdmin(AuthenticatedUser user, UUID plantId) {
++    if (user.applicationRole() != ApplicationRole.SUPER_ADMIN) {
++      plantScopes.requirePlantAccess(user, plantId);
++    }
++  }
++
++  private String plantCode(UUID plantId) {
++    return plants.findById(plantId).map(p -> p.getCode()).orElse(null);
++  }
++
++  private static Map<String, Object> auditValues(KpiTargetEntity t) {
++    var values = new LinkedHashMap<String, Object>();
++    values.put("plantId", t.getPlantId().toString());
++    values.put("month", t.getMonth().toString());
++    values.put("monthlyBreakdownTarget", t.getMonthlyBreakdownTarget());
++    values.put("mtbfTargetDays", t.getMtbfTargetDays());
++    values.put("mttrTargetMinutes", t.getMttrTargetMinutes());
++    values.put("oeeQualityPercent", t.getOeeQualityPercent());
++    values.put("oeePerformancePercent", t.getOeePerformancePercent());
++    return values;
++  }
++
++  private static TargetView toView(KpiTargetEntity t, String plantCode) {
++    return new TargetView(t.getId(), t.getPlantId(), plantCode, t.getMonth(),
++        t.getMonthlyBreakdownTarget(), t.getMtbfTargetDays(), t.getMttrTargetMinutes(),
++        t.getOeeQualityPercent(), t.getOeePerformancePercent(), t.getCreatedBy(),
++        t.getCreatedAt(), t.getUpdatedAt());
++  }
++
++  public static class TargetMutationForbiddenException extends RuntimeException {
++  }
++
++  public static class PlantNotFoundForTargetException extends RuntimeException {
++  }
++
++  /** Concurrent create on the same (plant, month) hit the unique constraint. */
++  public static class TargetConflictException extends RuntimeException {
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/kpi/domain/KpiSourceStatus.java b/syncro/apps/backend/src/main/java/com/syncro/kpi/domain/KpiSourceStatus.java
+new file mode 100644
+index 0000000..98cda1b
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/kpi/domain/KpiSourceStatus.java
+@@ -0,0 +1,14 @@
++package com.syncro.kpi.domain;
++
++/**
++ * Provenance status carried by materialized KPI rows whose source may be unavailable
++ * (blueprint G5/G7, story 20-1). An unavailable metric is explicit — never a
++ * fabricated zero. Values are uppercase contract strings persisted in
++ * {@code source_status} (VARCHAR(20), no CHECK in V1 — the pair is free-form by design).
++ */
++public enum KpiSourceStatus {
++  /** Source data covered the whole window; the metric is trustworthy. */
++  COMPLETE,
++  /** Source data was absent or too sparse; the metric value is NULL by design. */
++  INSUFFICIENT_DATA
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/kpi/domain/KpiType.java b/syncro/apps/backend/src/main/java/com/syncro/kpi/domain/KpiType.java
+new file mode 100644
+index 0000000..ab4dd50
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/kpi/domain/KpiType.java
+@@ -0,0 +1,40 @@
++package com.syncro.kpi.domain;
++
++/**
++ * Materialized KPI families (story 20-1, AD-20). The {@code key} is the refresh_key
++ * prefix in {@code kpi_aggregate_refresh_logs} (e.g. {@code mtbf:2026-08}) and the
++ * path segment of {@code GET /api/v1/kpi/materialized/{type}}.
++ */
++public enum KpiType {
++  MTBF("mtbf"),
++  MTTR("mttr"),
++  MAR("mar"),
++  PM_COMPLETION("pm-completion"),
++  TECHNICIAN("technician"),
++  BREAKDOWN("breakdown");
++
++  private final String key;
++
++  KpiType(String key) {
++    this.key = key;
++  }
++
++  public String key() {
++    return key;
++  }
++
++  /** Refresh-log key for this type and month (month normalized to first-of-month). */
++  public String refreshKey(java.time.LocalDate month) {
++    return key + ":" + month.getYear() + "-" + String.format("%02d", month.getMonthValue());
++  }
++
++  /** Case-insensitive lookup for the API path segment; null when unknown. */
++  public static KpiType fromPath(String value) {
++    for (var type : values()) {
++      if (type.key.equalsIgnoreCase(value)) {
++        return type;
++      }
++    }
++    return null;
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiAggregateRefreshLogRepository.java b/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiAggregateRefreshLogRepository.java
+index 264ccf1..75cef76 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiAggregateRefreshLogRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiAggregateRefreshLogRepository.java
+@@ -1,11 +1,24 @@
+ package com.syncro.kpi.infrastructure.db;
+ 
++import jakarta.persistence.LockModeType;
+ import java.util.Optional;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
++import org.springframework.data.jpa.repository.Lock;
++import org.springframework.data.jpa.repository.Query;
++import org.springframework.data.repository.query.Param;
+ 
+ /** Persistence for {@code kpi_aggregate_refresh_logs} (blueprint G7, story 15-2). */
+ public interface KpiAggregateRefreshLogRepository extends JpaRepository<KpiAggregateRefreshLogEntity, UUID> {
+ 
+   Optional<KpiAggregateRefreshLogEntity> findByRefreshKey(String refreshKey);
++
++  /**
++   * Story 20-1 review: row lock for the gate claim — serializes concurrent tryStart
++   * for the same key so two passes cannot both observe a non-RUNNING row (19-4
++   * findByIdForUpdate pattern).
++   */
++  @Lock(LockModeType.PESSIMISTIC_WRITE)
++  @Query("select l from KpiAggregateRefreshLogEntity l where l.refreshKey = :refreshKey")
++  Optional<KpiAggregateRefreshLogEntity> findByRefreshKeyForUpdate(@Param("refreshKey") String refreshKey);
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiMarMonthlyRepository.java b/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiMarMonthlyRepository.java
+index ee69f14..9c962a2 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiMarMonthlyRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiMarMonthlyRepository.java
+@@ -1,11 +1,14 @@
+ package com.syncro.kpi.infrastructure.db;
+ 
++import java.util.List;
+ import java.util.Optional;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
+ 
+-/** Persistence for {@code kpi_mar_monthlies} (blueprint G5, story 15-2). */
++/** Persistence for {@code kpi_mar_monthlies} (blueprint G5, story 15-2; reads for 20-1). */
+ public interface KpiMarMonthlyRepository extends JpaRepository<KpiMarMonthlyEntity, UUID> {
+ 
+   Optional<KpiMarMonthlyEntity> findByPlantIdAndMonth(UUID plantId, java.time.LocalDate month);
++
++  List<KpiMarMonthlyEntity> findByMonth(java.time.LocalDate month);
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiMonthlyBreakdownRepository.java b/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiMonthlyBreakdownRepository.java
+index 111f2bc..2565296 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiMonthlyBreakdownRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiMonthlyBreakdownRepository.java
+@@ -1,5 +1,6 @@
+ package com.syncro.kpi.infrastructure.db;
+ 
++import java.util.List;
+ import java.util.Optional;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
+@@ -8,4 +9,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
+ public interface KpiMonthlyBreakdownRepository extends JpaRepository<KpiMonthlyBreakdownEntity, UUID> {
+ 
+   Optional<KpiMonthlyBreakdownEntity> findByPlantIdAndMonth(UUID plantId, java.time.LocalDate month);
++
++  List<KpiMonthlyBreakdownEntity> findByMonth(java.time.LocalDate month);
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiMtbfMonthlyRepository.java b/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiMtbfMonthlyRepository.java
+index 49c4478..87b3949 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiMtbfMonthlyRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiMtbfMonthlyRepository.java
+@@ -1,11 +1,14 @@
+ package com.syncro.kpi.infrastructure.db;
+ 
++import java.util.List;
+ import java.util.Optional;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
+ 
+-/** Persistence for {@code kpi_mtbf_monthlies} (blueprint G3, story 15-2). */
++/** Persistence for {@code kpi_mtbf_monthlies} (blueprint G3, story 15-2; reads for 20-1). */
+ public interface KpiMtbfMonthlyRepository extends JpaRepository<KpiMtbfMonthlyEntity, UUID> {
+ 
+   Optional<KpiMtbfMonthlyEntity> findByMachineIdAndMonth(UUID machineId, java.time.LocalDate month);
+-}
++
++  List<KpiMtbfMonthlyEntity> findByMonth(java.time.LocalDate month);
++}
+\ No newline at end of file
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiMttrMonthlyRepository.java b/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiMttrMonthlyRepository.java
+index 0b47e06..c9c35a5 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiMttrMonthlyRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiMttrMonthlyRepository.java
+@@ -1,11 +1,14 @@
+ package com.syncro.kpi.infrastructure.db;
+ 
++import java.util.List;
+ import java.util.Optional;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
+ 
+-/** Persistence for {@code kpi_mttr_monthlies} (blueprint G4, story 15-2). */
++/** Persistence for {@code kpi_mttr_monthlies} (blueprint G4, story 15-2; reads for 20-1). */
+ public interface KpiMttrMonthlyRepository extends JpaRepository<KpiMttrMonthlyEntity, UUID> {
+ 
+   Optional<KpiMttrMonthlyEntity> findByPlantIdAndMonth(UUID plantId, java.time.LocalDate month);
++
++  List<KpiMttrMonthlyEntity> findByMonth(java.time.LocalDate month);
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiPmCompletionMonthlyRepository.java b/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiPmCompletionMonthlyRepository.java
+index cf094e2..b96ffb6 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiPmCompletionMonthlyRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiPmCompletionMonthlyRepository.java
+@@ -1,11 +1,14 @@
+ package com.syncro.kpi.infrastructure.db;
+ 
++import java.util.List;
+ import java.util.Optional;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
+ 
+-/** Persistence for {@code kpi_pm_completion_monthlies} (blueprint G7, story 15-2). */
++/** Persistence for {@code kpi_pm_completion_monthlies} (blueprint G7, story 15-2; reads for 20-1). */
+ public interface KpiPmCompletionMonthlyRepository extends JpaRepository<KpiPmCompletionMonthlyEntity, UUID> {
+ 
+   Optional<KpiPmCompletionMonthlyEntity> findByPlantIdAndMonth(UUID plantId, java.time.LocalDate month);
++
++  List<KpiPmCompletionMonthlyEntity> findByMonth(java.time.LocalDate month);
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiTargetRepository.java b/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiTargetRepository.java
+index e9ad976..7318c6f 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiTargetRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiTargetRepository.java
+@@ -1,11 +1,28 @@
+ package com.syncro.kpi.infrastructure.db;
+ 
++import jakarta.persistence.LockModeType;
++import java.util.List;
+ import java.util.Optional;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
++import org.springframework.data.jpa.repository.Lock;
++import org.springframework.data.jpa.repository.Query;
++import org.springframework.data.repository.query.Param;
+ 
+ /** Persistence for {@code kpi_targets} (blueprint G1, story 15-2). */
+ public interface KpiTargetRepository extends JpaRepository<KpiTargetEntity, UUID> {
+ 
+   Optional<KpiTargetEntity> findByPlantIdAndMonth(UUID plantId, java.time.LocalDate month);
+-}
++
++  List<KpiTargetEntity> findByPlantIdOrderByMonthAsc(UUID plantId);
++
++  /**
++   * Story 20-1 review: row lock for the upsert — serializes concurrent create/update on
++   * the same (plant, month) so the find-then-save cannot race the unique constraint
++   * (19-4 findByIdForUpdate pattern).
++   */
++  @Lock(LockModeType.PESSIMISTIC_WRITE)
++  @Query("select t from KpiTargetEntity t where t.plantId = :plantId and t.month = :month")
++  Optional<KpiTargetEntity> findByPlantIdAndMonthForUpdate(@Param("plantId") UUID plantId,
++      @Param("month") java.time.LocalDate month);
++}
+\ No newline at end of file
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiTechnicianMonthlyRepository.java b/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiTechnicianMonthlyRepository.java
+index f1964d1..7640788 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiTechnicianMonthlyRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/kpi/infrastructure/db/KpiTechnicianMonthlyRepository.java
+@@ -1,12 +1,15 @@
+ package com.syncro.kpi.infrastructure.db;
+ 
++import java.util.List;
+ import java.util.Optional;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
+ 
+-/** Persistence for {@code kpi_technician_monthlies} (blueprint G6, story 15-2). */
++/** Persistence for {@code kpi_technician_monthlies} (blueprint G6, story 15-2; reads for 20-1). */
+ public interface KpiTechnicianMonthlyRepository extends JpaRepository<KpiTechnicianMonthlyEntity, UUID> {
+ 
+   Optional<KpiTechnicianMonthlyEntity> findByPlantIdAndTechnicianIdAndMonth(UUID plantId,
+       UUID technicianId, java.time.LocalDate month);
++
++  List<KpiTechnicianMonthlyEntity> findByMonth(java.time.LocalDate month);
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/kpi/scheduled/KpiRefreshScheduler.java b/syncro/apps/backend/src/main/java/com/syncro/kpi/scheduled/KpiRefreshScheduler.java
+new file mode 100644
+index 0000000..12ffeeb
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/kpi/scheduled/KpiRefreshScheduler.java
+@@ -0,0 +1,135 @@
++package com.syncro.kpi.scheduled;
++
++import com.syncro.config.KpiProperties;
++import com.syncro.kpi.application.KpiMaterializationService;
++import com.syncro.maintenance.application.WorkorderSyncedEvent;
++import jakarta.annotation.PreDestroy;
++import java.time.Clock;
++import java.time.Duration;
++import java.time.Instant;
++import java.time.YearMonth;
++import java.time.ZoneOffset;
++import java.util.concurrent.Executors;
++import java.util.concurrent.ScheduledExecutorService;
++import java.util.concurrent.TimeUnit;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++import org.springframework.scheduling.annotation.Scheduled;
++import org.springframework.stereotype.Component;
++import org.springframework.transaction.event.TransactionPhase;
++import org.springframework.transaction.event.TransactionalEventListener;
++
++/**
++ * KPI refresh scheduler (story 20-1, AD-20). Two triggers:
++ * <ul>
++ *   <li>Scheduled sweep — UTC cron from {@code syncro.kpi.refresh-cron} (typed config,
++ *       never hardcoded). Re-materializes the current month plus a lookback window so
++ *       late corrections and backdated sync rows land in prior months.</li>
++ *   <li>Sync invalidation — {@link WorkorderSyncedEvent} after a sync upsert commits
++ *       (AFTER_COMMIT, so the refresh never reads pre-commit state and never runs
++ *       inside the sync batch transaction). Coalesced: a burst of synced rows triggers
++ *       one sweep, not one per row.</li>
++ * </ul>
++ *
++ * <p>Review 20-1 hardening: the sweep runs on a dedicated single-thread executor (an
++ * AFTER_COMMIT listener must not recompute months on the committing request thread),
++ * and a burst arriving inside the cooldown schedules a trailing sweep instead of being
++ * dropped — the last rows of a burst are never left unmaterialized until the cron.
++ *
++ * <p>Idempotency and concurrency are owned by {@link KpiMaterializationService} via the
++ * refresh-log gate (RUNNING blocks a concurrent same-key pass) — this class adds no
++ * locking of its own beyond the in-process coalescing.
++ */
++@Component
++public class KpiRefreshScheduler {
++
++  private static final Logger log = LoggerFactory.getLogger(KpiRefreshScheduler.class);
++
++  private final KpiMaterializationService materialization;
++  private final KpiProperties properties;
++  private final Clock clock;
++  /** Coalesces sync-triggered sweeps: a burst of synced rows triggers one sweep per cooldown. */
++  private final ScheduledExecutorService sweepExecutor = Executors.newSingleThreadScheduledExecutor(runnable -> {
++    var thread = new Thread(runnable, "kpi-refresh-sweep");
++    thread.setDaemon(true);
++    return thread;
++  });
++  private volatile Instant lastSyncSweepAt = Instant.EPOCH;
++  /** True while a sweep (running or queued) covers the current burst. */
++  private volatile boolean sweepScheduled;
++  private static final Duration SYNC_SWEEP_COOLDOWN = Duration.ofMinutes(1);
++
++  public KpiRefreshScheduler(KpiMaterializationService materialization, KpiProperties properties,
++      Clock clock) {
++    this.materialization = materialization;
++    this.properties = properties;
++    this.clock = clock;
++  }
++
++  @Scheduled(cron = "${syncro.kpi.refresh-cron:0 0 3 * * *}", zone = "UTC")
++  public void scheduledRefresh() {
++    if (!properties.enabled()) {
++      return;
++    }
++    sweepExecutor.execute(() -> runSweep("scheduled"));
++  }
++
++  /**
++   * Sync mutation invalidation (AD-6/AD-20): re-materialize after synced workorder
++   * changes. Coalesced: at most one sweep per cooldown; a burst arriving inside the
++   * cooldown schedules a trailing sweep for the remaining window instead of dropping.
++   */
++  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
++  public void onWorkorderSynced(WorkorderSyncedEvent event) {
++    if (!properties.enabled()) {
++      return;
++    }
++    var now = Instant.now(clock);
++    var cooldownRemaining = Duration.between(now, lastSyncSweepAt.plus(SYNC_SWEEP_COOLDOWN));
++    if (!cooldownRemaining.isNegative() && !cooldownRemaining.isZero()) {
++      if (sweepScheduled) {
++        return; // a trailing sweep already covers this burst
++      }
++      sweepScheduled = true;
++      var delayMs = Math.max(1L, cooldownRemaining.toMillis());
++      log.debug("[KPI] sync invalidation trailing sweep in {}ms (workOrderId={})", delayMs,
++          event.workOrderId());
++      sweepExecutor.schedule(() -> {
++        sweepScheduled = false;
++        lastSyncSweepAt = Instant.now(clock);
++        runSweep("sync-invalidation");
++      }, delayMs, TimeUnit.MILLISECONDS);
++      return;
++    }
++    sweepScheduled = true;
++    sweepExecutor.execute(() -> {
++      sweepScheduled = false;
++      lastSyncSweepAt = Instant.now(clock);
++      log.info("[KPI] sync invalidation sweep (workOrderId={})", event.workOrderId());
++      runSweep("sync-invalidation");
++    });
++  }
++
++  @PreDestroy
++  public void shutdown() {
++    sweepExecutor.shutdownNow();
++  }
++
++  private void runSweep(String trigger) {
++    var currentMonth = YearMonth.now(clock.withZone(ZoneOffset.UTC)).atDay(1);
++    var months = properties.lookbackMonths() + 1;
++    for (int i = 0; i < months; i++) {
++      var month = currentMonth.minusMonths(i);
++      try {
++        var outcomes = materialization.refreshMonth(month);
++        outcomes.forEach(o -> log.info("[KPI] {} refresh {} {} {}", trigger, o.type().key(),
++            month, o.status()));
++      } catch (RuntimeException exception) {
++        // One month's failure must not abort the sweep; each type/month is independently
++        // gated and evidenced in kpi_aggregate_refresh_logs.
++        log.error("[KPI] {} sweep failed for month {}: {}", trigger, month, exception.getMessage(),
++            exception);
++      }
++    }
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/application/WorkorderImportService.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/application/WorkorderImportService.java
+index a3eb12f..2227708 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/application/WorkorderImportService.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/application/WorkorderImportService.java
+@@ -18,6 +18,7 @@ import java.time.Instant;
+ import java.util.HashMap;
+ import java.util.Map;
+ import java.util.UUID;
++import org.springframework.context.ApplicationEventPublisher;
+ import org.springframework.stereotype.Service;
+ import org.springframework.transaction.annotation.Transactional;
+ 
+@@ -53,15 +54,18 @@ public class WorkorderImportService {
+   private final WorkOrderStatusHistoryRepository statusHistory;
+   private final AuditLogWriter auditLog;
+   private final FieldClassificationService fieldClassification;
++  private final ApplicationEventPublisher events;
+   private final Clock clock;
+ 
+   public WorkorderImportService(WorkOrderRepository workOrders,
+       WorkOrderStatusHistoryRepository statusHistory, AuditLogWriter auditLog,
+-      FieldClassificationService fieldClassification, Clock clock) {
++      FieldClassificationService fieldClassification, ApplicationEventPublisher events,
++      Clock clock) {
+     this.workOrders = workOrders;
+     this.statusHistory = statusHistory;
+     this.auditLog = auditLog;
+     this.fieldClassification = fieldClassification;
++    this.events = events;
+     this.clock = clock;
+   }
+ 
+@@ -133,6 +137,9 @@ public class WorkorderImportService {
+       statusHistory.saveAndFlush(historyRow(sheetNo, fromStatus, toStatus, now));
+       auditLog.recordSystem(new AuditRecord(AuditAction.UPDATE, AuditEntityType.WORK_ORDER,
+           auditEntityId(sheetNo), sheetNo, null, previous, auditValues(saved), null));
++      // Sync mutation invalidates analytics (AD-6/AD-20, story 20-1): the kpi module
++      // re-materializes the affected months AFTER_COMMIT — never inside this transaction.
++      events.publishEvent(new WorkorderSyncedEvent(sheetNo, toMachineId, traceId()));
+       return UpsertResult.updated();
+     }
+ 
+@@ -144,6 +151,7 @@ public class WorkorderImportService {
+     statusHistory.saveAndFlush(historyRow(sheetNo, null, status, now));
+     auditLog.recordSystem(new AuditRecord(AuditAction.CREATE, AuditEntityType.WORK_ORDER,
+         auditEntityId(sheetNo), sheetNo, null, null, auditValues(saved), null));
++    events.publishEvent(new WorkorderSyncedEvent(sheetNo, machineId, traceId()));
+     return UpsertResult.created();
+   }
+ 
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/application/WorkorderSyncedEvent.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/application/WorkorderSyncedEvent.java
+new file mode 100644
+index 0000000..e590744
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/application/WorkorderSyncedEvent.java
+@@ -0,0 +1,17 @@
++package com.syncro.maintenance.application;
++
++import java.util.UUID;
++
++/**
++ * Published by {@link WorkorderImportService} when a sync upsert creates or updates a
++ * workorder (story 20-1, AD-6/AD-20: "sync mutations invalidate analytics"). Consumed
++ * by the kpi module's refresh scheduler with
++ * {@code @TransactionalEventListener(AFTER_COMMIT)} — the refresh never runs inside the
++ * sync batch transaction and never sees pre-commit state.
++ *
++ * @param workOrderId the synced workorder id (VARCHAR PK)
++ * @param machineId   the machine the workorder belongs to
++ * @param traceId     correlation id for logging
++ */
++public record WorkorderSyncedEvent(String workOrderId, UUID machineId, String traceId) {
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/KpiSourceDataJpaAdapter.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/KpiSourceDataJpaAdapter.java
+new file mode 100644
+index 0000000..541ee5e
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/KpiSourceDataJpaAdapter.java
+@@ -0,0 +1,120 @@
++package com.syncro.maintenance.infrastructure.db;
++
++import com.syncro.kpi.application.KpiSourceDataReader;
++import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
++import com.syncro.maintenance.preventive.infrastructure.db.PmExecutionRepository;
++import com.syncro.maintenance.preventive.infrastructure.db.PmWorkOrderRepository;
++import java.time.Instant;
++import java.time.LocalDate;
++import java.util.List;
++import java.util.Optional;
++import java.util.UUID;
++import org.springframework.stereotype.Component;
++import org.springframework.transaction.annotation.Transactional;
++
++/**
++ * JPA adapter for the KPI materialization source port (story 20-1, AD-6/AD-20).
++ * Lives in the maintenance module — the kpi module never touches these repositories
++ * directly (modular-monolith invariant); it consumes {@link KpiSourceDataReader}.
++ *
++ * <p>Raw rows cross the boundary as plain records; every KPI formula lives in
++ * {@code KpiMaterializationService}. The breakdown-stop read derives {@code woStopAt}
++ * exactly like story 14-2 (latest PENDING_REVIEW transition, {@code updatedAt}
++ * fallback for the sync edge case) so MTBF ordering is by stop time, never by id.
++ *
++ * <p>MAR: no persisted per-plant telemetry availability source exists yet (AD-12 —
++ * machines may run without telemetry), so {@link #findMarInputs} returns empty and
++ * the service writes an explicit INSUFFICIENT_DATA row — never a fabricated value.
++ */
++@Component
++public class KpiSourceDataJpaAdapter implements KpiSourceDataReader {
++
++  static final String BREAKDOWN_CODE = "01";
++
++  private final WorkOrderRepository workOrders;
++  private final WorkLogRepository workLogs;
++  private final WorkLogRatingRepository workLogRatings;
++  private final PmWorkOrderRepository pmWorkOrders;
++  private final PmExecutionRepository pmExecutions;
++  private final com.syncro.auth.infrastructure.PlantRepository plants;
++  private final com.syncro.machine.infrastructure.MachineRepository machines;
++
++  public KpiSourceDataJpaAdapter(WorkOrderRepository workOrders, WorkLogRepository workLogs,
++      WorkLogRatingRepository workLogRatings, PmWorkOrderRepository pmWorkOrders,
++      PmExecutionRepository pmExecutions, com.syncro.auth.infrastructure.PlantRepository plants,
++      com.syncro.machine.infrastructure.MachineRepository machines) {
++    this.workOrders = workOrders;
++    this.workLogs = workLogs;
++    this.workLogRatings = workLogRatings;
++    this.pmWorkOrders = pmWorkOrders;
++    this.pmExecutions = pmExecutions;
++    this.plants = plants;
++    this.machines = machines;
++  }
++
++  @Override
++  @Transactional(readOnly = true)
++  public List<BreakdownStop> findBreakdownStops(Instant from, Instant to) {
++    return workOrders.findBreakdownStops(BREAKDOWN_CODE, WorkOrderStatus.CLOSED).stream()
++        .filter(r -> !r.woStopAt().isBefore(from) && r.woStopAt().isBefore(to))
++        .map(r -> new BreakdownStop(r.workOrderId(), r.machineId(), r.plantId(), r.woStopAt()))
++        .toList();
++  }
++
++  @Override
++  @Transactional(readOnly = true)
++  public List<RepairLogInterval> findClosedBreakdownRepairLogs() {
++    return workLogs.findClosedBreakdownRepairLogIntervals(BREAKDOWN_CODE, WorkOrderStatus.CLOSED)
++        .stream()
++        .map(r -> new RepairLogInterval(r.workOrderId(), r.plantId(), r.machineId(),
++            r.startTime(), r.endTime()))
++        .toList();
++  }
++
++  @Override
++  @Transactional(readOnly = true)
++  public List<TechnicianLog> findTechnicianLogs(Instant from, Instant to) {
++    return workLogs.findTechnicianLogAttributions(from, to).stream()
++        .map(r -> new TechnicianLog(r.technicianId(), r.plantId(), r.workOrderId()))
++        .toList();
++  }
++
++  @Override
++  @Transactional(readOnly = true)
++  public List<TechnicianRating> findTechnicianRatings(Instant from, Instant to) {
++    return workLogRatings.findTechnicianRatingScores(from, to).stream()
++        .map(r -> new TechnicianRating(r.technicianId(), r.plantId(), r.workOrderId(), r.score()))
++        .toList();
++  }
++
++  @Override
++  @Transactional(readOnly = true)
++  public long countPmPlanned(UUID plantId, LocalDate monthFrom, LocalDate monthTo) {
++    return pmWorkOrders.countPlannedForPlantInMonth(plantId, monthFrom, monthTo);
++  }
++
++  @Override
++  @Transactional(readOnly = true)
++  public long countPmCompleted(UUID plantId, LocalDate monthFrom, LocalDate monthTo) {
++    return pmExecutions.countCompletedForPlantInMonth(plantId, monthFrom, monthTo);
++  }
++
++  @Override
++  public Optional<MarInputs> findMarInputs(UUID plantId, Instant from, Instant to) {
++    // No persisted telemetry availability source exists (AD-12: preventive/workorders
++    // run without telemetry). Explicit insufficient-data — never a fabricated zero.
++    return Optional.empty();
++  }
++
++  @Override
++  @Transactional(readOnly = true)
++  public List<UUID> findAllPlantIds() {
++    return plants.findAll().stream().map(p -> p.getId()).toList();
++  }
++
++  @Override
++  @Transactional(readOnly = true)
++  public List<UUID> findMachineIdsByGroupIds(List<UUID> groupIds) {
++    return groupIds.isEmpty() ? List.of() : machines.findIdsByMachineGroupIdIn(groupIds);
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/KpiSourceRows.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/KpiSourceRows.java
+new file mode 100644
+index 0000000..456c63c
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/KpiSourceRows.java
+@@ -0,0 +1,34 @@
++package com.syncro.maintenance.infrastructure.db;
++
++import java.time.Instant;
++import java.util.UUID;
++
++/**
++ * Raw source rows for KPI materialization (story 20-1). Plain projections across the
++ * kpi module's source port — no KPI arithmetic here (that lives in
++ * {@code KpiMaterializationService}); these records only carry the fields the monthly
++ * refresh needs. Returned by the maintenance repositories and mapped to the port's
++ * records by {@link KpiSourceDataJpaAdapter}.
++ */
++public final class KpiSourceRows {
++
++  private KpiSourceRows() {
++  }
++
++  /** Stopped breakdown workorder with its derived woStopAt (14-2 key: latest PENDING_REVIEW transition, updatedAt fallback). */
++  public record BreakdownStopRow(String workOrderId, UUID machineId, UUID plantId, Instant woStopAt) {
++  }
++
++  /** Closed-breakdown work-log interval (MTTR source). */
++  public record RepairLogRow(String workOrderId, UUID plantId, UUID machineId, Instant startTime,
++      Instant endTime) {
++  }
++
++  /** Technician work-log attribution (total_wo / first-time-fix source). */
++  public record TechnicianLogRow(UUID technicianId, UUID plantId, String workOrderId) {
++  }
++
++  /** Technician work-log rating score (average_rating source). */
++  public record TechnicianRatingRow(UUID technicianId, UUID plantId, String workOrderId, int score) {
++  }
++}
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkLogRatingRepository.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkLogRatingRepository.java
+index 5ab6846..4597d31 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkLogRatingRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkLogRatingRepository.java
+@@ -3,6 +3,8 @@ package com.syncro.maintenance.infrastructure.db;
+ import java.util.List;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
++import org.springframework.data.jpa.repository.Query;
++import org.springframework.data.repository.query.Param;
+ 
+ /** Persistence for {@code work_log_ratings} (blueprint C2, story 15-2). */
+ public interface WorkLogRatingRepository extends JpaRepository<WorkLogRatingEntity, UUID> {
+@@ -12,4 +14,20 @@ public interface WorkLogRatingRepository extends JpaRepository<WorkLogRatingEnti
+   boolean existsByCriterionId(UUID criterionId);
+ 
+   boolean existsByWorkLogIdAndCriterionId(UUID workLogId, UUID criterionId);
++
++  /**
++   * Story 20-1 (FR-174): work-log rating scores for logs started in the window — the
++   * technician average_rating source (configurable-dimension 1–5 stars).
++   */
++  @Query("""
++      select new com.syncro.maintenance.infrastructure.db.KpiSourceRows$TechnicianRatingRow(
++        l.technicianId, m.plant.id, w.id, r.score)
++      from WorkLogRatingEntity r
++      join WorkLogEntity l on l.id = r.workLogId
++      join WorkOrderEntity w on w.id = l.workOrderId
++      join MachineEntity m on m.id = w.machineId
++      where l.startTime >= :from and l.startTime < :to
++      """)
++  List<KpiSourceRows.TechnicianRatingRow> findTechnicianRatingScores(
++      @Param("from") java.time.Instant from, @Param("to") java.time.Instant to);
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkLogRepository.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkLogRepository.java
+index 49d01bf..f4b38e7 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkLogRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkLogRepository.java
+@@ -1,8 +1,12 @@
+ package com.syncro.maintenance.infrastructure.db;
+ 
++import com.syncro.maintenance.domain.workorder.WorkOrderStatus;
++import java.time.Instant;
+ import java.util.List;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
++import org.springframework.data.jpa.repository.Query;
++import org.springframework.data.repository.query.Param;
+ 
+ /** Persistence for {@code work_logs} (blueprint B4, AD-18, story 15-2). */
+ public interface WorkLogRepository extends JpaRepository<WorkLogEntity, UUID> {
+@@ -12,4 +16,38 @@ public interface WorkLogRepository extends JpaRepository<WorkLogEntity, UUID> {
+   long countByWorkOrderIdAndEndTimeIsNotNull(String workOrderId);
+ 
+   List<WorkLogEntity> findByWorkOrderIdAndEndTimeIsNotNull(String workOrderId);
++
++  /**
++   * Story 20-1 (AD-6): closed-breakdown work-log intervals with both endpoints — the
++   * MTTR source. Month attribution (by the workorder's derived woStopAt) happens in
++   * the kpi service so the stop map stays the single attribution key.
++   */
++  @Query("""
++      select new com.syncro.maintenance.infrastructure.db.KpiSourceRows$RepairLogRow(
++        l.workOrderId, m.plant.id, w.machineId, l.startTime, l.endTime)
++      from WorkLogEntity l
++      join WorkOrderEntity w on w.id = l.workOrderId
++      join WorkOrderCategoryEntity c on c.id = w.categoryId
++      join MachineEntity m on m.id = w.machineId
++      where c.code = :breakdownCode and w.status = :closedStatus and l.endTime is not null
++        and l.endTime > l.startTime
++      """)
++  List<KpiSourceRows.RepairLogRow> findClosedBreakdownRepairLogIntervals(
++      @Param("breakdownCode") String breakdownCode,
++      @Param("closedStatus") WorkOrderStatus closedStatus);
++
++  /**
++   * Story 20-1 (FR-174): technician work-log attributions with the log started in the
++   * window — the technician total_wo / first-time-fix source (plant via the machine).
++   */
++  @Query("""
++      select new com.syncro.maintenance.infrastructure.db.KpiSourceRows$TechnicianLogRow(
++        l.technicianId, m.plant.id, w.id)
++      from WorkLogEntity l
++      join WorkOrderEntity w on w.id = l.workOrderId
++      join MachineEntity m on m.id = w.machineId
++      where l.startTime >= :from and l.startTime < :to
++      """)
++  List<KpiSourceRows.TechnicianLogRow> findTechnicianLogAttributions(
++      @Param("from") Instant from, @Param("to") Instant to);
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderRepository.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderRepository.java
+index 259b0b4..418dba4 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/WorkOrderRepository.java
+@@ -391,6 +391,32 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrderEntity, Stri
+       @Param("from") Instant from,
+       @Param("to") Instant to);
+ 
++  // -------------------------------------------------------------------------
++  // KPI materialization source reads (20-1, AD-6/AD-20)
++  // -------------------------------------------------------------------------
++
++  /**
++   * Story 20-1 (AD-6): stopped breakdown workorders (category code {@code 01}, status
++   * CLOSED) with the DERIVED {@code woStopAt} — the latest PENDING_REVIEW transition
++   * from {@code work_order_status_history}, {@code updatedAt} fallback (the sync edge
++   * case), exactly the 14-2 key. The month window is applied by the adapter so the
++   * derived stop time and the filter share one expression. Ordering is NOT guaranteed —
++   * MTBF consumers must sort by {@code woStopAt}, never by id (the reference bug).
++   */
++  @Query("""
++      select new com.syncro.maintenance.infrastructure.db.KpiSourceRows$BreakdownStopRow(
++        w.id, w.machineId, m.plant.id, coalesce(max(h.transitionedAt), w.updatedAt))
++      from WorkOrderEntity w
++      join WorkOrderCategoryEntity c on c.id = w.categoryId
++      join MachineEntity m on m.id = w.machineId
++      left join WorkOrderStatusHistoryEntity h on h.workOrderId = w.id and h.toStatus = 'PENDING_REVIEW'
++      where c.code = :breakdownCode and w.status = :closedStatus
++      group by w.id, w.machineId, m.plant.id, w.updatedAt
++      """)
++  List<KpiSourceRows.BreakdownStopRow> findBreakdownStops(
++      @Param("breakdownCode") String breakdownCode,
++      @Param("closedStatus") WorkOrderStatus closedStatus);
++
+   // -------------------------------------------------------------------------
+   // Projection interfaces for group-by results
+   // -------------------------------------------------------------------------
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmExecutionRepository.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmExecutionRepository.java
+index 2597112..d929276 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmExecutionRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmExecutionRepository.java
+@@ -28,4 +28,23 @@ public interface PmExecutionRepository extends JpaRepository<PmExecutionEntity,
+   @Lock(LockModeType.PESSIMISTIC_WRITE)
+   @Query("select e from PmExecutionEntity e where e.id = :id")
+   Optional<PmExecutionEntity> findByIdForUpdate(@Param("id") UUID id);
++
++  /**
++   * Story 20-1 (AD-19/FR-170): completed PM executions whose PM workorder is scheduled
++   * inside the month window — the PM-completion numerator. Review 20-1: attribution uses
++   * the WO's scheduled month (same key as the planned denominator), so a WO scheduled in
++   * July and completed in August counts into July's rate, never above 100%.
++   * Plant resolves through the PM workorder → machine → plant.
++   */
++  @Query("""
++      select count(e) from PmExecutionEntity e
++      join PmWorkOrderEntity w on w.id = e.pmWoId
++      join MachineEntity m on m.id = w.machineId
++      where m.plant.id = :plantId
++        and w.scheduledDate >= :monthFrom and w.scheduledDate < :monthTo
++        and e.completedAt is not null
++      """)
++  long countCompletedForPlantInMonth(@Param("plantId") UUID plantId,
++      @Param("monthFrom") java.time.LocalDate monthFrom,
++      @Param("monthTo") java.time.LocalDate monthTo);
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmWorkOrderRepository.java b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmWorkOrderRepository.java
+index 80ba470..7ac7ea4 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmWorkOrderRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/infrastructure/db/PmWorkOrderRepository.java
+@@ -33,4 +33,19 @@ public interface PmWorkOrderRepository extends JpaRepository<PmWorkOrderEntity,
+   @Lock(LockModeType.PESSIMISTIC_WRITE)
+   @Query("select w from PmWorkOrderEntity w where w.id = :id")
+   Optional<PmWorkOrderEntity> findByIdForUpdate(@Param("id") UUID id);
++
++  /**
++   * Story 20-1 (AD-19/FR-170): planned PM workorders for the plant with a scheduled
++   * date inside the month window — the PM-completion denominator. Plant resolves
++   * through the machine (pm_work_orders carries no plant column).
++   */
++  @Query("""
++      select count(w) from PmWorkOrderEntity w
++      join MachineEntity m on m.id = w.machineId
++      where m.plant.id = :plantId
++        and w.scheduledDate >= :monthFrom and w.scheduledDate < :monthTo
++      """)
++  long countPlannedForPlantInMonth(@Param("plantId") UUID plantId,
++      @Param("monthFrom") java.time.LocalDate monthFrom,
++      @Param("monthTo") java.time.LocalDate monthTo);
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/org/infrastructure/db/PlantWorkingCalendarKpiAdapter.java b/syncro/apps/backend/src/main/java/com/syncro/org/infrastructure/db/PlantWorkingCalendarKpiAdapter.java
+new file mode 100644
+index 0000000..e047136
+--- /dev/null
++++ b/syncro/apps/backend/src/main/java/com/syncro/org/infrastructure/db/PlantWorkingCalendarKpiAdapter.java
+@@ -0,0 +1,82 @@
++package com.syncro.org.infrastructure.db;
++
++import com.syncro.kpi.application.KpiCalendarReader;
++import com.syncro.org.domain.WorkweekMode;
++import java.time.DayOfWeek;
++import java.time.Duration;
++import java.time.Instant;
++import java.time.LocalDate;
++import java.time.ZoneOffset;
++import java.util.HashMap;
++import java.util.HashSet;
++import java.util.Set;
++import java.util.UUID;
++import org.springframework.stereotype.Component;
++import org.springframework.transaction.annotation.Transactional;
++
++/**
++ * JPA adapter for the KPI working-calendar port (story 20-1, blueprint A12). Lives in
++ * the org module — calendar data is owned by org; the kpi module only asks for
++ * business minutes in an interval. v1 counts whole calendar days as working/non-working
++ * per the plant's workweek mode minus exception dates (spec design note: shift-aware
++ * minute math is a future refinement). A plant without a calendar for a year falls
++ * back to FIVE_DAY — never zero, which would fabricate an infinite MTTR.
++ */
++@Component
++public class PlantWorkingCalendarKpiAdapter implements KpiCalendarReader {
++
++  private static final long DAY_MINUTES = Duration.ofDays(1).toMinutes();
++
++  private final PlantWorkingCalendarRepository calendars;
++  private final PlantWorkingCalendarDateRepository calendarDates;
++
++  public PlantWorkingCalendarKpiAdapter(PlantWorkingCalendarRepository calendars,
++      PlantWorkingCalendarDateRepository calendarDates) {
++    this.calendars = calendars;
++    this.calendarDates = calendarDates;
++  }
++
++  @Override
++  @Transactional(readOnly = true)
++  public long workingMinutes(UUID plantId, Instant from, Instant to) {
++    if (!to.isAfter(from)) {
++      return 0L;
++    }
++    var firstDay = LocalDate.ofInstant(from, ZoneOffset.UTC);
++    var lastDay = LocalDate.ofInstant(to.minusMillis(1), ZoneOffset.UTC);
++    // One calendar + exception lookup per year in range (a month window spans ≤ 2 years).
++    var yearState = new HashMap<Integer, YearState>();
++    long total = 0L;
++    for (var day = firstDay; !day.isAfter(lastDay); day = day.plusDays(1)) {
++      var state = yearState.computeIfAbsent(day.getYear(), y -> loadYear(plantId, y));
++      if (state.isWorking(day)) {
++        total += DAY_MINUTES;
++      }
++    }
++    return total;
++  }
++
++  private YearState loadYear(UUID plantId, int year) {
++    var calendar = calendars.findByPlantIdAndYear(plantId, year);
++    var mode = calendar.map(PlantWorkingCalendarEntity::getWorkweekMode).orElse(WorkweekMode.FIVE_DAY);
++    Set<LocalDate> exceptions = calendar
++        .map(c -> calendarDates.findByWorkingCalendarIdOrderByDateAsc(c.getId()).stream()
++            .map(PlantWorkingCalendarDateEntity::getDate)
++            .collect(java.util.stream.Collectors.toCollection(HashSet::new)))
++        .orElseGet(HashSet::new);
++    return new YearState(mode, exceptions);
++  }
++
++  private record YearState(WorkweekMode mode, Set<LocalDate> exceptions) {
++
++    boolean isWorking(LocalDate day) {
++      if (exceptions.contains(day)) {
++        return false;
++      }
++      var dow = day.getDayOfWeek();
++      return mode == WorkweekMode.SIX_DAY
++          ? dow != DayOfWeek.SUNDAY
++          : dow != DayOfWeek.SATURDAY && dow != DayOfWeek.SUNDAY;
++    }
++  }
++}
+diff --git a/syncro/apps/backend/src/main/resources/application.yml b/syncro/apps/backend/src/main/resources/application.yml
+index a7d7053..d64973f 100644
+--- a/syncro/apps/backend/src/main/resources/application.yml
++++ b/syncro/apps/backend/src/main/resources/application.yml
+@@ -170,6 +170,14 @@ syncro:
+     # Redis cache TTL for computed dashboard analytics (MTBF/MTTR, technician KPI).
+     # Env-overridable via SYNCRO_DASHBOARD_ANALYTICS_TTL (default: 30 minutes).
+     analytics-ttl: ${SYNCRO_DASHBOARD_ANALYTICS_TTL:PT30M}
++  kpi:
++    # Monthly KPI materialization (story 20-1, AD-20). Master switch for the scheduler
++    # and the sync-invalidation listener.
++    enabled: ${SYNCRO_KPI_ENABLED:true}
++    # Cron for the scheduled refresh sweep (default: daily 03:00 UTC).
++    refresh-cron: ${SYNCRO_KPI_REFRESH_CRON:0 0 3 * * *}
++    # Past months re-materialized per sweep (late corrections, backdated sync rows).
++    lookback-months: ${SYNCRO_KPI_LOOKBACK_MONTHS:1}
+   sync:
+     # External workorder sync pipeline (story 13-1, AD-7/FR-150). Disabled by default:
+     # the app boots without an external DB. Flip to true and supply syncro.sync.datasource.*
+diff --git a/syncro/apps/backend/src/main/resources/db/migration/V12__kpi_target_audit_type.sql b/syncro/apps/backend/src/main/resources/db/migration/V12__kpi_target_audit_type.sql
+new file mode 100644
+index 0000000..578b114
+--- /dev/null
++++ b/syncro/apps/backend/src/main/resources/db/migration/V12__kpi_target_audit_type.sql
+@@ -0,0 +1,37 @@
++-- ============================================================================
++-- V12: KPI audit entity type (story 20-1, blueprint G1, AD-20).
++-- Additive-only migration: extends the ck_audit_log_entity_type CHECK with
++-- KPI_TARGET that AuditEntityType.KPI_TARGET writes when a KPI target is
++-- created or updated (the enum doc requires the Java enum and the SQL CHECK
++-- to move together in one change — V6..V11 drop-and-recreate pattern,
++-- preserving every prior value).
++-- No schema changes to the kpi_* tables — all eight already exist in V1.
++-- ============================================================================
++
++ALTER TABLE audit_log
++  DROP CONSTRAINT ck_audit_log_entity_type;
++
++ALTER TABLE audit_log
++  ADD CONSTRAINT ck_audit_log_entity_type CHECK (entity_type IN
++    ('PLANT', 'MACHINE_GROUP', 'MACHINE', 'SPAREPART_TAXONOMY',
++     'SPAREPART', 'INSTALLATION', 'RESPONSIBILITY', 'ALERT',
++     'SPAREPART_PRICE_ENTRY', 'SECTION', 'TEAM', 'WORK_ORDER_CATEGORY',
++     'WORK_ORDER', 'REPAIR_SESSION', 'WORKORDER_ATTACHMENT',
++     'WORK_ORDER_TODO', 'WORKORDER_RATING', 'RATING_DIMENSION',
++     'PREVENTIVE_PROGRAM', 'PREVENTIVE_SCHEDULE',
++     'PREVENTIVE_CHECKLIST', 'PREVENTIVE_ATTACHMENT',
++     'SPAREPART_REQUEST', 'DEPARTMENT', 'DEPARTMENT_USER', 'USER',
++     'INVENTORY_LOCATION', 'INVENTORY_STOCK_BALANCE',
++     'INVENTORY_TRANSFER', 'INVENTORY_RESERVATION',
++     'MACHINE_AREA', 'JOB_TITLE', 'SYSTEM_ROLE', 'ROLE_PERMISSION_MAPPING',
++     'MENU_FEATURE', 'DOMAIN_CONTEXT', 'USER_JOB_BINDING', 'USER_ROLE_BINDING',
++     'PLANT_WORKING_CALENDAR', 'SIGNATURE_USE',
++     'SPAREPART_STOCK', 'SYNC_RUN', 'SYNC_QUARANTINE', 'WORKORDER_SIGNATURE',
++     'WORK_ASSIGNMENT', 'WORK_LOG', 'WORK_LOG_RATING',
++     'WORK_ORDER_QUALITY_RATING',
++     'PM_FREQUENCY', 'PM_CHECKSHEET',
++     'PM_CHECKLIST_CATEGORY', 'PM_CHECKLIST_ITEM',
++     'PM_SCHEDULE', 'PM_SCHEDULE_DATE',
++     'PM_WORK_ORDER',
++     'PM_EXECUTION', 'PM_EXECUTION_ITEM',
++     'KPI_TARGET'));
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/AbstractPostgresIntegrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/AbstractPostgresIntegrationTest.java
+index 859329c..0f5b0e6 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/AbstractPostgresIntegrationTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/AbstractPostgresIntegrationTest.java
+@@ -54,7 +54,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
+     "syncro.auth.jwt.ttl-minutes=30",
+     "syncro.auth.local-admin.enabled=false",
+     "syncro.auth.local-admin.login-identifier=admin@syncro.dev",
+-    "syncro.auth.local-admin.password=test-password"
++    "syncro.auth.local-admin.password=test-password",
++    // KPI refresh off in tests: the sync-invalidation listener would otherwise sweep
++    // committed KPI rows into the shared reused container after every sync-batch commit.
++    // Story 20-1's own integration test drives KpiMaterializationService directly.
++    "syncro.kpi.enabled=false"
+ })
+ public abstract class AbstractPostgresIntegrationTest {
+ 
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
+index af58971..fded678 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
+@@ -49,11 +49,11 @@ class V1BaseSchemaMigrationTest {
+   // -------------------------------------------------------------------------
+ 
+   @Test
+-  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V11 additive migrations")
++  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V12 additive migrations")
+   void migrationsApplied() {
+     var rows = jdbc.queryForList(
+         "SELECT version, script, success FROM flyway_schema_history ORDER BY installed_rank");
+-    assertThat(rows).hasSize(11);
++    assertThat(rows).hasSize(12);
+     assertThat(rows.get(0).get("version")).isEqualTo("1");
+     assertThat(rows.get(0).get("script")).isEqualTo("V1__orm_foundation_schema.sql");
+     assertThat(rows.get(0).get("success")).isEqualTo(true);
+@@ -87,6 +87,9 @@ class V1BaseSchemaMigrationTest {
+     assertThat(rows.get(10).get("version")).isEqualTo("11");
+     assertThat(rows.get(10).get("script")).isEqualTo("V11__pm_execution_audit_types.sql");
+     assertThat(rows.get(10).get("success")).isEqualTo(true);
++    assertThat(rows.get(11).get("version")).isEqualTo("12");
++    assertThat(rows.get(11).get("script")).isEqualTo("V12__kpi_target_audit_type.sql");
++    assertThat(rows.get(11).get("success")).isEqualTo(true);
+   }
+ 
+   // -------------------------------------------------------------------------
+@@ -683,6 +686,20 @@ class V1BaseSchemaMigrationTest {
+         "SIGNATURE_USE");
+   }
+ 
++  @Test
++  @DisplayName("20.1-DB-001 P0 audit_log entity_type CHECK accepts KPI_TARGET after V12")
++  void auditEntityTypeAcceptsKpiTarget() {
++    var check = jdbc.queryForMap(
++        "SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint "
++            + "WHERE conname = 'ck_audit_log_entity_type'");
++    var def = (String) check.get("def");
++    assertThat(def).contains("KPI_TARGET");
++    // every prior value survives the additive V12 extension.
++    assertThat(def).contains("PM_EXECUTION", "PM_EXECUTION_ITEM", "PM_WORK_ORDER",
++        "WORK_ORDER_QUALITY_RATING", "WORK_LOG_RATING", "WORK_LOG", "WORK_ASSIGNMENT",
++        "PLANT", "MACHINE", "ALERT", "SPAREPART_REQUEST", "SIGNATURE_USE");
++  }
++
+   // -------------------------------------------------------------------------
+   // Helpers
+   // -------------------------------------------------------------------------
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/kpi/application/KpiMaterializationServiceTest.java b/syncro/apps/backend/src/test/java/com/syncro/kpi/application/KpiMaterializationServiceTest.java
+new file mode 100644
+index 0000000..ea4feed
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/kpi/application/KpiMaterializationServiceTest.java
+@@ -0,0 +1,323 @@
++package com.syncro.kpi.application;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.eq;
++import static org.mockito.Mockito.never;
++import static org.mockito.Mockito.verify;
++import static org.mockito.Mockito.when;
++
++import com.syncro.kpi.application.KpiSourceDataReader.BreakdownStop;
++import com.syncro.kpi.application.KpiSourceDataReader.RepairLogInterval;
++import com.syncro.kpi.application.KpiSourceDataReader.TechnicianLog;
++import com.syncro.kpi.application.KpiSourceDataReader.TechnicianRating;
++import com.syncro.kpi.domain.KpiAggregateRefreshStatus;
++import com.syncro.kpi.domain.KpiSourceStatus;
++import com.syncro.kpi.domain.KpiType;
++import com.syncro.kpi.infrastructure.db.KpiAggregateRefreshLogRepository;
++import com.syncro.kpi.infrastructure.db.KpiMarMonthlyEntity;
++import com.syncro.kpi.infrastructure.db.KpiMarMonthlyRepository;
++import com.syncro.kpi.infrastructure.db.KpiMonthlyBreakdownEntity;
++import com.syncro.kpi.infrastructure.db.KpiMonthlyBreakdownRepository;
++import com.syncro.kpi.infrastructure.db.KpiMtbfMonthlyEntity;
++import com.syncro.kpi.infrastructure.db.KpiMtbfMonthlyRepository;
++import com.syncro.kpi.infrastructure.db.KpiMttrMonthlyEntity;
++import com.syncro.kpi.infrastructure.db.KpiMttrMonthlyRepository;
++import com.syncro.kpi.infrastructure.db.KpiPmCompletionMonthlyEntity;
++import com.syncro.kpi.infrastructure.db.KpiPmCompletionMonthlyRepository;
++import com.syncro.kpi.infrastructure.db.KpiTechnicianMonthlyEntity;
++import com.syncro.kpi.infrastructure.db.KpiTechnicianMonthlyRepository;
++import java.math.BigDecimal;
++import java.time.Clock;
++import java.time.Instant;
++import java.time.LocalDate;
++import java.time.ZoneOffset;
++import java.util.List;
++import java.util.Optional;
++import java.util.UUID;
++import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.api.extension.ExtendWith;
++import org.mockito.ArgumentCaptor;
++import org.mockito.Mock;
++import org.mockito.junit.jupiter.MockitoExtension;
++import org.springframework.transaction.PlatformTransactionManager;
++
++/**
++ * Story 20-1 unit tests for {@link KpiMaterializationService}: the spec's "Always"
++ * formulas — MTBF ordered by woStopAt (never id), MTTR cumulative per workorder in
++ * both variants, MAR/PM explicit source_status, technician ratings — plus refresh-log
++ * gating and idempotent re-runs. Persistence is mocked here (pure calculation); the
++ * real-database proof lives in KpiEntityConventionIntegrationTest.
++ */
++@ExtendWith(MockitoExtension.class)
++class KpiMaterializationServiceTest {
++
++  private static final Instant NOW = Instant.parse("2026-09-01T00:00:00Z");
++  private static final Clock CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
++  private static final LocalDate AUG = LocalDate.of(2026, 8, 1);
++
++  private final UUID plantId = UUID.randomUUID();
++  private final UUID machineId = UUID.randomUUID();
++  private final UUID technicianId = UUID.randomUUID();
++
++  @Mock
++  private KpiSourceDataReader source;
++  @Mock
++  private KpiCalendarReader calendar;
++  @Mock
++  private KpiRefreshGate gate;
++  @Mock
++  private KpiMonthlyBreakdownRepository breakdowns;
++  @Mock
++  private KpiMtbfMonthlyRepository mtbfMonthlies;
++  @Mock
++  private KpiMttrMonthlyRepository mttrMonthlies;
++  @Mock
++  private KpiMarMonthlyRepository marMonthlies;
++  @Mock
++  private KpiTechnicianMonthlyRepository technicianMonthlies;
++  @Mock
++  private KpiPmCompletionMonthlyRepository pmCompletionMonthlies;
++  @Mock
++  private PlatformTransactionManager transactionManager;
++
++  private KpiMaterializationService service;
++
++  @BeforeEach
++  void setUp() {
++    service = new KpiMaterializationService(source, calendar, gate, breakdowns, mtbfMonthlies,
++        mttrMonthlies, marMonthlies, technicianMonthlies, pmCompletionMonthlies, CLOCK,
++        transactionManager);
++  }
++
++  @Test
++  @DisplayName("20-1-MTBF-001 P0: gaps ordered by woStopAt, not id — out-of-order input still yields the stop-time mean")
++  void mtbfOrdersByWoStopAt() {
++    // Returned newest-first (the reference impl's id-ordering bug shape): 25th, 10th, 20th(Jul).
++    when(source.findBreakdownStops(eq(Instant.EPOCH), any())).thenReturn(List.of(
++        new BreakdownStop("WO-3", machineId, plantId, Instant.parse("2026-08-25T00:00:00Z")),
++        new BreakdownStop("WO-2", machineId, plantId, Instant.parse("2026-08-10T00:00:00Z")),
++        new BreakdownStop("WO-1", machineId, plantId, Instant.parse("2026-07-20T00:00:00Z"))));
++    when(mtbfMonthlies.findByMachineIdAndMonth(machineId, AUG)).thenReturn(Optional.empty());
++    when(mtbfMonthlies.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
++    when(gate.tryStart("mtbf:2026-08")).thenReturn(true);
++
++    var outcome = service.refreshType(KpiType.MTBF, AUG);
++
++    assertThat(outcome.status()).isEqualTo(KpiAggregateRefreshStatus.SUCCESS);
++    // Sorted by stop time: Jul20→Aug10 = 21d, Aug10→Aug25 = 15d → mean 18.00 days.
++    var captor = ArgumentCaptor.forClass(KpiMtbfMonthlyEntity.class);
++    verify(mtbfMonthlies).saveAndFlush(captor.capture());
++    assertThat(captor.getValue().getMtbfDays()).isEqualByComparingTo(new BigDecimal("18.00"));
++    assertThat(captor.getValue().getPlantId()).isEqualTo(plantId);
++    assertThat(captor.getValue().getMachineId()).isEqualTo(machineId);
++    verify(gate).finish(eq("mtbf:2026-08"), eq(KpiAggregateRefreshStatus.SUCCESS), any());
++  }
++
++  @Test
++  @DisplayName("20-1-MTBF-002 P1: fewer than 2 stops → no row (explicit insufficient-data downstream)")
++  void mtbfSingleStopWritesNoRow() {
++    when(source.findBreakdownStops(eq(Instant.EPOCH), any())).thenReturn(List.of(
++        new BreakdownStop("WO-1", machineId, plantId, Instant.parse("2026-08-10T00:00:00Z"))));
++    when(gate.tryStart("mtbf:2026-08")).thenReturn(true);
++
++    service.refreshType(KpiType.MTBF, AUG);
++
++    verify(mtbfMonthlies, never()).saveAndFlush(any());
++  }
++
++  @Test
++  @DisplayName("20-1-MTTR-001 P0: cumulative per-WO durations; wall-clock vs actual-working variants")
++  void mttrCumulativeBothVariants() {
++    when(source.findBreakdownStops(eq(Instant.EPOCH), any())).thenReturn(List.of(
++        new BreakdownStop("WO-1", machineId, plantId, Instant.parse("2026-08-10T00:00:00Z"))));
++    // Two logs on WO-1: 60 and 30 wall minutes; calendar says 40 and 20 working minutes.
++    when(source.findClosedBreakdownRepairLogs()).thenReturn(List.of(
++        new RepairLogInterval("WO-1", plantId, machineId,
++            Instant.parse("2026-08-09T08:00:00Z"), Instant.parse("2026-08-09T09:00:00Z")),
++        new RepairLogInterval("WO-1", plantId, machineId,
++            Instant.parse("2026-08-09T10:00:00Z"), Instant.parse("2026-08-09T10:30:00Z"))));
++    when(calendar.workingMinutes(eq(plantId), any(), any())).thenReturn(40L, 20L);
++    when(source.findAllPlantIds()).thenReturn(List.of(plantId));
++    when(mttrMonthlies.findByPlantIdAndMonth(plantId, AUG)).thenReturn(Optional.empty());
++    when(mttrMonthlies.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
++    when(gate.tryStart("mttr:2026-08")).thenReturn(true);
++
++    service.refreshType(KpiType.MTTR, AUG);
++
++    var captor = ArgumentCaptor.forClass(KpiMttrMonthlyEntity.class);
++    verify(mttrMonthlies).saveAndFlush(captor.capture());
++    // Cumulative per WO: wall 90, working 60; mean over the single WO.
++    assertThat(captor.getValue().getWallClockMttrMinutes()).isEqualByComparingTo(new BigDecimal("90.00"));
++    assertThat(captor.getValue().getActualWorkingMttrMinutes()).isEqualByComparingTo(new BigDecimal("60.00"));
++  }
++
++  @Test
++  @DisplayName("20-1-MTTR-002 P1: no work logs → NULL values, never a fabricated zero")
++  void mttrNoLogsNullValues() {
++    when(source.findBreakdownStops(eq(Instant.EPOCH), any())).thenReturn(List.of());
++    when(source.findClosedBreakdownRepairLogs()).thenReturn(List.of());
++    when(source.findAllPlantIds()).thenReturn(List.of(plantId));
++    when(mttrMonthlies.findByPlantIdAndMonth(plantId, AUG)).thenReturn(Optional.empty());
++    when(mttrMonthlies.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
++    when(gate.tryStart("mttr:2026-08")).thenReturn(true);
++
++    service.refreshType(KpiType.MTTR, AUG);
++
++    var captor = ArgumentCaptor.forClass(KpiMttrMonthlyEntity.class);
++    verify(mttrMonthlies).saveAndFlush(captor.capture());
++    assertThat(captor.getValue().getWallClockMttrMinutes()).isNull();
++    assertThat(captor.getValue().getActualWorkingMttrMinutes()).isNull();
++  }
++
++  @Test
++  @DisplayName("20-1-MAR-001 P0: telemetry gap → INSUFFICIENT_DATA source_status, mar NULL")
++  void marInsufficientData() {
++    when(source.findAllPlantIds()).thenReturn(List.of(plantId));
++    when(source.findMarInputs(eq(plantId), any(), any())).thenReturn(Optional.empty());
++    when(marMonthlies.findByPlantIdAndMonth(plantId, AUG)).thenReturn(Optional.empty());
++    when(marMonthlies.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
++    when(gate.tryStart("mar:2026-08")).thenReturn(true);
++
++    service.refreshType(KpiType.MAR, AUG);
++
++    var captor = ArgumentCaptor.forClass(KpiMarMonthlyEntity.class);
++    verify(marMonthlies).saveAndFlush(captor.capture());
++    assertThat(captor.getValue().getMarPercent()).isNull();
++    assertThat(captor.getValue().getSourceStatus()).isEqualTo(KpiSourceStatus.INSUFFICIENT_DATA.name());
++    assertThat(captor.getValue().getSourceMessage()).isNotBlank();
++  }
++
++  @Test
++  @DisplayName("20-1-MAR-002 P0: planned/downtime minutes → MAR percent formula")
++  void marComputed() {
++    when(source.findAllPlantIds()).thenReturn(List.of(plantId));
++    when(source.findMarInputs(eq(plantId), any(), any())).thenReturn(
++        Optional.of(new KpiSourceDataReader.MarInputs(600L, 45L)));
++    when(marMonthlies.findByPlantIdAndMonth(plantId, AUG)).thenReturn(Optional.empty());
++    when(marMonthlies.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
++    when(gate.tryStart("mar:2026-08")).thenReturn(true);
++
++    service.refreshType(KpiType.MAR, AUG);
++
++    var captor = ArgumentCaptor.forClass(KpiMarMonthlyEntity.class);
++    verify(marMonthlies).saveAndFlush(captor.capture());
++    // (600 - 45) / 600 × 100 = 92.50
++    assertThat(captor.getValue().getMarPercent()).isEqualByComparingTo(new BigDecimal("92.50"));
++    assertThat(captor.getValue().getSourceStatus()).isEqualTo(KpiSourceStatus.COMPLETE.name());
++  }
++
++  @Test
++  @DisplayName("20-1-PM-001 P1: no planned PM workorders → INSUFFICIENT_DATA")
++  void pmCompletionInsufficient() {
++    when(source.findAllPlantIds()).thenReturn(List.of(plantId));
++    when(source.countPmPlanned(eq(plantId), any(), any())).thenReturn(0L);
++    when(source.countPmCompleted(eq(plantId), any(), any())).thenReturn(0L);
++    when(pmCompletionMonthlies.findByPlantIdAndMonth(plantId, AUG)).thenReturn(Optional.empty());
++    when(pmCompletionMonthlies.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
++    when(gate.tryStart("pm-completion:2026-08")).thenReturn(true);
++
++    service.refreshType(KpiType.PM_COMPLETION, AUG);
++
++    var captor = ArgumentCaptor.forClass(KpiPmCompletionMonthlyEntity.class);
++    verify(pmCompletionMonthlies).saveAndFlush(captor.capture());
++    assertThat(captor.getValue().getCompletionRate()).isNull();
++    assertThat(captor.getValue().getSourceStatus()).isEqualTo(KpiSourceStatus.INSUFFICIENT_DATA.name());
++  }
++
++  @Test
++  @DisplayName("20-1-TECH-001 P0: average rating, distinct WO count, first-time-fix rate")
++  void technicianKpis() {
++    // WO-1 has two logs (not first-time-fix), WO-2 has one (first-time-fix).
++    when(source.findTechnicianLogs(any(), any())).thenReturn(List.of(
++        new TechnicianLog(technicianId, plantId, "WO-1"),
++        new TechnicianLog(technicianId, plantId, "WO-1"),
++        new TechnicianLog(technicianId, plantId, "WO-2")));
++    when(source.findTechnicianRatings(any(), any())).thenReturn(List.of(
++        new TechnicianRating(technicianId, plantId, "WO-1", 4),
++        new TechnicianRating(technicianId, plantId, "WO-2", 5)));
++    when(technicianMonthlies.findByPlantIdAndTechnicianIdAndMonth(plantId, technicianId, AUG))
++        .thenReturn(Optional.empty());
++    when(technicianMonthlies.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
++    when(gate.tryStart("technician:2026-08")).thenReturn(true);
++
++    service.refreshType(KpiType.TECHNICIAN, AUG);
++
++    var captor = ArgumentCaptor.forClass(KpiTechnicianMonthlyEntity.class);
++    verify(technicianMonthlies).saveAndFlush(captor.capture());
++    assertThat(captor.getValue().getAverageRating()).isEqualByComparingTo(new BigDecimal("4.50"));
++    assertThat(captor.getValue().getTotalWo()).isEqualTo(2);
++    assertThat(captor.getValue().getFirstTimeFixRate()).isEqualByComparingTo(new BigDecimal("50.00"));
++  }
++
++  @Test
++  @DisplayName("20-1-IDEM-001 P0: re-run upserts the same row (id preserved) and logs SUCCESS again")
++  void idempotentReRunUpsertsSameRow() {
++    var existingId = UUID.randomUUID();
++    var existing = new KpiMtbfMonthlyEntity(existingId, plantId, machineId, AUG,
++        new BigDecimal("9.00"), NOW.minusSeconds(3600), NOW.minusSeconds(3600));
++    when(source.findBreakdownStops(eq(Instant.EPOCH), any())).thenReturn(List.of(
++        new BreakdownStop("WO-1", machineId, plantId, Instant.parse("2026-07-20T00:00:00Z")),
++        new BreakdownStop("WO-2", machineId, plantId, Instant.parse("2026-08-10T00:00:00Z"))));
++    when(mtbfMonthlies.findByMachineIdAndMonth(machineId, AUG)).thenReturn(Optional.of(existing));
++    when(mtbfMonthlies.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
++    when(gate.tryStart("mtbf:2026-08")).thenReturn(true);
++
++    service.refreshType(KpiType.MTBF, AUG);
++
++    var captor = ArgumentCaptor.forClass(KpiMtbfMonthlyEntity.class);
++    verify(mtbfMonthlies).saveAndFlush(captor.capture());
++    assertThat(captor.getValue().getId()).isEqualTo(existingId);
++    assertThat(captor.getValue().getMtbfDays()).isEqualByComparingTo(new BigDecimal("21.00"));
++    assertThat(captor.getValue().getCreatedAt()).isEqualTo(existing.getCreatedAt());
++  }
++
++  @Test
++  @DisplayName("20-1-GATE-001 P0: RUNNING key blocks a concurrent pass — no compute, no finish")
++  void runningKeyBlocksConcurrentPass() {
++    when(gate.tryStart("mtbf:2026-08")).thenReturn(false);
++
++    var outcome = service.refreshType(KpiType.MTBF, AUG);
++
++    assertThat(outcome.status()).isEqualTo(KpiAggregateRefreshStatus.RUNNING);
++    verify(mtbfMonthlies, never()).saveAndFlush(any());
++    verify(gate, never()).finish(eq("mtbf:2026-08"), any(), any());
++  }
++
++  @Test
++  @DisplayName("20-1-GATE-002 P1: compute failure → FAILED with traceId evidence, RUNNING→FAILED transition logged")
++  void computeFailureLogsFailed() {
++    when(gate.tryStart("breakdown:2026-08")).thenReturn(true);
++    when(source.findBreakdownStops(any(), any())).thenThrow(new IllegalStateException("db down"));
++
++    var outcome = service.refreshType(KpiType.BREAKDOWN, AUG);
++
++    assertThat(outcome.status()).isEqualTo(KpiAggregateRefreshStatus.FAILED);
++    // Review 20-1: the log message is API-exposed — only the exception class name is
++    // stored; the raw detail stays in the server log.
++    assertThat(outcome.message()).contains("traceId=").contains("IllegalStateException")
++        .doesNotContain("db down");
++    verify(gate).finish(eq("breakdown:2026-08"), eq(KpiAggregateRefreshStatus.FAILED), any());
++    verify(breakdowns, never()).saveAndFlush(any());
++  }
++
++  @Test
++  @DisplayName("20-1-BD-001 P1: breakdown count per plant for the month")
++  void breakdownCountPerPlant() {
++    when(source.findBreakdownStops(any(), any())).thenReturn(List.of(
++        new BreakdownStop("WO-1", machineId, plantId, Instant.parse("2026-08-05T00:00:00Z")),
++        new BreakdownStop("WO-2", machineId, plantId, Instant.parse("2026-08-20T00:00:00Z"))));
++    when(source.findAllPlantIds()).thenReturn(List.of(plantId));
++    when(breakdowns.findByPlantIdAndMonth(plantId, AUG)).thenReturn(Optional.empty());
++    when(breakdowns.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
++    when(gate.tryStart("breakdown:2026-08")).thenReturn(true);
++
++    service.refreshType(KpiType.BREAKDOWN, AUG);
++
++    var captor = ArgumentCaptor.forClass(KpiMonthlyBreakdownEntity.class);
++    verify(breakdowns).saveAndFlush(captor.capture());
++    assertThat(captor.getValue().getCount()).isEqualTo(2);
++  }
++}
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/kpi/application/KpiQueryServiceTest.java b/syncro/apps/backend/src/test/java/com/syncro/kpi/application/KpiQueryServiceTest.java
+new file mode 100644
+index 0000000..5902dd1
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/kpi/application/KpiQueryServiceTest.java
+@@ -0,0 +1,219 @@
++package com.syncro.kpi.application;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.api.Assertions.assertThatThrownBy;
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.anyList;
++import static org.mockito.Mockito.when;
++
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.kpi.domain.KpiAggregateRefreshStatus;
++import com.syncro.kpi.domain.KpiType;
++import com.syncro.kpi.infrastructure.db.KpiAggregateRefreshLogEntity;
++import com.syncro.kpi.infrastructure.db.KpiAggregateRefreshLogRepository;
++import com.syncro.kpi.infrastructure.db.KpiMarMonthlyEntity;
++import com.syncro.kpi.infrastructure.db.KpiMarMonthlyRepository;
++import com.syncro.kpi.infrastructure.db.KpiMonthlyBreakdownRepository;
++import com.syncro.kpi.infrastructure.db.KpiMtbfMonthlyEntity;
++import com.syncro.kpi.infrastructure.db.KpiMtbfMonthlyRepository;
++import com.syncro.kpi.infrastructure.db.KpiMttrMonthlyEntity;
++import com.syncro.kpi.infrastructure.db.KpiMttrMonthlyRepository;
++import com.syncro.kpi.infrastructure.db.KpiPmCompletionMonthlyRepository;
++import com.syncro.kpi.infrastructure.db.KpiTargetEntity;
++import com.syncro.kpi.infrastructure.db.KpiTargetRepository;
++import com.syncro.kpi.infrastructure.db.KpiTechnicianMonthlyRepository;
++import com.syncro.org.application.OperationalScope;
++import java.math.BigDecimal;
++import java.time.Instant;
++import java.time.LocalDate;
++import java.util.List;
++import java.util.Optional;
++import java.util.Set;
++import java.util.UUID;
++import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.api.extension.ExtendWith;
++import org.mockito.Mock;
++import org.mockito.junit.jupiter.MockitoExtension;
++
++/**
++ * Story 20-1 unit tests for {@link KpiQueryService}: organizational-scope filtering
++ * (leaders see their groups, managers their plants, global roles everything), the
++ * actual-vs-target join, and the explicit insufficient-data state when a month has no
++ * materialized row (never a fabricated zero).
++ */
++@ExtendWith(MockitoExtension.class)
++class KpiQueryServiceTest {
++
++  private static final LocalDate AUG = LocalDate.of(2026, 8, 1);
++  private static final Instant T0 = Instant.parse("2026-09-01T00:00:00Z");
++
++  private final UUID plantA = UUID.randomUUID();
++  private final UUID plantB = UUID.randomUUID();
++  private final UUID machineA = UUID.randomUUID();
++  private final UUID machineB = UUID.randomUUID();
++  private final UUID groupA = UUID.randomUUID();
++
++  @Mock
++  private KpiScopeService scopeService;
++  @Mock
++  private KpiSourceDataReader source;
++  @Mock
++  private KpiMonthlyBreakdownRepository breakdowns;
++  @Mock
++  private KpiMtbfMonthlyRepository mtbfMonthlies;
++  @Mock
++  private KpiMttrMonthlyRepository mttrMonthlies;
++  @Mock
++  private KpiMarMonthlyRepository marMonthlies;
++  @Mock
++  private KpiTechnicianMonthlyRepository technicianMonthlies;
++  @Mock
++  private KpiPmCompletionMonthlyRepository pmCompletionMonthlies;
++  @Mock
++  private KpiTargetRepository targets;
++  @Mock
++  private KpiAggregateRefreshLogRepository refreshLogs;
++
++  private KpiQueryService service;
++  private final AuthenticatedUser leader = new AuthenticatedUser(
++      UUID.randomUUID().toString(), "leader@syncro.test", ApplicationRole.SECTION_LEADER);
++
++  @BeforeEach
++  void setUp() {
++    service = new KpiQueryService(scopeService, source, breakdowns, mtbfMonthlies, mttrMonthlies,
++        marMonthlies, technicianMonthlies, pmCompletionMonthlies, targets, refreshLogs);
++  }
++
++  @Test
++  @DisplayName("20-1-SCOPE-001 P0: leader sees only MTBF rows of machines in their groups")
++  void leaderSeesOnlyScopedMachines() {
++    // Group-only scope: the leader has no plant assignment — visibility comes solely
++    // from the machine-group dimension (AD-2: leaders see their groups).
++    var scope = new OperationalScope(Set.of(), Set.of(groupA), Set.of());
++    when(scopeService.derive(leader)).thenReturn(scope);
++    when(scopeService.groupIds(scope)).thenReturn(List.of(groupA));
++    when(source.findMachineIdsByGroupIds(List.of(groupA))).thenReturn(List.of(machineA));
++    when(mtbfMonthlies.findByMonth(AUG)).thenReturn(List.of(
++        new KpiMtbfMonthlyEntity(UUID.randomUUID(), plantA, machineA, AUG,
++            new BigDecimal("12.00"), T0, T0),
++        new KpiMtbfMonthlyEntity(UUID.randomUUID(), plantA, machineB, AUG,
++            new BigDecimal("30.00"), T0, T0)));
++    when(refreshLogs.findByRefreshKey("mtbf:2026-08")).thenReturn(Optional.empty());
++
++    var response = service.materialized(leader, KpiType.MTBF, AUG, null);
++
++    assertThat(response.status()).isEqualTo(KpiQueryService.STATUS_AVAILABLE);
++    assertThat(response.mtbfRows()).hasSize(1);
++    assertThat(response.mtbfRows().get(0).machineId()).isEqualTo(machineA);
++  }
++
++  @Test
++  @DisplayName("20-1-SCOPE-002 P0: out-of-scope plant request is denied server-side")
++  void outOfScopePlantDenied() {
++    var scope = new OperationalScope(Set.of(plantA), Set.of(), Set.of());
++    when(scopeService.derive(leader)).thenReturn(scope);
++    when(scopeService.plantVisible(scope, plantB)).thenReturn(false);
++
++    assertThatThrownBy(() -> service.materialized(leader, KpiType.MTBF, AUG, plantB))
++        .isInstanceOf(KpiQueryService.KpiPlantForbiddenException.class);
++  }
++
++  @Test
++  @DisplayName("20-1-SCOPE-003 P0: SUPER_ADMIN (null plantIds) sees every plant's rows")
++  void superAdminSeesAllPlants() {
++    var admin = new AuthenticatedUser(UUID.randomUUID().toString(), "admin@syncro.test",
++        ApplicationRole.SUPER_ADMIN);
++    var scope = new OperationalScope(null, Set.of(), Set.of());
++    when(scopeService.derive(admin)).thenReturn(scope);
++    when(mttrMonthlies.findByMonth(AUG)).thenReturn(List.of(
++        new KpiMttrMonthlyEntity(UUID.randomUUID(), plantA, AUG, new BigDecimal("90.00"),
++            new BigDecimal("60.00"), T0, T0),
++        new KpiMttrMonthlyEntity(UUID.randomUUID(), plantB, AUG, new BigDecimal("45.00"),
++            new BigDecimal("30.00"), T0, T0)));
++    when(refreshLogs.findByRefreshKey("mttr:2026-08")).thenReturn(Optional.empty());
++
++    var response = service.materialized(admin, KpiType.MTTR, AUG, null);
++
++    assertThat(response.mttrRows()).hasSize(2);
++  }
++
++  @Test
++  @DisplayName("20-1-TARGET-001 P0: materialized read joins the plant/month target")
++  void targetJoin() {
++    var admin = new AuthenticatedUser(UUID.randomUUID().toString(), "admin@syncro.test",
++        ApplicationRole.SUPER_ADMIN);
++    var scope = new OperationalScope(null, Set.of(), Set.of());
++    when(scopeService.derive(admin)).thenReturn(scope);
++    when(scopeService.plantVisible(scope, plantA)).thenReturn(true);
++    when(mttrMonthlies.findByMonth(AUG)).thenReturn(List.of(
++        new KpiMttrMonthlyEntity(UUID.randomUUID(), plantA, AUG, new BigDecimal("90.00"),
++            new BigDecimal("60.00"), T0, T0)));
++    when(targets.findByPlantIdAndMonth(plantA, AUG)).thenReturn(Optional.of(new KpiTargetEntity(
++        UUID.randomUUID(), plantA, AUG, 2, new BigDecimal("30.50"), new BigDecimal("120.00"),
++        null, null, null, T0, T0)));
++    when(refreshLogs.findByRefreshKey("mttr:2026-08")).thenReturn(Optional.empty());
++
++    var response = service.materialized(admin, KpiType.MTTR, AUG, plantA);
++
++    assertThat(response.target()).isNotNull();
++    assertThat(response.target().mttrTargetMinutes()).isEqualByComparingTo(new BigDecimal("120.00"));
++    assertThat(response.mttrRows().get(0).wallClockMinutes()).isEqualByComparingTo(new BigDecimal("90.00"));
++  }
++
++  @Test
++  @DisplayName("20-1-INSUF-001 P0: month with no materialized row → INSUFFICIENT_DATA, empty lists")
++  void missingMonthInsufficientData() {
++    var admin = new AuthenticatedUser(UUID.randomUUID().toString(), "admin@syncro.test",
++        ApplicationRole.SUPER_ADMIN);
++    var scope = new OperationalScope(null, Set.of(), Set.of());
++    when(scopeService.derive(admin)).thenReturn(scope);
++    when(marMonthlies.findByMonth(AUG)).thenReturn(List.of());
++    when(refreshLogs.findByRefreshKey("mar:2026-08")).thenReturn(Optional.empty());
++
++    var response = service.materialized(admin, KpiType.MAR, AUG, null);
++
++    assertThat(response.status()).isEqualTo(KpiQueryService.STATUS_INSUFFICIENT_DATA);
++    assertThat(response.marRows()).isEmpty();
++  }
++
++  @Test
++  @DisplayName("20-1-INSUF-002 P1: INSUFFICIENT_DATA source_status row is returned as-is (not zeroed)")
++  void insufficientSourceStatusRowPassesThrough() {
++    var admin = new AuthenticatedUser(UUID.randomUUID().toString(), "admin@syncro.test",
++        ApplicationRole.SUPER_ADMIN);
++    var scope = new OperationalScope(null, Set.of(), Set.of());
++    when(scopeService.derive(admin)).thenReturn(scope);
++    when(marMonthlies.findByMonth(AUG)).thenReturn(List.of(new KpiMarMonthlyEntity(
++        UUID.randomUUID(), plantA, AUG, 0, 0, null, "INSUFFICIENT_DATA",
++        "no telemetry availability source for month 2026-08", T0, T0)));
++    when(refreshLogs.findByRefreshKey("mar:2026-08")).thenReturn(Optional.empty());
++
++    var response = service.materialized(admin, KpiType.MAR, AUG, null);
++
++    assertThat(response.marRows()).hasSize(1);
++    assertThat(response.marRows().get(0).marPercent()).isNull();
++    assertThat(response.marRows().get(0).sourceStatus()).isEqualTo("INSUFFICIENT_DATA");
++  }
++
++  @Test
++  @DisplayName("20-1-REFRESH-001 P1: refresh evidence is attached to the response")
++  void refreshEvidenceAttached() {
++    var admin = new AuthenticatedUser(UUID.randomUUID().toString(), "admin@syncro.test",
++        ApplicationRole.SUPER_ADMIN);
++    var scope = new OperationalScope(null, Set.of(), Set.of());
++    when(scopeService.derive(admin)).thenReturn(scope);
++    when(breakdowns.findByMonth(AUG)).thenReturn(List.of());
++    when(refreshLogs.findByRefreshKey("breakdown:2026-08")).thenReturn(Optional.of(
++        new KpiAggregateRefreshLogEntity(UUID.randomUUID(), "breakdown:2026-08", T0,
++            KpiAggregateRefreshStatus.SUCCESS, "traceId=t rows=1")));
++
++    var response = service.materialized(admin, KpiType.BREAKDOWN, AUG, null);
++
++    assertThat(response.refresh()).isNotNull();
++    assertThat(response.refresh().status()).isEqualTo(KpiAggregateRefreshStatus.SUCCESS);
++    assertThat(response.refresh().message()).contains("traceId=t");
++  }
++}
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/kpi/application/KpiRefreshGateTest.java b/syncro/apps/backend/src/test/java/com/syncro/kpi/application/KpiRefreshGateTest.java
+new file mode 100644
+index 0000000..8a875c3
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/kpi/application/KpiRefreshGateTest.java
+@@ -0,0 +1,83 @@
++package com.syncro.kpi.application;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.Mockito.mock;
++import static org.mockito.Mockito.never;
++import static org.mockito.Mockito.verify;
++import static org.mockito.Mockito.when;
++
++import com.syncro.kpi.domain.KpiAggregateRefreshStatus;
++import com.syncro.kpi.infrastructure.db.KpiAggregateRefreshLogEntity;
++import com.syncro.kpi.infrastructure.db.KpiAggregateRefreshLogRepository;
++import java.time.Clock;
++import java.time.Instant;
++import java.time.ZoneOffset;
++import java.util.Optional;
++import java.util.UUID;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.dao.DataIntegrityViolationException;
++
++/**
++ * Story 20-1 review tests for {@link KpiRefreshGate}: the claim is taken under a row
++ * lock, a live RUNNING marker blocks a concurrent pass, and a stale RUNNING marker
++ * (crashed pass) is reclaimed so a key cannot wedge forever.
++ */
++class KpiRefreshGateTest {
++
++  private static final Instant NOW = Instant.parse("2026-09-04T00:00:00Z");
++  private static final Clock CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
++
++  private KpiAggregateRefreshLogEntity row(KpiAggregateRefreshStatus status, Instant refreshedAt) {
++    return new KpiAggregateRefreshLogEntity(UUID.randomUUID(), "mtbf:2026-08", refreshedAt, status, null);
++  }
++
++  @Test
++  @DisplayName("20.1-GATE-001 live RUNNING blocks the claim (concurrent pass skipped)")
++  void liveRunningBlocks() {
++    var logs = mock(KpiAggregateRefreshLogRepository.class);
++    var gate = new KpiRefreshGate(logs, CLOCK);
++    when(logs.findByRefreshKeyForUpdate("mtbf:2026-08"))
++        .thenReturn(Optional.of(row(KpiAggregateRefreshStatus.RUNNING, NOW.minusSeconds(60))));
++
++    assertThat(gate.tryStart("mtbf:2026-08")).isFalse();
++    verify(logs, never()).saveAndFlush(any());
++  }
++
++  @Test
++  @DisplayName("20.1-GATE-002 stale RUNNING is reclaimed after the timeout (crashed pass)")
++  void staleRunningReclaimed() {
++    var logs = mock(KpiAggregateRefreshLogRepository.class);
++    var gate = new KpiRefreshGate(logs, CLOCK);
++    var stale = row(KpiAggregateRefreshStatus.RUNNING,
++        NOW.minus(KpiRefreshGate.STALE_RUNNING_AFTER).minusSeconds(1));
++    when(logs.findByRefreshKeyForUpdate("mtbf:2026-08")).thenReturn(Optional.of(stale));
++
++    assertThat(gate.tryStart("mtbf:2026-08")).isTrue();
++    assertThat(stale.getStatus()).isEqualTo(KpiAggregateRefreshStatus.RUNNING);
++    verify(logs).saveAndFlush(stale);
++  }
++
++  @Test
++  @DisplayName("20.1-GATE-003 SUCCESS/FAILED terminal rows allow retry")
++  void terminalAllowsRetry() {
++    var logs = mock(KpiAggregateRefreshLogRepository.class);
++    var gate = new KpiRefreshGate(logs, CLOCK);
++    when(logs.findByRefreshKeyForUpdate("mtbf:2026-08"))
++        .thenReturn(Optional.of(row(KpiAggregateRefreshStatus.FAILED, NOW.minusSeconds(60))));
++
++    assertThat(gate.tryStart("mtbf:2026-08")).isTrue();
++  }
++
++  @Test
++  @DisplayName("20.1-GATE-004 insert race against the unique constraint skips (winner owns the key)")
++  void insertRaceSkips() {
++    var logs = mock(KpiAggregateRefreshLogRepository.class);
++    var gate = new KpiRefreshGate(logs, CLOCK);
++    when(logs.findByRefreshKeyForUpdate("mtbf:2026-08")).thenReturn(Optional.empty());
++    when(logs.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException("uq race"));
++
++    assertThat(gate.tryStart("mtbf:2026-08")).isFalse();
++  }
++}
+\ No newline at end of file
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/kpi/application/KpiScopeServiceTest.java b/syncro/apps/backend/src/test/java/com/syncro/kpi/application/KpiScopeServiceTest.java
+new file mode 100644
+index 0000000..57617c1
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/kpi/application/KpiScopeServiceTest.java
+@@ -0,0 +1,72 @@
++package com.syncro.kpi.application;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.mockito.Mockito.mock;
++import static org.mockito.Mockito.when;
++
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.org.application.OperationalScope;
++import com.syncro.org.application.OperationalScopeService;
++import java.util.Set;
++import java.util.UUID;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++
++/**
++ * Story 20-1 review tests for {@link KpiScopeService}: the group-dimension merge
++ * (leader groups + active-team groups) and the null-plantIds "sees all" semantics.
++ * The org module tests scope DERIVATION; these pin the kpi-side consumption that
++ * KpiQueryServiceTest stubs away.
++ */
++class KpiScopeServiceTest {
++
++  @Test
++  @DisplayName("20.1-SCOPE-001 groupIds merges leader groups and active-team groups, deduped")
++  void groupIdsMergesBothDimensions() {
++    var org = mock(OperationalScopeService.class);
++    var service = new KpiScopeService(org);
++    var groupA = UUID.randomUUID();
++    var groupB = UUID.randomUUID();
++    var scope = new OperationalScope(Set.of(UUID.randomUUID()), Set.of(groupA), Set.of(groupB, groupA));
++
++    var merged = service.groupIds(scope);
++
++    assertThat(merged).containsExactlyInAnyOrder(groupA, groupB);
++  }
++
++  @Test
++  @DisplayName("20.1-SCOPE-002 groupIds tolerates null dimensions")
++  void groupIdsToleratesNulls() {
++    var org = mock(OperationalScopeService.class);
++    var service = new KpiScopeService(org);
++
++    assertThat(service.groupIds(new OperationalScope(null, null, null))).isEmpty();
++  }
++
++  @Test
++  @DisplayName("20.1-SCOPE-003 plantVisible: null plantIds sees all, restricted set gates")
++  void plantVisibleNullMeansAll() {
++    var org = mock(OperationalScopeService.class);
++    var service = new KpiScopeService(org);
++    var plantA = UUID.randomUUID();
++    var plantB = UUID.randomUUID();
++
++    assertThat(service.plantVisible(new OperationalScope(null, Set.of(), Set.of()), plantA)).isTrue();
++    assertThat(service.plantVisible(new OperationalScope(Set.of(plantA), Set.of(), Set.of()), plantA)).isTrue();
++    assertThat(service.plantVisible(new OperationalScope(Set.of(plantA), Set.of(), Set.of()), plantB)).isFalse();
++  }
++
++  @Test
++  @DisplayName("20.1-SCOPE-004 derive delegates to the org module's single scope service (AD-2)")
++  void deriveDelegatesToOrgService() {
++    var org = mock(OperationalScopeService.class);
++    var service = new KpiScopeService(org);
++    var user = new AuthenticatedUser(UUID.randomUUID().toString(), "leader@syncro.test",
++        ApplicationRole.SECTION_LEADER);
++    var expected = new OperationalScope(Set.of(UUID.randomUUID()), Set.of(UUID.randomUUID()), Set.of());
++    when(org.derive(user)).thenReturn(expected);
++
++    assertThat(service.derive(user)).isSameAs(expected);
++  }
++}
+\ No newline at end of file
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/kpi/application/KpiTargetServiceTest.java b/syncro/apps/backend/src/test/java/com/syncro/kpi/application/KpiTargetServiceTest.java
+new file mode 100644
+index 0000000..ac7004e
+--- /dev/null
++++ b/syncro/apps/backend/src/test/java/com/syncro/kpi/application/KpiTargetServiceTest.java
+@@ -0,0 +1,141 @@
++package com.syncro.kpi.application;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.api.Assertions.assertThatThrownBy;
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.Mockito.mock;
++import static org.mockito.Mockito.never;
++import static org.mockito.Mockito.verify;
++import static org.mockito.Mockito.when;
++
++import com.syncro.audit.application.AuditLogWriter;
++import com.syncro.audit.application.AuditRecord;
++import com.syncro.audit.domain.AuditAction;
++import com.syncro.audit.domain.AuditEntityType;
++import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
++import com.syncro.auth.application.PlantScopeService;
++import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.auth.infrastructure.PlantRepository;
++import com.syncro.kpi.application.KpiTargetService.TargetCommand;
++import com.syncro.kpi.application.KpiTargetService.TargetMutationForbiddenException;
++import com.syncro.kpi.infrastructure.db.KpiTargetEntity;
++import com.syncro.kpi.infrastructure.db.KpiTargetRepository;
++import java.math.BigDecimal;
++import java.time.Clock;
++import java.time.Instant;
++import java.time.LocalDate;
++import java.time.ZoneOffset;
++import java.util.Optional;
++import java.util.UUID;
++import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.api.extension.ExtendWith;
++import org.mockito.ArgumentCaptor;
++import org.mockito.Mock;
++import org.mockito.junit.jupiter.MockitoExtension;
++
++/**
++ * Story 20-1 review tests for {@link KpiTargetService}: the SUPER_ADMIN/MANAGER
++ * mutation gate, the KPI_TARGET audit trail with previous/new values, and the
++ * partial-update semantics (null request fields keep stored values).
++ */
++@ExtendWith(MockitoExtension.class)
++class KpiTargetServiceTest {
++
++  private static final Instant NOW = Instant.parse("2026-09-04T00:00:00Z");
++  private static final Clock CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
++  private static final LocalDate AUG = LocalDate.of(2026, 8, 1);
++
++  private final UUID plantId = UUID.randomUUID();
++  private final UUID userId = UUID.randomUUID();
++
++  @Mock
++  private KpiTargetRepository targets;
++  @Mock
++  private PlantRepository plants;
++  @Mock
++  private PlantScopeService plantScopes;
++  @Mock
++  private AuditLogWriter auditLog;
++
++  private KpiTargetService service;
++
++  @BeforeEach
++  void setUp() {
++    service = new KpiTargetService(targets, plants, plantScopes, auditLog, CLOCK);
++  }
++
++  private AuthenticatedUser user(ApplicationRole role) {
++    return new AuthenticatedUser(userId.toString(), "u@syncro.test", role);
++  }
++
++  @Test
++  @DisplayName("20.1-TGT-001 P0 technician cannot mutate targets (server-side role gate)")
++  void technicianDenied() {
++    assertThatThrownBy(() -> service.upsert(user(ApplicationRole.TECHNICIAN),
++        new TargetCommand(plantId, AUG, 1, null, null, null, null)))
++        .isInstanceOf(TargetMutationForbiddenException.class);
++    verify(targets, never()).saveAndFlush(any());
++  }
++
++  @Test
++  @DisplayName("20.1-TGT-002 P0 manager create writes a KPI_TARGET audit row with new values")
++  void managerCreateAudits() {
++    var admin = user(ApplicationRole.MANAGER_MAINTENANCE);
++    when(plants.existsById(plantId)).thenReturn(true);
++    when(targets.findByPlantIdAndMonthForUpdate(plantId, AUG)).thenReturn(Optional.empty());
++    when(targets.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
++
++    var view = service.upsert(admin, new TargetCommand(plantId, AUG, 3,
++        new BigDecimal("30.5"), null, null, null));
++
++    assertThat(view.month()).isEqualTo(AUG);
++    var captor = ArgumentCaptor.forClass(AuditRecord.class);
++    verify(auditLog).record(any(), captor.capture());
++    var audit = captor.getValue();
++    assertThat(audit.action()).isEqualTo(AuditAction.CREATE);
++    assertThat(audit.entityType()).isEqualTo(AuditEntityType.KPI_TARGET);
++    assertThat(audit.previousValue()).isNull();
++    assertThat(audit.newValue()).containsEntry("monthlyBreakdownTarget", 3);
++  }
++
++  @Test
++  @DisplayName("20.1-TGT-003 P1 partial update: null request fields keep the stored value")
++  void partialUpdateKeepsStoredValues() {
++    var admin = user(ApplicationRole.SUPER_ADMIN);
++    var previous = new KpiTargetEntity(UUID.randomUUID(), plantId, AUG, 5,
++        new BigDecimal("40.00"), new BigDecimal("120.00"), new BigDecimal("95.00"),
++        new BigDecimal("90.00"), userId, NOW.minusSeconds(3600), NOW.minusSeconds(3600));
++    when(plants.existsById(plantId)).thenReturn(true);
++    when(targets.findByPlantIdAndMonthForUpdate(plantId, AUG)).thenReturn(Optional.of(previous));
++    when(targets.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
++
++    // Only the breakdown target changes; everything else stays.
++    var view = service.upsert(admin, new TargetCommand(plantId, AUG, 7, null, null, null, null));
++
++    assertThat(view.monthlyBreakdownTarget()).isEqualTo(7);
++    assertThat(view.mtbfTargetDays()).isEqualByComparingTo(new BigDecimal("40.00"));
++    assertThat(view.mttrTargetMinutes()).isEqualByComparingTo(new BigDecimal("120.00"));
++    assertThat(view.oeeQualityPercent()).isEqualByComparingTo(new BigDecimal("95.00"));
++    var captor = ArgumentCaptor.forClass(AuditRecord.class);
++    verify(auditLog).record(any(), captor.capture());
++    assertThat(captor.getValue().action()).isEqualTo(AuditAction.UPDATE);
++    assertThat(captor.getValue().previousValue()).containsEntry("monthlyBreakdownTarget", 5);
++    assertThat(captor.getValue().newValue()).containsEntry("monthlyBreakdownTarget", 7);
++  }
++
++  @Test
++  @DisplayName("20.1-TGT-004 P1 manager without plant access is denied before any write")
++  void managerWithoutPlantAccessDenied() {
++    var admin = user(ApplicationRole.MANAGER_MAINTENANCE);
++    org.mockito.Mockito.doThrow(com.syncro.auth.application.PlantScopeService
++        .PlantAccessDeniedException.class)
++        .when(plantScopes).requirePlantAccess(any(), any());
++
++    assertThatThrownBy(() -> service.upsert(admin,
++        new TargetCommand(plantId, AUG, 1, null, null, null, null)))
++        .isInstanceOf(com.syncro.auth.application.PlantScopeService.PlantAccessDeniedException.class);
++    verify(targets, never()).saveAndFlush(any());
++  }
++}
+\ No newline at end of file
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/kpi/infrastructure/db/KpiEntityConventionIntegrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/kpi/infrastructure/db/KpiEntityConventionIntegrationTest.java
+index 0454fad..3f4b1fa 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/kpi/infrastructure/db/KpiEntityConventionIntegrationTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/kpi/infrastructure/db/KpiEntityConventionIntegrationTest.java
+@@ -6,7 +6,10 @@ import com.syncro.AbstractPostgresIntegrationTest;
+ import com.syncro.auth.infrastructure.AuthUserEntity;
+ import com.syncro.auth.infrastructure.AuthUserRepository;
+ import com.syncro.auth.domain.ApplicationRole;
++import com.syncro.kpi.application.KpiMaterializationService;
+ import com.syncro.kpi.domain.KpiAggregateRefreshStatus;
++import com.syncro.kpi.domain.KpiSourceStatus;
++import com.syncro.kpi.domain.KpiType;
+ import com.syncro.auth.infrastructure.PlantEntity;
+ import com.syncro.auth.infrastructure.PlantRepository;
+ import java.math.BigDecimal;
+@@ -22,6 +25,11 @@ import org.springframework.beans.factory.annotation.Autowired;
+  * round-trips targets, monthlies, and the refresh log — the BigDecimal/Instant/
+  * nullable semantics of the I/O matrix. All values are backend-materialized: no
+  * floating-point, month normalized to the first of the month.
++ *
++ * <p>Story 20-1 extension: an end-to-end refresh round-trip against the real database —
++ * seeded workorder/work-log/rating/PM data through the actual source adapter and
++ * {@link KpiMaterializationService}, asserting materialized rows, the refresh-log
++ * RUNNING→SUCCESS evidence, and idempotent re-runs (the spec's I/O matrix rows).
+  */
+ class KpiEntityConventionIntegrationTest extends AbstractPostgresIntegrationTest {
+ 
+@@ -53,6 +61,24 @@ class KpiEntityConventionIntegrationTest extends AbstractPostgresIntegrationTest
+   private KpiPmCompletionMonthlyRepository pmCompletionMonthlies;
+   @Autowired
+   private KpiAggregateRefreshLogRepository refreshLogs;
++  @Autowired
++  private KpiMaterializationService materialization;
++  @Autowired
++  private com.syncro.maintenance.infrastructure.db.WorkOrderRepository workOrders;
++  @Autowired
++  private com.syncro.maintenance.infrastructure.db.WorkOrderStatusHistoryRepository statusHistory;
++  @Autowired
++  private com.syncro.maintenance.infrastructure.db.WorkLogRepository workLogs;
++  @Autowired
++  private com.syncro.maintenance.infrastructure.db.WorkLogRatingRepository workLogRatings;
++  @Autowired
++  private com.syncro.maintenance.infrastructure.db.WorkLogRatingCriterionRepository ratingCriteria;
++  @Autowired
++  private com.syncro.maintenance.infrastructure.db.WorkOrderCategoryRepository categories;
++  @Autowired
++  private com.syncro.maintenance.preventive.infrastructure.db.PmWorkOrderRepository pmWorkOrders;
++  @Autowired
++  private com.syncro.maintenance.preventive.infrastructure.db.PmExecutionRepository pmExecutions;
+ 
+   private PlantEntity plant() {
+     var code = "K" + UUID.randomUUID().toString().substring(0, 8);
+@@ -104,7 +130,7 @@ class KpiEntityConventionIntegrationTest extends AbstractPostgresIntegrationTest
+         new BigDecimal("60.20"), T0, T0));
+     var mar = marMonthlies.saveAndFlush(new KpiMarMonthlyEntity(
+         UUID.randomUUID(), plant.getId(), AUG, 600, 45, new BigDecimal("92.50"),
+-        "PARTIAL", "telemetry gap on 2 machines", T0, T0));
++        "COMPLETE", "telemetry gap on 2 machines", T0, T0));
+     var tech = technicianMonthlies.saveAndFlush(new KpiTechnicianMonthlyEntity(
+         UUID.randomUUID(), plant.getId(), user.getId(), AUG, new BigDecimal("4.33"), 12,
+         new BigDecimal("87.00"), T0, T0));
+@@ -128,7 +154,7 @@ class KpiEntityConventionIntegrationTest extends AbstractPostgresIntegrationTest
+     assertThat(reloadedMar.getPlannedAvailableMinutes()).isEqualTo(600);
+     assertThat(reloadedMar.getDowntimeMinutes()).isEqualTo(45);
+     assertThat(reloadedMar.getMarPercent()).isEqualByComparingTo(new BigDecimal("92.5"));
+-    assertThat(reloadedMar.getSourceStatus()).isEqualTo("PARTIAL");
++    assertThat(reloadedMar.getSourceStatus()).isEqualTo("COMPLETE");
+     assertThat(reloadedMar.getSourceMessage()).isEqualTo("telemetry gap on 2 machines");
+ 
+     var reloadedTech = technicianMonthlies.findById(tech.getId()).orElseThrow();
+@@ -165,4 +191,148 @@ class KpiEntityConventionIntegrationTest extends AbstractPostgresIntegrationTest
+     assertThat(reloaded.getMessage()).isEqualTo("3 rows");
+     assertThat(reloaded.getRefreshedAt()).isEqualTo(T1);
+   }
++
++  // ---------------------------------------------------------------------------
++  // Story 20-1: end-to-end monthly refresh against the real database
++  // ---------------------------------------------------------------------------
++
++  @Test
++  void monthlyRefreshMaterializesAllKpiTypesAndIsIdempotent() {
++    var plant = plant();
++    var machine = machine(plant);
++    var technician = users.saveAndFlush(new AuthUserEntity(
++        UUID.randomUUID(), "kpi-tech-" + UUID.randomUUID() + "@syncro.test", "hash",
++        ApplicationRole.TECHNICIAN, true, T0, T0));
++    var breakdown = categories.saveAndFlush(new com.syncro.maintenance.infrastructure.db
++        .WorkOrderCategoryEntity(UUID.randomUUID(), "01", "Breakdown", null, T0, T0));
++    var criterion = ratingCriteria.saveAndFlush(
++        new com.syncro.maintenance.infrastructure.db.WorkLogRatingCriterionEntity(
++            UUID.randomUUID(), "Quality", null, 1, 5, plant.getId(), true, 0, null, T0, T0));
++
++    // Two CLOSED breakdown WOs on one machine, stopped Aug 10 and Aug 20 (woStopAt via
++    // PENDING_REVIEW history) → MTBF gap 10 days; WO-1 has two work logs (60+30 wall
++    // minutes), WO-2 one (60) → MTTR wall mean 75; ratings 4 and 5 → avg 4.50;
++    // first-time-fix 1/2 → 50%. A third CLOSED WO (KPI-WO-3) has NO PENDING_REVIEW
++    // history — its stop derives from updatedAt (Aug 31 08:00, the sync edge case the
++    // query comment calls out) → gaps 10.00 + 10.8333 days → MTBF 10.42, count 3.
++    var wo1 = workOrders.saveAndFlush(new com.syncro.maintenance.infrastructure.db.WorkOrderEntity(
++        "KPI-WO-1", "INTERNAL", null,
++        com.syncro.maintenance.domain.workorder.WorkOrderStatus.CLOSED, breakdown.getId(),
++        machine.getId(), "stop 1", 0L, null, technician.getId(), null, T0, T0));
++    var wo2 = workOrders.saveAndFlush(new com.syncro.maintenance.infrastructure.db.WorkOrderEntity(
++        "KPI-WO-2", "INTERNAL", null,
++        com.syncro.maintenance.domain.workorder.WorkOrderStatus.CLOSED, breakdown.getId(),
++        machine.getId(), "stop 2", 0L, null, technician.getId(), null, T0, T0));
++    workOrders.saveAndFlush(new com.syncro.maintenance.infrastructure.db.WorkOrderEntity(
++        "KPI-WO-3", "EXTERNAL", null,
++        com.syncro.maintenance.domain.workorder.WorkOrderStatus.CLOSED, breakdown.getId(),
++        machine.getId(), "sync-closed stop, no history", 0L, null, technician.getId(), null,
++        T0, Instant.parse("2026-08-31T08:00:00Z")));
++    statusHistory.saveAndFlush(new com.syncro.maintenance.infrastructure.db
++        .WorkOrderStatusHistoryEntity(UUID.randomUUID(), wo1.getId(), null, "PENDING_REVIEW",
++        "MANUAL", technician.getId().toString(), "trace-1",
++        Instant.parse("2026-08-10T12:00:00Z")));
++    statusHistory.saveAndFlush(new com.syncro.maintenance.infrastructure.db
++        .WorkOrderStatusHistoryEntity(UUID.randomUUID(), wo2.getId(), null, "PENDING_REVIEW",
++        "MANUAL", technician.getId().toString(), "trace-2",
++        Instant.parse("2026-08-20T12:00:00Z")));
++    var log1 = workLogs.saveAndFlush(new com.syncro.maintenance.infrastructure.db.WorkLogEntity(
++        UUID.randomUUID(), null, wo1.getId(), technician.getId(),
++        Instant.parse("2026-08-10T08:00:00Z"), Instant.parse("2026-08-10T09:00:00Z"),
++        com.syncro.maintenance.domain.workorder.WorkLogStoppedReason.COMPLETED, "fix", null, null,
++        T0, T0));
++    workLogs.saveAndFlush(new com.syncro.maintenance.infrastructure.db.WorkLogEntity(
++        UUID.randomUUID(), null, wo1.getId(), technician.getId(),
++        Instant.parse("2026-08-10T10:00:00Z"), Instant.parse("2026-08-10T10:30:00Z"),
++        com.syncro.maintenance.domain.workorder.WorkLogStoppedReason.COMPLETED, "fix 2", null, null,
++        T0, T0));
++    workLogs.saveAndFlush(new com.syncro.maintenance.infrastructure.db.WorkLogEntity(
++        UUID.randomUUID(), null, wo2.getId(), technician.getId(),
++        Instant.parse("2026-08-20T08:00:00Z"), Instant.parse("2026-08-20T09:00:00Z"),
++        com.syncro.maintenance.domain.workorder.WorkLogStoppedReason.COMPLETED, "fix", null, null,
++        T0, T0));
++    workLogRatings.saveAndFlush(new com.syncro.maintenance.infrastructure.db.WorkLogRatingEntity(
++        UUID.randomUUID(), log1.getId(), criterion.getId(), 4, technician.getId(), T0, null));
++    workLogRatings.saveAndFlush(new com.syncro.maintenance.infrastructure.db.WorkLogRatingEntity(
++        UUID.randomUUID(), workLogs.findByWorkOrderIdOrderByStartTimeAsc(wo2.getId()).get(0).getId(),
++        criterion.getId(), 5, technician.getId(), T0, null));
++
++    // PM: two planned workorders in August, one completed execution.
++    var pmWo1 = pmWorkOrders.saveAndFlush(
++        new com.syncro.maintenance.preventive.infrastructure.db.PmWorkOrderEntity(
++            UUID.randomUUID(), machine.getId(), null, null, null, null, null,
++            com.syncro.maintenance.preventive.domain.PmWorkOrderStatus.COMPLETED,
++            technician.getId(), LocalDate.of(2026, 8, 5),
++            Instant.parse("2026-08-06T01:00:00Z"), Instant.parse("2026-08-06T02:00:00Z"), null,
++            T0, T0));
++    pmWorkOrders.saveAndFlush(new com.syncro.maintenance.preventive.infrastructure.db
++        .PmWorkOrderEntity(UUID.randomUUID(), machine.getId(), null, null, null, null, null,
++        com.syncro.maintenance.preventive.domain.PmWorkOrderStatus.SCHEDULED, technician.getId(),
++        LocalDate.of(2026, 8, 15), null, null, null, T0, T0));
++    pmExecutions.saveAndFlush(new com.syncro.maintenance.preventive.infrastructure.db
++        .PmExecutionEntity(UUID.randomUUID(), pmWo1.getId(), null, technician.getId(), null, null,
++        null, null, null, Instant.parse("2026-08-06T01:00:00Z"),
++        Instant.parse("2026-08-06T02:00:00Z"), false, 0, null, T0, T0));
++
++    var outcomes = materialization.refreshMonth(AUG);
++    assertThat(outcomes).allSatisfy(o -> assertThat(o.status())
++        .isEqualTo(KpiAggregateRefreshStatus.SUCCESS));
++
++    // MTBF: stops ordered by woStopAt (Aug10, Aug20, Aug31-08:00 via updatedAt fallback —
++    // no PENDING_REVIEW history) → gaps 10.00 + 10.8333 days → mean 10.42.
++    var mtbf = mtbfMonthlies.findByMachineIdAndMonth(machine.getId(), AUG).orElseThrow();
++    assertThat(mtbf.getMtbfDays()).isEqualByComparingTo(new BigDecimal("10.42"));
++
++    // MTTR: cumulative per WO (90 + 60) / 2 = 75.00 wall. v1 whole-working-day calendar
++    // would give 1440 per log, but review 20-1 clamps working <= wall per log → 75.00.
++    var mttr = mttrMonthlies.findByPlantIdAndMonth(plant.getId(), AUG).orElseThrow();
++    assertThat(mttr.getWallClockMttrMinutes()).isEqualByComparingTo(new BigDecimal("75.00"));
++    assertThat(mttr.getActualWorkingMttrMinutes()).isEqualByComparingTo(new BigDecimal("75.00"));
++
++    // MAR: no telemetry availability source → explicit INSUFFICIENT_DATA, never zero.
++    var mar = marMonthlies.findByPlantIdAndMonth(plant.getId(), AUG).orElseThrow();
++    assertThat(mar.getMarPercent()).isNull();
++    assertThat(mar.getSourceStatus()).isEqualTo(KpiSourceStatus.INSUFFICIENT_DATA.name());
++
++    // PM completion: 1/2 = 50.00%.
++    var pm = pmCompletionMonthlies.findByPlantIdAndMonth(plant.getId(), AUG).orElseThrow();
++    assertThat(pm.getCompletionRate()).isEqualByComparingTo(new BigDecimal("50.00"));
++    assertThat(pm.getCompletedCount()).isEqualTo(1);
++    assertThat(pm.getPlannedCount()).isEqualTo(2);
++    assertThat(pm.getSourceStatus()).isEqualTo(KpiSourceStatus.COMPLETE.name());
++
++    // Technician: avg 4.50, total_wo 2, FTF 50.00.
++    var tech = technicianMonthlies
++        .findByPlantIdAndTechnicianIdAndMonth(plant.getId(), technician.getId(), AUG).orElseThrow();
++    assertThat(tech.getAverageRating()).isEqualByComparingTo(new BigDecimal("4.50"));
++    assertThat(tech.getTotalWo()).isEqualTo(2);
++    assertThat(tech.getFirstTimeFixRate()).isEqualByComparingTo(new BigDecimal("50.00"));
++
++    // Breakdown count: 3 stops in August (the third via the updatedAt fallback).
++    assertThat(breakdowns.findByPlantIdAndMonth(plant.getId(), AUG).orElseThrow().getCount())
++        .isEqualTo(3);
++
++    // Refresh-log evidence: RUNNING→SUCCESS with traceId per type.
++    var log = refreshLogs.findByRefreshKey("mtbf:2026-08").orElseThrow();
++    assertThat(log.getStatus()).isEqualTo(KpiAggregateRefreshStatus.SUCCESS);
++    assertThat(log.getMessage()).contains("traceId=");
++
++    // Idempotent re-run: same row id, scoped to this test's machine (the shared reused
++    // container may hold other tests' August rows — review 20-1).
++    var mtbfId = mtbf.getId();
++    var rerun = materialization.refreshType(KpiType.MTBF, AUG);
++    assertThat(rerun.status()).isEqualTo(KpiAggregateRefreshStatus.SUCCESS);
++    assertThat(mtbfMonthlies.findByMachineIdAndMonth(machine.getId(), AUG).orElseThrow().getId())
++        .isEqualTo(mtbfId);
++  }
++
++  /** Machine with plant+group — MTBF rows need a real machines FK (V1). */
++  private com.syncro.machine.infrastructure.MachineEntity machine(PlantEntity plant) {
++    var group = machineGroups.saveAndFlush(new com.syncro.masterdata.infrastructure.MachineGroupEntity(
++        UUID.randomUUID(), plant, "Group " + UUID.randomUUID().toString().substring(0, 6), T0, T0));
++    return machines.saveAndFlush(new com.syncro.machine.infrastructure.MachineEntity(
++        UUID.randomUUID(), plant, group, "KPI-" + UUID.randomUUID().toString().substring(0, 8),
++        "KPI Machine", com.syncro.machine.domain.MachineStatus.ACTIVE, null, null, null, null,
++        T0, T0));
++  }
+ }
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/maintenance/application/WorkorderImportServiceTest.java b/syncro/apps/backend/src/test/java/com/syncro/maintenance/application/WorkorderImportServiceTest.java
+index b22d99e..4a53a07 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/maintenance/application/WorkorderImportServiceTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/maintenance/application/WorkorderImportServiceTest.java
+@@ -52,6 +52,8 @@ class WorkorderImportServiceTest {
+   private AuditLogWriter auditLog;
+   @Mock
+   private FieldClassificationService fieldClassification;
++  @Mock
++  private org.springframework.context.ApplicationEventPublisher events;
+ 
+   private WorkorderImportService service;
+   private final UUID machineId = UUID.randomUUID();
+@@ -67,7 +69,7 @@ class WorkorderImportServiceTest {
+     lenient().when(fieldClassification.isMaster("parent_id")).thenReturn(true);
+     lenient().when(fieldClassification.isMaster("description")).thenReturn(true);
+     service = new WorkorderImportService(workOrders, statusHistory, auditLog,
+-        fieldClassification, CLOCK);
++        fieldClassification, events, CLOCK);
+   }
+ 
+   @Test
+@@ -107,6 +109,12 @@ class WorkorderImportServiceTest {
+     assertThat(audit.action()).isEqualTo(AuditAction.CREATE);
+     assertThat(audit.entityType()).isEqualTo(AuditEntityType.WORK_ORDER);
+     assertThat(audit.entityLabel()).isEqualTo("EXT-00001");
++
++    // Story 20-1 (AD-6/AD-20): sync create invalidates analytics via WorkorderSyncedEvent.
++    var eventCaptor = ArgumentCaptor.forClass(WorkorderSyncedEvent.class);
++    verify(events).publishEvent(eventCaptor.capture());
++    assertThat(eventCaptor.getValue().workOrderId()).isEqualTo("EXT-00001");
++    assertThat(eventCaptor.getValue().machineId()).isEqualTo(machineId);
+   }
+ 
+   @Test
+@@ -147,6 +155,9 @@ class WorkorderImportServiceTest {
+     assertThat(auditCaptor.getValue().action()).isEqualTo(AuditAction.UPDATE);
+     assertThat(auditCaptor.getValue().previousValue()).containsEntry("status", "OPEN");
+     assertThat(auditCaptor.getValue().newValue()).containsEntry("status", "IN_PROGRESS");
++
++    // Story 20-1: sync update also invalidates analytics.
++    verify(events).publishEvent(any(WorkorderSyncedEvent.class));
+   }
+ 
+   @Test
+@@ -166,6 +177,8 @@ class WorkorderImportServiceTest {
+     verify(workOrders, never()).saveAndFlush(any());
+     verify(statusHistory, never()).saveAndFlush(any());
+     verify(auditLog, never()).recordSystem(any());
++    // Story 20-1: a stale no-op must not invalidate analytics.
++    verify(events, never()).publishEvent(any());
+   }
+ 
+   @Test
