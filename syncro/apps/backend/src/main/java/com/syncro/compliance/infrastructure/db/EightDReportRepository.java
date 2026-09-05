@@ -10,4 +10,6 @@ public interface EightDReportRepository extends JpaRepository<EightDReportEntity
   Optional<EightDReportEntity> findByNcId(UUID ncId);
 
   Optional<EightDReportEntity> findByReportNumber(String reportNumber);
+
+  boolean existsByReportNumber(String reportNumber);
 }

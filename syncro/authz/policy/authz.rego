@@ -428,6 +428,27 @@ pm_execution_paths := {
   "/api/v1/pm-executions/*/report",
 }
 
+# Non-conformances & 8D reports (story 21-1, blueprint H1/H2): NC create/update and
+# 8D create/section-update for the six-role workorder-create parity set (SUPER_ADMIN
+# via the generic bypass) — mirrors NonConformanceService.requireMutationRole exactly.
+# Effectiveness verification is narrower (SUPER_ADMIN/MANAGER_MAINTENANCE) and lives
+# in compliance_eight_d_verify_paths below. A single `*` matches exactly one path
+# segment, so each depth is enumerated explicitly: collection (list/create), /{id}
+# (get/update), /{id}/eight-d (create/get/update). Machine scope and the state
+# machine are service-side (rego cannot see the body or the NC state). Reads (GET)
+# flow through generic read_allowed.
+compliance_nc_paths := {
+  "/api/v1/non-conformances",
+  "/api/v1/non-conformances/*",
+  "/api/v1/non-conformances/*/eight-d",
+}
+
+# 8D effectiveness verification (story 21-1): SUPER_ADMIN/MANAGER_MAINTENANCE only —
+# parity with EightDReportService.verifyEffectiveness. Other roles stay default-deny.
+compliance_eight_d_verify_paths := {
+  "/api/v1/non-conformances/*/eight-d/verify-effectiveness",
+}
+
 # Org-maintenance departments (spec-org-maintenance-model): mutations are the
 # Phase 1 gate (SUPER_ADMIN|MANAGER_MAINTENANCE). Reads flow through generic
 # read_allowed. Members replace + section leader assignment + user-master updates
@@ -1260,6 +1281,49 @@ mutation_allowed if {
   input.subject.roles[_] == "TECHNICIAN"
   is_mutation
   path_matches(pm_execution_paths)
+}
+
+# Non-conformances & 8D (story 21-1): six-role workorder-create parity set —
+# MANAGER_MAINTENANCE, MAINTENANCE_LEADER, SECTION_LEADER, STAFF_MAINTENANCE,
+# PRODUCTION_LEADER (SUPER_ADMIN via the generic bypass). TECHNICIAN/AUDITOR and the
+# inventory roles stay default-deny — parity with NonConformanceService
+# .requireMutationRole (rego is the coarse gate; scope/transitions are service-side).
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(compliance_nc_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(compliance_nc_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(compliance_nc_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STAFF_MAINTENANCE"
+  is_mutation
+  path_matches(compliance_nc_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "PRODUCTION_LEADER"
+  is_mutation
+  path_matches(compliance_nc_paths)
+}
+
+# 8D effectiveness verification (story 21-1): MANAGER_MAINTENANCE only (SUPER_ADMIN
+# via the generic bypass) — parity with EightDReportService.verifyEffectiveness.
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(compliance_eight_d_verify_paths)
 }
 
 mutation_allowed if {

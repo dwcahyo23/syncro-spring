@@ -1865,6 +1865,76 @@ test_anonymous_pm_execution_denied if {
   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/pm-executions/start"}
 }
 
+# -- Non-conformances & 8D reports (story 21-1, blueprint H1/H2) -----------
+# Six-role workorder-create parity set on the NC/8D mutation surface (mirrors
+# NonConformanceService.requireMutationRole); effectiveness verification narrows to
+# MANAGER_MAINTENANCE/SUPER_ADMIN (mirrors EightDReportService.verifyEffectiveness).
+# Reads flow through generic read_allowed for any authenticated user.
+
+test_super_admin_nc_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/non-conformances"}
+}
+
+test_manager_nc_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/non-conformances"}
+}
+
+test_maintenance_leader_nc_update_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "PATCH /api/v1/non-conformances/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_section_leader_nc_update_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "PATCH /api/v1/non-conformances/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_staff_nc_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/non-conformances"}
+}
+
+test_production_leader_nc_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["PRODUCTION_LEADER"], "userId": "u8"}, "action": "POST /api/v1/non-conformances"}
+}
+
+test_technician_nc_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/non-conformances"}
+}
+
+test_auditor_nc_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/non-conformances"}
+}
+
+test_technician_nc_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "GET /api/v1/non-conformances"}
+}
+
+test_manager_eight_d_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/non-conformances/7b7c6d5e-1111-2222-3333-444455556666/eight-d"}
+}
+
+test_staff_eight_d_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/non-conformances/7b7c6d5e-1111-2222-3333-444455556666/eight-d"}
+}
+
+test_super_admin_verify_effectiveness_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/non-conformances/7b7c6d5e-1111-2222-3333-444455556666/eight-d/verify-effectiveness"}
+}
+
+test_manager_verify_effectiveness_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/non-conformances/7b7c6d5e-1111-2222-3333-444455556666/eight-d/verify-effectiveness"}
+}
+
+test_section_leader_verify_effectiveness_denied if {
+  not authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/non-conformances/7b7c6d5e-1111-2222-3333-444455556666/eight-d/verify-effectiveness"}
+}
+
+test_staff_verify_effectiveness_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/non-conformances/7b7c6d5e-1111-2222-3333-444455556666/eight-d/verify-effectiveness"}
+}
+
+test_anonymous_nc_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "GET /api/v1/non-conformances"}
+}
+
 # -- Anonymous (no userId): default deny everywhere ------------------------
 
 test_anonymous_admin_only_denied if {

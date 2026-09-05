@@ -1,0 +1,599 @@
+diff --git a/syncro/.env.example b/syncro/.env.example
+index 122d225..ce1e540 100644
+--- a/syncro/.env.example
++++ b/syncro/.env.example
+@@ -77,8 +77,9 @@ NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+ # 18-x adds the inventory surface; 19-1 adds the PM frequencies/checksheets surface; 19-2 adds the PM checklist surface;
+ # 19-3 adds the PM schedules/schedule-dates surface; 19-4 adds the PM work-orders surface;
+ # 19-5 adds the PM executions surface; 19-6 adds the PM execution print-report path;
++# 21-1 adds the non-conformances/8D compliance surface;
+ # health/actuator stay public and are deliberately excluded)
+-SYNCRO_AUTHZ_ENFORCED_PATHS=/api/v1/plants/**,/api/v1/machine-groups/**,/api/v1/sections/**,/api/v1/teams/**,/api/v1/machine-responsibilities/**,/api/v1/machines/**,/api/v1/machine-sparepart-installations/**,/api/v1/spareparts/**,/api/v1/sparepart-taxonomies/**,/api/v1/alerts/**,/api/v1/audit-log/**,/api/v1/setup-completeness/**,/api/v1/telemetry/**,/api/v1/notification/templates/**,/api/v1/notification/worker/**,/api/v1/work-order-categories/**,/api/v1/workorders/**,/api/v1/workorders/*/transition,/api/v1/workorders/*/sessions,/api/v1/workorders/*/sessions/stop,/api/v1/workorders/*/attachments,/api/v1/workorders/*/attachments/*,/api/v1/workorders/*/report,/api/v1/workorders/*/report/cpk,/api/v1/workorders/*/todos,/api/v1/workorders/*/todos/*,/api/v1/workorders/*/todos/*/assign,/api/v1/workorders/*/todos/*/complete,/api/v1/workorders/*/todos/*/reorder,/api/v1/workorders/*/ratings,/api/v1/workorders/*/ratings/technician,/api/v1/workorders/*/ratings/workorder,/api/v1/rating-dimensions,/api/v1/rating-dimensions/*,/api/v1/preventive-programs,/api/v1/preventive-programs/*,/api/v1/preventive-programs/*/generate,/api/v1/preventive-schedules,/api/v1/preventive-schedules/*/checklist,/api/v1/preventive-schedules/*/evidence,/api/v1/preventive-schedules/*/evidence/*,/api/v1/preventive-schedules/*/approve,/api/v1/preventive-schedules/*/skip,/api/v1/sparepart-requests,/api/v1/sparepart-requests/*/transition,/api/v1/sparepart-requests/*/mre,/api/v1/sparepart-requests/*/approve,/api/v1/sparepart-requests/*/complete,/api/v1/sparepart-stock,/api/v1/sparepart-stock/*,/api/v1/sparepart-stock/*/adjust,/api/v1/departments,/api/v1/departments/*,/api/v1/departments/*/members,/api/v1/sections/*/leader,/api/v1/auth/users/*,/api/v1/sync/**,/api/v1/inventory-locations/**,/api/v1/inventory-locations/*/stock-balances,/api/v1/inventory-locations/*/stock-balances/*,/api/v1/inventory-locations/*/stock-balances/*/adjust,/api/v1/inventory-transfers,/api/v1/inventory-transfers/*,/api/v1/inventory-transfers/*/approve,/api/v1/inventory-transfers/*/reject,/api/v1/pm-frequencies/**,/api/v1/pm-checksheets/**,/api/v1/pm-checklist-categories/**,/api/v1/pm-checklist-items/**,/api/v1/pm-schedules/**,/api/v1/pm-schedules/*/submit,/api/v1/pm-schedules/*/approve-spv,/api/v1/pm-schedules/*/approve-prod,/api/v1/pm-schedules/*/activate,/api/v1/pm-schedules/*/dates/*/transition,/api/v1/pm-work-orders,/api/v1/pm-work-orders/*,/api/v1/pm-work-orders/generate,/api/v1/pm-work-orders/sweep-overdue,/api/v1/pm-work-orders/*/assign,/api/v1/pm-work-orders/*/start,/api/v1/pm-work-orders/*/complete,/api/v1/pm-executions,/api/v1/pm-executions/*,/api/v1/pm-executions/start,/api/v1/pm-executions/*/items/*/fill,/api/v1/pm-executions/*/complete,/api/v1/pm-executions/*/verify,/api/v1/pm-executions/*/report
++SYNCRO_AUTHZ_ENFORCED_PATHS=/api/v1/plants/**,/api/v1/machine-groups/**,/api/v1/sections/**,/api/v1/teams/**,/api/v1/machine-responsibilities/**,/api/v1/machines/**,/api/v1/machine-sparepart-installations/**,/api/v1/spareparts/**,/api/v1/sparepart-taxonomies/**,/api/v1/alerts/**,/api/v1/audit-log/**,/api/v1/setup-completeness/**,/api/v1/telemetry/**,/api/v1/notification/templates/**,/api/v1/notification/worker/**,/api/v1/work-order-categories/**,/api/v1/workorders/**,/api/v1/workorders/*/transition,/api/v1/workorders/*/sessions,/api/v1/workorders/*/sessions/stop,/api/v1/workorders/*/attachments,/api/v1/workorders/*/attachments/*,/api/v1/workorders/*/report,/api/v1/workorders/*/report/cpk,/api/v1/workorders/*/todos,/api/v1/workorders/*/todos/*,/api/v1/workorders/*/todos/*/assign,/api/v1/workorders/*/todos/*/complete,/api/v1/workorders/*/todos/*/reorder,/api/v1/workorders/*/ratings,/api/v1/workorders/*/ratings/technician,/api/v1/workorders/*/ratings/workorder,/api/v1/rating-dimensions,/api/v1/rating-dimensions/*,/api/v1/preventive-programs,/api/v1/preventive-programs/*,/api/v1/preventive-programs/*/generate,/api/v1/preventive-schedules,/api/v1/preventive-schedules/*/checklist,/api/v1/preventive-schedules/*/evidence,/api/v1/preventive-schedules/*/evidence/*,/api/v1/preventive-schedules/*/approve,/api/v1/preventive-schedules/*/skip,/api/v1/sparepart-requests,/api/v1/sparepart-requests/*/transition,/api/v1/sparepart-requests/*/mre,/api/v1/sparepart-requests/*/approve,/api/v1/sparepart-requests/*/complete,/api/v1/sparepart-stock,/api/v1/sparepart-stock/*,/api/v1/sparepart-stock/*/adjust,/api/v1/departments,/api/v1/departments/*,/api/v1/departments/*/members,/api/v1/sections/*/leader,/api/v1/auth/users/*,/api/v1/sync/**,/api/v1/inventory-locations/**,/api/v1/inventory-locations/*/stock-balances,/api/v1/inventory-locations/*/stock-balances/*,/api/v1/inventory-locations/*/stock-balances/*/adjust,/api/v1/inventory-transfers,/api/v1/inventory-transfers/*,/api/v1/inventory-transfers/*/approve,/api/v1/inventory-transfers/*/reject,/api/v1/pm-frequencies/**,/api/v1/pm-checksheets/**,/api/v1/pm-checklist-categories/**,/api/v1/pm-checklist-items/**,/api/v1/pm-schedules/**,/api/v1/pm-schedules/*/submit,/api/v1/pm-schedules/*/approve-spv,/api/v1/pm-schedules/*/approve-prod,/api/v1/pm-schedules/*/activate,/api/v1/pm-schedules/*/dates/*/transition,/api/v1/pm-work-orders,/api/v1/pm-work-orders/*,/api/v1/pm-work-orders/generate,/api/v1/pm-work-orders/sweep-overdue,/api/v1/pm-work-orders/*/assign,/api/v1/pm-work-orders/*/start,/api/v1/pm-work-orders/*/complete,/api/v1/pm-executions,/api/v1/pm-executions/*,/api/v1/pm-executions/start,/api/v1/pm-executions/*/items/*/fill,/api/v1/pm-executions/*/complete,/api/v1/pm-executions/*/verify,/api/v1/pm-executions/*/report,/api/v1/non-conformances/**,/api/v1/non-conformances,/api/v1/non-conformances/*,/api/v1/non-conformances/*/eight-d,/api/v1/non-conformances/*/eight-d/verify-effectiveness
+ SYNCRO_AUTHZ_DEGRADED_ALLOWLIST=/api/v1/health,/actuator/**
+ 
+ # Authz decision-log retention (days) for the authz_decisions purge job
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java b/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
+index 23e08b5..6a3afac 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/audit/domain/AuditEntityType.java
+@@ -66,5 +66,7 @@ public enum AuditEntityType {
+   PM_WORK_ORDER,
+   PM_EXECUTION,
+   PM_EXECUTION_ITEM,
+-  KPI_TARGET
++  KPI_TARGET,
++  NON_CONFORMANCE,
++  EIGHT_D_REPORT
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/compliance/infrastructure/db/EightDReportEntity.java b/syncro/apps/backend/src/main/java/com/syncro/compliance/infrastructure/db/EightDReportEntity.java
+index c8dde56..ed720ca 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/compliance/infrastructure/db/EightDReportEntity.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/compliance/infrastructure/db/EightDReportEntity.java
+@@ -7,6 +7,7 @@ import jakarta.persistence.EnumType;
+ import jakarta.persistence.Enumerated;
+ import jakarta.persistence.Id;
+ import jakarta.persistence.Table;
++import jakarta.persistence.Version;
+ import java.time.Instant;
+ import java.util.Map;
+ import java.util.UUID;
+@@ -73,6 +74,11 @@ public class EightDReportEntity {
+   @Column(name = "updated_at", nullable = false)
+   private Instant updatedAt;
+ 
++  /** Optimistic lock (review 21-1 P6): concurrent section-update/verify → 409 VERSION_CONFLICT. */
++  @Version
++  @Column(nullable = false)
++  private long version;
++
+   protected EightDReportEntity() {
+   }
+ 
+@@ -163,10 +169,58 @@ public class EightDReportEntity {
+     return updatedAt;
+   }
+ 
++  public long getVersion() {
++    return version;
++  }
++
+   /** Effectiveness verification (H2): stamps the verdict time. */
+   public void verifyEffectiveness(EightDStatus status, Instant verifiedAt, Instant updatedAt) {
+     this.status = status;
+     this.effectivenessVerifiedAt = verifiedAt;
+     this.updatedAt = updatedAt;
+   }
++
++  /** Status transition (story 21-1): moves the D1–D8 workflow and stamps updatedAt. */
++  public void transitionTo(EightDStatus status, Instant updatedAt) {
++    this.status = status;
++    this.updatedAt = updatedAt;
++  }
++
++  /**
++   * Partial D1–D8 update (story 21-1, KPI-target precedent): a null argument keeps
++   * the stored value. {@code reportNumber} and {@code ncId} are immutable.
++   */
++  public void updateSections(Map<String, Object> d1Team, String d2Description,
++      String d3Containment, Map<String, Object> d4RootCause, String d5CaPermanent,
++      String d6Implementation, String d7LessonLearned, String d8ClosureNotes,
++      String pdfArtifactUrl, Instant updatedAt) {
++    if (d1Team != null) {
++      this.d1Team = d1Team;
++    }
++    if (d2Description != null) {
++      this.d2Description = d2Description;
++    }
++    if (d3Containment != null) {
++      this.d3Containment = d3Containment;
++    }
++    if (d4RootCause != null) {
++      this.d4RootCause = d4RootCause;
++    }
++    if (d5CaPermanent != null) {
++      this.d5CaPermanent = d5CaPermanent;
++    }
++    if (d6Implementation != null) {
++      this.d6Implementation = d6Implementation;
++    }
++    if (d7LessonLearned != null) {
++      this.d7LessonLearned = d7LessonLearned;
++    }
++    if (d8ClosureNotes != null) {
++      this.d8ClosureNotes = d8ClosureNotes;
++    }
++    if (pdfArtifactUrl != null) {
++      this.pdfArtifactUrl = pdfArtifactUrl;
++    }
++    this.updatedAt = updatedAt;
++  }
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/compliance/infrastructure/db/EightDReportRepository.java b/syncro/apps/backend/src/main/java/com/syncro/compliance/infrastructure/db/EightDReportRepository.java
+index 78c8afb..105ed28 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/compliance/infrastructure/db/EightDReportRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/compliance/infrastructure/db/EightDReportRepository.java
+@@ -10,4 +10,6 @@ public interface EightDReportRepository extends JpaRepository<EightDReportEntity
+   Optional<EightDReportEntity> findByNcId(UUID ncId);
+ 
+   Optional<EightDReportEntity> findByReportNumber(String reportNumber);
++
++  boolean existsByReportNumber(String reportNumber);
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/compliance/infrastructure/db/NonConformanceEntity.java b/syncro/apps/backend/src/main/java/com/syncro/compliance/infrastructure/db/NonConformanceEntity.java
+index 5271626..c87e7af 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/compliance/infrastructure/db/NonConformanceEntity.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/compliance/infrastructure/db/NonConformanceEntity.java
+@@ -1,5 +1,6 @@
+ package com.syncro.compliance.infrastructure.db;
+ 
++import com.syncro.compliance.domain.NcSeverity;
+ import com.syncro.compliance.domain.NcStatus;
+ import jakarta.persistence.Column;
+ import jakarta.persistence.Entity;
+@@ -7,6 +8,7 @@ import jakarta.persistence.EnumType;
+ import jakarta.persistence.Enumerated;
+ import jakarta.persistence.Id;
+ import jakarta.persistence.Table;
++import jakarta.persistence.Version;
+ import java.time.Instant;
+ import java.time.LocalDate;
+ import java.util.UUID;
+@@ -51,6 +53,10 @@ public class NonConformanceEntity {
+   @Column(nullable = false, length = 16)
+   private NcStatus status;
+ 
++  @Enumerated(EnumType.STRING)
++  @Column(nullable = true, length = 16)
++  private NcSeverity severity;
++
+   @Column(name = "target_close_date")
+   private LocalDate targetCloseDate;
+ 
+@@ -63,13 +69,27 @@ public class NonConformanceEntity {
+   @Column(name = "updated_at", nullable = false)
+   private Instant updatedAt;
+ 
++  /** Optimistic lock (review 21-1 P6): concurrent PATCH/verify → 409 VERSION_CONFLICT. */
++  @Version
++  @Column(nullable = false)
++  private long version;
++
+   protected NonConformanceEntity() {
+   }
+ 
++  /** Story 15-2 shape (no severity) — delegates with a null severity. */
+   public NonConformanceEntity(UUID id, String projectId, String workOrderId, UUID machineId,
+       String ncNumber, String description, String rootCause, String correctiveAction,
+       UUID responsibleId, NcStatus status, LocalDate targetCloseDate, Instant closedAt,
+       Instant createdAt, Instant updatedAt) {
++    this(id, projectId, workOrderId, machineId, ncNumber, description, rootCause, correctiveAction,
++        responsibleId, status, null, targetCloseDate, closedAt, createdAt, updatedAt);
++  }
++
++  public NonConformanceEntity(UUID id, String projectId, String workOrderId, UUID machineId,
++      String ncNumber, String description, String rootCause, String correctiveAction,
++      UUID responsibleId, NcStatus status, NcSeverity severity, LocalDate targetCloseDate,
++      Instant closedAt, Instant createdAt, Instant updatedAt) {
+     this.id = id;
+     this.projectId = projectId;
+     this.workOrderId = workOrderId;
+@@ -80,6 +100,7 @@ public class NonConformanceEntity {
+     this.correctiveAction = correctiveAction;
+     this.responsibleId = responsibleId;
+     this.status = status;
++    this.severity = severity;
+     this.targetCloseDate = targetCloseDate;
+     this.closedAt = closedAt;
+     this.createdAt = createdAt;
+@@ -126,6 +147,10 @@ public class NonConformanceEntity {
+     return status;
+   }
+ 
++  public NcSeverity getSeverity() {
++    return severity;
++  }
++
+   public LocalDate getTargetCloseDate() {
+     return targetCloseDate;
+   }
+@@ -142,6 +167,10 @@ public class NonConformanceEntity {
+     return updatedAt;
+   }
+ 
++  public long getVersion() {
++    return version;
++  }
++
+   /** Closure transition (H1): stamps the close time with the final analysis. */
+   public void close(String rootCause, String correctiveAction, Instant closedAt,
+       Instant updatedAt) {
+@@ -150,4 +179,37 @@ public class NonConformanceEntity {
+     this.closedAt = closedAt;
+     this.updatedAt = updatedAt;
+   }
++
++  /** Status transition (story 21-1): moves the lifecycle and stamps updatedAt. */
++  public void transitionTo(NcStatus status, Instant updatedAt) {
++    this.status = status;
++    this.updatedAt = updatedAt;
++  }
++
++  /**
++   * Partial update (story 21-1 PATCH, KPI-target precedent): a null argument keeps
++   * the stored value. {@code ncNumber} is immutable after creation.
++   */
++  public void updateContent(String description, NcSeverity severity, String rootCause,
++      String correctiveAction, UUID responsibleId, LocalDate targetCloseDate, Instant updatedAt) {
++    if (description != null) {
++      this.description = description;
++    }
++    if (severity != null) {
++      this.severity = severity;
++    }
++    if (rootCause != null) {
++      this.rootCause = rootCause;
++    }
++    if (correctiveAction != null) {
++      this.correctiveAction = correctiveAction;
++    }
++    if (responsibleId != null) {
++      this.responsibleId = responsibleId;
++    }
++    if (targetCloseDate != null) {
++      this.targetCloseDate = targetCloseDate;
++    }
++    this.updatedAt = updatedAt;
++  }
+ }
+diff --git a/syncro/apps/backend/src/main/java/com/syncro/compliance/infrastructure/db/NonConformanceRepository.java b/syncro/apps/backend/src/main/java/com/syncro/compliance/infrastructure/db/NonConformanceRepository.java
+index 63ca796..a672731 100644
+--- a/syncro/apps/backend/src/main/java/com/syncro/compliance/infrastructure/db/NonConformanceRepository.java
++++ b/syncro/apps/backend/src/main/java/com/syncro/compliance/infrastructure/db/NonConformanceRepository.java
+@@ -1,11 +1,70 @@
+ package com.syncro.compliance.infrastructure.db;
+ 
++import java.util.Collection;
++import java.util.List;
+ import java.util.Optional;
+ import java.util.UUID;
+ import org.springframework.data.jpa.repository.JpaRepository;
++import org.springframework.data.jpa.repository.Query;
++import org.springframework.data.repository.query.Param;
+ 
+-/** Persistence for {@code non_conformances} (blueprint H1, story 15-2). */
++/** Persistence for {@code non_conformances} (blueprint H1, story 15-2; queries for 21-1). */
+ public interface NonConformanceRepository extends JpaRepository<NonConformanceEntity, UUID> {
+ 
+   Optional<NonConformanceEntity> findByNcNumber(String ncNumber);
++
++  boolean existsByNcNumber(String ncNumber);
++
++  /**
++   * Scope-filtered list (story 21-1): NCs without a machine link are visible to any
++   * authenticated user; machine-linked NCs follow the WorkOrderRepository.findScopedPage
++   * predicate exactly — plant OR machine-group from the caller's derived scope (review
++   * 21-1 P1: a plant-assigned manager without LEADER responsibility must still see
++   * their plant's NCs). SUPER_ADMIN passes {@code unrestricted=true}. The {@code status}
++   * filter uses the empty-string sentinel (Postgres 42P18 guard).
++   */
++  @Query("""
++      select n from NonConformanceEntity n
++      left join MachineEntity m on m.id = n.machineId
++      where (:unrestricted = true or n.machineId is null
++             or m.plant.id in :plantIds or m.machineGroup.id in :groupIds)
++        and (:status = '' or n.status = cast(:status as string))
++      order by n.createdAt desc
++      """)
++  List<NonConformanceEntity> findScoped(@Param("unrestricted") boolean unrestricted,
++      @Param("plantIds") Collection<UUID> plantIds, @Param("groupIds") Collection<UUID> groupIds,
++      @Param("status") String status);
++
++  /**
++   * Visibility twin of {@link #findScoped} for a single NC (detail reads and mutation
++   * gates): counts the row only when it passes the same plant-OR-group predicate.
++   */
++  @Query("""
++      select count(n) from NonConformanceEntity n
++      left join MachineEntity m on m.id = n.machineId
++      where n.id = :id
++        and (:unrestricted = true or n.machineId is null
++             or m.plant.id in :plantIds or m.machineGroup.id in :groupIds)
++      """)
++  long countVisible(@Param("id") UUID id, @Param("unrestricted") boolean unrestricted,
++      @Param("plantIds") Collection<UUID> plantIds, @Param("groupIds") Collection<UUID> groupIds);
++
++  /** Plant + group of a machine — create-time scope gate and audit plantId resolution. */
++  interface MachineScopeView {
++    UUID getPlantId();
++
++    UUID getGroupId();
++  }
++
++  @Query("select m.plant.id as plantId, m.machineGroup.id as groupId from MachineEntity m "
++      + "where m.id = :machineId")
++  Optional<MachineScopeView> findMachineScope(@Param("machineId") UUID machineId);
++
++  /** Create-time reference validation: the workorder evidence link must resolve. */
++  @Query("select count(w) from WorkOrderEntity w where w.id = :workOrderId")
++  long countWorkOrder(@Param("workOrderId") String workOrderId);
++
++  /** Create-time reference validation: the responsible user must exist. */
++  @Query("select count(u) from AuthUserEntity u where u.id = :userId")
++  long countUser(@Param("userId") UUID userId);
+ }
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java b/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
+index fded678..49260f6 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/db/V1BaseSchemaMigrationTest.java
+@@ -49,11 +49,11 @@ class V1BaseSchemaMigrationTest {
+   // -------------------------------------------------------------------------
+ 
+   @Test
+-  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V12 additive migrations")
++  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V13 additive migrations")
+   void migrationsApplied() {
+     var rows = jdbc.queryForList(
+         "SELECT version, script, success FROM flyway_schema_history ORDER BY installed_rank");
+-    assertThat(rows).hasSize(12);
++    assertThat(rows).hasSize(13);
+     assertThat(rows.get(0).get("version")).isEqualTo("1");
+     assertThat(rows.get(0).get("script")).isEqualTo("V1__orm_foundation_schema.sql");
+     assertThat(rows.get(0).get("success")).isEqualTo(true);
+@@ -90,6 +90,9 @@ class V1BaseSchemaMigrationTest {
+     assertThat(rows.get(11).get("version")).isEqualTo("12");
+     assertThat(rows.get(11).get("script")).isEqualTo("V12__kpi_target_audit_type.sql");
+     assertThat(rows.get(11).get("success")).isEqualTo(true);
++    assertThat(rows.get(12).get("version")).isEqualTo("13");
++    assertThat(rows.get(12).get("script")).isEqualTo("V13__nc_severity_and_compliance_audit_types.sql");
++    assertThat(rows.get(12).get("success")).isEqualTo(true);
+   }
+ 
+   // -------------------------------------------------------------------------
+@@ -700,6 +703,41 @@ class V1BaseSchemaMigrationTest {
+         "PLANT", "MACHINE", "ALERT", "SPAREPART_REQUEST", "SIGNATURE_USE");
+   }
+ 
++  /**
++   * Story 21-1: V13 extends the CHECK additively with NON_CONFORMANCE +
++   * EIGHT_D_REPORT so the compliance audit types can be persisted. Every prior
++   * value — including the V12 KPI_TARGET — survives the extension.
++   */
++  @Test
++  @DisplayName("21.1-DB-001 P0 audit_log entity_type CHECK accepts NON_CONFORMANCE/EIGHT_D_REPORT after V13")
++  void auditEntityTypeAcceptsComplianceTypes() {
++    var check = jdbc.queryForMap(
++        "SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint "
++            + "WHERE conname = 'ck_audit_log_entity_type'");
++    var def = (String) check.get("def");
++    assertThat(def).contains("NON_CONFORMANCE", "EIGHT_D_REPORT");
++    // every prior value survives the additive V13 extension.
++    assertThat(def).contains("KPI_TARGET", "PM_EXECUTION", "PM_EXECUTION_ITEM", "PM_WORK_ORDER",
++        "WORK_ORDER_QUALITY_RATING", "WORK_LOG_RATING", "WORK_LOG", "WORK_ASSIGNMENT",
++        "PLANT", "MACHINE", "ALERT", "SPAREPART_REQUEST", "SIGNATURE_USE");
++  }
++
++  /**
++   * Story 21-1: V13 adds the nullable severity column to non_conformances with an
++   * uppercase CHECK (MINOR/MAJOR/CRITICAL) — the story AC's severity requirement.
++   */
++  @Test
++  @DisplayName("21.1-DB-002 P0 non_conformances carries severity + ck_non_conformances_severity after V13")
++  void ncSeverityColumnAndCheck() {
++    assertThat(columnNames("non_conformances")).contains("severity");
++    var check = jdbc.queryForMap(
++        "SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint "
++            + "WHERE conname = 'ck_non_conformances_severity'");
++    assertThat((String) check.get("def")).contains("MINOR", "MAJOR", "CRITICAL");
++    // nullable: existing rows without a severity stay valid (IS NULL allowed).
++    assertThat((String) check.get("def")).containsIgnoringCase("IS NULL");
++  }
++
+   // -------------------------------------------------------------------------
+   // Helpers
+   // -------------------------------------------------------------------------
+diff --git a/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmAuthzEnforcementParityTest.java b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmAuthzEnforcementParityTest.java
+index 6bf7094..7bafc54 100644
+--- a/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmAuthzEnforcementParityTest.java
++++ b/syncro/apps/backend/src/test/java/com/syncro/maintenance/preventive/api/PmAuthzEnforcementParityTest.java
+@@ -12,17 +12,18 @@ import org.junit.jupiter.api.DisplayName;
+ import org.junit.jupiter.api.Test;
+ 
+ /**
+- * Pins the OPA rollout parity for the PM surface (stories 19-4/19-5/19-6): every
+- * path in the rego pm_work_order_paths and pm_execution_paths sets must also appear
+- * in SYNCRO_AUTHZ_ENFORCED_PATHS in syncro/.env.example, or the endpoint ships
+- * unenforced. The rego sets are parsed from the policy source (no hand-copied list
+- * to drift). Plain file read — no Spring context; the rego suite covers the policy
+- * side, this covers the env rollout side.
++ * Pins the OPA rollout parity for the PM surface (stories 19-4/19-5/19-6) and the
++ * compliance surface (story 21-1): every path in the rego pm_work_order_paths,
++ * pm_execution_paths, compliance_nc_paths and compliance_eight_d_verify_paths sets
++ * must also appear in SYNCRO_AUTHZ_ENFORCED_PATHS in syncro/.env.example, or the
++ * endpoint ships unenforced. The rego sets are parsed from the policy source (no
++ * hand-copied list to drift). Plain file read — no Spring context; the rego suite
++ * covers the policy side, this covers the env rollout side.
+  */
+ class PmAuthzEnforcementParityTest {
+ 
+-  private static final Pattern SET_BODY =
+-      Pattern.compile("(pm_work_order_paths|pm_execution_paths) := \\{([^}]*)\\}");
++  private static final Pattern SET_BODY = Pattern.compile(
++      "(pm_work_order_paths|pm_execution_paths|compliance_nc_paths|compliance_eight_d_verify_paths) := \\{([^}]*)\\}");
+   private static final Pattern QUOTED = Pattern.compile("\"([^\"]+)\"");
+ 
+   @Test
+@@ -40,6 +41,10 @@ class PmAuthzEnforcementParityTest {
+     // must be in the parsed output (not just in .env.example).
+     assertThat(setPaths).anyMatch(p -> p.equals("/api/v1/pm-work-orders/*/complete"));
+     assertThat(setPaths).contains("/api/v1/pm-executions/*/report");
++    // Story 21-1 guard: the compliance sets must also be parsed (a renamed set would
++    // silently drop it from the parity check).
++    assertThat(setPaths).contains("/api/v1/non-conformances/*/eight-d");
++    assertThat(setPaths).contains("/api/v1/non-conformances/*/eight-d/verify-effectiveness");
+ 
+     var line = Files.readAllLines(envFile).stream()
+         .filter(l -> l.startsWith("SYNCRO_AUTHZ_ENFORCED_PATHS="))
+diff --git a/syncro/authz/policy/authz.rego b/syncro/authz/policy/authz.rego
+index e1ed13a..47b7766 100644
+--- a/syncro/authz/policy/authz.rego
++++ b/syncro/authz/policy/authz.rego
+@@ -428,6 +428,27 @@ pm_execution_paths := {
+   "/api/v1/pm-executions/*/report",
+ }
+ 
++# Non-conformances & 8D reports (story 21-1, blueprint H1/H2): NC create/update and
++# 8D create/section-update for the six-role workorder-create parity set (SUPER_ADMIN
++# via the generic bypass) — mirrors NonConformanceService.requireMutationRole exactly.
++# Effectiveness verification is narrower (SUPER_ADMIN/MANAGER_MAINTENANCE) and lives
++# in compliance_eight_d_verify_paths below. A single `*` matches exactly one path
++# segment, so each depth is enumerated explicitly: collection (list/create), /{id}
++# (get/update), /{id}/eight-d (create/get/update). Machine scope and the state
++# machine are service-side (rego cannot see the body or the NC state). Reads (GET)
++# flow through generic read_allowed.
++compliance_nc_paths := {
++  "/api/v1/non-conformances",
++  "/api/v1/non-conformances/*",
++  "/api/v1/non-conformances/*/eight-d",
++}
++
++# 8D effectiveness verification (story 21-1): SUPER_ADMIN/MANAGER_MAINTENANCE only —
++# parity with EightDReportService.verifyEffectiveness. Other roles stay default-deny.
++compliance_eight_d_verify_paths := {
++  "/api/v1/non-conformances/*/eight-d/verify-effectiveness",
++}
++
+ # Org-maintenance departments (spec-org-maintenance-model): mutations are the
+ # Phase 1 gate (SUPER_ADMIN|MANAGER_MAINTENANCE). Reads flow through generic
+ # read_allowed. Members replace + section leader assignment + user-master updates
+@@ -1262,6 +1283,49 @@ mutation_allowed if {
+   path_matches(pm_execution_paths)
+ }
+ 
++# Non-conformances & 8D (story 21-1): six-role workorder-create parity set —
++# MANAGER_MAINTENANCE, MAINTENANCE_LEADER, SECTION_LEADER, STAFF_MAINTENANCE,
++# PRODUCTION_LEADER (SUPER_ADMIN via the generic bypass). TECHNICIAN/AUDITOR and the
++# inventory roles stay default-deny — parity with NonConformanceService
++# .requireMutationRole (rego is the coarse gate; scope/transitions are service-side).
++mutation_allowed if {
++  input.subject.roles[_] == "MANAGER_MAINTENANCE"
++  is_mutation
++  path_matches(compliance_nc_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "MAINTENANCE_LEADER"
++  is_mutation
++  path_matches(compliance_nc_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "SECTION_LEADER"
++  is_mutation
++  path_matches(compliance_nc_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "STAFF_MAINTENANCE"
++  is_mutation
++  path_matches(compliance_nc_paths)
++}
++
++mutation_allowed if {
++  input.subject.roles[_] == "PRODUCTION_LEADER"
++  is_mutation
++  path_matches(compliance_nc_paths)
++}
++
++# 8D effectiveness verification (story 21-1): MANAGER_MAINTENANCE only (SUPER_ADMIN
++# via the generic bypass) — parity with EightDReportService.verifyEffectiveness.
++mutation_allowed if {
++  input.subject.roles[_] == "MANAGER_MAINTENANCE"
++  is_mutation
++  path_matches(compliance_eight_d_verify_paths)
++}
++
+ mutation_allowed if {
+   input.subject.roles[_] == "MANAGER_MAINTENANCE"
+   is_mutation
+diff --git a/syncro/authz/policy/authz_test.rego b/syncro/authz/policy/authz_test.rego
+index 53f0ef0..13101b6 100644
+--- a/syncro/authz/policy/authz_test.rego
++++ b/syncro/authz/policy/authz_test.rego
+@@ -1865,6 +1865,76 @@ test_anonymous_pm_execution_denied if {
+   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/pm-executions/start"}
+ }
+ 
++# -- Non-conformances & 8D reports (story 21-1, blueprint H1/H2) -----------
++# Six-role workorder-create parity set on the NC/8D mutation surface (mirrors
++# NonConformanceService.requireMutationRole); effectiveness verification narrows to
++# MANAGER_MAINTENANCE/SUPER_ADMIN (mirrors EightDReportService.verifyEffectiveness).
++# Reads flow through generic read_allowed for any authenticated user.
++
++test_super_admin_nc_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/non-conformances"}
++}
++
++test_manager_nc_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/non-conformances"}
++}
++
++test_maintenance_leader_nc_update_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "PATCH /api/v1/non-conformances/7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_section_leader_nc_update_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "PATCH /api/v1/non-conformances/7b7c6d5e-1111-2222-3333-444455556666"}
++}
++
++test_staff_nc_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/non-conformances"}
++}
++
++test_production_leader_nc_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["PRODUCTION_LEADER"], "userId": "u8"}, "action": "POST /api/v1/non-conformances"}
++}
++
++test_technician_nc_create_denied if {
++  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/non-conformances"}
++}
++
++test_auditor_nc_create_denied if {
++  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/non-conformances"}
++}
++
++test_technician_nc_read_allowed if {
++  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "GET /api/v1/non-conformances"}
++}
++
++test_manager_eight_d_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/non-conformances/7b7c6d5e-1111-2222-3333-444455556666/eight-d"}
++}
++
++test_staff_eight_d_create_allowed if {
++  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/non-conformances/7b7c6d5e-1111-2222-3333-444455556666/eight-d"}
++}
++
++test_super_admin_verify_effectiveness_allowed if {
++  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/non-conformances/7b7c6d5e-1111-2222-3333-444455556666/eight-d/verify-effectiveness"}
++}
++
++test_manager_verify_effectiveness_allowed if {
++  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/non-conformances/7b7c6d5e-1111-2222-3333-444455556666/eight-d/verify-effectiveness"}
++}
++
++test_section_leader_verify_effectiveness_denied if {
++  not authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/non-conformances/7b7c6d5e-1111-2222-3333-444455556666/eight-d/verify-effectiveness"}
++}
++
++test_staff_verify_effectiveness_denied if {
++  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/non-conformances/7b7c6d5e-1111-2222-3333-444455556666/eight-d/verify-effectiveness"}
++}
++
++test_anonymous_nc_denied if {
++  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "GET /api/v1/non-conformances"}
++}
++
+ # -- Anonymous (no userId): default deny everywhere ------------------------
+ 
+ test_anonymous_admin_only_denied if {

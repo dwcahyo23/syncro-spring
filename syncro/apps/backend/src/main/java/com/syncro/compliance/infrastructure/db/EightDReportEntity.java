@@ -7,6 +7,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
@@ -72,6 +73,11 @@ public class EightDReportEntity {
 
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
+
+  /** Optimistic lock (review 21-1 P6): concurrent section-update/verify → 409 VERSION_CONFLICT. */
+  @Version
+  @Column(nullable = false)
+  private long version;
 
   protected EightDReportEntity() {
   }
@@ -163,10 +169,58 @@ public class EightDReportEntity {
     return updatedAt;
   }
 
+  public long getVersion() {
+    return version;
+  }
+
   /** Effectiveness verification (H2): stamps the verdict time. */
   public void verifyEffectiveness(EightDStatus status, Instant verifiedAt, Instant updatedAt) {
     this.status = status;
     this.effectivenessVerifiedAt = verifiedAt;
+    this.updatedAt = updatedAt;
+  }
+
+  /** Status transition (story 21-1): moves the D1–D8 workflow and stamps updatedAt. */
+  public void transitionTo(EightDStatus status, Instant updatedAt) {
+    this.status = status;
+    this.updatedAt = updatedAt;
+  }
+
+  /**
+   * Partial D1–D8 update (story 21-1, KPI-target precedent): a null argument keeps
+   * the stored value. {@code reportNumber} and {@code ncId} are immutable.
+   */
+  public void updateSections(Map<String, Object> d1Team, String d2Description,
+      String d3Containment, Map<String, Object> d4RootCause, String d5CaPermanent,
+      String d6Implementation, String d7LessonLearned, String d8ClosureNotes,
+      String pdfArtifactUrl, Instant updatedAt) {
+    if (d1Team != null) {
+      this.d1Team = d1Team;
+    }
+    if (d2Description != null) {
+      this.d2Description = d2Description;
+    }
+    if (d3Containment != null) {
+      this.d3Containment = d3Containment;
+    }
+    if (d4RootCause != null) {
+      this.d4RootCause = d4RootCause;
+    }
+    if (d5CaPermanent != null) {
+      this.d5CaPermanent = d5CaPermanent;
+    }
+    if (d6Implementation != null) {
+      this.d6Implementation = d6Implementation;
+    }
+    if (d7LessonLearned != null) {
+      this.d7LessonLearned = d7LessonLearned;
+    }
+    if (d8ClosureNotes != null) {
+      this.d8ClosureNotes = d8ClosureNotes;
+    }
+    if (pdfArtifactUrl != null) {
+      this.pdfArtifactUrl = pdfArtifactUrl;
+    }
     this.updatedAt = updatedAt;
   }
 }

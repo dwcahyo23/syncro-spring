@@ -35,7 +35,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-25
-last_updated: 2026-09-04
+last_updated: 2026-09-05
+# updated: 2026-09-05 Epic 21 in-progress — 21-1 Non-Conformance & 8D Reports done (NC CRUD + 8D + V13 + rego parity; build-auto review 8 patched + code-review pass 2, 4 patched / 1 deferred)
 # updated: 2026-09-04 (5) Epic 20 DONE — 20-2 KPI Targets & Dashboard Consumption done (server-side verdicts + Monthly KPI tab + target dialog)
 # updated: 2026-09-04 (4) Epic 20 — 20-1 KPI Materialized Tables done (build-auto + adversarial review, 21 patched / 5 deferred DW-160..164)
 # updated: 2026-09-04 (3) Epic 20 in-progress — 20-1 KPI Materialized Tables in review (build-auto: materialization engine + target CRUD + refresh gate + scheduler)
@@ -280,8 +281,8 @@ development_status:
   epic-20-retrospective: optional
 
   # Epic 21: IATF Compliance Module
-  epic-21: backlog
-  21-1-non-conformance-8d-reports: backlog
+  epic-21: in-progress
+  21-1-non-conformance-8d-reports: done
   21-2-calibration-equipment-change-control: backlog
   21-3-setup-baselines-lesson-learned: backlog
   epic-21-retrospective: optional
