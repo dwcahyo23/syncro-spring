@@ -52,7 +52,7 @@ deferred:
 - Every mutation: role gate in the service (throw `ComplianceForbiddenException` → 403 `FORBIDDEN`) AND rego coarse gate for the same role set (parity), AND `AuditLogWriter.record` with previous/new values and decisionId correlation
 - NC status transitions: OPEN→IN_PROGRESS→CLOSED→VERIFIED; CLOSED stamps `closed_at` (server Clock) and requires rootCause + correctiveAction; VERIFIED only from CLOSED; anything else → 409 `INVALID_STATE_TRANSITION`
 - 8D status: DRAFT→IN_PROGRESS→CLOSED→EFFECTIVE|INEFFECTIVE; verify-effectiveness stamps `effectiveness_verified_at`; one report per NC (`uq_eight_d_reports_nc`) → 409 `EIGHT_D_CONFLICT` on second create
-- List/detail reads filter by machine scope: NCs with a `machine_id` are visible only when the machine's group is in the user's derived scope (`OperationalScopeService`); SUPER_ADMIN sees all; NCs without machine link are visible to any authenticated user
+- List/detail reads filter by machine scope: NCs with a `machine_id` are visible only when the machine's plant OR group is in the user's derived scope (`OperationalScopeService`, WorkOrderRepository.findScopedPage predicate per review 21-1 P1); SUPER_ADMIN sees all; NCs without machine link are visible to any authenticated user
 - `nc_number`/`report_number` are client-supplied unique business ids → duplicate → 409 `DUPLICATE_IDENTIFIER`
 - DTO records with Bean Validation; `Instant` UTC timestamps; JSON fields (d1Team, d4RootCause) as `Map<String,Object>`; error envelope per-module `@RestControllerAdvice` (KpiExceptionHandler pattern)
 - Mutation roles: SUPER_ADMIN, MANAGER_MAINTENANCE, MAINTENANCE_LEADER, SECTION_LEADER, STAFF_MAINTENANCE, PRODUCTION_LEADER (workorder-create parity); effectiveness verification: SUPER_ADMIN, MANAGER_MAINTENANCE only; AUDITOR/TECHNICIAN read-only
@@ -136,6 +136,11 @@ deferred:
   - `[medium]` `[defer]` Two Testcontainers suites sharing one forked JVM hit stale reused-container ports
     (ComplianceEntityConventionIntegrationTest passes 4/4 alone). Pre-existing infra flake in
     AbstractPostgresIntegrationTest reuse config — out of scope for 21-1; note for a later test-infra story.
+- Late acceptance-audit findings (applied before commit): CreateNcRequest.description @Size cap
+  landed on the controller (was claimed but missing); rego TECHNICIAN PATCH-denied +
+  MAINTENANCE_LEADER verify-denied cases added to authz_test.rego; intent Always-clause + Design
+  Notes scope text corrected to plant-OR-group (P1). NC-create FK TOCTOU races: rejected — V1 FKs are
+  ON DELETE SET NULL (no violation possible), only the unique constraint can race and it is classified.
 - Rejected (10): unbounded list (spec deferred DW entry already); NcvView/EightDView version exposure
   (If-Match contract is a later-story surface, @Version still protects writes via 409); D1-D8 Map schema
   guards (intent-contract fixes JSON as Map<String,Object>; bean-level schema is later-story work);
@@ -180,7 +185,7 @@ deferred:
 
 ## Design Notes
 
-- Scope filter SQL: NC list joins `machines` on `machine_id` and filters `machines.machine_group_id IN (:groupIds)` OR `machine_id IS NULL` — same derived set OPA uses (AD-2 single scope source); `ponytail: null-machine NCs visible to all authenticated; tighten to managers if a quality-audit review demands it`.
+- Scope filter SQL: NC list joins `machines` on `machine_id` and filters plant-OR-group (`m.plant.id IN (:plantIds) OR m.machineGroup.id IN (:groupIds)`) OR `machine_id IS NULL` — WorkOrderRepository.findScopedPage predicate per review 21-1 P1 (AD-2 single scope source); `ponytail: null-machine NCs visible to all authenticated; tighten to managers if a quality-audit review demands it`.
 - NC PATCH is partial-update (null keeps stored value, KPI-target precedent); status change rides the same PATCH with transition validation.
 
 ## Verification

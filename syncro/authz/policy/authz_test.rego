@@ -1923,6 +1923,14 @@ test_manager_verify_effectiveness_allowed if {
   authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/non-conformances/7b7c6d5e-1111-2222-3333-444455556666/eight-d/verify-effectiveness"}
 }
 
+test_maintenance_leader_verify_effectiveness_denied if {
+  not authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/non-conformances/7b7c6d5e-1111-2222-3333-444455556666/eight-d/verify-effectiveness"}
+}
+
+test_technician_nc_update_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "PATCH /api/v1/non-conformances/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
 test_section_leader_verify_effectiveness_denied if {
   not authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/non-conformances/7b7c6d5e-1111-2222-3333-444455556666/eight-d/verify-effectiveness"}
 }

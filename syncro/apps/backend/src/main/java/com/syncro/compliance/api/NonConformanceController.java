@@ -124,7 +124,7 @@ public class NonConformanceController {
 
   public record CreateNcRequest(
       @NotBlank @Size(max = 50) String ncNumber,
-      @NotBlank String description,
+      @NotBlank @Size(max = 10_000) String description,
       NcSeverity severity,
       @Size(max = 64) String projectId,
       @Size(max = 50) String workOrderId,
