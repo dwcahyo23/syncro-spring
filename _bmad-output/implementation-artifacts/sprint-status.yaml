@@ -288,9 +288,9 @@ development_status:
   epic-21-retrospective: optional
 
   # Epic 22: Integration, Webhook, Audit & Signature
-  epic-22: backlog
+  epic-22: in-progress
   22-1-webhook-config-delivery-log: backlog
-  22-2-auth-login-audit-phone-verification: backlog
+  22-2-auth-login-audit-phone-verification: done
   22-3-user-signatures-signature-use: backlog
   22-4-whatsapp-message-log: backlog
   epic-22-retrospective: optional
