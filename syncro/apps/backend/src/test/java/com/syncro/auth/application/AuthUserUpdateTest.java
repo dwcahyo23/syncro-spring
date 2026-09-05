@@ -37,6 +37,8 @@ class AuthUserUpdateTest {
   private JwtTokenService tokens;
   @Mock
   private AuditLogWriter auditLog;
+  @Mock
+  private AuthLoginAuditService loginAudits;
 
   private final Clock clock = Clock.fixed(Instant.parse("2026-08-27T00:00:00Z"), ZoneOffset.UTC);
 
@@ -49,7 +51,7 @@ class AuthUserUpdateTest {
     when(users.findByPhoneNumber("0812-3456")).thenReturn(Optional.empty());
     when(users.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    var service = new AuthService(users, passwordEncoder, tokens, auditLog, clock);
+    var service = new AuthService(users, passwordEncoder, tokens, auditLog, loginAudits, clock);
     var view = service.updateUser(actor(ApplicationRole.MANAGER_MAINTENANCE), userId,
         new UpdateUserRequest("John Doe", "NIK-001", "0812-3456", null, null));
 
@@ -66,7 +68,7 @@ class AuthUserUpdateTest {
     when(users.findById(userId)).thenReturn(Optional.of(user));
     when(users.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    var service = new AuthService(users, passwordEncoder, tokens, auditLog, clock);
+    var service = new AuthService(users, passwordEncoder, tokens, auditLog, loginAudits, clock);
     var view = service.updateUser(actor(ApplicationRole.MANAGER_MAINTENANCE), userId,
         new UpdateUserRequest("", "", "", null, null));
 
@@ -84,7 +86,7 @@ class AuthUserUpdateTest {
     when(users.findById(userId)).thenReturn(Optional.of(user));
     when(users.findByNikIgnoreCase("NIK-001")).thenReturn(Optional.of(other));
 
-    var service = new AuthService(users, passwordEncoder, tokens, auditLog, clock);
+    var service = new AuthService(users, passwordEncoder, tokens, auditLog, loginAudits, clock);
     assertThatThrownBy(() -> service.updateUser(actor(ApplicationRole.MANAGER_MAINTENANCE), userId,
         new UpdateUserRequest("John", "NIK-001", null, null, null)))
         .isInstanceOf(DuplicateUserIdentifierException.class);
@@ -101,7 +103,7 @@ class AuthUserUpdateTest {
     when(users.findByNikIgnoreCase("NIK-001")).thenReturn(Optional.empty());
     when(users.findByPhoneNumber("0812-3456")).thenReturn(Optional.of(other));
 
-    var service = new AuthService(users, passwordEncoder, tokens, auditLog, clock);
+    var service = new AuthService(users, passwordEncoder, tokens, auditLog, loginAudits, clock);
     assertThatThrownBy(() -> service.updateUser(actor(ApplicationRole.MANAGER_MAINTENANCE), userId,
         new UpdateUserRequest("John", "NIK-001", "0812-3456", null, null)))
         .isInstanceOf(DuplicateUserIdentifierException.class);
@@ -116,7 +118,7 @@ class AuthUserUpdateTest {
     when(users.findByPhoneNumber("0812-3456")).thenReturn(Optional.empty());
     when(users.saveAndFlush(any())).thenThrow(uniqueViolation("uq_auth_users_nik"));
 
-    var service = new AuthService(users, passwordEncoder, tokens, auditLog, clock);
+    var service = new AuthService(users, passwordEncoder, tokens, auditLog, loginAudits, clock);
     assertThatThrownBy(() -> service.updateUser(actor(ApplicationRole.MANAGER_MAINTENANCE), userId,
         new UpdateUserRequest("John", "NIK-001", "0812-3456", null, null)))
         .isInstanceOf(DuplicateUserIdentifierException.class);
@@ -125,7 +127,7 @@ class AuthUserUpdateTest {
   @Test
   void auditorForbidden() {
     var userId = UUID.randomUUID();
-    var service = new AuthService(users, passwordEncoder, tokens, auditLog, clock);
+    var service = new AuthService(users, passwordEncoder, tokens, auditLog, loginAudits, clock);
     assertThatThrownBy(() -> service.updateUser(actor(ApplicationRole.AUDITOR), userId,
         new UpdateUserRequest("John", null, null, null, null)))
         .isInstanceOf(UserMasterForbiddenException.class);
@@ -135,7 +137,7 @@ class AuthUserUpdateTest {
   void unknownUserThrowsNotFound() {
     var userId = UUID.randomUUID();
     when(users.findById(userId)).thenReturn(Optional.empty());
-    var service = new AuthService(users, passwordEncoder, tokens, auditLog, clock);
+    var service = new AuthService(users, passwordEncoder, tokens, auditLog, loginAudits, clock);
     assertThatThrownBy(() -> service.updateUser(actor(ApplicationRole.MANAGER_MAINTENANCE), userId,
         new UpdateUserRequest("John", null, null, null, null)))
         .isInstanceOf(UserNotFoundException.class);

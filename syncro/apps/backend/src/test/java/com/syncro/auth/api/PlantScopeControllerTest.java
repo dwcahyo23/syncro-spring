@@ -47,6 +47,12 @@ class PlantScopeControllerTest {
   @MockitoBean
   private JwtTokenService jwtTokenService;
 
+  @MockitoBean
+  private com.syncro.auth.application.AuthLoginAuditService loginAudits;
+
+  @MockitoBean
+  private com.syncro.auth.application.PhoneVerificationService phoneChallenges;
+
   @Test
   void plantScopeRequiresAuthentication() throws Exception {
     mockMvc.perform(get("/api/v1/auth/plant-scope"))

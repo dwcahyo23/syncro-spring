@@ -1943,6 +1943,69 @@ test_anonymous_nc_denied if {
   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "GET /api/v1/non-conformances"}
 }
 
+# -- Login audits & phone challenges (story 22-2, blueprint I2/I3) ----------
+# Audit reads are SUPER_ADMIN/AUDITOR-only (auth_audit_read_paths is excluded from
+# the generic any-authenticated read; an explicit AUDITOR rule grants it). Phone
+# challenges are SUPER_ADMIN-only mutations — no non-admin role matches
+# auth_phone_challenge_paths, so everyone else is default-deny. Mirrors
+# AuthLoginAuditService.requireReadRole / PhoneVerificationService.requireSuperAdmin.
+
+test_super_admin_login_audit_list_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "GET /api/v1/auth/login-audits"}
+}
+
+test_auditor_login_audit_list_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/auth/login-audits"}
+}
+
+test_auditor_login_audit_detail_allowed if {
+  authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/auth/login-audits/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_technician_login_audit_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "GET /api/v1/auth/login-audits"}
+}
+
+test_manager_login_audit_denied if {
+  not authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "GET /api/v1/auth/login-audits"}
+}
+
+test_staff_login_audit_detail_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "GET /api/v1/auth/login-audits/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_anonymous_login_audit_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "GET /api/v1/auth/login-audits"}
+}
+
+test_super_admin_phone_challenge_issue_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/auth/phone-challenges"}
+}
+
+test_super_admin_phone_challenge_verify_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/auth/phone-challenges/7b7c6d5e-1111-2222-3333-444455556666/verify"}
+}
+
+test_super_admin_phone_challenge_resend_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/auth/phone-challenges/7b7c6d5e-1111-2222-3333-444455556666/resend"}
+}
+
+test_auditor_phone_challenge_issue_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/auth/phone-challenges"}
+}
+
+test_manager_phone_challenge_verify_denied if {
+  not authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/auth/phone-challenges/7b7c6d5e-1111-2222-3333-444455556666/verify"}
+}
+
+test_technician_phone_challenge_resend_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/auth/phone-challenges/7b7c6d5e-1111-2222-3333-444455556666/resend"}
+}
+
+test_anonymous_phone_challenge_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/auth/phone-challenges"}
+}
+
 # -- Anonymous (no userId): default deny everywhere ------------------------
 
 test_anonymous_admin_only_denied if {

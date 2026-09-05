@@ -12,10 +12,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * Pins the OPA rollout parity for the PM surface (stories 19-4/19-5/19-6) and the
- * compliance surface (story 21-1): every path in the rego pm_work_order_paths,
- * pm_execution_paths, compliance_nc_paths and compliance_eight_d_verify_paths sets
- * must also appear in SYNCRO_AUTHZ_ENFORCED_PATHS in syncro/.env.example, or the
+ * Pins the OPA rollout parity for the PM surface (stories 19-4/19-5/19-6), the
+ * compliance surface (story 21-1) and the auth-evidence surface (story 22-2): every
+ * path in the rego pm_work_order_paths, pm_execution_paths, compliance_nc_paths,
+ * compliance_eight_d_verify_paths, auth_audit_read_paths and auth_phone_challenge_paths
+ * sets must also appear in SYNCRO_AUTHZ_ENFORCED_PATHS in syncro/.env.example, or the
  * endpoint ships unenforced. The rego sets are parsed from the policy source (no
  * hand-copied list to drift). Plain file read — no Spring context; the rego suite
  * covers the policy side, this covers the env rollout side.
@@ -23,7 +24,8 @@ import org.junit.jupiter.api.Test;
 class PmAuthzEnforcementParityTest {
 
   private static final Pattern SET_BODY = Pattern.compile(
-      "(pm_work_order_paths|pm_execution_paths|compliance_nc_paths|compliance_eight_d_verify_paths) := \\{([^}]*)\\}");
+      "(pm_work_order_paths|pm_execution_paths|compliance_nc_paths|compliance_eight_d_verify_paths"
+          + "|auth_audit_read_paths|auth_phone_challenge_paths) := \\{([^}]*)\\}");
   private static final Pattern QUOTED = Pattern.compile("\"([^\"]+)\"");
 
   @Test
@@ -45,6 +47,10 @@ class PmAuthzEnforcementParityTest {
     // silently drop it from the parity check).
     assertThat(setPaths).contains("/api/v1/non-conformances/*/eight-d");
     assertThat(setPaths).contains("/api/v1/non-conformances/*/eight-d/verify-effectiveness");
+    // Story 22-2 guard: the auth-evidence sets must also be parsed (same rename-drift
+    // protection — a renamed set silently drops its paths from enforcement).
+    assertThat(setPaths).anyMatch(p -> p.startsWith("/api/v1/auth/login-audits"));
+    assertThat(setPaths).anyMatch(p -> p.startsWith("/api/v1/auth/phone-challenges"));
 
     var line = Files.readAllLines(envFile).stream()
         .filter(l -> l.startsWith("SYNCRO_AUTHZ_ENFORCED_PATHS="))

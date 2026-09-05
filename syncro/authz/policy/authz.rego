@@ -449,6 +449,25 @@ compliance_eight_d_verify_paths := {
   "/api/v1/non-conformances/*/eight-d/verify-effectiveness",
 }
 
+# Login audits & phone challenges (story 22-2, blueprint I2/I3): audit reads are
+# SUPER_ADMIN/AUDITOR-only — read_allowed below excludes these paths from the generic
+# any-authenticated read so every other role is default-deny, and an explicit AUDITOR
+# rule grants reads (SUPER_ADMIN via the top-level bypass). Mirrors
+# AuthLoginAuditService.requireReadRole exactly. Phone-challenge mutations are
+# SUPER_ADMIN-only: no non-admin role matches auth_phone_challenge_paths (the top-level
+# bypass handles SUPER_ADMIN), mirroring PhoneVerificationService.requireSuperAdmin.
+auth_audit_read_paths := {
+  "/api/v1/auth/login-audits",
+  "/api/v1/auth/login-audits/*",
+}
+
+auth_phone_challenge_paths := {
+  "/api/v1/auth/phone-challenges",
+  "/api/v1/auth/phone-challenges/*",
+  "/api/v1/auth/phone-challenges/*/verify",
+  "/api/v1/auth/phone-challenges/*/resend",
+}
+
 # Org-maintenance departments (spec-org-maintenance-model): mutations are the
 # Phase 1 gate (SUPER_ADMIN|MANAGER_MAINTENANCE). Reads flow through generic
 # read_allowed. Members replace + section leader assignment + user-master updates
@@ -1326,6 +1345,18 @@ mutation_allowed if {
   path_matches(compliance_eight_d_verify_paths)
 }
 
+# Phone challenges (story 22-2): SUPER_ADMIN-only mutations — parity with
+# PhoneVerificationService.requireSuperAdmin. The top-level super_admin bypass also
+# covers SUPER_ADMIN, but this explicit rule makes the gate load-bearing (the set is
+# referenced by a rule, not just default-deny accident): no non-SUPER_ADMIN role
+# matches auth_phone_challenge_paths, so every other role stays default-deny on the
+# issue/verify/resend surface.
+mutation_allowed if {
+  input.subject.roles[_] == "SUPER_ADMIN"
+  is_mutation
+  path_matches(auth_phone_challenge_paths)
+}
+
 mutation_allowed if {
   input.subject.roles[_] == "MANAGER_MAINTENANCE"
   is_mutation
@@ -1354,6 +1385,17 @@ read_allowed if {
   input.subject.userId != null
   is_read
   not path_matches(admin_only_paths)
+  not path_matches(auth_audit_read_paths)
+}
+
+# Login-audit reads (story 22-2): AUDITOR only — SUPER_ADMIN takes the top-level bypass,
+# every other role stays default-deny (the exclusion above removes these paths from the
+# generic any-authenticated read). Parity with AuthLoginAuditService.requireReadRole.
+read_allowed if {
+  input.subject.userId != null
+  is_read
+  input.subject.roles[_] == "AUDITOR"
+  path_matches(auth_audit_read_paths)
 }
 
 is_mutation if startswith(input.action, "POST ")

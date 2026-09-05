@@ -49,11 +49,11 @@ class V1BaseSchemaMigrationTest {
   // -------------------------------------------------------------------------
 
   @Test
-  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V13 additive migrations")
+  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V15 additive migrations")
   void migrationsApplied() {
     var rows = jdbc.queryForList(
         "SELECT version, script, success FROM flyway_schema_history ORDER BY installed_rank");
-    assertThat(rows).hasSize(13);
+    assertThat(rows).hasSize(15);
     assertThat(rows.get(0).get("version")).isEqualTo("1");
     assertThat(rows.get(0).get("script")).isEqualTo("V1__orm_foundation_schema.sql");
     assertThat(rows.get(0).get("success")).isEqualTo(true);
@@ -93,6 +93,9 @@ class V1BaseSchemaMigrationTest {
     assertThat(rows.get(12).get("version")).isEqualTo("13");
     assertThat(rows.get(12).get("script")).isEqualTo("V13__nc_severity_and_compliance_audit_types.sql");
     assertThat(rows.get(12).get("success")).isEqualTo(true);
+    assertThat(rows.get(13).get("version")).isEqualTo("14");
+    assertThat(rows.get(13).get("script")).isEqualTo("V14__auth_evidence_audit_type.sql");
+    assertThat(rows.get(13).get("success")).isEqualTo(true);
   }
 
   // -------------------------------------------------------------------------
@@ -736,6 +739,26 @@ class V1BaseSchemaMigrationTest {
     assertThat((String) check.get("def")).contains("MINOR", "MAJOR", "CRITICAL");
     // nullable: existing rows without a severity stay valid (IS NULL allowed).
     assertThat((String) check.get("def")).containsIgnoringCase("IS NULL");
+  }
+
+  /**
+   * Story 22-2: V14 extends the CHECK additively with PHONE_VERIFICATION_CHALLENGE
+   * so the phone-challenge audit type can be persisted. Every prior value — including
+   * the V13 compliance types — survives the extension.
+   */
+  @Test
+  @DisplayName("22.2-DB-001 P0 audit_log entity_type CHECK accepts PHONE_VERIFICATION_CHALLENGE after V14")
+  void auditEntityTypeAcceptsPhoneVerificationChallenge() {
+    var check = jdbc.queryForMap(
+        "SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint "
+            + "WHERE conname = 'ck_audit_log_entity_type'");
+    var def = (String) check.get("def");
+    assertThat(def).contains("PHONE_VERIFICATION_CHALLENGE");
+    // every prior value survives the additive V14 extension.
+    assertThat(def).contains("NON_CONFORMANCE", "EIGHT_D_REPORT", "KPI_TARGET",
+        "PM_EXECUTION", "PM_WORK_ORDER", "WORK_ORDER_QUALITY_RATING", "WORK_LOG",
+        "WORK_ASSIGNMENT", "PLANT", "MACHINE", "ALERT", "SPAREPART_REQUEST",
+        "SIGNATURE_USE");
   }
 
   // -------------------------------------------------------------------------

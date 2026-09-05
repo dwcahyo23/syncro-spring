@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -46,6 +47,11 @@ public class PhoneVerificationChallengeEntity {
 
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
+
+  /** Optimistic lock (review 22-2 P3): concurrent verify/resend → lost update rejected. */
+  @Version
+  @Column(nullable = false)
+  private long version;
 
   protected PhoneVerificationChallengeEntity() {
   }
@@ -113,5 +119,18 @@ public class PhoneVerificationChallengeEntity {
   /** Consumes the challenge on successful verification (I3). */
   public void consume(Instant consumedAt) {
     this.consumedAt = consumedAt;
+  }
+
+  /**
+   * Re-issues the challenge after the resend window (story 22-2): swaps in a new OTP
+   * hash, extends expiry, resets the attempt budget, and sets the next resend gate.
+   * The row identity (id/user/pendingPhone/maxAttempts) is preserved — resend renews
+   * the same challenge, it does not fork a second one.
+   */
+  public void renew(String otpHash, Instant expiresAt, Instant resendAvailableAt) {
+    this.otpHash = otpHash;
+    this.expiresAt = expiresAt;
+    this.resendAvailableAt = resendAvailableAt;
+    this.attemptCount = 0;
   }
 }

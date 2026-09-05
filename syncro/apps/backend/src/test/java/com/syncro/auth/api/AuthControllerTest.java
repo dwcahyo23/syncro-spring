@@ -1,6 +1,8 @@
 package com.syncro.auth.api;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -48,9 +50,15 @@ class AuthControllerTest {
   @MockitoBean
   private PlantScopeService plantScopes;
 
+  @MockitoBean
+  private com.syncro.auth.application.AuthLoginAuditService loginAudits;
+
+  @MockitoBean
+  private com.syncro.auth.application.PhoneVerificationService phoneChallenges;
+
   @Test
   void loginReturnsTokenAndUserWithoutSecrets() throws Exception {
-    when(authService.login("admin@syncro.dev", "syncro-admin-dev"))
+    when(authService.login("admin@syncro.dev", "syncro-admin-dev", "127.0.0.1", "JUnit"))
         .thenReturn(new LoginResponse(
             "Bearer",
             "token-value",
@@ -58,6 +66,8 @@ class AuthControllerTest {
             userView("user-1", ApplicationRole.SUPER_ADMIN)));
 
     mockMvc.perform(post("/api/v1/auth/login")
+        .remoteAddress("127.0.0.1")
+        .header("User-Agent", "JUnit")
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"loginIdentifier\":\"admin@syncro.dev\",\"password\":\"syncro-admin-dev\"}"))
         .andExpect(status().isOk())
@@ -69,7 +79,7 @@ class AuthControllerTest {
 
   @Test
   void loginFailureReturnsGenericSafeError() throws Exception {
-    when(authService.login(anyString(), anyString())).thenThrow(new BadCredentialsException());
+    when(authService.login(anyString(), anyString(), any(), any())).thenThrow(new BadCredentialsException());
 
     mockMvc.perform(post("/api/v1/auth/login")
         .contentType(MediaType.APPLICATION_JSON)
@@ -78,6 +88,22 @@ class AuthControllerTest {
         .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"))
         .andExpect(jsonPath("$.message").value("Invalid login credentials."))
         .andExpect(jsonPath("$.traceId").isNotEmpty());
+  }
+
+  @Test
+  void loginTakesFirstXForwardedForHopAsClientIp() throws Exception {
+    when(authService.login("admin@syncro.dev", "syncro-admin-dev", "203.0.113.7", "JUnit"))
+        .thenReturn(new LoginResponse("Bearer", "tok", 1800, userView("user-1", ApplicationRole.SUPER_ADMIN)));
+
+    mockMvc.perform(post("/api/v1/auth/login")
+        .remoteAddress("10.0.0.2")
+        .header("X-Forwarded-For", "203.0.113.7, 10.0.0.2")
+        .header("User-Agent", "JUnit")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"loginIdentifier\":\"admin@syncro.dev\",\"password\":\"syncro-admin-dev\"}"))
+        .andExpect(status().isOk());
+
+    verify(authService).login("admin@syncro.dev", "syncro-admin-dev", "203.0.113.7", "JUnit");
   }
 
   @Test

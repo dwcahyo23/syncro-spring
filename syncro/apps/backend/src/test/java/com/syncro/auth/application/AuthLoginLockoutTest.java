@@ -33,6 +33,8 @@ class AuthLoginLockoutTest {
   private JwtTokenService tokens;
   @Mock
   private AuditLogWriter auditLog;
+  @Mock
+  private AuthLoginAuditService loginAudits;
 
   private final Clock clock = Clock.fixed(Instant.parse("2026-09-01T00:00:00Z"), ZoneOffset.UTC);
 
@@ -45,8 +47,8 @@ class AuthLoginLockoutTest {
     when(tokens.createToken(any())).thenReturn("tok");
     when(tokens.expiresInSeconds()).thenReturn(3600L);
 
-    var result = new AuthService(users, passwordEncoder, tokens, auditLog, clock)
-        .login("test@syncro.dev", "correct");
+    var result = new AuthService(users, passwordEncoder, tokens, auditLog, loginAudits, clock)
+        .login("test@syncro.dev", "correct", "10.0.0.1", "JUnit");
 
     assertThat(result.accessToken()).isEqualTo("tok");
     assertThat(user.getFailedLoginAttempts()).isZero();
@@ -59,8 +61,8 @@ class AuthLoginLockoutTest {
     when(users.findByLoginIdentifierIgnoreCase("test@syncro.dev")).thenReturn(Optional.of(user));
     when(passwordEncoder.matches("wrong", "hash")).thenReturn(false);
 
-    assertThatThrownBy(() -> new AuthService(users, passwordEncoder, tokens, auditLog, clock)
-        .login("test@syncro.dev", "wrong"))
+    assertThatThrownBy(() -> new AuthService(users, passwordEncoder, tokens, auditLog, loginAudits, clock)
+        .login("test@syncro.dev", "wrong", "10.0.0.1", "JUnit"))
         .isInstanceOf(BadCredentialsException.class);
 
     assertThat(user.getFailedLoginAttempts()).isEqualTo(1);
@@ -78,8 +80,8 @@ class AuthLoginLockoutTest {
     when(users.findByLoginIdentifierIgnoreCase("test@syncro.dev")).thenReturn(Optional.of(user));
     when(passwordEncoder.matches("wrong", "hash")).thenReturn(false);
 
-    assertThatThrownBy(() -> new AuthService(users, passwordEncoder, tokens, auditLog, clock)
-        .login("test@syncro.dev", "wrong"))
+    assertThatThrownBy(() -> new AuthService(users, passwordEncoder, tokens, auditLog, loginAudits, clock)
+        .login("test@syncro.dev", "wrong", "10.0.0.1", "JUnit"))
         .isInstanceOf(BadCredentialsException.class);
 
     assertThat(user.getFailedLoginAttempts()).isEqualTo(5);
@@ -97,8 +99,8 @@ class AuthLoginLockoutTest {
 
     when(users.findByLoginIdentifierIgnoreCase("test@syncro.dev")).thenReturn(Optional.of(user));
 
-    assertThatThrownBy(() -> new AuthService(users, passwordEncoder, tokens, auditLog, clock)
-        .login("test@syncro.dev", "correct"))
+    assertThatThrownBy(() -> new AuthService(users, passwordEncoder, tokens, auditLog, loginAudits, clock)
+        .login("test@syncro.dev", "correct", "10.0.0.1", "JUnit"))
         .isInstanceOf(AccountLockedException.class);
   }
 
