@@ -291,7 +291,7 @@ development_status:
   epic-22: in-progress
   22-1-webhook-config-delivery-log: backlog
   22-2-auth-login-audit-phone-verification: done
-  22-3-user-signatures-signature-use: backlog
+  22-3-user-signatures-signature-use: done
   22-4-whatsapp-message-log: backlog
   epic-22-retrospective: optional
 
