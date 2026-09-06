@@ -35,7 +35,9 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-25
-last_updated: 2026-09-05
+last_updated: 2026-09-06
+# updated: 2026-09-06 Epic 22 in-progress — 22-3 User Signatures & Signature Use done (upload+SHA256+Garage, signature_uses enrichment, ownership gate; V16; build-auto review 18 patched / 1 deferred; 269 tests + opa 488 green)
+# updated: 2026-09-05 Epic 22 in-progress — 22-2 Auth Login Audit & Phone Verification done (login audit per-attempt + phone challenge lifecycle; V14/V15; build-auto review 13 patched / 5 deferred; 116 tests + opa 474 green)
 # updated: 2026-09-05 Epic 21 in-progress — 21-1 Non-Conformance & 8D Reports done (NC CRUD + 8D + V13 + rego parity; build-auto review 8 patched + code-review pass 2, 4 patched / 1 deferred)
 # updated: 2026-09-04 (5) Epic 20 DONE — 20-2 KPI Targets & Dashboard Consumption done (server-side verdicts + Monthly KPI tab + target dialog)
 # updated: 2026-09-04 (4) Epic 20 — 20-1 KPI Materialized Tables done (build-auto + adversarial review, 21 patched / 5 deferred DW-160..164)
