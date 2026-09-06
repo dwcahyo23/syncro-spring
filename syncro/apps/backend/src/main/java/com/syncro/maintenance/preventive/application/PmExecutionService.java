@@ -5,6 +5,7 @@ import com.syncro.audit.application.AuditRecord;
 import com.syncro.audit.domain.AuditAction;
 import com.syncro.audit.domain.AuditEntityType;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
+import com.syncro.auth.application.SignatureUseService;
 import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.maintenance.application.WorkOrderService;
 import com.syncro.maintenance.preventive.application.PmChecklistService.PmChecklistItemNotFoundException;
@@ -66,6 +67,10 @@ public class PmExecutionService {
   private static final String EXECUTION_UNIQUE_INDEX = "uq_pm_executions_pm_wo";
   private static final String SCHEDULE_DATE_UNIQUE_INDEX = "uq_pm_executions_schedule_date";
 
+  private static final String SIGNATURE_MODULE = "preventive";
+  private static final String SUBJECT_TYPE_PM_EXECUTION = "PM_EXECUTION";
+  private static final String VERIFY_ACTION = "VERIFY_EXECUTION";
+
   /** Breakdown category for corrective finding workorders (story 19-5 design note). */
   private static final String FINDING_CATEGORY_CODE = "01";
 
@@ -81,6 +86,7 @@ public class PmExecutionService {
   private final WorkOrderService workOrderSystem;
   private final AuditLogWriter auditLog;
   private final OperationalScopeService scopes;
+  private final SignatureUseService signatureUses;
   private final Clock clock;
 
   public PmExecutionService(PmExecutionRepository executions,
@@ -88,7 +94,7 @@ public class PmExecutionService {
       PmWorkOrderService pmWorkOrders, PmChecklistItemRepository checklistItems,
       PmChecklistCategoryRepository checklistCategories, PmScheduleDateRepository scheduleDates,
       PmScheduleRepository schedules, MachineRepository machines, WorkOrderService workOrderSystem,
-      AuditLogWriter auditLog, OperationalScopeService scopes, Clock clock) {
+      AuditLogWriter auditLog, OperationalScopeService scopes, SignatureUseService signatureUses, Clock clock) {
     this.executions = executions;
     this.executionItems = executionItems;
     this.workOrders = workOrders;
@@ -101,6 +107,7 @@ public class PmExecutionService {
     this.workOrderSystem = workOrderSystem;
     this.auditLog = auditLog;
     this.scopes = scopes;
+    this.signatureUses = signatureUses;
     this.clock = clock;
   }
 
@@ -321,6 +328,19 @@ public class PmExecutionService {
 
   @Transactional
   public ExecutionView verify(AuthenticatedUser user, UUID id, UUID spvSignatureId) {
+    return verify(user, id, spvSignatureId, null, null);
+  }
+
+  /**
+   * SPV sign-off (story 19-5). Story 22-3: the signed verification also writes one
+   * {@code signature_uses} row (module=preventive) + SIGNATURE_USE audit via
+   * {@link SignatureUseService}. An unknown/absent stored signature leaves the use row's
+   * reference columns null (pm_executions.spv_signature_id carries no FK — the existing
+   * contract accepts any UUID).
+   */
+  @Transactional
+  public ExecutionView verify(AuthenticatedUser user, UUID id, UUID spvSignatureId, String ipAddress,
+      String userAgent) {
     var execution = loadForUpdate(id);
     var workOrder = loadWorkOrder(execution.getPmWoId());
     var machine = loadMachine(workOrder.getMachineId());
@@ -335,6 +355,14 @@ public class PmExecutionService {
     var now = Instant.now(clock);
     execution.verifyBySpv(UUID.fromString(user.id()), spvSignatureId, now, now);
     var saved = executions.saveAndFlush(execution);
+
+    // Review 22-3 P6: the verify body is optional (19-5) — a no-signature verify is
+    // not a signature application, so no use row is written for it.
+    if (spvSignatureId != null) {
+      signatureUses.record(user, spvSignatureId, null, SIGNATURE_MODULE, SUBJECT_TYPE_PM_EXECUTION,
+          saved.getId().toString(), VERIFY_ACTION, null, ipAddress, userAgent);
+    }
+
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PM_EXECUTION,
         saved.getId(), label(saved, machine), machine.getPlant().getId(), previous,
         executionValues(saved), null));

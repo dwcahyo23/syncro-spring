@@ -2050,3 +2050,67 @@ test_actions_auditor_has_read_only if {
   result := authz.actions with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}}
   result == {"*.read"}
 }
+
+# -- User signatures & workorder approve (story 22-3, blueprint I1) ----------
+# Upload is owner-or-SUPER_ADMIN in service; rego admits any authenticated user
+# (coarse gate, alert_mutation_paths posture). Reads flow through generic
+# read_allowed (narrowed service-side). WO approve grants the three leader roles
+# — parity with WorkorderSignatureService.requireLeaderAccess.
+
+test_technician_user_signature_upload_allowed if {
+  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/auth/user-signatures"}
+}
+
+test_super_admin_user_signature_upload_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/auth/user-signatures"}
+}
+
+test_anonymous_user_signature_upload_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/auth/user-signatures"}
+}
+
+test_technician_user_signature_read_own_allowed if {
+  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "GET /api/v1/auth/user-signatures/me"}
+}
+
+test_technician_user_signature_read_other_allowed_at_rego if {
+  # Coarse gate: reading ANOTHER user's signature is narrowed to SUPER_ADMIN in
+  # UserSignatureService (rego cannot see the path variable's owner).
+  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "GET /api/v1/auth/user-signatures/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_anonymous_user_signature_read_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "GET /api/v1/auth/user-signatures/me"}
+}
+
+test_section_leader_workorder_approve_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/workorders/WO-2609-00001/approve"}
+}
+
+test_maintenance_leader_workorder_approve_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/workorders/WO-2609-00001/approve"}
+}
+
+test_manager_workorder_approve_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/workorders/WO-2609-00001/approve"}
+}
+
+test_super_admin_workorder_approve_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/workorders/WO-2609-00001/approve"}
+}
+
+test_technician_workorder_approve_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/workorders/WO-2609-00001/approve"}
+}
+
+test_staff_workorder_approve_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/workorders/WO-2609-00001/approve"}
+}
+
+test_auditor_workorder_approve_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/workorders/WO-2609-00001/approve"}
+}
+
+test_anonymous_workorder_approve_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/workorders/WO-2609-00001/approve"}
+}

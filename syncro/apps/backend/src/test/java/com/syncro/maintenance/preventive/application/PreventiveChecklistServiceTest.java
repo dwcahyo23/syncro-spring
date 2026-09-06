@@ -76,6 +76,8 @@ class PreventiveChecklistServiceTest {
   private OperationalScopeService scopes;
   @Mock
   private WorkOrderService workOrders;
+  @Mock
+  private com.syncro.auth.application.SignatureUseService signatureUses;
 
   private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
   private final UUID plantId = UUID.randomUUID();
@@ -94,7 +96,7 @@ class PreventiveChecklistServiceTest {
   @BeforeEach
   void setUp() {
     service = new PreventiveChecklistService(schedules, programs, machines, results, items, programService, auditLog,
-        scopes, workOrders, clock);
+        scopes, workOrders, signatureUses, clock);
     machine = machineWithPlant(plantId, groupId, machineId);
     lenient().when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
     program = new PreventiveProgramEntity(programId, machineId, PreventiveCategory.MECHANICAL, ScheduleType.MONTHLY,

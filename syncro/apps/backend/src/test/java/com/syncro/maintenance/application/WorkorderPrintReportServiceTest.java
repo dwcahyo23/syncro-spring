@@ -69,6 +69,8 @@ class WorkorderPrintReportServiceTest {
   private AuthUserRepository users;
   @Mock
   private SignatureUseRepository signatureRepository;
+  @Mock
+  private com.syncro.auth.infrastructure.UserSignatureRepository userSignatureRepository;
 
   private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
   private final UUID plantId = UUID.randomUUID();
@@ -83,7 +85,7 @@ class WorkorderPrintReportServiceTest {
   @BeforeEach
   void setUp() {
     signatureService = new WorkorderSignatureService(workOrders, machines, signatureRepository,
-        users, objectStorage, null, null, clock);
+        userSignatureRepository, users, objectStorage, null, null, clock);
     service = new WorkorderPrintReportService(workOrders, categories, machines, sessions, attachments,
         sparepartRequests, signatureService, objectStorage, users);
     var plant = new com.syncro.auth.infrastructure.PlantEntity(plantId, "P01", "Plant", NOW, NOW);

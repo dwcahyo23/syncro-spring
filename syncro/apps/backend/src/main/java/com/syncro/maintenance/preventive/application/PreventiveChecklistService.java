@@ -5,6 +5,7 @@ import com.syncro.audit.application.AuditRecord;
 import com.syncro.audit.domain.AuditAction;
 import com.syncro.audit.domain.AuditEntityType;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
+import com.syncro.auth.application.SignatureUseService;
 import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
@@ -46,6 +47,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PreventiveChecklistService {
 
+  private static final String SIGNATURE_MODULE = "preventive";
+  private static final String SUBJECT_TYPE_PREVENTIVE_SCHEDULE = "PREVENTIVE_SCHEDULE";
+  private static final String APPROVE_ACTION = "APPROVE_CHECKLIST";
+
   private final PreventiveScheduleRepository schedules;
   private final PreventiveProgramRepository programs;
   private final MachineRepository machines;
@@ -55,12 +60,13 @@ public class PreventiveChecklistService {
   private final AuditLogWriter auditLog;
   private final OperationalScopeService scopes;
   private final WorkOrderService workOrders;
+  private final SignatureUseService signatureUses;
   private final Clock clock;
 
   public PreventiveChecklistService(PreventiveScheduleRepository schedules, PreventiveProgramRepository programs,
       MachineRepository machines, PreventiveChecklistResultRepository results,
       PreventiveChecklistItemRepository items, PreventiveProgramService programService, AuditLogWriter auditLog,
-      OperationalScopeService scopes, WorkOrderService workOrders, Clock clock) {
+      OperationalScopeService scopes, WorkOrderService workOrders, SignatureUseService signatureUses, Clock clock) {
     this.schedules = schedules;
     this.programs = programs;
     this.machines = machines;
@@ -70,6 +76,7 @@ public class PreventiveChecklistService {
     this.auditLog = auditLog;
     this.scopes = scopes;
     this.workOrders = workOrders;
+    this.signatureUses = signatureUses;
     this.clock = clock;
   }
 
@@ -142,7 +149,11 @@ public class PreventiveChecklistService {
   // Approval & skip (leader)
   // -------------------------------------------------------------------------
 
-  /** Leader approval: IN_PROGRESS → PERFORMED + roll forward the floating interval. */
+  /**
+   * Leader approval: IN_PROGRESS → PERFORMED + roll forward the floating interval.
+   * Story 22-3: the signed approval also writes one {@code signature_uses} row
+   * (module=preventive) + SIGNATURE_USE audit via {@link SignatureUseService}.
+   */
   @Transactional
   public ChecklistResultView approve(AuthenticatedUser user, String scheduleId, ApproveCommand command) {
     var schedule = loadScheduleForUpdate(scheduleId);
@@ -167,6 +178,10 @@ public class PreventiveChecklistService {
     schedules.saveAndFlush(schedule);
     programService.rollForwardNext(schedule.getProgramId(), now);
     autoCreateWorkorder(schedule);
+
+    signatureUses.record(user, null, command.signatureObjectKey().trim(),
+        SIGNATURE_MODULE, SUBJECT_TYPE_PREVENTIVE_SCHEDULE, schedule.getId().toString(),
+        APPROVE_ACTION, normalize(command.assessment()), command.ipAddress(), command.userAgent());
 
     auditLog.record(user, new AuditRecord(AuditAction.UPDATE, AuditEntityType.PREVENTIVE_SCHEDULE,
         schedule.getId(), entityLabel(schedule), machine(schedule).getPlant().getId(),
@@ -379,7 +394,13 @@ public class PreventiveChecklistService {
   public record ChecklistCommand(String notes, List<ItemCommand> items) {
   }
 
-  public record ApproveCommand(String signatureObjectKey, String signerIdentity, String assessment) {
+  public record ApproveCommand(String signatureObjectKey, String signerIdentity, String assessment,
+      String ipAddress, String userAgent) {
+
+    /** Legacy shape without request metadata (ip/user-agent stay null on the use row). */
+    public ApproveCommand(String signatureObjectKey, String signerIdentity, String assessment) {
+      this(signatureObjectKey, signerIdentity, assessment, null, null);
+    }
   }
 
   public record ChecklistResultView(UUID id, UUID scheduleId, UUID performedBy, Instant completedAt, String notes,

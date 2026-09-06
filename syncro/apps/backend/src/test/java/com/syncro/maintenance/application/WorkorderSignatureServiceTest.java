@@ -67,6 +67,8 @@ class WorkorderSignatureServiceTest {
   @Mock
   private SignatureUseRepository signatureUses;
   @Mock
+  private com.syncro.auth.infrastructure.UserSignatureRepository userSignatures;
+  @Mock
   private com.syncro.auth.infrastructure.AuthUserRepository users;
   @Mock
   private ObjectStorageService objectStorage;
@@ -86,7 +88,8 @@ class WorkorderSignatureServiceTest {
 
   @BeforeEach
   void setUp() {
-    service = new WorkorderSignatureService(workOrders, machines, signatureUses, users, objectStorage, scopes, auditLog, clock);
+    service = new WorkorderSignatureService(workOrders, machines, signatureUses, userSignatures, users,
+        objectStorage, scopes, auditLog, clock);
     var plant = new com.syncro.auth.infrastructure.PlantEntity(plantId, "P01", "Plant", NOW, NOW);
     var group = new com.syncro.masterdata.infrastructure.MachineGroupEntity(groupId, plant, "Group", NOW, NOW);
     machine = new MachineEntity(machineId, plant, group, "M-001", "Machine",
@@ -316,5 +319,127 @@ class WorkorderSignatureServiceTest {
         .thenReturn(Optional.empty());
 
     assertThat(service.getSignature(WORKORDER_ID)).isNull();
+  }
+
+  // -- Story 22-3: optional stored-signature enrichment ------------------------------
+
+  @Test
+  @DisplayName("22.3-SIG-012 P0 approve with signatureId enriches the use row (reference + hash + ip + ua)")
+  void approveWithSignatureIdEnrichesUseRow() {
+    var user = leader();
+    var signatureId = UUID.randomUUID();
+    // The stored signature belongs to the approver (leaderId) — ownership gate, review 22-3 P1.
+    var stored = new com.syncro.auth.infrastructure.UserSignatureEntity(signatureId, leaderId,
+        "syncro-spareparts", "user-signatures/" + leaderId + "/sig.png", "image/png", "abc123",
+        0, null, NOW, NOW);
+    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity(WorkOrderStatus.PENDING_REVIEW)));
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
+    when(signatureUses.existsBySubjectTypeAndSubjectId("WORK_ORDER", WORKORDER_ID)).thenReturn(false);
+    when(userSignatures.findById(signatureId)).thenReturn(Optional.of(stored));
+    when(signatureUses.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    service.approve(user, WORKORDER_ID, new ApproveSignatureCommand(
+        "client/legacy-key.png", "Leader", signatureId, "10.0.0.9", "JUnit-Agent"));
+
+    verify(signatureUses).saveAndFlush(argThat((SignatureUseEntity e) ->
+        signatureId.equals(e.getSignatureId())
+            && "syncro-spareparts".equals(e.getSignatureBucket())
+            && ("user-signatures/" + leaderId + "/sig.png").equals(e.getSignatureObjectKey())
+            && "abc123".equals(e.getSignatureSha256())
+            && "10.0.0.9".equals(e.getIpAddress())
+            && "JUnit-Agent".equals(e.getUserAgent())));
+    verify(auditLog).record(eq(user), argThat((com.syncro.audit.application.AuditRecord r) ->
+        signatureId.equals(r.newValue().get("signatureId"))
+            && "abc123".equals(r.newValue().get("signatureSha256"))));
+  }
+
+  @Test
+  @DisplayName("22.3-SIG-013 P0 approve without signatureId keeps null reference columns (backward compatible)")
+  void approveWithoutSignatureIdKeepsLegacyShape() {
+    var user = leader();
+    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity(WorkOrderStatus.PENDING_REVIEW)));
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
+    when(signatureUses.existsBySubjectTypeAndSubjectId("WORK_ORDER", WORKORDER_ID)).thenReturn(false);
+    when(signatureUses.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    service.approve(user, WORKORDER_ID,
+        new ApproveSignatureCommand("workorders/WO-260900001/signature/abc.png", "Leader", null, "10.0.0.9", "UA"));
+
+    verify(signatureUses).saveAndFlush(argThat((SignatureUseEntity e) ->
+        e.getSignatureId() == null && e.getSignatureBucket() == null && e.getSignatureSha256() == null
+            && e.getIpAddress() == null && e.getUserAgent() == null
+            && "workorders/WO-260900001/signature/abc.png".equals(e.getSignatureObjectKey())));
+  }
+
+  @Test
+  @DisplayName("22.3-SIG-014 P0 approve with an unknown signatureId is SignatureNotFoundException")
+  void approveUnknownSignatureId() {
+    var user = leader();
+    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity(WorkOrderStatus.PENDING_REVIEW)));
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
+    when(signatureUses.existsBySubjectTypeAndSubjectId("WORK_ORDER", WORKORDER_ID)).thenReturn(false);
+    when(userSignatures.findById(any())).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.approve(user, WORKORDER_ID,
+        new ApproveSignatureCommand("k", "Leader", UUID.randomUUID(), null, null)))
+        .isInstanceOf(com.syncro.maintenance.application.WorkorderSignatureService.SignatureNotFoundException.class);
+    verify(signatureUses, never()).saveAndFlush(any());
+  }
+
+  @Test
+  @DisplayName("22.3-SIG-015 P0 approve with ANOTHER user's stored signature is forbidden (review 22-3 P1)")
+  void approveCrossUserSignatureForbidden() {
+    var user = leader();
+    var foreignSignatureId = UUID.randomUUID();
+    var foreign = new com.syncro.auth.infrastructure.UserSignatureEntity(foreignSignatureId,
+        UUID.randomUUID(), "syncro-spareparts", "user-signatures/other.png", "image/png", "abc",
+        0, null, NOW, NOW);
+    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity(WorkOrderStatus.PENDING_REVIEW)));
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
+    when(signatureUses.existsBySubjectTypeAndSubjectId("WORK_ORDER", WORKORDER_ID)).thenReturn(false);
+    when(userSignatures.findById(foreignSignatureId)).thenReturn(Optional.of(foreign));
+
+    assertThatThrownBy(() -> service.approve(user, WORKORDER_ID,
+        new ApproveSignatureCommand("k", "Leader", foreignSignatureId, null, null)))
+        .isInstanceOf(SignatureForbiddenException.class);
+    verify(signatureUses, never()).saveAndFlush(any());
+  }
+
+  @Test
+  @DisplayName("22.3-SIG-016 P0 approve with a pre-V16 stored signature (null sha256) succeeds without NPE (review 22-3 P2)")
+  void approveNullSha256StoredSignatureSucceeds() {
+    var user = leader();
+    var signatureId = UUID.randomUUID();
+    var stored = new com.syncro.auth.infrastructure.UserSignatureEntity(signatureId, leaderId,
+        "syncro-spareparts", "user-signatures/" + leaderId + "/legacy.png", "image/png", null,
+        0, null, NOW, NOW);
+    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity(WorkOrderStatus.PENDING_REVIEW)));
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
+    when(signatureUses.existsBySubjectTypeAndSubjectId("WORK_ORDER", WORKORDER_ID)).thenReturn(false);
+    when(userSignatures.findById(signatureId)).thenReturn(Optional.of(stored));
+    when(signatureUses.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    service.approve(user, WORKORDER_ID,
+        new ApproveSignatureCommand("ignored", "Leader", signatureId, "10.0.0.1", "UA"));
+
+    verify(signatureUses).saveAndFlush(argThat((SignatureUseEntity e) ->
+        signatureId.equals(e.getSignatureId()) && e.getSignatureSha256() == null));
+    verify(auditLog).record(eq(user), argThat((com.syncro.audit.application.AuditRecord r) ->
+        !r.newValue().containsKey("signatureSha256")
+            && ("user-signatures/" + leaderId + "/legacy.png").equals(r.newValue().get("signatureObjectKey"))));
+  }
+
+  @Test
+  @DisplayName("22.3-SIG-017 P0 approve with neither signatureId nor object key is a validation error (review 22-3 P9)")
+  void approveWithoutAnySignatureRejected() {
+    var user = leader();
+    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity(WorkOrderStatus.PENDING_REVIEW)));
+    when(scopes.derive(user)).thenReturn(new OperationalScope(Set.of(plantId), Set.of(), Set.of()));
+    when(signatureUses.existsBySubjectTypeAndSubjectId("WORK_ORDER", WORKORDER_ID)).thenReturn(false);
+
+    assertThatThrownBy(() -> service.approve(user, WORKORDER_ID,
+        new ApproveSignatureCommand(null, "Leader", null, null, null)))
+        .isInstanceOf(SignatureValidationException.class);
+    verify(signatureUses, never()).saveAndFlush(any());
   }
 }

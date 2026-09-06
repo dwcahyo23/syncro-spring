@@ -47,19 +47,22 @@ class WorkorderPrintReportServiceIntegrationTest extends AbstractPostgresIntegra
   void oneSignaturePerWorkorderEnforced() {
     var machineId = seedMachine();
     var woId = seedWorkOrder(machineId);
+    // signer_id carries fk_signature_uses_signer → auth_users; a random UUID would
+    // violate the FK before the partial-unique assertion below could ever run.
+    var signerId = seedUser();
 
     jdbc.update("""
         INSERT INTO signature_uses (id, signer_id, module, subject_type, subject_id, action,
           signature_object_key, signed_at, created_at)
         VALUES (?,?,?,?,?,?,?,?,?)
-        """, UUID.randomUUID(), UUID.randomUUID(), "maintenance", "WORK_ORDER", woId,
+        """, UUID.randomUUID(), signerId, "maintenance", "WORK_ORDER", woId,
         "APPROVE_WORKORDER", "workorders/" + woId + "/signature/a.png", TS, TS);
 
     assertThatThrownBy(() -> jdbc.update("""
         INSERT INTO signature_uses (id, signer_id, module, subject_type, subject_id, action,
           signature_object_key, signed_at, created_at)
         VALUES (?,?,?,?,?,?,?,?,?)
-        """, UUID.randomUUID(), UUID.randomUUID(), "maintenance", "WORK_ORDER", woId,
+        """, UUID.randomUUID(), signerId, "maintenance", "WORK_ORDER", woId,
         "APPROVE_WORKORDER", "workorders/" + woId + "/signature/b.png", TS, TS))
         .isInstanceOf(DataIntegrityViolationException.class);
   }
@@ -127,5 +130,15 @@ class WorkorderPrintReportServiceIntegrationTest extends AbstractPostgresIntegra
         VALUES (?,?,?,?,?,?,?)
         """, woId, "INTERNAL", "PENDING_REVIEW", machineId, 0L, TS, TS);
     return woId;
+  }
+
+  private UUID seedUser() {
+    var id = UUID.randomUUID();
+    jdbc.update("""
+        INSERT INTO auth_users (id, login_identifier, password_hash, application_role, enabled,
+          created_at, updated_at)
+        VALUES (?,?,?,?,?,?,?)
+        """, id, "sig-" + seedSeq.incrementAndGet() + "@syncro.test", "hash", "TECHNICIAN", true, TS, TS);
+    return id;
   }
 }

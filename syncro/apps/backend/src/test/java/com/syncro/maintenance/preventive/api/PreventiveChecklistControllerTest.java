@@ -151,6 +151,28 @@ class PreventiveChecklistControllerTest {
   }
 
   @Test
+  @DisplayName("22.3-API-001 P0 approve wires first XFF hop + User-Agent into the command (review 22-3 P3)")
+  void approveWiresRequestMetadata() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+    when(checklists.approve(eq(user), eq(SCHEDULE_ID.toString()), any(ApproveCommand.class)))
+        .thenReturn(resultView());
+
+    mockMvc.perform(post("/api/v1/preventive-schedules/{id}/approve", SCHEDULE_ID)
+            .with(auth(user))
+            .header("X-Forwarded-For", "203.0.113.7, 10.0.0.2")
+            .header("User-Agent", "JUnit-Checklist-Agent")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"signatureObjectKey\":\"preventive/sig.png\",\"signerIdentity\":\"Leader\"}"))
+        .andExpect(status().isOk());
+
+    var captor = org.mockito.ArgumentCaptor.forClass(ApproveCommand.class);
+    org.mockito.Mockito.verify(checklists).approve(eq(user), eq(SCHEDULE_ID.toString()), captor.capture());
+    org.assertj.core.api.Assertions.assertThat(captor.getValue().ipAddress()).isEqualTo("203.0.113.7");
+    org.assertj.core.api.Assertions.assertThat(captor.getValue().userAgent()).isEqualTo("JUnit-Checklist-Agent");
+    org.assertj.core.api.Assertions.assertThat(captor.getValue().signatureObjectKey()).isEqualTo("preventive/sig.png");
+  }
+
+  @Test
   @DisplayName("11.2-API-006 P0 approve without signature maps to 400 VALIDATION_ERROR")
   void approveMissingSignature() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);

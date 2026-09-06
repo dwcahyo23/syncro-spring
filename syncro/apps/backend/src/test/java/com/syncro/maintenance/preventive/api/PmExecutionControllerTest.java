@@ -1,5 +1,6 @@
 package com.syncro.maintenance.preventive.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -156,7 +157,7 @@ class PmExecutionControllerTest {
   @DisplayName("19.5-API-005 P0 verify returns 200 with spv stamps; body optional")
   void verify() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
-    when(executions.verify(eq(user), eq(EXEC_ID), eq(SIG_ID)))
+    when(executions.verify(eq(user), eq(EXEC_ID), eq(SIG_ID), any(), any()))
         .thenReturn(view(true, true, false, 0, null));
 
     mockMvc.perform(post("/api/v1/pm-executions/{id}/verify", EXEC_ID)
@@ -171,12 +172,32 @@ class PmExecutionControllerTest {
   @DisplayName("19.5-API-006 P0 verify without body passes null signature")
   void verifyWithoutBody() throws Exception {
     var user = user(ApplicationRole.MANAGER_MAINTENANCE);
-    when(executions.verify(eq(user), eq(EXEC_ID), isNull()))
+    when(executions.verify(eq(user), eq(EXEC_ID), isNull(), any(), any()))
         .thenReturn(view(true, true, false, 0, null));
 
     mockMvc.perform(post("/api/v1/pm-executions/{id}/verify", EXEC_ID)
             .with(auth(user)))
         .andExpect(status().isOk());
+  }
+
+  @Test
+  @DisplayName("22.3-API-001 P0 verify wires spvSignatureId + first XFF hop + User-Agent into the service (review 22-3 P3)")
+  void verifyWiresEnrichmentFields() throws Exception {
+    var user = user(ApplicationRole.SECTION_LEADER);
+    when(executions.verify(eq(user), eq(EXEC_ID), eq(SIG_ID), any(), any()))
+        .thenReturn(view(true, true, false, 0, null));
+
+    mockMvc.perform(post("/api/v1/pm-executions/{id}/verify", EXEC_ID)
+            .with(auth(user))
+            .header("X-Forwarded-For", "203.0.113.7, 10.0.0.2")
+            .header("User-Agent", "JUnit-Verify-Agent")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"spvSignatureId\":\"" + SIG_ID + "\"}"))
+        .andExpect(status().isOk());
+
+    org.mockito.Mockito.verify(executions).verify(eq(user), eq(EXEC_ID), eq(SIG_ID),
+        org.mockito.ArgumentMatchers.eq("203.0.113.7"),
+        org.mockito.ArgumentMatchers.eq("JUnit-Verify-Agent"));
   }
 
   @Test
@@ -333,7 +354,7 @@ class PmExecutionControllerTest {
   @DisplayName("19.5-API-017 P0 double verify → 409 INVALID_EXECUTION_TRANSITION")
   void verifyConflict() throws Exception {
     var user = user(ApplicationRole.SECTION_LEADER);
-    when(executions.verify(eq(user), eq(EXEC_ID), any()))
+    when(executions.verify(eq(user), eq(EXEC_ID), any(), any(), any()))
         .thenThrow(new PmExecutionService.InvalidExecutionTransitionException());
 
     mockMvc.perform(post("/api/v1/pm-executions/{id}/verify", EXEC_ID)
@@ -378,7 +399,7 @@ class PmExecutionControllerTest {
   @DisplayName("19.5-API-022 P0 verify by a non-leader (TECHNICIAN) → 403 FORBIDDEN")
   void verifyForbidden() throws Exception {
     var user = user(ApplicationRole.TECHNICIAN);
-    when(executions.verify(eq(user), eq(EXEC_ID), any()))
+    when(executions.verify(eq(user), eq(EXEC_ID), any(), any(), any()))
         .thenThrow(new PmExecutionService.PmExecutionForbiddenException());
 
     mockMvc.perform(post("/api/v1/pm-executions/{id}/verify", EXEC_ID)

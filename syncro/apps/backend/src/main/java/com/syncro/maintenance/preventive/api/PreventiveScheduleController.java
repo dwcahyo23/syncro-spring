@@ -22,9 +22,11 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -104,10 +106,24 @@ public class PreventiveScheduleController {
   @Operation(operationId = "approveSchedule", summary = "Leader approves the checklist (IN_PROGRESS → PERFORMED + roll forward)")
   @PostMapping("/{id}/approve")
   public ChecklistResultView approve(@AuthenticationPrincipal AuthenticatedUser user,
-      @PathVariable String id, @Valid @RequestBody ApproveScheduleRequest request) {
+      @PathVariable String id, @Valid @RequestBody ApproveScheduleRequest request,
+      HttpServletRequest http) {
     var command = new com.syncro.maintenance.preventive.application.PreventiveChecklistService.ApproveCommand(
-        request.signatureObjectKey(), request.signerIdentity(), request.assessment());
+        request.signatureObjectKey(), request.signerIdentity(), request.assessment(),
+        clientIp(http), http.getHeader(HttpHeaders.USER_AGENT));
     return toResultView(checklists.approve(user, id, command));
+  }
+
+  /** First X-Forwarded-For hop when present (22-2 posture), else socket address. */
+  private static String clientIp(HttpServletRequest request) {
+    var forwarded = request.getHeader("X-Forwarded-For");
+    if (forwarded != null && !forwarded.isBlank()) {
+      var first = forwarded.split(",")[0].trim();
+      if (!first.isEmpty()) {
+        return first;
+      }
+    }
+    return request.getRemoteAddr();
   }
 
   @Operation(operationId = "skipSchedule", summary = "Leader skips the schedule (SCHEDULED/IN_PROGRESS → SKIPPED, no roll-forward)")

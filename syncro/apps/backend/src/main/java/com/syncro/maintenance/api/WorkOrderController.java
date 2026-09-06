@@ -73,6 +73,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -969,10 +970,24 @@ public class WorkOrderController {
   })
   @PostMapping("/{id}/approve")
   public WorkOrderDtos.WorkorderSignatureView approve(@AuthenticationPrincipal AuthenticatedUser user,
-      @PathVariable String id, @Valid @RequestBody WorkOrderDtos.ApproveWorkorderRequest request) {
-    var result = signatures.approve(user, id,
-        new ApproveSignatureCommand(request.signatureObjectKey(), request.signerIdentity()));
+      @PathVariable String id, @Valid @RequestBody WorkOrderDtos.ApproveWorkorderRequest request,
+      HttpServletRequest http) {
+    var result = signatures.approve(user, id, new ApproveSignatureCommand(
+        request.signatureObjectKey(), request.signerIdentity(), request.signatureId(),
+        clientIp(http), http.getHeader(HttpHeaders.USER_AGENT)));
     return toSignatureDto(result);
+  }
+
+  /** First X-Forwarded-For hop when present (same posture as AuthController/22-2), else socket address. */
+  private static String clientIp(HttpServletRequest request) {
+    var forwarded = request.getHeader("X-Forwarded-For");
+    if (forwarded != null && !forwarded.isBlank()) {
+      var first = forwarded.split(",")[0].trim();
+      if (!first.isEmpty()) {
+        return first;
+      }
+    }
+    return request.getRemoteAddr();
   }
 
   private static WorkOrderDtos.RatingView toRatingDto(WorkorderRating rating) {

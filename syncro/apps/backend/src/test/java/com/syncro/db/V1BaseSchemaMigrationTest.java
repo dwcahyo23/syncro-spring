@@ -49,11 +49,11 @@ class V1BaseSchemaMigrationTest {
   // -------------------------------------------------------------------------
 
   @Test
-  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V15 additive migrations")
+  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V16 additive migrations")
   void migrationsApplied() {
     var rows = jdbc.queryForList(
         "SELECT version, script, success FROM flyway_schema_history ORDER BY installed_rank");
-    assertThat(rows).hasSize(15);
+    assertThat(rows).hasSize(16);
     assertThat(rows.get(0).get("version")).isEqualTo("1");
     assertThat(rows.get(0).get("script")).isEqualTo("V1__orm_foundation_schema.sql");
     assertThat(rows.get(0).get("success")).isEqualTo(true);
@@ -96,6 +96,12 @@ class V1BaseSchemaMigrationTest {
     assertThat(rows.get(13).get("version")).isEqualTo("14");
     assertThat(rows.get(13).get("script")).isEqualTo("V14__auth_evidence_audit_type.sql");
     assertThat(rows.get(13).get("success")).isEqualTo(true);
+    assertThat(rows.get(14).get("version")).isEqualTo("15");
+    assertThat(rows.get(14).get("script")).isEqualTo("V15__phone_challenge_version.sql");
+    assertThat(rows.get(14).get("success")).isEqualTo(true);
+    assertThat(rows.get(15).get("version")).isEqualTo("16");
+    assertThat(rows.get(15).get("script")).isEqualTo("V16__user_signature_sha256.sql");
+    assertThat(rows.get(15).get("success")).isEqualTo(true);
   }
 
   // -------------------------------------------------------------------------
@@ -759,6 +765,21 @@ class V1BaseSchemaMigrationTest {
         "PM_EXECUTION", "PM_WORK_ORDER", "WORK_ORDER_QUALITY_RATING", "WORK_LOG",
         "WORK_ASSIGNMENT", "PLANT", "MACHINE", "ALERT", "SPAREPART_REQUEST",
         "SIGNATURE_USE");
+  }
+
+  /**
+   * Story 22-3: V16 adds the nullable sha256 column to user_signatures — the
+   * image-bytes hash computed at upload and copied into every signature_uses row.
+   */
+  @Test
+  @DisplayName("22.3-DB-001 P0 user_signatures carries sha256 VARCHAR(64) after V16")
+  void userSignatureSha256Column() {
+    assertThat(columnNames("user_signatures")).contains("sha256");
+    var column = jdbc.queryForMap(
+        "SELECT data_type, character_maximum_length AS len FROM information_schema.columns "
+            + "WHERE table_schema = 'public' AND table_name = 'user_signatures' AND column_name = 'sha256'");
+    assertThat(column.get("data_type")).isEqualTo("character varying");
+    assertThat(column.get("len")).isEqualTo(64);
   }
 
   // -------------------------------------------------------------------------

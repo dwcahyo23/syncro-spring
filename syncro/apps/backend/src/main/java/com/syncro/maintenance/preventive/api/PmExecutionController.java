@@ -16,10 +16,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -114,8 +116,22 @@ public class PmExecutionController {
   @PostMapping("/{id}/verify")
   public ExecutionView verify(@AuthenticationPrincipal AuthenticatedUser user,
       @PathVariable UUID id,
-      @Valid @RequestBody(required = false) VerifyExecutionRequest request) {
-    return toView(executions.verify(user, id, request != null ? request.spvSignatureId() : null));
+      @Valid @RequestBody(required = false) VerifyExecutionRequest request,
+      HttpServletRequest http) {
+    return toView(executions.verify(user, id, request != null ? request.spvSignatureId() : null,
+        clientIp(http), http.getHeader(HttpHeaders.USER_AGENT)));
+  }
+
+  /** First X-Forwarded-For hop when present (22-2 posture), else socket address. */
+  private static String clientIp(HttpServletRequest request) {
+    var forwarded = request.getHeader("X-Forwarded-For");
+    if (forwarded != null && !forwarded.isBlank()) {
+      var first = forwarded.split(",")[0].trim();
+      if (!first.isEmpty()) {
+        return first;
+      }
+    }
+    return request.getRemoteAddr();
   }
 
   @Operation(operationId = "listPmExecutions", summary = "List executions (filter by pmWoId, technicianId)")

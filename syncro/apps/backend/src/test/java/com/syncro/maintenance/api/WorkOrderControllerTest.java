@@ -1949,14 +1949,45 @@ class WorkOrderControllerTest {
   }
 
   @Test
+  @DisplayName("22.3-API-001 P0 approve wires signatureId + first XFF hop + User-Agent into the command (review 22-3 P3)")
+  void approveWiresEnrichmentFields() throws Exception {
+    var user = user(ApplicationRole.MAINTENANCE_LEADER);
+    var signatureId = UUID.fromString("7b7c6d5e-1111-2222-3333-444455556666");
+    var result = new SignatureResult(UUID.randomUUID(), "user-signatures/x.png",
+        "Leader", UUID.randomUUID(), Instant.parse("2026-08-26T00:00:00Z"));
+    when(signatures.approve(eq(user), eq("WO-240900001"), any(ApproveSignatureCommand.class))).thenReturn(result);
+
+    mockMvc.perform(post("/api/v1/workorders/{id}/approve", "WO-240900001")
+        .with(auth(user))
+        .header("X-Forwarded-For", "203.0.113.7, 10.0.0.2")
+        .header("User-Agent", "JUnit-Enrichment-Agent")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("{\"signatureId\":\"" + signatureId + "\",\"signerIdentity\":\"Leader\"}"))
+        .andExpect(status().isOk());
+
+    var captor = ArgumentCaptor.forClass(ApproveSignatureCommand.class);
+    org.mockito.Mockito.verify(signatures).approve(eq(user), eq("WO-240900001"), captor.capture());
+    assertThat(captor.getValue().signatureId()).isEqualTo(signatureId);
+    assertThat(captor.getValue().ipAddress()).isEqualTo("203.0.113.7");
+    assertThat(captor.getValue().userAgent()).isEqualTo("JUnit-Enrichment-Agent");
+  }
+
+  @Test
   @DisplayName("14.3-API-004 P0 approve with a blank signature key is 400 VALIDATION_ERROR")
   void approveMissingKey() throws Exception {
+    // Review 22-3 P9: the DTO no longer @NotBlanks the key (either-or with
+    // signatureId) — the service enforces it, so the mocked service throws.
+    var user = user(ApplicationRole.MAINTENANCE_LEADER);
+    doThrow(new SignatureValidationException(Map.of("signatureObjectKey", "Signature object key must not be blank.")))
+        .when(signatures).approve(eq(user), eq("WO-240900001"), any(ApproveSignatureCommand.class));
+
     mockMvc.perform(post("/api/v1/workorders/{id}/approve", "WO-240900001")
-        .with(auth(user(ApplicationRole.MAINTENANCE_LEADER)))
+        .with(auth(user))
         .contentType(MediaType.APPLICATION_JSON)
         .content("{\"signatureObjectKey\":\"\"}"))
         .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+        .andExpect(jsonPath("$.fieldErrors.signatureObjectKey").exists());
   }
 
   @Test

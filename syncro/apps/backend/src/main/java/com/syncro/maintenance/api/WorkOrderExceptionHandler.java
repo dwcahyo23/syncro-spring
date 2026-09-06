@@ -81,6 +81,7 @@ import com.syncro.maintenance.application.WorkOrderService.WorkorderNotInProgres
 import com.syncro.maintenance.application.WorkorderSignatureService.SignatureAlreadyExistsException;
 import com.syncro.maintenance.application.WorkorderSignatureService.SignatureForbiddenException;
 import com.syncro.maintenance.application.WorkorderSignatureService.SignatureMachineNotFoundException;
+import com.syncro.maintenance.application.WorkorderSignatureService.SignatureNotFoundException;
 import com.syncro.maintenance.application.WorkorderSignatureService.SignatureStorageException;
 import com.syncro.maintenance.application.WorkorderSignatureService.SignatureValidationException;
 import com.syncro.maintenance.application.WorkorderSignatureService.SignatureWorkOrderNotFoundException;
@@ -704,6 +705,12 @@ public class WorkOrderExceptionHandler {
   ResponseEntity<ErrorResponse> signatureAlreadyExists() {
     return error(HttpStatus.CONFLICT, "ALREADY_SIGNED",
         "This workorder has already been signed.", Map.of());
+  }
+
+  /** Story 22-3: WO approve referencing an unknown stored signature. */
+  @ExceptionHandler(SignatureNotFoundException.class)
+  ResponseEntity<ErrorResponse> signatureNotFound() {
+    return error(HttpStatus.NOT_FOUND, "SIGNATURE_NOT_FOUND", "User signature was not found.", Map.of());
   }
 
   @ExceptionHandler(com.syncro.maintenance.application.WorkorderPrintReportService.PrintReportWorkOrderNotFoundException.class)

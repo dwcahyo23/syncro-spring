@@ -9,6 +9,7 @@ import com.syncro.auth.domain.ApplicationRole;
 import com.syncro.auth.infrastructure.AuthUserRepository;
 import com.syncro.auth.infrastructure.SignatureUseEntity;
 import com.syncro.auth.infrastructure.SignatureUseRepository;
+import com.syncro.auth.infrastructure.UserSignatureRepository;
 import com.syncro.machine.infrastructure.MachineEntity;
 import com.syncro.machine.infrastructure.MachineRepository;
 import com.syncro.maintenance.infrastructure.db.WorkOrderEntity;
@@ -35,6 +36,13 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code uq_signature_uses_work_order} partial unique constraint surfaces as a 409 on
  * duplicate approve. The read gate is any-authenticated (print-report posture).
  *
+ * <p>Story 22-3 enrichment: when the approve carries an optional {@code signatureId}
+ * referencing a stored {@code user_signatures} row, the use row is enriched with the
+ * signature reference (id + bucket/key/sha256 copied at signing time) plus the request's
+ * ip and user-agent. Without a {@code signatureId} the behavior is byte-identical to the
+ * pre-22-3 contract (null reference columns). The audit type stays
+ * {@code WORKORDER_SIGNATURE} for this flow (design note 22-3).
+ *
  * <p>Scope gate mirrors the workorder-report/evidence pattern: in-scope leader
  * (SECTION_LEADER, MAINTENANCE_LEADER, MANAGER_MAINTENANCE, SUPER_ADMIN) or assigned
  * executor.
@@ -49,6 +57,7 @@ public class WorkorderSignatureService {
   private final WorkOrderRepository workOrders;
   private final MachineRepository machines;
   private final SignatureUseRepository signatureUses;
+  private final UserSignatureRepository userSignatures;
   private final AuthUserRepository users;
   private final ObjectStorageService objectStorage;
   private final OperationalScopeService scopes;
@@ -56,11 +65,13 @@ public class WorkorderSignatureService {
   private final Clock clock;
 
   public WorkorderSignatureService(WorkOrderRepository workOrders, MachineRepository machines,
-      SignatureUseRepository signatureUses, AuthUserRepository users, ObjectStorageService objectStorage,
+      SignatureUseRepository signatureUses, UserSignatureRepository userSignatures,
+      AuthUserRepository users, ObjectStorageService objectStorage,
       OperationalScopeService scopes, AuditLogWriter auditLog, Clock clock) {
     this.workOrders = workOrders;
     this.machines = machines;
     this.signatureUses = signatureUses;
+    this.userSignatures = userSignatures;
     this.users = users;
     this.objectStorage = objectStorage;
     this.scopes = scopes;
@@ -73,10 +84,16 @@ public class WorkorderSignatureService {
    * in-scope leader/SPV or SUPER_ADMIN. Returns the persisted signature result for the
    * controller to map.
    *
-   * @throws SignatureForbiddenException      when the user is not authorized
+   * @param command when {@code signatureId} is set, the stored signature reference is
+   *                resolved and copied onto the use row (404 when unknown, 403 when it
+   *                belongs to another user); ip/user-agent are captured only on that
+   *                enriched path, and the client {@code signatureObjectKey} is ignored
+   * @throws SignatureForbiddenException      when the user is not authorized or the
+   *                                          referenced signature belongs to another user
    * @throws WorkorderNotTerminalException    when the WO is not PENDING_REVIEW or CLOSED
    * @throws SignatureAlreadyExistsException  when the WO already has a signature
    * @throws SignatureValidationException     when the object key or signer identity is invalid
+   * @throws SignatureNotFoundException       when the referenced user signature does not exist
    */
   @Transactional
   public SignatureResult approve(AuthenticatedUser user, String workOrderId, ApproveSignatureCommand command) {
@@ -93,16 +110,33 @@ public class WorkorderSignatureService {
       throw new SignatureAlreadyExistsException();
     }
 
-    var objectKey = normalizeObjectKey(command.signatureObjectKey());
     var signerIdentity = normalizeSignerIdentity(user, command.signerIdentity());
+
+    // Story 22-3: an optional stored-signature reference enriches the use row; the
+    // legacy path (no signatureId) keeps null reference columns byte-identically.
+    // Either-or: without a signatureId the client object key is required (review 22-3 P9).
+    var stored = command.signatureId() == null ? null
+        : userSignatures.findById(command.signatureId())
+            .orElseThrow(SignatureNotFoundException::new);
+    if (stored != null && !stored.getUserId().equals(UUID.fromString(user.id()))) {
+      // Review 22-3 P1: a signature evidences ITS owner's approval — a leader may not
+      // attach another user's stored signature to their own approve.
+      throw new SignatureForbiddenException();
+    }
+    var enriched = stored != null;
+    var objectKey = enriched ? stored.getObjectKey() : normalizeObjectKey(command.signatureObjectKey());
 
     var now = Instant.now(clock);
     SignatureUseEntity saved;
     try {
       saved = signatureUses.saveAndFlush(new SignatureUseEntity(
-          UUID.randomUUID(), UUID.fromString(user.id()), null,
+          UUID.randomUUID(), UUID.fromString(user.id()), enriched ? stored.getId() : null,
           SIGNATURE_MODULE, SUBJECT_TYPE_WORK_ORDER, workOrderId, APPROVE_ACTION, null,
-          null, objectKey, null, null, null, null, null, now, now));
+          enriched ? stored.getBucket() : null,
+          objectKey,
+          enriched ? stored.getSha256() : null, null, null,
+          enriched ? truncateIp(command.ipAddress()) : null,
+          enriched ? command.userAgent() : null, now, now));
     } catch (DataIntegrityViolationException exception) {
       // Concurrent duplicate approve: the pre-check passed but the unique constraint
       // (uq_signature_uses_work_order) rejected the insert — surface as 409.
@@ -112,10 +146,21 @@ public class WorkorderSignatureService {
       throw exception;
     }
 
+    var values = new LinkedHashMap<String, Object>();
+    values.put("signatureObjectKey", objectKey);
+    values.put("signerIdentity", signerIdentity);
+    values.put("subjectType", SUBJECT_TYPE_WORK_ORDER);
+    if (enriched) {
+      values.put("signatureId", stored.getId());
+      values.put("signatureBucket", stored.getBucket());
+      // Review 22-3 P2: pre-V16 rows carry a NULL sha256 — Map.copyOf rejects null
+      // values, so only put what exists (a valid approve must never 500).
+      if (stored.getSha256() != null) {
+        values.put("signatureSha256", stored.getSha256());
+      }
+    }
     auditLog.record(user, new AuditRecord(AuditAction.CREATE, AuditEntityType.WORKORDER_SIGNATURE,
-        saved.getId(), workOrderId, machine.getPlant().getId(), null,
-        Map.<String, Object>of("signatureObjectKey", objectKey, "signerIdentity", signerIdentity,
-            "subjectType", SUBJECT_TYPE_WORK_ORDER), null));
+        saved.getId(), workOrderId, machine.getPlant().getId(), null, Map.copyOf(values), null));
 
     return new SignatureResult(saved.getId(), saved.getSignatureObjectKey(), signerIdentity,
         saved.getSignerId(), saved.getSignedAt());
@@ -183,6 +228,14 @@ public class WorkorderSignatureService {
     return identity;
   }
 
+  /** ip_address is VARCHAR(64) — a longer (spoofed) XFF hop is truncated, never rejected. */
+  private static String truncateIp(String ipAddress) {
+    if (ipAddress == null) {
+      return null;
+    }
+    return ipAddress.length() > 64 ? ipAddress.substring(0, 64) : ipAddress;
+  }
+
   /** Walks the cause chain for the workorder-signature unique constraint violation. */
   private static boolean isUniqueWorkOrderViolation(DataIntegrityViolationException exception) {
     var cause = exception.getCause();
@@ -240,7 +293,13 @@ public class WorkorderSignatureService {
   // Commands, views & exceptions
   // -------------------------------------------------------------------------
 
-  public record ApproveSignatureCommand(String signatureObjectKey, String signerIdentity) {
+  public record ApproveSignatureCommand(String signatureObjectKey, String signerIdentity,
+      UUID signatureId, String ipAddress, String userAgent) {
+
+    /** Legacy shape: no stored-signature reference, no request metadata. */
+    public ApproveSignatureCommand(String signatureObjectKey, String signerIdentity) {
+      this(signatureObjectKey, signerIdentity, null, null, null);
+    }
   }
 
   public record SignatureResult(UUID id, String signatureObjectKey, String signerIdentity,
@@ -248,6 +307,9 @@ public class WorkorderSignatureService {
   }
 
   public static class SignatureForbiddenException extends RuntimeException {
+  }
+
+  public static class SignatureNotFoundException extends RuntimeException {
   }
 
   public static class SignatureWorkOrderNotFoundException extends RuntimeException {

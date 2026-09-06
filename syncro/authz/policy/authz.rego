@@ -468,6 +468,25 @@ auth_phone_challenge_paths := {
   "/api/v1/auth/phone-challenges/*/resend",
 }
 
+# User signatures (story 22-3, blueprint I1): upload is owner-or-SUPER_ADMIN in service;
+# rego admits any authenticated user on the path (coarse gate — ownership is invisible to
+# rego), mirroring the alert_mutation_paths posture. Reads (GET /me, GET /{userId}) flow
+# through generic read_allowed; reading ANOTHER user's signature is narrowed to
+# SUPER_ADMIN in UserSignatureService (rego cannot see the path variable's owner).
+user_signature_paths := {
+  "/api/v1/auth/user-signatures",
+  "/api/v1/auth/user-signatures/*",
+}
+
+# Workorder approve (story 22-3): the approve path rides the /api/v1/workorders/**
+# enforcement rollout but had no rego allow rule — non-admin leaders were default-deny.
+# Grant exactly the in-service requireLeaderAccess set: SECTION_LEADER,
+# MAINTENANCE_LEADER, MANAGER_MAINTENANCE (SUPER_ADMIN via the top-level bypass).
+# Scope narrowing (machine group/plant) stays service-side (rego cannot see the WO).
+workorder_approve_paths := {
+  "/api/v1/workorders/*/approve",
+}
+
 # Org-maintenance departments (spec-org-maintenance-model): mutations are the
 # Phase 1 gate (SUPER_ADMIN|MANAGER_MAINTENANCE). Reads flow through generic
 # read_allowed. Members replace + section leader assignment + user-master updates
@@ -1379,6 +1398,37 @@ mutation_allowed if {
   input.subject.userId != null
   is_mutation
   path_matches(alert_mutation_paths)
+}
+
+# User signatures (story 22-3): any authenticated user may POST their own signature —
+# the owner-or-SUPER_ADMIN gate is service-side (rego cannot see which user the path
+# targets), same posture as alert_mutation_paths.
+mutation_allowed if {
+  input.subject.userId != null
+  is_mutation
+  path_matches(user_signature_paths)
+}
+
+# Workorder approve (story 22-3): three-role allow set — parity with
+# WorkorderSignatureService.requireLeaderAccess (SECTION_LEADER/MAINTENANCE_LEADER/
+# MANAGER_MAINTENANCE in scope; SUPER_ADMIN via the top-level bypass). Scope is
+# service-side (rego cannot see the workorder's machine).
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(workorder_approve_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(workorder_approve_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(workorder_approve_paths)
 }
 
 read_allowed if {

@@ -190,11 +190,17 @@ public final class WorkOrderDtos {
   /**
    * Approve body (POST /{id}/approve). {@code signatureObjectKey} is the Garage object
    * key of the already-uploaded signature image; {@code signerIdentity} defaults to the
-   * approver's login identifier when blank.
+   * approver's login identifier when blank. Story 22-3: {@code signatureId} optionally
+   * references a stored {@code user_signatures} row — when present the use row is
+   * enriched with the signature reference (bucket/key/sha256) plus request ip/user-agent
+   * and the client {@code signatureObjectKey} is IGNORED (the stored row's key wins);
+   * when absent the behavior is identical to the pre-22-3 contract. Exactly one of the
+   * two must be supplied — the service rejects a request with neither (review 22-3 P9).
    */
   public record ApproveWorkorderRequest(
-      @NotBlank @Size(max = 512) String signatureObjectKey,
-      @Size(max = 200) String signerIdentity) {
+      @Size(max = 512) String signatureObjectKey,
+      @Size(max = 200) String signerIdentity,
+      UUID signatureId) {
   }
 
   /** Signature view returned after a successful approve. */

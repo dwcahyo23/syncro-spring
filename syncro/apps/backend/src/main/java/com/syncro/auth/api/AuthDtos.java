@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public final class AuthDtos {
@@ -42,6 +43,14 @@ public final class AuthDtos {
       int attemptCount, int maxAttempts, Instant resendAvailableAt, Instant consumedAt, Instant createdAt) {
   }
 
+  /**
+   * Story 22-3: stored signature reference — bucket/key/content-type/sha256 + a short-TTL
+   * presigned GET URL. The image bytes themselves are never returned by any endpoint.
+   */
+  public record UserSignatureView(UUID id, UUID userId, String bucket, String objectKey,
+      String contentType, String sha256, Instant createdAt, Instant updatedAt, String presignedUrl) {
+  }
+
   public record AuthUserView(String id, String loginIdentifier, String displayName, String nik, String phoneNumber,
       ApplicationRole applicationRole, boolean enabled, UUID jobTitleId, UUID departmentId,
       boolean forcePasswordChange, int failedLoginAttempts, String lockedAt, String lockReason,
@@ -66,6 +75,16 @@ public final class AuthDtos {
       String emptyReason) {
   }
 
-  public record ErrorResponse(String code, String message, String timestamp, String traceId) {
+  /**
+   * House error envelope. {@code fieldErrors} is additive (story 22-3 review P7): the
+   * auth surface previously omitted it; validation handlers now carry the offending
+   * fields like every other module's ErrorResponse.
+   */
+  public record ErrorResponse(String code, String message, Map<String, String> fieldErrors,
+      String timestamp, String traceId) {
+
+    public ErrorResponse(String code, String message, String timestamp, String traceId) {
+      this(code, message, Map.of(), timestamp, traceId);
+    }
   }
 }

@@ -17,14 +17,25 @@ import com.syncro.auth.application.PhoneVerificationService.InvalidOtpException;
 import com.syncro.auth.application.PhoneVerificationService.PhoneChallengeForbiddenException;
 import com.syncro.auth.application.PhoneVerificationService.ResendTooEarlyException;
 import com.syncro.auth.application.PlantScopeService.PlantAccessDeniedException;
+import com.syncro.auth.application.UserSignatureService.SignatureForbiddenException;
+import com.syncro.auth.application.UserSignatureService.SignatureNotFoundException;
+import com.syncro.auth.application.UserSignatureService.SignatureUploadConflictException;
+import com.syncro.auth.application.UserSignatureService.StorageException;
+import com.syncro.auth.application.UserSignatureService.UnsupportedContentTypeException;
+import com.syncro.auth.application.UserSignatureService.ValidationException;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 @RestControllerAdvice
 public class AuthExceptionHandler {
@@ -45,8 +56,14 @@ public class AuthExceptionHandler {
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
-  ResponseEntity<ErrorResponse> validationError() {
-    return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Request validation failed.");
+  ResponseEntity<ErrorResponse> validationError(MethodArgumentNotValidException exception) {
+    var fieldErrors = new java.util.LinkedHashMap<String, String>();
+    for (var error : exception.getBindingResult().getFieldErrors()) {
+      fieldErrors.putIfAbsent(error.getField(), "Invalid value.");
+    }
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse("VALIDATION_ERROR",
+        "Request validation failed.", Map.copyOf(fieldErrors),
+        Instant.now(clock).toString(), UUID.randomUUID().toString()));
   }
 
   @ExceptionHandler(PlantAccessDeniedException.class)
@@ -122,6 +139,74 @@ public class AuthExceptionHandler {
   @ExceptionHandler(ResendTooEarlyException.class)
   ResponseEntity<ErrorResponse> resendTooEarly() {
     return error(HttpStatus.CONFLICT, "RESEND_TOO_EARLY", "A resend is not available yet for this challenge.");
+  }
+
+  // --- Story 22-3: user-signature storage endpoints ---------------------------------
+
+  @ExceptionHandler(SignatureNotFoundException.class)
+  ResponseEntity<ErrorResponse> signatureNotFound() {
+    return error(HttpStatus.NOT_FOUND, "SIGNATURE_NOT_FOUND", "User signature was not found.");
+  }
+
+  @ExceptionHandler(SignatureForbiddenException.class)
+  ResponseEntity<ErrorResponse> signatureForbidden() {
+    return error(HttpStatus.FORBIDDEN, "FORBIDDEN", "You do not have permission to access this resource.");
+  }
+
+  @ExceptionHandler(UnsupportedContentTypeException.class)
+  ResponseEntity<ErrorResponse> unsupportedContentType() {
+    return error(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "UNSUPPORTED_MEDIA_TYPE",
+        "Signature must be an image (image/jpeg, image/png, image/webp, or image/gif).");
+  }
+
+  @ExceptionHandler(ValidationException.class)
+  ResponseEntity<ErrorResponse> signatureValidation(ValidationException exception) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse("VALIDATION_ERROR",
+        "Request validation failed.", exception.getFieldErrors(),
+        Instant.now(clock).toString(), UUID.randomUUID().toString()));
+  }
+
+  @ExceptionHandler(SignatureUploadConflictException.class)
+  ResponseEntity<ErrorResponse> signatureUploadConflict() {
+    return error(HttpStatus.CONFLICT, "SIGNATURE_UPLOAD_CONFLICT",
+        "A concurrent signature upload won the race; retry the upload.");
+  }
+
+  // Review 22-3 P8: multipart failure modes must answer with the house envelope,
+  // never Spring's default 500 (mirrors SparepartImageExceptionHandler).
+
+  @ExceptionHandler(MaxUploadSizeExceededException.class)
+  ResponseEntity<ErrorResponse> oversizeUpload() {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse("VALIDATION_ERROR",
+        "Request validation failed.", Map.of("data", "Signature file exceeds the maximum allowed size."),
+        Instant.now(clock).toString(), UUID.randomUUID().toString()));
+  }
+
+  @ExceptionHandler(MissingServletRequestPartException.class)
+  ResponseEntity<ErrorResponse> missingPart(MissingServletRequestPartException exception) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse("VALIDATION_ERROR",
+        "Request validation failed.", Map.of(exception.getRequestPartName(), "This part is required."),
+        Instant.now(clock).toString(), UUID.randomUUID().toString()));
+  }
+
+  @ExceptionHandler(MissingServletRequestParameterException.class)
+  ResponseEntity<ErrorResponse> missingParam(MissingServletRequestParameterException exception) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse("VALIDATION_ERROR",
+        "Request validation failed.", Map.of(exception.getParameterName(), "This value is required."),
+        Instant.now(clock).toString(), UUID.randomUUID().toString()));
+  }
+
+  @ExceptionHandler(MultipartException.class)
+  ResponseEntity<ErrorResponse> multipartError() {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse("VALIDATION_ERROR",
+        "Request validation failed.",
+        Map.of("data", "Request must be a well-formed multipart form-data upload."),
+        Instant.now(clock).toString(), UUID.randomUUID().toString()));
+  }
+
+  @ExceptionHandler(StorageException.class)
+  ResponseEntity<ErrorResponse> signatureStorage() {
+    return error(HttpStatus.BAD_GATEWAY, "OBJECT_STORAGE_ERROR", "Object storage operation failed.");
   }
 
   private ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message) {
