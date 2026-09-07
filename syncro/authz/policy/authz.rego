@@ -485,6 +485,30 @@ compliance_ecn_approval_paths := {
   "/api/v1/equipment-change-notices/*/close",
 }
 
+# Machine setup baselines (story 21-3, blueprint H5): baseline create and the
+# /{id}/activate pointer flip for the six-role workorder-create parity set
+# (SUPER_ADMIN via the generic bypass) — mirrors MachineSetupBaselineService's
+# requireMutationRole gate exactly. A single `*` matches exactly one path
+# segment, so each depth is enumerated explicitly: collection (list/create),
+# /{id} (get), /{id}/activate. Machine scope and the server-assigned version are
+# service-side (rego cannot see the body). Reads (GET) flow through generic
+# read_allowed.
+compliance_baseline_paths := {
+  "/api/v1/machine-setup-baselines",
+  "/api/v1/machine-setup-baselines/*",
+  "/api/v1/machine-setup-baselines/*/activate",
+}
+
+# Lessons learned (story 21-3, blueprint H6): lesson create/update/delete for
+# the six-role parity set — mirrors LessonLearnedService's requireMutationRole.
+# A single `*` matches exactly one path segment: collection (search/create),
+# /{id} (get/update/delete). Event-link validation and scope are service-side.
+# Reads (GET) flow through generic read_allowed.
+compliance_lesson_paths := {
+  "/api/v1/lessons-learned",
+  "/api/v1/lessons-learned/*",
+}
+
 # Login audits & phone challenges (story 22-2, blueprint I2/I3): audit reads are
 # SUPER_ADMIN/AUDITOR-only — read_allowed below excludes these paths from the generic
 # any-authenticated read so every other role is default-deny, and an explicit AUDITOR
@@ -1474,6 +1498,74 @@ mutation_allowed if {
   input.subject.roles[_] == "MANAGER_MAINTENANCE"
   is_mutation
   path_matches(compliance_ecn_approval_paths)
+}
+
+# Machine setup baselines (story 21-3): six-role workorder-create parity set —
+# MANAGER_MAINTENANCE, MAINTENANCE_LEADER, SECTION_LEADER, STAFF_MAINTENANCE,
+# PRODUCTION_LEADER (SUPER_ADMIN via the generic bypass). TECHNICIAN/AUDITOR and
+# the inventory roles stay default-deny — parity with
+# MachineSetupBaselineService (rego is the coarse gate; machine scope and the
+# server-assigned version are service-side).
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(compliance_baseline_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(compliance_baseline_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(compliance_baseline_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STAFF_MAINTENANCE"
+  is_mutation
+  path_matches(compliance_baseline_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "PRODUCTION_LEADER"
+  is_mutation
+  path_matches(compliance_baseline_paths)
+}
+
+# Lessons learned (story 21-3): the same six-role parity set — mirrors
+# LessonLearnedService.requireMutationRole on create/update/delete.
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(compliance_lesson_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(compliance_lesson_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(compliance_lesson_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STAFF_MAINTENANCE"
+  is_mutation
+  path_matches(compliance_lesson_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "PRODUCTION_LEADER"
+  is_mutation
+  path_matches(compliance_lesson_paths)
 }
 
 # Phone challenges (story 22-2): SUPER_ADMIN-only mutations — parity with

@@ -5,6 +5,8 @@ import com.syncro.compliance.application.CalibrationService.CalibrationRecordNot
 import com.syncro.compliance.application.EightDReportService.EightDConflictException;
 import com.syncro.compliance.application.EightDReportService.EightDReportNotFoundException;
 import com.syncro.compliance.application.EquipmentChangeNoticeService.EquipmentChangeNoticeNotFoundException;
+import com.syncro.compliance.application.LessonLearnedService.LessonNotFoundException;
+import com.syncro.compliance.application.MachineSetupBaselineService.MachineSetupBaselineNotFoundException;
 import com.syncro.compliance.application.NonConformanceService.ComplianceForbiddenException;
 import com.syncro.compliance.application.NonConformanceService.ComplianceReferenceNotFoundException;
 import com.syncro.compliance.application.NonConformanceService.ComplianceValidationException;
@@ -30,17 +32,19 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /**
- * Stable error envelope for the compliance API (stories 21-1/21-2,
+ * Stable error envelope for the compliance API (stories 21-1/21-2/21-3,
  * KpiExceptionHandler pattern): code/message/fieldErrors/timestamp/traceId —
  * machine-readable codes FORBIDDEN (403), VALIDATION_ERROR (400),
  * NON_CONFORMANCE_NOT_FOUND / EIGHT_D_REPORT_NOT_FOUND / INSTRUMENT_NOT_FOUND /
- * CALIBRATION_RECORD_NOT_FOUND / ECN_NOT_FOUND / *_NOT_FOUND (404),
- * DUPLICATE_IDENTIFIER / INVALID_STATE_TRANSITION / EIGHT_D_CONFLICT /
- * VERSION_CONFLICT (409). Never exception names.
+ * CALIBRATION_RECORD_NOT_FOUND / ECN_NOT_FOUND / BASELINE_NOT_FOUND /
+ * LESSON_NOT_FOUND / *_NOT_FOUND (404), DUPLICATE_IDENTIFIER /
+ * INVALID_STATE_TRANSITION / EIGHT_D_CONFLICT / VERSION_CONFLICT (409).
+ * Never exception names.
  */
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(assignableTypes = {NonConformanceController.class,
-    CalibrationController.class, EquipmentChangeNoticeController.class})
+    CalibrationController.class, EquipmentChangeNoticeController.class,
+    MachineSetupBaselineController.class, LessonLearnedController.class})
 public class ComplianceExceptionHandler {
 
   public record ErrorResponse(String code, String message, Map<String, String> fieldErrors,
@@ -150,6 +154,18 @@ public class ComplianceExceptionHandler {
   ResponseEntity<ErrorResponse> ecnNotFound() {
     return error(HttpStatus.NOT_FOUND, "ECN_NOT_FOUND",
         "Equipment change notice was not found.", Map.of());
+  }
+
+  @ExceptionHandler(MachineSetupBaselineNotFoundException.class)
+  ResponseEntity<ErrorResponse> baselineNotFound() {
+    return error(HttpStatus.NOT_FOUND, "BASELINE_NOT_FOUND",
+        "Machine setup baseline was not found.", Map.of());
+  }
+
+  @ExceptionHandler(LessonNotFoundException.class)
+  ResponseEntity<ErrorResponse> lessonNotFound() {
+    return error(HttpStatus.NOT_FOUND, "LESSON_NOT_FOUND",
+        "Lesson learned was not found.", Map.of());
   }
 
   /** Review 21-1 P6: @Version lost updates surface as 409, never 500. */

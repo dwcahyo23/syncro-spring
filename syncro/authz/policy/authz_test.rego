@@ -2049,6 +2049,104 @@ test_anonymous_ecn_denied if {
   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "GET /api/v1/equipment-change-notices"}
 }
 
+# -- Machine setup baselines (story 21-3, blueprint H5) ----------------------
+# Six-role workorder-create parity set on the baseline create/activate surface
+# (mirrors MachineSetupBaselineService's requireMutationRole gate); reads flow
+# through generic read_allowed for any authenticated user.
+
+test_super_admin_baseline_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/machine-setup-baselines"}
+}
+
+test_manager_baseline_activate_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/machine-setup-baselines/7b7c6d5e-1111-2222-3333-444455556666/activate"}
+}
+
+test_staff_baseline_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/machine-setup-baselines"}
+}
+
+test_section_leader_baseline_activate_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/machine-setup-baselines/7b7c6d5e-1111-2222-3333-444455556666/activate"}
+}
+
+test_maintenance_leader_baseline_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/machine-setup-baselines"}
+}
+
+test_production_leader_baseline_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["PRODUCTION_LEADER"], "userId": "u8"}, "action": "POST /api/v1/machine-setup-baselines"}
+}
+
+test_technician_baseline_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/machine-setup-baselines"}
+}
+
+test_auditor_baseline_activate_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/machine-setup-baselines/7b7c6d5e-1111-2222-3333-444455556666/activate"}
+}
+
+test_inventory_maintenance_baseline_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["INVENTORY_MAINTENANCE"], "userId": "u9"}, "action": "POST /api/v1/machine-setup-baselines"}
+}
+
+test_technician_baseline_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "GET /api/v1/machine-setup-baselines"}
+}
+
+test_anonymous_baseline_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "GET /api/v1/machine-setup-baselines"}
+}
+
+# -- Lessons learned (story 21-3, blueprint H6) -------------------------------
+# Create/update/delete take the six-role parity set (mirrors
+# LessonLearnedService.requireMutationRole); reads flow through generic
+# read_allowed.
+
+test_super_admin_lesson_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/lessons-learned"}
+}
+
+test_manager_lesson_update_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "PATCH /api/v1/lessons-learned/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_staff_lesson_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/lessons-learned"}
+}
+
+test_section_leader_lesson_delete_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "DELETE /api/v1/lessons-learned/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_maintenance_leader_lesson_update_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "PATCH /api/v1/lessons-learned/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_production_leader_lesson_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["PRODUCTION_LEADER"], "userId": "u8"}, "action": "POST /api/v1/lessons-learned"}
+}
+
+test_technician_lesson_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/lessons-learned"}
+}
+
+test_auditor_lesson_delete_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "DELETE /api/v1/lessons-learned/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_storekeeper_lesson_delete_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STOREKEEPER"], "userId": "u10"}, "action": "DELETE /api/v1/lessons-learned/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_technician_lesson_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "GET /api/v1/lessons-learned"}
+}
+
+test_anonymous_lesson_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "GET /api/v1/lessons-learned"}
+}
+
 # -- Login audits & phone challenges (story 22-2, blueprint I2/I3) ----------
 # Audit reads are SUPER_ADMIN/AUDITOR-only (auth_audit_read_paths is excluded from
 # the generic any-authenticated read; an explicit AUDITOR rule grants it). Phone

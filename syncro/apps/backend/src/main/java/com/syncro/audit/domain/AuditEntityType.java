@@ -3,7 +3,7 @@ package com.syncro.audit.domain;
 /**
  * Audit entity types. Mirrors the {@code ck_audit_log_entity_type} CHECK on
  * {@code audit_log} — the constraint is recreated additively by each audit-type
- * migration (latest: V17__calibration_ecn_support.sql); any new value must be
+ * migration (latest: V18__setup_baseline_lesson_evidence.sql); any new value must be
  * added to BOTH sides in the same change. Story 15-1: DEPARTMENT_MEMBER renamed to
  * DEPARTMENT_USER (department_users table), SPAREPART_STOCK kept for audit-label
  * compatibility while the storage table is inventory_stock_balances, and the
@@ -73,5 +73,7 @@ public enum AuditEntityType {
   PHONE_VERIFICATION_CHALLENGE,
   CALIBRATION_INSTRUMENT,
   CALIBRATION_RECORD,
-  EQUIPMENT_CHANGE_NOTICE
+  EQUIPMENT_CHANGE_NOTICE,
+  MACHINE_SETUP_BASELINE,
+  LESSON_LEARNED
 }

@@ -49,11 +49,11 @@ class V1BaseSchemaMigrationTest {
   // -------------------------------------------------------------------------
 
   @Test
-  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V17 additive migrations")
+  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V18 additive migrations")
   void migrationsApplied() {
     var rows = jdbc.queryForList(
         "SELECT version, script, success FROM flyway_schema_history ORDER BY installed_rank");
-    assertThat(rows).hasSize(17);
+    assertThat(rows).hasSize(18);
     assertThat(rows.get(0).get("version")).isEqualTo("1");
     assertThat(rows.get(0).get("script")).isEqualTo("V1__orm_foundation_schema.sql");
     assertThat(rows.get(0).get("success")).isEqualTo(true);
@@ -105,6 +105,9 @@ class V1BaseSchemaMigrationTest {
     assertThat(rows.get(16).get("version")).isEqualTo("17");
     assertThat(rows.get(16).get("script")).isEqualTo("V17__calibration_ecn_support.sql");
     assertThat(rows.get(16).get("success")).isEqualTo(true);
+    assertThat(rows.get(17).get("version")).isEqualTo("18");
+    assertThat(rows.get(17).get("script")).isEqualTo("V18__setup_baseline_lesson_evidence.sql");
+    assertThat(rows.get(17).get("success")).isEqualTo(true);
   }
 
   // -------------------------------------------------------------------------
@@ -845,6 +848,86 @@ class V1BaseSchemaMigrationTest {
         "SELECT count(*) FROM pg_indexes "
             + "WHERE indexname = 'idx_calibration_instruments_next_date'",
         Long.class)).isEqualTo(1L);
+  }
+
+  /**
+   * Story 21-3: V18 extends the CHECK additively with MACHINE_SETUP_BASELINE and
+   * LESSON_LEARNED so the baseline/lesson audit types can be persisted. Review
+   * 21-3 VG-10: the parsed CHECK set must EQUAL {@code AuditEntityType.values()}
+   * exactly — full parity, so any future drift (a value added to one side only)
+   * fails here instead of at write time.
+   */
+  @Test
+  @DisplayName("21.3-DB-001 P0 audit_log entity_type CHECK set equals AuditEntityType.values() after V18")
+  void auditEntityTypeCheckEqualsJavaEnum() {
+    var check = jdbc.queryForMap(
+        "SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint "
+            + "WHERE conname = 'ck_audit_log_entity_type'");
+    var def = (String) check.get("def");
+    assertThat(def).contains("MACHINE_SETUP_BASELINE", "LESSON_LEARNED");
+    // pg_get_constraintdef wraps each literal in casts that vary by version —
+    // match the quoted all-caps tokens only (the column name is lowercase).
+    var sqlValues = java.util.regex.Pattern.compile("'([A-Z][A-Z0-9_]*)'")
+        .matcher(def).results().map(m -> m.group(1)).collect(Collectors.toSet());
+    var javaValues = java.util.Arrays.stream(
+            com.syncro.audit.domain.AuditEntityType.values())
+        .map(Enum::name).collect(Collectors.toSet());
+    assertThat(sqlValues).isEqualTo(javaValues);
+  }
+
+  /**
+   * Story 21-3: V18 adds the optional event-link columns (FK ON DELETE SET NULL),
+   * the evidence JSONB, and the optimistic-lock version to lesson_learned, plus
+   * lock_version to machine_setup_baselines (the existing version column is the
+   * server-assigned business version, so the JPA @Version needs its own column).
+   */
+  @Test
+  @DisplayName("21.3-DB-002 P0 lesson_learned event links + evidence + version, baselines lock_version after V18")
+  void baselineLessonSupportColumns() {
+    assertThat(columnNames("lesson_learned"))
+        .contains("nc_id", "eight_d_id", "work_order_id", "evidence", "version");
+    assertThat(columnNames("machine_setup_baselines")).contains("lock_version");
+    // Event links are nullable and FK to their source tables with SET NULL.
+    for (Map.Entry<String, String> fk : Map.of(
+        "fk_lesson_learned_nc", "non_conformances",
+        "fk_lesson_learned_eight_d", "eight_d_reports",
+        "fk_lesson_learned_work_order", "work_orders").entrySet()) {
+      var ref = jdbc.queryForMap(
+          "SELECT (SELECT relname FROM pg_class c WHERE c.oid = confrelid) AS ref, "
+              + "confdeltype AS del FROM pg_constraint WHERE conname = ?",
+          fk.getKey());
+      assertThat((String) ref.get("ref")).as("FK %s target", fk.getKey())
+          .isEqualTo(fk.getValue());
+      assertThat((String) ref.get("del")).as("FK %s delete rule", fk.getKey()).isEqualTo("n");
+    }
+    // evidence is JSONB; the lock columns are NOT NULL with a 0 default
+    // (V13/V15/V17 precedent).
+    var evidence = jdbc.queryForMap(
+        "SELECT data_type FROM information_schema.columns "
+            + "WHERE table_schema = 'public' AND table_name = 'lesson_learned' "
+            + "AND column_name = 'evidence'");
+    assertThat(evidence.get("data_type")).isEqualTo("jsonb");
+    for (String[] column : List.of(
+        new String[] {"lesson_learned", "version"},
+        new String[] {"machine_setup_baselines", "lock_version"})) {
+      var lockColumn = jdbc.queryForMap(
+          "SELECT is_nullable, column_default FROM information_schema.columns "
+              + "WHERE table_schema = 'public' AND table_name = ? AND column_name = ?",
+          column[0], column[1]);
+      assertThat(lockColumn.get("is_nullable")).as("%s.%s", column[0], column[1])
+          .isEqualTo("NO");
+      assertThat((String) lockColumn.get("column_default")).contains("0");
+    }
+    // Review 21-3 H1/H2: the two partial unique indexes exist and carry their
+    // WHERE clauses (NULLS DISTINCT fix + single-active-per-machine guard).
+    var versionIndex = jdbc.queryForMap(
+        "SELECT indexdef FROM pg_indexes WHERE indexname = 'uq_machine_setup_baselines_machine_version'");
+    assertThat((String) versionIndex.get("indexdef")).contains("UNIQUE")
+        .contains("machine_id", "version").contains("ecn_id IS NULL");
+    var activeIndex = jdbc.queryForMap(
+        "SELECT indexdef FROM pg_indexes WHERE indexname = 'uq_one_active_baseline_per_machine'");
+    assertThat((String) activeIndex.get("indexdef")).contains("UNIQUE")
+        .contains("machine_id").contains("is_active");
   }
 
   // -------------------------------------------------------------------------
