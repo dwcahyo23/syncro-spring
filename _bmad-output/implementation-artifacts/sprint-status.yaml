@@ -1,5 +1,5 @@
 # generated: 2026-05-25
-# last_updated: 2026-09-06
+# last_updated: 2026-09-07
 # project: Syncro
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-25
-last_updated: 2026-09-06
+last_updated: 2026-09-07
+# updated: 2026-09-07 Epic 21 in-progress — 21-2 Calibration & Equipment Change Control done (instrument CRUD + derived calibration status + ECN lifecycle; V17; build-auto review 13 patched / 5 deferred; 127 tests + opa 512 green)
 # updated: 2026-09-06 Epic 22 in-progress — 22-3 User Signatures & Signature Use done (upload+SHA256+Garage, signature_uses enrichment, ownership gate; V16; build-auto review 18 patched / 1 deferred; 269 tests + opa 488 green)
 # updated: 2026-09-05 Epic 22 in-progress — 22-2 Auth Login Audit & Phone Verification done (login audit per-attempt + phone challenge lifecycle; V14/V15; build-auto review 13 patched / 5 deferred; 116 tests + opa 474 green)
 # updated: 2026-09-05 Epic 21 in-progress — 21-1 Non-Conformance & 8D Reports done (NC CRUD + 8D + V13 + rego parity; build-auto review 8 patched + code-review pass 2, 4 patched / 1 deferred)
@@ -285,7 +286,7 @@ development_status:
   # Epic 21: IATF Compliance Module
   epic-21: in-progress
   21-1-non-conformance-8d-reports: done
-  21-2-calibration-equipment-change-control: backlog
+  21-2-calibration-equipment-change-control: done
   21-3-setup-baselines-lesson-learned: backlog
   epic-21-retrospective: optional
 
