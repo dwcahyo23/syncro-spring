@@ -49,11 +49,11 @@ class V1BaseSchemaMigrationTest {
   // -------------------------------------------------------------------------
 
   @Test
-  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V16 additive migrations")
+  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V17 additive migrations")
   void migrationsApplied() {
     var rows = jdbc.queryForList(
         "SELECT version, script, success FROM flyway_schema_history ORDER BY installed_rank");
-    assertThat(rows).hasSize(16);
+    assertThat(rows).hasSize(17);
     assertThat(rows.get(0).get("version")).isEqualTo("1");
     assertThat(rows.get(0).get("script")).isEqualTo("V1__orm_foundation_schema.sql");
     assertThat(rows.get(0).get("success")).isEqualTo(true);
@@ -102,6 +102,9 @@ class V1BaseSchemaMigrationTest {
     assertThat(rows.get(15).get("version")).isEqualTo("16");
     assertThat(rows.get(15).get("script")).isEqualTo("V16__user_signature_sha256.sql");
     assertThat(rows.get(15).get("success")).isEqualTo(true);
+    assertThat(rows.get(16).get("version")).isEqualTo("17");
+    assertThat(rows.get(16).get("script")).isEqualTo("V17__calibration_ecn_support.sql");
+    assertThat(rows.get(16).get("success")).isEqualTo(true);
   }
 
   // -------------------------------------------------------------------------
@@ -780,6 +783,68 @@ class V1BaseSchemaMigrationTest {
             + "WHERE table_schema = 'public' AND table_name = 'user_signatures' AND column_name = 'sha256'");
     assertThat(column.get("data_type")).isEqualTo("character varying");
     assertThat(column.get("len")).isEqualTo(64);
+  }
+
+  /**
+   * Story 21-2: V17 extends the CHECK additively with CALIBRATION_INSTRUMENT,
+   * CALIBRATION_RECORD and EQUIPMENT_CHANGE_NOTICE so the calibration/ECN audit
+   * types can be persisted. Every prior value — including the V13 compliance
+   * types and the V14 phone-challenge type — survives the extension.
+   */
+  @Test
+  @DisplayName("21.2-DB-001 P0 audit_log entity_type CHECK accepts CALIBRATION/ECN types after V17")
+  void auditEntityTypeAcceptsCalibrationEcnTypes() {
+    var check = jdbc.queryForMap(
+        "SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint "
+            + "WHERE conname = 'ck_audit_log_entity_type'");
+    var def = (String) check.get("def");
+    assertThat(def).contains("CALIBRATION_INSTRUMENT", "CALIBRATION_RECORD",
+        "EQUIPMENT_CHANGE_NOTICE");
+    // every prior value survives the additive V17 extension.
+    assertThat(def).contains("PHONE_VERIFICATION_CHALLENGE", "NON_CONFORMANCE",
+        "EIGHT_D_REPORT", "KPI_TARGET", "PM_EXECUTION", "PM_WORK_ORDER",
+        "WORK_ORDER_QUALITY_RATING", "WORK_LOG", "WORK_ASSIGNMENT", "PLANT",
+        "MACHINE", "ALERT", "SPAREPART_REQUEST", "SIGNATURE_USE");
+  }
+
+  /**
+   * Story 21-2: V17 adds the nullable plant_id (FK to plants, ON DELETE SET NULL —
+   * null = global instrument) + version to calibration_instruments and version to
+   * equipment_change_notices.
+   */
+  @Test
+  @DisplayName("21.2-DB-002 P0 calibration_instruments carries plant_id + version, ECNs carry version after V17")
+  void calibrationEcnSupportColumns() {
+    assertThat(columnNames("calibration_instruments")).contains("plant_id", "version");
+    assertThat(columnNames("equipment_change_notices")).contains("version");
+    // plant_id is nullable (global instruments) and FKs to plants.
+    var column = jdbc.queryForMap(
+        "SELECT is_nullable FROM information_schema.columns "
+            + "WHERE table_schema = 'public' AND table_name = 'calibration_instruments' "
+            + "AND column_name = 'plant_id'");
+    assertThat(column.get("is_nullable")).isEqualTo("YES");
+    var fk = jdbc.queryForList(
+        "SELECT (SELECT relname FROM pg_class c WHERE c.oid = confrelid) AS ref FROM pg_constraint "
+            + "WHERE conname = 'fk_calibration_instruments_plant'");
+    assertThat(fk).hasSize(1);
+    assertThat((String) fk.getFirst().get("ref")).isEqualTo("plants");
+    // version columns are NOT NULL with a 0 default (V13/V15 precedent).
+    for (String table : List.of("calibration_instruments", "equipment_change_notices")) {
+      var versionColumn = jdbc.queryForMap(
+          "SELECT is_nullable, column_default FROM information_schema.columns "
+              + "WHERE table_schema = 'public' AND table_name = ? AND column_name = 'version'",
+          table);
+      assertThat(versionColumn.get("is_nullable")).isEqualTo("NO");
+      assertThat((String) versionColumn.get("column_default")).contains("0");
+    }
+    // Review 21-2 L10: the scope filter + due-date ordering indexes exist.
+    assertThat(jdbc.queryForObject(
+        "SELECT count(*) FROM pg_indexes WHERE indexname = 'idx_calibration_instruments_plant'",
+        Long.class)).isEqualTo(1L);
+    assertThat(jdbc.queryForObject(
+        "SELECT count(*) FROM pg_indexes "
+            + "WHERE indexname = 'idx_calibration_instruments_next_date'",
+        Long.class)).isEqualTo(1L);
   }
 
   // -------------------------------------------------------------------------

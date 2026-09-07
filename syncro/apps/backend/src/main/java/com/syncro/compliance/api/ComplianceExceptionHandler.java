@@ -1,7 +1,10 @@
 package com.syncro.compliance.api;
 
+import com.syncro.compliance.application.CalibrationService.CalibrationInstrumentNotFoundException;
+import com.syncro.compliance.application.CalibrationService.CalibrationRecordNotFoundException;
 import com.syncro.compliance.application.EightDReportService.EightDConflictException;
 import com.syncro.compliance.application.EightDReportService.EightDReportNotFoundException;
+import com.syncro.compliance.application.EquipmentChangeNoticeService.EquipmentChangeNoticeNotFoundException;
 import com.syncro.compliance.application.NonConformanceService.ComplianceForbiddenException;
 import com.syncro.compliance.application.NonConformanceService.ComplianceReferenceNotFoundException;
 import com.syncro.compliance.application.NonConformanceService.ComplianceValidationException;
@@ -27,14 +30,17 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /**
- * Stable error envelope for the compliance API (story 21-1, KpiExceptionHandler
- * pattern): code/message/fieldErrors/timestamp/traceId — machine-readable codes
- * FORBIDDEN (403), VALIDATION_ERROR (400), NON_CONFORMANCE_NOT_FOUND /
- * EIGHT_D_REPORT_NOT_FOUND / *_NOT_FOUND (404), DUPLICATE_IDENTIFIER /
- * INVALID_STATE_TRANSITION / EIGHT_D_CONFLICT (409). Never exception names.
+ * Stable error envelope for the compliance API (stories 21-1/21-2,
+ * KpiExceptionHandler pattern): code/message/fieldErrors/timestamp/traceId —
+ * machine-readable codes FORBIDDEN (403), VALIDATION_ERROR (400),
+ * NON_CONFORMANCE_NOT_FOUND / EIGHT_D_REPORT_NOT_FOUND / INSTRUMENT_NOT_FOUND /
+ * CALIBRATION_RECORD_NOT_FOUND / ECN_NOT_FOUND / *_NOT_FOUND (404),
+ * DUPLICATE_IDENTIFIER / INVALID_STATE_TRANSITION / EIGHT_D_CONFLICT /
+ * VERSION_CONFLICT (409). Never exception names.
  */
 @Order(Ordered.HIGHEST_PRECEDENCE)
-@RestControllerAdvice(assignableTypes = NonConformanceController.class)
+@RestControllerAdvice(assignableTypes = {NonConformanceController.class,
+    CalibrationController.class, EquipmentChangeNoticeController.class})
 public class ComplianceExceptionHandler {
 
   public record ErrorResponse(String code, String message, Map<String, String> fieldErrors,
@@ -126,6 +132,24 @@ public class ComplianceExceptionHandler {
   ResponseEntity<ErrorResponse> eightDConflict() {
     return error(HttpStatus.CONFLICT, "EIGHT_D_CONFLICT",
         "This non-conformance already has an 8D report.", Map.of());
+  }
+
+  @ExceptionHandler(CalibrationInstrumentNotFoundException.class)
+  ResponseEntity<ErrorResponse> instrumentNotFound() {
+    return error(HttpStatus.NOT_FOUND, "INSTRUMENT_NOT_FOUND",
+        "Calibration instrument was not found.", Map.of());
+  }
+
+  @ExceptionHandler(CalibrationRecordNotFoundException.class)
+  ResponseEntity<ErrorResponse> calibrationRecordNotFound() {
+    return error(HttpStatus.NOT_FOUND, "CALIBRATION_RECORD_NOT_FOUND",
+        "Calibration record was not found for this instrument.", Map.of());
+  }
+
+  @ExceptionHandler(EquipmentChangeNoticeNotFoundException.class)
+  ResponseEntity<ErrorResponse> ecnNotFound() {
+    return error(HttpStatus.NOT_FOUND, "ECN_NOT_FOUND",
+        "Equipment change notice was not found.", Map.of());
   }
 
   /** Review 21-1 P6: @Version lost updates surface as 409, never 500. */

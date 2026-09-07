@@ -178,6 +178,11 @@ syncro:
     refresh-cron: ${SYNCRO_KPI_REFRESH_CRON:0 0 3 * * *}
     # Past months re-materialized per sweep (late corrections, backdated sync rows).
     lookback-months: ${SYNCRO_KPI_LOOKBACK_MONTHS:1}
+  compliance:
+    calibration:
+      # Story 21-2: days before next_calibration_date an instrument reads
+      # EXPIRING_SOON (derived on read — no scheduler persists status).
+      expiring-window-days: ${SYNCRO_COMPLIANCE_CALIBRATION_EXPIRING_WINDOW_DAYS:14}
   sync:
     # External workorder sync pipeline (story 13-1, AD-7/FR-150). Disabled by default:
     # the app boots without an external DB. Flip to true and supply syncro.sync.datasource.*

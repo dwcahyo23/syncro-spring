@@ -449,6 +449,42 @@ compliance_eight_d_verify_paths := {
   "/api/v1/non-conformances/*/eight-d/verify-effectiveness",
 }
 
+# Calibration instruments & records (story 21-2, blueprint H3): instrument CRUD,
+# the append-only records history, and the recalibrate event for the six-role
+# workorder-create parity set (SUPER_ADMIN via the generic bypass) — mirrors
+# CalibrationService's NonConformanceService.requireMutationRole gate exactly.
+# A single `*` matches exactly one path segment, so each depth is enumerated
+# explicitly: collection (list/create), /{id} (get/update), /{id}/records (list),
+# /{id}/records/{recordId} (get), /{id}/recalibrate. Plant scope and the derived
+# status are service-side (rego cannot see the body or the dates). Reads (GET)
+# flow through generic read_allowed.
+compliance_calibration_paths := {
+  "/api/v1/calibration-instruments",
+  "/api/v1/calibration-instruments/*",
+  "/api/v1/calibration-instruments/*/records",
+  "/api/v1/calibration-instruments/*/records/*",
+  "/api/v1/calibration-instruments/*/recalibrate",
+}
+
+# Equipment change notices (story 21-2, blueprint H4): ECN create/update/submit
+# for the six-role set — mirrors EquipmentChangeNoticeService
+# (requireMutationRole on create/update/submit). Machine scope and the state
+# machine are service-side. Reads (GET) flow through generic read_allowed.
+compliance_ecn_paths := {
+  "/api/v1/equipment-change-notices",
+  "/api/v1/equipment-change-notices/*",
+  "/api/v1/equipment-change-notices/*/submit",
+}
+
+# ECN approval lifecycle (story 21-2): approve/execute/close are
+# SUPER_ADMIN/MANAGER_MAINTENANCE only — parity with
+# EquipmentChangeNoticeService.requireApprovalRole. Other roles stay default-deny.
+compliance_ecn_approval_paths := {
+  "/api/v1/equipment-change-notices/*/approve",
+  "/api/v1/equipment-change-notices/*/execute",
+  "/api/v1/equipment-change-notices/*/close",
+}
+
 # Login audits & phone challenges (story 22-2, blueprint I2/I3): audit reads are
 # SUPER_ADMIN/AUDITOR-only — read_allowed below excludes these paths from the generic
 # any-authenticated read so every other role is default-deny, and an explicit AUDITOR
@@ -1362,6 +1398,82 @@ mutation_allowed if {
   input.subject.roles[_] == "MANAGER_MAINTENANCE"
   is_mutation
   path_matches(compliance_eight_d_verify_paths)
+}
+
+# Calibration instruments & records (story 21-2): six-role workorder-create parity
+# set — MANAGER_MAINTENANCE, MAINTENANCE_LEADER, SECTION_LEADER, STAFF_MAINTENANCE,
+# PRODUCTION_LEADER (SUPER_ADMIN via the generic bypass). TECHNICIAN/AUDITOR and the
+# inventory roles stay default-deny — parity with CalibrationService (rego is the
+# coarse gate; plant scope and derived status are service-side).
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(compliance_calibration_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(compliance_calibration_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(compliance_calibration_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STAFF_MAINTENANCE"
+  is_mutation
+  path_matches(compliance_calibration_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "PRODUCTION_LEADER"
+  is_mutation
+  path_matches(compliance_calibration_paths)
+}
+
+# ECN create/update/submit (story 21-2): the same six-role parity set — mirrors
+# EquipmentChangeNoticeService requireMutationRole on those verbs.
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(compliance_ecn_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "MAINTENANCE_LEADER"
+  is_mutation
+  path_matches(compliance_ecn_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "SECTION_LEADER"
+  is_mutation
+  path_matches(compliance_ecn_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "STAFF_MAINTENANCE"
+  is_mutation
+  path_matches(compliance_ecn_paths)
+}
+
+mutation_allowed if {
+  input.subject.roles[_] == "PRODUCTION_LEADER"
+  is_mutation
+  path_matches(compliance_ecn_paths)
+}
+
+# ECN approve/execute/close (story 21-2): MANAGER_MAINTENANCE only (SUPER_ADMIN
+# via the generic bypass) — parity with
+# EquipmentChangeNoticeService.requireApprovalRole.
+mutation_allowed if {
+  input.subject.roles[_] == "MANAGER_MAINTENANCE"
+  is_mutation
+  path_matches(compliance_ecn_approval_paths)
 }
 
 # Phone challenges (story 22-2): SUPER_ADMIN-only mutations — parity with

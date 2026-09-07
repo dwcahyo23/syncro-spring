@@ -1943,6 +1943,112 @@ test_anonymous_nc_denied if {
   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "GET /api/v1/non-conformances"}
 }
 
+# -- Calibration instruments & records (story 21-2, blueprint H3) ------------
+# Six-role workorder-create parity set on the instrument/record mutation surface
+# (mirrors CalibrationService's requireMutationRole gate); reads flow through
+# generic read_allowed for any authenticated user.
+
+test_super_admin_calibration_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/calibration-instruments"}
+}
+
+test_manager_calibration_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/calibration-instruments"}
+}
+
+test_staff_calibration_recalibrate_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/calibration-instruments/7b7c6d5e-1111-2222-3333-444455556666/recalibrate"}
+}
+
+test_section_leader_calibration_update_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "PATCH /api/v1/calibration-instruments/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_maintenance_leader_calibration_recalibrate_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/calibration-instruments/7b7c6d5e-1111-2222-3333-444455556666/recalibrate"}
+}
+
+test_production_leader_calibration_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["PRODUCTION_LEADER"], "userId": "u8"}, "action": "POST /api/v1/calibration-instruments"}
+}
+
+test_technician_calibration_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/calibration-instruments"}
+}
+
+test_auditor_calibration_recalibrate_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "POST /api/v1/calibration-instruments/7b7c6d5e-1111-2222-3333-444455556666/recalibrate"}
+}
+
+test_technician_calibration_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "GET /api/v1/calibration-instruments"}
+}
+
+test_technician_calibration_records_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "GET /api/v1/calibration-instruments/7b7c6d5e-1111-2222-3333-444455556666/records"}
+}
+
+test_anonymous_calibration_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "GET /api/v1/calibration-instruments"}
+}
+
+# -- Equipment change notices (story 21-2, blueprint H4) ----------------------
+# Create/update/submit take the six-role parity set; approve/execute/close
+# narrow to MANAGER_MAINTENANCE/SUPER_ADMIN (mirrors
+# EquipmentChangeNoticeService.requireApprovalRole).
+
+test_super_admin_ecn_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/equipment-change-notices"}
+}
+
+test_staff_ecn_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/equipment-change-notices"}
+}
+
+test_maintenance_leader_ecn_submit_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/equipment-change-notices/7b7c6d5e-1111-2222-3333-444455556666/submit"}
+}
+
+test_section_leader_ecn_update_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "PATCH /api/v1/equipment-change-notices/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_manager_ecn_approve_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/equipment-change-notices/7b7c6d5e-1111-2222-3333-444455556666/approve"}
+}
+
+test_super_admin_ecn_execute_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/equipment-change-notices/7b7c6d5e-1111-2222-3333-444455556666/execute"}
+}
+
+test_super_admin_ecn_close_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/equipment-change-notices/7b7c6d5e-1111-2222-3333-444455556666/close"}
+}
+
+test_section_leader_ecn_approve_denied if {
+  not authz.allow with input as {"subject": {"roles": ["SECTION_LEADER"], "userId": "u5"}, "action": "POST /api/v1/equipment-change-notices/7b7c6d5e-1111-2222-3333-444455556666/approve"}
+}
+
+test_maintenance_leader_ecn_execute_denied if {
+  not authz.allow with input as {"subject": {"roles": ["MAINTENANCE_LEADER"], "userId": "u7"}, "action": "POST /api/v1/equipment-change-notices/7b7c6d5e-1111-2222-3333-444455556666/execute"}
+}
+
+test_staff_ecn_close_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/equipment-change-notices/7b7c6d5e-1111-2222-3333-444455556666/close"}
+}
+
+test_technician_ecn_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "POST /api/v1/equipment-change-notices"}
+}
+
+test_technician_ecn_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "GET /api/v1/equipment-change-notices"}
+}
+
+test_anonymous_ecn_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "GET /api/v1/equipment-change-notices"}
+}
+
 # -- Login audits & phone challenges (story 22-2, blueprint I2/I3) ----------
 # Audit reads are SUPER_ADMIN/AUDITOR-only (auth_audit_read_paths is excluded from
 # the generic any-authenticated read; an explicit AUDITOR rule grants it). Phone
