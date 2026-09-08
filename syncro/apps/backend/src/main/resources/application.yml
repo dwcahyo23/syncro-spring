@@ -183,6 +183,29 @@ syncro:
       # Story 21-2: days before next_calibration_date an instrument reads
       # EXPIRING_SOON (derived on read — no scheduler persists status).
       expiring-window-days: ${SYNCRO_COMPLIANCE_CALIBRATION_EXPIRING_WINDOW_DAYS:14}
+  webhook:
+    # Outbound webhook dispatch (story 22-1, blueprint I4).
+    worker:
+      # Poll interval in milliseconds for the delivery worker sweep (default: 30 seconds)
+      poll-interval-ms: ${SYNCRO_WEBHOOK_WORKER_POLL_INTERVAL_MS:30000}
+    # Per-delivery retry budget stamped onto each queued row (default 3)
+    max-attempts: ${SYNCRO_WEBHOOK_MAX_ATTEMPTS:3}
+    # Exponential backoff base in seconds — retry N waits min(base * 2^N, 3600) seconds
+    # (default 60 = the min(2^attemptCount, 60) minutes NotificationDispatchService precedent)
+    backoff-base-seconds: ${SYNCRO_WEBHOOK_BACKOFF_BASE_SECONDS:60}
+    resilience:
+      # HTTP connect + read timeout per subscriber call (default: 5 seconds)
+      timeout: ${SYNCRO_WEBHOOK_TIMEOUT_MS:5000}ms
+      # Failure-rate threshold (%) at which the circuit opens (default: 50%)
+      failure-rate-threshold: ${SYNCRO_WEBHOOK_CB_FAILURE_RATE:50}
+      # Minimum number of calls before failure rate is evaluated (default: 5)
+      minimum-number-of-calls: ${SYNCRO_WEBHOOK_CB_MIN_CALLS:5}
+      # Sliding window size for failure rate computation (default: 10)
+      sliding-window-size: ${SYNCRO_WEBHOOK_CB_WINDOW_SIZE:10}
+      # Time circuit stays OPEN before transitioning to HALF_OPEN (default: 60 seconds)
+      wait-duration-in-open-state: ${SYNCRO_WEBHOOK_CB_WAIT_MS:60000}ms
+      # Number of probe calls allowed in HALF_OPEN state (default: 3)
+      permitted-calls-in-half-open: ${SYNCRO_WEBHOOK_CB_HALF_OPEN_CALLS:3}
   sync:
     # External workorder sync pipeline (story 13-1, AD-7/FR-150). Disabled by default:
     # the app boots without an external DB. Flip to true and supply syncro.sync.datasource.*

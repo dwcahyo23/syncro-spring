@@ -7,6 +7,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -14,10 +15,12 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * Persisted {@code webhook_configs} row (blueprint I4, story 15-2). One webhook
- * registration: direction (INBOUND/OUTBOUND), subscribed {@code event_types} JSONB
- * array, and the HMAC secret. The secret is sensitive — callers must mask it in any
- * log or API projection (project-context logging rules).
+ * Persisted {@code webhook_configs} row (blueprint I4, story 15-2; CRUD + dispatch
+ * wiring in story 22-1). One webhook registration: direction (INBOUND/OUTBOUND),
+ * subscribed {@code event_types} JSONB array, and the HMAC secret. The secret is
+ * sensitive — callers must mask it in any log or API projection (project-context
+ * logging rules). {@code @Version} (V19) guards concurrent config mutations against
+ * lost updates (V13/V15/V17/V18 precedent).
  */
 @Entity
 @Table(name = "webhook_configs")
@@ -54,6 +57,10 @@ public class WebhookConfigEntity {
 
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
+
+  @Version
+  @Column(name = "version", nullable = false)
+  private long version;
 
   protected WebhookConfigEntity() {
   }
@@ -111,5 +118,19 @@ public class WebhookConfigEntity {
 
   public Instant getUpdatedAt() {
     return updatedAt;
+  }
+
+  public long getVersion() {
+    return version;
+  }
+
+  /** Applies an update (name is immutable — the unique identity handle). */
+  public void applyUpdate(List<String> eventTypes, String endpointUrl, String hmacSecret,
+      boolean active, Instant updatedAt) {
+    this.eventTypes = eventTypes;
+    this.endpointUrl = endpointUrl;
+    this.hmacSecret = hmacSecret;
+    this.active = active;
+    this.updatedAt = updatedAt;
   }
 }

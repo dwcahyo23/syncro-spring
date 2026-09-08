@@ -2318,3 +2318,54 @@ test_auditor_workorder_approve_denied if {
 test_anonymous_workorder_approve_denied if {
   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/workorders/WO-2609-00001/approve"}
 }
+
+# -- Webhook config & delivery log (story 22-1, blueprint I4) ----------------
+# The whole /api/v1/webhooks/** surface plus the global delivery list ride
+# admin_only_paths: excluded from the generic any-authenticated read, no
+# non-admin mutation rule matches, so only the SUPER_ADMIN top-level bypass
+# gets through. Mirrors WebhookConfigService/WebhookDeliveryQueryService
+# requireSuperAdmin on every operation.
+
+test_super_admin_webhook_config_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/webhooks"}
+}
+
+test_super_admin_webhook_config_update_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "PATCH /api/v1/webhooks/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_super_admin_webhook_config_list_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "GET /api/v1/webhooks"}
+}
+
+test_super_admin_webhook_deliveries_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "GET /api/v1/webhook-deliveries"}
+}
+
+test_super_admin_config_deliveries_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "GET /api/v1/webhooks/7b7c6d5e-1111-2222-3333-444455556666/deliveries"}
+}
+
+test_manager_webhook_config_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/webhooks"}
+}
+
+test_manager_webhook_config_update_denied if {
+  not authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "PATCH /api/v1/webhooks/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_manager_webhook_deliveries_read_denied if {
+  not authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "GET /api/v1/webhook-deliveries"}
+}
+
+test_auditor_webhook_deliveries_read_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/webhook-deliveries"}
+}
+
+test_technician_webhook_config_read_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "GET /api/v1/webhooks"}
+}
+
+test_anonymous_webhook_config_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/webhooks"}
+}

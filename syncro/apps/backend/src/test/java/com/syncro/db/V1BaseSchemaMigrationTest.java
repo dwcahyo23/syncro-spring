@@ -49,11 +49,11 @@ class V1BaseSchemaMigrationTest {
   // -------------------------------------------------------------------------
 
   @Test
-  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V18 additive migrations")
+  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V19 additive migrations")
   void migrationsApplied() {
     var rows = jdbc.queryForList(
         "SELECT version, script, success FROM flyway_schema_history ORDER BY installed_rank");
-    assertThat(rows).hasSize(18);
+    assertThat(rows).hasSize(19);
     assertThat(rows.get(0).get("version")).isEqualTo("1");
     assertThat(rows.get(0).get("script")).isEqualTo("V1__orm_foundation_schema.sql");
     assertThat(rows.get(0).get("success")).isEqualTo(true);
@@ -108,6 +108,9 @@ class V1BaseSchemaMigrationTest {
     assertThat(rows.get(17).get("version")).isEqualTo("18");
     assertThat(rows.get(17).get("script")).isEqualTo("V18__setup_baseline_lesson_evidence.sql");
     assertThat(rows.get(17).get("success")).isEqualTo(true);
+    assertThat(rows.get(18).get("version")).isEqualTo("19");
+    assertThat(rows.get(18).get("script")).isEqualTo("V19__webhook_delivery_evidence.sql");
+    assertThat(rows.get(18).get("success")).isEqualTo(true);
   }
 
   // -------------------------------------------------------------------------

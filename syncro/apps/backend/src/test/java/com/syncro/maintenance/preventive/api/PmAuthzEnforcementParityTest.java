@@ -14,13 +14,14 @@ import org.junit.jupiter.api.Test;
 /**
  * Pins the OPA rollout parity for the PM surface (stories 19-4/19-5/19-6), the
  * compliance surfaces (stories 21-1/21-2/21-3), the auth-evidence surface
- * (story 22-2) and the signature surface (story 22-3): every path in the rego
+ * (story 22-2), the signature surface (story 22-3) and the webhook surface
+ * (story 22-1): every path in the rego
  * pm_work_order_paths, pm_execution_paths, compliance_nc_paths,
  * compliance_eight_d_verify_paths, compliance_calibration_paths,
  * compliance_ecn_paths, compliance_ecn_approval_paths, compliance_baseline_paths,
  * compliance_lesson_paths, auth_audit_read_paths, auth_phone_challenge_paths,
- * user_signature_paths and workorder_approve_paths sets must also appear in
- * SYNCRO_AUTHZ_ENFORCED_PATHS in syncro/.env.example, or the endpoint ships
+ * user_signature_paths, workorder_approve_paths and admin_only_paths sets must also
+ * appear in SYNCRO_AUTHZ_ENFORCED_PATHS in syncro/.env.example, or the endpoint ships
  * unenforced. The rego sets are parsed from the policy source (no hand-copied
  * list to drift). Plain file read — no Spring context; the rego suite covers the
  * policy side, this covers the env rollout side.
@@ -32,7 +33,7 @@ class PmAuthzEnforcementParityTest {
           + "|compliance_calibration_paths|compliance_ecn_paths|compliance_ecn_approval_paths"
           + "|compliance_baseline_paths|compliance_lesson_paths"
           + "|auth_audit_read_paths|auth_phone_challenge_paths|user_signature_paths"
-          + "|workorder_approve_paths) := \\{([^}]*)\\}");
+          + "|workorder_approve_paths|admin_only_paths) := \\{([^}]*)\\}");
   private static final Pattern QUOTED = Pattern.compile("\"([^\"]+)\"");
 
   @Test
@@ -77,6 +78,11 @@ class PmAuthzEnforcementParityTest {
     assertThat(setPaths).contains("/api/v1/machine-setup-baselines/*/activate");
     assertThat(setPaths).contains("/api/v1/lessons-learned");
     assertThat(setPaths).contains("/api/v1/lessons-learned/*");
+    // Story 22-1 guard: the admin_only_paths set (webhook surface rides it) must also
+    // be parsed — a renamed set silently drops telemetry/sync/webhook from enforcement.
+    assertThat(setPaths).contains("/api/v1/webhooks/**");
+    assertThat(setPaths).contains("/api/v1/webhook-deliveries");
+    assertThat(setPaths).contains("/api/v1/telemetry/**");
 
     var line = Files.readAllLines(envFile).stream()
         .filter(l -> l.startsWith("SYNCRO_AUTHZ_ENFORCED_PATHS="))
