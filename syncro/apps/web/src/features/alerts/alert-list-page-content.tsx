@@ -1,10 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useRouter } from "@/i18n/navigation";
 import type { AlertViewStatus } from "@/lib/api/generated/model";
 import { useListAlerts } from "@/lib/api/generated/syncro";
 import { SyncroApiError } from "@/lib/api/orval-mutator";

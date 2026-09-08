@@ -1,0 +1,34 @@
+{
+  "common": {
+    "comingSoon": "Soon"
+  },
+  "navigation": {
+    "groups": {
+      "operational": "Operational",
+      "dashboards": "Dashboards",
+      "maintenance": "Maintenance",
+      "configuration": "Configuration"
+    },
+    "items": {
+      "operationsOverview": "Operations Overview",
+      "telemetry": "Telemetry",
+      "alerts": "Alerts",
+      "machineDashboard": "Machine Dashboard",
+      "workorderDashboard": "Workorder Dashboard",
+      "preventiveDashboard": "Preventive Dashboard",
+      "analytics": "Analytics",
+      "workOrders": "Work Orders",
+      "preventive": "Preventive",
+      "sparepartRequests": "Sparepart Requests",
+      "stock": "Stock",
+      "masterData": "Master Data",
+      "machines": "Machines",
+      "organization": "Organization",
+      "spareparts": "Spareparts",
+      "wahaTemplates": "WAHA Templates",
+      "auditLog": "Audit Log",
+      "systemHealth": "System Health",
+      "settings": "Settings"
+    }
+  }
+}

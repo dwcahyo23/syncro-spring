@@ -2,10 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type {
-  AlertNotificationHistoryResponse,
-  NotificationJobView,
-} from "@/lib/api/generated/model";
+import type { AlertNotificationHistoryResponse, NotificationJobView } from "@/lib/api/generated/model";
 
 import { AlertNotificationHistory } from "./alert-notification-history";
 
@@ -27,9 +24,27 @@ function job(overrides: Partial<NotificationJobView> = {}): NotificationJobView 
     createdAt: "2026-08-20T09:00:00Z",
     updatedAt: "2026-08-20T10:00:00Z",
     attempts: [
-      { attemptNumber: 1, status: "FAILED", attemptedAt: "2026-08-20T09:01:00Z", responseDetail: "HTTP 500", traceId: "t1" },
-      { attemptNumber: 2, status: "FAILED", attemptedAt: "2026-08-20T09:03:00Z", responseDetail: "timeout", traceId: "t1" },
-      { attemptNumber: 3, status: "FAILED", attemptedAt: "2026-08-20T09:05:00Z", responseDetail: null as unknown as string, traceId: "t1" },
+      {
+        attemptNumber: 1,
+        status: "FAILED",
+        attemptedAt: "2026-08-20T09:01:00Z",
+        responseDetail: "HTTP 500",
+        traceId: "t1",
+      },
+      {
+        attemptNumber: 2,
+        status: "FAILED",
+        attemptedAt: "2026-08-20T09:03:00Z",
+        responseDetail: "timeout",
+        traceId: "t1",
+      },
+      {
+        attemptNumber: 3,
+        status: "FAILED",
+        attemptedAt: "2026-08-20T09:05:00Z",
+        responseDetail: null as unknown as string,
+        traceId: "t1",
+      },
       { attemptNumber: 4, status: "SENT", attemptedAt: "2026-08-20T10:00:00Z", responseDetail: "ok", traceId: "t1" },
     ],
     ...overrides,
@@ -90,9 +105,7 @@ describe("AlertNotificationHistory", () => {
       { wrapper: Wrapper },
     );
 
-    const levels = Array.from(container.querySelectorAll("tbody tr td:first-child")).map(
-      (cell) => cell.textContent,
-    );
+    const levels = Array.from(container.querySelectorAll("tbody tr td:first-child")).map((cell) => cell.textContent);
     expect(levels.indexOf("TECHNICIAN")).toBeLessThan(levels.indexOf("STAFF"));
   });
 

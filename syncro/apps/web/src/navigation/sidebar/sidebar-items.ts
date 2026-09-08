@@ -16,7 +16,8 @@ import {
 } from "lucide-react";
 
 export interface NavSubItem {
-  title: string;
+  /** Message key in the `navigation` catalog (resolved via `t()` in the render components). */
+  titleKey: string;
   url: string;
   icon?: LucideIcon;
   comingSoon?: boolean;
@@ -37,7 +38,8 @@ export interface NavSubItem {
 }
 
 export interface NavMainItem {
-  title: string;
+  /** Message key in the `navigation` catalog (resolved via `t()` in the render components). */
+  titleKey: string;
   url: string;
   icon?: LucideIcon;
   subItems?: NavSubItem[];
@@ -60,27 +62,28 @@ export interface NavMainItem {
 
 export interface NavGroup {
   id: number;
-  label?: string;
+  /** Message key in the `navigation.groups` catalog (resolved via `t()`). */
+  labelKey?: string;
   items: NavMainItem[];
 }
 
 export const sidebarItems: NavGroup[] = [
   {
     id: 1,
-    label: "Operational",
+    labelKey: "groups.operational",
     items: [
       {
-        title: "Operations Overview",
+        titleKey: "items.operationsOverview",
         url: "/operations-overview",
         icon: Activity,
       },
       {
-        title: "Telemetry",
+        titleKey: "items.telemetry",
         url: "/telemetry",
         icon: Radio,
       },
       {
-        title: "Alerts",
+        titleKey: "items.alerts",
         url: "/alerts",
         icon: Bell,
       },
@@ -88,10 +91,10 @@ export const sidebarItems: NavGroup[] = [
   },
   {
     id: 2,
-    label: "Dashboards",
+    labelKey: "groups.dashboards",
     items: [
       {
-        title: "Machine Dashboard",
+        titleKey: "items.machineDashboard",
         url: "/machine-dashboard",
         icon: Gauge,
         roles: [
@@ -104,7 +107,7 @@ export const sidebarItems: NavGroup[] = [
         ],
       },
       {
-        title: "Workorder Dashboard",
+        titleKey: "items.workorderDashboard",
         url: "/workorder-dashboard",
         icon: LayoutDashboard,
         roles: [
@@ -117,7 +120,7 @@ export const sidebarItems: NavGroup[] = [
         ],
       },
       {
-        title: "Preventive Dashboard",
+        titleKey: "items.preventiveDashboard",
         url: "/preventive-dashboard",
         icon: CalendarCheck,
         roles: [
@@ -130,7 +133,7 @@ export const sidebarItems: NavGroup[] = [
         ],
       },
       {
-        title: "Analytics",
+        titleKey: "items.analytics",
         url: "/analytics",
         icon: Activity,
         isNew: true,
@@ -147,25 +150,25 @@ export const sidebarItems: NavGroup[] = [
   },
   {
     id: 3,
-    label: "Maintenance",
+    labelKey: "groups.maintenance",
     items: [
       {
-        title: "Work Orders",
+        titleKey: "items.workOrders",
         url: "/dashboard/workorders",
         icon: Wrench,
       },
       {
-        title: "Preventive",
+        titleKey: "items.preventive",
         url: "/dashboard/preventive",
         icon: CalendarCheck,
       },
       {
-        title: "Sparepart Requests",
+        titleKey: "items.sparepartRequests",
         url: "/dashboard/sparepart-requests",
         icon: Package,
       },
       {
-        title: "Stock",
+        titleKey: "items.stock",
         url: "/dashboard/stock",
         icon: Package,
       },
@@ -173,39 +176,39 @@ export const sidebarItems: NavGroup[] = [
   },
   {
     id: 4,
-    label: "Configuration",
+    labelKey: "groups.configuration",
     items: [
       {
-        title: "Master Data",
+        titleKey: "items.masterData",
         url: "/master-data",
         icon: Database,
         roles: ["SUPER_ADMIN", "MANAGER_MAINTENANCE"],
         subItems: [
-          { title: "Machines", url: "/master-data/machines" },
-          { title: "Organization", url: "/master-data/organization" },
-          { title: "Spareparts", url: "/master-data/spareparts" },
+          { titleKey: "items.machines", url: "/master-data/machines" },
+          { titleKey: "items.organization", url: "/master-data/organization" },
+          { titleKey: "items.spareparts", url: "/master-data/spareparts" },
         ],
       },
       {
-        title: "WAHA Templates",
+        titleKey: "items.wahaTemplates",
         url: "/waha-templates",
         icon: MessageSquare,
         roles: ["SUPER_ADMIN"],
       },
       {
-        title: "Audit Log",
+        titleKey: "items.auditLog",
         url: "/audit-log",
         icon: FileText,
         roles: ["SUPER_ADMIN", "MANAGER_MAINTENANCE"],
       },
       {
-        title: "System Health",
+        titleKey: "items.systemHealth",
         url: "/system-health",
         icon: HeartPulse,
         roles: ["SUPER_ADMIN"],
       },
       {
-        title: "Settings",
+        titleKey: "items.settings",
         url: "/settings",
         icon: Settings,
       },

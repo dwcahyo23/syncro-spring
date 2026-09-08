@@ -1,13 +1,12 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertStatusBadge } from "@/features/alerts/alert-status-badge";
 import { AlertTypeBadge } from "@/features/alerts/alert-type-badge";
 import { NotificationStatePill } from "@/features/alerts/notification-state-pill";
+import { useRouter } from "@/i18n/navigation";
 import { useListAlerts } from "@/lib/api/generated/syncro";
 
 export interface AlertsTabProps {

@@ -23,7 +23,7 @@ vi.mock("@/lib/api/generated/syncro", () => ({
   }),
 }));
 
-vi.mock("next/navigation", () => ({
+vi.mock("@/i18n/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 

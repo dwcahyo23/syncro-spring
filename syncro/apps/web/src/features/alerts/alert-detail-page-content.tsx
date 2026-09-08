@@ -402,10 +402,7 @@ export function AlertDetailPageContent({ alertId }: AlertDetailPageContentProps)
 
       {/* Stale escalation banner */}
       {isStale ? (
-        <div
-          className="status-banner-warning rounded-md border px-4 py-3 text-sm"
-          role="status"
-        >
+        <div className="status-banner-warning rounded-md border px-4 py-3 text-sm" role="status">
           Next escalation pending — check worker status in System Health.
         </div>
       ) : null}

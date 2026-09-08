@@ -25,11 +25,7 @@ export function LifetimeProgress({
   return (
     <div className="space-y-3">
       <div className="relative">
-        <Progress
-          value={pct}
-          aria-label={`Lifetime consumed: ${pct.toFixed(1)}%`}
-          className="h-3"
-        />
+        <Progress value={pct} aria-label={`Lifetime consumed: ${pct.toFixed(1)}%`} className="h-3" />
         {/* Threshold marker */}
         <div
           aria-hidden="true"

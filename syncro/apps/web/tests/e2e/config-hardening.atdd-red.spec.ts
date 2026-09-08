@@ -21,7 +21,8 @@ test.describe("WH e2e wiring (RED): env-driven baseURL + webServer", () => {
     // navigation must reach the app (redirect or login) rather than a 404/502.
     await page.goto("/");
 
-    await expect(page).toHaveURL(/\/(operations-overview|dashboard\/operations-overview|auth\/v2\/login)/);
+    // 23.1: every path is locale-prefixed (/id by default).
+    await expect(page).toHaveURL(/\/id\/(operations-overview|dashboard\/operations-overview|auth\/v2\/login)/);
     await expect(page.locator("body")).toBeVisible();
   });
 

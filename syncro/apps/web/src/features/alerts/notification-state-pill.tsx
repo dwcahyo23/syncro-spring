@@ -82,11 +82,7 @@ export function NotificationStatePill({ summary }: NotificationStatePillProps) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Badge
-          aria-label={`Notification status: ${config.label}`}
-          className={config.className}
-          variant="outline"
-        >
+        <Badge aria-label={`Notification status: ${config.label}`} className={config.className} variant="outline">
           <config.Icon aria-hidden="true" />
           {config.label}
         </Badge>

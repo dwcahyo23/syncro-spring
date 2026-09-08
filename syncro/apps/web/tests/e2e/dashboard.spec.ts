@@ -6,7 +6,8 @@ test.describe("dashboard shell", () => {
   }) => {
     await page.goto("/");
 
-    await expect(page).toHaveURL(/\/(operations-overview|dashboard\/operations-overview|auth\/v2\/login)/);
+    // 23.1: every path now lives under the /id (default) locale prefix.
+    await expect(page).toHaveURL(/\/id\/(operations-overview|dashboard\/operations-overview|auth\/v2\/login)/);
     await expect(page.locator("body")).toBeVisible();
   });
 });

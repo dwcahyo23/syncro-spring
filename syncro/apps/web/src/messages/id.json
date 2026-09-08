@@ -1,0 +1,34 @@
+{
+  "common": {
+    "comingSoon": "Segera hadir"
+  },
+  "navigation": {
+    "groups": {
+      "operational": "Operasional",
+      "dashboards": "Dasbor",
+      "maintenance": "Pemeliharaan",
+      "configuration": "Konfigurasi"
+    },
+    "items": {
+      "operationsOverview": "Ringkasan Operasional",
+      "telemetry": "Telemetri",
+      "alerts": "Alert",
+      "machineDashboard": "Dasbor Mesin",
+      "workorderDashboard": "Dasbor Work Order",
+      "preventiveDashboard": "Dasbor Preventif",
+      "analytics": "Analitik",
+      "workOrders": "Work Order",
+      "preventive": "Preventif",
+      "sparepartRequests": "Permintaan Sparepart",
+      "stock": "Stok",
+      "masterData": "Master Data",
+      "machines": "Mesin",
+      "organization": "Organisasi",
+      "spareparts": "Sparepart",
+      "wahaTemplates": "Template WAHA",
+      "auditLog": "Log Audit",
+      "systemHealth": "Kesehatan Sistem",
+      "settings": "Pengaturan"
+    }
+  }
+}

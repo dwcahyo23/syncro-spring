@@ -11,12 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import {
-  type AlertNotificationHistoryResponse,
-  type NotificationAttemptView,
-  type NotificationJobView,
+import type {
+  AlertNotificationHistoryResponse,
+  AlertViewStatus,
+  AuditLogEntryView,
+  NotificationAttemptView,
+  NotificationJobView,
 } from "@/lib/api/generated/model";
-import type { AlertViewStatus, AuditLogEntryView } from "@/lib/api/generated/model";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
 
 export type { AlertNotificationHistoryResponse, NotificationAttemptView, NotificationJobView };
@@ -119,9 +120,15 @@ function extractTraceId(error: unknown): string | null {
   if (error instanceof SyncroApiError) {
     const payload = error.payload as Record<string, unknown> | null;
     if (payload && typeof payload.traceId === "string") return payload.traceId as string;
-    if (payload && typeof (payload as Record<string, unknown>).trace_id === "string") return (payload as Record<string, unknown>).trace_id as string;
+    if (payload && typeof (payload as Record<string, unknown>).trace_id === "string")
+      return (payload as Record<string, unknown>).trace_id as string;
   }
-  if (error && typeof error === "object" && "traceId" in error && typeof (error as Record<string, unknown>).traceId === "string") {
+  if (
+    error &&
+    typeof error === "object" &&
+    "traceId" in error &&
+    typeof (error as Record<string, unknown>).traceId === "string"
+  ) {
     return (error as Record<string, unknown>).traceId as string;
   }
   return null;
@@ -131,7 +138,8 @@ function extractErrorMessage(error: unknown): string {
   if (error instanceof SyncroApiError) {
     const payload = error.payload as Record<string, unknown> | null;
     if (payload && typeof payload.message === "string") return payload.message as string;
-    if (payload && typeof payload.code === "string") return `${payload.code as string}: ${payload.message ?? "Request failed"}`;
+    if (payload && typeof payload.code === "string")
+      return `${payload.code as string}: ${payload.message ?? "Request failed"}`;
   }
   if (error instanceof Error) return error.message;
   return "Something went wrong. Please try again.";
@@ -155,8 +163,8 @@ export function AlertNotificationHistory({
 }: AlertNotificationHistoryProps) {
   // Enforce escalation order on frontend as well (AC1) — do not rely solely on backend
   const sortedItems = (history?.items ?? []).map(normalizeJob).sort((a, b) => {
-    const ia = ESCALATION_ORDER.indexOf(a.escalationLevel as typeof ESCALATION_ORDER[number]);
-    const ib = ESCALATION_ORDER.indexOf(b.escalationLevel as typeof ESCALATION_ORDER[number]);
+    const ia = ESCALATION_ORDER.indexOf(a.escalationLevel as (typeof ESCALATION_ORDER)[number]);
+    const ib = ESCALATION_ORDER.indexOf(b.escalationLevel as (typeof ESCALATION_ORDER)[number]);
     const rankA = ia === -1 ? 99 : ia;
     const rankB = ib === -1 ? 99 : ib;
     if (rankA !== rankB) return rankA - rankB;
@@ -172,7 +180,7 @@ export function AlertNotificationHistory({
     recipientPhoneMasked: job.recipientPhoneMasked,
     status: mapStatus(job.status, job.nextAttemptAt),
     rawStatus: job.status,
-    timestamp: job.status === "ESCALATED" ? job.updatedAt : (job.sentAt || job.updatedAt || job.createdAt),
+    timestamp: job.status === "ESCALATED" ? job.updatedAt : job.sentAt || job.updatedAt || job.createdAt,
     nextSendAt: job.nextAttemptAt || undefined,
     deliveryResult: job.errorDetail ? job.errorDetail.slice(0, 512) : undefined,
     traceId: job.traceId || undefined,
@@ -295,7 +303,9 @@ function TimelineSection({
     return (
       <div className="space-y-2 rounded-md border border-destructive/30 p-4">
         <p className="text-sm font-medium text-destructive">Failed to load escalation timeline.</p>
-        <p className="text-xs text-muted-foreground">{isSuperAdmin ? message : "Something went wrong. Please try again."}</p>
+        <p className="text-xs text-muted-foreground">
+          {isSuperAdmin ? message : "Something went wrong. Please try again."}
+        </p>
         {traceId ? <p className="font-mono-tight text-xs text-muted-foreground">traceId: {traceId}</p> : null}
         {onRetry ? (
           <Button variant="outline" size="sm" onClick={onRetry}>
@@ -312,7 +322,11 @@ function TimelineSection({
           No notifications queued for this alert yet. A TECHNICIAN job is created when the alert opens; escalation
           follows every 15 minutes.
         </p>
-        {alertCreatedAt ? <p className="font-mono-tight mt-1 text-xs text-muted-foreground">Alert created: {formatTs(alertCreatedAt)}</p> : null}
+        {alertCreatedAt ? (
+          <p className="font-mono-tight mt-1 text-xs text-muted-foreground">
+            Alert created: {formatTs(alertCreatedAt)}
+          </p>
+        ) : null}
       </div>
     );
   }
@@ -433,7 +447,11 @@ function HistoryTableSection({
                       <span className="break-words text-xs" title={job.errorDetail}>
                         {isErrOpen ? job.errorDetail.slice(0, 512) : truncate120(job.errorDetail)}
                         {job.errorDetail.length > 120 ? (
-                          <button type="button" className="ml-1 text-primary underline" onClick={() => toggleError(job.id)}>
+                          <button
+                            type="button"
+                            className="ml-1 text-primary underline"
+                            onClick={() => toggleError(job.id)}
+                          >
                             {isErrOpen ? "less" : "more"}
                           </button>
                         ) : null}
@@ -448,7 +466,13 @@ function HistoryTableSection({
                         <span className="max-w-20 truncate" title={job.traceId}>
                           {job.traceId.slice(0, 8)}…
                         </span>
-                        <Button variant="ghost" size="icon" className="size-6" aria-label="Copy trace ID" onClick={() => copyText(job.traceId ?? "")}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-6"
+                          aria-label="Copy trace ID"
+                          onClick={() => copyText(job.traceId ?? "")}
+                        >
                           <CopyIcon className="size-3" />
                         </Button>
                       </span>
@@ -523,7 +547,8 @@ function HistoryTableSection({
                 <Collapsible open={isAttOpen} onOpenChange={() => toggleAttempts(job.id)}>
                   <CollapsibleTrigger asChild>
                     <Button variant="ghost" size="sm" className="w-full justify-between">
-                      Attempts ({job.attempts.length}) {isAttOpen ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />}
+                      Attempts ({job.attempts.length}){" "}
+                      {isAttOpen ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />}
                     </Button>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="pt-2">
@@ -686,7 +711,9 @@ function AuditEvidenceSection({
               const isOpen = expanded.has(id);
               return (
                 <TableRow key={id}>
-                  <TableCell className="font-mono-tight whitespace-nowrap text-xs">{formatTs(entry.createdAt)}</TableCell>
+                  <TableCell className="font-mono-tight whitespace-nowrap text-xs">
+                    {formatTs(entry.createdAt)}
+                  </TableCell>
                   <TableCell className="max-w-32 truncate" title={entry.actorName ?? undefined}>
                     {entry.actorName ?? "-"}
                   </TableCell>
@@ -697,7 +724,13 @@ function AuditEvidenceSection({
                     {entry.entityLabel ?? entry.entityType ?? "-"}
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" className="size-8 p-0" onClick={() => toggle(id)} aria-label="Toggle change detail">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="size-8 p-0"
+                      onClick={() => toggle(id)}
+                      aria-label="Toggle change detail"
+                    >
                       {isOpen ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />}
                     </Button>
                   </TableCell>
