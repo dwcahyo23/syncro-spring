@@ -36,6 +36,7 @@
 
 generated: 2026-05-25
 last_updated: 2026-09-08
+# updated: 2026-09-08 Epic 22 DONE — 22-4 WhatsApp Message Log done (per-send OUTBOUND evidence row hooked into all dispatch outcome branches, best-effort; V20 widens inbound table additively; SUPER_ADMIN paged masked reads w/ discriminating filters; build-auto review 11 patched / 4 deferred; 74 tests + opa 550 green; followup review recommended)
 # updated: 2026-09-08 Epic 22 in-progress — 22-1 Webhook Config & Delivery Log done (config CRUD + AFTER_COMMIT idempotent enqueue + HMAC dispatch worker + 5-state delivery machine; V19; build-auto review 17 patched / 5 deferred; 79 tests + opa 545 green; followup review recommended)
 # updated: 2026-09-07 Epic 21 DONE — 21-3 Setup Baselines & Lesson Learned done (versioned baselines + supersede, lessons w/ event links + evidence + scoped search; V18; build-auto review 18 patched / 4 deferred; 126 tests + opa 534 green)
 # updated: 2026-09-07 Epic 21 in-progress — 21-2 Calibration & Equipment Change Control done (instrument CRUD + derived calibration status + ECN lifecycle; V17; build-auto review 13 patched / 5 deferred; 127 tests + opa 512 green)
@@ -292,12 +293,12 @@ development_status:
   21-3-setup-baselines-lesson-learned: done
   epic-21-retrospective: optional
 
-  # Epic 22: Integration, Webhook, Audit & Signature
-  epic-22: in-progress
+  # Epic 22: Integration, Webhook, Audit & Signature — DONE
+  epic-22: done
   22-1-webhook-config-delivery-log: done
   22-2-auth-login-audit-phone-verification: done
   22-3-user-signatures-signature-use: done
-  22-4-whatsapp-message-log: backlog
+  22-4-whatsapp-message-log: done
   epic-22-retrospective: optional
 
   # Epic 23: Multi-Language (i18n)
