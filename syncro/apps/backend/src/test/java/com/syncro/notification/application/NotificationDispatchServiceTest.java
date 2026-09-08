@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.syncro.config.WahaResilienceProperties;
 import com.syncro.notification.application.WahaTemplateRenderer.WahaTemplateRenderException;
 import com.syncro.notification.domain.NotificationJobStatus;
+import com.syncro.notification.domain.WhatsAppMessageLogStatus;
 import com.syncro.notification.infrastructure.NotificationAttemptEntity;
 import com.syncro.notification.infrastructure.NotificationAttemptRepository;
 import com.syncro.notification.infrastructure.NotificationJobEntity;
@@ -42,6 +43,8 @@ class NotificationDispatchServiceTest {
   @Mock
   private WahaRateLimiter rateLimiter;
   @Mock
+  private WhatsAppMessageLogService messageLogService;
+  @Mock
   private PlatformTransactionManager transactionManager;
 
   private Clock clock;
@@ -61,7 +64,8 @@ class NotificationDispatchServiceTest {
     var resilienceProperties = new WahaResilienceProperties(
         Duration.ofSeconds(5), 50, 5, 10, CB_WAIT, 3);
     service = new NotificationDispatchService(jobRepository, attemptRepository, wahaClient,
-        templateRenderer, rateLimiter, resilienceProperties, clock, transactionManager);
+        templateRenderer, rateLimiter, resilienceProperties, messageLogService, clock,
+        transactionManager);
   }
 
   // --- Happy path ---
@@ -94,6 +98,10 @@ class NotificationDispatchServiceTest {
 
     // Rate-limit key should be acquired after a successful send
     verify(rateLimiter).acquire(ALERT_ID, RECIPIENT_PHONE);
+
+    // Story 22-4: SENT outcome rides the same tx — one upsert with the rendered text
+    verify(messageLogService).upsertForDispatch(job, WhatsAppMessageLogStatus.SENT,
+        RENDERED_MSG, FIXED_NOW);
   }
 
   // --- Failure < maxAttempts ---
@@ -125,6 +133,10 @@ class NotificationDispatchServiceTest {
 
     // Rate-limit key must NOT be acquired on a failed send
     verify(rateLimiter, never()).acquire(org.mockito.ArgumentMatchers.<java.util.UUID>any(), any());
+
+    // Story 22-4: FAILED outcome still writes the row (text rendered, send failed)
+    verify(messageLogService).upsertForDispatch(job, WhatsAppMessageLogStatus.FAILED,
+        RENDERED_MSG, FIXED_NOW);
   }
 
   // --- Failure at maxAttempts → EXHAUSTED ---
@@ -177,6 +189,10 @@ class NotificationDispatchServiceTest {
     var attempt = attemptCaptor.getValue();
     assertThat(attempt.getStatus()).isEqualTo("FAILED");
     assertThat(attempt.getResponseDetail()).contains("No active WAHA template found");
+
+    // Story 22-4: render-fail writes a FAILED row with a null text hash
+    verify(messageLogService).upsertForDispatch(job, WhatsAppMessageLogStatus.FAILED, null,
+        FIXED_NOW);
   }
 
   // --- Rate limited → RATE_LIMITED, no WAHA call ---
@@ -202,6 +218,9 @@ class NotificationDispatchServiceTest {
     verify(wahaClient, never()).send(any(), any(), any());
     verify(attemptRepository, never()).save(any());
     verify(rateLimiter, never()).acquire(org.mockito.ArgumentMatchers.<java.util.UUID>any(), any());
+
+    // Story 22-4: the rate-limited early-return makes no send — writes no message-log row
+    verify(messageLogService, never()).upsertForDispatch(any(), any(), any(), any());
   }
 
   @Test
@@ -253,6 +272,10 @@ class NotificationDispatchServiceTest {
 
     // Rate-limit key must NOT be acquired when circuit is open
     verify(rateLimiter, never()).acquire(org.mockito.ArgumentMatchers.<java.util.UUID>any(), any());
+
+    // Story 22-4: circuit-open is a dispatch outcome — FAILED row with the rendered text
+    verify(messageLogService).upsertForDispatch(job, WhatsAppMessageLogStatus.FAILED,
+        RENDERED_MSG, FIXED_NOW);
   }
 
   @Test
@@ -296,5 +319,34 @@ class NotificationDispatchServiceTest {
 
     verify(templateRenderer, never()).render(any());
     assertThat(job.getStatus()).isEqualTo(NotificationJobStatus.SENT);
+  }
+
+  // --- Message-log write is best-effort (review 22-4 P1) ---
+
+  @Test
+  void dispatch_whenMessageLogWriteFails_outcomeStillPersistedAndNoThrow() {
+    var job = new NotificationJobEntity(
+        ALERT_ID, "TECHNICIAN", NotificationJobStatus.PENDING,
+        UUID.randomUUID(), RECIPIENT_PHONE,
+        ALERT_ID + "::TECHNICIAN", TRACE_ID, null);
+
+    when(rateLimiter.isRateLimited(ALERT_ID, RECIPIENT_PHONE)).thenReturn(false);
+    when(templateRenderer.render(ALERT_ID)).thenReturn(RENDERED_MSG);
+    when(wahaClient.send(eq(RECIPIENT_PHONE), eq(RENDERED_MSG), eq(TRACE_ID)))
+        .thenReturn(new WahaClient.Result(true, 200, "OK"));
+    when(jobRepository.save(any())).thenReturn(job);
+    when(attemptRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    // Stale user_id FK / length overflow — an evidence hiccup, never a dispatch failure.
+    org.mockito.Mockito.doThrow(new RuntimeException("FK violation on user_id"))
+        .when(messageLogService).upsertForDispatch(any(), any(), any(), any());
+
+    service.dispatch(job);
+
+    // The send landed: job SENT + attempt written despite the log failure (no rollback,
+    // no rethrow — otherwise the worker would re-poll and duplicate the WhatsApp message).
+    assertThat(job.getStatus()).isEqualTo(NotificationJobStatus.SENT);
+    verify(attemptRepository).save(any());
+    verify(messageLogService).upsertForDispatch(job, WhatsAppMessageLogStatus.SENT,
+        RENDERED_MSG, FIXED_NOW);
   }
 }

@@ -83,6 +83,8 @@ class PmAuthzEnforcementParityTest {
     assertThat(setPaths).contains("/api/v1/webhooks/**");
     assertThat(setPaths).contains("/api/v1/webhook-deliveries");
     assertThat(setPaths).contains("/api/v1/telemetry/**");
+    // Story 22-4 guard: the WhatsApp message-log read surface rides admin_only_paths too.
+    assertThat(setPaths).contains("/api/v1/whatsapp-message-logs");
 
     var line = Files.readAllLines(envFile).stream()
         .filter(l -> l.startsWith("SYNCRO_AUTHZ_ENFORCED_PATHS="))

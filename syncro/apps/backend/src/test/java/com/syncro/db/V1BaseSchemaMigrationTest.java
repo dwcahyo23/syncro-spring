@@ -49,11 +49,11 @@ class V1BaseSchemaMigrationTest {
   // -------------------------------------------------------------------------
 
   @Test
-  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V19 additive migrations")
+  @DisplayName("15.1-DB-001 P0 flyway_schema_history has V1 baseline + V2..V20 additive migrations")
   void migrationsApplied() {
     var rows = jdbc.queryForList(
         "SELECT version, script, success FROM flyway_schema_history ORDER BY installed_rank");
-    assertThat(rows).hasSize(19);
+    assertThat(rows).hasSize(20);
     assertThat(rows.get(0).get("version")).isEqualTo("1");
     assertThat(rows.get(0).get("script")).isEqualTo("V1__orm_foundation_schema.sql");
     assertThat(rows.get(0).get("success")).isEqualTo(true);
@@ -111,6 +111,9 @@ class V1BaseSchemaMigrationTest {
     assertThat(rows.get(18).get("version")).isEqualTo("19");
     assertThat(rows.get(18).get("script")).isEqualTo("V19__webhook_delivery_evidence.sql");
     assertThat(rows.get(18).get("success")).isEqualTo(true);
+    assertThat(rows.get(19).get("version")).isEqualTo("20");
+    assertThat(rows.get(19).get("script")).isEqualTo("V20__whatsapp_message_log_outbound.sql");
+    assertThat(rows.get(19).get("success")).isEqualTo(true);
   }
 
   // -------------------------------------------------------------------------
@@ -931,6 +934,63 @@ class V1BaseSchemaMigrationTest {
         "SELECT indexdef FROM pg_indexes WHERE indexname = 'uq_one_active_baseline_per_machine'");
     assertThat((String) activeIndex.get("indexdef")).contains("UNIQUE")
         .contains("machine_id").contains("is_active");
+  }
+
+  /**
+   * Story 22-4: V20 extends whatsapp_message_logs additively with the outbound
+   * evidence columns (direction, notification_job_id + UNIQUE anchor, target_type,
+   * target_id, template_name, recipient_masked, status, attempt_count, trace_id,
+   * text_sha256, sent_at, version) and widens waha_message_id/received_at to
+   * nullable so send rows (which never parse a WAHA id and never ingest) stay valid.
+   */
+  @Test
+  @DisplayName("22.4-DB-001 P0 whatsapp_message_logs carries outbound columns after V20")
+  void whatsappMessageLogOutboundColumns() {
+    var columns = columnNames("whatsapp_message_logs");
+    assertThat(columns).contains("direction", "notification_job_id", "idempotency_key",
+        "target_type", "target_id", "template_name", "recipient_masked", "status",
+        "attempt_count", "trace_id", "text_sha256", "sent_at", "logged_at", "version");
+    // Widening: both V1 NOT NULL columns become nullable for outbound rows, and
+    // received_at loses its DEFAULT so a native insert cannot stamp a fake ingest time.
+    for (String column : List.of("waha_message_id", "received_at")) {
+      var nullability = jdbc.queryForMap(
+          "SELECT is_nullable, column_default FROM information_schema.columns "
+              + "WHERE table_schema = 'public' AND table_name = 'whatsapp_message_logs' "
+              + "AND column_name = ?",
+          column);
+      assertThat(nullability.get("is_nullable")).as("%s widened to nullable", column)
+          .isEqualTo("YES");
+    }
+    assertThat(jdbc.queryForObject(
+        "SELECT count(*) FROM information_schema.columns "
+            + "WHERE table_schema = 'public' AND table_name = 'whatsapp_message_logs' "
+            + "AND column_name = 'received_at' AND column_default IS NOT NULL",
+        Long.class)).as("received_at DEFAULT dropped").isZero();
+    // The dedupe anchor: UNIQUE on notification_job_id + FK SET NULL to notification_jobs.
+    assertThat(jdbc.queryForObject(
+        "SELECT count(*) FROM pg_constraint WHERE conname = 'uq_whatsapp_message_logs_notification_job_id'",
+        Long.class)).isEqualTo(1L);
+    var fk = jdbc.queryForMap(
+        "SELECT (SELECT relname FROM pg_class c WHERE c.oid = confrelid) AS ref, "
+            + "confdeltype AS del FROM pg_constraint "
+            + "WHERE conname = 'fk_whatsapp_message_logs_notification_job'");
+    assertThat((String) fk.get("ref")).isEqualTo("notification_jobs");
+    assertThat((String) fk.get("del")).isEqualTo("n");
+    // version is NOT NULL with a 0 default (V13/V15/V17 precedent).
+    var versionColumn = jdbc.queryForMap(
+        "SELECT is_nullable, column_default FROM information_schema.columns "
+            + "WHERE table_schema = 'public' AND table_name = 'whatsapp_message_logs' "
+            + "AND column_name = 'version'");
+    assertThat(versionColumn.get("is_nullable")).isEqualTo("NO");
+    assertThat((String) versionColumn.get("column_default")).contains("0");
+    // Read-path indexes (filters + the list ordering composite).
+    for (String index : List.of("idx_whatsapp_message_logs_status",
+        "idx_whatsapp_message_logs_trace_id",
+        "idx_whatsapp_message_logs_sent_at_logged_at_id")) {
+      assertThat(jdbc.queryForObject(
+          "SELECT count(*) FROM pg_indexes WHERE indexname = ?", Long.class, index))
+          .as("index %s must exist", index).isEqualTo(1L);
+    }
   }
 
   // -------------------------------------------------------------------------

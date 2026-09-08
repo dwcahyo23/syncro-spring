@@ -578,9 +578,9 @@ user_management_paths := {
   "/api/v1/user-bindings/*/roles/*",
 }
 
-# Telemetry + notification-worker + sync-observability + webhook-config endpoints are
-# SUPER_ADMIN-only in service (health dashboard, story 13-3/FR-153; webhook evidence,
-# story 22-1).
+# Telemetry + notification-worker + sync-observability + webhook-config + WhatsApp
+# message-log endpoints are SUPER_ADMIN-only in service (health dashboard, story
+# 13-3/FR-153; webhook evidence, story 22-1; message-log evidence, story 22-4).
 admin_only_paths := {
   "/api/v1/telemetry/**",
   "/api/v1/notification/worker/**",
@@ -588,6 +588,7 @@ admin_only_paths := {
   "/api/v1/webhooks",
   "/api/v1/webhooks/**",
   "/api/v1/webhook-deliveries",
+  "/api/v1/whatsapp-message-logs",
 }
 
 mutation_allowed if {

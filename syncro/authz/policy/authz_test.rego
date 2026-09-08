@@ -2369,3 +2369,29 @@ test_technician_webhook_config_read_denied if {
 test_anonymous_webhook_config_denied if {
   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "POST /api/v1/webhooks"}
 }
+
+# -- WhatsApp message log (story 22-4, blueprint I5) -------------------------
+# The /api/v1/whatsapp-message-logs read rides admin_only_paths: excluded from the
+# generic any-authenticated read, no non-admin mutation rule matches, so only the
+# SUPER_ADMIN top-level bypass gets through. Mirrors WhatsAppMessageLogQueryService
+# requireSuperAdmin on every operation.
+
+test_super_admin_whatsapp_message_logs_read_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "GET /api/v1/whatsapp-message-logs"}
+}
+
+test_manager_whatsapp_message_logs_read_denied if {
+  not authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "GET /api/v1/whatsapp-message-logs"}
+}
+
+test_auditor_whatsapp_message_logs_read_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "GET /api/v1/whatsapp-message-logs"}
+}
+
+test_technician_whatsapp_message_logs_read_denied if {
+  not authz.allow with input as {"subject": {"roles": ["TECHNICIAN"], "userId": "u4"}, "action": "GET /api/v1/whatsapp-message-logs"}
+}
+
+test_anonymous_whatsapp_message_logs_denied if {
+  not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "GET /api/v1/whatsapp-message-logs"}
+}

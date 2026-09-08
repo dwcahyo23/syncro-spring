@@ -2,6 +2,7 @@ package com.syncro.notification.application;
 
 import com.syncro.config.WahaResilienceProperties;
 import com.syncro.notification.application.WahaTemplateRenderer.WahaTemplateRenderException;
+import com.syncro.notification.domain.WhatsAppMessageLogStatus;
 import com.syncro.notification.infrastructure.NotificationAttemptEntity;
 import com.syncro.notification.infrastructure.NotificationAttemptRepository;
 import com.syncro.notification.infrastructure.NotificationJobEntity;
@@ -30,6 +31,7 @@ public class NotificationDispatchService {
   private final WahaTemplateRenderer templateRenderer;
   private final WahaRateLimiter rateLimiter;
   private final WahaResilienceProperties resilienceProperties;
+  private final WhatsAppMessageLogService messageLogService;
   private final Clock clock;
   private final TransactionTemplate transactionTemplate;
 
@@ -39,6 +41,7 @@ public class NotificationDispatchService {
       WahaTemplateRenderer templateRenderer,
       WahaRateLimiter rateLimiter,
       WahaResilienceProperties resilienceProperties,
+      WhatsAppMessageLogService messageLogService,
       Clock clock,
       PlatformTransactionManager transactionManager) {
     this.jobRepository = jobRepository;
@@ -47,6 +50,7 @@ public class NotificationDispatchService {
     this.templateRenderer = templateRenderer;
     this.rateLimiter = rateLimiter;
     this.resilienceProperties = resilienceProperties;
+    this.messageLogService = messageLogService;
     this.clock = clock;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
@@ -92,6 +96,8 @@ public class NotificationDispatchService {
         attemptRepository.save(attempt);
         job.markExhausted(now);
         jobRepository.save(job);
+        // Story 22-4: render-fail is a dispatch outcome too — FAILED row, no text hash.
+        recordMessageLog(job, WhatsAppMessageLogStatus.FAILED, null, now);
       });
       return;
       }
@@ -116,6 +122,8 @@ public class NotificationDispatchService {
         attemptRepository.save(attempt);
         job.markSent(now);
         jobRepository.save(job);
+        // Story 22-4: per-message outbound evidence, same tx as the attempt write.
+        recordMessageLog(job, WhatsAppMessageLogStatus.SENT, messageText, now);
       });
       log.info("[traceId={}] Notification job {} sent successfully", job.getTraceId(), job.getId());
     } else {
@@ -136,6 +144,9 @@ public class NotificationDispatchService {
           job.markAttemptFailed(now, nextAttemptAt);
         }
         jobRepository.save(job);
+        // Story 22-4: failure + circuit-open are dispatch outcomes — FAILED row
+        // carrying the text hash (the message did render; only the send failed).
+        recordMessageLog(job, WhatsAppMessageLogStatus.FAILED, messageText, now);
       });
 
       if (isCircuitOpen(result)) {
@@ -152,6 +163,24 @@ public class NotificationDispatchService {
   // -------------------------------------------------------------------------
   // Helpers
   // -------------------------------------------------------------------------
+
+  /**
+   * Best-effort message-log evidence write (story 22-4, review P1): the upsert rides
+   * the SAME transaction as the attempt write when it succeeds, but a log-write
+   * failure must never roll back the attempt + job status update AFTER the WAHA send
+   * already landed — that would leave the job PENDING with an unchanged attempt count,
+   * re-polled forever into duplicate WhatsApp messages. An evidence gap is tolerated;
+   * a duplicate send is not.
+   */
+  private void recordMessageLog(NotificationJobEntity job, WhatsAppMessageLogStatus outcome,
+      String renderedText, Instant now) {
+    try {
+      messageLogService.upsertForDispatch(job, outcome, renderedText, now);
+    } catch (RuntimeException e) {
+      log.warn("[traceId={}] Message-log write failed for job {} (evidence gap tolerated, "
+          + "dispatch outcome preserved): {}", job.getTraceId(), job.getId(), e.getMessage());
+    }
+  }
 
   private static boolean isCircuitOpen(WahaClient.Result result) {
     return !result.success()
