@@ -4,6 +4,7 @@ import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, Trash2, TriangleAlertIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { ShiftConfigEditor, type ShiftWindowInput } from "@/components/syncro/shift-config-editor";
@@ -36,6 +37,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
+import { type ApiErrorResponse, apiErrorMessage, errorResponse } from "@/lib/api/error-response";
 import type {
   ListMachineGroupsParams,
   MachineGroupRequest,
@@ -57,12 +59,11 @@ import {
   useUpdateMachineGroup,
   useUpdateMachineGroupShiftConfig,
 } from "@/lib/api/generated/syncro";
-import { SyncroApiError } from "@/lib/api/orval-mutator";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
+import { useDateTimeFormatter } from "@/lib/i18n/format";
 
 type MachineGroupFormState = MachineGroupRequest;
 type DialogMode = { type: "create"; group?: never } | { type: "edit"; group: MachineGroupView };
-type ErrorResponse = { code: string; message: string; fieldErrors?: Record<string, string> };
 
 const EMPTY_FORM: MachineGroupFormState = { plantId: "", name: "" };
 
@@ -71,6 +72,9 @@ function toShiftWindowInput(window: { startTime?: string; endTime?: string }): S
 }
 
 export function MachineGroupManagement() {
+  const t = useTranslations("masterData");
+  const tc = useTranslations("common");
+  const te = useTranslations("errors");
   const user = useAuthUser();
   const plantScope = usePlantScope();
   const scope = plantScope.scope;
@@ -195,22 +199,26 @@ export function MachineGroupManagement() {
     try {
       if (dialogMode?.type === "edit") {
         await updateGroup.mutateAsync({ machineGroupId: dialogMode.group.id ?? "", data: form });
-        toast.success("Machine group updated.");
+        toast.success(t("machineGroup.toast.updated"));
       } else {
         await createGroup.mutateAsync({ data: form });
-        toast.success("Machine group created.");
+        toast.success(t("machineGroup.toast.created"));
       }
       setDialogMode(null);
     } catch (error) {
       const response = errorResponse(error);
       setFieldErrors(response?.fieldErrors ?? {});
-      setFormError(response?.message ?? "Machine group request failed.");
-      toast.error(response?.message ?? "Machine group request failed.");
+      const message = response ? apiErrorMessage(te, response) : t("machineGroup.toast.requestFailed");
+      setFormError(message);
+      toast.error(message);
     }
   }
 
-  function shiftErrorMessage(response: ErrorResponse | null): string {
-    return response?.fieldErrors?.shifts ?? response?.message ?? "Shift schedule request failed.";
+  function shiftErrorMessage(response: ApiErrorResponse | null): string {
+    return (
+      response?.fieldErrors?.shifts ??
+      (response ? apiErrorMessage(te, response) : t("machineGroup.shift.requestFailed"))
+    );
   }
 
   async function submitShiftSchedule() {
@@ -219,7 +227,7 @@ export function MachineGroupManagement() {
     }
     setShiftError(null);
     if (groupShifts.some((window) => window.startTime === "" || window.endTime === "")) {
-      setShiftError("Each shift needs both a start and an end time.");
+      setShiftError(t("machineGroup.shift.incomplete"));
       return;
     }
 
@@ -236,7 +244,7 @@ export function MachineGroupManagement() {
       queryClient.invalidateQueries({
         predicate: (query) => String(query.queryKey[0] ?? "").includes("/shift-config"),
       });
-      toast.success("Shift schedule saved.");
+      toast.success(t("machineGroup.shift.saved"));
     } catch (error) {
       const response = errorResponse(error);
       setShiftError(shiftErrorMessage(response));
@@ -251,10 +259,11 @@ export function MachineGroupManagement() {
 
     try {
       await deleteGroup.mutateAsync({ machineGroupId: deleteTarget.id ?? "" });
-      toast.success("Machine group deleted.");
+      toast.success(t("machineGroup.toast.deleted"));
       setDeleteTarget(null);
     } catch (error) {
-      toast.error(errorResponse(error)?.message ?? "Machine group delete failed.");
+      const response = errorResponse(error);
+      toast.error(response ? apiErrorMessage(te, response) : t("machineGroup.toast.deleteFailed"));
     }
   }
 
@@ -273,20 +282,18 @@ export function MachineGroupManagement() {
           machineGroupId: sectionTarget.id ?? "",
           data: { sectionId: selectedSectionId },
         });
-        toast.success("Section assigned.");
+        toast.success(t("machineGroup.toast.sectionAssigned"));
       } else if (sectionTarget.sectionId) {
         await clearSection.mutateAsync({ machineGroupId: sectionTarget.id ?? "" });
-        toast.success("Section assignment cleared.");
+        toast.success(t("machineGroup.toast.sectionCleared"));
       }
       setSectionTarget(null);
     } catch (error) {
       const response = errorResponse(error);
-      if (response?.code === "SECTION_REASSIGNMENT_REJECTED") {
-        toast.error("This group already belongs to another section. Clear the current section first.");
-      } else if (response?.code === "SECTION_PLANT_MISMATCH") {
-        toast.error("The selected section belongs to a different plant.");
+      if (response?.code === "SECTION_REASSIGNMENT_REJECTED" || response?.code === "SECTION_PLANT_MISMATCH") {
+        toast.error(te(response.code));
       } else {
-        toast.error(response?.message ?? "Section assignment failed.");
+        toast.error(response ? apiErrorMessage(te, response) : t("machineGroup.toast.sectionAssignFailed"));
       }
     }
   }
@@ -295,15 +302,15 @@ export function MachineGroupManagement() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Machine Groups</CardTitle>
-          <CardDescription>Manage plant-scoped process lines such as Forming.</CardDescription>
+          <CardTitle>{t("machineGroup.title")}</CardTitle>
+          <CardDescription>{t("machineGroup.description")}</CardDescription>
           <CardAction>
             {canMutate ? (
               <Button onClick={openCreateDialog} disabled={!effectivePlantId || isAssignedEmpty}>
-                Create machine group
+                {t("machineGroup.create")}
               </Button>
             ) : (
-              <Badge variant="secondary">Read-only</Badge>
+              <Badge variant="secondary">{t("machineGroup.readOnly")}</Badge>
             )}
           </CardAction>
         </CardHeader>
@@ -319,35 +326,38 @@ export function MachineGroupManagement() {
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search groups"
+              placeholder={t("machineGroup.searchPlaceholder")}
               disabled={!effectivePlantId || isAssignedEmpty}
             />
           </div>
           {isAssignedEmpty ? (
-            <MachineGroupState title="No plant assignment" description="Your account has no assigned plant scope." />
+            <MachineGroupState
+              title={t("machineGroup.state.noAssignmentTitle")}
+              description={t("machineGroup.state.noAssignmentDesc")}
+            />
           ) : null}
           {!isAssignedEmpty && !plants.isLoading && availablePlants.length === 0 ? (
             <MachineGroupState
-              title="No plants available"
-              description="Create or assign a plant before adding machine groups."
+              title={t("machineGroup.state.noPlantsTitle")}
+              description={t("machineGroup.state.noPlantsDesc")}
             />
           ) : null}
           {plants.isLoading || machineGroups.isLoading ? <MachineGroupTableSkeleton /> : null}
           {plants.isError || machineGroups.isError ? (
             <MachineGroupState
-              title="Machine groups could not be loaded"
-              description="Refresh page or contact administrator if access should be available."
+              title={t("machineGroup.state.loadFailedTitle")}
+              description={t("machineGroup.state.loadFailedDesc")}
               action={
                 <Button variant="outline" onClick={() => void Promise.all([plants.refetch(), machineGroups.refetch()])}>
-                  Retry
+                  {tc("retry")}
                 </Button>
               }
             />
           ) : null}
           {!machineGroups.isLoading && !machineGroups.isError && effectivePlantId && groupItems.length === 0 ? (
             <MachineGroupState
-              title="No machine groups yet"
-              description="Create first process line for selected plant."
+              title={t("machineGroup.state.emptyTitle")}
+              description={t("machineGroup.state.emptyDesc")}
             />
           ) : null}
           {!machineGroups.isLoading && !machineGroups.isError && groupItems.length > 0 ? (
@@ -355,14 +365,14 @@ export function MachineGroupManagement() {
               <TableHeader>
                 <TableRow>
                   <TableHead>
-                    <DataTableSortHeader title="Name" field="name" sort={sort} onSortChange={setSort} />
+                    <DataTableSortHeader title={tc("name")} field="name" sort={sort} onSortChange={setSort} />
                   </TableHead>
-                  <TableHead>Plant</TableHead>
-                  <TableHead>Section</TableHead>
+                  <TableHead>{tc("plant")}</TableHead>
+                  <TableHead>{t("machineGroup.section")}</TableHead>
                   <TableHead>
-                    <DataTableSortHeader title="Created" field="createdAt" sort={sort} onSortChange={setSort} />
+                    <DataTableSortHeader title={tc("createdAt")} field="createdAt" sort={sort} onSortChange={setSort} />
                   </TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right">{tc("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -382,23 +392,23 @@ export function MachineGroupManagement() {
                         "-"
                       )}
                     </TableCell>
-                    <TableCell>{group.createdAt ? formatDate(group.createdAt) : "-"}</TableCell>
+                    <TableCell>{group.createdAt ? <GroupCreatedAt value={group.createdAt} /> : "-"}</TableCell>
                     <TableCell className="text-right">
                       {canMutate ? (
                         <div className="flex justify-end gap-2">
                           <Button variant="outline" size="sm" onClick={() => openSectionDialog(group)}>
-                            Section
+                            {t("machineGroup.section")}
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => openEditDialog(group)}>
-                            Edit
+                            {tc("edit")}
                           </Button>
                           <Button variant="destructive" size="sm" onClick={() => setDeleteTarget(group)}>
                             <Trash2 />
-                            Delete
+                            {tc("delete")}
                           </Button>
                         </div>
                       ) : (
-                        <Badge variant="secondary">View only</Badge>
+                        <Badge variant="secondary">{t("machineGroup.viewOnly")}</Badge>
                       )}
                     </TableCell>
                   </TableRow>
@@ -425,16 +435,18 @@ export function MachineGroupManagement() {
         <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
           <form onSubmit={submitMachineGroup} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>{dialogMode?.type === "edit" ? "Edit machine group" : "Create machine group"}</DialogTitle>
-              <DialogDescription>
-                Names are unique within selected plant and may repeat across plants.
-              </DialogDescription>
+              <DialogTitle>
+                {dialogMode?.type === "edit"
+                  ? t("machineGroup.dialog.editTitle")
+                  : t("machineGroup.dialog.createTitle")}
+              </DialogTitle>
+              <DialogDescription>{t("machineGroup.dialog.description")}</DialogDescription>
             </DialogHeader>
             {formError ? (
               <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{formError}</p>
             ) : null}
             <div className="grid gap-2">
-              <Label htmlFor="machine-group-plant">Plant</Label>
+              <Label htmlFor="machine-group-plant">{tc("plant")}</Label>
               <PlantSelect
                 plants={availablePlants}
                 value={form.plantId ?? ""}
@@ -445,7 +457,7 @@ export function MachineGroupManagement() {
               {fieldErrors.plantId ? <p className="text-destructive text-sm">{fieldErrors.plantId}</p> : null}
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="machine-group-name">Name</Label>
+              <Label htmlFor="machine-group-name">{tc("name")}</Label>
               <Input
                 id="machine-group-name"
                 value={form.name}
@@ -457,12 +469,12 @@ export function MachineGroupManagement() {
             </div>
             {dialogMode?.type === "edit" ? (
               <fieldset className="grid gap-2 rounded-lg border p-3">
-                <legend className="px-1 font-medium text-sm">Shift configuration</legend>
+                <legend className="px-1 font-medium text-sm">{t("machineGroup.shift.legend")}</legend>
                 {groupShiftConfig.status === "pending" ? (
-                  <p className="text-muted-foreground text-sm">Loading shift schedule…</p>
+                  <p className="text-muted-foreground text-sm">{t("machineGroup.shift.loading")}</p>
                 ) : null}
                 {groupShiftConfig.status === "error" ? (
-                  <p className="text-destructive text-sm">Shift schedule could not be loaded.</p>
+                  <p className="text-destructive text-sm">{t("machineGroup.shift.loadFailed")}</p>
                 ) : null}
                 {groupShiftConfig.status === "success" ? (
                   <>
@@ -481,7 +493,7 @@ export function MachineGroupManagement() {
                         disabled={saveGroupShifts.isPending}
                       >
                         {saveGroupShifts.isPending ? <Loader2Icon className="animate-spin" /> : null}
-                        Save shift schedule
+                        {t("machineGroup.shift.save")}
                       </Button>
                     ) : null}
                   </>
@@ -490,11 +502,11 @@ export function MachineGroupManagement() {
             ) : null}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogMode(null)} disabled={isSaving}>
-                Cancel
+                {tc("cancel")}
               </Button>
               <Button type="submit" disabled={isSaving || !form.plantId}>
                 {isSaving ? <Loader2Icon className="animate-spin" /> : null}
-                Save machine group
+                {t("machineGroup.dialog.save")}
               </Button>
             </DialogFooter>
           </form>
@@ -504,17 +516,16 @@ export function MachineGroupManagement() {
       <Dialog open={sectionTarget !== null} onOpenChange={(open) => !open && setSectionTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Assign section</DialogTitle>
+            <DialogTitle>{t("machineGroup.assign.title")}</DialogTitle>
             <DialogDescription>
-              {sectionTarget?.name} belongs to exactly one section. Reassignment to a different section is rejected —
-              clear the current section first.
+              {t("machineGroup.assign.description", { name: sectionTarget?.name ?? "" })}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-2">
-            <Label htmlFor="group-section">Section</Label>
+            <Label htmlFor="group-section">{t("machineGroup.section")}</Label>
             <Select value={selectedSectionId} onValueChange={setSelectedSectionId}>
               <SelectTrigger id="group-section">
-                <SelectValue placeholder="No section (unassigned)" />
+                <SelectValue placeholder={t("machineGroup.assign.placeholder")} />
               </SelectTrigger>
               <SelectContent>
                 {sectionItems.map((section) => (
@@ -527,7 +538,7 @@ export function MachineGroupManagement() {
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setSectionTarget(null)}>
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button
               type="button"
@@ -535,7 +546,7 @@ export function MachineGroupManagement() {
               disabled={assignSection.isPending || clearSection.isPending}
             >
               {assignSection.isPending || clearSection.isPending ? <Loader2Icon className="animate-spin" /> : null}
-              Save assignment
+              {t("machineGroup.assign.save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -544,22 +555,26 @@ export function MachineGroupManagement() {
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete machine group?</AlertDialogTitle>
+            <AlertDialogTitle>{t("machineGroup.delete.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes {deleteTarget?.name}. Deletion succeeds while no dependent machines exist; future dependent
-              machines may block it.
+              {t("machineGroup.delete.description", { name: deleteTarget?.name ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteGroup.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteGroup.isPending}>{tc("cancel")}</AlertDialogCancel>
             <AlertDialogAction variant="destructive" onClick={confirmDelete} disabled={deleteGroup.isPending}>
-              Delete machine group
+              {t("machineGroup.delete.action")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
   );
+}
+
+function GroupCreatedAt({ value }: { value: string }) {
+  const dt = useDateTimeFormatter();
+  return <>{dt.dateTime(value)}</>;
 }
 
 function PlantSelect({
@@ -577,10 +592,11 @@ function PlantSelect({
   triggerId?: string;
   compact?: boolean;
 }) {
+  const t = useTranslations("masterData");
   return (
     <Select value={value} onValueChange={onChange} disabled={disabled}>
       <SelectTrigger id={triggerId} className={compact ? "w-full min-w-0" : "w-full min-w-0 sm:min-w-52"}>
-        <SelectValue placeholder="Select plant" />
+        <SelectValue placeholder={t("machineGroup.selectPlant")} />
       </SelectTrigger>
       <SelectContent>
         {plants.map((plant) => (
@@ -633,16 +649,4 @@ function permittedPlants(plants: PlantView[], scope: ReturnType<typeof usePlantS
   }
   const assignedIds = new Set((scope.availablePlants ?? []).map((plant) => plant.id));
   return plants.filter((plant) => plant.id && assignedIds.has(plant.id));
-}
-
-function errorResponse(error: unknown): ErrorResponse | null {
-  if (!(error instanceof SyncroApiError) || !error.payload || typeof error.payload !== "object") {
-    return null;
-  }
-  const payload = error.payload as ErrorResponse;
-  return typeof payload.code === "string" && typeof payload.message === "string" ? payload : null;
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }

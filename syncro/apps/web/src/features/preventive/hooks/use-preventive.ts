@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import type {
@@ -46,6 +47,7 @@ export function usePreventiveSchedules() {
 
 /** Creates a preventive program (generates its schedule window). */
 export function useCreatePreventiveProgram() {
+  const t = useTranslations("preventive");
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: CreatePreventiveProgramRequest) => {
@@ -58,16 +60,17 @@ export function useCreatePreventiveProgram() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [PROGRAMS_KEY] });
       void queryClient.invalidateQueries({ queryKey: [SCHEDULES_KEY] });
-      toast.success("Preventive program created");
+      toast.success(t("messages.programCreated"));
     },
     onError: () => {
-      toast.error("Failed to create preventive program");
+      toast.error(t("messages.programCreateFailed"));
     },
   });
 }
 
 /** Deletes a preventive program (cascades its schedules). */
 export function useDeletePreventiveProgram() {
+  const t = useTranslations("preventive");
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (programId: string) => {
@@ -76,10 +79,10 @@ export function useDeletePreventiveProgram() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [PROGRAMS_KEY] });
       void queryClient.invalidateQueries({ queryKey: [SCHEDULES_KEY] });
-      toast.success("Preventive program deleted");
+      toast.success(t("messages.programDeleted"));
     },
     onError: () => {
-      toast.error("Failed to delete preventive program");
+      toast.error(t("messages.programDeleteFailed"));
     },
   });
 }
@@ -101,6 +104,7 @@ export function useChecklist(scheduleId: string | null) {
 
 /** Submits or amends a checklist. */
 export function useSubmitChecklist() {
+  const t = useTranslations("preventive");
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -120,16 +124,17 @@ export function useSubmitChecklist() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [SCHEDULES_KEY] });
-      toast.success("Checklist submitted");
+      toast.success(t("messages.checklistSubmitted"));
     },
     onError: () => {
-      toast.error("Failed to submit checklist");
+      toast.error(t("messages.checklistSubmitFailed"));
     },
   });
 }
 
 /** Approves a checklist (leader only). */
 export function useApproveSchedule() {
+  const t = useTranslations("preventive");
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ scheduleId, data }: { scheduleId: string; data: ApproveScheduleRequest }) => {
@@ -141,16 +146,17 @@ export function useApproveSchedule() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [SCHEDULES_KEY] });
-      toast.success("Schedule approved");
+      toast.success(t("messages.scheduleApproved"));
     },
     onError: () => {
-      toast.error("Failed to approve schedule");
+      toast.error(t("messages.scheduleApproveFailed"));
     },
   });
 }
 
 /** Skips a schedule (leader only). */
 export function useSkipSchedule() {
+  const t = useTranslations("preventive");
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (scheduleId: string) => {
@@ -158,10 +164,10 @@ export function useSkipSchedule() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [SCHEDULES_KEY] });
-      toast.success("Schedule skipped");
+      toast.success(t("messages.scheduleSkipped"));
     },
     onError: () => {
-      toast.error("Failed to skip schedule");
+      toast.error(t("messages.scheduleSkipFailed"));
     },
   });
 }
@@ -184,6 +190,7 @@ export function useEvidenceList(scheduleId: string | null) {
 
 /** Uploads evidence for a schedule. */
 export function useUploadEvidence() {
+  const t = useTranslations("preventive");
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ scheduleId, file }: { scheduleId: string; file: File }) => {
@@ -202,16 +209,17 @@ export function useUploadEvidence() {
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: [SCHEDULES_KEY, variables.scheduleId, "evidence"] });
       void queryClient.invalidateQueries({ queryKey: [SCHEDULES_KEY] });
-      toast.success("Evidence uploaded");
+      toast.success(t("messages.evidenceUploaded"));
     },
     onError: () => {
-      toast.error("Failed to upload evidence");
+      toast.error(t("messages.evidenceUploadFailed"));
     },
   });
 }
 
 /** Deletes evidence. */
 export function useDeleteEvidence() {
+  const t = useTranslations("preventive");
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ scheduleId, attachmentId }: { scheduleId: string; attachmentId: string }) => {
@@ -220,10 +228,10 @@ export function useDeleteEvidence() {
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: [SCHEDULES_KEY, variables.scheduleId, "evidence"] });
       void queryClient.invalidateQueries({ queryKey: [SCHEDULES_KEY] });
-      toast.success("Evidence deleted");
+      toast.success(t("messages.evidenceDeleted"));
     },
     onError: () => {
-      toast.error("Failed to delete evidence");
+      toast.error(t("messages.evidenceDeleteFailed"));
     },
   });
 }

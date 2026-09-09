@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
 
 import { StatusBadge } from "@/components/syncro/status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,10 @@ export interface TelemetryTabProps {
 const POLL_INTERVAL_MS = 30_000;
 
 export function TelemetryTab({ machineCode, isActive = true }: TelemetryTabProps) {
+  const t = useTranslations("machineHub.telemetryTab");
+  const tp = useTranslations("machineHub.page");
+  const tc = useTranslations("common");
+  const format = useFormatter();
   const { data, isLoading, isError, refetch } = useGetMachineByCode(machineCode, {
     query: {
       enabled: isActive,
@@ -42,9 +47,9 @@ export function TelemetryTab({ machineCode, isActive = true }: TelemetryTabProps
   if (isError) {
     return (
       <div className="flex flex-col items-start gap-3">
-        <EmptyState title="Telemetry unavailable" description="Failed to load telemetry data." />
+        <EmptyState title={t("unavailableTitle")} description={t("unavailableDescription")} />
         <Button variant="outline" onClick={() => void refetch()}>
-          Retry
+          {tc("retry")}
         </Button>
       </div>
     );
@@ -54,15 +59,13 @@ export function TelemetryTab({ machineCode, isActive = true }: TelemetryTabProps
     return (
       <div className="status-banner-warning flex items-start gap-3 rounded-lg border p-4">
         <AlertTriangle className="status-icon-warning size-5 shrink-0" aria-hidden="true" />
-        <p className="text-sm">This machine is currently INACTIVE. Telemetry messages are being rejected.</p>
+        <p className="text-sm">{tp("inactiveBanner")}</p>
       </div>
     );
   }
 
   if (!telemetry) {
-    return (
-      <EmptyState title="No telemetry available" description="This machine has not sent any telemetry data yet." />
-    );
+    return <EmptyState title={t("noDataTitle")} description={t("noDataDescription")} />;
   }
 
   const receivedAt = telemetry.lastReceivedAt ? new Date(telemetry.lastReceivedAt) : null;
@@ -71,13 +74,13 @@ export function TelemetryTab({ machineCode, isActive = true }: TelemetryTabProps
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div>
-          <CardTitle>Latest Telemetry</CardTitle>
-          <CardDescription>Latest sensor readings (auto-refreshes every 30 seconds)</CardDescription>
+          <CardTitle>{t("title")}</CardTitle>
+          <CardDescription>{t("description")}</CardDescription>
         </div>
         <div className="flex items-center gap-4">
           {telemetry.freshnessState && <StatusBadge freshness={telemetry.freshnessState} />}
           <Button variant="outline" size="sm" onClick={() => void refetch()}>
-            Refresh
+            {tc("refresh")}
           </Button>
         </div>
       </CardHeader>
@@ -85,24 +88,26 @@ export function TelemetryTab({ machineCode, isActive = true }: TelemetryTabProps
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Field</TableHead>
-              <TableHead>Value</TableHead>
+              <TableHead>{t("colField")}</TableHead>
+              <TableHead>{t("colValue")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             <TableRow>
-              <TableCell className="font-medium">Running</TableCell>
+              <TableCell className="font-medium">{t("running")}</TableCell>
               <TableCell>
-                <Badge variant={telemetry.running ? "default" : "secondary"}>{telemetry.running ? "Yes" : "No"}</Badge>
+                <Badge variant={telemetry.running ? "default" : "secondary"}>
+                  {telemetry.running ? t("yes") : t("no")}
+                </Badge>
               </TableCell>
             </TableRow>
             <TableRow>
-              <TableCell className="font-medium">Runtime Hours</TableCell>
-              <TableCell>{telemetry.runtimeHours ?? "-"}</TableCell>
+              <TableCell className="font-medium">{t("runtimeHours")}</TableCell>
+              <TableCell>{telemetry.runtimeHours != null ? format.number(telemetry.runtimeHours) : "-"}</TableCell>
             </TableRow>
             <TableRow>
-              <TableCell className="font-medium">Production Count</TableCell>
-              <TableCell>{telemetry.counting ?? "-"}</TableCell>
+              <TableCell className="font-medium">{t("productionCount")}</TableCell>
+              <TableCell>{telemetry.counting != null ? format.number(telemetry.counting) : "-"}</TableCell>
             </TableRow>
             {Object.entries(telemetry.optionalFields ?? {}).map(([key, value]) => (
               <TableRow key={key}>
@@ -113,7 +118,9 @@ export function TelemetryTab({ machineCode, isActive = true }: TelemetryTabProps
           </TableBody>
         </Table>
         {receivedAt && (
-          <p className="mt-4 text-sm text-muted-foreground">Last received: {receivedAt.toLocaleString()}</p>
+          <p className="mt-4 text-sm text-muted-foreground">
+            {t("lastReceived", { time: format.dateTime(receivedAt, { dateStyle: "medium", timeStyle: "short" }) })}
+          </p>
         )}
       </CardContent>
     </Card>

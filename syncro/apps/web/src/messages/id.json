@@ -1,6 +1,74 @@
 {
   "common": {
-    "comingSoon": "Segera hadir"
+    "comingSoon": "Segera hadir",
+    "cancel": "Batal",
+    "save": "Simpan",
+    "saving": "Menyimpan...",
+    "delete": "Hapus",
+    "confirm": "Konfirmasi",
+    "close": "Tutup",
+    "back": "Kembali",
+    "next": "Berikutnya",
+    "previous": "Sebelumnya",
+    "retry": "Coba lagi",
+    "refresh": "Muat ulang",
+    "search": "Cari",
+    "create": "Buat",
+    "edit": "Ubah",
+    "view": "Lihat",
+    "activate": "Aktifkan",
+    "deactivate": "Nonaktifkan",
+    "active": "Aktif",
+    "inactive": "Nonaktif",
+    "status": "Status",
+    "actions": "Aksi",
+    "name": "Nama",
+    "code": "Kode",
+    "description": "Deskripsi",
+    "notes": "Catatan",
+    "plant": "Pabrik",
+    "all": "Semua",
+    "none": "Tidak ada",
+    "notAvailable": "—",
+    "selectPlaceholder": "Pilih...",
+    "noResults": "Tidak ada hasil",
+    "loading": "Memuat...",
+    "unknown": "Tidak diketahui",
+    "severity": "Tingkat",
+    "reason": "Alasan",
+    "reportedAt": "Dilaporkan pada",
+    "requiredMark": "*",
+    "justNow": "baru saja",
+    "secondsAgo": "{count, plural, other {# detik lalu}}",
+    "minutesAgo": "{count, plural, other {# menit lalu}}",
+    "hoursAgo": "{count, plural, other {# jam lalu}}",
+    "daysAgo": "{count, plural, other {# hari lalu}}",
+    "page": "Halaman",
+    "of": "dari",
+    "rowsPerPage": "Baris per halaman",
+    "totalItems": "{count, plural, other {# item}}",
+    "showingRange": "Menampilkan {from}–{to} dari {total}",
+    "createdAt": "Dibuat",
+    "updatedAt": "Diubah",
+    "selectDate": "Pilih tanggal",
+    "previousMonth": "Bulan sebelumnya",
+    "nextMonth": "Bulan berikutnya",
+    "notFound": {
+      "title": "Halaman tidak ditemukan.",
+      "description": "Halaman yang Anda cari tidak dapat ditemukan.",
+      "goBackHome": "Kembali ke beranda",
+      "sectionPlaceholder": "Bagian ini akan ditambahkan pada pembaruan berikutnya."
+    },
+    "inheritedFromGroup": "Diwarisi dari grup",
+    "permissionDeniedTitle": "Akses ditolak",
+    "permissionDeniedDescription": "Anda tidak memiliki izin untuk mengakses halaman ini.",
+    "shellLabel": "Syncro shell",
+    "modulePlaceholderTitle": "Placeholder modul",
+    "modulePlaceholderDescription": "Rute ini mencadangkan kerangka komposisi halaman. Data milik backend, izin, dan aturan domain tiba di story berikutnya.",
+    "telemetryDisplayFailed": "Tampilan telemetri gagal",
+    "goToOperationsOverview": "Buka Ringkasan Operasional",
+    "telemetryDisplayFailedFor": "Tidak dapat menampilkan telemetri untuk {machineCode}. Mesin lain tidak terpengaruh.",
+    "telemetryDisplayFailedPlain": "Tidak dapat menampilkan telemetri. Mesin lain tidak terpengaruh."
   },
   "navigation": {
     "groups": {
@@ -29,6 +97,2470 @@
       "auditLog": "Log Audit",
       "systemHealth": "Kesehatan Sistem",
       "settings": "Pengaturan"
+    },
+    "layout": {
+      "title": "Preferensi",
+      "subtitle": "Sesuaikan preferensi tata letak dasbor Anda.",
+      "themePreset": {
+        "label": "Preset Tema",
+        "placeholder": "Preset",
+        "options": {
+          "default": "Bawaan",
+          "brutalist": "Brutalis",
+          "industrial": "Industrial",
+          "soft-pop": "Soft Pop",
+          "tangerine": "Tangerine"
+        }
+      },
+      "fonts": {
+        "label": "Font",
+        "placeholder": "Pilih font"
+      },
+      "themeMode": {
+        "label": "Mode Tema",
+        "toggleLight": "Alihkan terang",
+        "toggleDark": "Alihkan gelap",
+        "toggleSystem": "Alihkan sistem",
+        "options": {
+          "light": "Terang",
+          "dark": "Gelap",
+          "system": "Sistem"
+        }
+      },
+      "pageLayout": {
+        "label": "Tata Letak Halaman",
+        "toggleCentered": "Alihkan rata tengah",
+        "toggleFullWidth": "Alihkan lebar penuh",
+        "options": {
+          "centered": "Rata Tengah",
+          "fullWidth": "Lebar Penuh"
+        }
+      },
+      "navbarBehavior": {
+        "label": "Perilaku Navbar",
+        "toggleSticky": "Alihkan lengket",
+        "toggleScroll": "Alihkan gulir",
+        "options": {
+          "sticky": "Lengket",
+          "scroll": "Gulir"
+        }
+      },
+      "sidebarStyle": {
+        "label": "Gaya Bilah Sisi",
+        "toggleInset": "Alihkan inset",
+        "toggleSidebar": "Alihkan bilah sisi",
+        "toggleFloating": "Alihkan melayang",
+        "options": {
+          "inset": "Inset",
+          "sidebar": "Bilah Sisi",
+          "floating": "Melayang"
+        }
+      },
+      "sidebarCollapseMode": {
+        "label": "Mode Lipat Bilah Sisi",
+        "toggleIcon": "Alihkan ikon",
+        "toggleOffcanvas": "Alihkan kanvas geser",
+        "options": {
+          "icon": "Ikon",
+          "offcanvas": "Kanvas Geser"
+        }
+      },
+      "restoreDefaults": "Kembalikan Bawaan"
+    },
+    "theme": {
+      "cycleAria": "Tema saat ini: {mode}. Klik untuk mengganti tema",
+      "modes": {
+        "light": "Terang",
+        "dark": "Gelap",
+        "system": "Sistem"
+      }
+    },
+    "navUser": {
+      "roles": {
+        "SUPER_ADMIN": "Super Admin",
+        "MANAGER_MAINTENANCE": "Manajer Pemeliharaan",
+        "MAINTENANCE_LEADER": "Pemimpin Pemeliharaan",
+        "SECTION_LEADER": "Pemimpin Seksi",
+        "STAFF_MAINTENANCE": "Staf Pemeliharaan",
+        "TECHNICIAN": "Teknisi",
+        "INVENTORY_MAINTENANCE": "Pemeliharaan Inventaris",
+        "STOREKEEPER": "Petugas Gudang",
+        "PRODUCTION_LEADER": "Pemimpin Produksi",
+        "AUDITOR": "Auditor"
+      },
+      "settings": "Pengaturan",
+      "logOut": "Keluar"
+    },
+    "accountSwitcher": {
+      "account": "Akun",
+      "billing": "Penagihan",
+      "notifications": "Notifikasi",
+      "logOut": "Keluar"
+    },
+    "navDocuments": {
+      "groupLabel": "Dokumen",
+      "more": "Lainnya",
+      "open": "Buka",
+      "share": "Bagikan",
+      "delete": "Hapus"
+    },
+    "search": {
+      "trigger": "Cari",
+      "placeholder": "Cari dasbor, pengguna, dan lainnya…",
+      "noResults": "Tidak ada hasil ditemukan."
+    }
+  },
+  "errors": {
+    "generic": "Terjadi kesalahan. Silakan coba lagi.",
+    "AUTH_REQUIRED": "Silakan masuk untuk melanjutkan.",
+    "SPAREPART_IMAGE_NOT_FOUND": "Tidak ada gambar tersimpan untuk part ini.",
+    "INVALID_CREDENTIALS": "Kredensial login tidak valid.",
+    "AUTH_UNVERIFIED": "Respons autentikasi tidak dapat diverifikasi.",
+    "PLANT_SCOPE_UNAVAILABLE": "Cakupan pabrik tidak dapat dimuat.",
+    "FORBIDDEN": "Anda tidak memiliki peran atau cakupan yang diperlukan untuk aksi ini.",
+    "INVALID_STATE_TRANSITION": "Aksi ini tidak diizinkan pada status saat ini.",
+    "SELF_APPROVAL_FORBIDDEN": "Anda tidak dapat menyetujui permintaan Anda sendiri.",
+    "DUPLICATE_MATERIAL_CODE": "Kode material tersebut sudah digunakan oleh part lain.",
+    "NEGATIVE_STOCK_REJECTED": "Stok tidak boleh negatif.",
+    "SECTION_REASSIGNMENT_REJECTED": "Grup ini sudah berada di section lain. Kosongkan section saat ini terlebih dahulu.",
+    "SECTION_PLANT_MISMATCH": "Section yang dipilih berada di pabrik yang berbeda.",
+    "SECTION_HAS_ACTIVE_MACHINE_GROUPS": "Tidak dapat dinonaktifkan: section ini masih memiliki grup mesin dengan mesin aktif.",
+    "DEPARTMENT_HAS_MEMBERS": "Tidak dapat dinonaktifkan: departemen ini masih memiliki anggota.",
+    "DUPLICATE_RESPONSIBILITY": "Pengguna sudah ditugaskan ke mesin ini",
+    "DUPLICATE_IDENTIFIER": "NIK atau nomor telepon sudah digunakan oleh pengguna lain.",
+    "ALERT_CONCURRENT_MODIFICATION": "Alert ini diubah oleh pengguna lain. Muat ulang dan coba lagi.",
+    "VALIDATION_ERROR": "Data yang dikirim mengandung kesalahan.",
+    "validation": {
+      "required": "Kolom ini wajib diisi."
+    },
+    "validationFailed": "Validasi gagal — lihat kolom."
+  },
+  "ui": {
+    "pagination": {
+      "label": "navigasi halaman",
+      "previousPage": "Ke halaman sebelumnya",
+      "nextPage": "Ke halaman berikutnya",
+      "morePages": "Halaman lainnya",
+      "showing": "Menampilkan {start} sampai {end} dari {total} item",
+      "rowsPerPage": "Baris per halaman",
+      "pageOf": "Halaman {page} dari {total}",
+      "firstPage": "Ke halaman pertama",
+      "lastPage": "Ke halaman terakhir"
+    },
+    "command": {
+      "title": "Palet Perintah",
+      "searchPlaceholder": "Cari perintah untuk dijalankan..."
+    },
+    "sidebar": {
+      "toggle": "Buka/Tutup Bilah Sisi",
+      "mobileTitle": "Bilah Sisi",
+      "mobileDescription": "Menampilkan bilah sisi seluler."
+    },
+    "spinner": {
+      "loading": "Memuat"
+    }
+  },
+  "alerts": {
+    "listPage": {
+      "title": "Alert",
+      "subtitle": "Alert ambang batas umur pakai sparepart di semua mesin.",
+      "accessDeniedTitle": "Akses ditolak",
+      "accessDeniedDescription": "Anda tidak memiliki akses ke alert.",
+      "loadFailed": "Gagal memuat alert.",
+      "emptyTitle": "Tidak ada alert",
+      "emptyDescription": "Tidak ada alert umur pakai sparepart yang cocok dengan filter saat ini.",
+      "colStatus": "Status",
+      "colType": "Tipe",
+      "colNotification": "Notifikasi",
+      "colMachine": "Mesin",
+      "colSparepart": "Sparepart",
+      "colThreshold": "Ambang batas",
+      "colConsumed": "Terpakai",
+      "notApplicable": "-",
+      "rowAria": "Lihat alert untuk {machineCode} — {sparepart}"
+    },
+    "detailPage": {
+      "backToAlerts": "Kembali ke Alert",
+      "notFoundTitle": "Alert tidak ditemukan",
+      "notFoundDescription": "Alert ini tidak ada atau tidak terlihat oleh Anda.",
+      "accessDeniedTitle": "Akses ditolak",
+      "accessDeniedDescription": "Anda tidak memiliki izin untuk melihat alert ini.",
+      "loadFailed": "Gagal memuat alert.",
+      "title": "Alert — {machineCode}",
+      "titleWithName": "Alert — {machineCode} ({machineName})",
+      "acknowledge": "Akui",
+      "acknowledging": "Mengakui…",
+      "acknowledgeAria": "Akui alert ini",
+      "resolve": "Selesaikan",
+      "resolving": "Menyelesaikan…",
+      "resolveAria": "Selesaikan alert ini",
+      "resolveOverride": "Selesaikan Override",
+      "resolveOverrideAria": "Selesaikan alert ini secara langsung (override SUPER_ADMIN)",
+      "ackSuccess": "Alert diakui.",
+      "ackInvalidState": "Tidak dapat diakui: transisi status tidak valid.",
+      "ackFailed": "Gagal mengakui alert.",
+      "resolveSuccess": "Alert diselesaikan.",
+      "resolveInvalidState": "Tidak dapat diselesaikan: transisi status tidak valid.",
+      "resolveOverrideSuccess": "Alert diselesaikan (override).",
+      "overrideForbidden": "Hanya SUPER_ADMIN yang dapat menggunakan override penyelesaian.",
+      "overrideNotOpen": "Tidak dapat di-override: alert tidak dalam status OPEN.",
+      "resolveFailed": "Gagal menyelesaikan alert.",
+      "whyTitle": "Mengapa alert ini muncul",
+      "whyProcurementDescription": "Proyeksi kehabisan stok berada dalam jendela lead-time sparepart.",
+      "whyThresholdDescription": "Umur pakai terpakai mencapai ambang batas yang dikonfigurasi pada saat terdeteksi.",
+      "procurementParagraph": "Proyeksi kehabisan stok untuk sparepart <sparepart>{sparepartName}</sparepart> (fungsi: {functionName}) pada mesin <machine>{machineCode}</machine> berada dalam jendela lead-time pengadaannya, sehingga pemesanan harus dimulai sebelum stok habis.",
+      "thresholdParagraph": "Persentase terpakai <consumed>{consumedPct}</consumed> mencapai ambang batas yang dikonfigurasi sebesar <threshold>{thresholdPct}</threshold> untuk sparepart <sparepart>{sparepartName}</sparepart> (fungsi: {functionName}) pada mesin <machine>{machineCode}</machine>.",
+      "statusReasonLabel": "Alasan status:",
+      "rateLabel": "Laju per jam operasi",
+      "rateValue": "{value} counter/jam operasi",
+      "basisLabel": "Dasar proyeksi",
+      "basis": {
+        "ROLLING_30_DAY": "30 hari bergulir",
+        "FULL_HISTORY": "Riwayat penuh"
+      },
+      "basisUnknown": "Dasar tidak diketahui",
+      "leadTimeLabel": "Lead time yang digunakan",
+      "leadTimeValue": "{value} h",
+      "projectedDepletionLabel": "Proyeksi kehabisan stok",
+      "lifetimeEvidenceTitle": "Bukti Umur Pakai",
+      "lifetimeEvidenceDescription": "Nilai snapshot yang tercatat saat alert dibuat.",
+      "staleEscalationBanner": "Eskalasi berikutnya tertunda — periksa status worker di Kesehatan Sistem.",
+      "machineSparepartTitle": "Mesin & Sparepart",
+      "machineCodeLabel": "Kode mesin",
+      "machineGroupLabel": "Grup mesin",
+      "sparepartLabel": "Sparepart",
+      "functionLabel": "Fungsi",
+      "installationIdLabel": "ID Instalasi",
+      "metadataTitle": "Metadata Alert",
+      "lastUpdatedLabel": "Terakhir diperbarui",
+      "traceIdLabel": "Trace ID",
+      "notApplicable": "-",
+      "concurrentModified": "Alert diubah secara bersamaan. Muat ulang dan coba lagi."
+    },
+    "notificationHistory": {
+      "timelineTitle": "Linimasa Eskalasi",
+      "timelineDescription": "Rantai eskalasi berbasis backend diurutkan TECHNICIAN → MANAGER",
+      "historyTitle": "Riwayat Notifikasi",
+      "historyDescription": "Bukti pengiriman per level dengan nomor telepon termask dan riwayat percobaan",
+      "auditTitle": "Bukti Audit",
+      "auditDescription": "Jejak audit yang tidak dapat diubah untuk alert ini (entityType=ALERT)",
+      "timelineLoadFailed": "Gagal memuat linimasa eskalasi.",
+      "historyLoadFailed": "Gagal memuat riwayat notifikasi.",
+      "auditLoadFailed": "Gagal memuat bukti audit.",
+      "emptyTimeline": "Belum ada notifikasi yang mengantre untuk alert ini. Job TECHNICIAN dibuat saat alert dibuka; eskalasi berlanjut setiap 15 menit.",
+      "alertCreatedLine": "Alert dibuat: {datetime}",
+      "emptyHistory": "Tidak ada job notifikasi untuk alert ini.",
+      "emptyAudit": "Belum ada bukti audit.",
+      "copied": "Tersalin",
+      "copyFailed": "Gagal menyalin — bukan di konteks aman",
+      "copyTraceAria": "Salin trace ID",
+      "toggleAttemptsAria": "Buka/tutup percobaan",
+      "toggleChangeAria": "Buka/tutup detail perubahan",
+      "headerLevel": "Level",
+      "headerRecipient": "Penerima",
+      "headerPhone": "Telepon",
+      "headerAttempts": "Percobaan",
+      "headerTime": "Waktu",
+      "headerDetail": "Detail",
+      "headerTrace": "Trace",
+      "headerTimestamp": "Stempel waktu",
+      "headerActor": "Aktor",
+      "headerAction": "Aksi",
+      "headerResult": "Hasil",
+      "headerField": "Kolom",
+      "headerBefore": "Sebelum",
+      "headerAfter": "Sesudah",
+      "headerAt": "Pada",
+      "traceIdLine": "traceId: {traceId}",
+      "codeLine": "{code}: {message}",
+      "requestFailed": "Permintaan gagal",
+      "more": "selengkapnya",
+      "less": "ringkas",
+      "attemptsLine": "Percobaan: {attempts}/{max}",
+      "attemptsCount": "Percobaan ({count})",
+      "recordCreated": "Rekaman dibuat.",
+      "recordDeleted": "Rekaman dihapus.",
+      "noFieldChanges": "Tidak ada perubahan kolom yang tercatat.",
+      "notApplicable": "-"
+    },
+    "lifetime": {
+      "consumedAria": "Umur pakai terpakai: {pct}%",
+      "thresholdTitle": "Ambang batas: {pct}%",
+      "baselineCounter": "Counter awal",
+      "currentCounter": "Counter saat ini (saat alert muncul)",
+      "expectedLifetime": "Umur pakai yang diharapkan",
+      "consumedCount": "Jumlah terpakai",
+      "consumedPct": "Terpakai %",
+      "threshold": "Ambang batas"
+    },
+    "status": {
+      "OPEN": "Terbuka",
+      "ACKNOWLEDGED": "Diakui",
+      "RESOLVED": "Selesai"
+    },
+    "statusDescription": {
+      "OPEN": "Alert terbuka dan memerlukan perhatian.",
+      "ACKNOWLEDGED": "Alert telah diakui. Eskalasi dijeda.",
+      "RESOLVED": "Alert telah diselesaikan. Tidak perlu tindakan lebih lanjut."
+    },
+    "statusAria": "Status alert: {label}. {description}",
+    "typeBadge": {
+      "THRESHOLD_PERCENTAGE": {
+        "label": "Ambang batas",
+        "description": "Umur pakai terpakai mencapai ambang batas persentase yang dikonfigurasi."
+      },
+      "PROCUREMENT_RISK": {
+        "label": "Risiko pengadaan",
+        "description": "Proyeksi kehabisan stok berada dalam jendela lead-time sparepart."
+      },
+      "UNKNOWN": {
+        "label": "Tidak diketahui",
+        "description": "Tipe alert tidak dikenali."
+      },
+      "ariaLabel": "Tipe alert: {label}. {description}"
+    },
+    "notificationPill": {
+      "PENDING": "Menunggu",
+      "SENT": "Terkirim",
+      "ESCALATED": "Terkirim",
+      "ROUTING_FAILED": "Tanpa penerima",
+      "EXHAUSTED": "Gagal",
+      "CANCELLED": "Dihentikan",
+      "ariaLabel": "Status notifikasi: {label}",
+      "sentAt": "Dikirim pada {datetime}",
+      "levelLine": "Level: {level}",
+      "notificationLine": "Notifikasi: {status}"
+    },
+    "escalation": {
+      "timelineAria": "Linimasa eskalasi",
+      "status": {
+        "sent": "Terkirim",
+        "queued": "Antre",
+        "pending": "Menunggu",
+        "failed": "Gagal",
+        "stopped": "Dihentikan",
+        "rate-limited": "Dibatasi laju"
+      },
+      "next": "Berikutnya: {time}",
+      "escalatedTo": "Dieskalasi ke {level} pada {time}",
+      "nextLevel": "level berikutnya",
+      "stoppedBy": "Dihentikan oleh konfirmasi pada {time}",
+      "showFull": "Tampilkan linimasa penuh ({count} level)",
+      "showLess": "Tampilkan lebih sedikit",
+      "showLatest": "Tampilkan terbaru saja"
+    }
+  },
+  "systemHealth": {
+    "cardTitles": {
+      "postgres": "PostgreSQL",
+      "postgresDescription": "Penyimpan relasional utama",
+      "influxdb": "InfluxDB",
+      "influxdbDescription": "Penyimpan riwayat telemetri",
+      "redis": "Redis",
+      "redisDescription": "Cache status telemetri terbaru",
+      "mqtt": "MQTT / EMQX",
+      "mqttDescription": "Transport ingest telemetri",
+      "waha": "WAHA",
+      "wahaDescription": "Provider notifikasi WhatsApp",
+      "ingestWorker": "Worker Ingest Telemetri",
+      "ingestWorkerDescription": "Subscriber ingest telemetri MQTT",
+      "notificationWorker": "Worker Notifikasi",
+      "notificationWorkerDescription": "Worker pengiriman notifikasi WAHA",
+      "telemetryFreshness": "Kesegaran Telemetri",
+      "telemetryFreshnessDescription": "Telemetri terbaru yang diterima dari jalur ingest"
+    },
+    "page": {
+      "title": "Kesehatan Sistem",
+      "subtitle": "Diagnostik dependensi dan worker. Disegarkan otomatis setiap 30 detik.",
+      "sectionAriaDependencies": "Kesehatan dependensi",
+      "headingDependencies": "Dependensi",
+      "sectionAriaWorkers": "Kesehatan worker",
+      "headingWorkers": "Worker",
+      "sectionAriaDataQuality": "Kualitas Data",
+      "headingDataQuality": "Kualitas Data",
+      "sectionAriaFreshness": "Kesegaran Telemetri",
+      "headingFreshness": "Kesegaran Telemetri",
+      "sectionAriaQuarantine": "Log karantina telemetri",
+      "headingQuarantine": "Log Karantina Telemetri",
+      "bannerHealthy": "Semua sistem beroperasi.",
+      "bannerDegraded": "Satu atau lebih dependensi atau worker mengalami degradasi atau tidak dapat diverifikasi. Lihat kartu di bawah untuk detail.",
+      "bannerUnhealthy": "Satu atau lebih dependensi atau worker tidak sehat. Lihat kartu di bawah untuk detail.",
+      "staleBannerUnderMinute": "Terakhir diperbarui kurang dari satu menit lalu. Penyegaran otomatis mungkin tertunda.",
+      "staleBannerMinutes": "Terakhir diperbarui {count} menit lalu. Penyegaran otomatis mungkin tertunda.",
+      "refreshNow": "Muat ulang sekarang",
+      "staleMachineLoadError": "Tidak dapat memuat bukti mesin basi.",
+      "viewNotificationHistory": "Lihat riwayat notifikasi",
+      "showStaleMachines": "Tampilkan mesin basi ({count})",
+      "hideStaleMachines": "Sembunyikan mesin basi",
+      "staleMachinesAria": "Mesin dengan telemetri basi",
+      "noTelemetryReceived": "Tidak ada telemetri diterima",
+      "actuatorStatus": {
+        "UP": "Aktif",
+        "DOWN": "Tidak aktif",
+        "OUT_OF_SERVICE": "Di luar layanan",
+        "UNKNOWN": "Tidak diketahui"
+      },
+      "metricLabels": {
+        "mqttState": "Status MQTT",
+        "queueDepth": "Kedalaman antrean",
+        "acceptedCount": "Jumlah diterima",
+        "lastAccepted": "Terakhir diterima",
+        "staleSince": "Basi sejak",
+        "pendingJobs": "Job tertunda",
+        "recentFailed": "Gagal terbaru",
+        "lastFailureReason": "Alasan kegagalan terakhir",
+        "lastSuccessfulSend": "Kirim berhasil terakhir",
+        "circuitState": "Status sirkuit",
+        "failureRate": "Tingkat kegagalan",
+        "latestReceived": "Terbaru diterima",
+        "staleTelemetryMachines": "Mesin dengan telemetri basi",
+        "nextStep": "Langkah berikutnya"
+      },
+      "nextSteps": {
+        "db": "Pastikan layanan PostgreSQL berjalan dan periksa log backend untuk kesalahan koneksi.",
+        "influxdb": "Pastikan layanan InfluxDB dapat dijangkau; penulisan riwayat telemetri gagal saat layanan mati.",
+        "redis": "Pastikan layanan Redis dapat dijangkau; status telemetri terbaru tidak dapat dibaca saat layanan mati.",
+        "mqtt": "Pastikan broker EMQX dapat dijangkau; ingest telemetri berhenti saat koneksi MQTT mati.",
+        "wahaCircuitBreaker": "Pastikan layanan WAHA dapat dijangkau; pengiriman notifikasi dijeda saat sirkuit terbuka.",
+        "ingestWorker": "Periksa log worker ingest dan status langganan MQTT; tinjau log karantina di bawah untuk pesan yang ditolak.",
+        "notificationWorker": "Periksa log worker notifikasi dan job tertunda; buka riwayat notifikasi alert yang gagal untuk detail percobaan."
+      },
+      "freshness": {
+        "justNow": "baru saja",
+        "seconds": "{count} dtk lalu",
+        "minutes": "{count} mnt lalu",
+        "hours": "{count} jam lalu",
+        "days": "{count} hari lalu",
+        "dash": "—"
+      }
+    },
+    "healthCard": {
+      "severity": {
+        "SUCCESS": "Berhasil",
+        "WARNING": "Peringatan",
+        "CRITICAL": "Kritis",
+        "NEUTRAL": "Netral"
+      },
+      "unknownStatus": "Tidak diketahui",
+      "noData": "Tidak ada data kesehatan yang dilaporkan.",
+      "unableRefresh": "Gagal menyegarkan {title}. Menampilkan status terakhir yang diketahui.",
+      "unableCheck": "Tidak dapat memeriksa {title}.",
+      "severityLabel": "Tingkat",
+      "reasonLabel": "Alasan",
+      "reportedAt": "Dilaporkan pada",
+      "statusAria": "Status: {label}"
+    },
+    "dataQuality": {
+      "title": "Kualitas Data",
+      "description": "Metrik penolakan, anomali, dan dead-letter telemetri selama jendela pelaporan.",
+      "quarantined": "Karantina",
+      "rejectionRate": "Tingkat penolakan",
+      "anomalies": "Anomali",
+      "deadLetter": "Dead-letter",
+      "window": "Jendela",
+      "viewQuarantineLog": "Lihat Log Karantina",
+      "unableRefresh": "Gagal menyegarkan kualitas data. Menampilkan metrik terakhir yang diketahui.",
+      "unableLoad": "Tidak dapat memuat kualitas data.",
+      "noData": "Tidak ada data kualitas yang dilaporkan.",
+      "severity": {
+        "SUCCESS": "OK",
+        "WARNING": "Peringatan",
+        "CRITICAL": "Kritis",
+        "NEUTRAL": "Netral"
+      },
+      "windowLastHour": "1 jam terakhir",
+      "windowMinutes": "{count} menit terakhir",
+      "minute": "menit",
+      "minutes": "menit"
+    },
+    "quarantine": {
+      "loadFailed": "Gagal memuat log karantina. Periksa koneksi Anda dan coba lagi.",
+      "empty": "Tidak ada pesan yang dikarantina.",
+      "receivedAt": "Diterima Pada",
+      "topic": "Topik",
+      "reason": "Alasan",
+      "field": "Kolom",
+      "traceId": "Trace ID",
+      "togglePayload": "Buka/tutup pratinjau payload",
+      "page": "Halaman {page} dari {total}",
+      "emptyPayload": "(kosong)",
+      "unknownDate": "Tanggal tidak diketahui",
+      "reasons": {
+        "malformed_topic": "Topik Tidak Valid",
+        "inactive_machine": "Mesin Nonaktif",
+        "unparseable_payload": "Tidak Dapat Diurai",
+        "missing_contract_field": "Kolom Hilang",
+        "unsupported_schema_version": "Versi Skema Tidak Didukung",
+        "machine_identity_mismatch": "Identitas Tidak Cocok"
+      }
+    },
+    "counterProjection": {
+      "title": "Laju Counter & Kehabisan",
+      "noData": "Tidak ada data proyeksi.",
+      "noInstallations": "Tidak ada instalasi sparepart terdaftar.",
+      "remainingCounters": "Counter tersisa",
+      "projectedDepletion": "Proyeksi kehabisan",
+      "leadTimeConsumption": "Konsumsi lead-time",
+      "windowStart": "Awal jendela",
+      "windowEnd": "Akhir jendela",
+      "firstSample": "Sampel pertama",
+      "lastSample": "Sampel terakhir",
+      "operatingTime": "Waktu operasi",
+      "noTelemetry": "Tidak ada telemetri diterima dalam jendela estimasi.",
+      "basis": {
+        "ROLLING_30_DAY": "30 hari rolling",
+        "FULL_HISTORY": "Riwayat penuh"
+      },
+      "basisUnknown": "Basis tidak diketahui",
+      "loadFailed": "Tidak dapat memuat proyeksi.",
+      "description": "Perkiraan kecepatan penghitungan per jam operasi dengan proyeksi kehabisan yang sadar-shift.",
+      "unableRefresh": "Gagal menyegarkan proyeksi. Menampilkan perkiraan terakhir yang diketahui.",
+      "insufficientReasons": {
+        "NO_TELEMETRY": "Tidak ada telemetri diterima dalam jendela estimasi.",
+        "INSUFFICIENT_SAMPLES": "Sampel telemetri tidak cukup untuk mengestimasi laju.",
+        "STALE_DATA": "Telemetri terakhir terlalu tua untuk mengestimasi laju saat ini.",
+        "NO_OPERATING_TIME": "Tidak ada jadwal shift dikonfigurasi, sehingga jam operasi nol.",
+        "NO_PRODUCTION_DELTA": "Counter tidak bergerak selama jendela estimasi."
+      },
+      "unavailableEstimate": "Estimasi laju counter tidak tersedia.",
+      "countersPerOpHour": "counter/jam-op",
+      "operatingTimeValue": "{value} j/hari (jadwal {schedule})",
+      "unknownSchedule": "tidak diketahui",
+      "projected": "Diproyeksikan",
+      "unavailable": "Tidak tersedia",
+      "installation": "Instalasi",
+      "consumptionLine": "≈{consumption} counter selama lead time {hours} jam-op"
+    },
+    "latency": {
+      "label": "Latensi",
+      "noData": "Tidak ada data",
+      "normal": "Normal",
+      "elevated": "Meninggi",
+      "critical": "Kritis",
+      "unavailable": "tidak tersedia",
+      "aria": "Latensi telemetri",
+      "ariaValue": "Latensi telemetri: {value}",
+      "ariaValueLabel": "Latensi telemetri: {value}, {label}",
+      "lastKnown": "(terakhir diketahui — gagal segarkan)"
+    }
+  },
+  "auth": {
+    "eyebrow": "Akses Syncro",
+    "title": "Masuk ke Syncro",
+    "subtext": "Gunakan kredensial SUPER_ADMIN lokal yang dikonfigurasi untuk environment ini.",
+    "secureAccess": "Akses aman",
+    "loginLabel": "Login",
+    "passwordLabel": "Kata sandi",
+    "signIn": "Masuk",
+    "signingIn": "Memproses masuk...",
+    "invalidCredentialsDetail": "Kredensial login tidak valid. Periksa login SUPER_ADMIN lokal Anda dan coba lagi.",
+    "register": {
+      "title": "Placeholder kerangka registrasi",
+      "subtext": "Provisioning pengguna dan perilaku autentikasi hadir di Story 1.5.",
+      "continueLink": "Lanjut ke kerangka aplikasi"
+    },
+    "hero": {
+      "eyebrow": "Syncro · Saluran Mesin Live",
+      "title": "Satu saluran untuk setiap mesin yang tidak pernah tidur.",
+      "subtitle": "Setup mesin, kesehatan live, dan alert sparepart — kendalikan lantai produksi dari saku Anda."
+    }
+  },
+  "wahaTemplates": {
+    "title": "Template WAHA",
+    "pageSubtitle": "Template pesan alert WhatsApp untuk notifikasi ambang sparepart.",
+    "heading": "Template Notifikasi Alert",
+    "description": "Template ini digunakan untuk pesan alert WhatsApp yang dikirim saat ambang sparepart tercapai.",
+    "saved": "Template tersimpan",
+    "saveFailed": "Gagal menyimpan template. Periksa variabel yang tidak dikenal.",
+    "loadFailed": "Gagal memuat template.",
+    "accessDeniedTitle": "Akses ditolak",
+    "accessDeniedDescription": "Anda tidak memiliki akses ke Template WAHA.",
+    "route": {
+      "title": "Template WAHA",
+      "subtitle": "Template pesan alert WhatsApp untuk notifikasi ambang batas sparepart."
+    },
+    "editor": {
+      "previewPlaceholder": "Pratinjau akan muncul di sini.",
+      "noTemplateText": "Tidak ada teks template.",
+      "save": "Simpan Template",
+      "label": "Teks Template",
+      "insertVariable": "Sisipkan Variabel",
+      "readOnlyPlaceholder": "Tidak ada teks template.",
+      "editPlaceholder": "Ketik pesan alert Anda di sini. Gunakan Sisipkan Variabel untuk menambah kolom dinamis.",
+      "unknownVariable": "Variabel tidak dikenal:",
+      "previewTitle": "Pratinjau (data contoh)",
+      "readOnlyNotice": "Anda memiliki akses hanya-baca ke template ini."
+    }
+  },
+  "settings": {
+    "page": {
+      "title": "Pengaturan",
+      "description": "Kerangka pengaturan preferensi aplikasi dan akun.",
+      "sections": {
+        "profile": "Placeholder profil",
+        "theme": "Kontrol tema tetap berada di bilah atas",
+        "auth": "Pengaturan autentikasi mendatang"
+      }
+    },
+    "logo": {
+      "title": "Logo Perusahaan",
+      "subtitle": "Unggah logo perusahaan yang tampil pada laporan cetak (khusus SUPER_ADMIN).",
+      "currentTitle": "Logo Saat Ini",
+      "replaceTitle": "Ganti Logo",
+      "fileLabel": "Gambar logo (JPEG, PNG, atau WebP, maks. 5 MB)",
+      "upload": "Unggah Logo",
+      "uploading": "Mengunggah...",
+      "uploadFailed": "Gagal mengunggah",
+      "noLogo": "Belum ada logo yang dikonfigurasi.",
+      "alt": "Logo perusahaan"
+    }
+  },
+  "setup": {
+    "title": "Kelengkapan Setup",
+    "errorTitle": "Kelengkapan setup tidak dapat dimuat",
+    "errorDescription": "Status setup tidak dapat diambil. Coba muat ulang.",
+    "emptyTitle": "Tidak ada langkah setup",
+    "emptyDescription": "Daftar kelengkapan setup kosong. Konfigurasi master data untuk melihat status setup."
+  },
+  "machineDashboard": {
+    "title": "Dasbor Mesin",
+    "subtitle": "Status mesin, kesegaran telemetri, workorder dan alert terbuka.",
+    "hint": "Status mesin, kesegaran telemetri, workorder/alert terbuka, dan risiko seumur hidup dalam cakupan Anda.",
+    "plantScopeError": "Cakupan pabrik tidak tersedia. Coba lagi atau hubungi administrator Anda.",
+    "noPlantsAssigned": "Tidak ada pabrik yang ditugaskan ke akun Anda. Hubungi administrator Anda.",
+    "loadFailed": "Gagal memuat dasbor mesin.",
+    "emptyTitle": "Tidak ada mesin dalam cakupan",
+    "emptyDescription": "Tidak ada mesin yang tersedia untuk cakupan pabrik saat ini.",
+    "openWorkorders": "Workorder terbuka",
+    "openAlerts": "Alert terbuka",
+    "telemetry": "Telemetri",
+    "status": {
+      "ACTIVE": "Aktif",
+      "INACTIVE": "Nonaktif"
+    },
+    "telemetryUnknownAria": "Kesegaran telemetri: tidak diketahui. Belum pernah menerima data.",
+    "lifetimeRisk": "Risiko seumur hidup",
+    "noData": "Tidak ada data",
+    "atRisk": "Berisiko",
+    "ok": "OK",
+    "staleActive": "Tidak ada telemetri terbaru — mesin stale.",
+    "staleInactive": "Tidak ada telemetri terbaru — mesin nonaktif."
+  },
+  "telemetry": {
+    "title": "Telemetri",
+    "subtitle": "Status mesin terbaru disegarkan otomatis setiap 30 detik.",
+    "latestTitle": "Telemetri terbaru",
+    "latestDescription": "Kesegaran telemetri terpisah dari status manual mesin. ONLINE berarti data dalam 5 menit; STALE berarti tidak ada data lebih dari 15 menit.",
+    "allPlants": "Semua pabrik",
+    "loading": "Memuat telemetri…",
+    "activeMachines": "{count, plural, other {# mesin aktif}}",
+    "minutesAgo": "{count} menit",
+    "truncation": "(menampilkan {shown} pertama dari {total} yang cocok)",
+    "noPlantsTitle": "Tidak ada pabrik yang ditugaskan",
+    "noPlantsDescription": "Tidak ada pabrik yang ditugaskan. Hubungi administrator Anda.",
+    "errorTitle": "Telemetri tidak dapat dimuat",
+    "errorDescription": "Dasbor telemetri gagal dimuat. Coba ambil ulang.",
+    "emptyTitle": "Tidak ditemukan mesin aktif",
+    "emptyAll": "Aktifkan mesin untuk melihat telemetri terbarunya di sini.",
+    "emptyPlant": "Belum ada mesin berstatus ACTIVE di pabrik ini.",
+    "staleBanner": "Pembaruan terakhir {ago} lalu. Penyegaran otomatis mungkin tertunda.",
+    "refreshNow": "Segarkan sekarang",
+    "noDataReceived": "Belum ada data diterima",
+    "noDataYet": "Belum ada data diterima untuk mesin ini.",
+    "cardAria": "Telemetri untuk mesin {code}",
+    "optionalFieldsAria": "Kolom telemetri opsional",
+    "card": {
+      "latestValues": "Nilai telemetri terbaru",
+      "runningState": "Status berjalan",
+      "runtimeHours": "Jam operasi",
+      "productionCount": "Jumlah produksi",
+      "lastReceived": "Terakhir diterima",
+      "noDataReceived": "Tidak ada data diterima",
+      "cardAria": "Telemetri untuk {machineCode}",
+      "running": "Berjalan",
+      "stopped": "Berhenti"
+    },
+    "statusBadge": {
+      "freshness": {
+        "ONLINE": {
+          "label": "Daring",
+          "description": "Telemetri diterima dalam 5 menit terakhir."
+        },
+        "OFFLINE": {
+          "label": "Luring",
+          "description": "Tidak ada telemetri selama 5-15 menit. Mesin masih AKTIF."
+        },
+        "STALE": {
+          "label": "Kedaluwarsa",
+          "description": "Tidak ada telemetri lebih dari 15 menit."
+        }
+      },
+      "aria": "Kesegaran telemetri: {label}. {description}"
+    }
+  },
+  "operationsOverview": {
+    "title": "Ringkasan Operasional",
+    "subtitle": "Yang perlu mendapat perhatian sekarang.",
+    "openAlerts": "Alert Terbuka",
+    "activeMachines": "Mesin Aktif",
+    "staleTelemetry": "Telemetri Stale",
+    "healthStatus": "Status Kesehatan",
+    "alertsSection": "Alert yang Perlu Tindakan",
+    "viewAllAlerts": "Lihat semua alert →",
+    "plantScopeTitle": "Cakupan pabrik tidak tersedia",
+    "plantScopeDescription": "Cakupan pabrik tidak dapat dimuat. Coba lagi atau hubungi administrator Anda.",
+    "noPlantsTitle": "Tidak ada pabrik yang ditugaskan",
+    "noPlantsDescription": "Tidak ada pabrik yang ditugaskan ke akun Anda. Hubungi administrator Anda.",
+    "loadFailed": "Gagal memuat alert.",
+    "emptyTitle": "Tidak ada alert terbuka",
+    "emptyDescription": "Tidak ada alert sparepart terbuka.",
+    "consumed": "{percent}% terpakai",
+    "noSnapshot": "Tidak ada snapshot konsumsi",
+    "threshold": "ambang {percent}%",
+    "moreAlerts": "+{count} alert terbuka lagi — lihat semua",
+    "rowAria": "Alert untuk {sparepart} pada {machine}",
+    "noDate": "-",
+    "minutesAgo": "{count} mnt lalu",
+    "hoursAgo": "{count} jam lalu",
+    "daysAgo": "{count} hari lalu"
+  },
+  "masterData": {
+    "tabs": {
+      "plants": "Pabrik",
+      "setup": "Penyiapan",
+      "groups": "Grup Mesin",
+      "machines": "Mesin",
+      "installations": "Instalasi",
+      "spareparts": "Sparepart",
+      "taxonomy": "Kategori",
+      "sparepartsPage": "Sparepart"
+    },
+    "plant": {
+      "title": "Pabrik",
+      "description": "Kelola data pabrik yang digunakan oleh pengaturan mesin dan akses berbasis cakupan pabrik.",
+      "create": "Buat pabrik",
+      "readOnly": "Hanya-baca",
+      "viewOnly": "Hanya lihat",
+      "scope": {
+        "loading": "Memuat cakupan pabrik",
+        "allPlants": "Semua pabrik",
+        "noPlant": "Tidak ada pabrik yang ditugaskan",
+        "assignedPlants": "Pabrik yang ditugaskan",
+        "activePlant": "Pabrik aktif"
+      },
+      "state": {
+        "noAssignmentTitle": "Tidak ada pabrik yang ditugaskan",
+        "noAssignmentDesc": "Akun Anda tidak memiliki cakupan pabrik yang ditugaskan.",
+        "loadFailedTitle": "Pabrik gagal dimuat",
+        "loadFailedDesc": "Muat ulang halaman atau hubungi administrator jika akses seharusnya tersedia.",
+        "emptyTitle": "Belum ada pabrik",
+        "emptyDesc": "Buat pabrik pertama sebelum menambahkan grup mesin."
+      },
+      "dialog": {
+        "editTitle": "Ubah pabrik",
+        "createTitle": "Buat pabrik",
+        "description": "Kode pabrik dinormalisasi oleh backend dan harus unik.",
+        "save": "Simpan pabrik"
+      },
+      "delete": {
+        "title": "Hapus pabrik?",
+        "description": "Tindakan ini menghapus {code} dan penugasan pabrik yang terkait dengannya.",
+        "action": "Hapus pabrik"
+      },
+      "toast": {
+        "updated": "Pabrik diperbarui.",
+        "created": "Pabrik dibuat.",
+        "deleted": "Pabrik dihapus.",
+        "requestFailed": "Permintaan pabrik gagal.",
+        "deleteFailed": "Penghapusan pabrik gagal."
+      }
+    },
+    "machine": {
+      "title": "Mesin",
+      "description": "Kelola master data mesin terdaftar dan status manual AKTIF/TIDAK AKTIF.",
+      "create": "Buat mesin",
+      "readOnly": "Hanya-baca",
+      "viewOnly": "Hanya lihat",
+      "searchPlaceholder": "Cari mesin",
+      "selectPlant": "Pilih pabrik",
+      "selectMachineGroup": "Pilih grup mesin",
+      "allGroups": "Semua grup",
+      "searchGroups": "Cari grup...",
+      "noGroupsFound": "Grup tidak ditemukan",
+      "allStatuses": "Semua status",
+      "status": {
+        "ACTIVE": "AKTIF",
+        "INACTIVE": "TIDAK AKTIF"
+      },
+      "statusBadge": "Manual {status}",
+      "selectDate": "Pilih tanggal",
+      "colGroup": "Grup",
+      "manualStatus": "Status manual",
+      "brand": "Merek",
+      "colInstalled": "Terpasang",
+      "labelMachineGroup": "Grup mesin",
+      "installedDate": "Tanggal pemasangan",
+      "state": {
+        "noAssignmentTitle": "Tidak ada pabrik yang ditugaskan",
+        "noAssignmentDesc": "Akun Anda tidak memiliki cakupan pabrik yang ditugaskan.",
+        "noPlantsTitle": "Tidak ada pabrik tersedia",
+        "noPlantsDesc": "Buat atau tugaskan pabrik sebelum menambahkan mesin.",
+        "noGroupsTitle": "Tidak ada grup mesin tersedia",
+        "noGroupsDesc": "Buat grup mesin untuk pabrik terpilih sebelum menambahkan mesin.",
+        "loadFailedTitle": "Mesin gagal dimuat",
+        "loadFailedDesc": "Muat ulang halaman atau hubungi administrator jika akses seharusnya tersedia.",
+        "noMachinesFound": "Mesin tidak ditemukan",
+        "noMachinesYet": "Belum ada mesin",
+        "adjustFilters": "Sesuaikan filter Anda.",
+        "emptyDesc": "Buat mesin terdaftar pertama untuk pabrik dan grup terpilih."
+      },
+      "dialog": {
+        "editTitle": "Ubah mesin",
+        "createTitle": "Buat mesin",
+        "description": "Status manual adalah master data dan tidak mencerminkan keterbaruan telemetri MQTT.",
+        "save": "Simpan mesin"
+      },
+      "delete": {
+        "title": "Hapus mesin?",
+        "description": "Tindakan ini menghapus {code}. Data sparepart, telemetri, tanggung jawab, alert, atau audit di masa depan dapat memblokir penghapusan.",
+        "action": "Hapus mesin"
+      },
+      "toast": {
+        "updated": "Mesin diperbarui.",
+        "created": "Mesin dibuat.",
+        "deleted": "Mesin dihapus.",
+        "requestFailed": "Permintaan mesin gagal.",
+        "deleteFailed": "Penghapusan mesin gagal."
+      }
+    },
+    "machineGroup": {
+      "title": "Grup Mesin",
+      "description": "Kelola lini proses berbasis pabrik seperti Forming.",
+      "create": "Buat grup mesin",
+      "readOnly": "Hanya-baca",
+      "viewOnly": "Hanya lihat",
+      "searchPlaceholder": "Cari grup",
+      "section": "Seksi",
+      "selectPlant": "Pilih pabrik",
+      "state": {
+        "noAssignmentTitle": "Tidak ada pabrik yang ditugaskan",
+        "noAssignmentDesc": "Akun Anda tidak memiliki cakupan pabrik yang ditugaskan.",
+        "noPlantsTitle": "Tidak ada pabrik tersedia",
+        "noPlantsDesc": "Buat atau tugaskan pabrik sebelum menambahkan grup mesin.",
+        "loadFailedTitle": "Grup mesin gagal dimuat",
+        "loadFailedDesc": "Muat ulang halaman atau hubungi administrator jika akses seharusnya tersedia.",
+        "emptyTitle": "Belum ada grup mesin",
+        "emptyDesc": "Buat lini proses pertama untuk pabrik terpilih."
+      },
+      "dialog": {
+        "editTitle": "Ubah grup mesin",
+        "createTitle": "Buat grup mesin",
+        "description": "Nama unik dalam pabrik terpilih dan boleh sama lintas pabrik.",
+        "save": "Simpan grup mesin"
+      },
+      "shift": {
+        "legend": "Konfigurasi shift",
+        "loading": "Memuat jadwal shift…",
+        "loadFailed": "Jadwal shift gagal dimuat.",
+        "save": "Simpan jadwal shift",
+        "incomplete": "Setiap shift memerlukan waktu mulai dan waktu selesai.",
+        "saved": "Jadwal shift disimpan.",
+        "requestFailed": "Permintaan jadwal shift gagal."
+      },
+      "assign": {
+        "title": "Tugaskan seksi",
+        "description": "{name} hanya berada di satu seksi. Penugasan ulang ke seksi lain ditolak — kosongkan seksi saat ini terlebih dahulu.",
+        "placeholder": "Tanpa seksi (belum ditugaskan)",
+        "save": "Simpan penugasan"
+      },
+      "delete": {
+        "title": "Hapus grup mesin?",
+        "description": "Tindakan ini menghapus {name}. Penghapusan berhasil selama tidak ada mesin dependen; mesin dependen di masa depan dapat memblokirnya.",
+        "action": "Hapus grup mesin"
+      },
+      "toast": {
+        "updated": "Grup mesin diperbarui.",
+        "created": "Grup mesin dibuat.",
+        "deleted": "Grup mesin dihapus.",
+        "requestFailed": "Permintaan grup mesin gagal.",
+        "deleteFailed": "Penghapusan grup mesin gagal.",
+        "sectionAssigned": "Seksi ditugaskan.",
+        "sectionCleared": "Penugasan seksi dikosongkan.",
+        "sectionAssignFailed": "Penugasan seksi gagal."
+      }
+    },
+    "section": {
+      "title": "Seksi",
+      "description": "Kontainer organisasi (MACHINERY / UTILITY / WORKSHOP) per pabrik. Grup mesin ditugaskan ke tepat satu seksi.",
+      "create": "Buat seksi",
+      "readOnly": "Hanya-baca",
+      "viewOnly": "Hanya lihat",
+      "scope": {
+        "loading": "Memuat cakupan pabrik",
+        "allPlants": "Semua pabrik",
+        "noPlant": "Tidak ada pabrik yang ditugaskan",
+        "assignedPlants": "Pabrik yang ditugaskan",
+        "activePlant": "Pabrik aktif"
+      },
+      "state": {
+        "noAssignmentTitle": "Tidak ada pabrik yang ditugaskan",
+        "noAssignmentDesc": "Akun Anda tidak memiliki cakupan pabrik yang ditugaskan.",
+        "selectPlantTitle": "Pilih pabrik",
+        "selectPlantDesc": "Pilih pabrik tertentu di pemilih pabrik untuk mengelola seksinya.",
+        "loadFailedTitle": "Seksi gagal dimuat",
+        "loadFailedDesc": "Muat ulang halaman atau hubungi administrator jika akses seharusnya tersedia.",
+        "emptyTitle": "Belum ada seksi",
+        "emptyDesc": "Buat seksi pertama untuk pabrik ini."
+      },
+      "showInactive": "Tampilkan nonaktif",
+      "leader": "Leader",
+      "reactivate": "Aktifkan kembali",
+      "unassigned": "Belum ditugaskan",
+      "dialog": {
+        "editTitle": "Ubah seksi",
+        "createTitle": "Buat seksi",
+        "description": "Kode adalah MACHINERY, UTILITY, atau WORKSHOP dan harus unik per pabrik.",
+        "save": "Simpan seksi",
+        "selectPlant": "Pilih pabrik",
+        "selectCode": "Pilih kode"
+      },
+      "leaderDialog": {
+        "title": "Tugaskan leader — {name}",
+        "description": "Menugaskan leader menyimpan leader seksi dan otomatis menautkan tanggung jawab mesin LEADER untuk setiap mesin di grup seksi. Mengosongkan menghapus keduanya.",
+        "selectPlaceholder": "Pilih leader berdasarkan NIK atau nama",
+        "clear": "Kosongkan leader"
+      },
+      "toast": {
+        "created": "Seksi dibuat.",
+        "updated": "Seksi diperbarui.",
+        "deactivated": "Seksi dinonaktifkan.",
+        "reactivated": "Seksi diaktifkan kembali.",
+        "updateFailed": "Pembaruan seksi gagal.",
+        "requestFailed": "Permintaan seksi gagal.",
+        "leaderAssigned": "Leader seksi ditugaskan.",
+        "leaderCleared": "Leader seksi dikosongkan."
+      }
+    },
+    "team": {
+      "title": "Tim Lintas Pabrik",
+      "description": "Grup anggota dan mesin target dengan tanggal kedaluwarsa. Anggota mendapat akses terbatas ke mesin target lintas pabrik selama tim aktif.",
+      "create": "Buat tim",
+      "readOnly": "Hanya-baca",
+      "viewOnly": "Hanya lihat",
+      "state": {
+        "loadFailedTitle": "Tim gagal dimuat",
+        "loadFailedDesc": "Muat ulang halaman atau hubungi administrator jika akses seharusnya tersedia.",
+        "emptyTitle": "Belum ada tim",
+        "emptyDesc": "Buat tim lintas pabrik pertama."
+      },
+      "members": "Anggota",
+      "machines": "Mesin",
+      "expiresAt": "Kedaluwarsa pada",
+      "expired": "Kedaluwarsa",
+      "invalidValue": "Nilai tidak valid.",
+      "dialog": {
+        "editTitle": "Ubah tim",
+        "createTitle": "Buat tim",
+        "description": "Nama tim harus unik (tidak peka huruf besar/kecil). Kedaluwarsa harus benar-benar di masa depan.",
+        "save": "Simpan tim"
+      },
+      "delete": {
+        "title": "Hapus tim \"{name}\"?",
+        "description": "Tindakan ini menghapus tim beserta tautan anggota dan mesinnya secara permanen. Tindakan ini tidak dapat dibatalkan."
+      },
+      "manage": {
+        "membersTitle": "Anggota tim — {name}",
+        "machinesTitle": "Mesin target — {name}",
+        "membersDesc": "Anggota mendapat akses terbatas ke mesin tim lintas pabrik.",
+        "machinesDesc": "Mesin target dipetakan ke grup mesinnya untuk cakupan operasional anggota.",
+        "detailsLoadFailed": "Detail tim gagal dimuat.",
+        "allMembersAdded": "Semua pengguna sudah menjadi anggota tim ini.",
+        "addMember": "Tambah anggota",
+        "selectUser": "Pilih pengguna",
+        "add": "Tambah",
+        "remove": "Hapus",
+        "noMembers": "Belum ada anggota.",
+        "noLinkable": "Tidak ada mesin yang bisa ditautkan di tampilan ini — semua mesin yang tampil sudah tertaut, atau belum ada.",
+        "truncation": "Menampilkan {shown} mesin pertama dari {total} — perbaiki filter pabrik untuk menjangkau mesin di luar halaman ini.",
+        "plantFilter": "Filter pabrik",
+        "allPlants": "Semua pabrik",
+        "linkMachine": "Tautkan mesin",
+        "selectMachine": "Pilih mesin",
+        "link": "Tautkan",
+        "unlink": "Lepas tautan",
+        "noMachinesLinked": "Belum ada mesin yang tertaut."
+      },
+      "toast": {
+        "updated": "Tim diperbarui.",
+        "created": "Tim dibuat.",
+        "deleted": "Tim dihapus.",
+        "requestFailed": "Permintaan tim gagal.",
+        "deleteFailed": "Penghapusan tim gagal.",
+        "memberAdded": "Anggota ditambahkan.",
+        "memberAddFailed": "Penambahan anggota gagal.",
+        "memberRemoved": "Anggota dihapus.",
+        "memberRemoveFailed": "Penghapusan anggota gagal.",
+        "machineLinked": "Mesin ditautkan.",
+        "machineLinkFailed": "Penautan mesin gagal.",
+        "machineUnlinked": "Tautan mesin dilepas.",
+        "machineUnlinkFailed": "Pelepasan tautan mesin gagal."
+      }
+    },
+    "installation": {
+      "title": "Instalasi Sparepart Mesin",
+      "description": "Catat baseline counter seumur hidup untuk sparepart yang terpasang pada mesin.",
+      "create": "Buat instalasi",
+      "readOnly": "Hanya-baca",
+      "viewOnly": "Hanya lihat",
+      "state": {
+        "noAssignmentTitle": "Tidak ada pabrik yang ditugaskan",
+        "noAssignmentDesc": "Akun Anda tidak memiliki cakupan pabrik yang ditugaskan.",
+        "accessForbidden": "Akses instalasi ditolak",
+        "loadFailedTitle": "Instalasi gagal dimuat",
+        "loadFailedDesc": "Muat ulang data atau hubungi administrator jika akses seharusnya tersedia.",
+        "noPlantsTitle": "Tidak ada pabrik tersedia",
+        "noPlantsDesc": "Buat atau tugaskan pabrik sebelum memasang sparepart.",
+        "noMachinesTitle": "Tidak ada mesin tersedia",
+        "noMachinesDesc": "Buat mesin sebelum memasang sparepart.",
+        "noSparepartsTitle": "Tidak ada sparepart tersedia",
+        "noSparepartsDesc": "Buat sparepart sebelum memasangnya pada mesin.",
+        "noInstallationsTitle": "Belum ada instalasi",
+        "noInstallationsDesc": "Buat instalasi baseline pertama atau sesuaikan filter."
+      },
+      "dialog": {
+        "editTitle": "Ubah instalasi",
+        "createTitle": "Buat instalasi",
+        "description": "Konsumsi seumur hidup berbasis counter: counter saat ini dikurangi baseline counter.",
+        "save": "Simpan instalasi"
+      },
+      "step": {
+        "identity": "Identitas",
+        "counters": "Counter"
+      },
+      "labels": {
+        "plant": "Pabrik",
+        "machine": "Mesin",
+        "sparepart": "Sparepart",
+        "functionUsage": "Fungsi / penggunaan",
+        "expected": "Perkiraan jumlah produksi",
+        "baseline": "Baseline counter",
+        "threshold": "Persentase ambang"
+      },
+      "filter": {
+        "all": {
+          "PLANT": "Semua Pabrik",
+          "MACHINE": "Semua Mesin",
+          "SPAREPART": "Semua Sparepart"
+        },
+        "search": {
+          "PLANT": "Cari pabrik...",
+          "MACHINE": "Cari mesin...",
+          "SPAREPART": "Cari sparepart..."
+        }
+      },
+      "noResults": "Tidak ada hasil",
+      "unknownIdentity": "Identitas tidak diketahui",
+      "selectMachine": "Pilih mesin",
+      "selectSparepart": "Pilih sparepart",
+      "searchMachine": "Cari kode mesin, nama, atau pabrik",
+      "noMachinesFound": "Mesin tidak ditemukan",
+      "unnamed": "Tanpa nama",
+      "createInline": "Buat inline",
+      "dimension": {
+        "CATEGORY": "Kategori",
+        "KIND": "Kind",
+        "BRAND": "Merek",
+        "TYPE": "Tipe"
+      },
+      "select": {
+        "CATEGORY": "Pilih kategori",
+        "KIND": "Pilih kind",
+        "BRAND": "Pilih merek",
+        "TYPE": "Pilih tipe"
+      },
+      "createLabel": {
+        "CATEGORY": "Buat kategori “{input}”",
+        "KIND": "Buat kind “{input}”",
+        "BRAND": "Buat merek “{input}”",
+        "TYPE": "Buat tipe “{input}”"
+      },
+      "noFound": {
+        "CATEGORY": "Kategori tidak ditemukan",
+        "KIND": "Kind tidak ditemukan",
+        "BRAND": "Merek tidak ditemukan",
+        "TYPE": "Tipe tidak ditemukan"
+      },
+      "inline": {
+        "title": "Buat sparepart inline",
+        "description": "Buat sparepart yang belum ada tanpa kehilangan draf instalasi ini.",
+        "cancel": "Batalkan sparepart",
+        "submit": "Buat dan pilih"
+      },
+      "generatedCode": {
+        "title": "Kode otomatis",
+        "hint": "Kode BOM ditetapkan setelah disimpan."
+      },
+      "colGroup": "Grup",
+      "colMachine": "Mesin",
+      "colSparepart": "Sparepart",
+      "colFunction": "Fungsi",
+      "colExpected": "Perkiraan",
+      "colBaseline": "Baseline",
+      "colCurrent": "Saat ini",
+      "colConsumed": "Terpakai",
+      "colThreshold": "Ambang",
+      "colBasis": "Basis",
+      "notAvailable": "Tidak tersedia",
+      "delete": {
+        "title": "Hapus instalasi?",
+        "description": "Tindakan ini menghapus baseline untuk {machineCode} · {sparepartCode}. Data alert atau audit di masa depan dapat memblokir penghapusan.",
+        "action": "Hapus instalasi"
+      },
+      "validation": {
+        "functionName": "Fungsi / penggunaan wajib diisi.",
+        "expected": "Perkiraan jumlah produksi wajib diisi dan harus positif.",
+        "baseline": "Baseline counter wajib diisi dan tidak boleh negatif.",
+        "threshold": "Persentase ambang wajib diisi dan harus antara 1 dan 100."
+      },
+      "toast": {
+        "sparepartCreatedSelected": "Sparepart dibuat dan dipilih.",
+        "sparepartRequestFailed": "Permintaan sparepart gagal.",
+        "updated": "Instalasi diperbarui.",
+        "created": "Instalasi dibuat.",
+        "requestFailed": "Permintaan instalasi gagal.",
+        "deleted": "Instalasi dihapus.",
+        "deleteFailed": "Penghapusan instalasi gagal."
+      }
+    },
+    "sparepart": {
+      "title": "Sparepart",
+      "description": "Kelola master data sparepart tertaut mesin dengan referensi kategori, merek, kind, dan tipe.",
+      "create": "Buat sparepart",
+      "readOnly": "Hanya-baca",
+      "viewOnly": "Hanya lihat",
+      "state": {
+        "taxonomyLoadTitle": "Taksonomi gagal dimuat",
+        "taxonomyLoadDesc": "Sparepart memerlukan data referensi kategori, merek, kind, dan tipe.",
+        "retryTaxonomy": "Coba lagi taksonomi",
+        "taxonomyIncompleteTitle": "Penyiapan taksonomi belum lengkap",
+        "taxonomyIncompleteDesc": "Buat setidaknya satu kategori, merek, kind, dan tipe sebelum membuat sparepart.",
+        "loadFailedTitle": "Sparepart gagal dimuat",
+        "loadFailedDesc": "Muat ulang halaman atau hubungi administrator jika akses seharusnya tersedia.",
+        "retrySpareparts": "Coba lagi sparepart",
+        "emptyTitle": "Belum ada sparepart",
+        "emptyDesc": "Buat sparepart pertama atau sesuaikan filter."
+      },
+      "dialog": {
+        "editTitle": "Ubah sparepart",
+        "createTitle": "Buat sparepart",
+        "description": "Kode harus unik, dan sparepart harus tertaut ke mesin yang sudah ada.",
+        "save": "Simpan sparepart"
+      },
+      "step": {
+        "details": "1. Detail",
+        "confirmation": "2. Konfirmasi"
+      },
+      "procurement": {
+        "title": "Kesiapan pengadaan",
+        "hint": "Memerlukan cakupan pekerjaan LEADER atau di atasnya. Perubahan dicatat di log audit.",
+        "materialCodeMax": "Kode material maksimal 64 karakter.",
+        "leadTimeInvalid": "Masukkan jumlah jam positif dengan maksimal dua desimal.",
+        "saveFailedDetail": "Nilai pengadaan tidak dapat disimpan.",
+        "notSaved": "Sparepart diperbarui, tetapi pengadaan tidak tersimpan: {message}"
+      },
+      "price": {
+        "title": "Riwayat Harga",
+        "hint": "Memerlukan cakupan pekerjaan LEADER atau di atasnya.",
+        "append": "Tambah entri",
+        "positiveAmount": "Masukkan nominal positif.",
+        "appended": "Entri harga ditambahkan.",
+        "appendFailed": "Penambahan entri harga gagal."
+      },
+      "image": {
+        "title": "Gambar",
+        "hint": "Memerlukan cakupan pekerjaan LEADER atau di atasnya.",
+        "loadFailed": "Gambar saat ini gagal dimuat.",
+        "viewOnlyReason": "Hanya lihat.",
+        "uploaded": "Gambar diunggah.",
+        "uploadFailed": "Pengunggahan gambar gagal.",
+        "removed": "Gambar dihapus.",
+        "removeFailed": "Penghapusan gambar gagal."
+      },
+      "imageMissing": "Gambar tidak ditemukan.",
+      "confirm": {
+        "title": "Konfirmasi",
+        "hint": "Periksa detail sparepart Anda. Kode BOM akan dibuat saat disimpan."
+      },
+      "delete": {
+        "title": "Hapus sparepart?",
+        "description": "Tindakan ini menghapus {code}. Penghapusan diblokir saat instalasi sparepart bergantung padanya.",
+        "action": "Hapus sparepart"
+      },
+      "filter": {
+        "searchCode": "Cari kode...",
+        "machineCode": "Filter kode mesin..."
+      },
+      "machine": "Mesin",
+      "materialCode": "Kode material",
+      "leadTime": "Lead time",
+      "leadTimeValue": "{hours} j",
+      "selectMachine": "Pilih mesin",
+      "searchMachine": "Cari kode mesin, nama, atau pabrik",
+      "noMachinesFound": "Mesin tidak ditemukan",
+      "unnamed": "Tanpa nama",
+      "dimension": {
+        "CATEGORY": "Kategori",
+        "KIND": "Kind",
+        "BRAND": "Merek",
+        "TYPE": "Tipe"
+      },
+      "select": {
+        "CATEGORY": "Pilih kategori",
+        "KIND": "Pilih kind",
+        "BRAND": "Pilih merek",
+        "TYPE": "Pilih tipe"
+      },
+      "search": {
+        "CATEGORY": "Cari kategori",
+        "KIND": "Cari kind",
+        "BRAND": "Cari merek",
+        "TYPE": "Cari tipe"
+      },
+      "searchDots": {
+        "CATEGORY": "Cari kategori...",
+        "KIND": "Cari kind...",
+        "BRAND": "Cari merek...",
+        "TYPE": "Cari tipe..."
+      },
+      "noFound": {
+        "CATEGORY": "Kategori tidak ditemukan",
+        "KIND": "Kind tidak ditemukan",
+        "BRAND": "Merek tidak ditemukan",
+        "TYPE": "Tipe tidak ditemukan"
+      },
+      "createLabel": {
+        "CATEGORY": "Buat kategori “{input}”",
+        "KIND": "Buat kind “{input}”",
+        "BRAND": "Buat merek “{input}”",
+        "TYPE": "Buat tipe “{input}”"
+      },
+      "all": {
+        "CATEGORY": "Semua kategori",
+        "KIND": "Semua kind",
+        "BRAND": "Semua merek",
+        "TYPE": "Semua tipe"
+      },
+      "createToast": {
+        "CATEGORY": "kategori dibuat.",
+        "KIND": "kind dibuat.",
+        "BRAND": "merek dibuat.",
+        "TYPE": "tipe dibuat."
+      },
+      "noResults": "Tidak ada hasil",
+      "toast": {
+        "updated": "Sparepart diperbarui.",
+        "created": "Sparepart dibuat.",
+        "deleted": "Sparepart dihapus.",
+        "requestFailed": "Permintaan sparepart gagal.",
+        "deleteFailed": "Penghapusan sparepart gagal.",
+        "missingIdOnUpdate": "Sparepart tidak dapat diperbarui karena identifiernya tidak ada.",
+        "missingIdOnDelete": "Sparepart tidak dapat dihapus karena identifiernya tidak ada."
+      }
+    },
+    "sparepartTaxonomy": {
+      "title": "Kategori",
+      "description": "Kelola nilai kategori sparepart yang dikendalikan. Kategori menentukan sparepart milik domain mana (mis. Electric, Mechanic). Hanya kategori yang disetujui yang diterima sistem.",
+      "add": "Tambah kategori",
+      "readOnly": "Hanya-baca",
+      "viewOnly": "Hanya lihat",
+      "state": {
+        "loadFailedTitle": "Kategori gagal dimuat",
+        "loadFailedDesc": "Muat ulang halaman atau hubungi administrator jika akses seharusnya tersedia.",
+        "emptyTitle": "Belum ada kategori",
+        "emptyDesc": "Buat entri kategori sparepart pertama."
+      },
+      "dialog": {
+        "editTitle": "Ubah kategori",
+        "createTitle": "Tambah kategori",
+        "description": "Kode kategori harus cocok dengan nilai yang disetujui backend (mis. ELECTRIC, MECHANIC). Nama harus unik dalam Kategori.",
+        "submitCreate": "Tambah kategori",
+        "submitEdit": "Perbarui kategori",
+        "namePlaceholder": "mis. Electric",
+        "codePlaceholder": "mis. ELECTRIC"
+      },
+      "delete": {
+        "title": "Hapus kategori?",
+        "description": "Tindakan ini menghapus “{name}”. Penghapusan diblokir saat data sparepart yang ada bergantung pada kategori ini.",
+        "action": "Hapus kategori"
+      },
+      "toast": {
+        "updated": "Kategori diperbarui.",
+        "created": "Kategori dibuat.",
+        "deleted": "Kategori dihapus.",
+        "requestFailed": "Permintaan kategori gagal.",
+        "deleteFailed": "Penghapusan kategori gagal."
+      }
+    },
+    "responsibility": {
+      "title": "Tugaskan Tanggung Jawab",
+      "description": "Tugaskan tanggung jawab pengguna untuk mesin tertentu. Catatan: peran aplikasi MANAGER_MAINTENANCE berbeda dari level tanggung jawab mesin MANAGER.",
+      "viewerNotice": "Anda tidak memiliki izin untuk menugaskan tanggung jawab.",
+      "machine": "Mesin",
+      "user": "Pengguna",
+      "level": "Level",
+      "levelAria": "Level tanggung jawab",
+      "selectMachine": "Pilih mesin",
+      "selectUser": "Pilih pengguna",
+      "selectLevel": "Pilih level",
+      "levelOptions": {
+        "TECHNICIAN": "Teknisi",
+        "STAFF": "Staf",
+        "LEADER": "Leader",
+        "SPV": "Supervisor",
+        "MANAGER": "Manajer"
+      },
+      "assign": "Tugaskan",
+      "currentTitle": "Penugasan Saat Ini",
+      "currentDescription": "Lihat semua penugasan tanggung jawab mesin aktif.",
+      "emptyRow": "Belum ada tanggung jawab yang ditugaskan.",
+      "confirm": {
+        "title": "Anda yakin?",
+        "description": "Tindakan ini melepas penugasan pengguna dari mesin. Tindakan ini tidak dapat dibatalkan.",
+        "unassign": "Lepas penugasan"
+      },
+      "toast": {
+        "assigned": "Tanggung jawab berhasil ditugaskan",
+        "assignFailed": "Gagal menugaskan tanggung jawab",
+        "unassigned": "Tanggung jawab berhasil dilepas",
+        "unassignFailed": "Gagal melepas tanggung jawab"
+      }
+    }
+  },
+  "plantScope": {
+    "shellLabel": "Syncro shell",
+    "unavailableTitle": "Cakupan pabrik tidak tersedia",
+    "unavailableDescription": "Cakupan pabrik tidak dapat dimuat. Coba lagi atau hubungi administrator Anda.",
+    "loadingTitle": "Memuat cakupan pabrik",
+    "loadingDescription": "Memeriksa pabrik yang ditugaskan sebelum menampilkan modul ini.",
+    "emptyTitle": "Tidak ada pabrik yang ditugaskan",
+    "emptyDescription": "Tidak ada pabrik yang ditugaskan. Hubungi administrator Anda.",
+    "allPlants": "Semua Pabrik",
+    "allMyPlants": "Semua pabrik saya",
+    "noPlantsAssigned": "Tidak ada pabrik",
+    "noPlantsAssignedHint": "Tidak ada pabrik yang ditugaskan. Hubungi administrator Anda.",
+    "addPlantsHint": "Tambahkan pabrik di Master Data",
+    "selectAria": "Pilih cakupan pabrik",
+    "label": "Cakupan pabrik"
+  },
+  "unauthorized": {
+    "eyebrow": "Akses Syncro",
+    "title": "Placeholder shell tanpa otorisasi",
+    "description": "Penegakan peran dan keputusan akses tiba di Story 1.6.",
+    "goToShell": "Buka shell aplikasi"
+  },
+  "preventive": {
+    "machine": "Mesin",
+    "due": "Jatuh tempo",
+    "overdue": "Terlambat",
+    "category": {
+      "MECHANICAL": "Mekanikal",
+      "ELECTRICAL": "Elektrikal"
+    },
+    "scheduleType": {
+      "MONTHLY": "Bulanan",
+      "ANNUAL": "Tahunan"
+    },
+    "page": {
+      "title": "Pemeliharaan Preventif",
+      "subtitle": "Definisikan program preventif dan pantau jadwal jatuh tempo/terlambat.",
+      "tabPrograms": "Program",
+      "tabSchedules": "Jadwal",
+      "tabCategories": "Kategori"
+    },
+    "categories": {
+      "title": "Kategori Preventif",
+      "label": "Label"
+    },
+    "dashboard": {
+      "title": "Dasbor Preventif",
+      "subtitle": "Jadwal preventif jatuh tempo/terlambat, diambil dari server.",
+      "introLabel": "Jadwal preventif jatuh tempo/terlambat, diambil dari server. Keterlambatan selalu diberi label.",
+      "plantScopeError": "Cakupan pabrik tidak tersedia. Coba lagi atau hubungi administrator Anda.",
+      "noPlantsAssigned": "Tidak ada pabrik yang ditugaskan ke akun Anda. Hubungi administrator Anda.",
+      "loadFailed": "Gagal memuat dasbor preventif.",
+      "emptyTitle": "Tidak ada tugas preventif terjadwal",
+      "emptyDescription": "Tidak ada jadwal preventif dalam cakupan pabrik saat ini. Jumlah jatuh tempo dan terlambat keduanya nol.",
+      "totalSchedules": "Total Jadwal",
+      "upcomingTitle": "Jadwal terdekat",
+      "upcomingDescription": "Semua jadwal dalam cakupan, diurutkan berdasarkan tanggal jatuh tempo. Item terlambat diberi tanda.",
+      "noSchedules": "Tidak ada jadwal.",
+      "overdueAria": "Jadwal terlambat. Lewat tanggal jatuh tempo."
+    },
+    "programs": {
+      "newProgram": "Program preventif baru",
+      "newProgramDescription": "Buat program pemeliharaan berkala untuk sebuah mesin.",
+      "loadingMachines": "Memuat mesin...",
+      "selectMachine": "Pilih mesin",
+      "title": "Judul",
+      "titlePlaceholder": "mis. Pengecekan pelumasan bulanan",
+      "category": "Kategori",
+      "scheduleType": "Tipe jadwal",
+      "dayOfMonth": "Tanggal dalam bulan",
+      "monthOfYear": "Bulan dalam tahun",
+      "descriptionOptional": "Deskripsi (opsional)",
+      "descriptionPlaceholder": "Deskripsi opsional",
+      "autoWorkorderLabel": "Buat workorder otomatis saat disetujui",
+      "autoWorkorderHint": "Saat jadwal disetujui, workorder preventif internal dibuat.",
+      "creating": "Membuat…",
+      "createProgram": "Buat program",
+      "loadFailed": "Gagal memuat program preventif.",
+      "empty": "Belum ada program preventif. Buat satu di atas.",
+      "day": "tgl {day}",
+      "month": " / bulan {month}",
+      "active": "aktif",
+      "inactive": "nonaktif",
+      "autoWorkorder": "workorder otomatis",
+      "noAutoWorkorder": "tanpa workorder otomatis"
+    },
+    "schedules": {
+      "loadFailed": "Gagal memuat jadwal preventif.",
+      "empty": "Belum ada jadwal preventif dalam cakupan Anda.",
+      "shiftWithSource": " · shift: {source}",
+      "shiftNone": " · shift: tidak ada"
+    },
+    "detail": {
+      "title": "Detail Jadwal",
+      "checklistLoadFailed": "Gagal memuat checklist.",
+      "report": "Laporan",
+      "checklistItems": "Item Checklist",
+      "itemLabel": "Label",
+      "itemValue": "Nilai",
+      "lsl": "LSL",
+      "usl": "USL",
+      "addItem": "Tambah Item",
+      "optionalNotes": "Catatan opsional",
+      "submitChecklist": "Kirim Checklist",
+      "amendChecklist": "Revisi Checklist",
+      "evidence": "Bukti",
+      "evidenceLoadFailed": "Gagal memuat bukti.",
+      "uploadEvidence": "Unggah Bukti",
+      "leaderApproval": "Persetujuan Leader",
+      "signatureFileLabel": "Gambar tanda tangan (diunggah sebagai bukti, kunci terisi otomatis)",
+      "signatureKeyLabel": "Kunci objek tanda tangan (dari Garage)",
+      "signatureKeyPlaceholder": "Kunci objek tanda tangan (terisi otomatis saat diunggah)",
+      "signerPlaceholder": "Identitas penanda tangan (default nama Anda)",
+      "assessmentPlaceholder": "Penilaian (opsional)",
+      "approve": "Setujui",
+      "skip": "Lewati",
+      "submittedChecklist": "Checklist Terkirim",
+      "notesPrefix": "Catatan:",
+      "approvedByLine": "Disetujui oleh {name} pada {at}"
+    },
+    "report": {
+      "title": "Laporan Preventif",
+      "loadFailed": "Gagal memuat laporan.",
+      "print": "Cetak",
+      "categoryLabel": "Kategori:",
+      "scheduleLabel": "Jadwal:",
+      "dueLabel": "Jatuh tempo:",
+      "statusLabel": "Status:",
+      "workorderLabel": "Workorder:",
+      "checklistResults": "Hasil Checklist",
+      "item": "Item",
+      "value": "Nilai",
+      "lsl": "LSL",
+      "usl": "USL",
+      "note": "Catatan",
+      "notesLabel": "Catatan:",
+      "evidence": "Bukti",
+      "approval": "Persetujuan",
+      "signedBy": "Ditandatangani oleh:",
+      "assessment": "Penilaian:",
+      "approvedAt": "Disetujui pada:",
+      "logoAlt": "Logo perusahaan",
+      "signatureAlt": "Tanda tangan",
+      "noChecklist": "Belum ada checklist yang dikirim untuk jadwal ini."
+    },
+    "messages": {
+      "programCreated": "Program preventif dibuat",
+      "programCreateFailed": "Gagal membuat program preventif",
+      "programDeleted": "Program preventif dihapus",
+      "programDeleteFailed": "Gagal menghapus program preventif",
+      "checklistSubmitted": "Checklist dikirim",
+      "checklistSubmitFailed": "Gagal mengirim checklist",
+      "scheduleApproved": "Jadwal disetujui",
+      "scheduleApproveFailed": "Gagal menyetujui jadwal",
+      "scheduleSkipped": "Jadwal dilewati",
+      "scheduleSkipFailed": "Gagal melewati jadwal",
+      "evidenceUploaded": "Bukti diunggah",
+      "evidenceUploadFailed": "Gagal mengunggah bukti",
+      "evidenceDeleted": "Bukti dihapus",
+      "evidenceDeleteFailed": "Gagal menghapus bukti"
+    }
+  },
+  "organization": {
+    "readOnly": "Hanya baca",
+    "unassigned": "Belum ditugaskan",
+    "role": "Peran",
+    "jobTitle": "Jabatan",
+    "selectJobTitle": "Pilih jabatan",
+    "tabs": {
+      "departments": "Departemen",
+      "users": "Pengguna",
+      "roles": "Peran",
+      "sections": "Seksi",
+      "teams": "Tim",
+      "responsibility": "Tanggung Jawab",
+      "plants": "Pabrik"
+    },
+    "page": {
+      "title": "Organisasi",
+      "loading": "Memuat organisasi..."
+    },
+    "departments": {
+      "title": "Departemen",
+      "description": "Departemen pemeliharaan organisasi (unit orang) per pabrik, dengan leader SPV/MG dan teknisi anggota. Departemen dinonaktifkan secara soft, tidak pernah dihapus.",
+      "createDepartment": "Buat departemen",
+      "editDepartment": "Ubah departemen",
+      "dialogHint": "SPV/MG harus pengguna aktif dengan akses ke pabrik yang sama. Nama harus unik per pabrik.",
+      "noPlantAssignmentTitle": "Tidak ada penugasan pabrik",
+      "noPlantAssignmentDesc": "Akun Anda tidak memiliki cakupan pabrik yang ditugaskan.",
+      "selectPlantTitle": "Pilih pabrik",
+      "selectPlantDesc": "Pilih pabrik tertentu di pengalih pabrik untuk mengelola departemennya.",
+      "loadFailedTitle": "Departemen tidak dapat dimuat",
+      "loadFailedDesc": "Muat ulang halaman atau hubungi administrator jika akses seharusnya tersedia.",
+      "emptyTitle": "Belum ada departemen",
+      "emptyDesc": "Buat departemen pertama untuk pabrik ini.",
+      "showInactive": "Tampilkan nonaktif",
+      "spv": "SPV",
+      "mg": "MG",
+      "members": "Anggota",
+      "viewOnly": "Hanya lihat",
+      "selectPlant": "Pilih pabrik",
+      "selectSpv": "Pilih SPV",
+      "selectMg": "Pilih MG",
+      "saveDepartment": "Simpan departemen",
+      "manageMembers": "Kelola anggota — {name}",
+      "membersHint": "Tugaskan staf ke departemen ini. Anggota dapat berada di beberapa departemen; menyimpan akan menggantikan seluruh daftar anggota.",
+      "noEnabledUsers": "Tidak ada pengguna aktif yang tersedia.",
+      "saveAssignments": "Simpan penugasan",
+      "created": "Departemen dibuat.",
+      "updated": "Departemen diperbarui.",
+      "deactivated": "Departemen dinonaktifkan.",
+      "membersUpdated": "Anggota departemen diperbarui.",
+      "requestFailed": "Permintaan departemen gagal.",
+      "deactivationFailed": "Gagal menonaktifkan departemen.",
+      "memberUpdateFailed": "Gagal memperbarui anggota."
+    },
+    "roles": {
+      "title": "Pemetaan Peran",
+      "loadFailedDesc": "Muat ulang halaman atau hubungi administrator.",
+      "description": "Tugaskan jabatan dan peran sistem kepada pengguna. Setiap pengguna mendapat tepat satu jabatan dan peran sistem dalam jumlah berapa pun (set izin efektifnya adalah peran aplikasi + default jabatan + ikatan peran).",
+      "systemRoles": "Peran sistem",
+      "systemRolesTitle": "Peran Sistem",
+      "jobTitlePanel": "Jabatan",
+      "bindRoles": "Ikat peran",
+      "binding": "Penautan: {name}",
+      "applicationRole": "Peran aplikasi:",
+      "loadingBindings": "Memuat penautan…",
+      "bindingsLoadFailed": "Penautan tidak dapat dimuat.",
+      "clearJobTitle": "Kosongkan (tanpa jabatan)",
+      "noSystemRoles": "Tidak ada peran sistem yang ditugaskan.",
+      "addSystemRolePlaceholder": "Tambah peran sistem",
+      "override": "Override",
+      "overrideSuffix": " (override)",
+      "add": "Tambah",
+      "removeRoleAria": "Hapus {name}",
+      "jobUpdated": "Penautan jabatan diperbarui.",
+      "jobUpdateFailed": "Gagal memperbarui penautan jabatan.",
+      "roleAdded": "Penautan peran ditambahkan.",
+      "roleAddFailed": "Gagal menambahkan peran.",
+      "roleRemoved": "Penautan peran dihapus.",
+      "roleRemoveFailed": "Gagal menghapus peran."
+    },
+    "users": {
+      "title": "Pengguna",
+      "description": "Master pengguna: nama tampilan, NIK, telepon, jabatan, dan departemen. NIK dan telepon unik jika diisi; nilai kosong akan dikosongkan. Peran dikelola saat bootstrap — hanya kolom master yang dapat diubah di sini.",
+      "couldNotLoadTitle": "Pengguna tidak dapat dimuat",
+      "couldNotLoadDesc": "Muat ulang halaman atau hubungi administrator jika akses seharusnya tersedia.",
+      "noUsersTitle": "Belum ada pengguna",
+      "noUsersDesc": "Pengguna dibuat oleh administrator lokal.",
+      "login": "Login",
+      "nik": "NIK",
+      "phone": "Telepon",
+      "enabled": "Aktif",
+      "disabled": "Nonaktif",
+      "editUser": "Ubah pengguna",
+      "editUserHint": "{login} — perbarui kolom master. Kosongkan NIK/telepon untuk menghapus.",
+      "displayName": "Nama tampilan",
+      "phoneNumber": "Nomor telepon",
+      "saveUser": "Simpan pengguna",
+      "updated": "Pengguna diperbarui.",
+      "updateFailed": "Gagal memperbarui pengguna."
+    },
+    "shared": {
+      "setupChecklist": {
+        "title": "Kelengkapan Penyiapan",
+        "readOnly": "Hanya baca",
+        "stepAria": "{label} {status}",
+        "description": "{eligible} dari {total} mesin dalam cakupan siap untuk telemetri dan alert.",
+        "overallComplete": "Lengkap",
+        "overallIncomplete": "Belum Lengkap",
+        "status": {
+          "COMPLETE": "LENGKAP",
+          "INCOMPLETE": "BELUM LENGKAP",
+          "BLOCKED": "TERHALANG"
+        }
+      }
+    }
+  },
+  "auditLog": {
+    "title": "Log Audit",
+    "description": "Riwayat perubahan data master yang tidak dapat diubah. Entri tidak dapat disunting atau dihapus.",
+    "decisionTitle": "Log Keputusan",
+    "decisionDescription": "Keputusan penegakan OPA yang tersimpan beserta revisi kebijakannya untuk penelusuran audit.",
+    "tabs": {
+      "audit": "Log Audit",
+      "decision": "Log Keputusan"
+    },
+    "dash": "-",
+    "filters": {
+      "entityType": "Tipe entitas",
+      "allEntityTypes": "Semua tipe entitas",
+      "actor": "Aktor",
+      "actorPlaceholder": "Nama aktor",
+      "allPlants": "Semua pabrik",
+      "from": "Dari",
+      "to": "Sampai",
+      "reset": "Atur ulang filter"
+    },
+    "loadError": {
+      "title": "Log audit tidak dapat dimuat",
+      "description": "Riwayat perubahan tidak dapat diambil. Coba lagi untuk memuatnya."
+    },
+    "empty": {
+      "noMatch": "Tidak ada entri yang cocok",
+      "noMatchDescription": "Tidak ada perubahan yang cocok dengan filter saat ini.",
+      "none": "Belum ada entri audit",
+      "description": "Perubahan data master akan muncul di sini setelah dibuat atau diubah."
+    },
+    "entityTypes": {
+      "PLANT": "Pabrik",
+      "MACHINE_GROUP": "Grup mesin",
+      "MACHINE": "Mesin",
+      "SPAREPART_TAXONOMY": "Taksonomi Sparepart",
+      "SPAREPART": "Sparepart",
+      "INSTALLATION": "Instalasi",
+      "RESPONSIBILITY": "Tanggung Jawab",
+      "ALERT": "ALERT",
+      "SPAREPART_PRICE_ENTRY": "SPAREPART_PRICE_ENTRY"
+    },
+    "decision": {
+      "loadError": {
+        "title": "Log keputusan tidak dapat dimuat",
+        "description": "Keputusan otorisasi yang tersimpan tidak dapat diambil. Coba lagi untuk memuatnya."
+      },
+      "empty": {
+        "title": "Belum ada keputusan tercatat",
+        "description": "Keputusan penegakan OPA akan muncul di sini setelah endpoint yang dijaga dievaluasi."
+      },
+      "table": {
+        "decidedAt": "Diputuskan pada",
+        "action": "Aksi",
+        "allowed": "Diizinkan",
+        "mode": "Mode",
+        "decisionId": "ID Keputusan",
+        "policyRevision": "Revisi kebijakan"
+      },
+      "allow": "ALLOW",
+      "deny": "DENY",
+      "degraded": "degraded",
+      "normal": "normal",
+      "decisionLine": "keputusan {id}",
+      "revisionLine": "rev {id}"
+    },
+    "shared": {
+      "table": {
+        "record": "Catatan",
+        "plant": "Pabrik",
+        "decision": "Keputusan",
+        "field": "Kolom",
+        "before": "Sebelum",
+        "after": "Sesudah",
+        "global": "Global",
+        "timestamp": "Stempel Waktu",
+        "actor": "Aktor",
+        "action": "Aksi",
+        "entity": "Entitas",
+        "toggleChange": "Buka/tutup detail perubahan",
+        "recordCreated": "Catatan dibuat.",
+        "recordDeleted": "Catatan dihapus.",
+        "noFieldChanges": "Tidak ada perubahan kolom tercatat.",
+        "machineGroup": "Grup mesin",
+        "sparepartTaxonomy": "Taksonomi sparepart",
+        "unknownDate": "Tanggal tidak diketahui",
+        "entities": {
+          "PLANT": "Pabrik",
+          "MACHINE_GROUP": "Grup mesin",
+          "MACHINE": "Mesin",
+          "SPAREPART_TAXONOMY": "Taksonomi sparepart",
+          "SPAREPART": "Sparepart",
+          "INSTALLATION": "Instalasi",
+          "RESPONSIBILITY": "Tanggung Jawab"
+        },
+        "decisionLine": "keputusan {id}",
+        "decisionWord": "Keputusan",
+        "actionLabels": {
+          "CREATE": "Buat",
+          "UPDATE": "Ubah",
+          "DELETE": "Hapus"
+        }
+      }
+    }
+  },
+  "stock": {
+    "title": "Stok",
+    "description": "Level stok per pabrik, titik pesan ulang, dan rekomendasi jumlah.",
+    "selectPlant": "Pilih pabrik",
+    "loadError": "Gagal memuat data stok.",
+    "empty": "Tidak ada baris stok untuk pabrik ini.",
+    "table": {
+      "materialCode": "Kode material",
+      "onHand": "Tersedia",
+      "orderPoint": "Titik pesan",
+      "orderQty": "Jumlah pesan"
+    },
+    "reorder": "Pesan Ulang",
+    "ok": "OK",
+    "ratioTooltip": "{onHand} / {orderPoint} OP",
+    "adjust": {
+      "trigger": "Sesuaikan",
+      "title": "Sesuaikan stok — {code}",
+      "description": "Stok tersedia saat ini: {onHand}. Gunakan delta positif untuk menambah stok, negatif untuk menarik.",
+      "deltaLabel": "Delta (penyesuaian bertanda)",
+      "deltaPlaceholder": "mis. -5 atau +10",
+      "confirm": "Konfirmasi penyesuaian"
+    },
+    "toast": {
+      "created": "Baris stok dibuat",
+      "createFailed": "Gagal membuat baris stok",
+      "adjusted": "Stok disesuaikan",
+      "adjustFailed": "Gagal menyesuaikan stok"
+    }
+  },
+  "sparepartRequests": {
+    "title": "Permintaan Sparepart",
+    "description": "Pantau permintaan sparepart, consumable, dan layanan eksternal.",
+    "loadError": "Gagal memuat permintaan.",
+    "empty": "Tidak ada permintaan yang cocok dengan filter ini.",
+    "dash": "-",
+    "type": "Tipe",
+    "qty": "Jml",
+    "table": {
+      "workorder": "Work Order",
+      "part": "Part",
+      "requested": "Diminta"
+    },
+    "types": {
+      "SPAREPART": "Sparepart",
+      "CONSUMABLE": "Consumable",
+      "SERVICE_EXTERNAL": "Layanan eksternal"
+    },
+    "status": {
+      "REQUESTED": "Diminta",
+      "PENDING_COMPLETION": "Menunggu penyelesaian",
+      "ACKED": "Diterima",
+      "PROCESSING": "Diproses",
+      "READY": "Siap",
+      "PURCHASE_REQUESTED": "Pembelian diminta",
+      "PART_RECEIVED": "Part diterima",
+      "PICKED_UP": "Diambil",
+      "CLOSED": "Ditutup"
+    },
+    "actions": {
+      "acknowledge": "Terima",
+      "process": "Proses",
+      "markReady": "Tandai Siap",
+      "markPurchased": "Tandai Dibeli",
+      "partReceived": "Part Diterima",
+      "pickUp": "Ambil",
+      "close": "Tutup"
+    },
+    "pendingRole": "Menunggu: {role}",
+    "pendingApproval": "Menunggu persetujuan",
+    "approved": "Disetujui",
+    "priceSuffix": " · {price}",
+    "mre": {
+      "trigger": "Catat MRE",
+      "title": "Catat Kode MRE",
+      "description": "Masukkan kode MRE (material request) manual untuk pembelian ini.",
+      "codeLabel": "Kode MRE",
+      "codePlaceholder": "mis. MRE26023xxxx",
+      "record": "Catat",
+      "invalidTransition": "MRE hanya dapat dicatat untuk part yang diminta dibeli."
+    },
+    "approve": {
+      "trigger": "Setujui",
+      "title": "Setujui permintaan",
+      "description": "Persetujuan memindahkan permintaan ke status Diterima agar gudang dapat memprosesnya.",
+      "noteLabel": "Catatan (opsional)",
+      "notePlaceholder": "mis. Disetujui untuk pengadaan",
+      "invalidTransition": "Permintaan ini tidak lagi menunggu persetujuan.",
+      "forbidden": "Anda tidak memiliki peran atau cakupan yang diperlukan untuk menyetujui permintaan ini."
+    },
+    "complete": {
+      "trigger": "Lengkapi",
+      "title": "Lengkapi part baru",
+      "description": "Daftarkan kode material untuk part baru ini. Permintaan pindah ke status Diterima setelah lengkap.",
+      "materialCodeLabel": "Kode material",
+      "materialCodePlaceholder": "mis. MC-0001",
+      "imageLabel": "Object key gambar (opsional)",
+      "imagePlaceholder": "mis. spareparts/abc/image.jpg",
+      "submit": "Lengkapi permintaan",
+      "invalidTransition": "Permintaan ini tidak lagi menunggu penyelesaian."
+    },
+    "transition": {
+      "invalid": "Transisi ini tidak diizinkan pada status saat ini."
+    },
+    "toast": {
+      "created": "Permintaan sparepart dibuat",
+      "createFailed": "Gagal membuat permintaan sparepart",
+      "statusUpdated": "Status permintaan diperbarui",
+      "statusFailed": "Gagal memperbarui status permintaan",
+      "approved": "Permintaan disetujui",
+      "approveFailed": "Gagal menyetujui permintaan",
+      "mreRecorded": "Kode MRE dicatat",
+      "mreFailed": "Gagal mencatat kode MRE",
+      "completed": "Permintaan dilengkapi",
+      "completeFailed": "Gagal melengkapi permintaan"
+    },
+    "requestPart": {
+      "trigger": "Request part",
+      "title": "Request part",
+      "description": "Cari sparepart yang sudah ada atau tambahkan kode material baru. Item tetap berada di keranjang draf — kirim ke gudang hanya saat siap.",
+      "searchLabel": "Cari sparepart yang ada (BOM, kode material, nama)",
+      "searchPlaceholder": "Ketik untuk mencari...",
+      "mcInResult": " · MC:{code}",
+      "selected": "Dipilih:",
+      "mcInSelected": " · MC: {code}",
+      "noBomHint": "Tidak ada BOM terpilih — klasifikasikan part baru agar dibuat dengan taksonomi lengkap (mesin diwarisi dari work order).",
+      "materialCodeLabel": "Kode material (atau kosongkan untuk part baru)",
+      "materialCodePlaceholder": "mis. MC-0001",
+      "priceLabel": "Estimasi harga satuan (opsional)",
+      "urlLabel": "URL pembelian (opsional)",
+      "urlPlaceholder": "https://...",
+      "notesLabel": "Catatan (opsional)",
+      "addToCart": "Tambah ke keranjang",
+      "cart": "Keranjang",
+      "cartCount": "{count, plural, other {# item}}",
+      "cartEmpty": "Tambahkan item di atas. Item tersimpan secara lokal sampai Anda kirim.",
+      "newPart": "Part baru",
+      "qtyLine": "Jml: {qty}",
+      "submitting": "Mengirim…",
+      "sendToWarehouse": "Kirim ke gudang ({count})"
+    },
+    "taxonomy": {
+      "category": "Kategori",
+      "kind": "Jenis",
+      "brand": "Merek",
+      "type": "Tipe",
+      "categoryWord": "kategori",
+      "kindWord": "jenis",
+      "brandWord": "merek",
+      "typeWord": "tipe",
+      "select": "Pilih {word}",
+      "search": "Cari {word}",
+      "none": "Tidak ada {word} ditemukan",
+      "create": "Buat {word} “{name}”"
+    }
+  },
+  "workOrders": {
+    "dash": "-",
+    "category": "Kategori",
+    "machine": "Mesin",
+    "status": {
+      "DRAFT": "Draf",
+      "OPEN": "Terbuka",
+      "ASSIGNED": "Ditugaskan",
+      "IN_PROGRESS": "Berlangsung",
+      "ON_PROCUREMENT": "Pengadaan",
+      "PENDING_SPAREPART": "Menunggu Sparepart",
+      "PENDING_REVIEW": "Menunggu Tinjauan",
+      "DONE": "Selesai",
+      "CLOSED": "Ditutup",
+      "CANCELLED": "Dibatalkan"
+    },
+    "transition": {
+      "OPEN": "Buka",
+      "IN_PROGRESS": "Mulai",
+      "PENDING_REVIEW": "Menunggu Tinjauan",
+      "CLOSED": "Tutup"
+    },
+    "stoppedReason": {
+      "WAITING_SPAREPART": "Menunggu Sparepart",
+      "SHIFT_END": "Shift Berakhir",
+      "COMPLETED": "Selesai",
+      "OTHER": "Lainnya",
+      "NONE": "Tidak ada"
+    },
+    "page": {
+      "title": "Work Order",
+      "subtitle": "Lihat, filter, dan kelola work order pemeliharaan.",
+      "tabTable": "Tabel",
+      "tabKanban": "Kanban",
+      "tabRatings": "Penilaian",
+      "tabAckTaskList": "Daftar Tugas Ack",
+      "tabCategories": "Kategori"
+    },
+    "table": {
+      "woNo": "No WO",
+      "month": "Bulan",
+      "problem": "Masalah",
+      "technician": "Teknisi",
+      "allStatuses": "Semua status",
+      "allCategories": "Semua kategori",
+      "searchPlaceholder": "Cari WO, mesin, kategori...",
+      "searchAria": "Cari work order",
+      "refreshAria": "Muat ulang work order",
+      "loadFailed": "Gagal memuat work order.",
+      "empty": "Tidak ada work order yang cocok dengan filter ini."
+    },
+    "kanban": {
+      "loadFailed": "Gagal memuat papan work order.",
+      "empty": "Tidak ada work order",
+      "columnAria": "Work order {title}"
+    },
+    "card": {
+      "noDescription": "Tidak ada deskripsi",
+      "noTodos": "Tidak ada todo",
+      "doneProgress": "{done}/{total} selesai",
+      "cancelledNote": " · {count} dibatalkan"
+    },
+    "actionsCell": {
+      "menu": {
+        "assignWork": "Tugaskan & Kerjakan",
+        "requestPart": "Ajukan Sparepart",
+        "report": "Laporan",
+        "print": "Cetak"
+      },
+      "assignDialog": {
+        "title": "Tugaskan & Kerjakan — {id}",
+        "loadingTechnicians": "Memuat teknisi...",
+        "technicians": "Teknisi",
+        "noAssignable": "Tidak ada teknisi yang dapat ditugaskan.",
+        "selectAria": "Pilih {name}",
+        "workLog": "Catatan kerja",
+        "start": "Mulai",
+        "end": "Selesai",
+        "stoppedReason": "Alasan berhenti",
+        "optional": "Opsional",
+        "activityNote": "Catatan aktivitas (wajib untuk menyimpan)",
+        "activityPlaceholder": "Apa yang dikerjakan pada sesi ini...",
+        "completionNote": "Catatan penyelesaian",
+        "pickDate": "Pilih tanggal",
+        "hourAria": "Jam {label}",
+        "minuteAria": "Menit {label}",
+        "backdateNote": "Backdate catatan kerja dibatasi hingga waktu pembuatan work order: {datetime}",
+        "save": "Simpan Penugasan & Pekerjaan",
+        "saved": "Penugasan dan catatan kerja tersimpan",
+        "errors": {
+          "activityNote": "Catatan aktivitas wajib diisi untuk menyimpan catatan kerja ini.",
+          "startRequired": "Waktu mulai wajib diisi untuk menyimpan catatan kerja ini.",
+          "backdate": "Waktu mulai tidak boleh sebelum work order dibuat.",
+          "endBeforeStart": "Waktu selesai harus setelah waktu mulai.",
+          "failed": "Gagal menyimpan. Periksa nilainya dan coba lagi."
+        }
+      },
+      "transitionDialog": {
+        "title": "Pindahkan ke {status} — {id}",
+        "move": "Pindahkan ke {status}",
+        "moved": "Work order dipindahkan ke {status}",
+        "reasonLabel": "Alasan (opsional)",
+        "reasonPlaceholder": "Alasan perubahan status ini...",
+        "updating": "Memperbarui...",
+        "failed": "Gagal memperbarui status work order"
+      },
+      "reportDialog": {
+        "title": "Laporan Work Order — {id}",
+        "loading": "Memuat laporan...",
+        "chronological": "Kronologis (apa yang terjadi)",
+        "chronologicalPlaceholder": "Jelaskan urutan kejadian...",
+        "analyze": "Analisis (akar masalah)",
+        "analyzePlaceholder": "Analisis akar masalah...",
+        "corrective": "Korektif (apa yang dilakukan)",
+        "correctivePlaceholder": "Tindakan korektif yang dilakukan...",
+        "preventive": "Preventif (pencegahan mendatang)",
+        "preventivePlaceholder": "Langkah pencegahan untuk mendatang...",
+        "save": "Simpan Laporan"
+      }
+    },
+    "ratings": {
+      "loadFailed": "Gagal memuat work order yang dapat dinilai.",
+      "empty": "Tidak ada work order tertutup yang dapat dinilai dalam cakupan Anda.",
+      "assignedTechnician": "Teknisi yang ditugaskan:",
+      "starAria": "{label}: {count, plural, other {# bintang}}",
+      "panel": {
+        "noDimensions": "Belum ada dimensi penilaian yang dikonfigurasi.",
+        "noPermission": "Anda tidak memiliki izin untuk menilai work order ini.",
+        "technicianRating": "Penilaian teknisi",
+        "workorderRating": "Penilaian work order",
+        "submitted": "{label} (terkirim)",
+        "technicianDimLabel": "Teknisi {label}",
+        "workorderDimLabel": "Work order {label}",
+        "submittedTechnicianDim": "Penilaian teknisi {label}",
+        "submittedWorkorderDim": "Penilaian work order {label}",
+        "rateTechnician": "Nilai seorang teknisi",
+        "rateWorkorder": "Nilai work order",
+        "technicianAria": "Teknisi yang dinilai",
+        "loading": "Memuat…",
+        "selectTechnician": "Pilih teknisi",
+        "submitting": "Mengirim…",
+        "submitTechnician": "Kirim penilaian teknisi",
+        "submitWorkorder": "Kirim penilaian work order",
+        "noExecutingTechnicians": "Tidak ada teknisi pelaksana pada work order ini."
+      }
+    },
+    "ackTaskList": {
+      "page": {
+        "title": "Daftar Tugas Ack",
+        "subtitle": "Ack yang diakui vs menunggu, serta work order tertutup yang dinilai vs belum dinilai.",
+        "loading": "Memuat daftar tugas ack…"
+      },
+      "list": {
+        "loadFailed": "Gagal memuat daftar tugas ack.",
+        "noTasks": "Tidak ada tugas",
+        "noTasksDesc": "Tidak ada ack yang menunggu dan tidak ada work order tertutup yang perlu dinilai.",
+        "pendingTitle": "Ack yang menunggu",
+        "pendingDesc": "Work order berlangsung yang melewati batas waktu ack dan masih perlu diakui.",
+        "nonePending": "Tidak ada acknowledgment yang menunggu.",
+        "pendingBadge": "ack menunggu",
+        "acknowledge": "Akui",
+        "acknowledgedTitle": "Diakui",
+        "acknowledgedDesc": "Work order yang sudah diakui melalui alur eskalasi 4 jam.",
+        "noneAcknowledged": "Belum ada work order yang diakui.",
+        "ratedTitle": "Work order tertutup yang dinilai",
+        "noneRated": "Tidak ada work order tertutup yang dinilai.",
+        "ratedBadge": "dinilai",
+        "unratedTitle": "Work order tertutup yang belum dinilai",
+        "noneUnrated": "Tidak ada work order tertutup yang belum dinilai.",
+        "unratedBadge": "belum dinilai"
+      }
+    },
+    "messages": {
+      "workorderAcknowledged": "Work order diakui",
+      "ackFailed": "Gagal mengakui work order",
+      "todoCreated": "Todo dibuat",
+      "todoCreateFailed": "Gagal membuat todo",
+      "todoAssigned": "Todo ditugaskan",
+      "todoAssignFailed": "Gagal menugaskan todo",
+      "todoCompleted": "Todo diselesaikan",
+      "todoCompleteFailed": "Gagal menyelesaikan todo",
+      "todoReorderFailed": "Gagal mengubah urutan todo",
+      "todoDeleted": "Todo dihapus",
+      "todoDeleteFailed": "Gagal menghapus todo",
+      "technicianRatingSubmitted": "Penilaian teknisi terkirim",
+      "technicianRatingFailed": "Gagal mengirim penilaian teknisi",
+      "workorderRatingSubmitted": "Penilaian work order terkirim",
+      "workorderRatingFailed": "Gagal mengirim penilaian work order",
+      "workorderApproved": "Work order disetujui",
+      "approveFailed": "Gagal menyetujui work order",
+      "signatureUploadFailed": "Gagal mengunggah gambar tanda tangan"
+    },
+    "dashboard": {
+      "title": "Dasbor Work Order",
+      "subtitle": "Distribusi work order berdasarkan status dan kategori.",
+      "computedNote": "Distribusi work order berdasarkan status dan kategori, dihitung di server.",
+      "section": "Seksi",
+      "allSections": "Semua seksi",
+      "allStatuses": "Semua status",
+      "allCategories": "Semua kategori",
+      "plantScopeError": "Cakupan pabrik tidak tersedia. Coba lagi atau hubungi administrator Anda.",
+      "noPlantsAssigned": "Tidak ada pabrik yang ditugaskan ke akun Anda. Hubungi administrator Anda.",
+      "loadFailed": "Gagal memuat dasbor work order.",
+      "emptyTitle": "Tidak ada work order dalam cakupan",
+      "emptyDescription": "Tidak ada work order yang cocok dengan filter saat ini. Jumlahnya nol, bukan hilang.",
+      "totalWorkorders": "Total work order",
+      "statusKpi": "Status · {status}",
+      "monthlyTitle": "Work order pemeliharaan",
+      "monthlyDescription": "Work order terbuka vs tertutup per bulan (Jan – Des, tahun berjalan).",
+      "open": "Terbuka",
+      "close": "Tutup",
+      "noMonthlyCounts": "Tidak ada jumlah bulanan.",
+      "byStatusTitle": "Berdasarkan status",
+      "byStatusDescription": "Jumlah work order per status siklus hidup.",
+      "noStatusCounts": "Tidak ada jumlah status.",
+      "byCategoryTitle": "Berdasarkan kategori",
+      "byCategoryDescription": "Jumlah work order per kategori.",
+      "noCategoryCounts": "Tidak ada jumlah kategori.",
+      "workorders": "Work Order",
+      "uncategorized": "Tanpa Kategori"
+    },
+    "categoryManagement": {
+      "title": "Kategori Work Order",
+      "label": "Label",
+      "targetResponseCol": "Target Respons (mnt)",
+      "empty": "Belum ada kategori yang dikonfigurasi.",
+      "minutes": "{count} mnt",
+      "add": "Tambah Kategori",
+      "dialogTitle": "Tambah Kategori Work Order",
+      "dialogDescription": "Buat kategori work order baru (mis. Breakdown, Preventive).",
+      "codePlaceholder": "mis. 03",
+      "labelPlaceholder": "mis. Emergency",
+      "targetResponseLabel": "Target respons (menit, opsional)",
+      "targetResponsePlaceholder": "mis. 60",
+      "createFailed": "Gagal membuat kategori. Kode mungkin sudah ada."
+    },
+    "print": {
+      "title": "Laporan Work Order",
+      "headerTitle": "Laporan Work Order — <mono>{id}</mono>",
+      "print": "Cetak",
+      "loadFailed": "Gagal memuat laporan.",
+      "logoAlt": "Logo perusahaan",
+      "signatureAlt": "Tanda tangan",
+      "statusLabel": "Status:",
+      "sourceLabel": "Sumber:",
+      "categoryLabel": "Kategori:",
+      "machineLabel": "Mesin:",
+      "plantLabel": "Pabrik:",
+      "technicianLabel": "Teknisi:",
+      "descriptionLabel": "Deskripsi:",
+      "doneReasonLabel": "Alasan selesai:",
+      "sessionsTitle": "Sesi Perbaikan",
+      "colStart": "Mulai",
+      "colEnd": "Selesai",
+      "colDuration": "Durasi (mnt)",
+      "narrativeTitle": "Narasi Laporan",
+      "chronologicalLabel": "Kronologis:",
+      "analyzeLabel": "Analisis:",
+      "correctiveLabel": "Korektif:",
+      "preventiveLabel": "Preventif:",
+      "cpkTitle": "Kemampuan (CP/CPK)",
+      "cpLower": "CP bawah:",
+      "cpUpper": "CP atas:",
+      "cpk": "CPK:",
+      "fmea": "FMEA:",
+      "stopReason": "Alasan henti:",
+      "stopDetail": "Detail henti:",
+      "cpkPdf": "PDF Kemampuan",
+      "evidenceTitle": "Bukti",
+      "partsTitle": "Permintaan Sparepart",
+      "colMaterial": "Material",
+      "colQty": "Jml",
+      "approvalTitle": "Persetujuan",
+      "signedBy": "Ditandatangani oleh: {identity}",
+      "approvedAt": "Disetujui pada: {time}",
+      "notYetSigned": "Belum ditandatangani.",
+      "signApproveTitle": "Tanda Tangani & Setujui",
+      "signatureImageLabel": "Gambar tanda tangan (diunggah ke Garage; kunci terisi otomatis)",
+      "objectKeyPlaceholder": "Kunci objek tanda tangan (terisi otomatis saat unggah)",
+      "signerPlaceholder": "Identitas penanda tangan (default nama Anda)",
+      "approving": "Menyetujui...",
+      "approve": "Setujui"
+    }
+  },
+  "analytics": {
+    "scopeUnavailable": "Cakupan pabrik tidak tersedia. Coba lagi atau hubungi administrator Anda.",
+    "scopeEmpty": "Tidak ada pabrik yang ditugaskan ke akun Anda. Hubungi administrator Anda.",
+    "tabs": {
+      "mtbf": "MTBF / MTTR",
+      "kpi": "KPI Teknisi",
+      "monthly": "KPI Bulanan"
+    },
+    "loadFailedMtbfMttr": "Gagal memuat analitik MTBF/MTTR.",
+    "mtbfLabel": "MTBF",
+    "mttrLabel": "MTTR",
+    "breakdownCount": "{count} kerusakan",
+    "completedCount": "{count} selesai",
+    "reliabilityTitle": "Jendela Keandalan",
+    "reliabilityDescription": "Jendela rolling bulanan berdasarkan waktu henti work order yang diturunkan.",
+    "windowLabel": "Jendela:",
+    "windowTo": "s.d.",
+    "computedLabel": "Dihitung:",
+    "staleBadge": "Terlambat",
+    "staleBody": "Data mungkin tidak mutakhir — muat ulang untuk menghitung ulang.",
+    "cacheServed": "Dilayani dari cache (berumur {seconds}s).",
+    "loadFailedTechnician": "Gagal memuat analitik KPI teknisi.",
+    "noTechniciansTitle": "Tidak ada teknisi dalam cakupan",
+    "noTechniciansDescription": "Tidak ada work order dengan teknisi yang ditugaskan atau sesi dalam cakupan saat ini.",
+    "technicianTableTitle": "KPI Teknisi",
+    "technicianTableDescription": "KPI objektif dari work order selesai ditambah rata-rata rating per dimensi (1–5 bintang).",
+    "table": {
+      "technician": "Teknisi",
+      "completed": "Selesai",
+      "avgMttr": "Rerata MTTR",
+      "onTimePct": "Tepat Waktu %",
+      "ratings": "Rating"
+    },
+    "noRatings": "Tidak ada rating",
+    "targetStatus": {
+      "ON_TARGET": "Sesuai Target",
+      "BELOW_TARGET": "Di Bawah Target",
+      "ABOVE_TARGET": "Di Atas Target",
+      "NO_TARGET": "Tanpa Target",
+      "INSUFFICIENT_DATA": "Data Tidak Cukup"
+    },
+    "monthly": {
+      "monthLabel": "Bulan",
+      "actual": "Aktual",
+      "target": "Target",
+      "entity": {
+        "machine": "Mesin",
+        "plant": "Pabrik",
+        "technician": "Teknisi"
+      },
+      "mtbf": {
+        "title": "MTBF (hari)",
+        "description": "Waktu rata-rata antar-kegagalan per mesin, dimaterialisasi bulanan."
+      },
+      "mttr": {
+        "title": "MTTR (menit)",
+        "description": "Waktu rata-rata perbaikan per pabrik (actual-working bila tersedia, selain itu wall-clock)."
+      },
+      "breakdown": {
+        "title": "Jumlah Kerusakan",
+        "description": "Work order kerusakan tertutup per pabrik terhadap target bulanan (lebih rendah lebih baik)."
+      },
+      "mar": {
+        "title": "MAR (%)",
+        "description": "Rasio ketersediaan mesin per pabrik dari status ingest telemetri."
+      },
+      "pmCompletion": {
+        "title": "Penyelesaian PM (%)",
+        "description": "Tingkat penyelesaian pemeliharaan preventif per pabrik (selesai / terencana)."
+      },
+      "technician": {
+        "title": "Kinerja Teknisi",
+        "description": "Kinerja teknisi yang dimaterialisasi bulanan (rating 1–5, work order, first-time-fix)."
+      }
+    },
+    "loadFailedSection": "Gagal memuat {title}.",
+    "refreshFailedBadge": "Muat ulang gagal",
+    "refreshFailedBody": "Muat ulang bulanan terakhir gagal — baris di bawah mungkin tidak mutakhir.",
+    "insufficientBody": "Belum ada baris {title} yang dimaterialisasi untuk bulan ini — muat ulang bulanan belum menghasilkan data. Nilai tidak pernah dibuat-buat.",
+    "shellBrand": "Syncro",
+    "shellTitle": "Analitik",
+    "shellSubtitle": "Keandalan MTBF/MTTR dan KPI teknisi, dihitung di server.",
+    "targetDialog": {
+      "trigger": "Konfigurasi target",
+      "title": "Konfigurasi target KPI",
+      "description": "Target untuk {month}. Nilai divalidasi di sisi server dan setiap perubahan dicatat ke audit. Kosongkan kolom untuk mempertahankan nilai saat ini.",
+      "loadError": "Gagal memuat target saat ini — kolom di bawah mulai kosong. Menyimpan tetap mempertahankan nilai tersimpan untuk kolom yang Anda kosongkan.",
+      "selectPlant": "Pilih pabrik",
+      "save": "Simpan target",
+      "saving": "Menyimpan…",
+      "fields": {
+        "monthlyBreakdownTarget": {
+          "label": "Target kerusakan bulanan",
+          "hint": "Maksimum work order kerusakan per bulan (lebih rendah lebih baik)."
+        },
+        "mtbfTargetDays": {
+          "label": "Target MTBF (hari)",
+          "hint": "Lebih tinggi lebih baik."
+        },
+        "mttrTargetMinutes": {
+          "label": "Target MTTR (menit)",
+          "hint": "Lebih rendah lebih baik."
+        },
+        "oeeQualityPercent": {
+          "label": "Kualitas OEE (%)",
+          "hint": "0–100. Faktor baseline OEE."
+        },
+        "oeePerformancePercent": {
+          "label": "Performa OEE (%)",
+          "hint": "0–100. Faktor baseline OEE."
+        }
+      },
+      "validation": {
+        "numberMinZero": "Harus angka 0 atau lebih.",
+        "numberRange": "Harus angka antara 0 dan {max}.",
+        "wholeNumber": "Harus bilangan bulat."
+      }
+    },
+    "targetUpsert": {
+      "saved": "Target KPI disimpan.",
+      "forbidden": "Anda tidak memiliki izin untuk mengonfigurasi target KPI."
+    },
+    "shared": {
+      "machineSummary": {
+        "manualStatus": "Status manual: {status}",
+        "active": "Aktif",
+        "inactive": "Nonaktif",
+        "unknownMachine": "Mesin tidak diketahui"
+      }
+    }
+  },
+  "machineHub": {
+    "alerts": {
+      "loadFailed": "Gagal memuat alert.",
+      "emptyTitle": "Tidak ada alert",
+      "emptyDescription": "Mesin ini tidak memiliki alert masa pakai sparepart yang aktif.",
+      "colType": "Tipe",
+      "colNotification": "Notifikasi",
+      "colSparepart": "Sparepart",
+      "colThreshold": "Ambang Batas",
+      "colConsumed": "Terpakai",
+      "viewAria": "Lihat alert: {name}"
+    },
+    "header": {
+      "code": "Kode: {code}",
+      "manual": "Manual: {status}",
+      "telemetryNoData": "Telemetri: Tidak ada data",
+      "refreshAria": "Muat ulang data mesin",
+      "plantLine": "Pabrik: {value}",
+      "groupLine": " • Grup: {value}",
+      "brandLine": " • Merek: {value}"
+    },
+    "status": {
+      "ACTIVE": "ACTIVE",
+      "INACTIVE": "INACTIVE"
+    },
+    "shiftConfig": {
+      "removeShiftAria": "Hapus shift {index}",
+      "startLabel": "Mulai shift {index}",
+      "endLabel": "Akhir shift {index}",
+      "removeAria": "Hapus shift {index}",
+      "remove": "Hapus",
+      "add": "Tambah shift",
+      "hint": "Maksimal {max} shift harian; jendela melewati tengah malam diizinkan. Memerlukan cakupan pekerjaan LEADER ke atas."
+    },
+    "page": {
+      "notFoundTitle": "Mesin tidak ditemukan",
+      "notFoundDescription": "Tidak ada mesin dengan kode \"{code}\" yang ada atau terlihat oleh Anda.",
+      "accessDeniedTitle": "Akses ditolak",
+      "accessDeniedDescription": "Anda tidak memiliki penugasan pabrik untuk mesin ini.",
+      "loadFailed": "Gagal memuat data mesin.",
+      "refreshFailed": "Gagal memuat ulang",
+      "inactiveBanner": "Mesin ini saat ini NONAKTIF. Pesan telemetri sedang ditolak.",
+      "tabOverview": "Ringkasan",
+      "tabTelemetry": "Telemetri",
+      "tabSpareparts": "Sparepart",
+      "tabAlerts": "Alert",
+      "tabAudit": "Log Audit",
+      "title": "Hub Mesin"
+    },
+    "overview": {
+      "detailsTitle": "Detail Mesin",
+      "detailsDescription": "Informasi master data dan siklus hidup",
+      "machineGroup": "Grup Mesin",
+      "brand": "Merek",
+      "installedAt": "Dipasang Pada",
+      "telemetryFields": "Kolom Telemetri",
+      "alertStateTitle": "Status Alert Sparepart",
+      "alertStateDescription": "Alert masa pakai sparepart aktif untuk mesin ini.",
+      "alertStateLoadFailed": "Gagal memuat status alert.",
+      "noOpenAlerts": "Tidak ada alert terbuka. Semua sparepart dalam ambang batas.",
+      "alertAria": "Alert untuk {name}",
+      "viewAllAlerts": "Lihat semua {count, plural, other {# alert}} →"
+    },
+    "audit": {
+      "title": "Log Audit",
+      "description": "Riwayat perubahan yang tidak dapat diubah untuk mesin ini",
+      "unavailableTitle": "Log audit tidak tersedia",
+      "unavailableDescription": "Gagal memuat entri log audit.",
+      "emptyTitle": "Belum ada entri audit",
+      "emptyDescription": "Tidak ada entri log audit untuk mesin ini.",
+      "timestamp": "Stempel Waktu",
+      "actor": "Aktor",
+      "action": "Aksi",
+      "toggleChangeAria": "Buka/tutup detail perubahan",
+      "show": "Tampilkan",
+      "hide": "Sembunyikan",
+      "before": "Sebelum",
+      "after": "Sesudah"
+    },
+    "spareparts": {
+      "title": "Sparepart Terpasang",
+      "description": "Instalasi saat ini dan konsumsi masa pakai",
+      "colSparepart": "Sparepart",
+      "colFunction": "Fungsi",
+      "colInstalled": "Terpasang",
+      "colLifetime": "Pemakaian Masa Pakai",
+      "unavailableTitle": "Sparepart tidak tersedia",
+      "unavailableDescription": "Gagal memuat sparepart terpasang.",
+      "emptyTitle": "Tidak ada sparepart terpasang",
+      "emptyDescription": "Mesin ini saat ini tidak memiliki sparepart terpasang."
+    },
+    "telemetryTab": {
+      "title": "Telemetri Terbaru",
+      "description": "Pembacaan sensor terbaru (segarkan otomatis setiap 30 detik)",
+      "unavailableTitle": "Telemetri tidak tersedia",
+      "unavailableDescription": "Gagal memuat data telemetri.",
+      "noDataTitle": "Tidak ada telemetri",
+      "noDataDescription": "Mesin ini belum mengirim data telemetri.",
+      "colField": "Kolom",
+      "colValue": "Nilai",
+      "running": "Berjalan",
+      "yes": "Ya",
+      "no": "Tidak",
+      "runtimeHours": "Jam Operasi",
+      "productionCount": "Jumlah Produksi",
+      "lastReceived": "Terakhir diterima: {time}"
+    },
+    "shift": {
+      "title": "Jadwal Shift",
+      "description": "Jendela shift harian yang diselesaikan; override mesin mengalahkan grupnya.",
+      "loadFailed": "Gagal memuat jadwal shift.",
+      "noneConfigured": "Tidak ada jadwal shift yang dikonfigurasi untuk mesin ini atau grupnya.",
+      "save": "Simpan override shift",
+      "clear": "Hapus override shift",
+      "savedToast": "Override shift disimpan.",
+      "clearedToast": "Override shift dihapus.",
+      "incompleteRows": "Setiap shift memerlukan waktu mulai dan selesai.",
+      "requestFailed": "Permintaan override shift gagal."
+    },
+    "breadcrumb": {
+      "dashboard": "Dasbor",
+      "machines": "Mesin",
+      "detail": "Detail mesin"
+    },
+    "loadingMachines": "Memuat mesin..."
+  },
+  "spareparts": {
+    "shared": {
+      "priceHistory": {
+        "amount": "Jumlah",
+        "kurs": "Kurs",
+        "idrValue": "Nilai IDR",
+        "enteredBy": "Dimasukkan Oleh",
+        "enteredAt": "Dimasukkan Pada",
+        "actions": "Aksi",
+        "delete": "Hapus",
+        "empty": "Belum ada entri harga dicatat.",
+        "reuse": "Pakai ulang"
+      },
+      "currencyPrice": {
+        "amount": "Jumlah",
+        "kursToIdr": "Kurs ke IDR",
+        "requiredForNonIdr": "Wajib untuk mata uang non-IDR.",
+        "currency": "Mata Uang",
+        "amountPlaceholder": "mis. 1500000",
+        "kursPlaceholder": "mis. 15500"
+      },
+      "leadTime": {
+        "label": "Lead time",
+        "optional": "Opsional",
+        "unitAria": "Satuan lead time",
+        "unitHours": "jam",
+        "unitDays": "hari",
+        "daysHint": "{value} hari",
+        "equivalent": "Setara dengan {hint}. ",
+        "description": "Digunakan untuk memproyeksikan waktu pengadaan sebelum kehabisan sparepart."
+      },
+      "materialCode": {
+        "label": "Kode material",
+        "optionalEg": "Opsional, mis. MC-001",
+        "description": "Pengenal global opsional yang dibagi oleh sparepart identik antar mesin."
+      },
+      "imageUpload": {
+        "label": "Gambar",
+        "previewAlt": "Pratinjau sparepart",
+        "viewOnly": "Hanya lihat.",
+        "replace": "Ganti gambar",
+        "upload": "Unggah gambar",
+        "empty": "Belum ada gambar diunggah.",
+        "remove": "Hapus",
+        "hint": "JPEG, PNG, WebP, atau GIF hingga 5 MB. Batas backend bersifat definitif."
+      }
     }
   }
 }

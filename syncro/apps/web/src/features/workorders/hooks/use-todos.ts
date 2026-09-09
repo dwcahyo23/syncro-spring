@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import type { AssignTodoRequest, CreateTodoRequest, ReorderTodoRequest, TodoView } from "@/features/workorders/types";
@@ -32,6 +33,7 @@ function invalidateTodoQueries(queryClient: ReturnType<typeof useQueryClient>, w
 /** Creates a todo on a workorder. */
 export function useCreateTodo(workorderId: string) {
   const queryClient = useQueryClient();
+  const tm = useTranslations("workOrders");
   return useMutation({
     mutationFn: async (data: CreateTodoRequest) => {
       const response = await syncroFetch<{ data: TodoView }>(`/api/v1/workorders/${workorderId}/todos`, {
@@ -42,10 +44,10 @@ export function useCreateTodo(workorderId: string) {
     },
     onSuccess: () => {
       invalidateTodoQueries(queryClient, workorderId);
-      toast.success("Todo created");
+      toast.success(tm("messages.todoCreated"));
     },
     onError: () => {
-      toast.error("Failed to create todo");
+      toast.error(tm("messages.todoCreateFailed"));
     },
   });
 }
@@ -53,6 +55,7 @@ export function useCreateTodo(workorderId: string) {
 /** Assigns a todo to a technician. */
 export function useAssignTodo(workorderId: string) {
   const queryClient = useQueryClient();
+  const tm = useTranslations("workOrders");
   return useMutation({
     mutationFn: async ({ todoId, data }: { todoId: string; data: AssignTodoRequest }) => {
       const response = await syncroFetch<{ data: TodoView }>(
@@ -66,10 +69,10 @@ export function useAssignTodo(workorderId: string) {
     },
     onSuccess: () => {
       invalidateTodoQueries(queryClient, workorderId);
-      toast.success("Todo assigned");
+      toast.success(tm("messages.todoAssigned"));
     },
     onError: () => {
-      toast.error("Failed to assign todo");
+      toast.error(tm("messages.todoAssignFailed"));
     },
   });
 }
@@ -77,6 +80,7 @@ export function useAssignTodo(workorderId: string) {
 /** Marks a todo complete. */
 export function useCompleteTodo(workorderId: string) {
   const queryClient = useQueryClient();
+  const tm = useTranslations("workOrders");
   return useMutation({
     mutationFn: async (todoId: string) => {
       const response = await syncroFetch<{ data: TodoView }>(
@@ -89,10 +93,10 @@ export function useCompleteTodo(workorderId: string) {
     },
     onSuccess: () => {
       invalidateTodoQueries(queryClient, workorderId);
-      toast.success("Todo completed");
+      toast.success(tm("messages.todoCompleted"));
     },
     onError: () => {
-      toast.error("Failed to complete todo");
+      toast.error(tm("messages.todoCompleteFailed"));
     },
   });
 }
@@ -100,6 +104,7 @@ export function useCompleteTodo(workorderId: string) {
 /** Reorders a todo within its workorder. */
 export function useReorderTodo(workorderId: string) {
   const queryClient = useQueryClient();
+  const tm = useTranslations("workOrders");
   return useMutation({
     mutationFn: async ({ todoId, data }: { todoId: string; data: ReorderTodoRequest }) => {
       const response = await syncroFetch<{ data: TodoView }>(
@@ -115,7 +120,7 @@ export function useReorderTodo(workorderId: string) {
       invalidateTodoQueries(queryClient, workorderId);
     },
     onError: () => {
-      toast.error("Failed to reorder todo");
+      toast.error(tm("messages.todoReorderFailed"));
     },
   });
 }
@@ -123,16 +128,17 @@ export function useReorderTodo(workorderId: string) {
 /** Deletes a todo. */
 export function useDeleteTodo(workorderId: string) {
   const queryClient = useQueryClient();
+  const tm = useTranslations("workOrders");
   return useMutation({
     mutationFn: async (todoId: string) => {
       await syncroFetch(`/api/v1/workorders/${workorderId}/todos/${todoId}`, { method: "DELETE" });
     },
     onSuccess: () => {
       invalidateTodoQueries(queryClient, workorderId);
-      toast.success("Todo deleted");
+      toast.success(tm("messages.todoDeleted"));
     },
     onError: () => {
-      toast.error("Failed to delete todo");
+      toast.error(tm("messages.todoDeleteFailed"));
     },
   });
 }

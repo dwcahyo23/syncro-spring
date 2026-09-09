@@ -1,6 +1,7 @@
 "use client";
 
 import { EllipsisVertical, LogOut, Settings } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -17,20 +18,8 @@ import { logoutFromSyncro } from "@/lib/api/syncro-api";
 import { clearAuthSession, getAuthToken } from "@/lib/auth/auth-client";
 import type { AuthUser } from "@/lib/auth/auth-session";
 
-const roleLabels: Record<AuthUser["applicationRole"], string> = {
-  SUPER_ADMIN: "Super Admin",
-  MANAGER_MAINTENANCE: "Manager Maintenance",
-  MAINTENANCE_LEADER: "Maintenance Leader",
-  SECTION_LEADER: "Section Leader",
-  STAFF_MAINTENANCE: "Staff Maintenance",
-  TECHNICIAN: "Technician",
-  INVENTORY_MAINTENANCE: "Inventory Maintenance",
-  STOREKEEPER: "Storekeeper",
-  PRODUCTION_LEADER: "Production Leader",
-  AUDITOR: "Auditor",
-};
-
 export function NavUser({ user }: { readonly user: AuthUser | null }) {
+  const t = useTranslations("navigation.navUser");
   const { isMobile } = useSidebar();
   const router = useRouter();
 
@@ -39,7 +28,8 @@ export function NavUser({ user }: { readonly user: AuthUser | null }) {
   }
 
   const initials = getUserInitials(user.loginIdentifier);
-  const roleLabel = roleLabels[user.applicationRole];
+  // applicationRole is server data — unknown future roles must not crash the sidebar.
+  const roleLabel = t.has(`roles.${user.applicationRole}`) ? t(`roles.${user.applicationRole}`) : user.applicationRole;
 
   const handleLogout = async () => {
     const token = getAuthToken();
@@ -87,11 +77,11 @@ export function NavUser({ user }: { readonly user: AuthUser | null }) {
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => router.push("/settings")}>
               <Settings />
-              Settings
+              {t("settings")}
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={handleLogout}>
               <LogOut />
-              Log out
+              {t("logOut")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

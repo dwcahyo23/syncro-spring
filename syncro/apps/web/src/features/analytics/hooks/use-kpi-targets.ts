@@ -1,9 +1,11 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { kpiMaterializedQueryPrefix } from "@/features/analytics/hooks/use-kpi-materialized";
+import { apiErrorMessage, errorResponse } from "@/lib/api/error-response";
 import { SyncroApiError, syncroFetch } from "@/lib/api/orval-mutator";
 
 /**
@@ -64,6 +66,8 @@ export function useKpiTargets(plantId: string | undefined, enabled?: boolean) {
 }
 
 export function useUpsertKpiTarget() {
+  const t = useTranslations("analytics");
+  const te = useTranslations("errors");
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -79,14 +83,16 @@ export function useUpsertKpiTarget() {
       // (verdict) and in the target list (dialog prefill).
       void queryClient.invalidateQueries({ queryKey: [kpiTargetsQueryPrefix] });
       void queryClient.invalidateQueries({ queryKey: [kpiMaterializedQueryPrefix] });
-      toast.success("KPI target saved.");
+      toast.success(t("targetUpsert.saved"));
     },
     onError: (error: unknown) => {
-      const message =
-        error instanceof SyncroApiError && error.status === 403
-          ? "You do not have permission to configure KPI targets."
-          : "Failed to save the KPI target.";
-      toast.error(message);
+      // 403 means "role gate" for this action — branch on the status before the
+      // generic errors catalog so the copy stays action-specific (rule 23-2-8).
+      if (error instanceof SyncroApiError && error.status === 403) {
+        toast.error(t("targetUpsert.forbidden"));
+        return;
+      }
+      toast.error(apiErrorMessage(te, errorResponse(error)));
     },
   });
 }

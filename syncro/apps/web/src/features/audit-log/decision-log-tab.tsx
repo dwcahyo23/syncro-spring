@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { TriangleAlertIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,8 +12,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { AuthzDecisionView } from "@/lib/api/generated/model";
 import { useGetAuthzDecisions } from "@/lib/api/generated/syncro";
+import { useDateTimeFormatter } from "@/lib/i18n/format";
 
 export function DecisionLogTab() {
+  const t = useTranslations("auditLog");
+  const tc = useTranslations("common");
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(50);
 
@@ -24,20 +28,17 @@ export function DecisionLogTab() {
       {decisions.isLoading ? <DecisionLogSkeleton /> : null}
       {decisions.isError ? (
         <DecisionLogState
-          title="Decision log could not be loaded"
-          description="Persisted authorization decisions could not be fetched. Retry to load them again."
+          title={t("decision.loadError.title")}
+          description={t("decision.loadError.description")}
           action={
             <Button variant="outline" onClick={() => void decisions.refetch()}>
-              Retry
+              {tc("retry")}
             </Button>
           }
         />
       ) : null}
       {!decisions.isLoading && !decisions.isError && items.length === 0 ? (
-        <DecisionLogState
-          title="No decisions recorded yet"
-          description="OPA enforcement decisions will appear here once enforced endpoints are evaluated."
-        />
+        <DecisionLogState title={t("decision.empty.title")} description={t("decision.empty.description")} />
       ) : null}
       {!decisions.isLoading && !decisions.isError && items.length > 0 ? (
         <>
@@ -66,47 +67,53 @@ export function DecisionLogTab() {
 }
 
 function DecisionLogTable({ decisions }: { readonly decisions: AuthzDecisionView[] }) {
+  const t = useTranslations("auditLog");
+  const dt = useDateTimeFormatter();
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Decided at</TableHead>
-          <TableHead>Action</TableHead>
-          <TableHead>Allowed</TableHead>
-          <TableHead>Mode</TableHead>
-          <TableHead>Decision ID</TableHead>
-          <TableHead>Policy revision</TableHead>
+          <TableHead>{t("decision.table.decidedAt")}</TableHead>
+          <TableHead>{t("decision.table.action")}</TableHead>
+          <TableHead>{t("decision.table.allowed")}</TableHead>
+          <TableHead>{t("decision.table.mode")}</TableHead>
+          <TableHead>{t("decision.table.decisionId")}</TableHead>
+          <TableHead>{t("decision.table.policyRevision")}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {decisions.map((decision) => (
           <TableRow key={decision.id ?? decision.decisionId ?? "unknown"}>
             <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">
-              {formatDateTime(decision.decidedAt)}
+              {decision.decidedAt ? dt.dateTime(decision.decidedAt) : t("dash")}
             </TableCell>
             <TableCell className="max-w-64">
               <span className="truncate" title={decision.action}>
-                {decision.action ?? "-"}
+                {decision.action ?? t("dash")}
               </span>
             </TableCell>
             <TableCell>
-              {decision.allowed ? <Badge variant="default">ALLOW</Badge> : <Badge variant="destructive">DENY</Badge>}
+              {decision.allowed ? (
+                <Badge variant="default">{t("decision.allow")}</Badge>
+              ) : (
+                <Badge variant="destructive">{t("decision.deny")}</Badge>
+              )}
             </TableCell>
             <TableCell>
               {decision.degraded ? (
-                <Badge variant="secondary">degraded</Badge>
+                <Badge variant="secondary">{t("decision.degraded")}</Badge>
               ) : (
-                <span className="text-muted-foreground text-sm">normal</span>
+                <span className="text-muted-foreground text-sm">{t("decision.normal")}</span>
               )}
             </TableCell>
             <TableCell className="max-w-40">
               <span className="block truncate font-mono text-xs text-muted-foreground" title={decision.decisionId}>
-                {decision.decisionId ?? "-"}
+                {decision.decisionId ?? t("dash")}
               </span>
             </TableCell>
             <TableCell className="max-w-40">
               <span className="block truncate font-mono text-xs text-muted-foreground" title={decision.policyRevision}>
-                {decision.policyRevision ?? "-"}
+                {decision.policyRevision ?? t("dash")}
               </span>
             </TableCell>
           </TableRow>
@@ -117,6 +124,8 @@ function DecisionLogTable({ decisions }: { readonly decisions: AuthzDecisionView
 }
 
 function DecisionLogCards({ decisions }: { readonly decisions: AuthzDecisionView[] }) {
+  const t = useTranslations("auditLog");
+  const dt = useDateTimeFormatter();
   return (
     <div className="space-y-2">
       {decisions.map((decision) => (
@@ -124,20 +133,26 @@ function DecisionLogCards({ decisions }: { readonly decisions: AuthzDecisionView
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 flex-col gap-1">
               <div className="flex flex-wrap items-center gap-2">
-                {decision.allowed ? <Badge variant="default">ALLOW</Badge> : <Badge variant="destructive">DENY</Badge>}
-                {decision.degraded ? <Badge variant="secondary">degraded</Badge> : null}
+                {decision.allowed ? (
+                  <Badge variant="default">{t("decision.allow")}</Badge>
+                ) : (
+                  <Badge variant="destructive">{t("decision.deny")}</Badge>
+                )}
+                {decision.degraded ? <Badge variant="secondary">{t("decision.degraded")}</Badge> : null}
               </div>
               <p className="truncate text-sm" title={decision.action}>
-                {decision.action ?? "-"}
+                {decision.action ?? t("dash")}
               </p>
               <p className="font-mono text-muted-foreground text-xs" title={decision.decisionId}>
-                {decision.decisionId ? `decision ${decision.decisionId}` : "decision -"}
+                {t("decision.decisionLine", { id: decision.decisionId ?? t("dash") })}
               </p>
-              <p className="font-mono text-muted-foreground text-xs">{formatDateTime(decision.decidedAt)}</p>
+              <p className="font-mono text-muted-foreground text-xs">
+                {decision.decidedAt ? dt.dateTime(decision.decidedAt) : t("dash")}
+              </p>
             </div>
           </div>
           <p className="mt-2 truncate font-mono text-xs text-muted-foreground" title={decision.policyRevision}>
-            {decision.policyRevision ? `rev ${decision.policyRevision}` : "rev -"}
+            {t("decision.revisionLine", { id: decision.policyRevision ?? t("dash") })}
           </p>
         </div>
       ))}
@@ -174,11 +189,4 @@ function DecisionLogState({
       {action}
     </div>
   );
-}
-
-function formatDateTime(value: string | undefined) {
-  if (!value) {
-    return "-";
-  }
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }

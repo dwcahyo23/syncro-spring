@@ -4,13 +4,19 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { I18nProvider } from "@/test/i18n-wrapper";
+
 import { PreventiveDashboardPageContent } from "./preventive-dashboard-page-content";
 
 // ---------------------------------------------------------------------------
 // Module-level mocks
 // ---------------------------------------------------------------------------
 
-let mockScope: { mode: string; availablePlants: Array<{ id: string; code: string; name: string }>; emptyReason: string | null } | null = {
+let mockScope: {
+  mode: string;
+  availablePlants: Array<{ id: string; code: string; name: string }>;
+  emptyReason: string | null;
+} | null = {
   mode: "ASSIGNED",
   availablePlants: [{ id: "p1", code: "P1", name: "Plant 1" }],
   emptyReason: null,
@@ -26,11 +32,23 @@ vi.mock("@/features/plant-scope/plant-scope-store", () => ({
   }),
 }));
 
-let mockQueryData: { dueCount: number; overdueCount: number; upcoming: Array<{
-  scheduleId: string; machineId: string; programId: string; dueDate: string;
-  status: string; derivedStatus: string; category: string; scheduleType: string;
-  machineCode: string; machineName: string | null; programTitle: string;
-}> } | null = null;
+let mockQueryData: {
+  dueCount: number;
+  overdueCount: number;
+  upcoming: Array<{
+    scheduleId: string;
+    machineId: string;
+    programId: string;
+    dueDate: string;
+    status: string;
+    derivedStatus: string;
+    category: string;
+    scheduleType: string;
+    machineCode: string;
+    machineName: string | null;
+    programTitle: string;
+  }>;
+} | null = null;
 let mockIsLoading = false;
 let mockIsError = false;
 let mockIsFetching = false;
@@ -55,7 +73,9 @@ const queryClient = new QueryClient({
 });
 
 const Wrapper = ({ children }: { children: ReactNode }) => (
-  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  <QueryClientProvider client={queryClient}>
+    <I18nProvider>{children}</I18nProvider>
+  </QueryClientProvider>
 );
 
 function renderPage() {

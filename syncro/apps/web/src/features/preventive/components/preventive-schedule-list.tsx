@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { useTranslations } from "next-intl";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,6 +17,8 @@ import type { PreventiveScheduleView } from "@/features/preventive/types";
  * badge + text, never color alone. Rows open the checklist/evidence/approval detail.
  */
 export function PreventiveScheduleList() {
+  const t = useTranslations("preventive");
+  const tc = useTranslations("common");
   const { data, isLoading, isError, refetch } = usePreventiveSchedules();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = selectedId ? (data ?? []).find((s) => s.id === selectedId) : null;
@@ -31,9 +35,9 @@ export function PreventiveScheduleList() {
   if (isError) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-lg border p-6">
-        <p className="text-muted-foreground text-sm">Failed to load preventive schedules.</p>
+        <p className="text-muted-foreground text-sm">{t("schedules.loadFailed")}</p>
         <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>
-          Retry
+          {tc("retry")}
         </Button>
       </div>
     );
@@ -43,7 +47,7 @@ export function PreventiveScheduleList() {
   if (schedules.length === 0) {
     return (
       <div className="rounded-lg border p-6">
-        <p className="text-muted-foreground text-sm">No preventive schedules in your scope yet.</p>
+        <p className="text-muted-foreground text-sm">{t("schedules.empty")}</p>
       </div>
     );
   }
@@ -64,6 +68,7 @@ export function PreventiveScheduleList() {
 }
 
 function ScheduleRow({ schedule, onOpen }: { schedule: PreventiveScheduleView; onOpen: () => void }) {
+  const t = useTranslations("preventive");
   const overdue = schedule.derivedStatus === "OVERDUE";
   return (
     <button
@@ -76,14 +81,16 @@ function ScheduleRow({ schedule, onOpen }: { schedule: PreventiveScheduleView; o
           {schedule.dueDate} · {schedule.category} · {schedule.scheduleType}
         </p>
         <p className="text-muted-foreground text-xs">
-          Machine <span className="font-mono">{schedule.machineId.slice(0, 8)}</span>
-          {schedule.shiftConfig ? ` · shift: ${schedule.shiftConfig.source}` : " · shift: none"}
+          {t("machine")} <span className="font-mono">{schedule.machineId.slice(0, 8)}</span>
+          {schedule.shiftConfig
+            ? t("schedules.shiftWithSource", { source: schedule.shiftConfig.source })
+            : t("schedules.shiftNone")}
         </p>
       </div>
       <div className="flex items-center gap-2">
         <Badge variant="secondary">{schedule.checklistStatus}</Badge>
         {overdue ? (
-          <Badge variant="destructive">Overdue</Badge>
+          <Badge variant="destructive">{t("overdue")}</Badge>
         ) : (
           <Badge variant="outline">{schedule.derivedStatus}</Badge>
         )}

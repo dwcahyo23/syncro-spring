@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 
+import { useTranslations } from "next-intl";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -50,20 +52,28 @@ function trimNumeric(text: string): string {
  * remount the component per edited entity (e.g. via a `key` prop) to reset it between dialogs.
  */
 export function LeadTimeInput({ value, onChange, error, readOnly = false }: LeadTimeInputProps) {
+  const t = useTranslations("spareparts.shared.leadTime");
   const [unit, setUnit] = useState<LeadTimeUnit>("hours");
   const [rawDisplay, setRawDisplay] = useState<string | null>(null);
-  const daysHint = hoursToDaysHint(value);
+  // The canonical English helper below is exported for tests and callers; this
+  // render site localizes the same value through ICU so /id reads naturally.
+  const daysHint = (() => {
+    if (value === "") return null;
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric <= 0) return null;
+    return t("daysHint", { value: trimNumeric(String(numeric / 24)) });
+  })();
 
   return (
     <div className="grid gap-2">
-      <Label htmlFor="lead-time">Lead time</Label>
+      <Label htmlFor="lead-time">{t("label")}</Label>
       <div className="flex gap-2">
         <Input
           id="lead-time"
           className="min-w-0 flex-1"
           inputMode="decimal"
           value={rawDisplay ?? hoursToDisplay(value, unit)}
-          placeholder="Optional"
+          placeholder={t("optional")}
           aria-invalid={Boolean(error)}
           disabled={readOnly}
           data-testid="lead-time-input"
@@ -81,18 +91,18 @@ export function LeadTimeInput({ value, onChange, error, readOnly = false }: Lead
           }}
           disabled={readOnly}
         >
-          <SelectTrigger className="w-24 shrink-0" aria-label="Lead time unit">
+          <SelectTrigger className="w-24 shrink-0" aria-label={t("unitAria")}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="hours">hours</SelectItem>
-            <SelectItem value="days">days</SelectItem>
+            <SelectItem value="hours">{t("unitHours")}</SelectItem>
+            <SelectItem value="days">{t("unitDays")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
       <p className="text-muted-foreground text-xs">
-        {daysHint ? `Equivalent to ${daysHint}. ` : null}
-        Used to project procurement timing before sparepart depletion.
+        {daysHint ? t("equivalent", { hint: daysHint }) : null}
+        {t("description")}
       </p>
       {error ? (
         <p role="alert" className="text-destructive text-sm">

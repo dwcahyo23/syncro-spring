@@ -5,6 +5,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SyncroApiError } from "@/lib/api/orval-mutator";
+import { I18nProvider } from "@/test/i18n-wrapper";
 
 import { MachineGroupManagement } from "./machine-group-management";
 
@@ -117,7 +118,9 @@ const queryClient = new QueryClient({
 });
 
 const Wrapper = ({ children }: { children: ReactNode }) => (
-  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  <I18nProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  </I18nProvider>
 );
 
 // ---------------------------------------------------------------------------

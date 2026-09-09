@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -70,25 +71,27 @@ function AuditLogTableDesktop({
   readonly sort: string;
   readonly onSortChange: (sort: string) => void;
 }) {
+  const t = useTranslations("auditLog.shared.table");
+  const tc = useTranslations("common");
   return (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>
-            <DataTableSortHeader title="Timestamp" field="createdAt" sort={sort} onSortChange={onSortChange} />
+            <DataTableSortHeader title={t("timestamp")} field="createdAt" sort={sort} onSortChange={onSortChange} />
           </TableHead>
           <TableHead>
-            <DataTableSortHeader title="Actor" field="actorName" sort={sort} onSortChange={onSortChange} />
+            <DataTableSortHeader title={t("actor")} field="actorName" sort={sort} onSortChange={onSortChange} />
           </TableHead>
           <TableHead>
-            <DataTableSortHeader title="Action" field="action" sort={sort} onSortChange={onSortChange} />
+            <DataTableSortHeader title={t("action")} field="action" sort={sort} onSortChange={onSortChange} />
           </TableHead>
           <TableHead>
-            <DataTableSortHeader title="Entity" field="entityType" sort={sort} onSortChange={onSortChange} />
+            <DataTableSortHeader title={t("entity")} field="entityType" sort={sort} onSortChange={onSortChange} />
           </TableHead>
-          <TableHead>Record</TableHead>
-          <TableHead>Plant</TableHead>
-          <TableHead>Decision</TableHead>
+          <TableHead>{t("record")}</TableHead>
+          <TableHead>{tc("plant")}</TableHead>
+          <TableHead>{t("decisionWord")}</TableHead>
           <TableHead className="w-10" />
         </TableRow>
       </TableHeader>
@@ -114,7 +117,15 @@ function EntryRows({
   readonly isOpen: boolean;
   readonly onToggle: (id: string) => void;
 }) {
+  const t = useTranslations("auditLog.shared.table");
+  const format = useFormatter();
   const id = entry.id ?? "";
+  const formatDateTime = (value: string | undefined) => {
+    if (!value) {
+      return "-";
+    }
+    return format.dateTime(new Date(value), { dateStyle: "medium", timeStyle: "short" });
+  };
   return (
     <>
       <TableRow>
@@ -130,14 +141,14 @@ function EntryRows({
           <ActionBadge action={entry.action} />
         </TableCell>
         <TableCell>
-          <span className="font-medium">{entityTypeLabel(entry.entityType)}</span>
+          <span className="font-medium">{entityTypeLabel(entry.entityType, t)}</span>
         </TableCell>
         <TableCell className="max-w-72">
           <span className="truncate" title={entry.entityLabel}>
             {entry.entityLabel ?? "-"}
           </span>
         </TableCell>
-        <TableCell>{plantLabel(entry.plantId, plantNameById)}</TableCell>
+        <TableCell>{plantLabel(entry.plantId, plantNameById, t)}</TableCell>
         <TableCell>
           <span className="font-mono text-xs text-muted-foreground" title={entry.decisionId ?? undefined}>
             {entry.decisionId ? shortenId(entry.decisionId) : "-"}
@@ -149,7 +160,7 @@ function EntryRows({
             size="sm"
             className="size-8 p-0"
             onClick={() => onToggle(id)}
-            aria-label="Toggle change detail"
+            aria-label={t("toggleChange")}
           >
             {isOpen ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />}
           </Button>
@@ -177,7 +188,21 @@ function AuditLogCards({
   readonly expanded: ReadonlySet<string>;
   readonly onToggle: (id: string) => void;
 }) {
+  const t = useTranslations("auditLog.shared.table");
+  const format = useFormatter();
   const groups = groupByDate(entries);
+  const formatDateOnly = (date: string) => {
+    if (!date) {
+      return t("unknownDate");
+    }
+    return format.dateTime(new Date(`${date}T00:00:00Z`), { dateStyle: "medium" });
+  };
+  const formatTime = (value: string | undefined) => {
+    if (!value) {
+      return "-";
+    }
+    return format.dateTime(new Date(value), { timeStyle: "short" });
+  };
   return (
     <div className="space-y-4">
       {groups.map(([date, groupEntries]) => (
@@ -193,17 +218,17 @@ function AuditLogCards({
                     <div className="flex min-w-0 flex-col gap-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <ActionBadge action={entry.action} />
-                        <span className="font-medium">{entityTypeLabel(entry.entityType)}</span>
+                        <span className="font-medium">{entityTypeLabel(entry.entityType, t)}</span>
                       </div>
                       <p className="truncate text-sm" title={entry.entityLabel}>
                         {entry.entityLabel ?? "-"}
                       </p>
                       <p className="text-muted-foreground text-xs">
-                        {entry.actorName ?? "-"} · {plantLabel(entry.plantId, plantNameById)}
+                        {entry.actorName ?? "-"} · {plantLabel(entry.plantId, plantNameById, t)}
                       </p>
                       {entry.decisionId ? (
                         <p className="font-mono text-muted-foreground text-xs">
-                          decision {shortenId(entry.decisionId)}
+                          {t("decisionLine", { id: shortenId(entry.decisionId) })}
                         </p>
                       ) : null}
                       <p className="font-mono text-muted-foreground text-xs">{formatTime(entry.createdAt)}</p>
@@ -213,7 +238,7 @@ function AuditLogCards({
                       size="sm"
                       className="size-8 shrink-0 p-0"
                       onClick={() => onToggle(id)}
-                      aria-label="Toggle change detail"
+                      aria-label={t("toggleChange")}
                     >
                       {isOpen ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />}
                     </Button>
@@ -234,16 +259,20 @@ function AuditLogCards({
 }
 
 function ActionBadge({ action }: { readonly action: AuditLogEntryView["action"] }) {
+  // Badge styling stays keyed on the raw code; the label is translated (fallback = raw code).
+  const t = useTranslations("auditLog.shared.table");
+  const label = t.has(`actionLabels.${action}`) ? t(`actionLabels.${action}`) : action;
   if (action === "CREATE") {
-    return <Badge variant="default">CREATE</Badge>;
+    return <Badge variant="default">{label}</Badge>;
   }
   if (action === "DELETE") {
-    return <Badge variant="destructive">DELETE</Badge>;
+    return <Badge variant="destructive">{label}</Badge>;
   }
-  return <Badge variant="outline">UPDATE</Badge>;
+  return <Badge variant="outline">{label}</Badge>;
 }
 
 function ValueDiff({ entry }: { readonly entry: AuditLogEntryView }) {
+  const t = useTranslations("auditLog.shared.table");
   const previous = entry.previousValue ?? {};
   const next = entry.newValue ?? {};
   const keys = [...new Set([...Object.keys(previous), ...Object.keys(next)])].sort();
@@ -253,10 +282,10 @@ function ValueDiff({ entry }: { readonly entry: AuditLogEntryView }) {
     return (
       <p className="text-muted-foreground py-1 text-sm">
         {entry.action === "DELETE"
-          ? "Record deleted."
+          ? t("recordDeleted")
           : entry.action === "CREATE"
-            ? "Record created."
-            : "No field changes recorded."}
+            ? t("recordCreated")
+            : t("noFieldChanges")}
       </p>
     );
   }
@@ -266,9 +295,9 @@ function ValueDiff({ entry }: { readonly entry: AuditLogEntryView }) {
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-muted/50 text-left">
-            <th className="px-3 py-1.5 font-medium">Field</th>
-            <th className="px-3 py-1.5 font-medium">Before</th>
-            <th className="px-3 py-1.5 font-medium">After</th>
+            <th className="px-3 py-1.5 font-medium">{t("field")}</th>
+            <th className="px-3 py-1.5 font-medium">{t("before")}</th>
+            <th className="px-3 py-1.5 font-medium">{t("after")}</th>
           </tr>
         </thead>
         <tbody>
@@ -308,33 +337,27 @@ function hasChanged(key: string, previous: Record<string, unknown>, next: Record
   return JSON.stringify(previous[key] ?? null) !== JSON.stringify(next[key] ?? null);
 }
 
-function plantLabel(plantId: string | undefined, plantNameById: Record<string, string>) {
+function plantLabel(
+  plantId: string | undefined,
+  plantNameById: Record<string, string>,
+  t: ReturnType<typeof useTranslations>,
+) {
   if (!plantId) {
-    return <Badge variant="secondary">Global</Badge>;
+    return <Badge variant="secondary">{t("global")}</Badge>;
   }
   const name = plantNameById[plantId];
-  return name ? <span className="text-sm">{name}</span> : <span className="text-muted-foreground text-sm">Plant</span>;
+  return name ? (
+    <span className="text-sm">{name}</span>
+  ) : (
+    <span className="text-muted-foreground text-sm">{t("plant")}</span>
+  );
 }
 
-function entityTypeLabel(entityType: AuditLogEntryView["entityType"]) {
-  switch (entityType) {
-    case "PLANT":
-      return "Plant";
-    case "MACHINE_GROUP":
-      return "Machine group";
-    case "MACHINE":
-      return "Machine";
-    case "SPAREPART_TAXONOMY":
-      return "Sparepart taxonomy";
-    case "SPAREPART":
-      return "Sparepart";
-    case "INSTALLATION":
-      return "Installation";
-    case "RESPONSIBILITY":
-      return "Responsibility";
-    default:
-      return entityType ?? "-";
+function entityTypeLabel(entityType: AuditLogEntryView["entityType"], t: ReturnType<typeof useTranslations>) {
+  if (entityType && t.has(`entities.${entityType}`)) {
+    return t(`entities.${entityType}`);
   }
+  return entityType ?? "-";
 }
 
 function groupByDate(entries: AuditLogEntryView[]) {
@@ -350,27 +373,6 @@ function groupByDate(entries: AuditLogEntryView[]) {
     }
   }
   return [...groups.entries()];
-}
-
-function formatDateTime(value: string | undefined) {
-  if (!value) {
-    return "-";
-  }
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
-}
-
-function formatDateOnly(date: string) {
-  if (!date) {
-    return "Unknown date";
-  }
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(`${date}T00:00:00Z`));
-}
-
-function formatTime(value: string | undefined) {
-  if (!value) {
-    return "-";
-  }
-  return new Intl.DateTimeFormat("en", { timeStyle: "short" }).format(new Date(value));
 }
 
 function shortenId(id: string): string {

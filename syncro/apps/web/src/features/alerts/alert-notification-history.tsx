@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { ChevronDownIcon, ChevronUpIcon, CopyIcon } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { type EscalationStep, EscalationTimeline } from "@/components/syncro/escalation-timeline";
@@ -84,19 +85,22 @@ export interface AlertNotificationHistoryProps {
 
 const ESCALATION_ORDER = ["TECHNICIAN", "STAFF", "LEADER", "SPV", "MANAGER"] as const;
 
-function formatTs(iso?: string | null) {
+type Formatter = ReturnType<typeof useFormatter>;
+type Translator = ReturnType<typeof useTranslations>;
+
+function tsOf(format: Formatter, iso?: string | null): string {
   if (!iso) return "-";
   try {
-    return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
+    return format.dateTime(new Date(iso), { dateStyle: "medium", timeStyle: "short" });
   } catch {
     return iso;
   }
 }
 
-function formatTimeOnly(iso?: string | null) {
+function timeOf(format: Formatter, iso?: string | null): string {
   if (!iso) return "-";
   try {
-    return new Intl.DateTimeFormat("en", { timeStyle: "short" }).format(new Date(iso));
+    return format.dateTime(new Date(iso), { timeStyle: "short" });
   } catch {
     return iso;
   }
@@ -107,12 +111,12 @@ function truncate120(value: string | null | undefined) {
   return value.length > 120 ? `${value.slice(0, 120)}…` : value;
 }
 
-async function copyText(value: string) {
+async function copyText(value: string, t: Translator) {
   try {
     await navigator.clipboard.writeText(value);
-    toast.success("Copied");
+    toast.success(t("notificationHistory.copied"));
   } catch {
-    toast.error("Copy failed — not in secure context");
+    toast.error(t("notificationHistory.copyFailed"));
   }
 }
 
@@ -134,15 +138,17 @@ function extractTraceId(error: unknown): string | null {
   return null;
 }
 
-function extractErrorMessage(error: unknown): string {
+// Backend message/code strings are contract data (rendered as-is); only the
+// terminal fallback is translated (errors.generic).
+function extractErrorMessage(error: unknown, te: Translator): string {
   if (error instanceof SyncroApiError) {
     const payload = error.payload as Record<string, unknown> | null;
     if (payload && typeof payload.message === "string") return payload.message as string;
     if (payload && typeof payload.code === "string")
-      return `${payload.code as string}: ${payload.message ?? "Request failed"}`;
+      return `${payload.code as string}: ${payload.message ?? te("generic")}`;
   }
   if (error instanceof Error) return error.message;
-  return "Something went wrong. Please try again.";
+  return te("generic");
 }
 
 // ---------------------------------------------------------------------------
@@ -161,6 +167,7 @@ export function AlertNotificationHistory({
   alertStatus = "OPEN",
   alertCreatedAt = null,
 }: AlertNotificationHistoryProps) {
+  const t = useTranslations("alerts");
   // Enforce escalation order on frontend as well (AC1) — do not rely solely on backend
   const sortedItems = (history?.items ?? []).map(normalizeJob).sort((a, b) => {
     const ia = ESCALATION_ORDER.indexOf(a.escalationLevel as (typeof ESCALATION_ORDER)[number]);
@@ -191,8 +198,8 @@ export function AlertNotificationHistory({
       {/* Escalation Timeline — first-class section */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Escalation Timeline</CardTitle>
-          <CardDescription>Backend-driven escalation chain ordered TECHNICIAN → MANAGER</CardDescription>
+          <CardTitle className="text-base">{t("notificationHistory.timelineTitle")}</CardTitle>
+          <CardDescription>{t("notificationHistory.timelineDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <TimelineSection
@@ -210,8 +217,8 @@ export function AlertNotificationHistory({
       {/* Notification history table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Notification History</CardTitle>
-          <CardDescription>Per-level delivery evidence with masked phone and attempt history</CardDescription>
+          <CardTitle className="text-base">{t("notificationHistory.historyTitle")}</CardTitle>
+          <CardDescription>{t("notificationHistory.historyDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <HistoryTableSection
@@ -226,8 +233,8 @@ export function AlertNotificationHistory({
       {/* Audit evidence */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Audit Evidence</CardTitle>
-          <CardDescription>Immutable audit trail for this alert (entityType=ALERT)</CardDescription>
+          <CardTitle className="text-base">{t("notificationHistory.auditTitle")}</CardTitle>
+          <CardDescription>{t("notificationHistory.auditDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <AuditEvidenceSection
@@ -287,6 +294,10 @@ function TimelineSection({
   onRetry?: () => void;
   alertCreatedAt?: string | null;
 }) {
+  const t = useTranslations("alerts");
+  const tc = useTranslations("common");
+  const te = useTranslations("errors");
+  const format = useFormatter();
   if (isLoading) {
     return (
       <div className="space-y-3">
@@ -297,19 +308,21 @@ function TimelineSection({
   }
   if (error) {
     const traceId = extractTraceId(error);
-    const message = extractErrorMessage(error);
+    const message = extractErrorMessage(error, te);
     const isSuperAdmin = typeof window !== "undefined" && document.cookie.includes("SUPER_ADMIN");
     // Use role-agnostic detail but show traceId where available per AC6
     return (
       <div className="space-y-2 rounded-md border border-destructive/30 p-4">
-        <p className="text-sm font-medium text-destructive">Failed to load escalation timeline.</p>
-        <p className="text-xs text-muted-foreground">
-          {isSuperAdmin ? message : "Something went wrong. Please try again."}
-        </p>
-        {traceId ? <p className="font-mono-tight text-xs text-muted-foreground">traceId: {traceId}</p> : null}
+        <p className="text-sm font-medium text-destructive">{t("notificationHistory.timelineLoadFailed")}</p>
+        <p className="text-xs text-muted-foreground">{isSuperAdmin ? message : te("generic")}</p>
+        {traceId ? (
+          <p className="font-mono-tight text-xs text-muted-foreground">
+            {t("notificationHistory.traceIdLine", { traceId })}
+          </p>
+        ) : null}
         {onRetry ? (
           <Button variant="outline" size="sm" onClick={onRetry}>
-            Retry
+            {tc("retry")}
           </Button>
         ) : null}
       </div>
@@ -318,13 +331,10 @@ function TimelineSection({
   if (isEmpty) {
     return (
       <div className="p-4 text-center">
-        <p className="text-sm text-muted-foreground">
-          No notifications queued for this alert yet. A TECHNICIAN job is created when the alert opens; escalation
-          follows every 15 minutes.
-        </p>
+        <p className="text-sm text-muted-foreground">{t("notificationHistory.emptyTimeline")}</p>
         {alertCreatedAt ? (
           <p className="font-mono-tight mt-1 text-xs text-muted-foreground">
-            Alert created: {formatTs(alertCreatedAt)}
+            {t("notificationHistory.alertCreatedLine", { datetime: tsOf(format, alertCreatedAt) })}
           </p>
         ) : null}
       </div>
@@ -349,6 +359,10 @@ function HistoryTableSection({
   error: unknown | null;
   onRetry?: () => void;
 }) {
+  const t = useTranslations("alerts");
+  const tc = useTranslations("common");
+  const te = useTranslations("errors");
+  const format = useFormatter();
   const [expandedAttempts, setExpandedAttempts] = useState<Set<string>>(new Set());
   const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set());
 
@@ -379,15 +393,19 @@ function HistoryTableSection({
   }
   if (error) {
     const traceId = extractTraceId(error);
-    const message = extractErrorMessage(error);
+    const message = extractErrorMessage(error, te);
     return (
       <div className="space-y-2 rounded-md border border-destructive/30 p-4">
-        <p className="text-sm font-medium text-destructive">Failed to load notification history.</p>
+        <p className="text-sm font-medium text-destructive">{t("notificationHistory.historyLoadFailed")}</p>
         <p className="text-xs text-muted-foreground">{message}</p>
-        {traceId ? <p className="font-mono-tight text-xs text-muted-foreground">traceId: {traceId}</p> : null}
+        {traceId ? (
+          <p className="font-mono-tight text-xs text-muted-foreground">
+            {t("notificationHistory.traceIdLine", { traceId })}
+          </p>
+        ) : null}
         {onRetry ? (
           <Button variant="outline" size="sm" onClick={onRetry}>
-            Retry
+            {tc("retry")}
           </Button>
         ) : null}
       </div>
@@ -396,7 +414,7 @@ function HistoryTableSection({
   if (!items || items.length === 0) {
     return (
       <div className="p-4 text-center">
-        <p className="text-sm text-muted-foreground">No notification jobs for this alert.</p>
+        <p className="text-sm text-muted-foreground">{t("notificationHistory.emptyHistory")}</p>
       </div>
     );
   }
@@ -408,14 +426,14 @@ function HistoryTableSection({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Level</TableHead>
-              <TableHead>Recipient</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Attempts</TableHead>
-              <TableHead>Time</TableHead>
-              <TableHead>Detail</TableHead>
-              <TableHead>Trace</TableHead>
+              <TableHead>{t("notificationHistory.headerLevel")}</TableHead>
+              <TableHead>{t("notificationHistory.headerRecipient")}</TableHead>
+              <TableHead>{t("notificationHistory.headerPhone")}</TableHead>
+              <TableHead>{tc("status")}</TableHead>
+              <TableHead>{t("notificationHistory.headerAttempts")}</TableHead>
+              <TableHead>{t("notificationHistory.headerTime")}</TableHead>
+              <TableHead>{t("notificationHistory.headerDetail")}</TableHead>
+              <TableHead>{t("notificationHistory.headerTrace")}</TableHead>
               <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
@@ -441,7 +459,7 @@ function HistoryTableSection({
                   <TableCell className="tabular-nums">
                     {job.attemptCount}/{job.maxAttempts}
                   </TableCell>
-                  <TableCell className="font-mono-tight whitespace-nowrap text-xs">{formatTs(ts)}</TableCell>
+                  <TableCell className="font-mono-tight whitespace-nowrap text-xs">{tsOf(format, ts)}</TableCell>
                   <TableCell className="max-w-48">
                     {job.errorDetail ? (
                       <span className="break-words text-xs" title={job.errorDetail}>
@@ -452,7 +470,7 @@ function HistoryTableSection({
                             className="ml-1 text-primary underline"
                             onClick={() => toggleError(job.id)}
                           >
-                            {isErrOpen ? "less" : "more"}
+                            {isErrOpen ? t("notificationHistory.less") : t("notificationHistory.more")}
                           </button>
                         ) : null}
                       </span>
@@ -470,8 +488,8 @@ function HistoryTableSection({
                           variant="ghost"
                           size="icon"
                           className="size-6"
-                          aria-label="Copy trace ID"
-                          onClick={() => copyText(job.traceId ?? "")}
+                          aria-label={t("notificationHistory.copyTraceAria")}
+                          onClick={() => copyText(job.traceId ?? "", t)}
                         >
                           <CopyIcon className="size-3" />
                         </Button>
@@ -487,7 +505,7 @@ function HistoryTableSection({
                         size="sm"
                         className="size-8 p-0"
                         onClick={() => toggleAttempts(job.id)}
-                        aria-label="Toggle attempts"
+                        aria-label={t("notificationHistory.toggleAttemptsAria")}
                       >
                         {isAttOpen ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />}
                       </Button>
@@ -525,9 +543,9 @@ function HistoryTableSection({
                 {job.recipientDisplayName ?? "-"}
                 {job.recipientPhoneMasked ? ` · ${job.recipientPhoneMasked}` : ""}
               </p>
-              <p className="font-mono-tight text-xs text-muted-foreground">{formatTs(ts)}</p>
+              <p className="font-mono-tight text-xs text-muted-foreground">{tsOf(format, ts)}</p>
               <p className="tabular-nums text-xs">
-                Attempts: {job.attemptCount}/{job.maxAttempts}
+                {t("notificationHistory.attemptsLine", { attempts: job.attemptCount, max: job.maxAttempts })}
               </p>
               {job.errorDetail ? (
                 <p className="break-words text-xs text-muted-foreground">
@@ -538,7 +556,7 @@ function HistoryTableSection({
               {job.traceId ? (
                 <p className="font-mono-tight flex items-center gap-1 text-xs">
                   <span className="truncate">{job.traceId.slice(0, 12)}…</span>
-                  <button type="button" className="text-primary" onClick={() => copyText(job.traceId ?? "")}>
+                  <button type="button" className="text-primary" onClick={() => copyText(job.traceId ?? "", t)}>
                     <CopyIcon className="size-3" />
                   </button>
                 </p>
@@ -547,7 +565,7 @@ function HistoryTableSection({
                 <Collapsible open={isAttOpen} onOpenChange={() => toggleAttempts(job.id)}>
                   <CollapsibleTrigger asChild>
                     <Button variant="ghost" size="sm" className="w-full justify-between">
-                      Attempts ({job.attempts.length}){" "}
+                      {t("notificationHistory.attemptsCount", { count: job.attempts.length })}{" "}
                       {isAttOpen ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />}
                     </Button>
                   </CollapsibleTrigger>
@@ -565,6 +583,9 @@ function HistoryTableSection({
 }
 
 function AttemptTable({ attempts }: { attempts: NormalizedAttempt[] }) {
+  const t = useTranslations("alerts");
+  const tc = useTranslations("common");
+  const format = useFormatter();
   const [expandedDetail, setExpandedDetail] = useState<Set<string>>(new Set());
   function toggle(rowKey: string) {
     setExpandedDetail((cur) => {
@@ -580,10 +601,10 @@ function AttemptTable({ attempts }: { attempts: NormalizedAttempt[] }) {
         <thead>
           <tr className="bg-muted/50 text-left">
             <th className="px-3 py-1.5 font-medium">#</th>
-            <th className="px-3 py-1.5 font-medium">Status</th>
-            <th className="px-3 py-1.5 font-medium">At</th>
-            <th className="px-3 py-1.5 font-medium">Detail</th>
-            <th className="px-3 py-1.5 font-medium">Trace</th>
+            <th className="px-3 py-1.5 font-medium">{tc("status")}</th>
+            <th className="px-3 py-1.5 font-medium">{t("notificationHistory.headerAt")}</th>
+            <th className="px-3 py-1.5 font-medium">{t("notificationHistory.headerDetail")}</th>
+            <th className="px-3 py-1.5 font-medium">{t("notificationHistory.headerTrace")}</th>
           </tr>
         </thead>
         <tbody>
@@ -598,14 +619,14 @@ function AttemptTable({ attempts }: { attempts: NormalizedAttempt[] }) {
                     {a.status}
                   </Badge>
                 </td>
-                <td className="font-mono-tight whitespace-nowrap px-3 py-1.5">{formatTimeOnly(a.attemptedAt)}</td>
+                <td className="font-mono-tight whitespace-nowrap px-3 py-1.5">{timeOf(format, a.attemptedAt)}</td>
                 <td className="max-w-48 break-words px-3 py-1.5">
                   {a.responseDetail ? (
                     <span title={a.responseDetail}>
                       {isOpen ? a.responseDetail.slice(0, 512) : truncate120(a.responseDetail)}
                       {a.responseDetail.length > 120 ? (
                         <button type="button" className="ml-1 text-primary underline" onClick={() => toggle(rowKey)}>
-                          {isOpen ? "less" : "more"}
+                          {isOpen ? t("notificationHistory.less") : t("notificationHistory.more")}
                         </button>
                       ) : null}
                     </span>
@@ -617,7 +638,11 @@ function AttemptTable({ attempts }: { attempts: NormalizedAttempt[] }) {
                   {a.traceId ? (
                     <span className="inline-flex items-center gap-1">
                       {a.traceId.slice(0, 8)}…
-                      <button type="button" aria-label="Copy trace ID" onClick={() => copyText(a.traceId ?? "")}>
+                      <button
+                        type="button"
+                        aria-label={t("notificationHistory.copyTraceAria")}
+                        onClick={() => copyText(a.traceId ?? "", t)}
+                      >
                         <CopyIcon className="size-3" />
                       </button>
                     </span>
@@ -649,6 +674,10 @@ function AuditEvidenceSection({
   error: unknown | null;
   onRetry?: () => void;
 }) {
+  const t = useTranslations("alerts");
+  const tc = useTranslations("common");
+  const te = useTranslations("errors");
+  const format = useFormatter();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   function toggle(id: string) {
     setExpanded((cur) => {
@@ -669,15 +698,19 @@ function AuditEvidenceSection({
   }
   if (error) {
     const traceId = extractTraceId(error);
-    const message = extractErrorMessage(error);
+    const message = extractErrorMessage(error, te);
     return (
       <div className="space-y-2 rounded-md border border-destructive/30 p-4">
-        <p className="text-sm font-medium text-destructive">Failed to load audit evidence.</p>
+        <p className="text-sm font-medium text-destructive">{t("notificationHistory.auditLoadFailed")}</p>
         <p className="text-xs text-muted-foreground">{message}</p>
-        {traceId ? <p className="font-mono-tight text-xs text-muted-foreground">traceId: {traceId}</p> : null}
+        {traceId ? (
+          <p className="font-mono-tight text-xs text-muted-foreground">
+            {t("notificationHistory.traceIdLine", { traceId })}
+          </p>
+        ) : null}
         {onRetry ? (
           <Button variant="outline" size="sm" onClick={onRetry}>
-            Retry
+            {tc("retry")}
           </Button>
         ) : null}
       </div>
@@ -686,7 +719,7 @@ function AuditEvidenceSection({
   if (!entries || entries.length === 0) {
     return (
       <div className="p-4 text-center">
-        <p className="text-sm text-muted-foreground">No audit evidence yet.</p>
+        <p className="text-sm text-muted-foreground">{t("notificationHistory.emptyAudit")}</p>
       </div>
     );
   }
@@ -698,10 +731,10 @@ function AuditEvidenceSection({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Timestamp</TableHead>
-              <TableHead>Actor</TableHead>
-              <TableHead>Action</TableHead>
-              <TableHead>Result</TableHead>
+              <TableHead>{t("notificationHistory.headerTimestamp")}</TableHead>
+              <TableHead>{t("notificationHistory.headerActor")}</TableHead>
+              <TableHead>{t("notificationHistory.headerAction")}</TableHead>
+              <TableHead>{t("notificationHistory.headerResult")}</TableHead>
               <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
@@ -712,7 +745,7 @@ function AuditEvidenceSection({
               return (
                 <TableRow key={id}>
                   <TableCell className="font-mono-tight whitespace-nowrap text-xs">
-                    {formatTs(entry.createdAt)}
+                    {tsOf(format, entry.createdAt)}
                   </TableCell>
                   <TableCell className="max-w-32 truncate" title={entry.actorName ?? undefined}>
                     {entry.actorName ?? "-"}
@@ -729,7 +762,7 @@ function AuditEvidenceSection({
                       size="sm"
                       className="size-8 p-0"
                       onClick={() => toggle(id)}
-                      aria-label="Toggle change detail"
+                      aria-label={t("notificationHistory.toggleChangeAria")}
                     >
                       {isOpen ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />}
                     </Button>
@@ -759,7 +792,7 @@ function AuditEvidenceSection({
             <div key={id} className="space-y-1.5 rounded-lg border p-3">
               <div className="flex items-center justify-between gap-2">
                 <Badge variant="outline">{entry.action}</Badge>
-                <span className="font-mono-tight text-xs text-muted-foreground">{formatTimeOnly(entry.createdAt)}</span>
+                <span className="font-mono-tight text-xs text-muted-foreground">{timeOf(format, entry.createdAt)}</span>
               </div>
               <p className="text-sm">
                 {entry.actorName ?? "-"} · {entry.entityType}
@@ -768,7 +801,8 @@ function AuditEvidenceSection({
                 {entry.entityLabel ?? "-"}
               </p>
               <Button variant="ghost" size="sm" className="w-full justify-between" onClick={() => toggle(id)}>
-                Detail {isOpen ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />}
+                {t("notificationHistory.headerDetail")}{" "}
+                {isOpen ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />}
               </Button>
               {isOpen ? <ValueDiff entry={entry} /> : null}
             </div>
@@ -780,6 +814,7 @@ function AuditEvidenceSection({
 }
 
 function ValueDiff({ entry }: { entry: AuditLogEntryView }) {
+  const t = useTranslations("alerts");
   const previous = (entry.previousValue as Record<string, unknown> | null) ?? {};
   const next = (entry.newValue as Record<string, unknown> | null) ?? {};
   const keys = [...new Set([...Object.keys(previous), ...Object.keys(next)])].sort();
@@ -788,10 +823,10 @@ function ValueDiff({ entry }: { entry: AuditLogEntryView }) {
     return (
       <p className="py-1 text-sm text-muted-foreground">
         {entry.action === "CREATE"
-          ? "Record created."
+          ? t("notificationHistory.recordCreated")
           : entry.action === "DELETE"
-            ? "Record deleted."
-            : "No field changes recorded."}
+            ? t("notificationHistory.recordDeleted")
+            : t("notificationHistory.noFieldChanges")}
       </p>
     );
   }
@@ -800,9 +835,9 @@ function ValueDiff({ entry }: { entry: AuditLogEntryView }) {
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-muted/50 text-left">
-            <th className="px-3 py-1.5 font-medium">Field</th>
-            <th className="px-3 py-1.5 font-medium">Before</th>
-            <th className="px-3 py-1.5 font-medium">After</th>
+            <th className="px-3 py-1.5 font-medium">{t("notificationHistory.headerField")}</th>
+            <th className="px-3 py-1.5 font-medium">{t("notificationHistory.headerBefore")}</th>
+            <th className="px-3 py-1.5 font-medium">{t("notificationHistory.headerAfter")}</th>
           </tr>
         </thead>
         <tbody>

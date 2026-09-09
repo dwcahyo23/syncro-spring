@@ -1,7 +1,10 @@
 "use client";
 
 import { useRef } from "react";
+
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -38,6 +41,8 @@ export function WahaTemplateEditor({
   readOnly = false,
   isSaving = false,
 }: WahaTemplateEditorProps) {
+  const t = useTranslations("wahaTemplates.editor");
+  const tc = useTranslations("common");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const unknownVariables = getUnknownVariables(value, availableVariables);
@@ -68,22 +73,23 @@ export function WahaTemplateEditor({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <label className="text-sm font-medium">
-            Template Text
-            {!readOnly && <span className="text-destructive ml-1" aria-hidden="true">*</span>}
+            {t("label")}
+            {!readOnly && (
+              <span className="text-destructive ml-1" aria-hidden="true">
+                {tc("requiredMark")}
+              </span>
+            )}
           </label>
           {!readOnly && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" type="button">
-                  Insert Variable
+                  {t("insertVariable")}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {availableVariables.map((variable) => (
-                  <DropdownMenuItem
-                    key={variable}
-                    onSelect={() => insertVariable(variable)}
-                  >
+                  <DropdownMenuItem key={variable} onSelect={() => insertVariable(variable)}>
                     <code className="text-xs">{variable}</code>
                   </DropdownMenuItem>
                 ))}
@@ -98,11 +104,7 @@ export function WahaTemplateEditor({
           onChange={(e) => onChange(e.target.value)}
           readOnly={readOnly}
           rows={8}
-          placeholder={
-            readOnly
-              ? "No template text."
-              : "Type your alert message here. Use Insert Variable to add dynamic fields."
-          }
+          placeholder={readOnly ? t("readOnlyPlaceholder") : t("editPlaceholder")}
           className={hasErrors ? "border-destructive focus-visible:ring-destructive" : ""}
           aria-invalid={hasErrors}
           aria-describedby={hasErrors ? "template-errors" : undefined}
@@ -112,7 +114,7 @@ export function WahaTemplateEditor({
           <div id="template-errors" className="space-y-1" role="alert">
             {unknownVariables.map((token) => (
               <p key={token} className="text-sm text-destructive">
-                Unknown variable: <code>{token}</code>
+                {t("unknownVariable")} <code>{token}</code>
               </p>
             ))}
           </div>
@@ -123,13 +125,11 @@ export function WahaTemplateEditor({
       {preview !== undefined && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Preview (sample data)
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t("previewTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             <pre className="whitespace-pre-wrap text-sm font-mono break-words">
-              {preview || <span className="text-muted-foreground italic">Preview will appear here.</span>}
+              {preview || <span className="text-muted-foreground italic">{t("previewPlaceholder")}</span>}
             </pre>
           </CardContent>
         </Card>
@@ -138,22 +138,13 @@ export function WahaTemplateEditor({
       {/* Save action */}
       {!readOnly && onSave && (
         <div className="flex justify-end">
-          <Button
-            type="button"
-            onClick={handleSave}
-            disabled={!canSave}
-            aria-disabled={!canSave}
-          >
-            {isSaving ? "Saving..." : "Save Template"}
+          <Button type="button" onClick={handleSave} disabled={!canSave} aria-disabled={!canSave}>
+            {isSaving ? tc("saving") : t("save")}
           </Button>
         </div>
       )}
 
-      {readOnly && (
-        <p className="text-sm text-muted-foreground">
-          You have read-only access to this template.
-        </p>
-      )}
+      {readOnly && <p className="text-sm text-muted-foreground">{t("readOnlyNotice")}</p>}
     </div>
   );
 }

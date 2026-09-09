@@ -1,5 +1,7 @@
 "use client";
 
+import { useFormatter, useTranslations } from "next-intl";
+
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -18,6 +20,9 @@ interface AlertListPageContentProps {
 }
 
 export function AlertListPageContent({ statusFilter, machineId }: AlertListPageContentProps) {
+  const t = useTranslations("alerts");
+  const tc = useTranslations("common");
+  const format = useFormatter();
   const router = useRouter();
 
   const { data, isLoading, isError, error, refetch } = useListAlerts(
@@ -53,42 +58,42 @@ export function AlertListPageContent({ statusFilter, machineId }: AlertListPageC
     if (error instanceof SyncroApiError && error.status === 403) {
       return (
         <div className="rounded-lg border p-6 text-center">
-          <h2 className="font-semibold text-lg">Access denied</h2>
-          <p className="mt-1 text-muted-foreground text-sm">You do not have access to alerts.</p>
+          <h2 className="font-semibold text-lg">{t("listPage.accessDeniedTitle")}</h2>
+          <p className="mt-1 text-muted-foreground text-sm">{t("listPage.accessDeniedDescription")}</p>
         </div>
       );
     }
     return (
       <div className="flex flex-col items-center gap-3 rounded-lg border p-6">
-        <p className="text-muted-foreground text-sm">Failed to load alerts.</p>
+        <p className="text-muted-foreground text-sm">{t("listPage.loadFailed")}</p>
         <button
           type="button"
           className="rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground text-sm hover:bg-primary/90"
           onClick={() => void refetch()}
         >
-          Retry
+          {tc("retry")}
         </button>
       </div>
     );
   }
 
   if (items.length === 0) {
-    return <EmptyState title="No alerts" description="No sparepart lifetime alerts match the current filter." />;
+    return <EmptyState title={t("listPage.emptyTitle")} description={t("listPage.emptyDescription")} />;
   }
 
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Status</TableHead>
-          <TableHead>Type</TableHead>
-          <TableHead className="hidden sm:table-cell">Notification</TableHead>
-          <TableHead>Machine</TableHead>
-          <TableHead className="hidden md:table-cell">Plant</TableHead>
-          <TableHead>Sparepart</TableHead>
-          <TableHead className="hidden text-right sm:table-cell">Threshold</TableHead>
-          <TableHead className="hidden text-right sm:table-cell">Consumed</TableHead>
-          <TableHead className="hidden lg:table-cell">Created</TableHead>
+          <TableHead>{t("listPage.colStatus")}</TableHead>
+          <TableHead>{t("listPage.colType")}</TableHead>
+          <TableHead className="hidden sm:table-cell">{t("listPage.colNotification")}</TableHead>
+          <TableHead>{t("listPage.colMachine")}</TableHead>
+          <TableHead className="hidden md:table-cell">{tc("plant")}</TableHead>
+          <TableHead>{t("listPage.colSparepart")}</TableHead>
+          <TableHead className="hidden text-right sm:table-cell">{t("listPage.colThreshold")}</TableHead>
+          <TableHead className="hidden text-right sm:table-cell">{t("listPage.colConsumed")}</TableHead>
+          <TableHead className="hidden lg:table-cell">{tc("createdAt")}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -104,7 +109,10 @@ export function AlertListPageContent({ statusFilter, machineId }: AlertListPageC
                 router.push(`/alerts/${item.id}`);
               }
             }}
-            aria-label={`View alert for ${item.machineCode} — ${item.sparepartName ?? item.sparepartCode}`}
+            aria-label={t("listPage.rowAria", {
+              machineCode: item.machineCode ?? "",
+              sparepart: item.sparepartName ?? item.sparepartCode ?? "",
+            })}
           >
             <TableCell>
               <AlertStatusBadge status={item.status as AlertViewStatus} />
@@ -128,13 +136,17 @@ export function AlertListPageContent({ statusFilter, machineId }: AlertListPageC
               <div className="text-muted-foreground text-xs">{item.functionName}</div>
             </TableCell>
             <TableCell className="hidden text-right tabular-nums sm:table-cell">
-              {item.thresholdPercentage != null ? `${item.thresholdPercentage}%` : "-"}
+              {item.thresholdPercentage != null ? `${item.thresholdPercentage}%` : t("listPage.notApplicable")}
             </TableCell>
             <TableCell className="hidden text-right tabular-nums sm:table-cell">
-              {item.consumedPercentageSnapshot != null ? `${Number(item.consumedPercentageSnapshot).toFixed(1)}%` : "-"}
+              {item.consumedPercentageSnapshot != null
+                ? `${Number(item.consumedPercentageSnapshot).toFixed(1)}%`
+                : t("listPage.notApplicable")}
             </TableCell>
             <TableCell className="hidden text-muted-foreground text-sm lg:table-cell">
-              {item.createdAt ? new Date(item.createdAt).toLocaleString() : "-"}
+              {item.createdAt
+                ? format.dateTime(new Date(item.createdAt), { dateStyle: "medium", timeStyle: "short" })
+                : t("listPage.notApplicable")}
             </TableCell>
           </TableRow>
         ))}

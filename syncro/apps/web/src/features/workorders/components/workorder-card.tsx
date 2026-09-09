@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle2, Circle } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +13,7 @@ export interface WorkOrderCardProps {
 }
 
 export function WorkOrderCard({ item }: WorkOrderCardProps) {
+  const t = useTranslations("workOrders");
   const doneTodos = item.todos.filter((todo) => todo.status === "COMPLETED").length;
   const cancelledTodos = item.todos.filter((todo) => todo.status === "CANCELLED").length;
   const totalTodos = item.todos.length;
@@ -23,7 +25,7 @@ export function WorkOrderCard({ item }: WorkOrderCardProps) {
           <CardTitle className="font-medium text-sm leading-tight">{item.id}</CardTitle>
           {item.categoryCode ? <Badge variant="outline">{item.categoryCode}</Badge> : null}
         </div>
-        <p className="line-clamp-2 text-muted-foreground text-xs">{item.description ?? "No description"}</p>
+        <p className="line-clamp-2 text-muted-foreground text-xs">{item.description ?? t("card.noDescription")}</p>
       </CardHeader>
       <CardContent className="p-3 pt-0">
         {item.todos.length > 0 ? (
@@ -43,11 +45,11 @@ export function WorkOrderCard({ item }: WorkOrderCardProps) {
             })}
           </ul>
         ) : (
-          <p className="text-muted-foreground text-xs">No todos</p>
+          <p className="text-muted-foreground text-xs">{t("card.noTodos")}</p>
         )}
         <p className="mt-2 text-xs text-muted-foreground">
-          {doneTodos}/{totalTodos} done
-          {cancelledTodos > 0 ? ` · ${cancelledTodos} cancelled` : ""}
+          {t("card.doneProgress", { done: doneTodos, total: totalTodos })}
+          {cancelledTodos > 0 ? t("card.cancelledNote", { count: cancelledTodos }) : ""}
         </p>
         <div className="mt-2">
           <RequestPartDialog workOrderId={item.id} />

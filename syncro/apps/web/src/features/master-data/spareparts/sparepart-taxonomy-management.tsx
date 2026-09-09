@@ -4,6 +4,7 @@ import { type FormEvent, useState } from "react";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, Trash2, TriangleAlertIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import {
@@ -30,6 +31,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { apiErrorMessage, errorResponse } from "@/lib/api/error-response";
 import type { SparepartTaxonomyRequest, SparepartTaxonomyView } from "@/lib/api/generated/model";
 import { SparepartTaxonomyRequestDimension } from "@/lib/api/generated/model";
 import {
@@ -39,14 +41,16 @@ import {
   useListSparepartTaxonomies,
   useUpdateSparepartTaxonomy,
 } from "@/lib/api/generated/syncro";
-import { SyncroApiError } from "@/lib/api/orval-mutator";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
+import { useDateTimeFormatter } from "@/lib/i18n/format";
 
 type TaxonomyFormState = Pick<SparepartTaxonomyRequest, "code" | "name">;
 type DialogMode = { type: "create"; entry?: never } | { type: "edit"; entry: SparepartTaxonomyView };
-type ErrorResponse = { code: string; message: string; fieldErrors?: Record<string, string> };
 
 export function SparepartTaxonomyManagement() {
+  const t = useTranslations("masterData");
+  const tc = useTranslations("common");
+  const te = useTranslations("errors");
   const user = useAuthUser();
   const queryClient = useQueryClient();
   const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGER_MAINTENANCE";
@@ -99,7 +103,7 @@ export function SparepartTaxonomyManagement() {
             name: form.name,
           },
         });
-        toast.success("Category updated.");
+        toast.success(t("sparepartTaxonomy.toast.updated"));
       } else {
         await createTaxonomy.mutateAsync({
           data: {
@@ -108,14 +112,15 @@ export function SparepartTaxonomyManagement() {
             name: form.name,
           },
         });
-        toast.success("Category created.");
+        toast.success(t("sparepartTaxonomy.toast.created"));
       }
       setDialogMode(null);
     } catch (error) {
       const response = errorResponse(error);
       setFieldErrors(response?.fieldErrors ?? {});
-      setFormError(response?.message ?? "Category request failed.");
-      toast.error(response?.message ?? "Category request failed.");
+      const message = response ? apiErrorMessage(te, response) : t("sparepartTaxonomy.toast.requestFailed");
+      setFormError(message);
+      toast.error(message);
     }
   }
 
@@ -125,10 +130,11 @@ export function SparepartTaxonomyManagement() {
 
     try {
       await deleteTaxonomy.mutateAsync({ taxonomyId: deleteTarget.id ?? "" });
-      toast.success("Category deleted.");
+      toast.success(t("sparepartTaxonomy.toast.deleted"));
       setDeleteTarget(null);
     } catch (error) {
-      const message = errorResponse(error)?.message ?? "Category delete failed.";
+      const response = errorResponse(error);
+      const message = response ? apiErrorMessage(te, response) : t("sparepartTaxonomy.toast.deleteFailed");
       setDeleteError(message);
       toast.error(message);
     }
@@ -138,15 +144,12 @@ export function SparepartTaxonomyManagement() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Category</CardTitle>
-          <CardDescription>
-            Manage controlled sparepart category values. Category determines which spareparts belong to which domain
-            (e.g. Electric, Mechanic). Only approved categories are accepted by the system.
-          </CardDescription>
+          <CardTitle>{t("sparepartTaxonomy.title")}</CardTitle>
+          <CardDescription>{t("sparepartTaxonomy.description")}</CardDescription>
           <CardAction>
             <div className="flex items-center gap-2">
-              {canMutate ? null : <Badge variant="secondary">Read-only</Badge>}
-              {canMutate ? <Button onClick={openCreateDialog}>Add category</Button> : null}
+              {canMutate ? null : <Badge variant="secondary">{t("sparepartTaxonomy.readOnly")}</Badge>}
+              {canMutate ? <Button onClick={openCreateDialog}>{t("sparepartTaxonomy.add")}</Button> : null}
             </div>
           </CardAction>
         </CardHeader>
@@ -154,17 +157,20 @@ export function SparepartTaxonomyManagement() {
           {taxonomy.isLoading ? <CategorySkeleton /> : null}
           {taxonomy.isError ? (
             <CategoryState
-              title="Categories could not be loaded"
-              description="Refresh page or contact administrator if access should be available."
+              title={t("sparepartTaxonomy.state.loadFailedTitle")}
+              description={t("sparepartTaxonomy.state.loadFailedDesc")}
               action={
                 <Button variant="outline" onClick={() => taxonomy.refetch()}>
-                  Retry
+                  {tc("retry")}
                 </Button>
               }
             />
           ) : null}
           {!taxonomy.isLoading && !taxonomy.isError && categoryItems.length === 0 ? (
-            <CategoryState title="No categories yet" description="Create the first sparepart category entry." />
+            <CategoryState
+              title={t("sparepartTaxonomy.state.emptyTitle")}
+              description={t("sparepartTaxonomy.state.emptyDesc")}
+            />
           ) : null}
           {!taxonomy.isLoading && !taxonomy.isError && categoryItems.length > 0 ? (
             <CategoryTable
@@ -184,20 +190,21 @@ export function SparepartTaxonomyManagement() {
         <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
           <form onSubmit={submitTaxonomy} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>{dialogMode?.type === "edit" ? "Edit category" : "Add category"}</DialogTitle>
-              <DialogDescription>
-                Category code must match a backend-approved value (e.g. ELECTRIC, MECHANIC). Names must be unique within
-                Category.
-              </DialogDescription>
+              <DialogTitle>
+                {dialogMode?.type === "edit"
+                  ? t("sparepartTaxonomy.dialog.editTitle")
+                  : t("sparepartTaxonomy.dialog.createTitle")}
+              </DialogTitle>
+              <DialogDescription>{t("sparepartTaxonomy.dialog.description")}</DialogDescription>
             </DialogHeader>
             {formError ? (
               <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{formError}</p>
             ) : null}
             <div className="grid gap-2">
-              <Label htmlFor="category-name">Name</Label>
+              <Label htmlFor="category-name">{tc("name")}</Label>
               <Input
                 id="category-name"
-                placeholder="e.g. Electric"
+                placeholder={t("sparepartTaxonomy.dialog.namePlaceholder")}
                 value={form.name}
                 onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
                 aria-invalid={Boolean(fieldErrors.name)}
@@ -206,10 +213,10 @@ export function SparepartTaxonomyManagement() {
               {fieldErrors.name ? <p className="text-destructive text-sm">{fieldErrors.name}</p> : null}
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="category-code">Code</Label>
+              <Label htmlFor="category-code">{tc("code")}</Label>
               <Input
                 id="category-code"
-                placeholder="e.g. ELECTRIC"
+                placeholder={t("sparepartTaxonomy.dialog.codePlaceholder")}
                 value={form.code}
                 onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
                 aria-invalid={Boolean(fieldErrors.code)}
@@ -219,11 +226,13 @@ export function SparepartTaxonomyManagement() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogMode(null)} disabled={isSaving}>
-                Cancel
+                {tc("cancel")}
               </Button>
               <Button type="submit" disabled={isSaving}>
                 {isSaving ? <Loader2Icon className="animate-spin" /> : null}
-                {dialogMode?.type === "edit" ? "Update category" : "Add category"}
+                {dialogMode?.type === "edit"
+                  ? t("sparepartTaxonomy.dialog.submitEdit")
+                  : t("sparepartTaxonomy.dialog.submitCreate")}
               </Button>
             </DialogFooter>
           </form>
@@ -233,20 +242,19 @@ export function SparepartTaxonomyManagement() {
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete category?</AlertDialogTitle>
+            <AlertDialogTitle>{t("sparepartTaxonomy.delete.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes &ldquo;{deleteTarget?.name}&rdquo;. Deletion is blocked when existing sparepart records
-              depend on this category.
+              {t("sparepartTaxonomy.delete.description", { name: deleteTarget?.name ?? "" })}
             </AlertDialogDescription>
             {deleteError ? (
               <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{deleteError}</p>
             ) : null}
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteTaxonomy.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteTaxonomy.isPending}>{tc("cancel")}</AlertDialogCancel>
             <Button variant="destructive" onClick={confirmDelete} disabled={deleteTaxonomy.isPending}>
               {deleteTaxonomy.isPending ? <Loader2Icon className="animate-spin" /> : null}
-              Delete category
+              {t("sparepartTaxonomy.delete.action")}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -266,15 +274,18 @@ function CategoryTable({
   onEdit: (entry: SparepartTaxonomyView) => void;
   onDelete: (entry: SparepartTaxonomyView) => void;
 }) {
+  const t = useTranslations("masterData");
+  const tc = useTranslations("common");
+  const dt = useDateTimeFormatter();
   return (
     <div className="overflow-x-auto rounded-lg border">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="whitespace-nowrap">Code</TableHead>
-            <TableHead className="whitespace-nowrap">Name</TableHead>
-            <TableHead className="whitespace-nowrap">Created</TableHead>
-            <TableHead className="text-right w-32">Actions</TableHead>
+            <TableHead className="whitespace-nowrap">{tc("code")}</TableHead>
+            <TableHead className="whitespace-nowrap">{tc("name")}</TableHead>
+            <TableHead className="whitespace-nowrap">{tc("createdAt")}</TableHead>
+            <TableHead className="text-right w-32">{tc("actions")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -282,20 +293,20 @@ function CategoryTable({
             <TableRow key={entry.id ?? `${entry.code}-${entry.name}`}>
               <TableCell className="font-mono text-xs">{entry.code}</TableCell>
               <TableCell className="font-medium">{entry.name}</TableCell>
-              <TableCell>{entry.createdAt ? formatDate(entry.createdAt) : "-"}</TableCell>
+              <TableCell>{entry.createdAt ? dt.dateTime(entry.createdAt) : "-"}</TableCell>
               <TableCell className="text-right">
                 {canMutate ? (
                   <div className="flex justify-end gap-2">
                     <Button variant="outline" size="sm" onClick={() => onEdit(entry)}>
-                      Edit
+                      {tc("edit")}
                     </Button>
                     <Button variant="destructive" size="sm" onClick={() => onDelete(entry)}>
                       <Trash2 />
-                      Delete
+                      {tc("delete")}
                     </Button>
                   </div>
                 ) : (
-                  <Badge variant="secondary">View only</Badge>
+                  <Badge variant="secondary">{t("sparepartTaxonomy.viewOnly")}</Badge>
                 )}
               </TableCell>
             </TableRow>
@@ -336,16 +347,4 @@ function CategorySkeleton() {
       <Skeleton className="h-12 w-full" />
     </div>
   );
-}
-
-function errorResponse(error: unknown): ErrorResponse | null {
-  if (!(error instanceof SyncroApiError) || !error.payload || typeof error.payload !== "object") {
-    return null;
-  }
-  const payload = error.payload as ErrorResponse;
-  return typeof payload.code === "string" && typeof payload.message === "string" ? payload : null;
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }

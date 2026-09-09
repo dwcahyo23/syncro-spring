@@ -1,4 +1,8 @@
+"use client";
+
 import { Component, type ReactNode } from "react";
+
+import { useTranslations } from "next-intl";
 
 type TelemetryCardErrorBoundaryProps = {
   machineCode?: string;
@@ -10,8 +14,12 @@ type TelemetryCardErrorBoundaryState = {
   hasError: boolean;
 };
 
-export class TelemetryCardErrorBoundary extends Component<
-  TelemetryCardErrorBoundaryProps,
+/**
+ * Class boundary cannot call hooks, so the translated fallback strings arrive as
+ * props from the function wrapper exported under the public name.
+ */
+class Boundary extends Component<
+  TelemetryCardErrorBoundaryProps & { readonly messages: { title: string; body: string; retry: string } },
   TelemetryCardErrorBoundaryState
 > {
   state: TelemetryCardErrorBoundaryState = { hasError: false };
@@ -27,11 +35,8 @@ export class TelemetryCardErrorBoundary extends Component<
           className="flex h-full min-h-52 flex-col items-center justify-center gap-2 rounded-xl border border-destructive/30 p-4 text-center"
           role="alert"
         >
-          <p className="font-medium text-sm">Telemetry display failed</p>
-          <p className="text-muted-foreground text-xs">
-            Could not render telemetry{this.props.machineCode ? ` for ${this.props.machineCode}` : ""}. Other machines
-            are unaffected.
-          </p>
+          <p className="font-medium text-sm">{this.props.messages.title}</p>
+          <p className="text-muted-foreground text-xs">{this.props.messages.body}</p>
           <button
             className="rounded-lg border px-2.5 py-1 text-xs hover:bg-muted"
             onClick={() => {
@@ -40,11 +45,19 @@ export class TelemetryCardErrorBoundary extends Component<
             }}
             type="button"
           >
-            Retry
+            {this.props.messages.retry}
           </button>
         </div>
       );
     }
     return this.props.children;
   }
+}
+
+export function TelemetryCardErrorBoundary(props: TelemetryCardErrorBoundaryProps) {
+  const t = useTranslations("common");
+  const body = props.machineCode
+    ? t("telemetryDisplayFailedFor", { machineCode: props.machineCode })
+    : t("telemetryDisplayFailedPlain");
+  return <Boundary {...props} messages={{ title: t("telemetryDisplayFailed"), body, retry: t("retry") }} />;
 }

@@ -2,12 +2,15 @@
 
 import { useEffect, useRef } from "react";
 
+import { useTranslations } from "next-intl";
+
 /**
  * ThreeUI signal-particles hero (dark stage) — spec: open-design/DESIGN-login-hero.md
  * Canvas engine from login-hero-three.html. The rAF loop must ALWAYS run:
  * do not add a prefers-reduced-motion early-return (it froze the particles).
  */
 export function AuthHero() {
+  const th = useTranslations("auth.hero");
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -16,7 +19,11 @@ export function AuthHero() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    let w = 0, h = 0, time = 0, raf = 0, retries = 0;
+    let w = 0,
+      h = 0,
+      time = 0,
+      raf = 0,
+      retries = 0;
 
     const resize = () => {
       w = canvas.width = canvas.clientWidth;
@@ -46,8 +53,7 @@ export function AuthHero() {
           const nx = i * 0.1;
           const ny = j * 0.1;
           const value =
-            Math.sin(nx + time * 0.5) * Math.cos(ny - time * 0.3) +
-            Math.sin(nx * 0.5 - ny * 0.5 + time * 0.8);
+            Math.sin(nx + time * 0.5) * Math.cos(ny - time * 0.3) + Math.sin(nx * 0.5 - ny * 0.5 + time * 0.8);
           if (value <= 0.1) continue;
 
           const hl = Math.sin(i * 12.34) * Math.cos(j * 56.78);
@@ -83,8 +89,7 @@ export function AuthHero() {
       <div
         className="pointer-events-none absolute inset-0"
         style={{
-          background:
-            "radial-gradient(640px 420px at 68% 30%, rgba(37,99,235,.16), transparent 70%)",
+          background: "radial-gradient(640px 420px at 68% 30%, rgba(37,99,235,.16), transparent 70%)",
         }}
       />
       <canvas ref={ref} className="absolute inset-0 z-[1] h-full w-full opacity-80" />
@@ -101,15 +106,10 @@ export function AuthHero() {
 
       <div className="pointer-events-none relative z-[2] mt-auto px-11 pb-10 text-[#F8FAFC]">
         <p className="mb-3.5 font-mono text-[11px] font-semibold uppercase tracking-[.14em] text-[#0891B2]">
-          Syncro · Live Machine Channel
+          {th("eyebrow")}
         </p>
-        <h2 className="max-w-[16ch] text-[40px] font-semibold leading-[1.12] tracking-[-.02em]">
-          One channel for every machine that never sleeps.
-        </h2>
-        <p className="mt-3 max-w-[44ch] text-sm leading-relaxed text-[rgba(248,250,252,.72)]">
-          Machine setup, live health, and spare-part alerts — command the factory floor from your
-          pocket.
-        </p>
+        <h2 className="max-w-[16ch] text-[40px] font-semibold leading-[1.12] tracking-[-.02em]">{th("title")}</h2>
+        <p className="mt-3 max-w-[44ch] text-sm leading-relaxed text-[rgba(248,250,252,.72)]">{th("subtitle")}</p>
       </div>
     </aside>
   );

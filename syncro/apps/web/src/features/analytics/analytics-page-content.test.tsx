@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { I18nProvider } from "@/test/i18n-wrapper";
+
 import { AnalyticsPageContent } from "./analytics-page-content";
 
 // ---------------------------------------------------------------------------
@@ -223,7 +225,9 @@ const queryClient = new QueryClient({
 });
 
 const Wrapper = ({ children }: { children: ReactNode }) => (
-  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  <I18nProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  </I18nProvider>
 );
 
 function renderPage() {

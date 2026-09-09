@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Printer, Trash2, Upload } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,8 @@ export function PreventiveScheduleDetail({
   schedule: PreventiveScheduleView;
   onClose: () => void;
 }) {
+  const t = useTranslations("preventive");
+  const tc = useTranslations("common");
   const { data: checklist, isLoading: checklistLoading, isError: checklistError } = useChecklist(schedule.id);
   const { data: evidence, isLoading: evidenceLoading, isError: evidenceError } = useEvidenceList(schedule.id);
   const submitChecklist = useSubmitChecklist();
@@ -65,7 +68,7 @@ export function PreventiveScheduleDetail({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Schedule Detail</CardTitle>
+          <CardTitle>{t("detail.title")}</CardTitle>
         </CardHeader>
         <CardContent>
           <Skeleton className="h-20 w-full" />
@@ -78,10 +81,10 @@ export function PreventiveScheduleDetail({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Schedule Detail</CardTitle>
+          <CardTitle>{t("detail.title")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground text-sm">Failed to load checklist.</p>
+          <p className="text-muted-foreground text-sm">{t("detail.checklistLoadFailed")}</p>
         </CardContent>
       </Card>
     );
@@ -99,7 +102,7 @@ export function PreventiveScheduleDetail({
         </CardTitle>
         <div className="flex items-center gap-2">
           {schedule.derivedStatus === "OVERDUE" ? (
-            <Badge variant="destructive">Overdue</Badge>
+            <Badge variant="destructive">{t("overdue")}</Badge>
           ) : (
             <Badge variant="outline">{schedule.derivedStatus}</Badge>
           )}
@@ -107,11 +110,11 @@ export function PreventiveScheduleDetail({
           {isApproved && (
             <Button variant="outline" size="sm" onClick={() => setShowReport(true)}>
               <Printer className="mr-1 h-3 w-3" />
-              Report
+              {t("detail.report")}
             </Button>
           )}
           <Button variant="ghost" size="sm" onClick={onClose}>
-            Close
+            {tc("close")}
           </Button>
         </div>
       </CardHeader>
@@ -119,11 +122,11 @@ export function PreventiveScheduleDetail({
         {/* Checklist items — editable when not submitted yet OR when amending a submitted checklist */}
         {(canSubmit || canAmend) && (
           <div className="space-y-2">
-            <Label>Checklist Items</Label>
+            <Label>{t("detail.checklistItems")}</Label>
             {items.map((item, i) => (
               <div key={i} className="flex flex-wrap gap-2">
                 <Input
-                  placeholder="Label"
+                  placeholder={t("detail.itemLabel")}
                   className="w-40"
                   value={item.label}
                   onChange={(e) => {
@@ -133,7 +136,7 @@ export function PreventiveScheduleDetail({
                   }}
                 />
                 <Input
-                  placeholder="Value"
+                  placeholder={t("detail.itemValue")}
                   className="w-28"
                   value={item.value}
                   onChange={(e) => {
@@ -143,7 +146,7 @@ export function PreventiveScheduleDetail({
                   }}
                 />
                 <Input
-                  placeholder="LSL"
+                  placeholder={t("detail.lsl")}
                   className="w-20"
                   value={item.lsl}
                   onChange={(e) => {
@@ -153,7 +156,7 @@ export function PreventiveScheduleDetail({
                   }}
                 />
                 <Input
-                  placeholder="USL"
+                  placeholder={t("detail.usl")}
                   className="w-20"
                   value={item.usl}
                   onChange={(e) => {
@@ -172,19 +175,19 @@ export function PreventiveScheduleDetail({
               size="sm"
               onClick={() => setItems([...items, { label: "", value: "", lsl: "", usl: "", note: "" }])}
             >
-              Add Item
+              {t("detail.addItem")}
             </Button>
           </div>
         )}
 
         {(canSubmit || canAmend) && (
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
+            <Label htmlFor="notes">{tc("notes")}</Label>
             <Textarea
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Optional notes"
+              placeholder={t("detail.optionalNotes")}
             />
           </div>
         )}
@@ -211,17 +214,17 @@ export function PreventiveScheduleDetail({
             }}
             disabled={submitChecklist.isPending || items.filter((i) => i.label.trim()).length === 0}
           >
-            {isSubmitted ? "Amend Checklist" : "Submit Checklist"}
+            {isSubmitted ? t("detail.amendChecklist") : t("detail.submitChecklist")}
           </Button>
         )}
 
         {/* Evidence */}
         <div className="space-y-2">
-          <Label>Evidence</Label>
+          <Label>{t("detail.evidence")}</Label>
           {evidenceLoading ? (
             <Skeleton className="h-10 w-full" />
           ) : evidenceError ? (
-            <p className="text-muted-foreground text-xs">Failed to load evidence.</p>
+            <p className="text-muted-foreground text-xs">{t("detail.evidenceLoadFailed")}</p>
           ) : (
             <div className="space-y-1">
               {(evidence ?? []).map((att) => (
@@ -245,12 +248,12 @@ export function PreventiveScheduleDetail({
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm">
                   <Upload className="mr-1 h-3 w-3" />
-                  Upload Evidence
+                  {t("detail.uploadEvidence")}
                 </Button>
               </DialogTrigger>
               <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
                 <DialogHeader>
-                  <DialogTitle>Upload Evidence</DialogTitle>
+                  <DialogTitle>{t("detail.uploadEvidence")}</DialogTitle>
                 </DialogHeader>
                 <Input
                   type="file"
@@ -270,9 +273,9 @@ export function PreventiveScheduleDetail({
         {/* Leader approve */}
         {canApprove && (
           <div className="space-y-2 rounded border p-3">
-            <Label className="font-semibold">Leader Approval</Label>
+            <Label className="font-semibold">{t("detail.leaderApproval")}</Label>
             <Label htmlFor="signature-file" className="text-xs">
-              Signature image (uploaded as evidence, key auto-filled)
+              {t("detail.signatureFileLabel")}
             </Label>
             <Input
               id="signature-file"
@@ -289,21 +292,21 @@ export function PreventiveScheduleDetail({
               }}
             />
             <Label htmlFor="signature-key" className="text-xs">
-              Signature object key (from Garage)
+              {t("detail.signatureKeyLabel")}
             </Label>
             <Input
               id="signature-key"
-              placeholder="Signature object key (auto-filled on upload)"
+              placeholder={t("detail.signatureKeyPlaceholder")}
               value={signatureKey}
               onChange={(e) => setSignatureKey(e.target.value)}
             />
             <Input
-              placeholder="Signer identity (defaults to your name)"
+              placeholder={t("detail.signerPlaceholder")}
               value={signerIdentity}
               onChange={(e) => setSignerIdentity(e.target.value)}
             />
             <Textarea
-              placeholder="Assessment (optional)"
+              placeholder={t("detail.assessmentPlaceholder")}
               value={assessment}
               onChange={(e) => setAssessment(e.target.value)}
             />
@@ -320,31 +323,38 @@ export function PreventiveScheduleDetail({
               }}
               disabled={approveSchedule.isPending || !signatureKey.trim()}
             >
-              Approve
+              {t("detail.approve")}
             </Button>
           </div>
         )}
 
         {canSkip && (
           <Button variant="outline" onClick={() => skipSchedule.mutate(schedule.id)} disabled={skipSchedule.isPending}>
-            Skip
+            {t("detail.skip")}
           </Button>
         )}
 
         {/* Submitted checklist read-only */}
         {checklist?.result && (
           <div className="space-y-1 rounded border p-3">
-            <Label>Submitted Checklist</Label>
+            <Label>{t("detail.submittedChecklist")}</Label>
             {checklist.result.items.map((item, i) => (
               <div key={i} className="text-xs">
-                {item.label}: {item.value ?? "—"} {item.lsl ? `[${item.lsl}–${item.usl ?? "—"}]` : ""}
+                {item.label}: {item.value ?? tc("notAvailable")}{" "}
+                {item.lsl ? `[${item.lsl}–${item.usl ?? tc("notAvailable")}]` : ""}
               </div>
             ))}
-            {checklist.result.notes && <p className="text-muted-foreground text-xs">Notes: {checklist.result.notes}</p>}
+            {checklist.result.notes && (
+              <p className="text-muted-foreground text-xs">
+                {t("detail.notesPrefix")} {checklist.result.notes}
+              </p>
+            )}
             {checklist.result.leaderId && (
               <p className="text-muted-foreground text-xs">
-                Approved by {checklist.result.signerIdentity ?? checklist.result.leaderId} at{" "}
-                {checklist.result.approvedAt}
+                {t("detail.approvedByLine", {
+                  name: checklist.result.signerIdentity ?? checklist.result.leaderId,
+                  at: checklist.result.approvedAt ?? "",
+                })}
               </p>
             )}
           </div>

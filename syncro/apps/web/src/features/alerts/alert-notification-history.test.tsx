@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AlertNotificationHistoryResponse, NotificationJobView } from "@/lib/api/generated/model";
+import { I18nProvider } from "@/test/i18n-wrapper";
 
 import { AlertNotificationHistory } from "./alert-notification-history";
 
@@ -54,7 +55,9 @@ function job(overrides: Partial<NotificationJobView> = {}): NotificationJobView 
 const queryClient = new QueryClient();
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  <QueryClientProvider client={queryClient}>
+    <I18nProvider>{children}</I18nProvider>
+  </QueryClientProvider>
 );
 
 describe("AlertNotificationHistory", () => {

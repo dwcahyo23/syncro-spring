@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 
 import Link from "next/link";
 
+import { useTranslations } from "next-intl";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AuthUser } from "@/lib/auth/auth-session";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
@@ -25,20 +27,21 @@ export function RoleGuard({ allowedRoles, title, children }: RoleGuardProps) {
 }
 
 function ForbiddenState({ title }: { readonly title: string }) {
+  const t = useTranslations("common");
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <div className="space-y-2">
-        <p className="font-medium text-muted-foreground text-sm">Syncro shell</p>
+        <p className="font-medium text-muted-foreground text-sm">{t("shellLabel")}</p>
         <h1 className="font-semibold text-3xl tracking-tight">{title}</h1>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Permission denied</CardTitle>
-          <CardDescription>You don't have permission to access this page.</CardDescription>
+          <CardTitle>{t("permissionDeniedTitle")}</CardTitle>
+          <CardDescription>{t("permissionDeniedDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <Link className="font-medium text-primary underline-offset-4 hover:underline" href="/operations-overview">
-            Go to Operations Overview
+            {t("goToOperationsOverview")}
           </Link>
         </CardContent>
       </Card>

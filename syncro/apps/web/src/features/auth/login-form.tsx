@@ -2,14 +2,18 @@
 
 import { type FormEvent, useState } from "react";
 
+import { useTranslations } from "next-intl";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "@/i18n/navigation";
-import { loginToSyncro } from "@/lib/api/syncro-api";
+import { loginToSyncro, SyncroAuthError } from "@/lib/api/syncro-api";
 import { saveAuthSession } from "@/lib/auth/auth-client";
 
 export function LoginForm() {
   const router = useRouter();
+  const t = useTranslations("auth");
+  const te = useTranslations("errors");
   const [loginIdentifier, setLoginIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string>();
@@ -24,8 +28,15 @@ export function LoginForm() {
       saveAuthSession(result.accessToken, result.expiresInSeconds, result.user);
       router.replace("/operations-overview");
       router.refresh();
-    } catch {
-      setError("Invalid login credentials. Check your local SUPER_ADMIN login and try again.");
+    } catch (err) {
+      // Story 23-2: branch on the typed auth code — never on translated text.
+      if (err instanceof SyncroAuthError && err.code === "INVALID_CREDENTIALS") {
+        setError(t("invalidCredentialsDetail"));
+      } else if (err instanceof SyncroAuthError && te.has(err.code)) {
+        setError(te(err.code));
+      } else {
+        setError(te("generic"));
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -35,7 +46,7 @@ export function LoginForm() {
     <form className="space-y-4 text-left" onSubmit={handleSubmit}>
       <div className="space-y-2">
         <label className="font-medium text-sm" htmlFor="loginIdentifier">
-          Login
+          {t("loginLabel")}
         </label>
         <Input
           id="loginIdentifier"
@@ -49,7 +60,7 @@ export function LoginForm() {
       </div>
       <div className="space-y-2">
         <label className="font-medium text-sm" htmlFor="password">
-          Password
+          {t("passwordLabel")}
         </label>
         <Input
           id="password"
@@ -70,7 +81,7 @@ export function LoginForm() {
         </p>
       ) : null}
       <Button className="w-full" type="submit" disabled={isSubmitting}>
-        {isSubmitting ? "Signing in..." : "Sign in"}
+        {isSubmitting ? t("signingIn") : t("signIn")}
       </Button>
     </form>
   );

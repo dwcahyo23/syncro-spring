@@ -13,12 +13,9 @@ import type {
   TelemetryDataQualityStatus,
   TelemetryFreshnessStatus,
 } from "@/features/system-health/types";
+import { I18nProvider } from "@/test/i18n-wrapper";
 
-import {
-  computeOverallBanner,
-  formatRelativeFreshness,
-  SystemHealthPage,
-} from "./system-health-page";
+import { computeOverallBanner, formatRelativeFreshness, SystemHealthPage } from "./system-health-page";
 
 // ─── Mock modules ───────────────────────────────────────────────────────────────
 
@@ -250,7 +247,9 @@ function freshnessCard(): HTMLElement {
 const queryClient = new QueryClient();
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  <I18nProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  </I18nProvider>
 );
 
 // ─── Tests ──────────────────────────────────────────────────────────────────────

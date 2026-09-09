@@ -1,4 +1,7 @@
+"use client";
+
 import { CircleCheck, CircleDashed, CircleSlash } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -8,46 +11,43 @@ type StatusBadgeProps = {
   freshness: TelemetryFreshnessState;
 };
 
-const FRESHNESS_CONFIG: Record<
-  TelemetryFreshnessState,
-  { label: string; description: string; className: string; Icon: typeof CircleCheck }
-> = {
+// Styling map keyed on the raw freshness state; labels/descriptions resolve via
+// t(`freshness.${state}.*`).
+const FRESHNESS_CONFIG: Record<TelemetryFreshnessState, { className: string; Icon: typeof CircleCheck }> = {
   ONLINE: {
-    label: "Online",
-    description: "Telemetry received within the last 5 minutes.",
     className: "status-badge-healthy",
     Icon: CircleCheck,
   },
   OFFLINE: {
-    label: "Offline",
-    description: "No telemetry for 5-15 minutes. Machine is still ACTIVE.",
     className: "status-badge-warning",
     Icon: CircleDashed,
   },
   STALE: {
-    label: "Stale",
-    description: "No telemetry for more than 15 minutes.",
     className: "border-transparent bg-destructive/15 text-destructive",
     Icon: CircleSlash,
   },
 };
 
 export function StatusBadge({ freshness }: StatusBadgeProps) {
-  const config = FRESHNESS_CONFIG[freshness];
+  const t = useTranslations("telemetry.statusBadge");
+  // freshness is server-derived — an unknown value must not crash the badge.
+  const config = FRESHNESS_CONFIG[freshness] ?? FRESHNESS_CONFIG.OFFLINE;
+  const label = t.has(`freshness.${freshness}.label`) ? t(`freshness.${freshness}.label`) : freshness;
+  const description = t.has(`freshness.${freshness}.description`) ? t(`freshness.${freshness}.description`) : label;
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <Badge
-          aria-label={`Telemetry freshness: ${config.label}. ${config.description}`}
+          aria-label={t("aria", { label, description })}
           className={config.className}
-          title={config.description}
+          title={description}
           variant="outline"
         >
           <config.Icon aria-hidden="true" />
-          {config.label}
+          {label}
         </Badge>
       </TooltipTrigger>
-      <TooltipContent>{config.description}</TooltipContent>
+      <TooltipContent>{description}</TooltipContent>
     </Tooltip>
   );
 }

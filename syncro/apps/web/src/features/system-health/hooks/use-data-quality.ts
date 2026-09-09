@@ -64,8 +64,7 @@ export async function fetchDataQuality(signal?: AbortSignal): Promise<TelemetryD
       raw.latencyState !== "CRITICAL") ||
     !isSeverity(raw.latencySeverity) ||
     // Latency is a backend long: null (NO_DATA) or a non-negative integer of milliseconds.
-    (raw.lastLatencyMs !== null &&
-      !(Number.isInteger(raw.lastLatencyMs) && raw.lastLatencyMs >= 0))
+    (raw.lastLatencyMs !== null && !(Number.isInteger(raw.lastLatencyMs) && raw.lastLatencyMs >= 0))
   ) {
     throw new Error("Telemetry data-quality response was not a data-quality payload");
   }

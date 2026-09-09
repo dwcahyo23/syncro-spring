@@ -2,10 +2,15 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { I18nProvider } from "@/test/i18n-wrapper";
 
 import { AlertTypeBadge } from "./alert-type-badge";
 
-const Wrapper = ({ children }: { children: React.ReactNode }) => <TooltipProvider>{children}</TooltipProvider>;
+const Wrapper = ({ children }: { children: React.ReactNode }) => (
+  <I18nProvider>
+    <TooltipProvider>{children}</TooltipProvider>
+  </I18nProvider>
+);
 
 describe("AlertTypeBadge", () => {
   it("renders the Threshold label for THRESHOLD_PERCENTAGE", () => {

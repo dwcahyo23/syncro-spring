@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import type { ApproveWorkorderRequest, WorkorderSignatureView } from "@/features/workorders/print-types";
@@ -12,6 +13,7 @@ import { syncroFetch } from "@/lib/api/orval-mutator";
  */
 export function useWorkorderApprove(workOrderId: string) {
   const queryClient = useQueryClient();
+  const tm = useTranslations("workOrders");
   return useMutation({
     mutationFn: async (data: ApproveWorkorderRequest) => {
       const response = await syncroFetch<{ data: WorkorderSignatureView }>(
@@ -22,10 +24,10 @@ export function useWorkorderApprove(workOrderId: string) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["/api/v1/workorders", workOrderId, "print-report"] });
-      toast.success("Workorder approved");
+      toast.success(tm("messages.workorderApproved"));
     },
     onError: () => {
-      toast.error("Failed to approve workorder");
+      toast.error(tm("messages.approveFailed"));
     },
   });
 }

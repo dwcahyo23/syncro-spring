@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { TriangleAlertIcon, XIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { AuditLogTable } from "@/components/syncro/audit-log-table";
 import { Button } from "@/components/ui/button";
@@ -13,22 +14,22 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAuthUser } from "@/lib/auth/use-auth-user";
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
 import type { ListAuditLogEntriesEntityType, ListAuditLogEntriesParams, PlantView } from "@/lib/api/generated/model";
 import { ListAuditLogEntriesEntityType as EntityTypeValues } from "@/lib/api/generated/model";
 import { useListAuditLogEntries, useListPlants } from "@/lib/api/generated/syncro";
-import { DecisionLogTab } from "./decision-log-tab";
+import { useAuthUser } from "@/lib/auth/use-auth-user";
 
-const ENTITY_TYPE_OPTIONS = Object.values(EntityTypeValues).map((value) => ({ value, label: entityTypeLabel(value) }));
+import { DecisionLogTab } from "./decision-log-tab";
 
 type EntityFilter = "ALL" | ListAuditLogEntriesEntityType;
 type PlantFilter = "ALL" | string;
 
 export function AuditLogPage() {
+  const t = useTranslations("auditLog");
+  const tc = useTranslations("common");
   const user = useAuthUser();
-  const canReadDecisions =
-    user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "AUDITOR";
+  const canReadDecisions = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "AUDITOR";
   const plantScope = usePlantScope();
   const scope = plantScope.scope;
   const isAssignedEmpty = scope?.mode === "EMPTY";
@@ -45,6 +46,11 @@ export function AuditLogPage() {
   const [sort, setSort] = useState("createdAt,desc");
 
   const hasFilters = entityType !== "ALL" || actor.trim() !== "" || plantId !== "ALL" || from !== "" || to !== "";
+
+  const entityTypeOptions = useMemo(
+    () => Object.values(EntityTypeValues).map((value) => ({ value, label: t(`entityTypes.${value}`) })),
+    [t],
+  );
 
   const params = {
     entityType: entityType === "ALL" ? undefined : entityType,
@@ -86,165 +92,158 @@ export function AuditLogPage() {
   return (
     <Tabs defaultValue="audit-log" className="space-y-4">
       <TabsList className="w-full justify-start overflow-x-auto">
-        <TabsTrigger value="audit-log">Audit Log</TabsTrigger>
-        {canReadDecisions ? <TabsTrigger value="decision-log">Decision Log</TabsTrigger> : null}
+        <TabsTrigger value="audit-log">{t("tabs.audit")}</TabsTrigger>
+        {canReadDecisions ? <TabsTrigger value="decision-log">{t("tabs.decision")}</TabsTrigger> : null}
       </TabsList>
       <TabsContent value="audit-log">
         <Card>
           <CardHeader>
-            <CardTitle>Audit Log</CardTitle>
-            <CardDescription>
-              Immutable history of master data changes. Entries can not be edited or deleted.
-            </CardDescription>
+            <CardTitle>{t("title")}</CardTitle>
+            <CardDescription>{t("description")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-          <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[repeat(auto-fill,minmax(13rem,13rem))] sm:justify-start">
-            <div className="grid min-w-0 gap-2">
-              <Label htmlFor="audit-entity-type">Entity type</Label>
-              <Select
-                value={entityType}
-                onValueChange={(value) => {
-                  setEntityType(value as EntityFilter);
+            <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[repeat(auto-fill,minmax(13rem,13rem))] sm:justify-start">
+              <div className="grid min-w-0 gap-2">
+                <Label htmlFor="audit-entity-type">{t("filters.entityType")}</Label>
+                <Select
+                  value={entityType}
+                  onValueChange={(value) => {
+                    setEntityType(value as EntityFilter);
+                    setPage(0);
+                  }}
+                >
+                  <SelectTrigger id="audit-entity-type" className="w-full min-w-0">
+                    <SelectValue placeholder={t("filters.entityType")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">{t("filters.allEntityTypes")}</SelectItem>
+                    {entityTypeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid min-w-0 gap-2">
+                <Label htmlFor="audit-actor">{t("filters.actor")}</Label>
+                <Input
+                  id="audit-actor"
+                  value={actor}
+                  onChange={(event) => {
+                    setActor(event.target.value);
+                    setPage(0);
+                  }}
+                  placeholder={t("filters.actorPlaceholder")}
+                  className="w-full min-w-0"
+                />
+              </div>
+              <div className="grid min-w-0 gap-2">
+                <Label htmlFor="audit-plant">{tc("plant")}</Label>
+                <Select
+                  value={plantId}
+                  onValueChange={(value) => {
+                    setPlantId(value);
+                    setPage(0);
+                  }}
+                  disabled={isAssignedEmpty || plants.isLoading}
+                >
+                  <SelectTrigger id="audit-plant" className="w-full min-w-0">
+                    <SelectValue placeholder={tc("plant")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">{t("filters.allPlants")}</SelectItem>
+                    {availablePlants.map((plant) => (
+                      <SelectItem key={plant.id ?? plant.code} value={plant.id ?? ""}>
+                        {plant.code} · {plant.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <DatePickerField
+                id="audit-from"
+                label={t("filters.from")}
+                value={from}
+                onChange={(value) => {
+                  setFrom(value);
                   setPage(0);
                 }}
-              >
-                <SelectTrigger id="audit-entity-type" className="w-full min-w-0">
-                  <SelectValue placeholder="Entity type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All entity types</SelectItem>
-                  {ENTITY_TYPE_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid min-w-0 gap-2">
-              <Label htmlFor="audit-actor">Actor</Label>
-              <Input
-                id="audit-actor"
-                value={actor}
-                onChange={(event) => {
-                  setActor(event.target.value);
-                  setPage(0);
-                }}
-                placeholder="Actor name"
-                className="w-full min-w-0"
               />
-            </div>
-            <div className="grid min-w-0 gap-2">
-              <Label htmlFor="audit-plant">Plant</Label>
-              <Select
-                value={plantId}
-                onValueChange={(value) => {
-                  setPlantId(value);
+              <DatePickerField
+                id="audit-to"
+                label={t("filters.to")}
+                value={to}
+                onChange={(value) => {
+                  setTo(value);
                   setPage(0);
                 }}
-                disabled={isAssignedEmpty || plants.isLoading}
-              >
-                <SelectTrigger id="audit-plant" className="w-full min-w-0">
-                  <SelectValue placeholder="Plant" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All plants</SelectItem>
-                  {availablePlants.map((plant) => (
-                    <SelectItem key={plant.id ?? plant.code} value={plant.id ?? ""}>
-                      {plant.code} · {plant.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <DatePickerField
-              id="audit-from"
-              label="From"
-              value={from}
-              onChange={(value) => {
-                setFrom(value);
-                setPage(0);
-              }}
-            />
-            <DatePickerField
-              id="audit-to"
-              label="To"
-              value={to}
-              onChange={(value) => {
-                setTo(value);
-                setPage(0);
-              }}
-            />
-            {hasFilters ? (
-              <Button variant="outline" className="self-end" onClick={resetFilters}>
-                <XIcon />
-                Reset filters
-              </Button>
-            ) : null}
-          </div>
-
-          {entries.isLoading ? <AuditLogSkeleton /> : null}
-          {entries.isError ? (
-            <AuditLogState
-              title="Audit log could not be loaded"
-              description="The change history could not be fetched. Retry to load it again."
-              action={
-                <Button variant="outline" onClick={() => void entries.refetch()}>
-                  Retry
+              />
+              {hasFilters ? (
+                <Button variant="outline" className="self-end" onClick={resetFilters}>
+                  <XIcon />
+                  {t("filters.reset")}
                 </Button>
-              }
-            />
-          ) : null}
-          {!entries.isLoading && !entries.isError && items.length === 0 ? (
-            <AuditLogState
-              title={hasFilters ? "No matching entries" : "No audit entries yet"}
-              description={
-                hasFilters
-                  ? "No changes match the current filters."
-                  : "Master data changes will appear here once they are created or modified."
-              }
-              action={
-                hasFilters ? (
-                  <Button variant="outline" onClick={resetFilters}>
-                    Reset filters
+              ) : null}
+            </div>
+
+            {entries.isLoading ? <AuditLogSkeleton /> : null}
+            {entries.isError ? (
+              <AuditLogState
+                title={t("loadError.title")}
+                description={t("loadError.description")}
+                action={
+                  <Button variant="outline" onClick={() => void entries.refetch()}>
+                    {tc("retry")}
                   </Button>
-                ) : undefined
-              }
-            />
-          ) : null}
-          {!entries.isLoading && !entries.isError && items.length > 0 ? (
-            <AuditLogTable
-              entries={items}
-              plantNameById={plantNameById}
-              sort={sort}
-              onSortChange={(value) => {
-                setSort(value);
-                setPage(0);
-              }}
-            />
-          ) : null}
-          {!entries.isLoading && !entries.isError && entries.data?.data ? (
-            <DataTablePagination
-              page={page}
-              size={size}
-              totalElements={entries.data.data.totalElements}
-              onPageChange={setPage}
-              onSizeChange={(newSize) => {
-                setSize(newSize);
-                setPage(0);
-              }}
-            />
-                    ) : null}
-        </CardContent>
-      </Card>
+                }
+              />
+            ) : null}
+            {!entries.isLoading && !entries.isError && items.length === 0 ? (
+              <AuditLogState
+                title={hasFilters ? t("empty.noMatch") : t("empty.none")}
+                description={hasFilters ? t("empty.noMatchDescription") : t("empty.description")}
+                action={
+                  hasFilters ? (
+                    <Button variant="outline" onClick={resetFilters}>
+                      {t("filters.reset")}
+                    </Button>
+                  ) : undefined
+                }
+              />
+            ) : null}
+            {!entries.isLoading && !entries.isError && items.length > 0 ? (
+              <AuditLogTable
+                entries={items}
+                plantNameById={plantNameById}
+                sort={sort}
+                onSortChange={(value) => {
+                  setSort(value);
+                  setPage(0);
+                }}
+              />
+            ) : null}
+            {!entries.isLoading && !entries.isError && entries.data?.data ? (
+              <DataTablePagination
+                page={page}
+                size={size}
+                totalElements={entries.data.data.totalElements}
+                onPageChange={setPage}
+                onSizeChange={(newSize) => {
+                  setSize(newSize);
+                  setPage(0);
+                }}
+              />
+            ) : null}
+          </CardContent>
+        </Card>
       </TabsContent>
-      {canReadDecisions ? (        <TabsContent value="decision-log">
+      {canReadDecisions ? (
+        <TabsContent value="decision-log">
           <Card>
             <CardHeader>
-              <CardTitle>Decision Log</CardTitle>
-              <CardDescription>
-                Persisted OPA enforcement decisions with their policy revision for audit tracing.
-              </CardDescription>
+              <CardTitle>{t("decisionTitle")}</CardTitle>
+              <CardDescription>{t("decisionDescription")}</CardDescription>
             </CardHeader>
             <CardContent>
               <DecisionLogTab />
@@ -322,25 +321,4 @@ function permittedPlants(plants: PlantView[], scope: ReturnType<typeof usePlantS
   }
   const assignedIds = new Set((scope.availablePlants ?? []).map((plant) => plant.id));
   return plants.filter((plant) => plant.id && assignedIds.has(plant.id));
-}
-
-function entityTypeLabel(entityType: ListAuditLogEntriesEntityType | undefined) {
-  switch (entityType) {
-    case "PLANT":
-      return "Plant";
-    case "MACHINE_GROUP":
-      return "Machine group";
-    case "MACHINE":
-      return "Machine";
-    case "SPAREPART_TAXONOMY":
-      return "Sparepart taxonomy";
-    case "SPAREPART":
-      return "Sparepart";
-    case "INSTALLATION":
-      return "Installation";
-    case "RESPONSIBILITY":
-      return "Responsibility";
-    default:
-      return entityType ?? "Unknown";
-  }
 }

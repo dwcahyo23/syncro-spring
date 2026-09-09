@@ -5,6 +5,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { syncroFetch } from "@/lib/api/orval-mutator";
+import { I18nProvider } from "@/test/i18n-wrapper";
 
 import { useMtbfMttr } from "./use-mtbf-mttr";
 import { useTechnicianKpi } from "./use-technician-kpi";
@@ -20,7 +21,9 @@ const queryClient = new QueryClient({
 });
 
 const Wrapper = ({ children }: { children: ReactNode }) => (
-  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  <I18nProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  </I18nProvider>
 );
 
 function mtbfPayload() {

@@ -1,14 +1,20 @@
 "use client";
 
 import { useState } from "react";
+
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
-import { Skeleton } from "@/components/ui/skeleton";
 import { RoleGuard } from "@/components/syncro/role-guard";
 import { WahaTemplateEditor } from "@/components/syncro/waha-template-editor";
-import { useGetActiveWahaTemplate, useUpsertWahaTemplate, type upsertWahaTemplateResponse } from "@/lib/api/generated/syncro";
-import { useAuthUser } from "@/lib/auth/use-auth-user";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  type upsertWahaTemplateResponse,
+  useGetActiveWahaTemplate,
+  useUpsertWahaTemplate,
+} from "@/lib/api/generated/syncro";
 import { SyncroApiError } from "@/lib/api/orval-mutator";
+import { useAuthUser } from "@/lib/auth/use-auth-user";
 
 const KNOWN_VARIABLES = [
   "{machineCode}",
@@ -37,6 +43,8 @@ function renderPreview(template: string): string {
 }
 
 function WahaTemplateContent({ readOnly }: { readOnly: boolean }) {
+  const t = useTranslations("wahaTemplates");
+  const tc = useTranslations("common");
   const { data, isLoading, isError, error, refetch } = useGetActiveWahaTemplate({
     query: {
       staleTime: 30_000,
@@ -54,10 +62,10 @@ function WahaTemplateContent({ readOnly }: { readOnly: boolean }) {
     mutation: {
       onSuccess: (response: upsertWahaTemplateResponse) => {
         setDraftBody(response.data?.body ?? null);
-        toast.success("Template saved");
+        toast.success(t("saved"));
       },
       onError: () => {
-        toast.error("Failed to save template. Check for unknown variables.");
+        toast.error(t("saveFailed"));
       },
     },
   });
@@ -80,22 +88,20 @@ function WahaTemplateContent({ readOnly }: { readOnly: boolean }) {
     if (error instanceof SyncroApiError && error.status === 403) {
       return (
         <div className="rounded-lg border p-6 text-center">
-          <h2 className="text-lg font-semibold">Access denied</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            You do not have access to WAHA templates.
-          </p>
+          <h2 className="text-lg font-semibold">{t("accessDeniedTitle")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("accessDeniedDescription")}</p>
         </div>
       );
     }
     return (
       <div className="flex flex-col items-center gap-3 rounded-lg border p-6">
-        <p className="text-sm text-muted-foreground">Failed to load template.</p>
+        <p className="text-sm text-muted-foreground">{t("loadFailed")}</p>
         <button
           type="button"
           className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           onClick={() => void refetch()}
         >
-          Retry
+          {tc("retry")}
         </button>
       </div>
     );
@@ -104,10 +110,8 @@ function WahaTemplateContent({ readOnly }: { readOnly: boolean }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold">Alert Notification Template</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          This template is used for WhatsApp alert messages sent when a sparepart threshold is reached.
-        </p>
+        <h2 className="text-lg font-semibold">{t("heading")}</h2>
+        <p className="text-sm text-muted-foreground mt-1">{t("description")}</p>
       </div>
 
       <WahaTemplateEditor
@@ -124,11 +128,12 @@ function WahaTemplateContent({ readOnly }: { readOnly: boolean }) {
 }
 
 export function WahaTemplatePageContent() {
+  const t = useTranslations("wahaTemplates");
   const user = useAuthUser();
   const readOnly = user?.applicationRole === "AUDITOR";
 
   return (
-    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGER_MAINTENANCE", "AUDITOR"]} title="WAHA Templates">
+    <RoleGuard allowedRoles={["SUPER_ADMIN", "MANAGER_MAINTENANCE", "AUDITOR"]} title={t("title")}>
       <WahaTemplateContent readOnly={readOnly} />
     </RoleGuard>
   );

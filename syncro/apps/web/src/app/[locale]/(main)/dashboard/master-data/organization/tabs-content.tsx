@@ -2,6 +2,8 @@
 
 import { useSearchParams } from "next/navigation";
 
+import { useTranslations } from "next-intl";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlantManagement } from "@/features/master-data/plants/plant-management";
 import { ResponsibilityManagement } from "@/features/master-data/responsibilities/responsibility-management";
@@ -12,17 +14,9 @@ import { RoleMapping } from "@/features/organization/components/role-mapping";
 import { UserManagement } from "@/features/organization/components/user-management";
 
 const TABS = ["departments", "users", "roles", "sections", "teams", "responsibility", "plants"] as const;
-const TAB_LABELS: Record<(typeof TABS)[number], string> = {
-  departments: "Departments",
-  users: "Users",
-  roles: "Roles",
-  sections: "Sections",
-  teams: "Teams",
-  responsibility: "Responsibility",
-  plants: "Plants",
-};
 
 export function OrganizationTabsContent() {
+  const t = useTranslations("organization");
   const searchParams = useSearchParams();
   const tab = searchParams.get("tab");
   const defaultTab = tab && TABS.includes(tab as (typeof TABS)[number]) ? tab : "departments";
@@ -32,7 +26,7 @@ export function OrganizationTabsContent() {
       <TabsList className="mb-4">
         {TABS.map((value) => (
           <TabsTrigger key={value} value={value}>
-            {TAB_LABELS[value]}
+            {t(`tabs.${value}`)}
           </TabsTrigger>
         ))}
       </TabsList>

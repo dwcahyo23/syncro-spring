@@ -4,6 +4,8 @@ import { Suspense, useEffect } from "react";
 
 import { useSearchParams } from "next/navigation";
 
+import { useTranslations } from "next-intl";
+
 import { AckTaskList } from "@/features/workorders/components/ack-task-list";
 import { ACK_AUTO_LOGIN_STORAGE_KEY } from "@/features/workorders/hooks/use-ack-task-list";
 
@@ -15,14 +17,16 @@ import { ACK_AUTO_LOGIN_STORAGE_KEY } from "@/features/workorders/hooks/use-ack-
  * login. The token is single-use and short-lived — any mismatch falls back to normal login.
  */
 export default function AckTaskListPage() {
+  const t = useTranslations("workOrders");
   return (
-    <Suspense fallback={<p className="p-6 text-muted-foreground">Loading ack task list…</p>}>
+    <Suspense fallback={<p className="p-6 text-muted-foreground">{t("ackTaskList.page.loading")}</p>}>
       <AckTaskListPageInner />
     </Suspense>
   );
 }
 
 function AckTaskListPageInner() {
+  const t = useTranslations("workOrders");
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
@@ -47,8 +51,8 @@ function AckTaskListPageInner() {
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-6">
       <header className="space-y-1">
         <p className="font-medium text-muted-foreground text-sm">Syncro</p>
-        <h1 className="font-semibold text-3xl tracking-tight">Ack Task List</h1>
-        <p className="text-muted-foreground">Acknowledged vs pending acks and rated vs unrated closed workorders.</p>
+        <h1 className="font-semibold text-3xl tracking-tight">{t("ackTaskList.page.title")}</h1>
+        <p className="text-muted-foreground">{t("ackTaskList.page.subtitle")}</p>
       </header>
       <AckTaskList />
     </main>

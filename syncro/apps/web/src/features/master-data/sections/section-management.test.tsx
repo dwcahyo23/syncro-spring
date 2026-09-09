@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { I18nProvider } from "@/test/i18n-wrapper";
 
 import { SectionManagement } from "./section-management";
 
@@ -54,9 +55,11 @@ vi.mock("@/lib/auth/use-auth-user", () => ({
 function Wrapper({ children }: { children: React.ReactNode }) {
   const queryClient = new QueryClient();
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>{children}</TooltipProvider>
-    </QueryClientProvider>
+    <I18nProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>{children}</TooltipProvider>
+      </QueryClientProvider>
+    </I18nProvider>
   );
 }
 

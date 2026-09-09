@@ -3,6 +3,7 @@
 import { type FormEvent, useMemo, useState } from "react";
 
 import { Loader2Icon, TriangleAlertIcon, XIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +13,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useListJobTitles, useListUsersMaster } from "@/features/organization/hooks/use-users";
 import {
   useAddUserRole,
   useGetUserBindings,
@@ -20,15 +20,17 @@ import {
   useRemoveUserRole,
   useSetUserJob,
 } from "@/features/organization/hooks/use-user-bindings";
+import { useListJobTitles, useListUsersMaster } from "@/features/organization/hooks/use-users";
 import type { UserMasterView } from "@/features/organization/types";
-import { SyncroApiError } from "@/lib/api/orval-mutator";
+import { apiErrorMessage, errorResponse } from "@/lib/api/error-response";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
-
-type ErrorResponse = { code: string; message: string; fieldErrors?: Record<string, string> };
 
 const NONE = "__none__";
 
 export function RoleMapping() {
+  const t = useTranslations("organization");
+  const tc = useTranslations("common");
+  const te = useTranslations("errors");
   const authUser = useAuthUser();
   const canMutate = authUser?.applicationRole === "SUPER_ADMIN" || authUser?.applicationRole === "MANAGER_MAINTENANCE";
   const usersQuery = useListUsersMaster();
@@ -47,10 +49,7 @@ export function RoleMapping() {
   const [pendingRoleId, setPendingRoleId] = useState(NONE);
   const [pendingOverride, setPendingOverride] = useState(false);
 
-  const selectedUser = useMemo(
-    () => userItems.find((u) => u.id === selectedUserId),
-    [userItems, selectedUserId],
-  );
+  const selectedUser = useMemo(() => userItems.find((u) => u.id === selectedUserId), [userItems, selectedUserId]);
 
   function selectUser(userId: string) {
     setSelectedUserId(userId);
@@ -65,9 +64,10 @@ export function RoleMapping() {
     try {
       const jobTitleId = pendingJobTitleId === NONE ? null : pendingJobTitleId;
       await setJob.mutateAsync({ userId: selectedUserId, data: { jobTitleId } });
-      toast.success("Job title binding updated.");
+      toast.success(t("roles.jobUpdated"));
     } catch (error) {
-      toast.error(errorResponse(error)?.message ?? "Failed to update job binding.");
+      const response = errorResponse(error);
+      toast.error(response ? apiErrorMessage(te, response) : t("roles.jobUpdateFailed"));
     }
   }
 
@@ -78,11 +78,12 @@ export function RoleMapping() {
         userId: selectedUserId,
         data: { systemRoleId: pendingRoleId, isOverride: pendingOverride },
       });
-      toast.success("Role binding added.");
+      toast.success(t("roles.roleAdded"));
       setPendingRoleId(NONE);
       setPendingOverride(false);
     } catch (error) {
-      toast.error(errorResponse(error)?.message ?? "Failed to add role.");
+      const response = errorResponse(error);
+      toast.error(response ? apiErrorMessage(te, response) : t("roles.roleAddFailed"));
     }
   }
 
@@ -90,9 +91,10 @@ export function RoleMapping() {
     if (!selectedUserId) return;
     try {
       await removeRole.mutateAsync({ userId: selectedUserId, bindingId });
-      toast.success("Role binding removed.");
+      toast.success(t("roles.roleRemoved"));
     } catch (error) {
-      toast.error(errorResponse(error)?.message ?? "Failed to remove role.");
+      const response = errorResponse(error);
+      toast.error(response ? apiErrorMessage(te, response) : t("roles.roleRemoveFailed"));
     }
   }
 
@@ -102,63 +104,62 @@ export function RoleMapping() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Role Mapping</CardTitle>
-          <CardDescription>
-            Assign job titles and system roles to users. Each user gets exactly one job title
-            and any number of system roles (their effective permission set is the application
-            role + job title default + role bindings).
-          </CardDescription>
-          <CardAction>{canMutate ? null : <Badge variant="secondary">Read-only</Badge>}</CardAction>
+          <CardTitle>{t("roles.title")}</CardTitle>
+          <CardDescription>{t("roles.description")}</CardDescription>
+          <CardAction>{canMutate ? null : <Badge variant="secondary">{t("readOnly")}</Badge>}</CardAction>
         </CardHeader>
         <CardContent>
           {usersQuery.isLoading ? <TableSkeleton /> : null}
           {usersQuery.isError ? (
             <State
-              title="Users could not be loaded"
-              description="Refresh page or contact administrator."
-              action={<Button variant="outline" onClick={() => usersQuery.refetch()}>Retry</Button>}
+              title={t("users.couldNotLoadTitle")}
+              description={t("roles.loadFailedDesc")}
+              action={
+                <Button variant="outline" onClick={() => usersQuery.refetch()}>
+                  {tc("retry")}
+                </Button>
+              }
             />
           ) : null}
           {!usersQuery.isLoading && !usersQuery.isError && userItems.length === 0 ? (
-            <State title="No users yet" description="Users are bootstrapped by the local admin." />
+            <State title={t("users.noUsersTitle")} description={t("users.noUsersDesc")} />
           ) : null}
           {userItems.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Job title</TableHead>
-                  <TableHead>System roles</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{tc("name")}</TableHead>
+                  <TableHead>{t("role")}</TableHead>
+                  <TableHead>{t("jobTitle")}</TableHead>
+                  <TableHead>{t("roles.systemRoles")}</TableHead>
+                  <TableHead className="text-right">{tc("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {userItems.map((u) => (
-                  <TableRow
-                    key={u.id}
-                    className={selectedUserId === u.id ? "bg-accent" : undefined}
-                  >
+                  <TableRow key={u.id} className={selectedUserId === u.id ? "bg-accent" : undefined}>
                     <TableCell className="font-medium">{u.displayName ?? u.loginIdentifier}</TableCell>
-                    <TableCell><Badge variant="outline">{u.applicationRole}</Badge></TableCell>
-                    <TableCell>{bindings.data?.data?.job?.jobTitleId != null ? jobTitleName(jobTitleItems, bindings.data.data.job.jobTitleId) : "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{u.applicationRole}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {bindings.data?.data?.job?.jobTitleId != null
+                        ? jobTitleName(jobTitleItems, bindings.data.data.job.jobTitleId, tc("notAvailable"))
+                        : tc("notAvailable")}
+                    </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {(bindings.data?.data?.roles ?? []).map((rb) => (
                           <Badge key={rb.id} variant="secondary" className="gap-1">
-                            {systemRoleName(systemRoleItems, rb.systemRoleId)}
-                            {rb.override ? " (override)" : ""}
+                            {systemRoleName(systemRoleItems, rb.systemRoleId, tc("notAvailable"))}
+                            {rb.override ? t("roles.overrideSuffix") : ""}
                           </Badge>
                         ))}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => selectUser(u.id)}
-                      >
-                        Bind roles
+                      <Button variant="outline" size="sm" onClick={() => selectUser(u.id)}>
+                        {t("roles.bindRoles")}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -173,23 +174,23 @@ export function RoleMapping() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>Binding: {selectedUser.displayName ?? selectedUser.loginIdentifier}</span>
+              <span>{t("roles.binding", { name: selectedUser.displayName ?? selectedUser.loginIdentifier })}</span>
               <Button variant="ghost" size="sm" onClick={() => setSelectedUserId(null)}>
                 <XIcon />
               </Button>
             </CardTitle>
             <CardDescription>
-              Application role: <Badge variant="outline">{selectedUser.applicationRole}</Badge>
+              {t("roles.applicationRole")} <Badge variant="outline">{selectedUser.applicationRole}</Badge>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {bindings.isLoading ? <p className="text-sm text-muted-foreground">Loading bindings…</p> : null}
-            {bindings.isError ? <p className="text-sm text-destructive">Bindings could not be loaded.</p> : null}
+            {bindings.isLoading ? <p className="text-sm text-muted-foreground">{t("roles.loadingBindings")}</p> : null}
+            {bindings.isError ? <p className="text-sm text-destructive">{t("roles.bindingsLoadFailed")}</p> : null}
             {!bindings.isLoading && !bindings.isError ? (
               <>
                 {/* Job title binding */}
                 <form onSubmit={submitJob} className="space-y-2">
-                  <label className="font-medium text-sm">Job Title</label>
+                  <label className="font-medium text-sm">{t("roles.jobTitlePanel")}</label>
                   <div className="flex items-end gap-2">
                     <Select
                       value={pendingJobTitleId}
@@ -197,10 +198,10 @@ export function RoleMapping() {
                       disabled={setJob.isPending || !canMutate}
                     >
                       <SelectTrigger className="w-72">
-                        <SelectValue placeholder="Select job title" />
+                        <SelectValue placeholder={t("selectJobTitle")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={NONE}>Clear (no job title)</SelectItem>
+                        <SelectItem value={NONE}>{t("roles.clearJobTitle")}</SelectItem>
                         {jobTitleItems.map((jt) => (
                           <SelectItem key={jt.id} value={jt.id}>
                             {jt.name} ({jt.code})
@@ -211,7 +212,7 @@ export function RoleMapping() {
                     {canMutate ? (
                       <Button type="submit" size="sm" disabled={setJob.isPending}>
                         {setJob.isPending ? <Loader2Icon className="animate-spin" /> : null}
-                        Save
+                        {tc("save")}
                       </Button>
                     ) : null}
                   </div>
@@ -219,20 +220,22 @@ export function RoleMapping() {
 
                 {/* System role bindings */}
                 <div className="space-y-2">
-                  <label className="font-medium text-sm">System Roles</label>
+                  <label className="font-medium text-sm">{t("roles.systemRolesTitle")}</label>
                   {bindings.data?.data?.roles.length ? (
                     <div className="flex flex-wrap gap-2 mb-2">
                       {bindings.data.data.roles.map((rb) => (
                         <Badge key={rb.id} variant="secondary" className="gap-1 pr-1">
-                          {systemRoleName(systemRoleItems, rb.systemRoleId)}
-                          {rb.override ? " (override)" : ""}
+                          {systemRoleName(systemRoleItems, rb.systemRoleId, tc("notAvailable"))}
+                          {rb.override ? t("roles.overrideSuffix") : ""}
                           {canMutate ? (
                             <button
                               type="button"
                               onClick={() => void handleRemoveRole(rb.id)}
                               disabled={removeRole.isPending}
                               className="ml-1 text-muted-foreground hover:text-destructive"
-                              aria-label={`Remove ${systemRoleName(systemRoleItems, rb.systemRoleId)}`}
+                              aria-label={t("roles.removeRoleAria", {
+                                name: systemRoleName(systemRoleItems, rb.systemRoleId, tc("notAvailable")),
+                              })}
                             >
                               <XIcon className="size-3" />
                             </button>
@@ -241,13 +244,13 @@ export function RoleMapping() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">No system roles assigned.</p>
+                    <p className="text-sm text-muted-foreground">{t("roles.noSystemRoles")}</p>
                   )}
                   {canMutate ? (
                     <div className="flex items-end gap-2">
                       <Select value={pendingRoleId} onValueChange={setPendingRoleId}>
                         <SelectTrigger className="w-64">
-                          <SelectValue placeholder="Add system role" />
+                          <SelectValue placeholder={t("roles.addSystemRolePlaceholder")} />
                         </SelectTrigger>
                         <SelectContent>
                           {systemRoleItems
@@ -260,11 +263,8 @@ export function RoleMapping() {
                         </SelectContent>
                       </Select>
                       <label className="flex items-center gap-1 text-sm">
-                        <Checkbox
-                          checked={pendingOverride}
-                          onCheckedChange={(v) => setPendingOverride(Boolean(v))}
-                        />
-                        Override
+                        <Checkbox checked={pendingOverride} onCheckedChange={(v) => setPendingOverride(Boolean(v))} />
+                        {t("roles.override")}
                       </label>
                       <Button
                         variant="outline"
@@ -273,7 +273,7 @@ export function RoleMapping() {
                         onClick={() => void submitAddRole()}
                       >
                         {addRole.isPending ? <Loader2Icon className="animate-spin" /> : null}
-                        Add
+                        {t("roles.add")}
                       </Button>
                     </div>
                   ) : null}
@@ -287,14 +287,22 @@ export function RoleMapping() {
   );
 }
 
-function jobTitleName(items: { id: string; name: string }[], id: string | null | undefined): string {
+function jobTitleName(
+  items: { id: string; name: string }[],
+  id: string | null | undefined,
+  notAvailable: string,
+): string {
   const found = items.find((i) => i.id === id);
-  return found?.name ?? id ?? "—";
+  return found?.name ?? id ?? notAvailable;
 }
 
-function systemRoleName(items: { id: string; name: string }[], id: string | null | undefined): string {
+function systemRoleName(
+  items: { id: string; name: string }[],
+  id: string | null | undefined,
+  notAvailable: string,
+): string {
   const found = items.find((i) => i.id === id);
-  return found?.name ?? id ?? "—";
+  return found?.name ?? id ?? notAvailable;
 }
 
 function State({ title, description, action }: { title: string; description: string; action?: React.ReactNode }) {
@@ -318,10 +326,4 @@ function TableSkeleton() {
       <Skeleton className="h-10 w-full" />
     </div>
   );
-}
-
-function errorResponse(error: unknown): ErrorResponse | null {
-  if (!(error instanceof SyncroApiError) || !error.payload || typeof error.payload !== "object") return null;
-  const payload = error.payload as ErrorResponse;
-  return typeof payload.code === "string" && typeof payload.message === "string" ? payload : null;
 }

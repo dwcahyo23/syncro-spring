@@ -1,5 +1,7 @@
 "use client";
 
+import { useFormatter, useLocale, useTranslations } from "next-intl";
+
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,35 +10,7 @@ import { useGetMachineSparepartProjections } from "@/lib/api/generated/syncro";
 
 import { formatDateTimeUtc } from "./health-card";
 
-type InsufficientReason = NonNullable<MachineSparepartProjectionsView["insufficientReason"]>;
 type CalculationBasis = NonNullable<MachineSparepartProjectionsView["calculationBasis"]>;
-
-const INSUFFICIENT_REASON_TEXT: Record<InsufficientReason, string> = {
-  NO_TELEMETRY: "No accepted telemetry in the estimation window.",
-  INSUFFICIENT_SAMPLES: "Not enough telemetry samples to estimate a rate.",
-  STALE_DATA: "Latest telemetry is too old to estimate a current rate.",
-  NO_OPERATING_TIME: "No shift schedule configured, so operating hours are zero.",
-  NO_PRODUCTION_DELTA: "Counters did not advance during the estimation window.",
-};
-
-/** Handles unknown backend enum values defensively instead of crashing on a future contract. */
-function insufficientReasonText(reason: InsufficientReason | undefined): string {
-  if (reason && reason in INSUFFICIENT_REASON_TEXT) {
-    return INSUFFICIENT_REASON_TEXT[reason];
-  }
-  return "Counter-rate estimate is unavailable.";
-}
-
-const BASIS_LABELS: Record<CalculationBasis, string> = {
-  ROLLING_30_DAY: "Rolling 30 days",
-  FULL_HISTORY: "Full history",
-};
-
-function basisLabel(basis: CalculationBasis | undefined): string {
-  return (basis && BASIS_LABELS[basis]) || "Unknown basis";
-}
-
-const numberFormat = new Intl.NumberFormat("en", { maximumFractionDigits: 2 });
 
 /**
  * Presentational view of the counter-rate estimate and per-installation depletion
@@ -52,17 +26,29 @@ export function CounterRateProjectionView({
   readonly isLoading?: boolean;
   readonly error?: boolean;
 }) {
+  const t = useTranslations("systemHealth.counterProjection");
+  const tc = useTranslations("common");
+  const format = useFormatter();
+  const locale = useLocale();
   const hasKnownData = Boolean(data);
   const rateAvailable = data?.rateAvailable === true;
   const projections = data?.projections ?? [];
 
+  // Handles unknown backend enum values defensively instead of crashing on a future contract.
+  const insufficientReasonText = (reason: MachineSparepartProjectionsView["insufficientReason"]): string =>
+    reason && t.has(`insufficientReasons.${reason}`) ? t(`insufficientReasons.${reason}`) : t("unavailableEstimate");
+
+  const basisLabel = (basis: CalculationBasis | undefined): string =>
+    basis && t.has(`basis.${basis}`) ? t(`basis.${basis}`) : t("basisUnknown");
+
+  const evidence = (value: string | undefined | null) =>
+    value ? formatDateTimeUtc(value, locale) : tc("notAvailable");
+
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="font-medium text-base">Counter Rate &amp; Depletion</CardTitle>
-        <CardDescription>
-          Estimated counting speed per operating hour with shift-aware depletion projections.
-        </CardDescription>
+        <CardTitle className="font-medium text-base">{t("title")}</CardTitle>
+        <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {isLoading ? (
@@ -73,15 +59,9 @@ export function CounterRateProjectionView({
           </div>
         ) : null}
         {!isLoading && error ? (
-          <p className="text-destructive text-xs">
-            {hasKnownData
-              ? "Unable to refresh projections. Showing last known estimates."
-              : "Unable to load projections."}
-          </p>
+          <p className="text-destructive text-xs">{hasKnownData ? t("unableRefresh") : t("loadFailed")}</p>
         ) : null}
-        {!isLoading && !error && !hasKnownData ? (
-          <p className="text-muted-foreground text-xs">No projection data available.</p>
-        ) : null}
+        {!isLoading && !error && !hasKnownData ? <p className="text-muted-foreground text-xs">{t("noData")}</p> : null}
         {!isLoading && hasKnownData ? (
           <>
             {!rateAvailable ? (
@@ -91,29 +71,28 @@ export function CounterRateProjectionView({
             ) : (
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <span className="font-semibold text-3xl tabular-nums">
-                  {numberFormat.format(data?.ratePerOperatingHour ?? 0)}
+                  {format.number(data?.ratePerOperatingHour ?? 0, { maximumFractionDigits: 2 })}
                 </span>
-                <span className="text-muted-foreground text-sm">counters/op-hour</span>
+                <span className="text-muted-foreground text-sm">{t("countersPerOpHour")}</span>
                 <Badge variant="outline">{basisLabel(data?.calculationBasis)}</Badge>
               </div>
             )}
             <div className="space-y-1 text-xs">
               {data?.windowStartAt ? (
-                <EvidenceRow label="Window start" value={formatDateTimeUtc(data.windowStartAt)} />
+                <EvidenceRow label={t("windowStart")} value={evidence(data.windowStartAt)} />
               ) : null}
-              {data?.windowEndAt ? (
-                <EvidenceRow label="Window end" value={formatDateTimeUtc(data.windowEndAt)} />
-              ) : null}
+              {data?.windowEndAt ? <EvidenceRow label={t("windowEnd")} value={evidence(data.windowEndAt)} /> : null}
               {data?.firstSampleAt ? (
-                <EvidenceRow label="First sample" value={formatDateTimeUtc(data.firstSampleAt)} />
+                <EvidenceRow label={t("firstSample")} value={evidence(data.firstSampleAt)} />
               ) : null}
-              {data?.lastSampleAt ? (
-                <EvidenceRow label="Last sample" value={formatDateTimeUtc(data.lastSampleAt)} />
-              ) : null}
+              {data?.lastSampleAt ? <EvidenceRow label={t("lastSample")} value={evidence(data.lastSampleAt)} /> : null}
               {data?.dailyOperatingHours != null ? (
                 <EvidenceRow
-                  label="Operating time"
-                  value={`${numberFormat.format(data.dailyOperatingHours)} h/day (${data.shiftSource ?? "unknown"} schedule)`}
+                  label={t("operatingTime")}
+                  value={t("operatingTimeValue", {
+                    value: format.number(data.dailyOperatingHours, { maximumFractionDigits: 2 }),
+                    schedule: data.shiftSource ?? t("unknownSchedule"),
+                  })}
                 />
               ) : null}
             </div>
@@ -124,7 +103,7 @@ export function CounterRateProjectionView({
                 ))}
               </ul>
             ) : (
-              <p className="text-muted-foreground text-xs">No sparepart installations registered.</p>
+              <p className="text-muted-foreground text-xs">{t("noInstallations")}</p>
             )}
           </>
         ) : null}
@@ -143,45 +122,51 @@ function EvidenceRow({ label, value }: { readonly label: string; readonly value:
 }
 
 function InstallationRow({ projection }: { readonly projection: InstallationProjection }) {
+  const t = useTranslations("systemHealth.counterProjection");
+  const format = useFormatter();
+  const locale = useLocale();
   return (
     <li className="space-y-1 p-3">
       <div className="flex items-center justify-between gap-2">
-        <span className="font-medium text-sm">{projection.functionName ?? "Installation"}</span>
+        <span className="font-medium text-sm">{projection.functionName ?? t("installation")}</span>
         {projection.available ? (
-          <Badge
-            variant="outline"
-            className="status-badge-healthy"
-          >
-            Projected
+          <Badge variant="outline" className="status-badge-healthy">
+            {t("projected")}
           </Badge>
         ) : (
           <Badge variant="outline" className="border-transparent bg-muted/60 text-muted-foreground">
-            Unavailable
+            {t("unavailable")}
           </Badge>
         )}
       </div>
       {projection.available ? (
         <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-xs">
-          <span className="text-muted-foreground">Remaining counters</span>
+          <span className="text-muted-foreground">{t("remainingCounters")}</span>
           <span className="text-right font-medium tabular-nums">
-            {numberFormat.format(projection.remainingCounters ?? 0)}
+            {format.number(projection.remainingCounters ?? 0, { maximumFractionDigits: 2 })}
           </span>
-          <span className="text-muted-foreground">Projected depletion</span>
+          <span className="text-muted-foreground">{t("projectedDepletion")}</span>
           <span className="text-right font-medium">
-            {projection.projectedDepletionAt ? formatDateTimeUtc(projection.projectedDepletionAt) : "—"}
+            {projection.projectedDepletionAt ? formatDateTimeUtc(projection.projectedDepletionAt, locale) : "—"}
           </span>
           {projection.consumptionDuringLeadTime != null ? (
             <>
-              <span className="text-muted-foreground">Lead-time consumption</span>
+              <span className="text-muted-foreground">{t("leadTimeConsumption")}</span>
               <span className="text-right font-medium tabular-nums">
-                ≈{numberFormat.format(projection.consumptionDuringLeadTime)} counters during{" "}
-                {numberFormat.format(projection.leadTimeHours ?? 0)} op-hour lead time
+                {t("consumptionLine", {
+                  consumption: format.number(projection.consumptionDuringLeadTime, { maximumFractionDigits: 2 }),
+                  hours: format.number(projection.leadTimeHours ?? 0, { maximumFractionDigits: 2 }),
+                })}
               </span>
             </>
           ) : null}
         </div>
       ) : (
-        <p className="text-muted-foreground text-xs">{insufficientReasonText(projection.reason)}</p>
+        <p className="text-muted-foreground text-xs">
+          {projection.reason && t.has(`insufficientReasons.${projection.reason}`)
+            ? t(`insufficientReasons.${projection.reason}`)
+            : t("unavailableEstimate")}
+        </p>
       )}
     </li>
   );

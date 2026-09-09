@@ -1,6 +1,7 @@
 "use client";
 
 import { Star } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
 
@@ -18,6 +19,7 @@ export interface StarRatingProps {
  * a toggle button with {@code aria-pressed} — an accessible pattern for a rating input.
  */
 export function StarRating({ value, onChange, readOnly = false, label }: StarRatingProps) {
+  const t = useTranslations("workOrders");
   return (
     <fieldset className="inline-flex items-center gap-0.5 border-0 p-0">
       <legend className="sr-only">{label}</legend>
@@ -28,7 +30,7 @@ export function StarRating({ value, onChange, readOnly = false, label }: StarRat
             key={star}
             type="button"
             disabled={readOnly}
-            aria-label={`${label}: ${star} star${star > 1 ? "s" : ""}`}
+            aria-label={t("ratings.starAria", { label, count: star })}
             aria-pressed={filled}
             tabIndex={readOnly ? -1 : 0}
             className={cn(

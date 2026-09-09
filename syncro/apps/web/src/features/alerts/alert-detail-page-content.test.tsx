@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { AlertView } from "@/lib/api/generated/model";
+import { I18nProvider } from "@/test/i18n-wrapper";
 
 import { AlertDetailPageContent } from "./alert-detail-page-content";
 
@@ -77,7 +78,9 @@ const queryClient = new QueryClient();
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>{children}</TooltipProvider>
+    <I18nProvider>
+      <TooltipProvider>{children}</TooltipProvider>
+    </I18nProvider>
   </QueryClientProvider>
 );
 

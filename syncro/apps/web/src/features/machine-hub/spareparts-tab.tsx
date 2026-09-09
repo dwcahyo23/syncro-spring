@@ -1,5 +1,7 @@
 "use client";
 
+import { useFormatter, useTranslations } from "next-intl";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Progress } from "@/components/ui/progress";
@@ -12,6 +14,8 @@ export interface SparepartsTabProps {
 }
 
 export function SparepartsTab({ machineId }: SparepartsTabProps) {
+  const t = useTranslations("machineHub.spareparts");
+  const format = useFormatter();
   const { data, isLoading, isError } = useListMachineSparepartInstallations(
     { machineId, pageable: { page: 0, size: 100, sort: ["installedAt,desc"] } },
     { query: { enabled: Boolean(machineId), staleTime: 30_000 } },
@@ -28,29 +32,27 @@ export function SparepartsTab({ machineId }: SparepartsTabProps) {
   }
 
   if (isError) {
-    return <EmptyState title="Spareparts unavailable" description="Failed to load installed spareparts." />;
+    return <EmptyState title={t("unavailableTitle")} description={t("unavailableDescription")} />;
   }
 
   if (items.length === 0) {
-    return (
-      <EmptyState title="No spareparts installed" description="This machine currently has no spareparts installed." />
-    );
+    return <EmptyState title={t("emptyTitle")} description={t("emptyDescription")} />;
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Installed Spareparts</CardTitle>
-        <CardDescription>Current installations and lifetime consumption</CardDescription>
+        <CardTitle>{t("title")}</CardTitle>
+        <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Sparepart</TableHead>
-              <TableHead>Function</TableHead>
-              <TableHead className="hidden md:table-cell">Installed</TableHead>
-              <TableHead className="w-64">Lifetime Usage</TableHead>
+              <TableHead>{t("colSparepart")}</TableHead>
+              <TableHead>{t("colFunction")}</TableHead>
+              <TableHead className="hidden md:table-cell">{t("colInstalled")}</TableHead>
+              <TableHead className="w-64">{t("colLifetime")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -64,7 +66,7 @@ export function SparepartsTab({ machineId }: SparepartsTabProps) {
                   </TableCell>
                   <TableCell>{item.functionName ?? "-"}</TableCell>
                   <TableCell className="hidden md:table-cell">
-                    {item.installedAt ? new Date(item.installedAt).toLocaleDateString() : "-"}
+                    {item.installedAt ? format.dateTime(new Date(item.installedAt), { dateStyle: "medium" }) : "-"}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">

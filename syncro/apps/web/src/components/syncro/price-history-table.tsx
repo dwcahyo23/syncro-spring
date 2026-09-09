@@ -1,5 +1,7 @@
 "use client";
 
+import { useFormatter, useTranslations } from "next-intl";
+
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,6 +14,35 @@ export interface PriceHistoryTableProps {
 }
 
 export function PriceHistoryTable({ entries, isLoading = false, onReuse }: PriceHistoryTableProps) {
+  const t = useTranslations("spareparts.shared.priceHistory");
+  const tc = useTranslations("common");
+  const format = useFormatter();
+
+  const formatMoney = (value: number | undefined, currency: string | undefined) => {
+    if (value == null) {
+      return "-";
+    }
+    try {
+      return format.number(value, { style: "currency", currency: currency ?? "IDR" });
+    } catch {
+      return `${currency ?? ""} ${formatNumber(value)}`.trim();
+    }
+  };
+
+  const formatNumber = (value: number | undefined) => {
+    if (value == null) {
+      return "-";
+    }
+    return format.number(value);
+  };
+
+  const formatDateTime = (value: string | undefined) => {
+    if (!value) {
+      return "-";
+    }
+    return format.dateTime(new Date(value), { dateStyle: "medium", timeStyle: "short" });
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-2" data-testid="price-history-loading">
@@ -25,7 +56,7 @@ export function PriceHistoryTable({ entries, isLoading = false, onReuse }: Price
   if (entries.length === 0) {
     return (
       <p className="py-2 text-muted-foreground text-sm" data-testid="price-history-empty">
-        No price entries recorded yet.
+        {t("empty")}
       </p>
     );
   }
@@ -35,12 +66,12 @@ export function PriceHistoryTable({ entries, isLoading = false, onReuse }: Price
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="whitespace-nowrap">Amount</TableHead>
-            <TableHead className="whitespace-nowrap">Kurs</TableHead>
-            <TableHead className="whitespace-nowrap">IDR Value</TableHead>
-            <TableHead className="whitespace-nowrap">Entered By</TableHead>
-            <TableHead>Entered At</TableHead>
-            {onReuse ? <TableHead className="text-right">Actions</TableHead> : null}
+            <TableHead className="whitespace-nowrap">{t("amount")}</TableHead>
+            <TableHead className="whitespace-nowrap">{t("kurs")}</TableHead>
+            <TableHead className="whitespace-nowrap">{t("idrValue")}</TableHead>
+            <TableHead className="whitespace-nowrap">{t("enteredBy")}</TableHead>
+            <TableHead>{t("enteredAt")}</TableHead>
+            {onReuse ? <TableHead className="text-right">{tc("actions")}</TableHead> : null}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -54,7 +85,7 @@ export function PriceHistoryTable({ entries, isLoading = false, onReuse }: Price
               {onReuse ? (
                 <TableCell className="text-right">
                   <Button variant="outline" size="sm" onClick={() => onReuse(entry)}>
-                    Reuse
+                    {t("reuse")}
                   </Button>
                 </TableCell>
               ) : null}
@@ -64,29 +95,4 @@ export function PriceHistoryTable({ entries, isLoading = false, onReuse }: Price
       </Table>
     </div>
   );
-}
-
-function formatMoney(value: number | undefined, currency: string | undefined) {
-  if (value == null) {
-    return "-";
-  }
-  try {
-    return new Intl.NumberFormat("en", { style: "currency", currency: currency ?? "IDR" }).format(value);
-  } catch {
-    return `${currency ?? ""} ${formatNumber(value)}`.trim();
-  }
-}
-
-function formatNumber(value: number | undefined) {
-  if (value == null) {
-    return "-";
-  }
-  return new Intl.NumberFormat("en").format(value);
-}
-
-function formatDateTime(value: string | undefined) {
-  if (!value) {
-    return "-";
-  }
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }

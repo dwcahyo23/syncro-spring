@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { I18nProvider } from "@/test/i18n-wrapper";
+
 import { RoleMapping } from "./role-mapping";
 
 // ---------------------------------------------------------------------------
@@ -14,7 +16,7 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
 }));
 
-let mockUser = {
+const mockUser = {
   id: "user-1",
   loginIdentifier: "admin@syncro.dev",
   applicationRole: "SUPER_ADMIN" as string,
@@ -27,36 +29,36 @@ vi.mock("@/lib/auth/use-auth-user", () => ({
 // Pre-existing tsc fix (story 20-2): the loading-state test below assigns
 // `data: undefined`, so the mock's data field must be typed as optional.
 let mockUsers: {
-  data: {
-    data: Array<{ id: string; loginIdentifier: string; displayName: string; applicationRole: string }>;
-  } | undefined;
+  data:
+    | {
+        data: Array<{ id: string; loginIdentifier: string; displayName: string; applicationRole: string }>;
+      }
+    | undefined;
   isLoading: boolean;
   isError: boolean;
   refetch: ReturnType<typeof vi.fn>;
 } = {
   data: {
-    data: [
-      { id: "u1", loginIdentifier: "tech@syncro.dev", displayName: "Technician", applicationRole: "TECHNICIAN" },
-    ],
+    data: [{ id: "u1", loginIdentifier: "tech@syncro.dev", displayName: "Technician", applicationRole: "TECHNICIAN" }],
   },
   isLoading: false,
   isError: false,
   refetch: vi.fn(),
 };
 
-let mockJobTitles = {
+const mockJobTitles = {
   data: { data: { items: [{ id: "jt1", code: "TECHNICIAN", name: "Technician" }] } },
   isLoading: false,
   isError: false,
 };
 
-let mockSystemRoles = {
+const mockSystemRoles = {
   data: { data: { items: [{ id: "sr1", code: "TECHNICIAN", name: "Technician" }] } },
   isLoading: false,
   isError: false,
 };
 
-let mockBindings = {
+const mockBindings = {
   data: {
     data: {
       job: { id: "jb1", jobTitleId: "jt1" },
@@ -86,7 +88,11 @@ vi.mock("@/features/organization/hooks/use-user-bindings", () => ({
 
 function renderWithClient(ui: ReactNode) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <I18nProvider>{ui}</I18nProvider>
+    </QueryClientProvider>,
+  );
 }
 
 describe("RoleMapping", () => {

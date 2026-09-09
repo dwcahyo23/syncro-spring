@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
 import { PackageSearchIcon, PlusIcon, ShoppingCartIcon, Trash2Icon } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,10 +25,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useCreateSparepartRequest } from "@/features/sparepart-requests/hooks/use-sparepart-requests";
 import type { SparepartRequestType } from "@/features/sparepart-requests/types";
-import { syncroFetch } from "@/lib/api/orval-mutator";
 import type { SparepartTaxonomyView } from "@/lib/api/generated/model";
 import { SparepartTaxonomyRequestDimension } from "@/lib/api/generated/model";
-import { useListSparepartTaxonomies, useCreateSparepartTaxonomy } from "@/lib/api/generated/syncro";
+import { useCreateSparepartTaxonomy, useListSparepartTaxonomies } from "@/lib/api/generated/syncro";
+import { syncroFetch } from "@/lib/api/orval-mutator";
 
 interface CartItem {
   key: string;
@@ -55,11 +56,22 @@ function nextKey() {
  * Items sit in the cart until the user clicks "Send to warehouse" — no premature
  * submission. Unknown parts (no material code) start PENDING_COMPLETION per FR-144.
  */
-export function RequestPartDialog({ workOrderId, open: controlledOpen, onOpenChange: controlledOnOpenChange }: { workOrderId?: string | null; open?: boolean; onOpenChange?: (open: boolean) => void }) {
+export function RequestPartDialog({
+  workOrderId,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+}: {
+  workOrderId?: string | null;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  const t = useTranslations("sparepartRequests");
+  const tc = useTranslations("common");
+  const format = useFormatter();
   const createRequest = useCreateSparepartRequest();
   const createTaxonomy = useCreateSparepartTaxonomy();
   const [internalOpen, setInternalOpen] = useState(false);
-  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const open = controlledOpen ?? internalOpen;
   const setOpen = controlledOnOpenChange ?? setInternalOpen;
 
   // ── Cart state ──────────────────────────────────────────────────────
@@ -162,9 +174,7 @@ export function RequestPartDialog({ workOrderId, open: controlledOpen, onOpenCha
   }, [taxonomyItems]);
 
   const linkedOptions = (dimension: SparepartTaxonomyView["dimension"]) =>
-    (taxonomyByDimension.get(dimension ?? "") ?? []).filter(
-      (item) => !categoryId || item.categoryId === categoryId,
-    );
+    (taxonomyByDimension.get(dimension ?? "") ?? []).filter((item) => !categoryId || item.categoryId === categoryId);
 
   const taxonomyCode = (name: string) =>
     name
@@ -276,25 +286,22 @@ export function RequestPartDialog({ workOrderId, open: controlledOpen, onOpenCha
         <DialogTrigger asChild>
           <Button type="button" variant="default" size="sm" className="h-7 px-2 text-xs">
             <PackageSearchIcon className="mr-1 size-3" />
-            Request part
+            {t("requestPart.trigger")}
           </Button>
         </DialogTrigger>
       )}
       <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Request part</DialogTitle>
-          <DialogDescription>
-            Search existing spareparts or add a new material code. Items sit in a draft cart — submit to warehouse only
-            when ready.
-          </DialogDescription>
+          <DialogTitle>{t("requestPart.title")}</DialogTitle>
+          <DialogDescription>{t("requestPart.description")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* ── BOM search ───────────────────────────────── */}
           <div className="space-y-1">
-            <Label>Search existing sparepart (BOM, material code, name)</Label>
+            <Label>{t("requestPart.searchLabel")}</Label>
             <Input
-              placeholder="Type to search..."
+              placeholder={t("requestPart.searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
             />
@@ -311,7 +318,7 @@ export function RequestPartDialog({ workOrderId, open: controlledOpen, onOpenCha
                     <span className="font-medium">{sp.code}</span>
                     <span className="text-muted-foreground">
                       {sp.kind?.name} · {sp.brand?.name}
-                      {sp.materialCode ? ` · MC:${sp.materialCode}` : ""}
+                      {sp.materialCode ? t("requestPart.mcInResult", { code: sp.materialCode }) : ""}
                     </span>
                   </button>
                 ))}
@@ -321,21 +328,19 @@ export function RequestPartDialog({ workOrderId, open: controlledOpen, onOpenCha
 
           {selectedBom && (
             <div className="status-banner-healthy rounded-md border px-3 py-2 text-xs">
-              <span className="font-medium">Selected:</span> {selectedBom.code} · {selectedBom.kind?.name} ·{" "}
-              {selectedBom.brand?.name}
-              {selectedBom.materialCode ? ` · MC: ${selectedBom.materialCode}` : ""}
+              <span className="font-medium">{t("requestPart.selected")}</span> {selectedBom.code} ·{" "}
+              {selectedBom.kind?.name} · {selectedBom.brand?.name}
+              {selectedBom.materialCode ? t("requestPart.mcInSelected", { code: selectedBom.materialCode }) : ""}
             </div>
           )}
 
           {/* ── New-part taxonomy (DW-148) ───────────────────── */}
           {!selectedBom && (
             <div className="grid grid-cols-2 gap-3 rounded-lg border p-3">
-              <p className="col-span-2 text-muted-foreground text-xs">
-                No BOM selected — classify the new part so it is created with full taxonomy
-                (machine is inherited from the work order).
-              </p>
+              <p className="col-span-2 text-muted-foreground text-xs">{t("requestPart.noBomHint")}</p>
               <TaxonomySelect
-                label="Category"
+                label={t("taxonomy.category")}
+                word={t("taxonomy.categoryWord")}
                 value={categoryId}
                 items={linkedOptions(SparepartTaxonomyRequestDimension.CATEGORY)}
                 creatable={false}
@@ -347,7 +352,8 @@ export function RequestPartDialog({ workOrderId, open: controlledOpen, onOpenCha
                 }}
               />
               <TaxonomySelect
-                label="Kind"
+                label={t("taxonomy.kind")}
+                word={t("taxonomy.kindWord")}
                 value={kindId}
                 items={linkedOptions(SparepartTaxonomyRequestDimension.KIND)}
                 creatable={Boolean(categoryId)}
@@ -355,7 +361,8 @@ export function RequestPartDialog({ workOrderId, open: controlledOpen, onOpenCha
                 onChange={setKindId}
               />
               <TaxonomySelect
-                label="Brand"
+                label={t("taxonomy.brand")}
+                word={t("taxonomy.brandWord")}
                 value={brandId}
                 items={linkedOptions(SparepartTaxonomyRequestDimension.BRAND)}
                 creatable={Boolean(categoryId)}
@@ -363,7 +370,8 @@ export function RequestPartDialog({ workOrderId, open: controlledOpen, onOpenCha
                 onChange={setBrandId}
               />
               <TaxonomySelect
-                label="Type"
+                label={t("taxonomy.type")}
+                word={t("taxonomy.typeWord")}
                 value={typeId}
                 items={linkedOptions(SparepartTaxonomyRequestDimension.TYPE)}
                 creatable={Boolean(categoryId)}
@@ -376,52 +384,56 @@ export function RequestPartDialog({ workOrderId, open: controlledOpen, onOpenCha
           {/* ── Add-item form ─────────────────────────────── */}
           <div className="grid grid-cols-2 gap-3 rounded-lg border p-3">
             <div className="space-y-1">
-              <Label>Type</Label>
+              <Label>{t("type")}</Label>
               <Select value={requestType} onValueChange={(v) => setRequestType(v as SparepartRequestType)}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="SPAREPART">Sparepart</SelectItem>
-                  <SelectItem value="CONSUMABLE">Consumable</SelectItem>
-                  <SelectItem value="SERVICE_EXTERNAL">External service</SelectItem>
+                  <SelectItem value="SPAREPART">{t("types.SPAREPART")}</SelectItem>
+                  <SelectItem value="CONSUMABLE">{t("types.CONSUMABLE")}</SelectItem>
+                  <SelectItem value="SERVICE_EXTERNAL">{t("types.SERVICE_EXTERNAL")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-1">
-              <Label>Material code (or leave blank for new part)</Label>
+              <Label>{t("requestPart.materialCodeLabel")}</Label>
               <Input
-                placeholder="e.g. MC-0001"
+                placeholder={t("requestPart.materialCodePlaceholder")}
                 value={materialCode}
                 onChange={(e) => setMaterialCode(e.target.value)}
               />
             </div>
 
             <div className="space-y-1">
-              <Label>Qty</Label>
+              <Label>{t("qty")}</Label>
               <Input type="number" min={1} value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} />
             </div>
 
             <div className="space-y-1">
-              <Label>Est. unit price (optional)</Label>
+              <Label>{t("requestPart.priceLabel")}</Label>
               <Input type="number" min={0} value={estUnitPrice} onChange={(e) => setEstUnitPrice(e.target.value)} />
             </div>
 
             <div className="space-y-1">
-              <Label>Purchase URL (optional)</Label>
-              <Input placeholder="https://..." value={purchaseUrl} onChange={(e) => setPurchaseUrl(e.target.value)} />
+              <Label>{t("requestPart.urlLabel")}</Label>
+              <Input
+                placeholder={t("requestPart.urlPlaceholder")}
+                value={purchaseUrl}
+                onChange={(e) => setPurchaseUrl(e.target.value)}
+              />
             </div>
 
             <div className="col-span-2 space-y-1">
-              <Label>Notes (optional)</Label>
+              <Label>{t("requestPart.notesLabel")}</Label>
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
             </div>
 
             <div className="col-span-2 flex justify-end">
               <Button type="button" size="sm" variant="outline" onClick={addToCart} disabled={quantity < 1}>
                 <PlusIcon className="mr-1 size-4" />
-                Add to cart
+                {t("requestPart.addToCart")}
               </Button>
             </div>
           </div>
@@ -430,15 +442,15 @@ export function RequestPartDialog({ workOrderId, open: controlledOpen, onOpenCha
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <ShoppingCartIcon className="size-4 text-muted-foreground" />
-              <span className="font-medium text-sm">Cart</span>
+              <span className="font-medium text-sm">{t("requestPart.cart")}</span>
               <Badge variant="secondary" className="ml-auto">
-                {cart.length} item{cart.length !== 1 ? "s" : ""}
+                {t("requestPart.cartCount", { count: cart.length })}
               </Badge>
               {/* ponytail: keep badge single-line; length never needs truncation */}
             </div>
 
             {cart.length === 0 ? (
-              <p className="text-muted-foreground text-xs">Add items above. They stay here locally until you submit.</p>
+              <p className="text-muted-foreground text-xs">{t("requestPart.cartEmpty")}</p>
             ) : (
               <ScrollArea className="max-h-48">
                 <div className="space-y-2">
@@ -446,15 +458,21 @@ export function RequestPartDialog({ workOrderId, open: controlledOpen, onOpenCha
                     <div key={item.key} className="flex items-start justify-between rounded-md border p-2 text-xs">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">{item.materialCode ?? "New part"}</span>
+                          <span className="font-medium">{item.materialCode ?? t("requestPart.newPart")}</span>
                           <Badge className={`text-xs ${requestTypeClass(item.requestType)}`}>
-                            {item.requestType}
+                            {t.has(`types.${item.requestType}`) ? t(`types.${item.requestType}`) : item.requestType}
                           </Badge>
                         </div>
                         {item.sparepartLabel && <p className="text-muted-foreground">{item.sparepartLabel}</p>}
                         <p className="text-muted-foreground">
-                          Qty: {item.quantity}
-                          {item.estUnitPrice ? ` · Rp ${Number(item.estUnitPrice).toLocaleString()}` : ""}
+                          {t("requestPart.qtyLine", { qty: item.quantity })}
+                          {item.estUnitPrice
+                            ? ` · ${format.number(Number(item.estUnitPrice), {
+                                style: "currency",
+                                currency: "IDR",
+                                maximumFractionDigits: 0,
+                              })}`
+                            : ""}
                         </p>
                         {item.notes && <p className="italic">{item.notes}</p>}
                       </div>
@@ -485,10 +503,10 @@ export function RequestPartDialog({ workOrderId, open: controlledOpen, onOpenCha
               resetAll();
             }}
           >
-            Cancel
+            {tc("cancel")}
           </Button>
           <Button size="sm" onClick={handleSubmitAll} disabled={cart.length === 0 || submitting}>
-            {submitting ? "Submitting…" : `Send to warehouse (${cart.length})`}
+            {submitting ? t("requestPart.submitting") : t("requestPart.sendToWarehouse", { count: cart.length })}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -499,6 +517,7 @@ export function RequestPartDialog({ workOrderId, open: controlledOpen, onOpenCha
 /** Creatable taxonomy picker (mirrors the create-sparepart dialog pattern). */
 function TaxonomySelect({
   label,
+  word,
   value,
   items,
   creatable,
@@ -506,12 +525,14 @@ function TaxonomySelect({
   onChange,
 }: {
   label: string;
+  word: string;
   value: string;
   items: SparepartTaxonomyView[];
   creatable: boolean;
   onCreate?: (name: string) => Promise<void>;
   onChange: (value: string) => void;
 }) {
+  const t = useTranslations("sparepartRequests");
   const [search, setSearch] = useState("");
   const visibleItems = items.filter((item) => {
     const q = search.trim().toLowerCase();
@@ -525,19 +546,19 @@ function TaxonomySelect({
       <Label>{label}</Label>
       <Select value={value || undefined} onValueChange={onChange} disabled={!creatable && items.length === 0}>
         <SelectTrigger className="w-full">
-          <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
+          <SelectValue placeholder={t("taxonomy.select", { word })} />
         </SelectTrigger>
         <SelectContent position="popper" side="top" align="start" className="max-h-72">
           <div className="p-2">
             <Input
               value={search}
-              placeholder={`Search ${label.toLowerCase()}`}
+              placeholder={t("taxonomy.search", { word })}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => e.stopPropagation()}
             />
           </div>
           {visibleItems.length === 0 ? (
-            <div className="px-2 py-1.5 text-muted-foreground text-sm">No {label.toLowerCase()} found</div>
+            <div className="px-2 py-1.5 text-muted-foreground text-sm">{t("taxonomy.none", { word })}</div>
           ) : null}
           {visibleItems.map((item) => (
             <SelectItem key={item.id} value={item.id ?? ""}>
@@ -556,7 +577,7 @@ function TaxonomySelect({
                   setSearch("");
                 }}
               >
-                Create {label.toLowerCase()} “{search.trim()}”
+                {t("taxonomy.create", { word, name: search.trim() })}
               </Button>
             </div>
           ) : null}

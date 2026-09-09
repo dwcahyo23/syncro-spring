@@ -1,7 +1,10 @@
-import { render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
+
+import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import type { InstallationProjection, MachineSparepartProjectionsView } from "@/lib/api/generated/model";
+import { renderI18n } from "@/test/i18n-wrapper";
 
 import { CounterRateProjectionView } from "./counter-rate-projection-card";
 
@@ -40,7 +43,7 @@ function view(overrides: Partial<MachineSparepartProjectionsView> = {}): Machine
 
 describe("CounterRateProjectionView", () => {
   it("renders the rate tile with unit, basis badge and window evidence", () => {
-    render(<CounterRateProjectionView data={view()} />);
+    renderI18n(<CounterRateProjectionView data={view()} />);
 
     expect(screen.getByText("Counter Rate & Depletion")).toBeInTheDocument();
     expect(screen.getByText("counters/op-hour")).toBeInTheDocument();
@@ -51,7 +54,7 @@ describe("CounterRateProjectionView", () => {
   });
 
   it("renders per-installation rows with remaining counters, depletion date and lead-time consumption", () => {
-    render(<CounterRateProjectionView data={view()} />);
+    renderI18n(<CounterRateProjectionView data={view()} />);
 
     expect(screen.getByText("Primary feeder")).toBeInTheDocument();
     expect(screen.getByText("Remaining counters")).toBeInTheDocument();
@@ -61,13 +64,13 @@ describe("CounterRateProjectionView", () => {
   });
 
   it("renders the FULL_HISTORY fallback basis label", () => {
-    render(<CounterRateProjectionView data={view({ calculationBasis: "FULL_HISTORY" })} />);
+    renderI18n(<CounterRateProjectionView data={view({ calculationBasis: "FULL_HISTORY" })} />);
 
     expect(screen.getByText("Full history")).toBeInTheDocument();
   });
 
   it("shows explicit human text for each backend insufficient reason without a guessed rate", () => {
-    const { rerender } = render(
+    const { rerender } = renderI18n(
       <CounterRateProjectionView
         data={view({
           rateAvailable: false,
@@ -109,7 +112,7 @@ describe("CounterRateProjectionView", () => {
   });
 
   it("degrades an unavailable installation row with its own reason and hides projection numbers", () => {
-    render(
+    renderI18n(
       <CounterRateProjectionView
         data={{
           ...view(),
@@ -132,7 +135,7 @@ describe("CounterRateProjectionView", () => {
   });
 
   it("renders a depleted installation whose projected depletion is now", () => {
-    render(
+    renderI18n(
       <CounterRateProjectionView
         data={view({
           projections: [projection({ remainingCounters: 0, projectedDepletionAt: "2026-08-24T10:00:00Z" })],
@@ -144,7 +147,7 @@ describe("CounterRateProjectionView", () => {
   });
 
   it("omits the lead-time line for spareparts without lead time", () => {
-    render(
+    renderI18n(
       <CounterRateProjectionView
         data={view({
           projections: [projection({ leadTimeHours: undefined, consumptionDuringLeadTime: undefined })],
@@ -156,21 +159,21 @@ describe("CounterRateProjectionView", () => {
   });
 
   it("renders a loading skeleton without content", () => {
-    render(<CounterRateProjectionView isLoading />);
+    renderI18n(<CounterRateProjectionView isLoading />);
 
     expect(document.querySelector("[aria-hidden='true'] .animate-pulse")).toBeTruthy();
     expect(screen.queryByText("counters/op-hour")).toBeNull();
   });
 
   it("keeps last known data visible with a notice on refresh failure", () => {
-    render(<CounterRateProjectionView data={view()} error />);
+    renderI18n(<CounterRateProjectionView data={view()} error />);
 
     expect(screen.getByText("Unable to refresh projections. Showing last known estimates.")).toBeInTheDocument();
     expect(screen.getByText("counters/op-hour")).toBeInTheDocument();
   });
 
   it("renders a load failure message when no data exists", () => {
-    render(<CounterRateProjectionView error />);
+    renderI18n(<CounterRateProjectionView error />);
 
     expect(screen.getByText("Unable to load projections.")).toBeInTheDocument();
   });

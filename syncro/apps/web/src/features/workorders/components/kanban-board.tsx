@@ -2,6 +2,7 @@
 
 import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,15 +17,17 @@ import type { KanbanView } from "@/features/workorders/types";
  * call is deliberately stubbed (the spec's Never section: no drag-to-reorder across
  * status columns in v1).
  */
-const COLUMNS: { status: string; title: string }[] = [
-  { status: "DRAFT", title: "Draft" },
-  { status: "OPEN", title: "Open" },
-  { status: "ASSIGNED", title: "Assigned" },
-  { status: "IN_PROGRESS", title: "In Progress" },
-  { status: "ON_PROCUREMENT", title: "On Procurement" },
+const COLUMNS: { status: string }[] = [
+  { status: "DRAFT" },
+  { status: "OPEN" },
+  { status: "ASSIGNED" },
+  { status: "IN_PROGRESS" },
+  { status: "ON_PROCUREMENT" },
 ];
 
 export function KanbanBoard() {
+  const t = useTranslations("workOrders");
+  const tc = useTranslations("common");
   const { data, isLoading, isError, refetch } = useKanban();
   const queryClient = useQueryClient();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
@@ -53,9 +56,9 @@ export function KanbanBoard() {
   if (isError) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-lg border p-6">
-        <p className="text-muted-foreground text-sm">Failed to load the workorder board.</p>
+        <p className="text-muted-foreground text-sm">{t("kanban.loadFailed")}</p>
         <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>
-          Retry
+          {tc("retry")}
         </Button>
       </div>
     );
@@ -69,7 +72,7 @@ export function KanbanBoard() {
         {COLUMNS.map((column) => (
           <KanbanColumn
             key={column.status}
-            title={column.title}
+            title={t.has(`status.${column.status}`) ? t(`status.${column.status}`) : column.status}
             status={column.status}
             items={view.groups[column.status] ?? []}
           />

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { useTranslations } from "next-intl";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,12 +20,17 @@ import {
 import type { PreventiveCategory, PreventiveProgramView, ScheduleType } from "@/features/preventive/types";
 import { useListMachines } from "@/lib/api/generated/syncro";
 
+const CATEGORIES: readonly PreventiveCategory[] = ["MECHANICAL", "ELECTRICAL"];
+const SCHEDULE_TYPES: readonly ScheduleType[] = ["MONTHLY", "ANNUAL"];
+
 /**
  * Preventive programs list + create form (story 11-1, FR-130). Machine is chosen via a
  * shadcn Select (label = code · name · plant), never a raw UUID. Category and schedule
  * type use shadcn Select. Scope/permission enforcement is server-side.
  */
 export function PreventiveProgramsPanel() {
+  const t = useTranslations("preventive");
+  const tc = useTranslations("common");
   const { data: programs, isLoading, isError, refetch } = usePreventivePrograms();
   const createProgram = useCreatePreventiveProgram();
   const deleteProgram = useDeletePreventiveProgram();
@@ -63,16 +70,18 @@ export function PreventiveProgramsPanel() {
       {/* Create form */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">New preventive program</CardTitle>
-          <CardDescription>Create a recurring maintenance program for a machine.</CardDescription>
+          <CardTitle className="text-base">{t("programs.newProgram")}</CardTitle>
+          <CardDescription>{t("programs.newProgramDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="machine">Machine</Label>
+              <Label htmlFor="machine">{t("machine")}</Label>
               <Select value={machineId || undefined} onValueChange={setMachineId}>
-                <SelectTrigger aria-label="Machine" disabled={isLoadingMachines}>
-                  <SelectValue placeholder={isLoadingMachines ? "Loading machines..." : "Select machine"} />
+                <SelectTrigger aria-label={t("machine")} disabled={isLoadingMachines}>
+                  <SelectValue
+                    placeholder={isLoadingMachines ? t("programs.loadingMachines") : t("programs.selectMachine")}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {machinesRes?.data?.items?.map((m) => (
@@ -84,40 +93,46 @@ export function PreventiveProgramsPanel() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="title">Title</Label>
+              <Label htmlFor="title">{t("programs.title")}</Label>
               <Input
                 id="title"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                placeholder="e.g. Monthly lube check"
+                placeholder={t("programs.titlePlaceholder")}
               />
             </div>
             <div className="space-y-2">
-              <Label>Category</Label>
+              <Label>{t("programs.category")}</Label>
               <Select value={category} onValueChange={(v) => setCategory(v as PreventiveCategory)}>
-                <SelectTrigger aria-label="Category">
+                <SelectTrigger aria-label={t("programs.category")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="MECHANICAL">Mechanical</SelectItem>
-                  <SelectItem value="ELECTRICAL">Electrical</SelectItem>
+                  {CATEGORIES.map((code) => (
+                    <SelectItem key={code} value={code}>
+                      {t(`category.${code}`)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Schedule type</Label>
+              <Label>{t("programs.scheduleType")}</Label>
               <Select value={scheduleType} onValueChange={(v) => setScheduleType(v as ScheduleType)}>
-                <SelectTrigger aria-label="Schedule type">
+                <SelectTrigger aria-label={t("programs.scheduleType")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="MONTHLY">Monthly</SelectItem>
-                  <SelectItem value="ANNUAL">Annual</SelectItem>
+                  {SCHEDULE_TYPES.map((code) => (
+                    <SelectItem key={code} value={code}>
+                      {t(`scheduleType.${code}`)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="day">Day of month</Label>
+              <Label htmlFor="day">{t("programs.dayOfMonth")}</Label>
               <Input
                 id="day"
                 type="number"
@@ -129,7 +144,7 @@ export function PreventiveProgramsPanel() {
             </div>
             {scheduleType === "ANNUAL" ? (
               <div className="space-y-2">
-                <Label htmlFor="month">Month of year</Label>
+                <Label htmlFor="month">{t("programs.monthOfYear")}</Label>
                 <Input
                   id="month"
                   type="number"
@@ -141,20 +156,18 @@ export function PreventiveProgramsPanel() {
               </div>
             ) : null}
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="description">Description (optional)</Label>
+              <Label htmlFor="description">{t("programs.descriptionOptional")}</Label>
               <Input
                 id="description"
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
-                placeholder="Optional description"
+                placeholder={t("programs.descriptionPlaceholder")}
               />
             </div>
             <div className="flex items-center justify-between sm:col-span-2">
               <div>
-                <Label htmlFor="auto-workorder">Auto-create workorder on approval</Label>
-                <p className="text-muted-foreground text-xs">
-                  When a schedule is approved, an internal preventive workorder is created.
-                </p>
+                <Label htmlFor="auto-workorder">{t("programs.autoWorkorderLabel")}</Label>
+                <p className="text-muted-foreground text-xs">{t("programs.autoWorkorderHint")}</p>
               </div>
               <Switch id="auto-workorder" checked={autoWorkorder} onCheckedChange={setAutoWorkorder} />
             </div>
@@ -164,7 +177,7 @@ export function PreventiveProgramsPanel() {
             disabled={createProgram.isPending || !machineId || !title.trim()}
             onClick={handleCreate}
           >
-            {createProgram.isPending ? "Creating…" : "Create program"}
+            {createProgram.isPending ? t("programs.creating") : t("programs.createProgram")}
           </Button>
         </CardContent>
       </Card>
@@ -177,15 +190,15 @@ export function PreventiveProgramsPanel() {
         </div>
       ) : isError ? (
         <div className="flex flex-col items-center gap-3 rounded-lg border p-6">
-          <p className="text-muted-foreground text-sm">Failed to load preventive programs.</p>
+          <p className="text-muted-foreground text-sm">{t("programs.loadFailed")}</p>
           <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>
-            Retry
+            {tc("retry")}
           </Button>
         </div>
       ) : (programs ?? []).length === 0 ? (
         <Card>
           <CardContent className="p-6">
-            <p className="text-muted-foreground text-sm">No preventive programs yet. Create one above.</p>
+            <p className="text-muted-foreground text-sm">{t("programs.empty")}</p>
           </CardContent>
         </Card>
       ) : (
@@ -200,18 +213,21 @@ export function PreventiveProgramsPanel() {
 }
 
 function ProgramRow({ program, onDelete }: { program: PreventiveProgramView; onDelete: () => void }) {
+  const t = useTranslations("preventive");
+  const tc = useTranslations("common");
   return (
     <div className="flex items-center justify-between gap-2 rounded-lg border p-3">
       <div className="min-w-0">
         <p className="font-medium text-sm">{program.title}</p>
         <p className="text-muted-foreground text-xs">
-          {program.category} · {program.scheduleType} · day {program.dayOfMonth}
-          {program.monthOfYear != null ? ` / month ${program.monthOfYear}` : ""} ·{" "}
-          {program.active ? "active" : "inactive"} · {program.autoWorkorder ? "auto-workorder" : "no auto-workorder"}
+          {program.category} · {program.scheduleType} · {t("programs.day", { day: program.dayOfMonth })}
+          {program.monthOfYear != null ? t("programs.month", { month: program.monthOfYear }) : ""} ·{" "}
+          {program.active ? t("programs.active") : t("programs.inactive")} ·{" "}
+          {program.autoWorkorder ? t("programs.autoWorkorder") : t("programs.noAutoWorkorder")}
         </p>
       </div>
       <Button type="button" variant="ghost" size="sm" onClick={onDelete}>
-        Delete
+        {tc("delete")}
       </Button>
     </div>
   );

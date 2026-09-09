@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2Icon, RefreshCcw } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { StatusBadge } from "@/components/syncro/status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,7 @@ export interface MachineHeaderProps {
 }
 
 export function MachineHeader({ machineCode, machine, freshnessState, isLoading, onRefresh }: MachineHeaderProps) {
+  const t = useTranslations("machineHub");
   const status = machine?.status;
   const isInactive = status === "INACTIVE";
 
@@ -31,17 +33,17 @@ export function MachineHeader({ machineCode, machine, freshnessState, isLoading,
           )}
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
             <span className="inline-flex items-center rounded-md bg-muted px-2.5 py-0.5 font-medium">
-              Code: {machineCode}
+              {t("header.code", { code: machineCode })}
             </span>
             {status && (
               <Badge variant={status === "ACTIVE" ? "default" : "secondary"}>
-                Manual: {status === "ACTIVE" ? "ACTIVE" : "INACTIVE"}
+                {t("header.manual", { status: t.has(`status.${status}`) ? t(`status.${status}`) : status })}
               </Badge>
             )}
             {freshnessState ? (
               <StatusBadge freshness={freshnessState} />
             ) : (
-              !isInactive && status && <Badge variant="outline">Telemetry: No data</Badge>
+              !isInactive && status && <Badge variant="outline">{t("header.telemetryNoData")}</Badge>
             )}
           </div>
         </div>
@@ -51,16 +53,16 @@ export function MachineHeader({ machineCode, machine, freshnessState, isLoading,
           variant="outline"
           size="icon"
           className="shrink-0"
-          aria-label="Refresh machine data"
+          aria-label={t("header.refreshAria")}
         >
           {isLoading ? <Loader2Icon className="size-4 animate-spin" /> : <RefreshCcw className="size-4" />}
         </Button>
       </div>
       {machine?.plantName && (
         <p className="mt-4 text-sm text-muted-foreground">
-          Plant: {machine.plantName}
-          {machine.machineGroupName ? ` • Group: ${machine.machineGroupName}` : ""}
-          {machine.brand ? ` • Brand: ${machine.brand}` : ""}
+          {t("header.plantLine", { value: machine.plantName })}
+          {machine.machineGroupName ? t("header.groupLine", { value: machine.machineGroupName }) : ""}
+          {machine.brand ? t("header.brandLine", { value: machine.brand }) : ""}
         </p>
       )}
     </div>

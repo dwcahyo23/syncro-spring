@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import type {
@@ -8,6 +9,7 @@ import type {
   CreateSparepartStockRequest,
   SparepartStockView,
 } from "@/features/sparepart-stock/types";
+import { apiErrorMessage, errorResponse } from "@/lib/api/error-response";
 import { syncroFetch } from "@/lib/api/orval-mutator";
 
 const STOCK_KEY = "/api/v1/sparepart-stock";
@@ -33,6 +35,8 @@ export function useListStock(plantId: string | null) {
 /** Creates (or upserts) a stock row (story 12-4, FR-146). */
 export function useCreateStock() {
   const queryClient = useQueryClient();
+  const t = useTranslations("stock");
+  const te = useTranslations("errors");
   return useMutation({
     mutationFn: async (data: CreateSparepartStockRequest) => {
       const response = await syncroFetch<{ data: SparepartStockView }>(STOCK_KEY, {
@@ -43,10 +47,11 @@ export function useCreateStock() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [STOCK_KEY] });
-      toast.success("Stock row created");
+      toast.success(t("toast.created"));
     },
-    onError: () => {
-      toast.error("Failed to create stock row");
+    onError: (error: unknown) => {
+      const resp = errorResponse(error);
+      toast.error(resp ? apiErrorMessage(te, resp) : t("toast.createFailed"));
     },
   });
 }
@@ -54,6 +59,8 @@ export function useCreateStock() {
 /** Adjusts stock with a signed delta (story 12-4, FR-146). */
 export function useAdjustStock() {
   const queryClient = useQueryClient();
+  const t = useTranslations("stock");
+  const te = useTranslations("errors");
   return useMutation({
     mutationFn: async ({ materialCode, data }: { materialCode: string; data: AdjustSparepartStockRequest }) => {
       const response = await syncroFetch<{ data: SparepartStockView }>(
@@ -67,14 +74,14 @@ export function useAdjustStock() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [STOCK_KEY] });
-      toast.success("Stock adjusted");
+      toast.success(t("toast.adjusted"));
     },
     onError: (error: unknown) => {
-      const err = error as { code?: string };
-      if (err.code === "NEGATIVE_STOCK_REJECTED") {
-        toast.error("Stock cannot go negative.");
+      const resp = errorResponse(error);
+      if (resp?.code === "NEGATIVE_STOCK_REJECTED") {
+        toast.error(te("NEGATIVE_STOCK_REJECTED"));
       } else {
-        toast.error("Failed to adjust stock");
+        toast.error(resp ? apiErrorMessage(te, resp) : t("toast.adjustFailed"));
       }
     },
   });

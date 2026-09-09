@@ -4,6 +4,7 @@ import { type FormEvent, useMemo, useState } from "react";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, PowerOff, TriangleAlertIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAssignSectionLeader, useClearSectionLeader } from "@/features/organization/hooks/use-section-leader";
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
+import { apiErrorMessage, errorResponse } from "@/lib/api/error-response";
 import type { CreateSectionRequest, SectionView } from "@/lib/api/generated/model";
 import {
   getListSectionsQueryKey,
@@ -34,16 +36,9 @@ import {
   useListUsers,
   useUpdateSection,
 } from "@/lib/api/generated/syncro";
-import { SyncroApiError } from "@/lib/api/orval-mutator";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
 
 const SECTION_CODES = ["MACHINERY", "UTILITY", "WORKSHOP"] as const;
-
-type ErrorResponse = {
-  code: string;
-  message: string;
-  fieldErrors?: Record<string, string>;
-};
 
 type DialogMode = { type: "create" | "edit"; section?: SectionView };
 
@@ -56,6 +51,9 @@ interface SectionFormState {
 const EMPTY_FORM: SectionFormState = { plantId: "", code: "", name: "" };
 
 export function SectionManagement() {
+  const t = useTranslations("masterData");
+  const tc = useTranslations("common");
+  const te = useTranslations("errors");
   const user = useAuthUser();
   const plantScope = usePlantScope();
   const scope = plantScope.scope;
@@ -94,16 +92,16 @@ export function SectionManagement() {
 
   const scopeLabel = useMemo(() => {
     if (!scope) {
-      return "Loading plant scope";
+      return t("section.scope.loading");
     }
     if (scope.mode === "UNRESTRICTED") {
-      return "All plants";
+      return t("section.scope.allPlants");
     }
     if (scope.mode === "EMPTY") {
-      return "No plant assigned";
+      return t("section.scope.noPlant");
     }
-    return activePlantId === "all" ? "Assigned plants" : "Active plant";
-  }, [activePlantId, scope]);
+    return activePlantId === "all" ? t("section.scope.assignedPlants") : t("section.scope.activePlant");
+  }, [activePlantId, scope, t]);
 
   function openCreateDialog() {
     setDialogMode({ type: "create" });
@@ -130,7 +128,7 @@ export function SectionManagement() {
           sectionId: dialogMode.section.id ?? "",
           data: { name: form.name.trim(), active: dialogMode.section.active ?? true },
         });
-        toast.success("Section updated.");
+        toast.success(t("section.toast.updated"));
       } else {
         const payload: CreateSectionRequest = {
           plantId: form.plantId,
@@ -138,14 +136,15 @@ export function SectionManagement() {
           name: form.name.trim(),
         };
         await createSection.mutateAsync({ data: payload });
-        toast.success("Section created.");
+        toast.success(t("section.toast.created"));
       }
       setDialogMode(null);
     } catch (error) {
       const response = errorResponse(error);
       setFieldErrors(response?.fieldErrors ?? {});
-      setFormError(response?.message ?? "Section request failed.");
-      toast.error(response?.message ?? "Section request failed.");
+      const message = response ? apiErrorMessage(te, response) : t("section.toast.requestFailed");
+      setFormError(message);
+      toast.error(message);
     }
   }
 
@@ -155,13 +154,13 @@ export function SectionManagement() {
         sectionId: section.id ?? "",
         data: { name: section.name ?? "", active: !(section.active ?? true) },
       });
-      toast.success(section.active ? "Section deactivated." : "Section reactivated.");
+      toast.success(section.active ? t("section.toast.deactivated") : t("section.toast.reactivated"));
     } catch (error) {
       const response = errorResponse(error);
       if (response?.code === "SECTION_HAS_ACTIVE_MACHINE_GROUPS") {
-        toast.error("Cannot deactivate: this section still has machine groups with active machines.");
+        toast.error(te("SECTION_HAS_ACTIVE_MACHINE_GROUPS"));
       } else {
-        toast.error(response?.message ?? "Section update failed.");
+        toast.error(response ? apiErrorMessage(te, response) : t("section.toast.updateFailed"));
       }
     }
   }
@@ -170,38 +169,38 @@ export function SectionManagement() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Sections</CardTitle>
-          <CardDescription>
-            Org containers (MACHINERY / UTILITY / WORKSHOP) per plant. Machine groups are assigned to exactly one
-            section.
-          </CardDescription>
+          <CardTitle>{t("section.title")}</CardTitle>
+          <CardDescription>{t("section.description")}</CardDescription>
           <CardAction className="flex items-center gap-2">
             <Badge variant="outline">{scopeLabel}</Badge>
             {canMutate ? (
-              <Button onClick={openCreateDialog}>Create section</Button>
+              <Button onClick={openCreateDialog}>{t("section.create")}</Button>
             ) : (
-              <Badge variant="secondary">Read-only</Badge>
+              <Badge variant="secondary">{t("section.readOnly")}</Badge>
             )}
           </CardAction>
         </CardHeader>
         <CardContent>
           {isAssignedEmpty ? (
-            <SectionState title="No plant assignment" description="Your account has no assigned plant scope." />
+            <SectionState
+              title={t("section.state.noAssignmentTitle")}
+              description={t("section.state.noAssignmentDesc")}
+            />
           ) : null}
           {!effectivePlantId && !isAssignedEmpty ? (
             <SectionState
-              title="Select a plant"
-              description="Pick a specific plant in the plant switcher to manage its sections."
+              title={t("section.state.selectPlantTitle")}
+              description={t("section.state.selectPlantDesc")}
             />
           ) : null}
           {sectionsQuery.isLoading ? <SectionTableSkeleton /> : null}
           {sectionsQuery.isError ? (
             <SectionState
-              title="Sections could not be loaded"
-              description="Refresh page or contact administrator if access should be available."
+              title={t("section.state.loadFailedTitle")}
+              description={t("section.state.loadFailedDesc")}
               action={
                 <Button variant="outline" onClick={() => sectionsQuery.refetch()}>
-                  Retry
+                  {tc("retry")}
                 </Button>
               }
             />
@@ -211,7 +210,7 @@ export function SectionManagement() {
           !sectionsQuery.isError &&
           !isAssignedEmpty &&
           items.length === 0 ? (
-            <SectionState title="No sections yet" description="Create the first section for this plant." />
+            <SectionState title={t("section.state.emptyTitle")} description={t("section.state.emptyDesc")} />
           ) : null}
           {items.length > 0 ? (
             <>
@@ -221,16 +220,16 @@ export function SectionManagement() {
                   checked={includeInactive}
                   onCheckedChange={(checked) => setIncludeInactive(checked === true)}
                 />
-                <label htmlFor="show-inactive-sections">Show inactive</label>
+                <label htmlFor="show-inactive-sections">{t("section.showInactive")}</label>
               </div>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Leader</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{tc("code")}</TableHead>
+                    <TableHead>{tc("name")}</TableHead>
+                    <TableHead>{t("section.leader")}</TableHead>
+                    <TableHead>{tc("status")}</TableHead>
+                    <TableHead className="text-right">{tc("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -238,12 +237,14 @@ export function SectionManagement() {
                     <TableRow key={section.id}>
                       <TableCell className="font-medium">{section.code}</TableCell>
                       <TableCell>{section.name}</TableCell>
-                      <TableCell>{leaderLabel(users, section.leaderUserId)}</TableCell>
+                      <TableCell>
+                        <LeaderCell users={users} leaderUserId={section.leaderUserId} />
+                      </TableCell>
                       <TableCell>
                         {section.active ? (
-                          <Badge variant="outline">Active</Badge>
+                          <Badge variant="outline">{tc("active")}</Badge>
                         ) : (
-                          <Badge variant="secondary">Inactive</Badge>
+                          <Badge variant="secondary">{tc("inactive")}</Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -255,10 +256,10 @@ export function SectionManagement() {
                               onClick={() => setLeaderFor(section)}
                               disabled={!section.active}
                             >
-                              Leader
+                              {t("section.leader")}
                             </Button>
                             <Button variant="outline" size="sm" onClick={() => openEditDialog(section)}>
-                              Edit
+                              {tc("edit")}
                             </Button>
                             <Button
                               variant={section.active ? "destructive" : "outline"}
@@ -267,11 +268,11 @@ export function SectionManagement() {
                               onClick={() => void toggleActive(section)}
                             >
                               <PowerOff />
-                              {section.active ? "Deactivate" : "Reactivate"}
+                              {section.active ? tc("deactivate") : t("section.reactivate")}
                             </Button>
                           </div>
                         ) : (
-                          <Badge variant="secondary">View only</Badge>
+                          <Badge variant="secondary">{t("section.viewOnly")}</Badge>
                         )}
                       </TableCell>
                     </TableRow>
@@ -287,10 +288,10 @@ export function SectionManagement() {
         <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
           <form onSubmit={submitSection} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>{dialogMode?.type === "edit" ? "Edit section" : "Create section"}</DialogTitle>
-              <DialogDescription>
-                Codes are MACHINERY, UTILITY, or WORKSHOP and must be unique per plant.
-              </DialogDescription>
+              <DialogTitle>
+                {dialogMode?.type === "edit" ? t("section.dialog.editTitle") : t("section.dialog.createTitle")}
+              </DialogTitle>
+              <DialogDescription>{t("section.dialog.description")}</DialogDescription>
             </DialogHeader>
             {formError ? (
               <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{formError}</p>
@@ -298,10 +299,10 @@ export function SectionManagement() {
             {dialogMode?.type === "create" ? (
               <>
                 <div className="grid gap-2">
-                  <Label htmlFor="section-plant">Plant</Label>
+                  <Label htmlFor="section-plant">{tc("plant")}</Label>
                   <Select value={form.plantId} onValueChange={(value) => setForm((c) => ({ ...c, plantId: value }))}>
                     <SelectTrigger id="section-plant" aria-invalid={Boolean(fieldErrors.plantId)} disabled={isSaving}>
-                      <SelectValue placeholder="Select plant" />
+                      <SelectValue placeholder={t("section.dialog.selectPlant")} />
                     </SelectTrigger>
                     <SelectContent>
                       {(plants.data?.data.items ?? []).map((plant) => (
@@ -314,10 +315,10 @@ export function SectionManagement() {
                   {fieldErrors.plantId ? <p className="text-destructive text-sm">{fieldErrors.plantId}</p> : null}
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="section-code">Code</Label>
+                  <Label htmlFor="section-code">{tc("code")}</Label>
                   <Select value={form.code} onValueChange={(value) => setForm((c) => ({ ...c, code: value }))}>
                     <SelectTrigger id="section-code" aria-invalid={Boolean(fieldErrors.code)} disabled={isSaving}>
-                      <SelectValue placeholder="Select code" />
+                      <SelectValue placeholder={t("section.dialog.selectCode")} />
                     </SelectTrigger>
                     <SelectContent>
                       {SECTION_CODES.map((code) => (
@@ -332,7 +333,7 @@ export function SectionManagement() {
               </>
             ) : null}
             <div className="grid gap-2">
-              <Label htmlFor="section-name">Name</Label>
+              <Label htmlFor="section-name">{tc("name")}</Label>
               <Input
                 id="section-name"
                 value={form.name}
@@ -344,11 +345,11 @@ export function SectionManagement() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogMode(null)} disabled={isSaving}>
-                Cancel
+                {tc("cancel")}
               </Button>
               <Button type="submit" disabled={isSaving}>
                 {isSaving ? <Loader2Icon className="animate-spin" /> : null}
-                Save section
+                {t("section.dialog.save")}
               </Button>
             </DialogFooter>
           </form>
@@ -360,14 +361,11 @@ export function SectionManagement() {
         <DialogContent>
           <div className="space-y-4">
             <DialogHeader>
-              <DialogTitle>Assign leader — {leaderFor?.name}</DialogTitle>
-              <DialogDescription>
-                Assigning a leader stores the section leader and auto-links the LEADER machine responsibility for every
-                machine in the section's groups. Clearing removes both.
-              </DialogDescription>
+              <DialogTitle>{t("section.leaderDialog.title", { name: leaderFor?.name ?? "" })}</DialogTitle>
+              <DialogDescription>{t("section.leaderDialog.description")}</DialogDescription>
             </DialogHeader>
             <div className="grid gap-2">
-              <Label htmlFor="section-leader-user">Leader</Label>
+              <Label htmlFor="section-leader-user">{t("section.leader")}</Label>
               <Select
                 value={leaderFor?.leaderUserId ?? ""}
                 onValueChange={(value) => {
@@ -375,13 +373,13 @@ export function SectionManagement() {
                     return;
                   }
                   void assignLeader.mutateAsync({ sectionId: leaderFor.id, userId: value }).then(() => {
-                    toast.success("Section leader assigned.");
+                    toast.success(t("section.toast.leaderAssigned"));
                     setLeaderFor(null);
                   });
                 }}
               >
                 <SelectTrigger id="section-leader-user">
-                  <SelectValue placeholder="Select leader by NIK or name" />
+                  <SelectValue placeholder={t("section.leaderDialog.selectPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   {users.map((u) => (
@@ -402,18 +400,18 @@ export function SectionManagement() {
                     return;
                   }
                   void clearLeader.mutateAsync(leaderFor.id).then(() => {
-                    toast.success("Section leader cleared.");
+                    toast.success(t("section.toast.leaderCleared"));
                     setLeaderFor(null);
                   });
                 }}
               >
                 {clearLeader.isPending ? <Loader2Icon className="animate-spin" /> : null}
-                Clear leader
+                {t("section.leaderDialog.clear")}
               </Button>
             ) : null}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setLeaderFor(null)}>
-                Close
+                {tc("close")}
               </Button>
             </DialogFooter>
           </div>
@@ -423,15 +421,19 @@ export function SectionManagement() {
   );
 }
 
-function leaderLabel(
-  users: Array<{ id?: string; loginIdentifier?: string; displayName?: string | null; nik?: string | null }>,
-  leaderUserId: string | null | undefined,
-): React.ReactNode {
+function LeaderCell({
+  users,
+  leaderUserId,
+}: {
+  users: Array<{ id?: string; loginIdentifier?: string; displayName?: string | null; nik?: string | null }>;
+  leaderUserId: string | null | undefined;
+}) {
+  const t = useTranslations("masterData");
   if (!leaderUserId) {
-    return <span className="text-muted-foreground text-xs italic">Unassigned</span>;
+    return <span className="text-muted-foreground text-xs italic">{t("section.unassigned")}</span>;
   }
   const found = users.find((u) => u.id === leaderUserId);
-  return found ? (found.displayName ?? found.loginIdentifier ?? leaderUserId) : leaderUserId;
+  return <>{found ? (found.displayName ?? found.loginIdentifier ?? leaderUserId) : leaderUserId}</>;
 }
 
 function SectionState({
@@ -463,12 +465,4 @@ function SectionTableSkeleton() {
       <Skeleton className="h-10 w-full" />
     </div>
   );
-}
-
-function errorResponse(error: unknown): ErrorResponse | null {
-  if (!(error instanceof SyncroApiError) || !error.payload || typeof error.payload !== "object") {
-    return null;
-  }
-  const payload = error.payload as ErrorResponse;
-  return typeof payload.code === "string" && typeof payload.message === "string" ? payload : null;
 }

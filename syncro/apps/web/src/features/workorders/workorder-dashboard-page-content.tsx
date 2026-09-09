@@ -3,12 +3,19 @@
 import { useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Wrench } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
+import {
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -44,6 +51,9 @@ const STATUS_OPTIONS = [
  * and plant-scope guard. The KPI grid wraps responsively with 4+ statuses.
  */
 export function WorkorderDashboardPageContent() {
+  const t = useTranslations("workOrders");
+  const tc = useTranslations("common");
+  const format = useFormatter();
   const { scope, activePlantId, loadError } = usePlantScope();
   const plantId = activePlantId && activePlantId !== "all" ? activePlantId : undefined;
 
@@ -60,10 +70,9 @@ export function WorkorderDashboardPageContent() {
   };
   const query = useWorkorderDashboard(params, isEnabled);
 
-  const { data: sectionsRes } = useListSections(
-    plantId ? { plantId } : undefined,
-    { query: { enabled: isEnabled && Boolean(plantId), staleTime: 60_000 } },
-  );
+  const { data: sectionsRes } = useListSections(plantId ? { plantId } : undefined, {
+    query: { enabled: isEnabled && Boolean(plantId), staleTime: 60_000 },
+  });
   const sections = sectionsRes?.data?.items ?? [];
 
   const { data: categoriesRes } = useQuery<CategoryOption[]>({
@@ -77,11 +86,7 @@ export function WorkorderDashboardPageContent() {
   });
 
   if (loadError) {
-    return (
-      <WorkorderDashboardShell>
-        Plant scope unavailable. Try again or contact your administrator.
-      </WorkorderDashboardShell>
-    );
+    return <WorkorderDashboardShell>{t("dashboard.plantScopeError")}</WorkorderDashboardShell>;
   }
 
   if (!isEnabled) {
@@ -93,12 +98,26 @@ export function WorkorderDashboardPageContent() {
   }
 
   if (scope?.mode === "EMPTY") {
-    return (
-      <WorkorderDashboardShell>No plants assigned to your account. Contact your administrator.</WorkorderDashboardShell>
-    );
+    return <WorkorderDashboardShell>{t("dashboard.noPlantsAssigned")}</WorkorderDashboardShell>;
   }
 
   const data = query.data;
+
+  const monthlyChartConfig = {
+    open: { label: t("dashboard.open"), color: "var(--chart-4)" },
+    close: { label: t("dashboard.close"), color: "var(--chart-3)" },
+  } as const;
+
+  const statusChartConfig = {
+    count: { label: t("dashboard.workorders"), color: "var(--chart-1)" },
+  } as const;
+
+  const categoryChartConfig = {
+    count: { label: t("dashboard.workorders"), color: "var(--chart-2)" },
+  } as const;
+
+  const monthLabel = (month: number) =>
+    format.dateTime(new Date(new Date().getFullYear(), month - 1, 1), { month: "short" });
 
   return (
     <WorkorderDashboardShell>
@@ -106,14 +125,14 @@ export function WorkorderDashboardPageContent() {
         <div className="flex flex-wrap items-end gap-3">
           <div className="grid min-w-0 gap-2">
             <Label htmlFor="wo-dash-section" className="text-muted-foreground text-xs">
-              Section
+              {t("dashboard.section")}
             </Label>
             <Select value={sectionId} onValueChange={setSectionId}>
-              <SelectTrigger id="wo-dash-section" className="w-44" aria-label="Section">
-                <SelectValue placeholder="All sections" />
+              <SelectTrigger id="wo-dash-section" className="w-44" aria-label={t("dashboard.section")}>
+                <SelectValue placeholder={t("dashboard.allSections")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all-sections">All sections</SelectItem>
+                <SelectItem value="all-sections">{t("dashboard.allSections")}</SelectItem>
                 {sections.map((section) => (
                   <SelectItem key={section.id} value={section.id ?? ""}>
                     {section.code} · {section.name}
@@ -124,17 +143,17 @@ export function WorkorderDashboardPageContent() {
           </div>
           <div className="grid min-w-0 gap-2">
             <Label htmlFor="wo-dash-status" className="text-muted-foreground text-xs">
-              Status
+              {tc("status")}
             </Label>
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger id="wo-dash-status" className="w-44" aria-label="Status">
-                <SelectValue placeholder="All statuses" />
+              <SelectTrigger id="wo-dash-status" className="w-44" aria-label={tc("status")}>
+                <SelectValue placeholder={t("dashboard.allStatuses")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all-statuses">All statuses</SelectItem>
+                <SelectItem value="all-statuses">{t("dashboard.allStatuses")}</SelectItem>
                 {STATUS_OPTIONS.map((s) => (
                   <SelectItem key={s} value={s}>
-                    {s}
+                    {t.has(`status.${s}`) ? t(`status.${s}`) : s}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -142,14 +161,14 @@ export function WorkorderDashboardPageContent() {
           </div>
           <div className="grid min-w-0 gap-2">
             <Label htmlFor="wo-dash-category" className="text-muted-foreground text-xs">
-              Category
+              {t("category")}
             </Label>
             <Select value={categoryCode} onValueChange={setCategoryCode}>
-              <SelectTrigger id="wo-dash-category" className="w-44" aria-label="Category">
-                <SelectValue placeholder="All categories" />
+              <SelectTrigger id="wo-dash-category" className="w-44" aria-label={t("category")}>
+                <SelectValue placeholder={t("dashboard.allCategories")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all-categories">All categories</SelectItem>
+                <SelectItem value="all-categories">{t("dashboard.allCategories")}</SelectItem>
                 {(categoriesRes ?? []).map((category) => (
                   <SelectItem key={category.code} value={category.code}>
                     {category.code} · {category.label}
@@ -160,12 +179,10 @@ export function WorkorderDashboardPageContent() {
           </div>
           <Button variant="outline" size="sm" onClick={() => void query.refetch()} disabled={query.isLoading}>
             <Wrench aria-hidden="true" className={query.isFetching ? "animate-spin" : undefined} />
-            Refresh
+            {tc("refresh")}
           </Button>
         </div>
-        <p className="text-muted-foreground text-sm">
-          Workorder distribution by status and category, computed on the server.
-        </p>
+        <p className="text-muted-foreground text-sm">{t("dashboard.computedNote")}</p>
       </div>
 
       {query.isLoading && (
@@ -179,9 +196,9 @@ export function WorkorderDashboardPageContent() {
       {query.isError && (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-8">
-            <p className="text-muted-foreground text-sm">Failed to load the workorder dashboard.</p>
+            <p className="text-muted-foreground text-sm">{t("dashboard.loadFailed")}</p>
             <Button variant="outline" size="sm" onClick={() => void query.refetch()}>
-              Retry
+              {tc("retry")}
             </Button>
           </CardContent>
         </Card>
@@ -192,19 +209,21 @@ export function WorkorderDashboardPageContent() {
           <EmptyMedia variant="icon">
             <Wrench aria-hidden="true" />
           </EmptyMedia>
-          <EmptyTitle>No workorders in scope</EmptyTitle>
-          <EmptyDescription>No workorders match the current filters. Counts are zero, not missing.</EmptyDescription>
+          <EmptyTitle>{t("dashboard.emptyTitle")}</EmptyTitle>
+          <EmptyDescription>{t("dashboard.emptyDescription")}</EmptyDescription>
         </Empty>
       )}
 
       {!query.isLoading && !query.isError && data && data.total > 0 && (
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            <KpiCard label="Total workorders" value={data.total} tone="status-icon-info" />
+            <KpiCard label={t("dashboard.totalWorkorders")} value={data.total} tone="status-icon-info" />
             {data.byStatus.map((statusItem) => (
               <KpiCard
                 key={statusItem.status}
-                label={`Status · ${statusItem.status}`}
+                label={t("dashboard.statusKpi", {
+                  status: t.has(`status.${statusItem.status}`) ? t(`status.${statusItem.status}`) : statusItem.status,
+                })}
                 value={statusItem.count}
                 tone={kpiTone(statusItem.status)}
               />
@@ -213,19 +232,19 @@ export function WorkorderDashboardPageContent() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Maintenance workorders</CardTitle>
-              <CardDescription>Open vs closed workorders per month (Jan – Dec, current year).</CardDescription>
+              <CardTitle>{t("dashboard.monthlyTitle")}</CardTitle>
+              <CardDescription>{t("dashboard.monthlyDescription")}</CardDescription>
             </CardHeader>
             <CardContent>
               {data.byMonth.length === 0 ? (
-                <p className="text-muted-foreground text-sm">No monthly counts.</p>
+                <p className="text-muted-foreground text-sm">{t("dashboard.noMonthlyCounts")}</p>
               ) : (
-                <ChartContainer config={MONTHLY_CHART_CONFIG} className="h-80">
+                <ChartContainer config={monthlyChartConfig} className="h-80">
                   <BarChart
                     data={data.byMonth.map((m) => ({
-                      month: MONTH_LABELS[m.month - 1],
-                      Open: m.openCount,
-                      Close: m.closeCount,
+                      month: monthLabel(m.month),
+                      open: m.openCount,
+                      close: m.closeCount,
                     }))}
                     margin={{ top: 16, right: 8, left: 0, bottom: 8 }}
                   >
@@ -234,8 +253,8 @@ export function WorkorderDashboardPageContent() {
                     <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={36} />
                     <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
                     <ChartLegend content={<ChartLegendContent />} />
-                    <Bar dataKey="Open" fill="var(--color-open)" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="Close" fill="var(--color-close)" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="open" fill="var(--color-open)" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="close" fill="var(--color-close)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ChartContainer>
               )}
@@ -245,14 +264,14 @@ export function WorkorderDashboardPageContent() {
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>By status</CardTitle>
-                <CardDescription>Workorder count per lifecycle status.</CardDescription>
+                <CardTitle>{t("dashboard.byStatusTitle")}</CardTitle>
+                <CardDescription>{t("dashboard.byStatusDescription")}</CardDescription>
               </CardHeader>
               <CardContent>
                 {data.byStatus.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">No status counts.</p>
+                  <p className="text-muted-foreground text-sm">{t("dashboard.noStatusCounts")}</p>
                 ) : (
-                  <ChartContainer config={STATUS_CHART_CONFIG} className="h-64">
+                  <ChartContainer config={statusChartConfig} className="h-64">
                     <BarChart data={data.byStatus}>
                       <CartesianGrid vertical={false} />
                       <XAxis dataKey="status" tickLine={false} axisLine={false} tickMargin={8} />
@@ -267,17 +286,17 @@ export function WorkorderDashboardPageContent() {
 
             <Card>
               <CardHeader>
-                <CardTitle>By category</CardTitle>
-                <CardDescription>Workorder count per category.</CardDescription>
+                <CardTitle>{t("dashboard.byCategoryTitle")}</CardTitle>
+                <CardDescription>{t("dashboard.byCategoryDescription")}</CardDescription>
               </CardHeader>
               <CardContent>
                 {data.byCategory.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">No category counts.</p>
+                  <p className="text-muted-foreground text-sm">{t("dashboard.noCategoryCounts")}</p>
                 ) : (
-                  <ChartContainer config={CATEGORY_CHART_CONFIG} className="h-64">
+                  <ChartContainer config={categoryChartConfig} className="h-64">
                     <BarChart
                       data={data.byCategory.map((category) => ({
-                        name: category.categoryLabel ?? category.categoryCode ?? "Uncategorized",
+                        name: category.categoryLabel ?? category.categoryCode ?? t("dashboard.uncategorized"),
                         count: category.count,
                       }))}
                     >
@@ -333,41 +352,14 @@ function kpiTone(status: string): string {
   }
 }
 
-const MONTH_LABELS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
-
-const MONTHLY_CHART_CONFIG = {
-  Open: { label: "Open", color: "var(--chart-4)" },
-  Close: { label: "Close", color: "var(--chart-3)" },
-} as const;
-
-const STATUS_CHART_CONFIG = {
-  count: { label: "Workorders", color: "var(--chart-1)" },
-} as const;
-
-const CATEGORY_CHART_CONFIG = {
-  count: { label: "Workorders", color: "var(--chart-2)" },
-} as const;
-
 function WorkorderDashboardShell({ children }: { children: React.ReactNode }) {
+  const t = useTranslations("workOrders");
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <header className="space-y-1">
         <p className="font-medium text-muted-foreground text-sm">Syncro</p>
-        <h1 className="font-semibold text-3xl tracking-tight">Workorder Dashboard</h1>
-        <p className="text-muted-foreground">Workorder distribution by status and category.</p>
+        <h1 className="font-semibold text-3xl tracking-tight">{t("dashboard.title")}</h1>
+        <p className="text-muted-foreground">{t("dashboard.subtitle")}</p>
       </header>
       {children}
     </main>

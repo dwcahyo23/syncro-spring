@@ -223,11 +223,21 @@ These serve as the fallback; there is no separate default.css file. */
     border-color: color-mix(in oklch, var(--syncro-status-critical) 40%, transparent);
     color: var(--syncro-status-critical);
   }
-  .status-icon-healthy { color: var(--syncro-status-healthy); }
-  .status-icon-warning { color: var(--syncro-status-warning); }
-  .status-icon-critical { color: var(--syncro-status-critical); }
-  .status-icon-info { color: var(--syncro-status-info); }
-  .status-icon-neutral { color: var(--syncro-status-neutral); }
+  .status-icon-healthy {
+    color: var(--syncro-status-healthy);
+  }
+  .status-icon-warning {
+    color: var(--syncro-status-warning);
+  }
+  .status-icon-critical {
+    color: var(--syncro-status-critical);
+  }
+  .status-icon-info {
+    color: var(--syncro-status-info);
+  }
+  .status-icon-neutral {
+    color: var(--syncro-status-neutral);
+  }
 }
 
 @layer utilities {

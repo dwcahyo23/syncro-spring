@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import {
@@ -22,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
+import { errorResponse } from "@/lib/api/error-response";
 import type { CreateMachineResponsibilityRequest } from "@/lib/api/generated/model";
 import {
   getListMachineResponsibilitiesQueryKey,
@@ -31,10 +33,14 @@ import {
   useListUsers,
   useUnassignMachineResponsibility,
 } from "@/lib/api/generated/syncro";
-import { SyncroApiError } from "@/lib/api/orval-mutator";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
 
+const LEVEL_CODES = ["TECHNICIAN", "STAFF", "LEADER", "SPV", "MANAGER"] as const;
+
 export function ResponsibilityManagement() {
+  const t = useTranslations("masterData");
+  const tc = useTranslations("common");
+  const te = useTranslations("errors");
   const queryClient = useQueryClient();
   const user = useAuthUser();
   const plantScope = usePlantScope();
@@ -56,7 +62,7 @@ export function ResponsibilityManagement() {
   const { mutate: assign, isPending: isAssigning } = useAssignMachineResponsibility({
     mutation: {
       onSuccess: () => {
-        toast.success("Successfully assigned responsibility");
+        toast.success(t("responsibility.toast.assigned"));
         setMachineId("");
         setUserId("");
         setLevel("");
@@ -65,9 +71,9 @@ export function ResponsibilityManagement() {
       onError: (error) => {
         const errorData = errorResponse(error);
         if (errorData?.code === "DUPLICATE_RESPONSIBILITY") {
-          toast.error("User is already assigned to this machine");
+          toast.error(te("DUPLICATE_RESPONSIBILITY"));
         } else {
-          toast.error("Failed to assign responsibility");
+          toast.error(t("responsibility.toast.assignFailed"));
         }
       },
     },
@@ -76,12 +82,12 @@ export function ResponsibilityManagement() {
   const { mutate: unassign, isPending: isUnassigning } = useUnassignMachineResponsibility({
     mutation: {
       onSuccess: () => {
-        toast.success("Successfully unassigned responsibility");
+        toast.success(t("responsibility.toast.unassigned"));
         setResponsibilityToDelete(null);
         queryClient.invalidateQueries({ queryKey: getListMachineResponsibilitiesQueryKey() });
       },
       onError: () => {
-        toast.error("Failed to unassign responsibility");
+        toast.error(t("responsibility.toast.unassignFailed"));
       },
     },
   });
@@ -107,24 +113,21 @@ export function ResponsibilityManagement() {
     <div className="flex flex-col gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>Assign Responsibility</CardTitle>
-          <CardDescription>
-            Assign a user responsibility for a specific machine. Note: The MANAGER_MAINTENANCE application role is
-            distinct from the MANAGER machine responsibility level.
-          </CardDescription>
+          <CardTitle>{t("responsibility.title")}</CardTitle>
+          <CardDescription>{t("responsibility.description")}</CardDescription>
         </CardHeader>
         <CardContent>
           {isViewer ? (
             <div className="p-4 bg-muted text-muted-foreground rounded-md text-sm">
-              You do not have permission to assign responsibilities.
+              {t("responsibility.viewerNotice")}
             </div>
           ) : (
             <form onSubmit={handleAssign} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
               <div className="space-y-2">
-                <Label htmlFor="machine">Machine</Label>
+                <Label htmlFor="machine">{t("responsibility.machine")}</Label>
                 <Select value={machineId} onValueChange={setMachineId}>
-                  <SelectTrigger aria-label="Machine" disabled={isLoadingMachines}>
-                    <SelectValue placeholder={isLoadingMachines ? "Loading..." : "Select machine"} />
+                  <SelectTrigger aria-label={t("responsibility.machine")} disabled={isLoadingMachines}>
+                    <SelectValue placeholder={isLoadingMachines ? tc("loading") : t("responsibility.selectMachine")} />
                   </SelectTrigger>
                   <SelectContent>
                     {machinesRes?.data?.items?.map((m) => (
@@ -137,10 +140,10 @@ export function ResponsibilityManagement() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="user">User</Label>
+                <Label htmlFor="user">{t("responsibility.user")}</Label>
                 <Select value={userId} onValueChange={setUserId}>
-                  <SelectTrigger aria-label="User" disabled={isLoadingUsers}>
-                    <SelectValue placeholder={isLoadingUsers ? "Loading..." : "Select user"} />
+                  <SelectTrigger aria-label={t("responsibility.user")} disabled={isLoadingUsers}>
+                    <SelectValue placeholder={isLoadingUsers ? tc("loading") : t("responsibility.selectUser")} />
                   </SelectTrigger>
                   <SelectContent>
                     {usersRes?.data?.map((u) => (
@@ -153,24 +156,24 @@ export function ResponsibilityManagement() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="level">Level</Label>
+                <Label htmlFor="level">{t("responsibility.level")}</Label>
                 <Select value={level} onValueChange={setLevel}>
-                  <SelectTrigger aria-label="Responsibility level">
-                    <SelectValue placeholder="Select level" />
+                  <SelectTrigger aria-label={t("responsibility.levelAria")}>
+                    <SelectValue placeholder={t("responsibility.selectLevel")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="TECHNICIAN">Technician</SelectItem>
-                    <SelectItem value="STAFF">Staff</SelectItem>
-                    <SelectItem value="LEADER">Leader</SelectItem>
-                    <SelectItem value="SPV">Supervisor</SelectItem>
-                    <SelectItem value="MANAGER">Manager</SelectItem>
+                    {LEVEL_CODES.map((code) => (
+                      <SelectItem key={code} value={code}>
+                        {t(`responsibility.levelOptions.${code}`)}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
 
               <Button type="submit" disabled={!machineId || !userId || !level || isAssigning}>
                 {isAssigning ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Assign
+                {t("responsibility.assign")}
               </Button>
             </form>
           )}
@@ -179,17 +182,17 @@ export function ResponsibilityManagement() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Current Assignments</CardTitle>
-          <CardDescription>View all active machine responsibility assignments.</CardDescription>
+          <CardTitle>{t("responsibility.currentTitle")}</CardTitle>
+          <CardDescription>{t("responsibility.currentDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Machine</TableHead>
-                <TableHead>User</TableHead>
-                <TableHead>Level</TableHead>
-                {!isViewer && <TableHead className="w-[100px] text-right">Actions</TableHead>}
+                <TableHead>{t("responsibility.machine")}</TableHead>
+                <TableHead>{t("responsibility.user")}</TableHead>
+                <TableHead>{t("responsibility.level")}</TableHead>
+                {!isViewer && <TableHead className="w-[100px] text-right">{tc("actions")}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -202,7 +205,7 @@ export function ResponsibilityManagement() {
               ) : !responsibilitiesRes?.data?.items?.length ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted-foreground h-24">
-                    No responsibilities assigned.
+                    {t("responsibility.emptyRow")}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -212,7 +215,11 @@ export function ResponsibilityManagement() {
                       {machinesRes?.data?.items?.find((m) => m.id === r.machineId)?.code || r.machineId}
                     </TableCell>
                     <TableCell>{r.userName}</TableCell>
-                    <TableCell>{r.level}</TableCell>
+                    <TableCell>
+                      {(LEVEL_CODES as readonly string[]).includes(String(r.level))
+                        ? t(`responsibility.levelOptions.${r.level}`)
+                        : r.level}
+                    </TableCell>
                     {!isViewer && (
                       <TableCell className="text-right">
                         <Button
@@ -236,34 +243,22 @@ export function ResponsibilityManagement() {
       <AlertDialog open={!!responsibilityToDelete} onOpenChange={(open) => !open && setResponsibilityToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will unassign the user from the machine. This action cannot be undone.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t("responsibility.confirm.title")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("responsibility.confirm.description")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => responsibilityToDelete && unassign({ id: responsibilityToDelete })}
               disabled={isUnassigning}
             >
               {isUnassigning ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Unassign
+              {t("responsibility.confirm.unassign")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
   );
-}
-
-type ErrorResponse = { code: string; message: string; fieldErrors?: Record<string, string> };
-
-function errorResponse(error: unknown): ErrorResponse | null {
-  if (!(error instanceof SyncroApiError) || !error.payload || typeof error.payload !== "object") {
-    return null;
-  }
-  const payload = error.payload as ErrorResponse;
-  return typeof payload.code === "string" && typeof payload.message === "string" ? payload : null;
 }

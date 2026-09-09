@@ -4,6 +4,7 @@ import { type FormEvent, useMemo, useState } from "react";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, Trash2, TriangleAlertIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import {
@@ -32,6 +33,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
+import { apiErrorMessage, errorResponse } from "@/lib/api/error-response";
 import type { PlantRequest, PlantView } from "@/lib/api/generated/model";
 import {
   getPlantScopeQueryKey,
@@ -40,22 +42,20 @@ import {
   useListPlants,
   useUpdatePlant,
 } from "@/lib/api/generated/syncro";
-import { SyncroApiError } from "@/lib/api/orval-mutator";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
+import { useDateTimeFormatter } from "@/lib/i18n/format";
 
 type PlantFormState = PlantRequest;
-
-type ErrorResponse = {
-  code: string;
-  message: string;
-  fieldErrors?: Record<string, string>;
-};
 
 type DialogMode = { type: "create"; plant?: never } | { type: "edit"; plant: PlantView };
 
 const EMPTY_FORM: PlantFormState = { code: "", name: "" };
 
 export function PlantManagement() {
+  const t = useTranslations("masterData");
+  const tc = useTranslations("common");
+  const te = useTranslations("errors");
+  const dt = useDateTimeFormatter();
   const user = useAuthUser();
   const plantScope = usePlantScope();
   const scope = plantScope.scope;
@@ -85,16 +85,16 @@ export function PlantManagement() {
 
   const scopeLabel = useMemo(() => {
     if (!scope) {
-      return "Loading plant scope";
+      return t("plant.scope.loading");
     }
     if (scope.mode === "UNRESTRICTED") {
-      return "All plants";
+      return t("plant.scope.allPlants");
     }
     if (scope.mode === "EMPTY") {
-      return "No plant assigned";
+      return t("plant.scope.noPlant");
     }
-    return activePlantId === "all" ? "Assigned plants" : "Active plant";
-  }, [activePlantId, scope]);
+    return activePlantId === "all" ? t("plant.scope.assignedPlants") : t("plant.scope.activePlant");
+  }, [activePlantId, scope, t]);
 
   function openCreateDialog() {
     setDialogMode({ type: "create" });
@@ -118,17 +118,18 @@ export function PlantManagement() {
     try {
       if (dialogMode?.type === "edit") {
         await updatePlant.mutateAsync({ plantId: dialogMode.plant.id ?? "", data: form });
-        toast.success("Plant updated.");
+        toast.success(t("plant.toast.updated"));
       } else {
         await createPlant.mutateAsync({ data: form });
-        toast.success("Plant created.");
+        toast.success(t("plant.toast.created"));
       }
       setDialogMode(null);
     } catch (error) {
       const response = errorResponse(error);
       setFieldErrors(response?.fieldErrors ?? {});
-      setFormError(response?.message ?? "Plant request failed.");
-      toast.error(response?.message ?? "Plant request failed.");
+      const message = response ? apiErrorMessage(te, response) : t("plant.toast.requestFailed");
+      setFormError(message);
+      toast.error(message);
     }
   }
 
@@ -139,10 +140,11 @@ export function PlantManagement() {
 
     try {
       await deletePlant.mutateAsync({ plantId: deleteTarget.id ?? "" });
-      toast.success("Plant deleted.");
+      toast.success(t("plant.toast.deleted"));
       setDeleteTarget(null);
     } catch (error) {
-      toast.error(errorResponse(error)?.message ?? "Plant delete failed.");
+      const response = errorResponse(error);
+      toast.error(response ? apiErrorMessage(te, response) : t("plant.toast.deleteFailed"));
     }
   }
 
@@ -150,44 +152,44 @@ export function PlantManagement() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Plants</CardTitle>
-          <CardDescription>Manage plant records used by machine setup and plant-scoped access.</CardDescription>
+          <CardTitle>{t("plant.title")}</CardTitle>
+          <CardDescription>{t("plant.description")}</CardDescription>
           <CardAction className="flex items-center gap-2">
             <Badge variant="outline">{scopeLabel}</Badge>
             {canMutate ? (
-              <Button onClick={openCreateDialog}>Create plant</Button>
+              <Button onClick={openCreateDialog}>{t("plant.create")}</Button>
             ) : (
-              <Badge variant="secondary">Read-only</Badge>
+              <Badge variant="secondary">{t("plant.readOnly")}</Badge>
             )}
           </CardAction>
         </CardHeader>
         <CardContent>
           {isAssignedEmpty ? (
-            <PlantState title="No plant assignment" description="Your account has no assigned plant scope." />
+            <PlantState title={t("plant.state.noAssignmentTitle")} description={t("plant.state.noAssignmentDesc")} />
           ) : null}
           {plants.isLoading ? <PlantTableSkeleton /> : null}
           {plants.isError ? (
             <PlantState
-              title="Plants could not be loaded"
-              description="Refresh page or contact administrator if access should be available."
+              title={t("plant.state.loadFailedTitle")}
+              description={t("plant.state.loadFailedDesc")}
               action={
                 <Button variant="outline" onClick={() => plants.refetch()}>
-                  Retry
+                  {tc("retry")}
                 </Button>
               }
             />
           ) : null}
           {!plants.isLoading && !plants.isError && !isAssignedEmpty && plantItems.length === 0 ? (
-            <PlantState title="No plants yet" description="Create first plant before adding machine groups." />
+            <PlantState title={t("plant.state.emptyTitle")} description={t("plant.state.emptyDesc")} />
           ) : null}
           {!plants.isLoading && !plants.isError && plantItems.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{tc("code")}</TableHead>
+                  <TableHead>{tc("name")}</TableHead>
+                  <TableHead>{tc("createdAt")}</TableHead>
+                  <TableHead className="text-right">{tc("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -195,20 +197,20 @@ export function PlantManagement() {
                   <TableRow key={plant.id ?? plant.code}>
                     <TableCell className="font-medium">{plant.code}</TableCell>
                     <TableCell>{plant.name}</TableCell>
-                    <TableCell>{plant.createdAt ? formatDate(plant.createdAt) : "-"}</TableCell>
+                    <TableCell>{plant.createdAt ? dt.dateTime(plant.createdAt) : "-"}</TableCell>
                     <TableCell className="text-right">
                       {canMutate ? (
                         <div className="flex justify-end gap-2">
                           <Button variant="outline" size="sm" onClick={() => openEditDialog(plant)}>
-                            Edit
+                            {tc("edit")}
                           </Button>
                           <Button variant="destructive" size="sm" onClick={() => setDeleteTarget(plant)}>
                             <Trash2 />
-                            Delete
+                            {tc("delete")}
                           </Button>
                         </div>
                       ) : (
-                        <Badge variant="secondary">View only</Badge>
+                        <Badge variant="secondary">{t("plant.viewOnly")}</Badge>
                       )}
                     </TableCell>
                   </TableRow>
@@ -223,14 +225,16 @@ export function PlantManagement() {
         <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
           <form onSubmit={submitPlant} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>{dialogMode?.type === "edit" ? "Edit plant" : "Create plant"}</DialogTitle>
-              <DialogDescription>Plant codes are normalized by backend and must be unique.</DialogDescription>
+              <DialogTitle>
+                {dialogMode?.type === "edit" ? t("plant.dialog.editTitle") : t("plant.dialog.createTitle")}
+              </DialogTitle>
+              <DialogDescription>{t("plant.dialog.description")}</DialogDescription>
             </DialogHeader>
             {formError ? (
               <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{formError}</p>
             ) : null}
             <div className="grid gap-2">
-              <Label htmlFor="plant-code">Code</Label>
+              <Label htmlFor="plant-code">{tc("code")}</Label>
               <Input
                 id="plant-code"
                 value={form.code}
@@ -241,7 +245,7 @@ export function PlantManagement() {
               {fieldErrors.code ? <p className="text-destructive text-sm">{fieldErrors.code}</p> : null}
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="plant-name">Name</Label>
+              <Label htmlFor="plant-name">{tc("name")}</Label>
               <Input
                 id="plant-name"
                 value={form.name}
@@ -253,11 +257,11 @@ export function PlantManagement() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogMode(null)} disabled={isSaving}>
-                Cancel
+                {tc("cancel")}
               </Button>
               <Button type="submit" disabled={isSaving}>
                 {isSaving ? <Loader2Icon className="animate-spin" /> : null}
-                Save plant
+                {t("plant.dialog.save")}
               </Button>
             </DialogFooter>
           </form>
@@ -267,15 +271,15 @@ export function PlantManagement() {
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete plant?</AlertDialogTitle>
+            <AlertDialogTitle>{t("plant.delete.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes {deleteTarget?.code} and existing plant assignments tied to it.
+              {t("plant.delete.description", { code: deleteTarget?.code ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deletePlant.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deletePlant.isPending}>{tc("cancel")}</AlertDialogCancel>
             <AlertDialogAction variant="destructive" onClick={confirmDelete} disabled={deletePlant.isPending}>
-              Delete plant
+              {t("plant.delete.action")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -305,16 +309,4 @@ function PlantTableSkeleton() {
       <Skeleton className="h-10 w-full" />
     </div>
   );
-}
-
-function errorResponse(error: unknown): ErrorResponse | null {
-  if (!(error instanceof SyncroApiError) || !error.payload || typeof error.payload !== "object") {
-    return null;
-  }
-  const payload = error.payload as ErrorResponse;
-  return typeof payload.code === "string" && typeof payload.message === "string" ? payload : null;
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }

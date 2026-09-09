@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { ListMachinesParams, MachineListResponse } from "@/lib/api/generated/model";
+import { I18nProvider } from "@/test/i18n-wrapper";
 
 import type { TelemetryMachineView } from "../types";
 import { TelemetryDashboardPage } from "./telemetry-dashboard-page";
@@ -62,9 +63,11 @@ function machine(overrides: Partial<TelemetryMachineView> = {}): TelemetryMachin
 const queryClient = new QueryClient();
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>{children}</TooltipProvider>
-  </QueryClientProvider>
+  <I18nProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>{children}</TooltipProvider>
+    </QueryClientProvider>
+  </I18nProvider>
 );
 
 describe("Telemetry Dashboard Page", () => {
@@ -224,7 +227,11 @@ describe("Telemetry Dashboard Page", () => {
   });
 
   it("[P1] DW-34 truncation notice renders when totalElements exceeds returned items", () => {
-    const visible = [machine({ id: "m-1" }), machine({ id: "m-2", code: "BF-00002" }), machine({ id: "m-3", code: "BF-00003" })];
+    const visible = [
+      machine({ id: "m-1" }),
+      machine({ id: "m-2", code: "BF-00002" }),
+      machine({ id: "m-3", code: "BF-00003" }),
+    ];
     telemetryQuery = {
       ...telemetryQuery,
       data: { data: { items: visible, totalElements: 250 } },

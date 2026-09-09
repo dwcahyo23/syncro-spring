@@ -3,6 +3,7 @@
 import { type FormEvent, useMemo, useState } from "react";
 
 import { Loader2Icon, PowerOff, TriangleAlertIcon, Users } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -32,15 +33,9 @@ import {
 import { useListUsersMaster } from "@/features/organization/hooks/use-users";
 import type { DepartmentView, UserMasterView } from "@/features/organization/types";
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
+import { apiErrorMessage, errorResponse } from "@/lib/api/error-response";
 import { useListPlants } from "@/lib/api/generated/syncro";
-import { SyncroApiError } from "@/lib/api/orval-mutator";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
-
-type ErrorResponse = {
-  code: string;
-  message: string;
-  fieldErrors?: Record<string, string>;
-};
 
 type DialogMode = { type: "create" | "edit"; department?: DepartmentView };
 
@@ -55,6 +50,9 @@ const EMPTY_FORM: DepartmentFormState = { plantId: "", name: "", spvId: "", mgId
 const NONE = "__none__";
 
 export function DepartmentManagement() {
+  const t = useTranslations("organization");
+  const tc = useTranslations("common");
+  const te = useTranslations("errors");
   const user = useAuthUser();
   const plantScope = usePlantScope();
   const scope = plantScope.scope;
@@ -137,7 +135,7 @@ export function DepartmentManagement() {
             active: dialogMode.department.active,
           },
         });
-        toast.success("Department updated.");
+        toast.success(t("departments.updated"));
       } else {
         await createDepartment.mutateAsync({
           plantId: form.plantId,
@@ -145,27 +143,28 @@ export function DepartmentManagement() {
           spvId: form.spvId === NONE || form.spvId === "" ? null : form.spvId,
           mgId: form.mgId === NONE || form.mgId === "" ? null : form.mgId,
         });
-        toast.success("Department created.");
+        toast.success(t("departments.created"));
       }
       setDialogMode(null);
     } catch (error) {
       const response = errorResponse(error);
       setFieldErrors(response?.fieldErrors ?? {});
-      setFormError(response?.message ?? "Department request failed.");
-      toast.error(response?.message ?? "Department request failed.");
+      const message = response ? apiErrorMessage(te, response) : t("departments.requestFailed");
+      setFormError(message);
+      toast.error(message);
     }
   }
 
   async function deactivateDepartment(department: DepartmentView) {
     try {
       await deleteDepartment.mutateAsync(department.id);
-      toast.success("Department deactivated.");
+      toast.success(t("departments.deactivated"));
     } catch (error) {
       const response = errorResponse(error);
       if (response?.code === "DEPARTMENT_HAS_MEMBERS") {
-        toast.error("Cannot deactivate: this department still has members.");
+        toast.error(te("DEPARTMENT_HAS_MEMBERS"));
       } else {
-        toast.error(response?.message ?? "Department deactivation failed.");
+        toast.error(response ? apiErrorMessage(te, response) : t("departments.deactivationFailed"));
       }
     }
   }
@@ -176,11 +175,11 @@ export function DepartmentManagement() {
     }
     try {
       await setMembers.mutateAsync({ departmentId: memberDialog.id, data: { userIds: selectedUserIds } });
-      toast.success("Department members updated.");
+      toast.success(t("departments.membersUpdated"));
       setMemberDialog(null);
     } catch (error) {
       const response = errorResponse(error);
-      toast.error(response?.message ?? "Member update failed.");
+      toast.error(response ? apiErrorMessage(te, response) : t("departments.memberUpdateFailed"));
     }
   }
 
@@ -192,37 +191,34 @@ export function DepartmentManagement() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Departments</CardTitle>
-          <CardDescription>
-            Organization-maintenance departments (people units) per plant, with SPV/MG leaders and member technicians.
-            Departments are soft-inactivated, never deleted.
-          </CardDescription>
+          <CardTitle>{t("departments.title")}</CardTitle>
+          <CardDescription>{t("departments.description")}</CardDescription>
           <CardAction className="flex items-center gap-2">
             {canMutate ? (
-              <Button onClick={openCreateDialog}>Create department</Button>
+              <Button onClick={openCreateDialog}>{t("departments.createDepartment")}</Button>
             ) : (
-              <Badge variant="secondary">Read-only</Badge>
+              <Badge variant="secondary">{t("readOnly")}</Badge>
             )}
           </CardAction>
         </CardHeader>
         <CardContent>
           {isAssignedEmpty ? (
-            <DepartmentState title="No plant assignment" description="Your account has no assigned plant scope." />
+            <DepartmentState
+              title={t("departments.noPlantAssignmentTitle")}
+              description={t("departments.noPlantAssignmentDesc")}
+            />
           ) : null}
           {!effectivePlantId && !isAssignedEmpty ? (
-            <DepartmentState
-              title="Select a plant"
-              description="Pick a specific plant in the plant switcher to manage its departments."
-            />
+            <DepartmentState title={t("departments.selectPlantTitle")} description={t("departments.selectPlantDesc")} />
           ) : null}
           {departmentsQuery.isLoading ? <DepartmentTableSkeleton /> : null}
           {departmentsQuery.isError ? (
             <DepartmentState
-              title="Departments could not be loaded"
-              description="Refresh page or contact administrator if access should be available."
+              title={t("departments.loadFailedTitle")}
+              description={t("departments.loadFailedDesc")}
               action={
                 <Button variant="outline" onClick={() => departmentsQuery.refetch()}>
-                  Retry
+                  {tc("retry")}
                 </Button>
               }
             />
@@ -232,7 +228,7 @@ export function DepartmentManagement() {
           !departmentsQuery.isError &&
           !isAssignedEmpty &&
           items.length === 0 ? (
-            <DepartmentState title="No departments yet" description="Create the first department for this plant." />
+            <DepartmentState title={t("departments.emptyTitle")} description={t("departments.emptyDesc")} />
           ) : null}
           {items.length > 0 ? (
             <>
@@ -242,31 +238,31 @@ export function DepartmentManagement() {
                   checked={includeInactive}
                   onCheckedChange={(checked) => setIncludeInactive(checked === true)}
                 />
-                <label htmlFor="show-inactive-departments">Show inactive</label>
+                <label htmlFor="show-inactive-departments">{t("departments.showInactive")}</label>
               </div>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>SPV</TableHead>
-                    <TableHead>MG</TableHead>
-                    <TableHead>Members</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{tc("name")}</TableHead>
+                    <TableHead>{t("departments.spv")}</TableHead>
+                    <TableHead>{t("departments.mg")}</TableHead>
+                    <TableHead>{t("departments.members")}</TableHead>
+                    <TableHead>{tc("status")}</TableHead>
+                    <TableHead className="text-right">{tc("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.map((department) => (
                     <TableRow key={department.id}>
                       <TableCell className="font-medium">{department.name}</TableCell>
-                      <TableCell>{leaderLabel(userById, department.spvId)}</TableCell>
-                      <TableCell>{leaderLabel(userById, department.mgId)}</TableCell>
+                      <TableCell>{leaderLabel(userById, department.spvId, t("unassigned"))}</TableCell>
+                      <TableCell>{leaderLabel(userById, department.mgId, t("unassigned"))}</TableCell>
                       <TableCell>{department.memberCount}</TableCell>
                       <TableCell>
                         {department.active ? (
-                          <Badge variant="outline">Active</Badge>
+                          <Badge variant="outline">{tc("active")}</Badge>
                         ) : (
-                          <Badge variant="secondary">Inactive</Badge>
+                          <Badge variant="secondary">{tc("inactive")}</Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -279,10 +275,10 @@ export function DepartmentManagement() {
                               disabled={!department.active}
                             >
                               <Users />
-                              Members
+                              {t("departments.members")}
                             </Button>
                             <Button variant="outline" size="sm" onClick={() => openEditDialog(department)}>
-                              Edit
+                              {tc("edit")}
                             </Button>
                             {department.active ? (
                               <Button
@@ -292,12 +288,12 @@ export function DepartmentManagement() {
                                 onClick={() => void deactivateDepartment(department)}
                               >
                                 <PowerOff />
-                                Deactivate
+                                {tc("deactivate")}
                               </Button>
                             ) : null}
                           </div>
                         ) : (
-                          <Badge variant="secondary">View only</Badge>
+                          <Badge variant="secondary">{t("departments.viewOnly")}</Badge>
                         )}
                       </TableCell>
                     </TableRow>
@@ -314,23 +310,23 @@ export function DepartmentManagement() {
         <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
           <form onSubmit={submitDepartment} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>{dialogMode?.type === "edit" ? "Edit department" : "Create department"}</DialogTitle>
-              <DialogDescription>
-                SPV/MG must be enabled users with access to the same plant. Names must be unique per plant.
-              </DialogDescription>
+              <DialogTitle>
+                {dialogMode?.type === "edit" ? t("departments.editDepartment") : t("departments.createDepartment")}
+              </DialogTitle>
+              <DialogDescription>{t("departments.dialogHint")}</DialogDescription>
             </DialogHeader>
             {formError ? (
               <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{formError}</p>
             ) : null}
             <div className="grid gap-2">
-              <Label htmlFor="department-plant">Plant</Label>
+              <Label htmlFor="department-plant">{tc("plant")}</Label>
               <Select
                 value={form.plantId}
                 onValueChange={(value) => setForm((c) => ({ ...c, plantId: value }))}
                 disabled={dialogMode?.type === "edit" || isSaving}
               >
                 <SelectTrigger id="department-plant" aria-invalid={Boolean(fieldErrors.plantId)}>
-                  <SelectValue placeholder="Select plant" />
+                  <SelectValue placeholder={t("departments.selectPlant")} />
                 </SelectTrigger>
                 <SelectContent>
                   {(plants.data?.data.items ?? []).map((plant) => (
@@ -343,7 +339,7 @@ export function DepartmentManagement() {
               {fieldErrors.plantId ? <p className="text-destructive text-sm">{fieldErrors.plantId}</p> : null}
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="department-name">Name</Label>
+              <Label htmlFor="department-name">{tc("name")}</Label>
               <Input
                 id="department-name"
                 value={form.name}
@@ -354,14 +350,14 @@ export function DepartmentManagement() {
               {fieldErrors.name ? <p className="text-destructive text-sm">{fieldErrors.name}</p> : null}
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="department-spv">SPV</Label>
+              <Label htmlFor="department-spv">{t("departments.spv")}</Label>
               <Select value={form.spvId || NONE} onValueChange={(value) => setForm((c) => ({ ...c, spvId: value }))}>
                 <SelectTrigger id="department-spv" aria-invalid={Boolean(fieldErrors.spvId)} disabled={isSaving}>
-                  <SelectValue placeholder="Select SPV" />
+                  <SelectValue placeholder={t("departments.selectSpv")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE} className="italic text-muted-foreground">
-                    Unassigned
+                    {t("unassigned")}
                   </SelectItem>
                   {activeUsers.map((u) => (
                     <SelectItem key={u.id} value={u.id}>
@@ -373,14 +369,14 @@ export function DepartmentManagement() {
               {fieldErrors.spvId ? <p className="text-destructive text-sm">{fieldErrors.spvId}</p> : null}
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="department-mg">MG</Label>
+              <Label htmlFor="department-mg">{t("departments.mg")}</Label>
               <Select value={form.mgId || NONE} onValueChange={(value) => setForm((c) => ({ ...c, mgId: value }))}>
                 <SelectTrigger id="department-mg" aria-invalid={Boolean(fieldErrors.mgId)} disabled={isSaving}>
-                  <SelectValue placeholder="Select MG" />
+                  <SelectValue placeholder={t("departments.selectMg")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE} className="italic text-muted-foreground">
-                    Unassigned
+                    {t("unassigned")}
                   </SelectItem>
                   {activeUsers.map((u) => (
                     <SelectItem key={u.id} value={u.id}>
@@ -393,11 +389,11 @@ export function DepartmentManagement() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogMode(null)} disabled={isSaving}>
-                Cancel
+                {tc("cancel")}
               </Button>
               <Button type="submit" disabled={isSaving}>
                 {isSaving ? <Loader2Icon className="animate-spin" /> : null}
-                Save department
+                {t("departments.saveDepartment")}
               </Button>
             </DialogFooter>
           </form>
@@ -408,15 +404,12 @@ export function DepartmentManagement() {
       <Dialog open={memberDialog !== null} onOpenChange={(open) => !open && setMemberDialog(null)}>
         <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Manage members — {memberDialog?.name}</DialogTitle>
-            <DialogDescription>
-              Assign staff to this department. Members can belong to multiple departments; saving replaces the member
-              set.
-            </DialogDescription>
+            <DialogTitle>{t("departments.manageMembers", { name: memberDialog?.name ?? "" })}</DialogTitle>
+            <DialogDescription>{t("departments.membersHint")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             {activeUsers.length === 0 ? (
-              <p className="text-muted-foreground text-sm">No enabled users available.</p>
+              <p className="text-muted-foreground text-sm">{t("departments.noEnabledUsers")}</p>
             ) : (
               activeUsers.map((u) => {
                 const isSelected = selectedUserIds.includes(u.id);
@@ -445,11 +438,11 @@ export function DepartmentManagement() {
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setMemberDialog(null)}>
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button type="button" onClick={() => void saveMembers()} disabled={setMembers.isPending}>
               {setMembers.isPending ? <Loader2Icon className="animate-spin" /> : null}
-              Save assignments
+              {t("departments.saveAssignments")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -458,9 +451,9 @@ export function DepartmentManagement() {
   );
 }
 
-function leaderLabel(users: Map<string, UserMasterView>, userId: string | null): React.ReactNode {
+function leaderLabel(users: Map<string, UserMasterView>, userId: string | null, unassigned: string): React.ReactNode {
   if (!userId) {
-    return <span className="text-muted-foreground text-xs italic">Unassigned</span>;
+    return <span className="text-muted-foreground text-xs italic">{unassigned}</span>;
   }
   const user = users.get(userId);
   return user ? (user.displayName ?? user.loginIdentifier) : userId;
@@ -499,12 +492,4 @@ function DepartmentTableSkeleton() {
       <Skeleton className="h-10 w-full" />
     </div>
   );
-}
-
-function errorResponse(error: unknown): ErrorResponse | null {
-  if (!(error instanceof SyncroApiError) || !error.payload || typeof error.payload !== "object") {
-    return null;
-  }
-  const payload = error.payload as ErrorResponse;
-  return typeof payload.code === "string" && typeof payload.message === "string" ? payload : null;
 }

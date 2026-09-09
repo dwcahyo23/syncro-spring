@@ -3,8 +3,8 @@
 import { useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
 import { Loader2, PackageSearchIcon } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ import { CompleteDialog } from "@/features/sparepart-requests/components/complet
 import { useRecordMre, useTransitionRequest } from "@/features/sparepart-requests/hooks/use-sparepart-requests";
 import type { SparepartRequestStatus } from "@/features/sparepart-requests/types";
 import { syncroFetch } from "@/lib/api/orval-mutator";
+import { useNumberFormatter } from "@/lib/i18n/format";
 
 interface SparepartRequestRow {
   id: string;
@@ -45,23 +46,6 @@ interface SparepartRequestRow {
 }
 
 const PAGE_SIZE = 20;
-const TYPE_LABELS: Record<string, string> = {
-  SPAREPART: "Sparepart",
-  CONSUMABLE: "Consumable",
-  SERVICE_EXTERNAL: "External service",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  REQUESTED: "Requested",
-  PENDING_COMPLETION: "Pending completion",
-  ACKED: "Acknowledged",
-  PROCESSING: "Processing",
-  READY: "Ready",
-  PURCHASE_REQUESTED: "Purchase requested",
-  PART_RECEIVED: "Part received",
-  PICKED_UP: "Picked up",
-  CLOSED: "Closed",
-};
 
 const STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline" | "ghost" | "destructive"> = {
   REQUESTED: "default",
@@ -75,33 +59,34 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline" | "gho
   CLOSED: "ghost",
 };
 
-/** Story 12-2: row actions available per current status (FR-141). */
-function availableActions(status: SparepartRequestStatus): { label: string; toStatus: SparepartRequestStatus }[] {
+/** Story 12-2: row actions available per current status (FR-141). Keys map to `sparepartRequests.actions.*`. */
+function availableActions(status: SparepartRequestStatus): { actionKey: string; toStatus: SparepartRequestStatus }[] {
   switch (status) {
     case "REQUESTED":
     case "PENDING_COMPLETION":
-      return [{ label: "Acknowledge", toStatus: "ACKED" }];
+      return [{ actionKey: "acknowledge", toStatus: "ACKED" }];
     case "ACKED":
-      return [{ label: "Process", toStatus: "PROCESSING" }];
+      return [{ actionKey: "process", toStatus: "PROCESSING" }];
     case "PROCESSING":
       return [
-        { label: "Mark Ready", toStatus: "READY" },
-        { label: "Mark Purchased", toStatus: "PURCHASE_REQUESTED" },
+        { actionKey: "markReady", toStatus: "READY" },
+        { actionKey: "markPurchased", toStatus: "PURCHASE_REQUESTED" },
       ];
     case "PURCHASE_REQUESTED":
-      return [{ label: "Part Received", toStatus: "PART_RECEIVED" }];
+      return [{ actionKey: "partReceived", toStatus: "PART_RECEIVED" }];
     case "PART_RECEIVED":
-      return [{ label: "Mark Ready", toStatus: "READY" }];
+      return [{ actionKey: "markReady", toStatus: "READY" }];
     case "READY":
-      return [{ label: "Pick Up", toStatus: "PICKED_UP" }];
+      return [{ actionKey: "pickUp", toStatus: "PICKED_UP" }];
     case "PICKED_UP":
-      return [{ label: "Close", toStatus: "CLOSED" }];
+      return [{ actionKey: "close", toStatus: "CLOSED" }];
     default:
       return [];
   }
 }
 
 function MreDialog({ requestId }: { requestId: string }) {
+  const t = useTranslations("sparepartRequests");
   const [open, setOpen] = useState(false);
   const [mreCode, setMreCode] = useState("");
   const recordMre = useRecordMre();
@@ -123,20 +108,20 @@ function MreDialog({ requestId }: { requestId: string }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          Record MRE
+          {t("mre.trigger")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Record MRE Code</DialogTitle>
-          <DialogDescription>Enter the manual MRE (material request) code for this purchase.</DialogDescription>
+          <DialogTitle>{t("mre.title")}</DialogTitle>
+          <DialogDescription>{t("mre.description")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="mreCode">MRE Code</Label>
+            <Label htmlFor="mreCode">{t("mre.codeLabel")}</Label>
             <Input
               id="mreCode"
-              placeholder="e.g. MRE26023xxxx"
+              placeholder={t("mre.codePlaceholder")}
               value={mreCode}
               onChange={(e) => setMreCode(e.target.value)}
               maxLength={64}
@@ -144,7 +129,7 @@ function MreDialog({ requestId }: { requestId: string }) {
           </div>
           <Button onClick={handleSubmit} disabled={recordMre.isPending || !mreCode.trim()}>
             {recordMre.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
-            Record
+            {t("mre.record")}
           </Button>
         </div>
       </DialogContent>
@@ -153,6 +138,10 @@ function MreDialog({ requestId }: { requestId: string }) {
 }
 
 export function SparepartRequestsPageContent() {
+  const t = useTranslations("sparepartRequests");
+  const tc = useTranslations("common");
+  const format = useFormatter();
+  const fmt = useNumberFormatter();
   const [page, setPage] = useState(0);
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
   const transition = useTransitionRequest();
@@ -179,11 +168,11 @@ export function SparepartRequestsPageContent() {
     <div className="space-y-4">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="font-semibold text-xl">Sparepart Requests</h1>
-          <p className="text-muted-foreground text-sm">Track sparepart, consumable, and external-service requests.</p>
+          <h1 className="font-semibold text-xl">{t("title")}</h1>
+          <p className="text-muted-foreground text-sm">{t("description")}</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => void refetch()}>
-          Refresh
+          {tc("refresh")}
         </Button>
       </div>
 
@@ -196,9 +185,9 @@ export function SparepartRequestsPageContent() {
       {isError ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-            <p className="text-muted-foreground text-sm">Failed to load requests.</p>
+            <p className="text-muted-foreground text-sm">{t("loadError")}</p>
             <Button variant="outline" size="sm" onClick={() => void refetch()}>
-              Retry
+              {tc("retry")}
             </Button>
           </CardContent>
         </Card>
@@ -207,7 +196,7 @@ export function SparepartRequestsPageContent() {
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
             <PackageSearchIcon className="size-10 text-muted-foreground" />
-            <p className="font-medium">No requests match this filter.</p>
+            <p className="font-medium">{t("empty")}</p>
           </CardContent>
         </Card>
       ) : null}
@@ -216,13 +205,13 @@ export function SparepartRequestsPageContent() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Type</TableHead>
-                <TableHead>Workorder</TableHead>
-                <TableHead>Part</TableHead>
-                <TableHead>Qty</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Requested</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>{t("type")}</TableHead>
+                <TableHead>{t("table.workorder")}</TableHead>
+                <TableHead>{t("table.part")}</TableHead>
+                <TableHead>{t("qty")}</TableHead>
+                <TableHead>{tc("status")}</TableHead>
+                <TableHead>{t("table.requested")}</TableHead>
+                <TableHead>{tc("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -230,30 +219,41 @@ export function SparepartRequestsPageContent() {
                 const actions = availableActions(request.status);
                 return (
                   <TableRow key={request.id}>
-                    <TableCell className="text-xs">{TYPE_LABELS[request.requestType] ?? request.requestType}</TableCell>
-                    <TableCell className="font-mono text-xs">{request.workOrderId ?? "-"}</TableCell>
                     <TableCell className="text-xs">
-                      {request.materialCode ?? "-"}
-                      {request.estUnitPrice ? ` · Rp ${Number(request.estUnitPrice).toLocaleString()}` : ""}
+                      {t.has(`types.${request.requestType}`) ? t(`types.${request.requestType}`) : request.requestType}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">{request.workOrderId ?? t("dash")}</TableCell>
+                    <TableCell className="text-xs">
+                      {request.materialCode ?? t("dash")}
+                      {request.estUnitPrice
+                        ? t("priceSuffix", { price: fmt.currency(Number(request.estUnitPrice), "IDR") })
+                        : ""}
                     </TableCell>
                     <TableCell className="text-xs">{request.quantity}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap items-center gap-1">
                         <Badge variant={STATUS_VARIANTS[request.status] ?? "default"}>
-                          {STATUS_LABELS[request.status] ?? request.status}
+                          {t.has(`status.${request.status}`) ? t(`status.${request.status}`) : request.status}
                         </Badge>
                         {request.status === "REQUESTED" || request.status === "PENDING_COMPLETION" ? (
                           <Badge variant="secondary">
                             {request.allowedActions.includes("approve") && request.requiredApprovalRole
-                              ? `Pending: ${request.requiredApprovalRole}`
-                              : "Pending approval"}
+                              ? t("pendingRole", { role: request.requiredApprovalRole })
+                              : t("pendingApproval")}
                           </Badge>
                         ) : null}
-                        {request.status === "ACKED" ? <Badge variant="outline">Approved</Badge> : null}
+                        {request.status === "ACKED" ? <Badge variant="outline">{t("approved")}</Badge> : null}
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs">
-                      {format(new Date(request.requestedAt), "d MMM yyyy HH:mm")}
+                      {format.dateTime(new Date(request.requestedAt), {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      })}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
@@ -272,7 +272,7 @@ export function SparepartRequestsPageContent() {
                             }}
                           >
                             {pendingRequestId === request.id ? <Loader2 className="size-3 animate-spin" /> : null}
-                            {action.label}
+                            {t(`actions.${action.actionKey}`)}
                           </Button>
                         ))}
                         {request.allowedActions.includes("approve") ? <ApproveDialog requestId={request.id} /> : null}

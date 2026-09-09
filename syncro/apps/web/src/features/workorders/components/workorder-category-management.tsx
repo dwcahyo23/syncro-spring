@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
 import { PlusIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,8 @@ interface WorkOrderCategory {
 }
 
 export function WorkOrderCategoryManagement() {
+  const t = useTranslations("workOrders");
+  const tc = useTranslations("common");
   const { data, isLoading, refetch } = useQuery<WorkOrderCategory[]>({
     queryKey: ["/api/v1/work-order-categories"],
     queryFn: async () => {
@@ -43,7 +46,7 @@ export function WorkOrderCategoryManagement() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>Work Order Categories</span>
+          <span>{t("categoryManagement.title")}</span>
           <CreateCategoryDialog onCreated={() => void refetch()} />
         </CardTitle>
       </CardHeader>
@@ -57,16 +60,16 @@ export function WorkOrderCategoryManagement() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Code</TableHead>
-                <TableHead>Label</TableHead>
-                <TableHead>Target Response (min)</TableHead>
+                <TableHead>{tc("code")}</TableHead>
+                <TableHead>{t("categoryManagement.label")}</TableHead>
+                <TableHead>{t("categoryManagement.targetResponseCol")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {(data ?? []).length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={3} className="text-center text-muted-foreground">
-                    No categories configured.
+                    {t("categoryManagement.empty")}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -77,7 +80,9 @@ export function WorkOrderCategoryManagement() {
                     </TableCell>
                     <TableCell className="text-sm">{category.label}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {category.targetResponseMinutes != null ? `${category.targetResponseMinutes} min` : "-"}
+                      {category.targetResponseMinutes != null
+                        ? t("categoryManagement.minutes", { count: category.targetResponseMinutes })
+                        : t("dash")}
                     </TableCell>
                   </TableRow>
                 ))
@@ -91,6 +96,8 @@ export function WorkOrderCategoryManagement() {
 }
 
 function CreateCategoryDialog({ onCreated }: { onCreated: () => void }) {
+  const t = useTranslations("workOrders");
+  const tc = useTranslations("common");
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
   const [label, setLabel] = useState("");
@@ -114,7 +121,7 @@ function CreateCategoryDialog({ onCreated }: { onCreated: () => void }) {
       setTargetResponseMinutes("");
       onCreated();
     } catch (e) {
-      setError("Failed to create category. Code may already exist.");
+      setError(t("categoryManagement.createFailed"));
     }
   };
 
@@ -123,29 +130,37 @@ function CreateCategoryDialog({ onCreated }: { onCreated: () => void }) {
       <DialogTrigger asChild>
         <Button type="button" size="sm">
           <PlusIcon className="mr-1 size-4" />
-          Add Category
+          {t("categoryManagement.add")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add Work Order Category</DialogTitle>
-          <DialogDescription>Create a new work order category (e.g. Breakdown, Preventive).</DialogDescription>
+          <DialogTitle>{t("categoryManagement.dialogTitle")}</DialogTitle>
+          <DialogDescription>{t("categoryManagement.dialogDescription")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1">
-            <Label>Code</Label>
-            <Input placeholder="e.g. 03" value={code} onChange={(e) => setCode(e.target.value)} />
+            <Label>{tc("code")}</Label>
+            <Input
+              placeholder={t("categoryManagement.codePlaceholder")}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+            />
           </div>
           <div className="space-y-1">
-            <Label>Label</Label>
-            <Input placeholder="e.g. Emergency" value={label} onChange={(e) => setLabel(e.target.value)} />
+            <Label>{t("categoryManagement.label")}</Label>
+            <Input
+              placeholder={t("categoryManagement.labelPlaceholder")}
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+            />
           </div>
           <div className="space-y-1">
-            <Label>Target response (minutes, optional)</Label>
+            <Label>{t("categoryManagement.targetResponseLabel")}</Label>
             <Input
               type="number"
               min={0}
-              placeholder="e.g. 60"
+              placeholder={t("categoryManagement.targetResponsePlaceholder")}
               value={targetResponseMinutes}
               onChange={(e) => setTargetResponseMinutes(e.target.value)}
             />
@@ -154,10 +169,10 @@ function CreateCategoryDialog({ onCreated }: { onCreated: () => void }) {
         </div>
         <DialogFooter>
           <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
-            Cancel
+            {tc("cancel")}
           </Button>
           <Button size="sm" onClick={handleCreate} disabled={!code.trim() || !label.trim()}>
-            Create
+            {tc("create")}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,5 +1,7 @@
 "use client";
 
+import { useFormatter, useTranslations } from "next-intl";
+
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -14,6 +16,9 @@ export interface AlertsTabProps {
 }
 
 export function AlertsTab({ machineId }: AlertsTabProps) {
+  const t = useTranslations("machineHub");
+  const tc = useTranslations("common");
+  const format = useFormatter();
   const router = useRouter();
 
   const { data, isLoading, isError, refetch } = useListAlerts(
@@ -35,33 +40,33 @@ export function AlertsTab({ machineId }: AlertsTabProps) {
   if (isError) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-lg border p-6">
-        <p className="text-muted-foreground text-sm">Failed to load alerts.</p>
+        <p className="text-muted-foreground text-sm">{t("alerts.loadFailed")}</p>
         <button
           type="button"
           className="rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground text-sm hover:bg-primary/90"
           onClick={() => void refetch()}
         >
-          Retry
+          {tc("retry")}
         </button>
       </div>
     );
   }
 
   if (items.length === 0) {
-    return <EmptyState title="No alerts" description="This machine has no active sparepart lifetime alerts." />;
+    return <EmptyState title={t("alerts.emptyTitle")} description={t("alerts.emptyDescription")} />;
   }
 
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Status</TableHead>
-          <TableHead>Type</TableHead>
-          <TableHead className="hidden sm:table-cell">Notification</TableHead>
-          <TableHead>Sparepart</TableHead>
-          <TableHead className="hidden text-right sm:table-cell">Threshold</TableHead>
-          <TableHead className="hidden text-right sm:table-cell">Consumed</TableHead>
-          <TableHead className="hidden md:table-cell">Created</TableHead>
+          <TableHead>{tc("status")}</TableHead>
+          <TableHead>{t("alerts.colType")}</TableHead>
+          <TableHead className="hidden sm:table-cell">{t("alerts.colNotification")}</TableHead>
+          <TableHead>{t("alerts.colSparepart")}</TableHead>
+          <TableHead className="hidden text-right sm:table-cell">{t("alerts.colThreshold")}</TableHead>
+          <TableHead className="hidden text-right sm:table-cell">{t("alerts.colConsumed")}</TableHead>
+          <TableHead className="hidden md:table-cell">{tc("createdAt")}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -77,7 +82,7 @@ export function AlertsTab({ machineId }: AlertsTabProps) {
                 router.push(`/alerts/${item.id}`);
               }
             }}
-            aria-label={`View alert: ${item.sparepartName ?? item.sparepartCode}`}
+            aria-label={t("alerts.viewAria", { name: item.sparepartName ?? item.sparepartCode ?? "" })}
           >
             <TableCell>
               <AlertStatusBadge status={item.status} />
@@ -99,7 +104,9 @@ export function AlertsTab({ machineId }: AlertsTabProps) {
               {item.consumedPercentageSnapshot != null ? `${Number(item.consumedPercentageSnapshot).toFixed(1)}%` : "-"}
             </TableCell>
             <TableCell className="hidden text-muted-foreground text-sm md:table-cell">
-              {item.createdAt ? new Date(item.createdAt).toLocaleString() : "-"}
+              {item.createdAt
+                ? format.dateTime(new Date(item.createdAt), { dateStyle: "medium", timeStyle: "short" })
+                : "-"}
             </TableCell>
           </TableRow>
         ))}

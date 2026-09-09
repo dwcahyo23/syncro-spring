@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, PackageSearchIcon, TriangleAlertIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
 import { useAdjustStock, useListStock, useReorderWarnings } from "@/features/sparepart-stock/hooks/use-sparepart-stock";
 import { syncroFetch } from "@/lib/api/orval-mutator";
+import { useNumberFormatter } from "@/lib/i18n/format";
 
 const PAGE_SIZE = 50;
 
@@ -40,6 +42,9 @@ interface PlantOption {
  * on-hand/OP/OQ, reorder-warning badge, edit + adjust dialogs. Non-native shadcn controls.
  */
 export function SparepartStockPageContent() {
+  const t = useTranslations("stock");
+  const tc = useTranslations("common");
+  const format = useNumberFormatter();
   const { scope, activePlantId } = usePlantScope();
   const [selectedPlantId, setSelectedPlantId] = useState(activePlantId !== "all" ? activePlantId : "");
 
@@ -71,10 +76,8 @@ export function SparepartStockPageContent() {
     <div className="space-y-4">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="font-semibold text-xl">Stock</h1>
-          <p className="text-muted-foreground text-sm">
-            Per-plant stock levels, reorder points and quantity recommendations.
-          </p>
+          <h1 className="font-semibold text-xl">{t("title")}</h1>
+          <p className="text-muted-foreground text-sm">{t("description")}</p>
         </div>
         <div className="flex items-center gap-2">
           <Select
@@ -85,7 +88,7 @@ export function SparepartStockPageContent() {
             }}
           >
             <SelectTrigger className="w-48">
-              <SelectValue placeholder="Select plant" />
+              <SelectValue placeholder={t("selectPlant")} />
             </SelectTrigger>
             <SelectContent>
               {availablePlants.map((plant) => (
@@ -96,7 +99,7 @@ export function SparepartStockPageContent() {
             </SelectContent>
           </Select>
           <Button variant="outline" size="sm" onClick={() => void refetch()}>
-            Refresh
+            {tc("refresh")}
           </Button>
         </div>
       </div>
@@ -110,9 +113,9 @@ export function SparepartStockPageContent() {
       {isError ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-            <p className="text-muted-foreground text-sm">Failed to load stock data.</p>
+            <p className="text-muted-foreground text-sm">{t("loadError")}</p>
             <Button variant="outline" size="sm" onClick={() => void refetch()}>
-              Retry
+              {tc("retry")}
             </Button>
           </CardContent>
         </Card>
@@ -121,7 +124,7 @@ export function SparepartStockPageContent() {
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
             <PackageSearchIcon className="size-10 text-muted-foreground" />
-            <p className="font-medium">No stock rows for this plant.</p>
+            <p className="font-medium">{t("empty")}</p>
           </CardContent>
         </Card>
       ) : null}
@@ -130,12 +133,12 @@ export function SparepartStockPageContent() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Material code</TableHead>
-                <TableHead>On hand</TableHead>
-                <TableHead>Order point</TableHead>
-                <TableHead>Order qty</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>{t("table.materialCode")}</TableHead>
+                <TableHead>{t("table.onHand")}</TableHead>
+                <TableHead>{t("table.orderPoint")}</TableHead>
+                <TableHead>{t("table.orderQty")}</TableHead>
+                <TableHead>{tc("status")}</TableHead>
+                <TableHead>{tc("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -145,37 +148,45 @@ export function SparepartStockPageContent() {
                 const pct = orderPoint > 0 ? Math.min((onHand / orderPoint) * 100, 100) : 100;
                 const isReorder = warningCodes.has(row.materialCode);
                 return (
-                <TableRow key={row.materialCode}>
-                  <TableCell className="font-mono text-xs">{row.materialCode}</TableCell>
-                  <TableCell className="text-xs">{onHand.toLocaleString()}</TableCell>
-                  <TableCell className="text-xs">{orderPoint.toLocaleString()}</TableCell>
-                  <TableCell className="text-xs">{Number(row.orderQty).toLocaleString()}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {isReorder ? (
-                        <Badge variant="destructive" className="flex items-center gap-1">
-                          <TriangleAlertIcon className="size-3" />
-                          Reorder
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="status-icon-healthy">OK</Badge>
-                      )}
-                      <div className="hidden h-1.5 w-12 overflow-hidden rounded-full bg-muted sm:block" title={`${onHand} / ${orderPoint} OP`}>
+                  <TableRow key={row.materialCode}>
+                    <TableCell className="font-mono text-xs">{row.materialCode}</TableCell>
+                    <TableCell className="text-xs">{format.number(onHand)}</TableCell>
+                    <TableCell className="text-xs">{format.number(orderPoint)}</TableCell>
+                    <TableCell className="text-xs">{format.number(Number(row.orderQty))}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {isReorder ? (
+                          <Badge variant="destructive" className="flex items-center gap-1">
+                            <TriangleAlertIcon className="size-3" />
+                            {t("reorder")}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="status-icon-healthy">
+                            {t("ok")}
+                          </Badge>
+                        )}
                         <div
-                          className={`h-full rounded-full transition-all ${isReorder ? "bg-destructive" : "bg-chart-3"}`}
-                          style={{ width: `${pct}%` }}
-                        />
+                          className="hidden h-1.5 w-12 overflow-hidden rounded-full bg-muted sm:block"
+                          title={t("ratioTooltip", {
+                            onHand: format.number(onHand),
+                            orderPoint: format.number(orderPoint),
+                          })}
+                        >
+                          <div
+                            className={`h-full rounded-full transition-all ${isReorder ? "bg-destructive" : "bg-chart-3"}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <AdjustStockDialog
-                      materialCode={row.materialCode}
-                      plantId={effectivePlantId}
-                      currentOnHand={row.stockOnHand}
-                    />
-                  </TableCell>
-                </TableRow>
+                    </TableCell>
+                    <TableCell>
+                      <AdjustStockDialog
+                        materialCode={row.materialCode}
+                        plantId={effectivePlantId}
+                        currentOnHand={row.stockOnHand}
+                      />
+                    </TableCell>
+                  </TableRow>
                 );
               })}
             </TableBody>
@@ -206,6 +217,9 @@ function AdjustStockDialog({
   const [open, setOpen] = useState(false);
   const [delta, setDelta] = useState("");
   const adjust = useAdjustStock();
+  const t = useTranslations("stock");
+  const tc = useTranslations("common");
+  const format = useNumberFormatter();
 
   const handleSubmit = () => {
     const num = Number(delta);
@@ -225,32 +239,31 @@ function AdjustStockDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          Adjust
+          {t("adjust.trigger")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Adjust stock — {materialCode}</DialogTitle>
+          <DialogTitle>{t("adjust.title", { code: materialCode })}</DialogTitle>
           <DialogDescription>
-            Current on-hand: {Number(currentOnHand).toLocaleString()}. Use a positive delta to restock, negative to
-            withdraw.
+            {t("adjust.description", { onHand: format.number(Number(currentOnHand)) })}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="delta">Delta (signed adjustment)</Label>
+            <Label htmlFor="delta">{t("adjust.deltaLabel")}</Label>
             <Input
               id="delta"
               type="number"
               step="0.01"
-              placeholder="e.g. -5 or +10"
+              placeholder={t("adjust.deltaPlaceholder")}
               value={delta}
               onChange={(e) => setDelta(e.target.value)}
             />
           </div>
           <Button onClick={handleSubmit} disabled={adjust.isPending || !delta.trim()}>
             {adjust.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
-            Confirm adjustment
+            {t("adjust.confirm")}
           </Button>
         </div>
       </DialogContent>

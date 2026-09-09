@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { RefreshCw, TriangleAlertIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +29,8 @@ function useNow(intervalMs: number) {
 }
 
 export function TelemetryDashboardPage() {
+  const t = useTranslations("telemetry");
+  const tc = useTranslations("common");
   const plantScope = usePlantScope();
   const scope = plantScope.scope;
   const isAssignedEmpty = scope?.mode === "EMPTY";
@@ -45,35 +48,30 @@ export function TelemetryDashboardPage() {
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1">
-          <h1 className="font-semibold text-2xl tracking-tight">Telemetry</h1>
-          <p className="text-muted-foreground text-sm">
-            Latest machine state refreshed automatically every 30 seconds.
-          </p>
+          <h1 className="font-semibold text-2xl tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground text-sm">{t("subtitle")}</p>
         </div>
         <Button variant="outline" onClick={() => void telemetry.refetch()} disabled={telemetry.isLoading}>
           <RefreshCw aria-hidden="true" className={telemetry.isFetching ? "animate-spin" : undefined} />
-          Refresh
+          {tc("refresh")}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Latest telemetry</CardTitle>
-          <CardDescription>
-            Telemetry freshness is separate from manual machine status. ONLINE means data within 5 minutes; STALE
-            means no data for more than 15 minutes.
-          </CardDescription>
+          <CardTitle>{t("latestTitle")}</CardTitle>
+          <CardDescription>{t("latestDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-end gap-3">
             <div className="grid min-w-0 gap-2">
-              <Label htmlFor="telemetry-plant">Plant</Label>
+              <Label htmlFor="telemetry-plant">{tc("plant")}</Label>
               <Select value={plantId} onValueChange={setPlantId} disabled={isAssignedEmpty || plants.isLoading}>
                 <SelectTrigger id="telemetry-plant" className="w-56 min-w-0">
-                  <SelectValue placeholder="Plant" />
+                  <SelectValue placeholder={tc("plant")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ALL">All plants</SelectItem>
+                  <SelectItem value="ALL">{t("allPlants")}</SelectItem>
                   {availablePlants.map((plant) => (
                     <SelectItem key={plant.id ?? plant.code} value={plant.id ?? ""}>
                       {plant.code} · {plant.name}
@@ -84,14 +82,13 @@ export function TelemetryDashboardPage() {
             </div>
             <p aria-live="polite" className="pb-2 text-muted-foreground text-xs">
               {telemetry.isLoading
-                ? "Loading telemetry…"
-                : `${telemetry.machines.length} active ${
-                    telemetry.machines.length === 1 ? "machine" : "machines"
-                  }${
-                    totalCount > telemetry.machines.length
-                      ? ` (showing first ${telemetry.machines.length} of ${totalCount} matching)`
-                      : ""
-                  }`}
+                ? t("loading")
+                : totalCount > telemetry.machines.length
+                  ? `${t("activeMachines", { count: telemetry.machines.length })} ${t("truncation", {
+                      shown: telemetry.machines.length,
+                      total: totalCount,
+                    })}`
+                  : t("activeMachines", { count: telemetry.machines.length })}
             </p>
           </div>
 
@@ -121,12 +118,19 @@ function TelemetryBody({
   plantId: string;
   telemetry: ReturnType<typeof useTelemetryDashboardQuery>;
 }) {
+  const t = useTranslations("telemetry");
+  const tc = useTranslations("common");
   const now = useNow(30_000);
   const lastUpdated = telemetry.dataUpdatedAt;
   const isDataStale = lastUpdated > 0 && now - lastUpdated >= STALE_BANNER_THRESHOLD_MS;
 
+  function formatMinutesAgo(ageMs: number) {
+    const minutes = Math.max(1, Math.floor(ageMs / 60_000));
+    return t("minutesAgo", { count: minutes });
+  }
+
   if (isAssignedEmpty) {
-    return <TelemetryState title="No plants assigned" description="No plants assigned. Contact your administrator." />;
+    return <TelemetryState title={t("noPlantsTitle")} description={t("noPlantsDescription")} />;
   }
   if (telemetry.isLoading) {
     return <TelemetrySkeleton />;
@@ -135,27 +139,18 @@ function TelemetryBody({
     return (
       <TelemetryState
         icon={<TriangleAlertIcon aria-hidden="true" className="text-destructive" />}
-        title="Telemetry could not be loaded"
-        description="The telemetry dashboard failed to load. Retry to fetch it again."
+        title={t("errorTitle")}
+        description={t("errorDescription")}
         action={
           <Button variant="outline" onClick={() => void telemetry.refetch()}>
-            Retry
+            {tc("retry")}
           </Button>
         }
       />
     );
   }
   if (telemetry.machines.length === 0) {
-    return (
-      <TelemetryState
-        title="No active machines found"
-        description={
-          plantId === "ALL"
-            ? "Activate machines to see their latest telemetry here."
-            : "No ACTIVE machines in this plant yet."
-        }
-      />
-    );
+    return <TelemetryState title={t("emptyTitle")} description={plantId === "ALL" ? t("emptyAll") : t("emptyPlant")} />;
   }
   return (
     <div className="space-y-3">
@@ -166,21 +161,16 @@ function TelemetryBody({
         >
           <p className="flex items-center gap-2 text-sm">
             <TriangleAlertIcon aria-hidden="true" className="status-icon-warning" />
-            Last updated {formatMinutesAgo(now - lastUpdated)} ago. Automatic refresh may be delayed.
+            {t("staleBanner", { ago: formatMinutesAgo(now - lastUpdated) })}
           </p>
           <Button size="sm" variant="outline" onClick={() => void telemetry.refetch()}>
-            Refresh now
+            {t("refreshNow")}
           </Button>
         </div>
       ) : null}
       <TelemetryGrid machines={telemetry.machines} />
     </div>
   );
-}
-
-function formatMinutesAgo(ageMs: number) {
-  const minutes = Math.max(1, Math.floor(ageMs / 60_000));
-  return `${minutes} min`;
 }
 
 function TelemetryState({

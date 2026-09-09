@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { useFormatter, useTranslations } from "next-intl";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +18,8 @@ export interface AuditLogTabProps {
 }
 
 export function AuditLogTab({ machineId }: AuditLogTabProps) {
+  const t = useTranslations("machineHub.audit");
+  const tc = useTranslations("common");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const { data, isLoading, isError, refetch } = useListAuditLogEntries(
@@ -40,31 +44,31 @@ export function AuditLogTab({ machineId }: AuditLogTabProps) {
   if (isError) {
     return (
       <div className="flex flex-col items-start gap-3">
-        <EmptyState title="Audit log unavailable" description="Failed to load audit log entries." />
+        <EmptyState title={t("unavailableTitle")} description={t("unavailableDescription")} />
         <Button variant="outline" onClick={() => void refetch()}>
-          Retry
+          {tc("retry")}
         </Button>
       </div>
     );
   }
 
   if (entries.length === 0) {
-    return <EmptyState title="No audit entries yet" description="There are no audit log entries for this machine." />;
+    return <EmptyState title={t("emptyTitle")} description={t("emptyDescription")} />;
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Audit Log</CardTitle>
-        <CardDescription>Immutable history of changes to this machine</CardDescription>
+        <CardTitle>{t("title")}</CardTitle>
+        <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Timestamp</TableHead>
-              <TableHead>Actor</TableHead>
-              <TableHead>Action</TableHead>
+              <TableHead>{t("timestamp")}</TableHead>
+              <TableHead>{t("actor")}</TableHead>
+              <TableHead>{t("action")}</TableHead>
               <TableHead className="w-12" />
             </TableRow>
           </TableHeader>
@@ -93,19 +97,25 @@ function AuditLogRow({
   expanded: boolean;
   onToggle: () => void;
 }) {
-  const hasChanges = entry.previousValue || entry.newValue;
+  const t = useTranslations("machineHub.audit");
+  const format = useFormatter();
+  const hasChanges = entry.previousValue ?? entry.newValue;
   return (
     <>
       <TableRow>
-        <TableCell>{entry.createdAt ? new Date(entry.createdAt).toLocaleString() : "-"}</TableCell>
+        <TableCell>
+          {entry.createdAt
+            ? format.dateTime(new Date(entry.createdAt), { dateStyle: "medium", timeStyle: "short" })
+            : "-"}
+        </TableCell>
         <TableCell>{entry.actorName ?? "-"}</TableCell>
         <TableCell>
           <Badge variant="secondary">{entry.action}</Badge>
         </TableCell>
         <TableCell>
           {hasChanges && (
-            <Button variant="ghost" size="sm" aria-label="Toggle change detail" onClick={onToggle}>
-              {expanded ? "Hide" : "Show"}
+            <Button variant="ghost" size="sm" aria-label={t("toggleChangeAria")} onClick={onToggle}>
+              {expanded ? t("hide") : t("show")}
             </Button>
           )}
         </TableCell>
@@ -115,13 +125,13 @@ function AuditLogRow({
           <TableCell colSpan={4} className="bg-muted/50">
             <dl className="grid gap-x-8 gap-y-2 text-xs md:grid-cols-2">
               <div>
-                <dt className="font-medium">Before</dt>
+                <dt className="font-medium">{t("before")}</dt>
                 <dd className="mt-1 whitespace-pre-wrap">
                   {entry.previousValue ? JSON.stringify(entry.previousValue, null, 2) : "-"}
                 </dd>
               </div>
               <div>
-                <dt className="font-medium">After</dt>
+                <dt className="font-medium">{t("after")}</dt>
                 <dd className="mt-1 whitespace-pre-wrap">
                   {entry.newValue ? JSON.stringify(entry.newValue, null, 2) : "-"}
                 </dd>

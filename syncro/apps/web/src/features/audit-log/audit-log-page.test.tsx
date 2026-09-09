@@ -3,6 +3,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AuditLogListResponse, ListAuditLogEntriesParams } from "@/lib/api/generated/model";
+import { I18nProvider } from "@/test/i18n-wrapper";
 
 import { createAuditLogEntry } from "../../../tests/support/helpers/audit-log-factory";
 import { AuditLogPage } from "./audit-log-page";
@@ -43,7 +44,9 @@ vi.mock("@/features/plant-scope/plant-scope-store", () => ({
 const queryClient = new QueryClient();
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  <I18nProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  </I18nProvider>
 );
 
 describe("Audit Log Page — automate edge cases (query contract + scope)", () => {

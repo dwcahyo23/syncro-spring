@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RateableWorkorderCard } from "@/features/workorders/components/rateable-workorder-card";
@@ -11,6 +13,8 @@ import { useRateableWorkorders } from "@/features/workorders/hooks/use-ratings";
  * error states are required (project rule).
  */
 export function RatingsPageContent() {
+  const t = useTranslations("workOrders");
+  const tc = useTranslations("common");
   const { data, isLoading, isError, refetch } = useRateableWorkorders();
 
   if (isLoading) {
@@ -30,9 +34,9 @@ export function RatingsPageContent() {
   if (isError) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-lg border p-6">
-        <p className="text-muted-foreground text-sm">Failed to load rateable workorders.</p>
+        <p className="text-muted-foreground text-sm">{t("ratings.loadFailed")}</p>
         <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>
-          Retry
+          {tc("retry")}
         </Button>
       </div>
     );
@@ -42,7 +46,7 @@ export function RatingsPageContent() {
   if (workorders.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 rounded-lg border p-6">
-        <p className="text-muted-foreground text-sm">No closed workorders available to rate in your scope.</p>
+        <p className="text-muted-foreground text-sm">{t("ratings.empty")}</p>
       </div>
     );
   }

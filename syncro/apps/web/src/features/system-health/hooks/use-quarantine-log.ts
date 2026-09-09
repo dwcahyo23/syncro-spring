@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { getAuthToken } from "@/lib/auth/auth-client";
 import { API_BASE_URL } from "@/lib/api/orval-mutator";
+import { getAuthToken } from "@/lib/auth/auth-client";
 
 export const QUARANTINE_REFRESH_INTERVAL_MS = 30_000;
 

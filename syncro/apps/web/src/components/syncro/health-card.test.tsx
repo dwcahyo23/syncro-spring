@@ -1,11 +1,15 @@
-import { render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
+
+import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+
+import { renderI18n } from "@/test/i18n-wrapper";
 
 import { deriveSeverity, HealthCard, HealthMetricRow } from "./health-card";
 
 describe("HealthCard", () => {
   it("renders title, status label, severity, reason, and timestamp", () => {
-    render(
+    renderI18n(
       <HealthCard
         title="PostgreSQL"
         description="Primary relational store"
@@ -26,7 +30,7 @@ describe("HealthCard", () => {
   });
 
   it("renders extra metric rows passed as children", () => {
-    render(
+    renderI18n(
       <HealthCard title="Telemetry Ingest Worker" statusLabel="Running" statusSeverity="SUCCESS">
         <div>MQTT state</div>
         <div>Queue depth</div>
@@ -38,24 +42,24 @@ describe("HealthCard", () => {
   });
 
   it("renders the error fallback text", () => {
-    render(<HealthCard title="Redis" error />);
+    renderI18n(<HealthCard title="Redis" error />);
     expect(screen.getByText("Unable to check Redis.")).toBeInTheDocument();
   });
 
   it("renders the empty fallback text", () => {
-    render(<HealthCard title="Redis" empty />);
+    renderI18n(<HealthCard title="Redis" empty />);
     expect(screen.getByText("No health data reported.")).toBeInTheDocument();
   });
 
   it("renders a skeleton while loading", () => {
-    render(<HealthCard title="Redis" loading />);
+    renderI18n(<HealthCard title="Redis" loading />);
     const skeletons = document.querySelectorAll('[data-slot="skeleton"]');
     expect(skeletons.length).toBeGreaterThan(0);
     expect(screen.queryByText("No health data reported.")).not.toBeInTheDocument();
   });
 
   it("badge exposes a non-color-only text label via aria-label", () => {
-    render(<HealthCard title="MQTT / EMQX" statusLabel="Down" statusSeverity="CRITICAL" />);
+    renderI18n(<HealthCard title="MQTT / EMQX" statusLabel="Down" statusSeverity="CRITICAL" />);
 
     const badge = screen.getByLabelText("Status: Down");
     expect(badge).toBeInTheDocument();
@@ -87,7 +91,7 @@ describe("HealthCard", () => {
   });
 
   it("renders the error fallback alongside last known data when data is present", () => {
-    render(
+    renderI18n(
       <HealthCard
         title="Telemetry Ingest Worker"
         statusLabel="Running"
@@ -105,7 +109,7 @@ describe("HealthCard", () => {
   });
 
   it("keeps labels intact without altering acronym casing", () => {
-    render(
+    renderI18n(
       <HealthCard title="MQTT / EMQX" statusLabel="Up" statusSeverity="SUCCESS">
         <HealthMetricRow label="MQTT state" value="SUBSCRIBED" />
         <HealthMetricRow label="WAHA circuit" value="CLOSED" />
@@ -117,7 +121,7 @@ describe("HealthCard", () => {
   });
 
   it("badge falls back to Unknown label when no status label is provided", () => {
-    render(<HealthCard title="Redis" />);
+    renderI18n(<HealthCard title="Redis" />);
     expect(screen.getByLabelText("Status: Unknown")).toBeInTheDocument();
   });
 });

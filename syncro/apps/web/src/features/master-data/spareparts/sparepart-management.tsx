@@ -4,6 +4,7 @@ import React, { type FormEvent, useMemo, useState } from "react";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, SearchIcon, Trash2, TriangleAlertIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { CurrencyPriceInput, type CurrencyPriceValue } from "@/components/syncro/currency-price-input";
@@ -38,6 +39,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { apiErrorMessage, errorResponse } from "@/lib/api/error-response";
 import type {
   MachineView,
   SparepartPriceEntryView,
@@ -66,11 +68,10 @@ import {
   usePatchSparepartProcurement,
   useUpdateSparepart,
 } from "@/lib/api/generated/syncro";
-import { SyncroApiError } from "@/lib/api/orval-mutator";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
+import { useDateTimeFormatter } from "@/lib/i18n/format";
 
 type DialogMode = { type: "create"; sparepart?: never } | { type: "edit"; sparepart: SparepartView };
-type ErrorResponse = { code: string; message: string; fieldErrors?: Record<string, string> };
 type TaxonomyDimension = SparepartTaxonomyView["dimension"];
 type Filters = {
   categoryId: string | null;
@@ -80,6 +81,7 @@ type Filters = {
   search: string;
   machineCode: string;
 };
+type DimensionKey = "CATEGORY" | "KIND" | "BRAND" | "TYPE";
 
 const ALL = "__all__";
 const EMPTY_FORM: SparepartRequest = {
@@ -94,6 +96,9 @@ const EMPTY_PROCUREMENT: ProcurementDraft = { materialCode: "", leadTimeHours: "
 const EMPTY_PRICE_DRAFT: CurrencyPriceValue = { amount: "", currency: "IDR", kursToIdr: "" };
 
 export function SparepartManagement() {
+  const t = useTranslations("masterData");
+  const tc = useTranslations("common");
+  const te = useTranslations("errors");
   const user = useAuthUser();
   const queryClient = useQueryClient();
   const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGER_MAINTENANCE";
@@ -191,7 +196,7 @@ export function SparepartManagement() {
     if (response.data.id) {
       setForm((current) => ({ ...current, [formFieldForDimension(dimension)]: response.data.id ?? "" }));
     }
-    toast.success(`${dimensionLabel(dimension)} created.`);
+    toast.success(t(`sparepart.createToast.${dimension}`));
   }
 
   function openCreateDialog() {
@@ -246,12 +251,12 @@ export function SparepartManagement() {
     const errors: Record<string, string> = {};
     const materialCode = procurement.materialCode.trim();
     if (materialCode.length > 64) {
-      errors.materialCode = "Material code must be at most 64 characters.";
+      errors.materialCode = t("sparepart.procurement.materialCodeMax");
     }
     const hours = procurement.leadTimeHours.trim();
     const hoursValid = hours === "" || (/^\d+(\.\d{1,2})?$/.test(hours) && Number(hours) > 0);
     if (!hoursValid) {
-      errors.leadTimeHours = "Enter a positive number of hours with at most two decimals.";
+      errors.leadTimeHours = t("sparepart.procurement.leadTimeInvalid");
     }
     return Object.keys(errors).length > 0 ? errors : null;
   }
@@ -288,18 +293,18 @@ export function SparepartManagement() {
         { key: "typeId" as const, dim: SparepartTaxonomyRequestDimension.TYPE, name: finalForm.typeId },
       ];
 
-      for (const t of pendingTaxonomies) {
-        if (t.name.startsWith("pending-")) {
-          const actualName = t.name.replace("pending-", "");
+      for (const taxo of pendingTaxonomies) {
+        if (taxo.name.startsWith("pending-")) {
+          const actualName = taxo.name.replace("pending-", "");
           const res = await createTaxonomy.mutateAsync({
             data: {
-              dimension: t.dim,
+              dimension: taxo.dim,
               code: taxonomyCode(actualName),
               name: actualName.trim(),
               categoryId: finalForm.categoryId,
             },
           });
-          finalForm[t.key] = res.data.id ?? "";
+          finalForm[taxo.key] = res.data.id ?? "";
         }
       }
 
@@ -307,7 +312,7 @@ export function SparepartManagement() {
 
       if (dialogMode?.type === "edit") {
         if (!dialogMode.sparepart.id) {
-          setFormError("Sparepart cannot be updated because its identifier is missing.");
+          setFormError(t("sparepart.toast.missingIdOnUpdate"));
           return;
         }
         await updateSparepart.mutateAsync({ sparepartId: dialogMode.sparepart.id, data: finalForm });
@@ -321,23 +326,26 @@ export function SparepartManagement() {
             // The base sparepart update already committed; the procurement change did not.
             // Persist the denial inline (toast alone disappears) and keep the dialog open
             // so the operator sees what happened and can retry the procurement save.
-            const message = errorResponse(patchError)?.message ?? "Procurement values could not be saved.";
-            toast.error(`Sparepart updated, but procurement was not saved: ${message}`);
-            setFormError(`Sparepart updated, but procurement was not saved: ${message}`);
+            const response = errorResponse(patchError);
+            const detail = response ? apiErrorMessage(te, response) : t("sparepart.procurement.saveFailedDetail");
+            const message = t("sparepart.procurement.notSaved", { message: detail });
+            toast.error(message);
+            setFormError(message);
             return;
           }
         }
-        toast.success("Sparepart updated.");
+        toast.success(t("sparepart.toast.updated"));
       } else {
         await createSparepart.mutateAsync({ data: finalForm });
-        toast.success("Sparepart created.");
+        toast.success(t("sparepart.toast.created"));
       }
       setDialogMode(null);
     } catch (error) {
       const response = errorResponse(error);
       setFieldErrors(response?.fieldErrors ?? {});
-      setFormError(response?.message ?? "Sparepart request failed.");
-      toast.error(response?.message ?? "Sparepart request failed.");
+      const message = response ? apiErrorMessage(te, response) : t("sparepart.toast.requestFailed");
+      setFormError(message);
+      toast.error(message);
     }
   }
 
@@ -349,14 +357,15 @@ export function SparepartManagement() {
 
     try {
       if (!deleteTarget.id) {
-        setDeleteError("Sparepart cannot be deleted because its identifier is missing.");
+        setDeleteError(t("sparepart.toast.missingIdOnDelete"));
         return;
       }
       await deleteSparepart.mutateAsync({ sparepartId: deleteTarget.id });
-      toast.success("Sparepart deleted.");
+      toast.success(t("sparepart.toast.deleted"));
       setDeleteTarget(null);
     } catch (error) {
-      const message = errorResponse(error)?.message ?? "Sparepart delete failed.";
+      const response = errorResponse(error);
+      const message = response ? apiErrorMessage(te, response) : t("sparepart.toast.deleteFailed");
       setDeleteError(message);
       toast.error(message);
     }
@@ -369,7 +378,7 @@ export function SparepartManagement() {
     }
     const amount = Number(priceDraft.amount.trim());
     if (!Number.isFinite(amount) || amount <= 0) {
-      setFieldErrors((current) => ({ ...current, amount: "Enter a positive amount." }));
+      setFieldErrors((current) => ({ ...current, amount: t("sparepart.price.positiveAmount") }));
       return;
     }
     setFieldErrors((current) => {
@@ -393,11 +402,11 @@ export function SparepartManagement() {
         queryKey: getListSparepartPriceEntriesQueryKey(sparepartId),
       });
       setPriceDraft(EMPTY_PRICE_DRAFT);
-      toast.success("Price entry appended.");
+      toast.success(t("sparepart.price.appended"));
     } catch (error) {
       const response = errorResponse(error);
       setFieldErrors(response?.fieldErrors ?? {});
-      const message = response?.message ?? "Appending price entry failed.";
+      const message = response ? apiErrorMessage(te, response) : t("sparepart.price.appendFailed");
       setPriceError(message);
       toast.error(message);
     }
@@ -423,10 +432,10 @@ export function SparepartManagement() {
         params: { filename: file.name, contentType: file.type },
         data: { data: file },
       });
-      toast.success("Image uploaded.");
+      toast.success(t("sparepart.image.uploaded"));
     } catch (error) {
       const response = errorResponse(error);
-      const message = response?.message ?? "Uploading image failed.";
+      const message = response ? apiErrorMessage(te, response) : t("sparepart.image.uploadFailed");
       setImageError(message);
       toast.error(message);
     }
@@ -440,9 +449,10 @@ export function SparepartManagement() {
     setImageError(null);
     try {
       await deleteImage.mutateAsync({ sparepartId });
-      toast.success("Image removed.");
+      toast.success(t("sparepart.image.removed"));
     } catch (error) {
-      const message = errorResponse(error)?.message ?? "Removing image failed.";
+      const response = errorResponse(error);
+      const message = response ? apiErrorMessage(te, response) : t("sparepart.image.removeFailed");
       setImageError(message);
       toast.error(message);
     }
@@ -451,16 +461,14 @@ export function SparepartManagement() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Spareparts</CardTitle>
-        <CardDescription>
-          Manage machine-linked sparepart master data with category, brand, kind, and type references.
-        </CardDescription>
+        <CardTitle>{t("sparepart.title")}</CardTitle>
+        <CardDescription>{t("sparepart.description")}</CardDescription>
         <CardAction>
           <div className="flex items-center gap-2">
-            {canMutate ? null : <Badge variant="secondary">Read-only</Badge>}
+            {canMutate ? null : <Badge variant="secondary">{t("sparepart.readOnly")}</Badge>}
             {canMutate ? (
               <Button onClick={openCreateDialog} disabled={!taxonomyReady || taxonomy.isLoading}>
-                Create sparepart
+                {t("sparepart.create")}
               </Button>
             ) : null}
           </div>
@@ -470,28 +478,28 @@ export function SparepartManagement() {
         {taxonomy.isLoading || spareparts.isLoading ? <SparepartSkeleton /> : null}
         {taxonomy.isError ? (
           <SparepartState
-            title="Taxonomy could not be loaded"
-            description="Spareparts require category, brand, kind, and type reference data."
+            title={t("sparepart.state.taxonomyLoadTitle")}
+            description={t("sparepart.state.taxonomyLoadDesc")}
             action={
               <Button variant="outline" onClick={() => taxonomy.refetch()}>
-                Retry taxonomy
+                {t("sparepart.state.retryTaxonomy")}
               </Button>
             }
           />
         ) : null}
         {!taxonomy.isLoading && !taxonomy.isError && !taxonomyReady ? (
           <SparepartState
-            title="Taxonomy setup incomplete"
-            description="Create at least one category, brand, kind, and type before creating spareparts."
+            title={t("sparepart.state.taxonomyIncompleteTitle")}
+            description={t("sparepart.state.taxonomyIncompleteDesc")}
           />
         ) : null}
         {spareparts.isError ? (
           <SparepartState
-            title="Spareparts could not be loaded"
-            description="Refresh page or contact administrator if access should be available."
+            title={t("sparepart.state.loadFailedTitle")}
+            description={t("sparepart.state.loadFailedDesc")}
             action={
               <Button variant="outline" onClick={() => spareparts.refetch()}>
-                Retry spareparts
+                {t("sparepart.state.retrySpareparts")}
               </Button>
             }
           />
@@ -507,7 +515,7 @@ export function SparepartManagement() {
           />
         ) : null}
         {!spareparts.isLoading && !spareparts.isError && taxonomyReady && items.length === 0 ? (
-          <SparepartState title="No spareparts yet" description="Create first sparepart or adjust filters." />
+          <SparepartState title={t("sparepart.state.emptyTitle")} description={t("sparepart.state.emptyDesc")} />
         ) : null}
         {!spareparts.isLoading && !spareparts.isError && taxonomyReady && items.length > 0 ? (
           <SparepartTable
@@ -540,19 +548,23 @@ export function SparepartManagement() {
         <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
           <form onSubmit={submitSparepart}>
             <DialogHeader>
-              <DialogTitle>{dialogMode?.type === "edit" ? "Edit sparepart" : "Create sparepart"}</DialogTitle>
-              <DialogDescription>
-                Code must be unique, and the sparepart must be linked to an existing machine.
-              </DialogDescription>
+              <DialogTitle>
+                {dialogMode?.type === "edit" ? t("sparepart.dialog.editTitle") : t("sparepart.dialog.createTitle")}
+              </DialogTitle>
+              <DialogDescription>{t("sparepart.dialog.description")}</DialogDescription>
             </DialogHeader>
             {formError ? (
               <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{formError}</p>
             ) : null}
 
             <div className="flex gap-2 items-center text-sm font-medium py-2">
-              <span className={step === 1 ? "text-primary" : "text-muted-foreground"}>1. Details</span>
+              <span className={step === 1 ? "text-primary" : "text-muted-foreground"}>
+                {t("sparepart.step.details")}
+              </span>
               <span className="text-muted-foreground">/</span>
-              <span className={step === 2 ? "text-primary" : "text-muted-foreground"}>2. Confirmation</span>
+              <span className={step === 2 ? "text-primary" : "text-muted-foreground"}>
+                {t("sparepart.step.confirmation")}
+              </span>
             </div>
 
             <div className={step === 1 ? "grid gap-4 md:grid-cols-2" : "hidden"}>
@@ -566,7 +578,7 @@ export function SparepartManagement() {
                 onChange={(machineId) => setForm((current) => ({ ...current, machineId }))}
               />
               <TaxonomySelect
-                label="Category"
+                dimension="CATEGORY"
                 value={form.categoryId}
                 error={fieldErrors.categoryId}
                 disabled={isSaving}
@@ -578,7 +590,7 @@ export function SparepartManagement() {
                 }
               />
               <TaxonomySelect
-                label="Kind"
+                dimension="KIND"
                 value={form.kindId}
                 error={fieldErrors.kindId}
                 disabled={isSaving}
@@ -592,7 +604,7 @@ export function SparepartManagement() {
                 onChange={(kindId) => setForm((current) => ({ ...current, kindId }))}
               />
               <TaxonomySelect
-                label="Brand"
+                dimension="BRAND"
                 value={form.brandId}
                 error={fieldErrors.brandId}
                 disabled={isSaving}
@@ -606,7 +618,7 @@ export function SparepartManagement() {
                 onChange={(brandId) => setForm((current) => ({ ...current, brandId }))}
               />
               <TaxonomySelect
-                label="Type"
+                dimension="TYPE"
                 value={form.typeId}
                 error={fieldErrors.typeId}
                 disabled={isSaving}
@@ -622,10 +634,8 @@ export function SparepartManagement() {
               {dialogMode?.type === "edit" ? (
                 <div className="grid gap-4 rounded-md border border-dashed p-3 md:col-span-2">
                   <div>
-                    <span className="font-medium text-sm">Procurement readiness</span>
-                    <p className="text-muted-foreground text-xs">
-                      Requires job scope LEADER or above. Changes are recorded in the audit log.
-                    </p>
+                    <span className="font-medium text-sm">{t("sparepart.procurement.title")}</span>
+                    <p className="text-muted-foreground text-xs">{t("sparepart.procurement.hint")}</p>
                   </div>
                   <MaterialCodeField
                     value={procurement.materialCode}
@@ -643,8 +653,8 @@ export function SparepartManagement() {
               {dialogMode?.type === "edit" ? (
                 <div className="grid gap-4 rounded-md border border-dashed p-3 md:col-span-2">
                   <div>
-                    <span className="font-medium text-sm">Price History</span>
-                    <p className="text-muted-foreground text-xs">Requires job scope LEADER or above.</p>
+                    <span className="font-medium text-sm">{t("sparepart.price.title")}</span>
+                    <p className="text-muted-foreground text-xs">{t("sparepart.price.hint")}</p>
                   </div>
                   {priceError ? (
                     <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{priceError}</p>
@@ -667,7 +677,7 @@ export function SparepartManagement() {
                       onClick={() => void submitPriceEntry()}
                     >
                       {createPriceEntry.isPending ? <Loader2Icon className="animate-spin" /> : null}
-                      Append entry
+                      {t("sparepart.price.append")}
                     </Button>
                   </div>
                   <PriceHistoryTable
@@ -683,8 +693,8 @@ export function SparepartManagement() {
                   data-testid="sparepart-image-section"
                 >
                   <div>
-                    <span className="font-medium text-sm">Image</span>
-                    <p className="text-muted-foreground text-xs">Requires job scope LEADER or above.</p>
+                    <span className="font-medium text-sm">{t("sparepart.image.title")}</span>
+                    <p className="text-muted-foreground text-xs">{t("sparepart.image.hint")}</p>
                   </div>
                   <SparepartImageUpload
                     value={imageView?.presignedUrl ?? null}
@@ -692,9 +702,9 @@ export function SparepartManagement() {
                     onRemove={() => void removeImage()}
                     isUploading={createImage.isPending}
                     isRemoving={deleteImage.isPending}
-                    error={imageError ?? (imageLoadFailed ? "The current image could not be loaded." : undefined)}
+                    error={imageError ?? (imageLoadFailed ? t("sparepart.image.loadFailed") : undefined)}
                     readOnly={!canMutate}
-                    disabledReason="View only."
+                    disabledReason={t("sparepart.image.viewOnlyReason")}
                   />
                 </div>
               ) : null}
@@ -702,29 +712,27 @@ export function SparepartManagement() {
 
             {step === 2 && (
               <div className="grid gap-2 rounded-md border border-dashed p-3 text-sm min-h-[4.5rem] my-4">
-                <span className="font-medium">Confirmation</span>
-                <span className="text-muted-foreground">
-                  Review your sparepart details. BOM code will be generated upon save.
-                </span>
+                <span className="font-medium">{t("sparepart.confirm.title")}</span>
+                <span className="text-muted-foreground">{t("sparepart.confirm.hint")}</span>
               </div>
             )}
 
             <DialogFooter className="mt-4">
               <Button type="button" variant="outline" onClick={() => setDialogMode(null)} disabled={isSaving}>
-                Cancel
+                {tc("cancel")}
               </Button>
               {step === 1 ? (
                 <Button type="button" onClick={() => setStep(2)}>
-                  Next
+                  {tc("next")}
                 </Button>
               ) : (
                 <>
                   <Button type="button" variant="secondary" onClick={() => setStep(1)} disabled={isSaving}>
-                    Back
+                    {tc("back")}
                   </Button>
                   <Button type="submit" disabled={isSaving}>
                     {isSaving ? <Loader2Icon className="animate-spin" /> : null}
-                    Save sparepart
+                    {t("sparepart.dialog.save")}
                   </Button>
                 </>
               )}
@@ -736,19 +744,19 @@ export function SparepartManagement() {
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete sparepart?</AlertDialogTitle>
+            <AlertDialogTitle>{t("sparepart.delete.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes {deleteTarget?.code}. Deletion is blocked when installed spareparts depend on it.
+              {t("sparepart.delete.description", { code: deleteTarget?.code ?? "" })}
             </AlertDialogDescription>
             {deleteError ? (
               <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{deleteError}</p>
             ) : null}
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteSparepart.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteSparepart.isPending}>{tc("cancel")}</AlertDialogCancel>
             <Button variant="destructive" onClick={confirmDelete} disabled={deleteSparepart.isPending}>
               {deleteSparepart.isPending ? <Loader2Icon className="animate-spin" /> : null}
-              Delete sparepart
+              {t("sparepart.delete.action")}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -766,13 +774,14 @@ function SparepartFilters({
   taxonomyByDimension: Map<TaxonomyDimension, SparepartTaxonomyView[]>;
   onChange: (filters: Filters) => void;
 }) {
+  const t = useTranslations("masterData");
   return (
     <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[repeat(auto-fit,14rem)] sm:justify-start">
       <div className="relative w-full">
         <SearchIcon className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           className="pl-9"
-          placeholder="Search code..."
+          placeholder={t("sparepart.filter.searchCode")}
           value={filters.search}
           onChange={(event) => onChange({ ...filters, search: event.target.value })}
         />
@@ -781,19 +790,19 @@ function SparepartFilters({
         <SearchIcon className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           className="pl-9"
-          placeholder="Filter machine code..."
+          placeholder={t("sparepart.filter.machineCode")}
           value={filters.machineCode}
           onChange={(event) => onChange({ ...filters, machineCode: event.target.value })}
         />
       </div>
       <FilterSelect
-        label="Category"
+        dimension="CATEGORY"
         value={filters.categoryId ?? undefined}
         items={taxonomyByDimension.get(SparepartTaxonomyRequestDimension.CATEGORY) ?? []}
         onChange={(categoryId) => onChange({ ...filters, categoryId: categoryId ?? null })}
       />
       <FilterSelect
-        label="Brand"
+        dimension="BRAND"
         value={filters.brandId ?? undefined}
         items={linkedTaxonomyOptions(
           taxonomyByDimension,
@@ -803,7 +812,7 @@ function SparepartFilters({
         onChange={(brandId) => onChange({ ...filters, brandId: brandId ?? null })}
       />
       <FilterSelect
-        label="Kind"
+        dimension="KIND"
         value={filters.kindId ?? undefined}
         items={linkedTaxonomyOptions(
           taxonomyByDimension,
@@ -813,7 +822,7 @@ function SparepartFilters({
         onChange={(kindId) => onChange({ ...filters, kindId: kindId ?? null })}
       />
       <FilterSelect
-        label="Type"
+        dimension="TYPE"
         value={filters.typeId ?? undefined}
         items={linkedTaxonomyOptions(
           taxonomyByDimension,
@@ -841,34 +850,62 @@ function SparepartTable({
   sort: string;
   setSort: (sort: string) => void;
 }) {
+  const t = useTranslations("masterData");
+  const tc = useTranslations("common");
+  const dt = useDateTimeFormatter();
   return (
     <div className="overflow-x-auto rounded-lg border">
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead className="whitespace-nowrap">
-              <DataTableSortHeader title="Code" field="code" sort={sort} onSortChange={setSort} />
+              <DataTableSortHeader title={tc("code")} field="code" sort={sort} onSortChange={setSort} />
             </TableHead>
             <TableHead className="whitespace-nowrap min-w-[200px]">
-              <DataTableSortHeader title="Machine" field="machine.code" sort={sort} onSortChange={setSort} />
+              <DataTableSortHeader
+                title={t("sparepart.machine")}
+                field="machine.code"
+                sort={sort}
+                onSortChange={setSort}
+              />
             </TableHead>
             <TableHead className="whitespace-nowrap">
-              <DataTableSortHeader title="Category" field="category.name" sort={sort} onSortChange={setSort} />
+              <DataTableSortHeader
+                title={t("sparepart.dimension.CATEGORY")}
+                field="category.name"
+                sort={sort}
+                onSortChange={setSort}
+              />
             </TableHead>
             <TableHead className="whitespace-nowrap">
-              <DataTableSortHeader title="Kind" field="kind.name" sort={sort} onSortChange={setSort} />
+              <DataTableSortHeader
+                title={t("sparepart.dimension.KIND")}
+                field="kind.name"
+                sort={sort}
+                onSortChange={setSort}
+              />
             </TableHead>
             <TableHead className="whitespace-nowrap">
-              <DataTableSortHeader title="Brand" field="brand.name" sort={sort} onSortChange={setSort} />
+              <DataTableSortHeader
+                title={t("sparepart.dimension.BRAND")}
+                field="brand.name"
+                sort={sort}
+                onSortChange={setSort}
+              />
             </TableHead>
             <TableHead className="whitespace-nowrap">
-              <DataTableSortHeader title="Type" field="type.name" sort={sort} onSortChange={setSort} />
+              <DataTableSortHeader
+                title={t("sparepart.dimension.TYPE")}
+                field="type.name"
+                sort={sort}
+                onSortChange={setSort}
+              />
             </TableHead>
-            <TableHead className="whitespace-nowrap">Material code</TableHead>
-            <TableHead className="whitespace-nowrap">Lead time</TableHead>
-            <TableHead>Created</TableHead>
-            <TableHead>Updated</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead className="whitespace-nowrap">{t("sparepart.materialCode")}</TableHead>
+            <TableHead className="whitespace-nowrap">{t("sparepart.leadTime")}</TableHead>
+            <TableHead>{tc("createdAt")}</TableHead>
+            <TableHead>{tc("updatedAt")}</TableHead>
+            <TableHead className="text-right">{tc("actions")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -883,58 +920,32 @@ function SparepartTable({
               <TableCell>{sparepart.brand?.name ?? "-"}</TableCell>
               <TableCell>{sparepart.type?.name ?? "-"}</TableCell>
               <TableCell className="font-mono text-xs">{sparepart.materialCode ?? "-"}</TableCell>
-              <TableCell>{sparepart.leadTimeHours != null ? `${sparepart.leadTimeHours} h` : "-"}</TableCell>
-              <TableCell>{sparepart.createdAt ? formatDate(sparepart.createdAt) : "-"}</TableCell>
-              <TableCell>{sparepart.updatedAt ? formatDate(sparepart.updatedAt) : "-"}</TableCell>
+              <TableCell>
+                {sparepart.leadTimeHours != null
+                  ? t("sparepart.leadTimeValue", { hours: sparepart.leadTimeHours })
+                  : "-"}
+              </TableCell>
+              <TableCell>{sparepart.createdAt ? dt.dateTime(sparepart.createdAt) : "-"}</TableCell>
+              <TableCell>{sparepart.updatedAt ? dt.dateTime(sparepart.updatedAt) : "-"}</TableCell>
               <TableCell className="text-right">
                 {canMutate ? (
                   <div className="flex justify-end gap-2">
                     <Button variant="outline" size="sm" onClick={() => onEdit(sparepart)}>
-                      Edit
+                      {tc("edit")}
                     </Button>
                     <Button variant="destructive" size="sm" onClick={() => onDelete(sparepart)}>
                       <Trash2 />
-                      Delete
+                      {tc("delete")}
                     </Button>
                   </div>
                 ) : (
-                  <Badge variant="secondary">View only</Badge>
+                  <Badge variant="secondary">{t("sparepart.viewOnly")}</Badge>
                 )}
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-    </div>
-  );
-}
-
-function TextField({
-  id,
-  label,
-  value,
-  error,
-  disabled,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  value?: string;
-  error?: string;
-  disabled?: boolean;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="grid gap-2">
-      <Label htmlFor={id}>{label}</Label>
-      <Input
-        id={id}
-        value={value ?? ""}
-        onChange={(event) => onChange(event.target.value)}
-        aria-invalid={Boolean(error)}
-        disabled={disabled}
-      />
-      {error ? <p className="text-destructive text-sm">{error}</p> : null}
     </div>
   );
 }
@@ -956,28 +967,29 @@ function MachineSelect({
   onSearchChange: (value: string) => void;
   onChange: (value: string) => void;
 }) {
+  const t = useTranslations("masterData");
   return (
     <div className="grid gap-2">
-      <Label>Machine</Label>
+      <Label>{t("sparepart.machine")}</Label>
       <Select value={value} onValueChange={onChange} disabled={Boolean(disabled) || items.length === 0}>
         <SelectTrigger className="w-full min-w-0" aria-invalid={Boolean(error)}>
-          <SelectValue placeholder="Select machine" />
+          <SelectValue placeholder={t("sparepart.selectMachine")} />
         </SelectTrigger>
         <SelectContent>
           <div className="p-2">
             <Input
               value={search}
-              placeholder="Search machine code, name, or plant"
+              placeholder={t("sparepart.searchMachine")}
               onChange={(event) => onSearchChange(event.target.value)}
               onKeyDown={(event) => event.stopPropagation()}
             />
           </div>
           {items.length === 0 ? (
-            <div className="px-2 py-1.5 text-muted-foreground text-sm">No machines found</div>
+            <div className="px-2 py-1.5 text-muted-foreground text-sm">{t("sparepart.noMachinesFound")}</div>
           ) : null}
           {items.map((machine) => (
             <SelectItem key={machine.id ?? machine.code} value={machine.id ?? ""}>
-              {machine.code} · {machine.name || "Unnamed"} · {machine.plantCode}
+              {machine.code} · {machine.name || t("sparepart.unnamed")} · {machine.plantCode}
             </SelectItem>
           ))}
         </SelectContent>
@@ -988,7 +1000,7 @@ function MachineSelect({
 }
 
 function TaxonomySelect({
-  label,
+  dimension,
   value,
   error,
   disabled,
@@ -997,7 +1009,7 @@ function TaxonomySelect({
   onCreate,
   onChange,
 }: {
-  label: string;
+  dimension: DimensionKey;
   value?: string;
   error?: string;
   disabled?: boolean;
@@ -1006,6 +1018,7 @@ function TaxonomySelect({
   onCreate?: (name: string) => Promise<void>;
   onChange: (value: string) => void;
 }) {
+  const t = useTranslations("masterData");
   const [search, setSearch] = useState("");
   const visibleItems = items.filter((item) => taxonomyMatches(item, search));
   const canCreate = Boolean(creatable && onCreate && search.trim());
@@ -1020,22 +1033,22 @@ function TaxonomySelect({
 
   return (
     <div className="grid gap-2">
-      <Label>{label}</Label>
+      <Label>{t(`sparepart.dimension.${dimension}`)}</Label>
       <Select value={value} onValueChange={onChange} disabled={Boolean(disabled) || (!creatable && items.length === 0)}>
         <SelectTrigger className="w-full min-w-0" aria-invalid={Boolean(error)}>
-          <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
+          <SelectValue placeholder={t(`sparepart.select.${dimension}`)} />
         </SelectTrigger>
         <SelectContent position="popper" side="top" align="start" className="max-h-72">
           <div className="p-2">
             <Input
               value={search}
-              placeholder={`Search ${label.toLowerCase()}`}
+              placeholder={t(`sparepart.search.${dimension}`)}
               onChange={(event) => setSearch(event.target.value)}
               onKeyDown={(event) => event.stopPropagation()}
             />
           </div>
           {visibleItems.length === 0 ? (
-            <div className="px-2 py-1.5 text-muted-foreground text-sm">No {label.toLowerCase()} found</div>
+            <div className="px-2 py-1.5 text-muted-foreground text-sm">{t(`sparepart.noFound.${dimension}`)}</div>
           ) : null}
           {visibleItems.map((item) => (
             <SelectItem key={item.id} value={item.id ?? ""}>
@@ -1052,7 +1065,7 @@ function TaxonomySelect({
                 onClick={submitCreate}
                 disabled={disabled}
               >
-                Create {label.toLowerCase()} “{search.trim()}”
+                {t(`sparepart.createLabel.${dimension}`, { input: search.trim() })}
               </Button>
             </div>
           ) : null}
@@ -1064,16 +1077,17 @@ function TaxonomySelect({
 }
 
 function FilterSelect({
-  label,
+  dimension,
   value,
   items,
   onChange,
 }: {
-  label: string;
+  dimension: DimensionKey;
   value?: string;
   items: SparepartTaxonomyView[];
   onChange: (value: string | undefined) => void;
 }) {
+  const t = useTranslations("masterData");
   const [search, setSearch] = React.useState("");
   const filtered = search.trim()
     ? items.filter((item) => [item.name, item.code].some((v) => v?.toLowerCase().includes(search.trim().toLowerCase())))
@@ -1089,28 +1103,28 @@ function FilterSelect({
       }}
     >
       <SelectTrigger className="w-full min-w-0">
-        <SelectValue placeholder={`All ${label.toLowerCase()}`}>
-          {selectedItem ? selectedItem.name : `All ${label.toLowerCase()}`}
+        <SelectValue placeholder={t(`sparepart.all.${dimension}`)}>
+          {selectedItem ? selectedItem.name : t(`sparepart.all.${dimension}`)}
         </SelectValue>
       </SelectTrigger>
       <SelectContent>
         <div className="p-2">
           <Input
-            placeholder={`Search ${label.toLowerCase()}...`}
+            placeholder={t(`sparepart.searchDots.${dimension}`)}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           />
         </div>
-        <SelectItem value={ALL}>All {label.toLowerCase()}</SelectItem>
+        <SelectItem value={ALL}>{t(`sparepart.all.${dimension}`)}</SelectItem>
         {filtered.map((item) => (
           <SelectItem key={item.id} value={item.id ?? ""}>
             {item.name}
           </SelectItem>
         ))}
         {filtered.length === 0 ? (
-          <p className="px-2 py-3 text-center text-sm text-muted-foreground">No results</p>
+          <p className="px-2 py-3 text-center text-sm text-muted-foreground">{t("sparepart.noResults")}</p>
         ) : null}
       </SelectContent>
     </Select>
@@ -1182,10 +1196,6 @@ function taxonomyCode(name: string) {
     .replace(/^_+|_+$/g, "");
 }
 
-function dimensionLabel(dimension: SparepartTaxonomyRequestDimension) {
-  return String(dimension).toLowerCase();
-}
-
 function formFieldForDimension(dimension: SparepartTaxonomyRequestDimension): keyof SparepartRequest {
   if (dimension === SparepartTaxonomyRequestDimension.BRAND) {
     return "brandId";
@@ -1208,19 +1218,6 @@ function hasRequiredTaxonomy(taxonomyByDimension: Map<TaxonomyDimension, Sparepa
   ].every((dimension) => (taxonomyByDimension.get(dimension) ?? []).length > 0);
 }
 
-function defaultForm(
-  taxonomyByDimension: Map<TaxonomyDimension, SparepartTaxonomyView[]>,
-  machines: MachineView[],
-): SparepartRequest {
-  return {
-    machineId: machines[0]?.id ?? "",
-    categoryId: taxonomyByDimension.get(SparepartTaxonomyRequestDimension.CATEGORY)?.[0]?.id ?? "",
-    brandId: taxonomyByDimension.get(SparepartTaxonomyRequestDimension.BRAND)?.[0]?.id ?? "",
-    kindId: taxonomyByDimension.get(SparepartTaxonomyRequestDimension.KIND)?.[0]?.id ?? "",
-    typeId: taxonomyByDimension.get(SparepartTaxonomyRequestDimension.TYPE)?.[0]?.id ?? "",
-  };
-}
-
 function cleanFilters(filters: Filters) {
   return {
     categoryId: filters.categoryId ?? undefined,
@@ -1230,16 +1227,4 @@ function cleanFilters(filters: Filters) {
     search: filters.search?.trim() || undefined,
     machineCode: filters.machineCode?.trim() || undefined,
   };
-}
-
-function errorResponse(error: unknown): ErrorResponse | null {
-  if (!(error instanceof SyncroApiError) || !error.payload || typeof error.payload !== "object") {
-    return null;
-  }
-  const payload = error.payload as ErrorResponse;
-  return typeof payload.code === "string" && typeof payload.message === "string" ? payload : null;
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }

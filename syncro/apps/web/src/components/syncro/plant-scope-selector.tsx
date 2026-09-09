@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronDown, Gauge } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -36,22 +37,18 @@ export function PlantScopeSelector({
   activePlantId,
   onSelect,
   isSuperAdmin,
-  emptyReason,
   className,
 }: PlantScopeSelectorProps) {
+  const t = useTranslations("plantScope");
   if (availablePlants.length === 0) {
-    const helperText = isSuperAdmin
-      ? "Add plants in Master Data"
-      : emptyReason === "NO_PLANTS_ASSIGNED"
-        ? "No plants assigned. Contact your administrator."
-        : "No plants assigned. Contact your administrator.";
+    const helperText = isSuperAdmin ? t("addPlantsHint") : t("noPlantsAssignedHint");
 
     return (
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
             <span
-              aria-label="Select plant scope"
+              aria-label={t("selectAria")}
               aria-disabled="true"
               className={cn(
                 "inline-flex h-8 items-center gap-2 rounded-lg border bg-muted/40 px-3 text-muted-foreground text-sm",
@@ -60,7 +57,7 @@ export function PlantScopeSelector({
               role="status"
             >
               <Gauge className="size-4" aria-hidden="true" />
-              <span>{isSuperAdmin ? "All Plants" : "No plants assigned"}</span>
+              <span>{isSuperAdmin ? t("allPlants") : t("noPlantsAssigned")}</span>
             </span>
           </TooltipTrigger>
           <TooltipContent>{helperText}</TooltipContent>
@@ -69,14 +66,14 @@ export function PlantScopeSelector({
     );
   }
 
-  const allLabel = isSuperAdmin ? "All Plants" : "All my plants";
+  const allLabel = isSuperAdmin ? t("allPlants") : t("allMyPlants");
 
   if (availablePlants.length === 1 && (!isSuperAdmin || activePlantId !== "all")) {
     const plant = availablePlants[0];
 
     return (
       <span
-        aria-label="Select plant scope"
+        aria-label={t("selectAria")}
         className={cn("inline-flex h-8 items-center gap-2 rounded-lg border bg-background px-3 text-sm", className)}
         role="status"
       >
@@ -94,7 +91,7 @@ export function PlantScopeSelector({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          aria-label="Select plant scope"
+          aria-label={t("selectAria")}
           className={cn("justify-between border bg-background font-normal", className)}
           size="sm"
           type="button"
@@ -108,7 +105,7 @@ export function PlantScopeSelector({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-56">
-        <DropdownMenuLabel>Plant scope</DropdownMenuLabel>
+        <DropdownMenuLabel>{t("label")}</DropdownMenuLabel>
         <DropdownMenuRadioGroup value={activePlantId} onValueChange={onSelect}>
           <DropdownMenuRadioItem value="all">{allLabel}</DropdownMenuRadioItem>
           {availablePlants.map((plant) => (

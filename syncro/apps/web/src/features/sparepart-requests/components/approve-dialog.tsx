@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,7 @@ import { useApproveRequest } from "@/features/sparepart-requests/hooks/use-spare
  * allowedActions; this dialog only composes the request.
  */
 export function ApproveDialog({ requestId }: { requestId: string }) {
+  const t = useTranslations("sparepartRequests");
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
   const approve = useApproveRequest();
@@ -43,22 +45,20 @@ export function ApproveDialog({ requestId }: { requestId: string }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          Approve
+          {t("approve.trigger")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Approve request</DialogTitle>
-          <DialogDescription>
-            Approving moves the request to Acknowledged so inventory can process it.
-          </DialogDescription>
+          <DialogTitle>{t("approve.title")}</DialogTitle>
+          <DialogDescription>{t("approve.description")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="approveNote">Note (optional)</Label>
+            <Label htmlFor="approveNote">{t("approve.noteLabel")}</Label>
             <Textarea
               id="approveNote"
-              placeholder="e.g. Approved for procurement"
+              placeholder={t("approve.notePlaceholder")}
               value={note}
               onChange={(e) => setNote(e.target.value)}
               maxLength={500}
@@ -67,7 +67,7 @@ export function ApproveDialog({ requestId }: { requestId: string }) {
           </div>
           <Button onClick={handleSubmit} disabled={approve.isPending}>
             {approve.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
-            Approve
+            {t("approve.trigger")}
           </Button>
         </div>
       </DialogContent>

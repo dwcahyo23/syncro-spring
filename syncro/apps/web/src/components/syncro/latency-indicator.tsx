@@ -1,29 +1,34 @@
+"use client";
+
 import { CircleCheck, CircleX, Gauge, Minus, TriangleAlert } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
 import type { LatencyState } from "@/features/system-health/types";
+import { cn } from "@/lib/utils";
 
-const STATE_CONFIG: Record<LatencyState, { className: string; Icon: typeof CircleCheck; label: string }> = {
+// Style map keyed on the raw backend state; `labelKey` selects the translated label
+// (never the text — labels are display copy, states are the contract).
+const STATE_CONFIG: Record<LatencyState, { className: string; Icon: typeof CircleCheck; labelKey: string }> = {
   NO_DATA: {
     className: "border-muted/60 bg-muted/40 text-muted-foreground",
     Icon: Minus,
-    label: "No data",
+    labelKey: "noData",
   },
   NORMAL: {
     className: "status-badge-healthy",
     Icon: CircleCheck,
-    label: "Normal",
+    labelKey: "normal",
   },
   ELEVATED: {
     className: "status-badge-warning",
     Icon: TriangleAlert,
-    label: "Elevated",
+    labelKey: "elevated",
   },
   CRITICAL: {
     className: "border-destructive/40 bg-destructive/10 text-destructive",
     Icon: CircleX,
-    label: "Critical",
+    labelKey: "critical",
   },
 };
 
@@ -56,54 +61,63 @@ export function LatencyIndicator({
   readonly isLoading?: boolean;
   readonly isError?: boolean;
 }) {
+  const t = useTranslations("systemHealth.latency");
+  const config = latencyState !== undefined && latencyState in STATE_CONFIG ? STATE_CONFIG[latencyState] : null;
+
   let value: string;
   if (isError && latencyState === undefined) {
     // The static "Latency" label prefixes this, so the word is not repeated here.
-    value = "unavailable";
-  } else if (latencyState === undefined) {
-    value = formatLatencyLabel(null);
+    value = t("unavailable");
   } else {
-    value = formatLatencyLabel(lastLatencyMs ?? null);
+    value = latencyDisplay(lastLatencyMs ?? null, t("noData"));
   }
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2" role="status" aria-label="Telemetry latency">
+      <div className="flex items-center gap-2" role="status" aria-label={t("aria")}>
         <Gauge aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
-        <span className="text-muted-foreground text-xs">Latency</span>
+        <span className="text-muted-foreground text-xs">{t("label")}</span>
         <Skeleton className="h-5 w-24" />
       </div>
     );
   }
 
-  const config = latencyState !== undefined && latencyState in STATE_CONFIG
-    ? STATE_CONFIG[latencyState]
-    : STATE_CONFIG.NO_DATA;
+  const style = config ?? STATE_CONFIG.NO_DATA;
+  const label = config ? t(config.labelKey) : t("noData");
   // The trailing state label is hidden when it would duplicate the value ("No data · No
   // data") or assert a state we do not know (fetch failed before any data: "unavailable"
   // must not be paired with a "No data" verdict).
-  const showLabel = config.label !== value && !(isError && latencyState === undefined);
-  const accessibleName = showLabel
-    ? `Telemetry latency: ${value}, ${config.label}`
-    : `Telemetry latency: ${value}`;
+  const showLabel = label !== value && !(isError && latencyState === undefined);
+  const accessibleName = showLabel ? t("ariaValueLabel", { value, label }) : t("ariaValue", { value });
 
   return (
     <div
       role="status"
       aria-label={accessibleName}
-      className={cn("flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs", config.className)}
+      className={cn("flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs", style.className)}
     >
-      <config.Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
-      <span className="font-medium">Latency {value}</span>
+      <style.Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
+      <span className="font-medium">
+        {t("label")} {value}
+      </span>
       {showLabel ? (
         <>
           <span aria-hidden="true">·</span>
-          <span>{config.label}</span>
+          <span>{label}</span>
         </>
       ) : null}
-      {isError && latencyState !== undefined ? (
-        <span className="font-medium">(last known — refresh failed)</span>
-      ) : null}
+      {isError && latencyState !== undefined ? <span className="font-medium">{t("lastKnown")}</span> : null}
     </div>
   );
+}
+
+/** Numeric latency display — identical to {@link formatLatencyLabel} with a localized "no data" fallback. */
+function latencyDisplay(latencyMs: number | null, noDataLabel: string): string {
+  if (latencyMs === null || !Number.isFinite(latencyMs)) {
+    return noDataLabel;
+  }
+  if (latencyMs < 1000) {
+    return `${Math.round(latencyMs)} ms`;
+  }
+  return `${(latencyMs / 1000).toFixed(1)}s`;
 }

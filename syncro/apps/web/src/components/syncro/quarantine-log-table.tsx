@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,8 @@ export function QuarantineLogTable({
   readonly totalPages: number;
   readonly onPageChange: (page: number) => void;
 }) {
+  const t = useTranslations("systemHealth.quarantine");
+  const tc = useTranslations("common");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   function toggle(id: string) {
@@ -49,7 +52,7 @@ export function QuarantineLogTable({
   if (isError) {
     return (
       <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-        Failed to load quarantine log. Check your connection and try again.
+        {t("loadFailed")}
       </div>
     );
   }
@@ -57,7 +60,7 @@ export function QuarantineLogTable({
   if (entries.length === 0) {
     return (
       <div className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
-        No quarantined messages found.
+        {t("empty")}
       </div>
     );
   }
@@ -72,17 +75,10 @@ export function QuarantineLogTable({
       </div>
       {totalPages > 1 ? (
         <div className="flex items-center justify-between gap-2 pt-1 text-sm">
-          <span className="text-muted-foreground">
-            Page {page + 1} of {totalPages}
-          </span>
+          <span className="text-muted-foreground">{t("page", { page: page + 1, total: totalPages })}</span>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page === 0}
-              onClick={() => onPageChange(page - 1)}
-            >
-              Previous
+            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => onPageChange(page - 1)}>
+              {tc("previous")}
             </Button>
             <Button
               variant="outline"
@@ -90,7 +86,7 @@ export function QuarantineLogTable({
               disabled={page + 1 >= totalPages}
               onClick={() => onPageChange(page + 1)}
             >
-              Next
+              {tc("next")}
             </Button>
           </div>
         </div>
@@ -110,26 +106,22 @@ function QuarantineTableDesktop({
   readonly expanded: ReadonlySet<string>;
   readonly onToggle: (id: string) => void;
 }) {
+  const t = useTranslations("systemHealth.quarantine");
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="whitespace-nowrap">Received At</TableHead>
-          <TableHead>Topic</TableHead>
-          <TableHead>Reason</TableHead>
-          <TableHead>Field</TableHead>
-          <TableHead>Trace ID</TableHead>
+          <TableHead className="whitespace-nowrap">{t("receivedAt")}</TableHead>
+          <TableHead>{t("topic")}</TableHead>
+          <TableHead>{t("reason")}</TableHead>
+          <TableHead>{t("field")}</TableHead>
+          <TableHead>{t("traceId")}</TableHead>
           <TableHead className="w-8" />
         </TableRow>
       </TableHeader>
       <TableBody>
         {entries.map((entry) => (
-          <EntryRows
-            key={entry.id}
-            entry={entry}
-            isOpen={expanded.has(entry.id)}
-            onToggle={onToggle}
-          />
+          <EntryRows key={entry.id} entry={entry} isOpen={expanded.has(entry.id)} onToggle={onToggle} />
         ))}
       </TableBody>
     </Table>
@@ -145,6 +137,12 @@ function EntryRows({
   readonly isOpen: boolean;
   readonly onToggle: (id: string) => void;
 }) {
+  const t = useTranslations("systemHealth.quarantine");
+  const format = useFormatter();
+  const formatDateTime = (value: string | undefined) => {
+    if (!value) return "-";
+    return format.dateTime(new Date(value), { dateStyle: "medium", timeStyle: "short" });
+  };
   return (
     <>
       <TableRow>
@@ -157,12 +155,10 @@ function EntryRows({
           </span>
         </TableCell>
         <TableCell>
-          <ReasonBadge reason={entry.rejectionReason} />
+          <ReasonBadge reason={entry.rejectionReason} t={t} />
         </TableCell>
         <TableCell>
-          <span className="font-mono text-xs text-muted-foreground">
-            {entry.rejectionField ?? "-"}
-          </span>
+          <span className="font-mono text-xs text-muted-foreground">{entry.rejectionField ?? "-"}</span>
         </TableCell>
         <TableCell className="max-w-40">
           <span className="truncate font-mono text-xs text-muted-foreground" title={entry.traceId}>
@@ -175,7 +171,7 @@ function EntryRows({
             size="sm"
             className="size-8 p-0"
             onClick={() => onToggle(entry.id)}
-            aria-label="Toggle payload preview"
+            aria-label={t("togglePayload")}
           >
             {isOpen ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />}
           </Button>
@@ -184,7 +180,7 @@ function EntryRows({
       {isOpen ? (
         <TableRow className="hover:bg-transparent">
           <TableCell colSpan={6}>
-            <PayloadPreview payload={entry.rawPayload} />
+            <PayloadPreview payload={entry.rawPayload} t={t} />
           </TableCell>
         </TableRow>
       ) : null}
@@ -203,7 +199,17 @@ function QuarantineCards({
   readonly expanded: ReadonlySet<string>;
   readonly onToggle: (id: string) => void;
 }) {
+  const t = useTranslations("systemHealth.quarantine");
+  const format = useFormatter();
   const groups = groupByDate(entries);
+  const formatDateOnly = (date: string) => {
+    if (!date) return t("unknownDate");
+    return format.dateTime(new Date(`${date}T00:00:00Z`), { dateStyle: "medium" });
+  };
+  const formatTime = (value: string | undefined) => {
+    if (!value) return "-";
+    return format.dateTime(new Date(value), { timeStyle: "short" });
+  };
   return (
     <div className="space-y-4">
       {groups.map(([date, groupEntries]) => (
@@ -217,33 +223,29 @@ function QuarantineCards({
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex min-w-0 flex-col gap-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <ReasonBadge reason={entry.rejectionReason} />
+                        <ReasonBadge reason={entry.rejectionReason} t={t} />
                         {entry.rejectionField ? (
-                          <span className="font-mono text-xs text-muted-foreground">
-                            {entry.rejectionField}
-                          </span>
+                          <span className="font-mono text-xs text-muted-foreground">{entry.rejectionField}</span>
                         ) : null}
                       </div>
                       <p className="truncate font-mono text-xs" title={entry.topic}>
                         {entry.topic}
                       </p>
-                      <p className="font-mono text-muted-foreground text-xs">
-                        {formatTime(entry.receivedAt)}
-                      </p>
+                      <p className="font-mono text-muted-foreground text-xs">{formatTime(entry.receivedAt)}</p>
                     </div>
                     <Button
                       variant="ghost"
                       size="sm"
                       className="size-8 shrink-0 p-0"
                       onClick={() => onToggle(entry.id)}
-                      aria-label="Toggle payload preview"
+                      aria-label={t("togglePayload")}
                     >
                       {isOpen ? <ChevronUpIcon className="size-4" /> : <ChevronDownIcon className="size-4" />}
                     </Button>
                   </div>
                   {isOpen ? (
                     <div className="mt-3">
-                      <PayloadPreview payload={entry.rawPayload} />
+                      <PayloadPreview payload={entry.rawPayload} t={t} />
                     </div>
                   ) : null}
                 </div>
@@ -258,32 +260,33 @@ function QuarantineCards({
 
 // ─── Payload preview ───────────────────────────────────────────────────────────
 
-function PayloadPreview({ payload }: { readonly payload: string }) {
+function PayloadPreview({ payload, t }: { readonly payload: string; readonly t: ReturnType<typeof useTranslations> }) {
   const display = payload.length > 500 ? `${payload.slice(0, 500)}…` : payload;
   return (
     <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded bg-muted px-3 py-2 font-mono text-xs">
-      {display || "(empty)"}
+      {display || t("emptyPayload")}
     </pre>
   );
 }
 
 // ─── Reason badge ──────────────────────────────────────────────────────────────
 
-const REASON_VARIANT: Record<string, { label: string; className: string }> = {
-  malformed_topic: { label: "Malformed Topic", className: "status-badge-warning" },
-  inactive_machine: { label: "Inactive Machine", className: "status-badge-neutral" },
-  unparseable_payload: { label: "Unparseable", className: "status-badge-critical" },
-  missing_contract_field: { label: "Missing Field", className: "status-badge-info" },
-  unsupported_schema_version: { label: "Bad Schema Version", className: "status-badge-info" },
-  machine_identity_mismatch: { label: "Identity Mismatch", className: "status-badge-warning" },
+// Styling map keyed on the raw rejection-reason code; labels resolve via t(`reasons.${code}`).
+const REASON_CLASS: Record<string, string> = {
+  malformed_topic: "status-badge-warning",
+  inactive_machine: "status-badge-neutral",
+  unparseable_payload: "status-badge-critical",
+  missing_contract_field: "status-badge-info",
+  unsupported_schema_version: "status-badge-info",
+  machine_identity_mismatch: "status-badge-warning",
 };
 
-function ReasonBadge({ reason }: { readonly reason: string }) {
-  const config = REASON_VARIANT[reason];
-  if (config) {
+function ReasonBadge({ reason, t }: { readonly reason: string; readonly t: ReturnType<typeof useTranslations> }) {
+  const className = REASON_CLASS[reason];
+  if (className && t.has(`reasons.${reason}`)) {
     return (
-      <Badge variant="outline" className={cn("text-xs", config.className)}>
-        {config.label}
+      <Badge variant="outline" className={cn("text-xs", className)}>
+        {t(`reasons.${reason}`)}
       </Badge>
     );
   }
@@ -321,19 +324,4 @@ function groupByDate(entries: QuarantineEntryView[]): [string, QuarantineEntryVi
     }
   }
   return [...groups.entries()];
-}
-
-function formatDateTime(value: string | undefined) {
-  if (!value) return "-";
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
-}
-
-function formatDateOnly(date: string) {
-  if (!date) return "Unknown date";
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(`${date}T00:00:00Z`));
-}
-
-function formatTime(value: string | undefined) {
-  if (!value) return "-";
-  return new Intl.DateTimeFormat("en", { timeStyle: "short" }).format(new Date(value));
 }

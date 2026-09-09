@@ -2,12 +2,13 @@
 
 import * as React from "react";
 
-import { format, subDays } from "date-fns";
+import { useFormatter, useTranslations } from "next-intl";
 import type { DateRange } from "react-day-picker";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useCalendarLocale } from "@/lib/i18n/format";
 
 interface DateRangePickerProps {
   value?: DateRange;
@@ -15,13 +16,19 @@ interface DateRangePickerProps {
 }
 
 export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
+  const t = useTranslations("common");
+  const format = useFormatter();
+  const calendarLocale = useCalendarLocale();
   const [open, setOpen] = React.useState(false);
   const [internalDateRange, setInternalDateRange] = React.useState<DateRange | undefined>(() => {
     const to = new Date();
-    const from = subDays(to, 29);
+    const from = new Date(to);
+    from.setDate(from.getDate() - 29);
     return { from, to };
   });
   const dateRange = value ?? internalDateRange;
+
+  const formatDay = (date: Date) => format.dateTime(date, { day: "numeric", month: "short", year: "numeric" });
 
   const handleDateChange = (nextValue: DateRange | undefined) => {
     if (!value) {
@@ -36,9 +43,9 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
         <Button variant="outline" id="date" className="font-normal">
           {dateRange?.from
             ? dateRange.to
-              ? `${format(dateRange.from, "d MMM yyyy")} - ${format(dateRange.to, "d MMM yyyy")}`
-              : format(dateRange.from, "d MMM yyyy")
-            : "Select date"}
+              ? `${formatDay(dateRange.from)} - ${formatDay(dateRange.to)}`
+              : formatDay(dateRange.from)
+            : t("selectDate")}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto overflow-hidden p-0" align="end">
@@ -48,6 +55,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
           selected={dateRange}
           onSelect={handleDateChange}
           numberOfMonths={2}
+          locale={calendarLocale}
         />
       </PopoverContent>
     </Popover>

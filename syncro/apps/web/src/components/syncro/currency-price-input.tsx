@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -25,18 +27,19 @@ export interface CurrencyPriceInputProps {
  * the backend forces IDR kurs to 1 regardless of what is typed here.
  */
 export function CurrencyPriceInput({ value, onChange, errors, readOnly = false }: CurrencyPriceInputProps) {
+  const t = useTranslations("spareparts.shared.currencyPrice");
   const showKurs = value.currency !== "IDR";
 
   return (
     <div className="grid gap-2">
-      <Label htmlFor="price-amount">Amount</Label>
+      <Label htmlFor="price-amount">{t("amount")}</Label>
       <div className="flex gap-2">
         <Input
           id="price-amount"
           className="min-w-0 flex-1"
           inputMode="decimal"
           value={value.amount}
-          placeholder="e.g. 1500000"
+          placeholder={t("amountPlaceholder")}
           aria-invalid={Boolean(errors?.amount)}
           disabled={readOnly}
           data-testid="price-amount-input"
@@ -49,7 +52,7 @@ export function CurrencyPriceInput({ value, onChange, errors, readOnly = false }
         >
           <SelectTrigger
             className="w-24 shrink-0"
-            aria-label="Currency"
+            aria-label={t("currency")}
             aria-invalid={Boolean(errors?.currency)}
             data-testid="price-currency-select"
           >
@@ -76,18 +79,18 @@ export function CurrencyPriceInput({ value, onChange, errors, readOnly = false }
       ) : null}
       {showKurs ? (
         <div className="grid gap-2">
-          <Label htmlFor="price-kurs">Kurs to IDR</Label>
+          <Label htmlFor="price-kurs">{t("kursToIdr")}</Label>
           <Input
             id="price-kurs"
             inputMode="decimal"
             value={value.kursToIdr}
-            placeholder="e.g. 15500"
+            placeholder={t("kursPlaceholder")}
             aria-invalid={Boolean(errors?.kursToIdr)}
             disabled={readOnly}
             data-testid="price-kurs-input"
             onChange={(event) => onChange({ ...value, kursToIdr: event.target.value })}
           />
-          <p className="text-muted-foreground text-xs">Required for non-IDR currencies.</p>
+          <p className="text-muted-foreground text-xs">{t("requiredForNonIdr")}</p>
           {errors?.kursToIdr ? (
             <p role="alert" className="text-destructive text-sm">
               {errors.kursToIdr}

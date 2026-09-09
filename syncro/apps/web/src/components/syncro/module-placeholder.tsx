@@ -1,3 +1,7 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface ModulePlaceholderProps {
@@ -7,20 +11,18 @@ interface ModulePlaceholderProps {
 }
 
 export function ModulePlaceholder({ title, description, sections = [] }: ModulePlaceholderProps) {
+  const t = useTranslations("common");
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <div className="space-y-2">
-        <p className="font-medium text-muted-foreground text-sm">Syncro shell</p>
+        <p className="font-medium text-muted-foreground text-sm">{t("shellLabel")}</p>
         <h1 className="font-semibold text-3xl tracking-tight">{title}</h1>
         <p className="max-w-3xl text-muted-foreground">{description}</p>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Module placeholder</CardTitle>
-          <CardDescription>
-            This route reserves the page composition shell. Backend-owned data, permissions, and domain rules arrive in
-            later stories.
-          </CardDescription>
+          <CardTitle>{t("modulePlaceholderTitle")}</CardTitle>
+          <CardDescription>{t("modulePlaceholderDescription")}</CardDescription>
         </CardHeader>
         {sections.length > 0 ? (
           <CardContent>

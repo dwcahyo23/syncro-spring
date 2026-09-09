@@ -1,6 +1,74 @@
 {
   "common": {
-    "comingSoon": "Soon"
+    "comingSoon": "Soon",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving...",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "retry": "Retry",
+    "refresh": "Refresh",
+    "search": "Search",
+    "create": "Create",
+    "edit": "Edit",
+    "view": "View",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "active": "Active",
+    "inactive": "Inactive",
+    "status": "Status",
+    "actions": "Actions",
+    "name": "Name",
+    "code": "Code",
+    "description": "Description",
+    "notes": "Notes",
+    "plant": "Plant",
+    "all": "All",
+    "none": "None",
+    "notAvailable": "—",
+    "selectPlaceholder": "Select...",
+    "noResults": "No results found",
+    "loading": "Loading...",
+    "unknown": "Unknown",
+    "severity": "Severity",
+    "reason": "Reason",
+    "reportedAt": "Reported at",
+    "requiredMark": "*",
+    "justNow": "just now",
+    "secondsAgo": "{count, plural, one {# second ago} other {# seconds ago}}",
+    "minutesAgo": "{count, plural, one {# minute ago} other {# minutes ago}}",
+    "hoursAgo": "{count, plural, one {# hour ago} other {# hours ago}}",
+    "daysAgo": "{count, plural, one {# day ago} other {# days ago}}",
+    "page": "Page",
+    "of": "of",
+    "rowsPerPage": "Rows per page",
+    "totalItems": "{count, plural, one {# item} other {# items}}",
+    "showingRange": "Showing {from}–{to} of {total}",
+    "createdAt": "Created",
+    "updatedAt": "Updated",
+    "selectDate": "Select date",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "notFound": {
+      "title": "Page not found.",
+      "description": "The page you are looking for could not be found.",
+      "goBackHome": "Go back home",
+      "sectionPlaceholder": "This section will be added in future updates."
+    },
+    "inheritedFromGroup": "Inherited from group",
+    "permissionDeniedTitle": "Permission denied",
+    "permissionDeniedDescription": "You don't have permission to access this page.",
+    "shellLabel": "Syncro shell",
+    "modulePlaceholderTitle": "Module placeholder",
+    "modulePlaceholderDescription": "This route reserves the page composition shell. Backend-owned data, permissions, and domain rules arrive in later stories.",
+    "telemetryDisplayFailed": "Telemetry display failed",
+    "goToOperationsOverview": "Go to Operations Overview",
+    "telemetryDisplayFailedFor": "Could not render telemetry for {machineCode}. Other machines are unaffected.",
+    "telemetryDisplayFailedPlain": "Could not render telemetry. Other machines are unaffected."
   },
   "navigation": {
     "groups": {
@@ -29,6 +97,2470 @@
       "auditLog": "Audit Log",
       "systemHealth": "System Health",
       "settings": "Settings"
+    },
+    "layout": {
+      "title": "Preferences",
+      "subtitle": "Customize your dashboard layout preferences.",
+      "themePreset": {
+        "label": "Theme Preset",
+        "placeholder": "Preset",
+        "options": {
+          "default": "Default",
+          "brutalist": "Brutalist",
+          "industrial": "Industrial",
+          "soft-pop": "Soft Pop",
+          "tangerine": "Tangerine"
+        }
+      },
+      "fonts": {
+        "label": "Fonts",
+        "placeholder": "Select font"
+      },
+      "themeMode": {
+        "label": "Theme Mode",
+        "toggleLight": "Toggle light",
+        "toggleDark": "Toggle dark",
+        "toggleSystem": "Toggle system",
+        "options": {
+          "light": "Light",
+          "dark": "Dark",
+          "system": "System"
+        }
+      },
+      "pageLayout": {
+        "label": "Page Layout",
+        "toggleCentered": "Toggle centered",
+        "toggleFullWidth": "Toggle full-width",
+        "options": {
+          "centered": "Centered",
+          "fullWidth": "Full Width"
+        }
+      },
+      "navbarBehavior": {
+        "label": "Navbar Behavior",
+        "toggleSticky": "Toggle sticky",
+        "toggleScroll": "Toggle scroll",
+        "options": {
+          "sticky": "Sticky",
+          "scroll": "Scroll"
+        }
+      },
+      "sidebarStyle": {
+        "label": "Sidebar Style",
+        "toggleInset": "Toggle inset",
+        "toggleSidebar": "Toggle sidebar",
+        "toggleFloating": "Toggle floating",
+        "options": {
+          "inset": "Inset",
+          "sidebar": "Sidebar",
+          "floating": "Floating"
+        }
+      },
+      "sidebarCollapseMode": {
+        "label": "Sidebar Collapse Mode",
+        "toggleIcon": "Toggle icon",
+        "toggleOffcanvas": "Toggle offcanvas",
+        "options": {
+          "icon": "Icon",
+          "offcanvas": "OffCanvas"
+        }
+      },
+      "restoreDefaults": "Restore Defaults"
+    },
+    "theme": {
+      "cycleAria": "Current theme: {mode}. Click to cycle themes",
+      "modes": {
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System"
+      }
+    },
+    "navUser": {
+      "roles": {
+        "SUPER_ADMIN": "Super Admin",
+        "MANAGER_MAINTENANCE": "Manager Maintenance",
+        "MAINTENANCE_LEADER": "Maintenance Leader",
+        "SECTION_LEADER": "Section Leader",
+        "STAFF_MAINTENANCE": "Staff Maintenance",
+        "TECHNICIAN": "Technician",
+        "INVENTORY_MAINTENANCE": "Inventory Maintenance",
+        "STOREKEEPER": "Storekeeper",
+        "PRODUCTION_LEADER": "Production Leader",
+        "AUDITOR": "Auditor"
+      },
+      "settings": "Settings",
+      "logOut": "Log out"
+    },
+    "accountSwitcher": {
+      "account": "Account",
+      "billing": "Billing",
+      "notifications": "Notifications",
+      "logOut": "Log out"
+    },
+    "navDocuments": {
+      "groupLabel": "Documents",
+      "more": "More",
+      "open": "Open",
+      "share": "Share",
+      "delete": "Delete"
+    },
+    "search": {
+      "trigger": "Search",
+      "placeholder": "Search dashboards, users, and more…",
+      "noResults": "No results found."
+    }
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "AUTH_REQUIRED": "Please sign in to continue.",
+    "SPAREPART_IMAGE_NOT_FOUND": "No image is stored for this part.",
+    "INVALID_CREDENTIALS": "Invalid login credentials.",
+    "AUTH_UNVERIFIED": "Authentication response could not be verified.",
+    "PLANT_SCOPE_UNAVAILABLE": "Plant scope could not be loaded.",
+    "FORBIDDEN": "You do not have the required role or scope for this action.",
+    "INVALID_STATE_TRANSITION": "This action is not allowed in the current state.",
+    "SELF_APPROVAL_FORBIDDEN": "You cannot approve your own request.",
+    "DUPLICATE_MATERIAL_CODE": "That material code already belongs to another part.",
+    "NEGATIVE_STOCK_REJECTED": "Stock cannot go negative.",
+    "SECTION_REASSIGNMENT_REJECTED": "This group already belongs to another section. Clear the current section first.",
+    "SECTION_PLANT_MISMATCH": "The selected section belongs to a different plant.",
+    "SECTION_HAS_ACTIVE_MACHINE_GROUPS": "Cannot deactivate: this section still has machine groups with active machines.",
+    "DEPARTMENT_HAS_MEMBERS": "Cannot deactivate: this department still has members.",
+    "DUPLICATE_RESPONSIBILITY": "User is already assigned to this machine",
+    "DUPLICATE_IDENTIFIER": "The NIK or phone number is already in use by another user.",
+    "ALERT_CONCURRENT_MODIFICATION": "This alert was modified by someone else. Reload and try again.",
+    "VALIDATION_ERROR": "The submitted data contains errors.",
+    "validation": {
+      "required": "This field is required."
+    },
+    "validationFailed": "Validation failed — see fields."
+  },
+  "ui": {
+    "pagination": {
+      "label": "pagination",
+      "previousPage": "Go to previous page",
+      "nextPage": "Go to next page",
+      "morePages": "More pages",
+      "showing": "Showing {start} to {end} of {total} items",
+      "rowsPerPage": "Rows per page",
+      "pageOf": "Page {page} of {total}",
+      "firstPage": "Go to first page",
+      "lastPage": "Go to last page"
+    },
+    "command": {
+      "title": "Command Palette",
+      "searchPlaceholder": "Search for a command to run..."
+    },
+    "sidebar": {
+      "toggle": "Toggle Sidebar",
+      "mobileTitle": "Sidebar",
+      "mobileDescription": "Displays the mobile sidebar."
+    },
+    "spinner": {
+      "loading": "Loading"
+    }
+  },
+  "alerts": {
+    "listPage": {
+      "title": "Alerts",
+      "subtitle": "Sparepart lifetime threshold alerts across all machines.",
+      "accessDeniedTitle": "Access denied",
+      "accessDeniedDescription": "You do not have access to alerts.",
+      "loadFailed": "Failed to load alerts.",
+      "emptyTitle": "No alerts",
+      "emptyDescription": "No sparepart lifetime alerts match the current filter.",
+      "colStatus": "Status",
+      "colType": "Type",
+      "colNotification": "Notification",
+      "colMachine": "Machine",
+      "colSparepart": "Sparepart",
+      "colThreshold": "Threshold",
+      "colConsumed": "Consumed",
+      "rowAria": "View alert for {machineCode} — {sparepart}",
+      "notApplicable": "-"
+    },
+    "detailPage": {
+      "backToAlerts": "Back to Alerts",
+      "notFoundTitle": "Alert not found",
+      "notFoundDescription": "This alert does not exist or is not visible to you.",
+      "accessDeniedTitle": "Access denied",
+      "accessDeniedDescription": "You do not have permission to view this alert.",
+      "loadFailed": "Failed to load alert.",
+      "title": "Alert — {machineCode}",
+      "titleWithName": "Alert — {machineCode} ({machineName})",
+      "acknowledge": "Acknowledge",
+      "acknowledging": "Acknowledging…",
+      "acknowledgeAria": "Acknowledge this alert",
+      "resolve": "Resolve",
+      "resolving": "Resolving…",
+      "resolveAria": "Resolve this alert",
+      "resolveOverride": "Resolve Override",
+      "resolveOverrideAria": "Resolve this alert directly (SUPER_ADMIN override)",
+      "ackSuccess": "Alert acknowledged.",
+      "ackInvalidState": "Cannot acknowledge: invalid state transition.",
+      "ackFailed": "Failed to acknowledge alert.",
+      "resolveSuccess": "Alert resolved.",
+      "resolveInvalidState": "Cannot resolve: invalid state transition.",
+      "resolveOverrideSuccess": "Alert resolved (override).",
+      "overrideForbidden": "Only SUPER_ADMIN can use resolve override.",
+      "overrideNotOpen": "Cannot override: alert is not in OPEN state.",
+      "resolveFailed": "Failed to resolve alert.",
+      "whyTitle": "Why this alert fired",
+      "whyProcurementDescription": "Projected depletion falls within the sparepart lead-time window.",
+      "whyThresholdDescription": "Consumed lifetime reached the configured threshold at the time of detection.",
+      "procurementParagraph": "Projected depletion for sparepart <sparepart>{sparepartName}</sparepart> (function: {functionName}) on machine <machine>{machineCode}</machine> falls within its procurement lead-time window, so ordering should start before stock-out.",
+      "thresholdParagraph": "Consumed percentage <consumed>{consumedPct}</consumed> reached the configured threshold of <threshold>{thresholdPct}</threshold> for sparepart <sparepart>{sparepartName}</sparepart> (function: {functionName}) on machine <machine>{machineCode}</machine>.",
+      "statusReasonLabel": "Status reason:",
+      "rateLabel": "Rate per operating hour",
+      "rateValue": "{value} counters/op-hour",
+      "basisLabel": "Projection basis",
+      "basis": {
+        "ROLLING_30_DAY": "Rolling 30 days",
+        "FULL_HISTORY": "Full history"
+      },
+      "basisUnknown": "Unknown basis",
+      "leadTimeLabel": "Lead time used",
+      "leadTimeValue": "{value} h",
+      "projectedDepletionLabel": "Projected depletion",
+      "lifetimeEvidenceTitle": "Lifetime Evidence",
+      "lifetimeEvidenceDescription": "Snapshot values recorded at the time the alert was created.",
+      "staleEscalationBanner": "Next escalation pending — check worker status in System Health.",
+      "machineSparepartTitle": "Machine & Sparepart",
+      "machineCodeLabel": "Machine code",
+      "machineGroupLabel": "Machine group",
+      "sparepartLabel": "Sparepart",
+      "functionLabel": "Function",
+      "installationIdLabel": "Installation ID",
+      "metadataTitle": "Alert Metadata",
+      "lastUpdatedLabel": "Last updated",
+      "traceIdLabel": "Trace ID",
+      "notApplicable": "-",
+      "concurrentModified": "Alert was modified concurrently. Reload and retry."
+    },
+    "notificationHistory": {
+      "timelineTitle": "Escalation Timeline",
+      "timelineDescription": "Backend-driven escalation chain ordered TECHNICIAN → MANAGER",
+      "historyTitle": "Notification History",
+      "historyDescription": "Per-level delivery evidence with masked phone and attempt history",
+      "auditTitle": "Audit Evidence",
+      "auditDescription": "Immutable audit trail for this alert (entityType=ALERT)",
+      "timelineLoadFailed": "Failed to load escalation timeline.",
+      "historyLoadFailed": "Failed to load notification history.",
+      "auditLoadFailed": "Failed to load audit evidence.",
+      "emptyTimeline": "No notifications queued for this alert yet. A TECHNICIAN job is created when the alert opens; escalation follows every 15 minutes.",
+      "alertCreatedLine": "Alert created: {datetime}",
+      "emptyHistory": "No notification jobs for this alert.",
+      "emptyAudit": "No audit evidence yet.",
+      "copied": "Copied",
+      "copyFailed": "Copy failed — not in secure context",
+      "copyTraceAria": "Copy trace ID",
+      "toggleAttemptsAria": "Toggle attempts",
+      "toggleChangeAria": "Toggle change detail",
+      "headerLevel": "Level",
+      "headerRecipient": "Recipient",
+      "headerPhone": "Phone",
+      "headerAttempts": "Attempts",
+      "headerTime": "Time",
+      "headerDetail": "Detail",
+      "headerTrace": "Trace",
+      "headerTimestamp": "Timestamp",
+      "headerActor": "Actor",
+      "headerAction": "Action",
+      "headerResult": "Result",
+      "headerField": "Field",
+      "headerBefore": "Before",
+      "headerAfter": "After",
+      "headerAt": "At",
+      "traceIdLine": "traceId: {traceId}",
+      "codeLine": "{code}: {message}",
+      "requestFailed": "Request failed",
+      "more": "more",
+      "less": "less",
+      "attemptsLine": "Attempts: {attempts}/{max}",
+      "attemptsCount": "Attempts ({count})",
+      "recordCreated": "Record created.",
+      "recordDeleted": "Record deleted.",
+      "noFieldChanges": "No field changes recorded.",
+      "notApplicable": "-"
+    },
+    "lifetime": {
+      "consumedAria": "Lifetime consumed: {pct}%",
+      "thresholdTitle": "Threshold: {pct}%",
+      "baselineCounter": "Baseline counter",
+      "currentCounter": "Current counter (at firing)",
+      "expectedLifetime": "Expected lifetime",
+      "consumedCount": "Consumed count",
+      "consumedPct": "Consumed %",
+      "threshold": "Threshold"
+    },
+    "status": {
+      "OPEN": "Open",
+      "ACKNOWLEDGED": "Acknowledged",
+      "RESOLVED": "Resolved"
+    },
+    "statusDescription": {
+      "OPEN": "Alert is open and requires attention.",
+      "ACKNOWLEDGED": "Alert has been acknowledged. Escalation is paused.",
+      "RESOLVED": "Alert has been resolved. No further action required."
+    },
+    "statusAria": "Alert status: {label}. {description}",
+    "typeBadge": {
+      "THRESHOLD_PERCENTAGE": {
+        "label": "Threshold",
+        "description": "Consumed lifetime reached the configured percentage threshold."
+      },
+      "PROCUREMENT_RISK": {
+        "label": "Procurement risk",
+        "description": "Projected depletion falls within the sparepart lead-time window."
+      },
+      "UNKNOWN": {
+        "label": "Unknown",
+        "description": "Alert type is not recognized."
+      },
+      "ariaLabel": "Alert type: {label}. {description}"
+    },
+    "notificationPill": {
+      "PENDING": "Pending",
+      "SENT": "Sent",
+      "ESCALATED": "Sent",
+      "ROUTING_FAILED": "No recipient",
+      "EXHAUSTED": "Failed",
+      "CANCELLED": "Stopped",
+      "ariaLabel": "Notification status: {label}",
+      "sentAt": "Sent at {datetime}",
+      "levelLine": "Level: {level}",
+      "notificationLine": "Notification: {status}"
+    },
+    "escalation": {
+      "timelineAria": "Escalation timeline",
+      "status": {
+        "sent": "Sent",
+        "queued": "Queued",
+        "pending": "Pending",
+        "failed": "Failed",
+        "stopped": "Stopped",
+        "rate-limited": "Rate limited"
+      },
+      "next": "Next: {time}",
+      "escalatedTo": "Escalated to {level} at {time}",
+      "nextLevel": "next level",
+      "stoppedBy": "Stopped by acknowledgement at {time}",
+      "showFull": "Show full timeline ({count} levels)",
+      "showLess": "Show less",
+      "showLatest": "Show latest only"
+    }
+  },
+  "systemHealth": {
+    "cardTitles": {
+      "postgres": "PostgreSQL",
+      "postgresDescription": "Primary relational store",
+      "influxdb": "InfluxDB",
+      "influxdbDescription": "Telemetry history store",
+      "redis": "Redis",
+      "redisDescription": "Latest telemetry state cache",
+      "mqtt": "MQTT / EMQX",
+      "mqttDescription": "Telemetry ingest transport",
+      "waha": "WAHA",
+      "wahaDescription": "WhatsApp notification provider",
+      "ingestWorker": "Telemetry Ingest Worker",
+      "ingestWorkerDescription": "MQTT telemetry ingest subscriber",
+      "notificationWorker": "Notification Worker",
+      "notificationWorkerDescription": "WAHA notification dispatch worker",
+      "telemetryFreshness": "Telemetry Freshness",
+      "telemetryFreshnessDescription": "Latest accepted telemetry from the ingest path"
+    },
+    "page": {
+      "title": "System Health",
+      "subtitle": "Dependency and worker diagnostics. Refreshes automatically every 30 seconds.",
+      "sectionAriaDependencies": "Dependency health",
+      "headingDependencies": "Dependencies",
+      "sectionAriaWorkers": "Worker health",
+      "headingWorkers": "Workers",
+      "sectionAriaDataQuality": "Data Quality",
+      "headingDataQuality": "Data Quality",
+      "sectionAriaFreshness": "Telemetry Freshness",
+      "headingFreshness": "Telemetry Freshness",
+      "sectionAriaQuarantine": "Telemetry quarantine log",
+      "headingQuarantine": "Telemetry Quarantine Log",
+      "bannerHealthy": "All systems operational.",
+      "bannerDegraded": "One or more dependencies or workers are degraded or could not be verified. See cards below for details.",
+      "bannerUnhealthy": "One or more dependencies or workers are unhealthy. See cards below for details.",
+      "staleBannerUnderMinute": "Last updated less than a minute ago. Automatic refresh may be delayed.",
+      "staleBannerMinutes": "Last updated {count} min ago. Automatic refresh may be delayed.",
+      "refreshNow": "Refresh now",
+      "staleMachineLoadError": "Unable to load stale machine evidence.",
+      "viewNotificationHistory": "View notification history",
+      "showStaleMachines": "Show stale machines ({count})",
+      "hideStaleMachines": "Hide stale machines",
+      "staleMachinesAria": "Machines with stale telemetry",
+      "noTelemetryReceived": "No telemetry received",
+      "actuatorStatus": {
+        "UP": "Up",
+        "DOWN": "Down",
+        "OUT_OF_SERVICE": "Out of service",
+        "UNKNOWN": "Unknown"
+      },
+      "metricLabels": {
+        "mqttState": "MQTT state",
+        "queueDepth": "Queue depth",
+        "acceptedCount": "Accepted count",
+        "lastAccepted": "Last accepted",
+        "staleSince": "Stale since",
+        "pendingJobs": "Pending jobs",
+        "recentFailed": "Recent failed",
+        "lastFailureReason": "Last failure reason",
+        "lastSuccessfulSend": "Last successful send",
+        "circuitState": "Circuit state",
+        "failureRate": "Failure rate",
+        "latestReceived": "Latest received",
+        "staleTelemetryMachines": "Machines with stale telemetry",
+        "nextStep": "Next step"
+      },
+      "nextSteps": {
+        "db": "Verify the PostgreSQL service is running and check backend logs for connection errors.",
+        "influxdb": "Verify the InfluxDB service is reachable; telemetry history writes fail while it is down.",
+        "redis": "Verify the Redis service is reachable; latest telemetry state cannot be read while it is down.",
+        "mqtt": "Verify the EMQX broker is reachable; telemetry ingest stops while the MQTT connection is down.",
+        "wahaCircuitBreaker": "Verify the WAHA service is reachable; notification sends pause while the circuit is open.",
+        "ingestWorker": "Check the ingest worker logs and MQTT subscription state; review the quarantine log below for rejected messages.",
+        "notificationWorker": "Check the notification worker logs and pending jobs; open the failing alert's notification history for attempt details."
+      },
+      "freshness": {
+        "justNow": "just now",
+        "seconds": "{count}s ago",
+        "minutes": "{count}m ago",
+        "hours": "{count}h ago",
+        "days": "{count}d ago",
+        "dash": "—"
+      }
+    },
+    "healthCard": {
+      "severity": {
+        "SUCCESS": "Success",
+        "WARNING": "Warning",
+        "CRITICAL": "Critical",
+        "NEUTRAL": "Neutral"
+      },
+      "unknownStatus": "Unknown",
+      "noData": "No health data reported.",
+      "unableRefresh": "Unable to refresh {title}. Showing last known status.",
+      "unableCheck": "Unable to check {title}.",
+      "severityLabel": "Severity",
+      "reasonLabel": "Reason",
+      "reportedAt": "Reported at",
+      "statusAria": "Status: {label}"
+    },
+    "dataQuality": {
+      "title": "Data Quality",
+      "description": "Telemetry rejection, anomaly, and dead-letter metrics over the reporting window.",
+      "quarantined": "Quarantined",
+      "rejectionRate": "Rejection rate",
+      "anomalies": "Anomalies",
+      "deadLetter": "Dead-letter",
+      "window": "Window",
+      "viewQuarantineLog": "View Quarantine Log",
+      "unableRefresh": "Unable to refresh data quality. Showing last known metrics.",
+      "unableLoad": "Unable to load data quality.",
+      "noData": "No data quality reported.",
+      "severity": {
+        "SUCCESS": "OK",
+        "WARNING": "Warning",
+        "CRITICAL": "Critical",
+        "NEUTRAL": "Neutral"
+      },
+      "windowLastHour": "last 1 hour",
+      "windowMinutes": "last {count} {unit}",
+      "minute": "minute",
+      "minutes": "minutes"
+    },
+    "quarantine": {
+      "loadFailed": "Failed to load quarantine log. Check your connection and try again.",
+      "empty": "No quarantined messages found.",
+      "receivedAt": "Received At",
+      "topic": "Topic",
+      "reason": "Reason",
+      "field": "Field",
+      "traceId": "Trace ID",
+      "togglePayload": "Toggle payload preview",
+      "page": "Page {page} of {total}",
+      "emptyPayload": "(empty)",
+      "unknownDate": "Unknown date",
+      "reasons": {
+        "malformed_topic": "Malformed Topic",
+        "inactive_machine": "Inactive Machine",
+        "unparseable_payload": "Unparseable",
+        "missing_contract_field": "Missing Field",
+        "unsupported_schema_version": "Bad Schema Version",
+        "machine_identity_mismatch": "Identity Mismatch"
+      }
+    },
+    "counterProjection": {
+      "title": "Counter Rate & Depletion",
+      "noData": "No projection data available.",
+      "noInstallations": "No sparepart installations registered.",
+      "remainingCounters": "Remaining counters",
+      "projectedDepletion": "Projected depletion",
+      "leadTimeConsumption": "Lead-time consumption",
+      "windowStart": "Window start",
+      "windowEnd": "Window end",
+      "firstSample": "First sample",
+      "lastSample": "Last sample",
+      "operatingTime": "Operating time",
+      "noTelemetry": "No accepted telemetry in the estimation window.",
+      "basis": {
+        "ROLLING_30_DAY": "Rolling 30 days",
+        "FULL_HISTORY": "Full history"
+      },
+      "basisUnknown": "Unknown basis",
+      "loadFailed": "Unable to load projections.",
+      "description": "Estimated counting speed per operating hour with shift-aware depletion projections.",
+      "unableRefresh": "Unable to refresh projections. Showing last known estimates.",
+      "insufficientReasons": {
+        "NO_TELEMETRY": "No accepted telemetry in the estimation window.",
+        "INSUFFICIENT_SAMPLES": "Not enough telemetry samples to estimate a rate.",
+        "STALE_DATA": "Latest telemetry is too old to estimate a current rate.",
+        "NO_OPERATING_TIME": "No shift schedule configured, so operating hours are zero.",
+        "NO_PRODUCTION_DELTA": "Counters did not advance during the estimation window."
+      },
+      "unavailableEstimate": "Counter-rate estimate is unavailable.",
+      "countersPerOpHour": "counters/op-hour",
+      "operatingTimeValue": "{value} h/day ({schedule} schedule)",
+      "unknownSchedule": "unknown",
+      "projected": "Projected",
+      "unavailable": "Unavailable",
+      "installation": "Installation",
+      "consumptionLine": "≈{consumption} counters during {hours} op-hour lead time"
+    },
+    "latency": {
+      "label": "Latency",
+      "noData": "No data",
+      "normal": "Normal",
+      "elevated": "Elevated",
+      "critical": "Critical",
+      "unavailable": "unavailable",
+      "aria": "Telemetry latency",
+      "ariaValue": "Telemetry latency: {value}",
+      "ariaValueLabel": "Telemetry latency: {value}, {label}",
+      "lastKnown": "(last known — refresh failed)"
+    }
+  },
+  "auth": {
+    "eyebrow": "Syncro access",
+    "title": "Sign in to Syncro",
+    "subtext": "Use local SUPER_ADMIN credentials configured for this environment.",
+    "secureAccess": "Secure access",
+    "loginLabel": "Login",
+    "passwordLabel": "Password",
+    "signIn": "Sign in",
+    "signingIn": "Signing in...",
+    "invalidCredentialsDetail": "Invalid login credentials. Check your local SUPER_ADMIN login and try again.",
+    "register": {
+      "title": "Registration shell placeholder",
+      "subtext": "User provisioning and auth behavior arrive in Story 1.5.",
+      "continueLink": "Continue to app shell"
+    },
+    "hero": {
+      "eyebrow": "Syncro · Live Machine Channel",
+      "title": "One channel for every machine that never sleeps.",
+      "subtitle": "Machine setup, live health, and spare-part alerts — command the factory floor from your pocket."
+    }
+  },
+  "wahaTemplates": {
+    "title": "WAHA Templates",
+    "pageSubtitle": "WhatsApp alert message templates for sparepart threshold notifications.",
+    "heading": "Alert Notification Template",
+    "description": "This template is used for WhatsApp alert messages sent when a sparepart threshold is reached.",
+    "saved": "Template saved",
+    "saveFailed": "Failed to save template. Check for unknown variables.",
+    "loadFailed": "Failed to load template.",
+    "accessDeniedTitle": "Access denied",
+    "accessDeniedDescription": "You do not have access to WAHA templates.",
+    "route": {
+      "title": "WAHA Templates",
+      "subtitle": "WhatsApp alert message templates for sparepart threshold notifications."
+    },
+    "editor": {
+      "previewPlaceholder": "Preview will appear here.",
+      "noTemplateText": "No template text.",
+      "save": "Save Template",
+      "label": "Template Text",
+      "insertVariable": "Insert Variable",
+      "readOnlyPlaceholder": "No template text.",
+      "editPlaceholder": "Type your alert message here. Use Insert Variable to add dynamic fields.",
+      "unknownVariable": "Unknown variable:",
+      "previewTitle": "Preview (sample data)",
+      "readOnlyNotice": "You have read-only access to this template."
+    }
+  },
+  "settings": {
+    "page": {
+      "title": "Settings",
+      "description": "Application preference and account settings shell.",
+      "sections": {
+        "profile": "Profile placeholder",
+        "theme": "Theme controls remain in header",
+        "auth": "Future auth settings"
+      }
+    },
+    "logo": {
+      "title": "Company Logo",
+      "subtitle": "Upload a company logo that appears on printed reports (SUPER_ADMIN only).",
+      "currentTitle": "Current Logo",
+      "replaceTitle": "Replace Logo",
+      "fileLabel": "Logo image (JPEG, PNG, or WebP, max 5 MB)",
+      "upload": "Upload Logo",
+      "uploading": "Uploading...",
+      "uploadFailed": "Upload failed",
+      "noLogo": "No logo configured.",
+      "alt": "Company logo"
+    }
+  },
+  "setup": {
+    "title": "Setup Completeness",
+    "errorTitle": "Setup completeness could not be loaded",
+    "errorDescription": "The setup status could not be fetched. Retry to load it again.",
+    "emptyTitle": "No setup steps",
+    "emptyDescription": "The setup completeness checklist is empty. Configure master data to see setup status."
+  },
+  "machineDashboard": {
+    "title": "Machine Dashboard",
+    "subtitle": "Machine state, telemetry freshness, open workorders and alerts.",
+    "hint": "Machine state, telemetry freshness, open workorders/alerts and lifetime risk within your scope.",
+    "plantScopeError": "Plant scope unavailable. Try again or contact your administrator.",
+    "noPlantsAssigned": "No plants assigned to your account. Contact your administrator.",
+    "loadFailed": "Failed to load the machine dashboard.",
+    "emptyTitle": "No machines in scope",
+    "emptyDescription": "No machines are available for the current plant scope.",
+    "openWorkorders": "Open workorders",
+    "openAlerts": "Open alerts",
+    "telemetry": "Telemetry",
+    "status": {
+      "ACTIVE": "Active",
+      "INACTIVE": "Inactive"
+    },
+    "telemetryUnknownAria": "Telemetry freshness: unknown. No data ever received.",
+    "lifetimeRisk": "Lifetime risk",
+    "noData": "No data",
+    "atRisk": "At risk",
+    "ok": "OK",
+    "staleActive": "No recent telemetry — machine is stale.",
+    "staleInactive": "No recent telemetry — machine is inactive."
+  },
+  "telemetry": {
+    "title": "Telemetry",
+    "subtitle": "Latest machine state refreshed automatically every 30 seconds.",
+    "latestTitle": "Latest telemetry",
+    "latestDescription": "Telemetry freshness is separate from manual machine status. ONLINE means data within 5 minutes; STALE means no data for more than 15 minutes.",
+    "allPlants": "All plants",
+    "loading": "Loading telemetry…",
+    "activeMachines": "{count, plural, one {# active machine} other {# active machines}}",
+    "truncation": "(showing first {shown} of {total} matching)",
+    "noPlantsTitle": "No plants assigned",
+    "noPlantsDescription": "No plants assigned. Contact your administrator.",
+    "errorTitle": "Telemetry could not be loaded",
+    "errorDescription": "The telemetry dashboard failed to load. Retry to fetch it again.",
+    "emptyTitle": "No active machines found",
+    "emptyAll": "Activate machines to see their latest telemetry here.",
+    "emptyPlant": "No ACTIVE machines in this plant yet.",
+    "minutesAgo": "{count} min",
+    "staleBanner": "Last updated {ago} ago. Automatic refresh may be delayed.",
+    "refreshNow": "Refresh now",
+    "noDataReceived": "No data received",
+    "noDataYet": "No data received yet for this machine.",
+    "cardAria": "Telemetry for machine {code}",
+    "optionalFieldsAria": "Optional telemetry fields",
+    "card": {
+      "latestValues": "Latest telemetry values",
+      "runningState": "Running state",
+      "runtimeHours": "Runtime hours",
+      "productionCount": "Production count",
+      "lastReceived": "Last received",
+      "noDataReceived": "No data received",
+      "cardAria": "Telemetry for {machineCode}",
+      "running": "Running",
+      "stopped": "Stopped"
+    },
+    "statusBadge": {
+      "freshness": {
+        "ONLINE": {
+          "label": "Online",
+          "description": "Telemetry received within the last 5 minutes."
+        },
+        "OFFLINE": {
+          "label": "Offline",
+          "description": "No telemetry for 5-15 minutes. Machine is still ACTIVE."
+        },
+        "STALE": {
+          "label": "Stale",
+          "description": "No telemetry for more than 15 minutes."
+        }
+      },
+      "aria": "Telemetry freshness: {label}. {description}"
+    }
+  },
+  "operationsOverview": {
+    "title": "Operations Overview",
+    "subtitle": "What needs attention now.",
+    "openAlerts": "Open Alerts",
+    "activeMachines": "Active Machines",
+    "staleTelemetry": "Stale Telemetry",
+    "healthStatus": "Health Status",
+    "alertsSection": "Alerts Requiring Action",
+    "viewAllAlerts": "View all alerts →",
+    "plantScopeTitle": "Plant scope unavailable",
+    "plantScopeDescription": "Plant scope could not be loaded. Try again or contact your administrator.",
+    "noPlantsTitle": "No plants assigned",
+    "noPlantsDescription": "No plants assigned to your account. Contact your administrator.",
+    "loadFailed": "Failed to load alerts.",
+    "emptyTitle": "No open alerts",
+    "emptyDescription": "No open sparepart alerts.",
+    "consumed": "{percent}% consumed",
+    "noSnapshot": "No consumed snapshot",
+    "threshold": "threshold {percent}%",
+    "moreAlerts": "+{count} more open alerts — view all",
+    "rowAria": "Alert for {sparepart} on {machine}",
+    "noDate": "-",
+    "minutesAgo": "{count}m ago",
+    "hoursAgo": "{count}h ago",
+    "daysAgo": "{count}d ago"
+  },
+  "masterData": {
+    "tabs": {
+      "plants": "Plants",
+      "setup": "Setup",
+      "groups": "Machine Groups",
+      "machines": "Machines",
+      "installations": "Installations",
+      "spareparts": "Spareparts",
+      "taxonomy": "Category",
+      "sparepartsPage": "Spareparts"
+    },
+    "plant": {
+      "title": "Plants",
+      "description": "Manage plant records used by machine setup and plant-scoped access.",
+      "create": "Create plant",
+      "readOnly": "Read-only",
+      "viewOnly": "View only",
+      "scope": {
+        "loading": "Loading plant scope",
+        "allPlants": "All plants",
+        "noPlant": "No plant assigned",
+        "assignedPlants": "Assigned plants",
+        "activePlant": "Active plant"
+      },
+      "state": {
+        "noAssignmentTitle": "No plant assignment",
+        "noAssignmentDesc": "Your account has no assigned plant scope.",
+        "loadFailedTitle": "Plants could not be loaded",
+        "loadFailedDesc": "Refresh page or contact administrator if access should be available.",
+        "emptyTitle": "No plants yet",
+        "emptyDesc": "Create first plant before adding machine groups."
+      },
+      "dialog": {
+        "editTitle": "Edit plant",
+        "createTitle": "Create plant",
+        "description": "Plant codes are normalized by backend and must be unique.",
+        "save": "Save plant"
+      },
+      "delete": {
+        "title": "Delete plant?",
+        "description": "This removes {code} and existing plant assignments tied to it.",
+        "action": "Delete plant"
+      },
+      "toast": {
+        "updated": "Plant updated.",
+        "created": "Plant created.",
+        "deleted": "Plant deleted.",
+        "requestFailed": "Plant request failed.",
+        "deleteFailed": "Plant delete failed."
+      }
+    },
+    "machine": {
+      "title": "Machines",
+      "description": "Manage registered machine master data and manual ACTIVE/INACTIVE status.",
+      "create": "Create machine",
+      "readOnly": "Read-only",
+      "viewOnly": "View only",
+      "searchPlaceholder": "Search machines",
+      "selectPlant": "Select plant",
+      "selectMachineGroup": "Select machine group",
+      "allGroups": "All groups",
+      "searchGroups": "Search groups...",
+      "noGroupsFound": "No groups found",
+      "allStatuses": "All statuses",
+      "status": {
+        "ACTIVE": "ACTIVE",
+        "INACTIVE": "INACTIVE"
+      },
+      "statusBadge": "Manual {status}",
+      "selectDate": "Select date",
+      "colGroup": "Group",
+      "manualStatus": "Manual status",
+      "brand": "Brand",
+      "colInstalled": "Installed",
+      "labelMachineGroup": "Machine group",
+      "installedDate": "Installed date",
+      "state": {
+        "noAssignmentTitle": "No plant assignment",
+        "noAssignmentDesc": "Your account has no assigned plant scope.",
+        "noPlantsTitle": "No plants available",
+        "noPlantsDesc": "Create or assign a plant before adding machines.",
+        "noGroupsTitle": "No machine groups available",
+        "noGroupsDesc": "Create a machine group for selected plant before adding machines.",
+        "loadFailedTitle": "Machines could not be loaded",
+        "loadFailedDesc": "Refresh page or contact administrator if access should be available.",
+        "noMachinesFound": "No machines found",
+        "noMachinesYet": "No machines yet",
+        "adjustFilters": "Adjust your filters.",
+        "emptyDesc": "Create first registered machine for selected plant and group."
+      },
+      "dialog": {
+        "editTitle": "Edit machine",
+        "createTitle": "Create machine",
+        "description": "Manual status is master data and does not reflect MQTT telemetry freshness.",
+        "save": "Save machine"
+      },
+      "delete": {
+        "title": "Delete machine?",
+        "description": "This removes {code}. Future sparepart, telemetry, responsibility, alert, or audit records may block deletion.",
+        "action": "Delete machine"
+      },
+      "toast": {
+        "updated": "Machine updated.",
+        "created": "Machine created.",
+        "deleted": "Machine deleted.",
+        "requestFailed": "Machine request failed.",
+        "deleteFailed": "Machine delete failed."
+      }
+    },
+    "machineGroup": {
+      "title": "Machine Groups",
+      "description": "Manage plant-scoped process lines such as Forming.",
+      "create": "Create machine group",
+      "readOnly": "Read-only",
+      "viewOnly": "View only",
+      "searchPlaceholder": "Search groups",
+      "section": "Section",
+      "selectPlant": "Select plant",
+      "state": {
+        "noAssignmentTitle": "No plant assignment",
+        "noAssignmentDesc": "Your account has no assigned plant scope.",
+        "noPlantsTitle": "No plants available",
+        "noPlantsDesc": "Create or assign a plant before adding machine groups.",
+        "loadFailedTitle": "Machine groups could not be loaded",
+        "loadFailedDesc": "Refresh page or contact administrator if access should be available.",
+        "emptyTitle": "No machine groups yet",
+        "emptyDesc": "Create first process line for selected plant."
+      },
+      "dialog": {
+        "editTitle": "Edit machine group",
+        "createTitle": "Create machine group",
+        "description": "Names are unique within selected plant and may repeat across plants.",
+        "save": "Save machine group"
+      },
+      "shift": {
+        "legend": "Shift configuration",
+        "loading": "Loading shift schedule…",
+        "loadFailed": "Shift schedule could not be loaded.",
+        "save": "Save shift schedule",
+        "incomplete": "Each shift needs both a start and an end time.",
+        "saved": "Shift schedule saved.",
+        "requestFailed": "Shift schedule request failed."
+      },
+      "assign": {
+        "title": "Assign section",
+        "description": "{name} belongs to exactly one section. Reassignment to a different section is rejected — clear the current section first.",
+        "placeholder": "No section (unassigned)",
+        "save": "Save assignment"
+      },
+      "delete": {
+        "title": "Delete machine group?",
+        "description": "This removes {name}. Deletion succeeds while no dependent machines exist; future dependent machines may block it.",
+        "action": "Delete machine group"
+      },
+      "toast": {
+        "updated": "Machine group updated.",
+        "created": "Machine group created.",
+        "deleted": "Machine group deleted.",
+        "requestFailed": "Machine group request failed.",
+        "deleteFailed": "Machine group delete failed.",
+        "sectionAssigned": "Section assigned.",
+        "sectionCleared": "Section assignment cleared.",
+        "sectionAssignFailed": "Section assignment failed."
+      }
+    },
+    "section": {
+      "title": "Sections",
+      "description": "Org containers (MACHINERY / UTILITY / WORKSHOP) per plant. Machine groups are assigned to exactly one section.",
+      "create": "Create section",
+      "readOnly": "Read-only",
+      "viewOnly": "View only",
+      "scope": {
+        "loading": "Loading plant scope",
+        "allPlants": "All plants",
+        "noPlant": "No plant assigned",
+        "assignedPlants": "Assigned plants",
+        "activePlant": "Active plant"
+      },
+      "state": {
+        "noAssignmentTitle": "No plant assignment",
+        "noAssignmentDesc": "Your account has no assigned plant scope.",
+        "selectPlantTitle": "Select a plant",
+        "selectPlantDesc": "Pick a specific plant in the plant switcher to manage its sections.",
+        "loadFailedTitle": "Sections could not be loaded",
+        "loadFailedDesc": "Refresh page or contact administrator if access should be available.",
+        "emptyTitle": "No sections yet",
+        "emptyDesc": "Create the first section for this plant."
+      },
+      "showInactive": "Show inactive",
+      "leader": "Leader",
+      "reactivate": "Reactivate",
+      "unassigned": "Unassigned",
+      "dialog": {
+        "editTitle": "Edit section",
+        "createTitle": "Create section",
+        "description": "Codes are MACHINERY, UTILITY, or WORKSHOP and must be unique per plant.",
+        "save": "Save section",
+        "selectPlant": "Select plant",
+        "selectCode": "Select code"
+      },
+      "leaderDialog": {
+        "title": "Assign leader — {name}",
+        "description": "Assigning a leader stores the section leader and auto-links the LEADER machine responsibility for every machine in the section's groups. Clearing removes both.",
+        "selectPlaceholder": "Select leader by NIK or name",
+        "clear": "Clear leader"
+      },
+      "toast": {
+        "created": "Section created.",
+        "updated": "Section updated.",
+        "deactivated": "Section deactivated.",
+        "reactivated": "Section reactivated.",
+        "updateFailed": "Section update failed.",
+        "requestFailed": "Section request failed.",
+        "leaderAssigned": "Section leader assigned.",
+        "leaderCleared": "Section leader cleared."
+      }
+    },
+    "team": {
+      "title": "Cross-Plant Teams",
+      "description": "Expiry-dated groups of members and target machines. Members gain scoped access to the targeted machines across plants while the team is active.",
+      "create": "Create team",
+      "readOnly": "Read-only",
+      "viewOnly": "View only",
+      "state": {
+        "loadFailedTitle": "Teams could not be loaded",
+        "loadFailedDesc": "Refresh page or contact administrator if access should be available.",
+        "emptyTitle": "No teams yet",
+        "emptyDesc": "Create the first cross-plant team."
+      },
+      "members": "Members",
+      "machines": "Machines",
+      "expiresAt": "Expires at",
+      "expired": "Expired",
+      "invalidValue": "Invalid value.",
+      "dialog": {
+        "editTitle": "Edit team",
+        "createTitle": "Create team",
+        "description": "Team names must be unique (case-insensitive). Expiry must be strictly in the future.",
+        "save": "Save team"
+      },
+      "delete": {
+        "title": "Delete team \"{name}\"?",
+        "description": "This permanently deletes the team and its member and machine links. This action cannot be undone."
+      },
+      "manage": {
+        "membersTitle": "Team members — {name}",
+        "machinesTitle": "Target machines — {name}",
+        "membersDesc": "Members gain scoped access to the team's machines across plants.",
+        "machinesDesc": "Target machines resolve to their machine groups for the member's operational scope.",
+        "detailsLoadFailed": "Team details could not be loaded.",
+        "allMembersAdded": "All users are already members of this team.",
+        "addMember": "Add member",
+        "selectUser": "Select user",
+        "add": "Add",
+        "remove": "Remove",
+        "noMembers": "No members yet.",
+        "noLinkable": "No linkable machines in this view — every listed machine is already linked, or none exist yet.",
+        "truncation": "Showing the first {shown} of {total} machines — refine the plant filter to reach machines beyond this page.",
+        "plantFilter": "Plant filter",
+        "allPlants": "All plants",
+        "linkMachine": "Link machine",
+        "selectMachine": "Select machine",
+        "link": "Link",
+        "unlink": "Unlink",
+        "noMachinesLinked": "No machines linked yet."
+      },
+      "toast": {
+        "updated": "Team updated.",
+        "created": "Team created.",
+        "deleted": "Team deleted.",
+        "requestFailed": "Team request failed.",
+        "deleteFailed": "Team delete failed.",
+        "memberAdded": "Member added.",
+        "memberAddFailed": "Member add failed.",
+        "memberRemoved": "Member removed.",
+        "memberRemoveFailed": "Member remove failed.",
+        "machineLinked": "Machine linked.",
+        "machineLinkFailed": "Machine link failed.",
+        "machineUnlinked": "Machine unlinked.",
+        "machineUnlinkFailed": "Machine unlink failed."
+      }
+    },
+    "installation": {
+      "title": "Machine sparepart installations",
+      "description": "Capture lifetime baseline counters for installed spareparts on machines.",
+      "create": "Create installation",
+      "readOnly": "Read-only",
+      "viewOnly": "View only",
+      "state": {
+        "noAssignmentTitle": "No plant assignment",
+        "noAssignmentDesc": "Your account has no assigned plant scope.",
+        "accessForbidden": "Installations access is forbidden",
+        "loadFailedTitle": "Installations could not be loaded",
+        "loadFailedDesc": "Refresh data or contact administrator if access should be available.",
+        "noPlantsTitle": "No plants available",
+        "noPlantsDesc": "Create or assign a plant before installing spareparts.",
+        "noMachinesTitle": "No machines available",
+        "noMachinesDesc": "Create a machine before installing spareparts.",
+        "noSparepartsTitle": "No spareparts available",
+        "noSparepartsDesc": "Create spareparts before installing them on machines.",
+        "noInstallationsTitle": "No installations yet",
+        "noInstallationsDesc": "Create the first baseline installation or adjust filters."
+      },
+      "dialog": {
+        "editTitle": "Edit installation",
+        "createTitle": "Create installation",
+        "description": "Lifetime consumption is counter-based from current counter minus baseline counter.",
+        "save": "Save installation"
+      },
+      "step": {
+        "identity": "Identity",
+        "counters": "Counters"
+      },
+      "labels": {
+        "plant": "Plant",
+        "machine": "Machine",
+        "sparepart": "Sparepart",
+        "functionUsage": "Function / usage",
+        "expected": "Expected production count",
+        "baseline": "Baseline counter",
+        "threshold": "Threshold percentage"
+      },
+      "filter": {
+        "all": {
+          "PLANT": "All Plant",
+          "MACHINE": "All Machine",
+          "SPAREPART": "All Sparepart"
+        },
+        "search": {
+          "PLANT": "Search plant...",
+          "MACHINE": "Search machine...",
+          "SPAREPART": "Search sparepart..."
+        }
+      },
+      "noResults": "No results",
+      "unknownIdentity": "Unknown identity",
+      "selectMachine": "Select machine",
+      "selectSparepart": "Select sparepart",
+      "searchMachine": "Search machine code, name, or plant",
+      "noMachinesFound": "No machines found",
+      "unnamed": "Unnamed",
+      "createInline": "Create inline",
+      "dimension": {
+        "CATEGORY": "Category",
+        "KIND": "Kind",
+        "BRAND": "Brand",
+        "TYPE": "Type"
+      },
+      "select": {
+        "CATEGORY": "Select category",
+        "KIND": "Select kind",
+        "BRAND": "Select brand",
+        "TYPE": "Select type"
+      },
+      "createLabel": {
+        "CATEGORY": "Create category “{input}”",
+        "KIND": "Create kind “{input}”",
+        "BRAND": "Create brand “{input}”",
+        "TYPE": "Create type “{input}”"
+      },
+      "noFound": {
+        "CATEGORY": "No category found",
+        "KIND": "No kind found",
+        "BRAND": "No brand found",
+        "TYPE": "No type found"
+      },
+      "inline": {
+        "title": "Create sparepart inline",
+        "description": "Create the missing sparepart without losing this installation draft.",
+        "cancel": "Cancel sparepart",
+        "submit": "Create and select"
+      },
+      "generatedCode": {
+        "title": "Generated code",
+        "hint": "BOM code is assigned after save."
+      },
+      "colGroup": "Group",
+      "colMachine": "Machine",
+      "colSparepart": "Sparepart",
+      "colFunction": "Function",
+      "colExpected": "Expected",
+      "colBaseline": "Baseline",
+      "colCurrent": "Current",
+      "colConsumed": "Consumed",
+      "colThreshold": "Threshold",
+      "colBasis": "Basis",
+      "notAvailable": "Not available",
+      "delete": {
+        "title": "Delete installation?",
+        "description": "This removes the baseline for {machineCode} · {sparepartCode}. Future alert or audit records may block deletion.",
+        "action": "Delete installation"
+      },
+      "validation": {
+        "functionName": "Function / usage is required.",
+        "expected": "Expected production count is required and must be positive.",
+        "baseline": "Baseline counter is required and cannot be negative.",
+        "threshold": "Threshold percentage is required and must be between 1 and 100."
+      },
+      "toast": {
+        "sparepartCreatedSelected": "Sparepart created and selected.",
+        "sparepartRequestFailed": "Sparepart request failed.",
+        "updated": "Installation updated.",
+        "created": "Installation created.",
+        "requestFailed": "Installation request failed.",
+        "deleted": "Installation deleted.",
+        "deleteFailed": "Installation delete failed."
+      }
+    },
+    "sparepart": {
+      "title": "Spareparts",
+      "description": "Manage machine-linked sparepart master data with category, brand, kind, and type references.",
+      "create": "Create sparepart",
+      "readOnly": "Read-only",
+      "viewOnly": "View only",
+      "state": {
+        "taxonomyLoadTitle": "Taxonomy could not be loaded",
+        "taxonomyLoadDesc": "Spareparts require category, brand, kind, and type reference data.",
+        "retryTaxonomy": "Retry taxonomy",
+        "taxonomyIncompleteTitle": "Taxonomy setup incomplete",
+        "taxonomyIncompleteDesc": "Create at least one category, brand, kind, and type before creating spareparts.",
+        "loadFailedTitle": "Spareparts could not be loaded",
+        "loadFailedDesc": "Refresh page or contact administrator if access should be available.",
+        "retrySpareparts": "Retry spareparts",
+        "emptyTitle": "No spareparts yet",
+        "emptyDesc": "Create first sparepart or adjust filters."
+      },
+      "dialog": {
+        "editTitle": "Edit sparepart",
+        "createTitle": "Create sparepart",
+        "description": "Code must be unique, and the sparepart must be linked to an existing machine.",
+        "save": "Save sparepart"
+      },
+      "step": {
+        "details": "1. Details",
+        "confirmation": "2. Confirmation"
+      },
+      "procurement": {
+        "title": "Procurement readiness",
+        "hint": "Requires job scope LEADER or above. Changes are recorded in the audit log.",
+        "materialCodeMax": "Material code must be at most 64 characters.",
+        "leadTimeInvalid": "Enter a positive number of hours with at most two decimals.",
+        "saveFailedDetail": "Procurement values could not be saved.",
+        "notSaved": "Sparepart updated, but procurement was not saved: {message}"
+      },
+      "price": {
+        "title": "Price History",
+        "hint": "Requires job scope LEADER or above.",
+        "append": "Append entry",
+        "positiveAmount": "Enter a positive amount.",
+        "appended": "Price entry appended.",
+        "appendFailed": "Appending price entry failed."
+      },
+      "image": {
+        "title": "Image",
+        "hint": "Requires job scope LEADER or above.",
+        "loadFailed": "The current image could not be loaded.",
+        "viewOnlyReason": "View only.",
+        "uploaded": "Image uploaded.",
+        "uploadFailed": "Uploading image failed.",
+        "removed": "Image removed.",
+        "removeFailed": "Removing image failed."
+      },
+      "imageMissing": "Image not found.",
+      "confirm": {
+        "title": "Confirmation",
+        "hint": "Review your sparepart details. BOM code will be generated upon save."
+      },
+      "delete": {
+        "title": "Delete sparepart?",
+        "description": "This removes {code}. Deletion is blocked when installed spareparts depend on it.",
+        "action": "Delete sparepart"
+      },
+      "filter": {
+        "searchCode": "Search code...",
+        "machineCode": "Filter machine code..."
+      },
+      "machine": "Machine",
+      "materialCode": "Material code",
+      "leadTime": "Lead time",
+      "leadTimeValue": "{hours} h",
+      "selectMachine": "Select machine",
+      "searchMachine": "Search machine code, name, or plant",
+      "noMachinesFound": "No machines found",
+      "unnamed": "Unnamed",
+      "dimension": {
+        "CATEGORY": "Category",
+        "KIND": "Kind",
+        "BRAND": "Brand",
+        "TYPE": "Type"
+      },
+      "select": {
+        "CATEGORY": "Select category",
+        "KIND": "Select kind",
+        "BRAND": "Select brand",
+        "TYPE": "Select type"
+      },
+      "search": {
+        "CATEGORY": "Search category",
+        "KIND": "Search kind",
+        "BRAND": "Search brand",
+        "TYPE": "Search type"
+      },
+      "searchDots": {
+        "CATEGORY": "Search category...",
+        "KIND": "Search kind...",
+        "BRAND": "Search brand...",
+        "TYPE": "Search type..."
+      },
+      "noFound": {
+        "CATEGORY": "No category found",
+        "KIND": "No kind found",
+        "BRAND": "No brand found",
+        "TYPE": "No type found"
+      },
+      "createLabel": {
+        "CATEGORY": "Create category “{input}”",
+        "KIND": "Create kind “{input}”",
+        "BRAND": "Create brand “{input}”",
+        "TYPE": "Create type “{input}”"
+      },
+      "all": {
+        "CATEGORY": "All category",
+        "KIND": "All kind",
+        "BRAND": "All brand",
+        "TYPE": "All type"
+      },
+      "createToast": {
+        "CATEGORY": "category created.",
+        "KIND": "kind created.",
+        "BRAND": "brand created.",
+        "TYPE": "type created."
+      },
+      "noResults": "No results",
+      "toast": {
+        "updated": "Sparepart updated.",
+        "created": "Sparepart created.",
+        "deleted": "Sparepart deleted.",
+        "requestFailed": "Sparepart request failed.",
+        "deleteFailed": "Sparepart delete failed.",
+        "missingIdOnUpdate": "Sparepart cannot be updated because its identifier is missing.",
+        "missingIdOnDelete": "Sparepart cannot be deleted because its identifier is missing."
+      }
+    },
+    "sparepartTaxonomy": {
+      "title": "Category",
+      "description": "Manage controlled sparepart category values. Category determines which spareparts belong to which domain (e.g. Electric, Mechanic). Only approved categories are accepted by the system.",
+      "add": "Add category",
+      "readOnly": "Read-only",
+      "viewOnly": "View only",
+      "state": {
+        "loadFailedTitle": "Categories could not be loaded",
+        "loadFailedDesc": "Refresh page or contact administrator if access should be available.",
+        "emptyTitle": "No categories yet",
+        "emptyDesc": "Create the first sparepart category entry."
+      },
+      "dialog": {
+        "editTitle": "Edit category",
+        "createTitle": "Add category",
+        "description": "Category code must match a backend-approved value (e.g. ELECTRIC, MECHANIC). Names must be unique within Category.",
+        "submitCreate": "Add category",
+        "submitEdit": "Update category",
+        "namePlaceholder": "e.g. Electric",
+        "codePlaceholder": "e.g. ELECTRIC"
+      },
+      "delete": {
+        "title": "Delete category?",
+        "description": "This removes “{name}”. Deletion is blocked when existing sparepart records depend on this category.",
+        "action": "Delete category"
+      },
+      "toast": {
+        "updated": "Category updated.",
+        "created": "Category created.",
+        "deleted": "Category deleted.",
+        "requestFailed": "Category request failed.",
+        "deleteFailed": "Category delete failed."
+      }
+    },
+    "responsibility": {
+      "title": "Assign Responsibility",
+      "description": "Assign a user responsibility for a specific machine. Note: The MANAGER_MAINTENANCE application role is distinct from the MANAGER machine responsibility level.",
+      "viewerNotice": "You do not have permission to assign responsibilities.",
+      "machine": "Machine",
+      "user": "User",
+      "level": "Level",
+      "levelAria": "Responsibility level",
+      "selectMachine": "Select machine",
+      "selectUser": "Select user",
+      "selectLevel": "Select level",
+      "levelOptions": {
+        "TECHNICIAN": "Technician",
+        "STAFF": "Staff",
+        "LEADER": "Leader",
+        "SPV": "Supervisor",
+        "MANAGER": "Manager"
+      },
+      "assign": "Assign",
+      "currentTitle": "Current Assignments",
+      "currentDescription": "View all active machine responsibility assignments.",
+      "emptyRow": "No responsibilities assigned.",
+      "confirm": {
+        "title": "Are you sure?",
+        "description": "This will unassign the user from the machine. This action cannot be undone.",
+        "unassign": "Unassign"
+      },
+      "toast": {
+        "assigned": "Successfully assigned responsibility",
+        "assignFailed": "Failed to assign responsibility",
+        "unassigned": "Successfully unassigned responsibility",
+        "unassignFailed": "Failed to unassign responsibility"
+      }
+    }
+  },
+  "plantScope": {
+    "shellLabel": "Syncro shell",
+    "unavailableTitle": "Plant scope unavailable",
+    "unavailableDescription": "Plant scope could not be loaded. Try again or contact your administrator.",
+    "loadingTitle": "Loading plant scope",
+    "loadingDescription": "Checking assigned plants before showing this module.",
+    "emptyTitle": "No plants assigned",
+    "emptyDescription": "No plants assigned. Contact your administrator.",
+    "allPlants": "All Plants",
+    "allMyPlants": "All my plants",
+    "noPlantsAssigned": "No plants assigned",
+    "noPlantsAssignedHint": "No plants assigned. Contact your administrator.",
+    "addPlantsHint": "Add plants in Master Data",
+    "selectAria": "Select plant scope",
+    "label": "Plant scope"
+  },
+  "unauthorized": {
+    "eyebrow": "Syncro access",
+    "title": "Unauthorized shell placeholder",
+    "description": "Role enforcement and access decisions arrive in Story 1.6.",
+    "goToShell": "Go to app shell"
+  },
+  "preventive": {
+    "machine": "Machine",
+    "due": "Due",
+    "overdue": "Overdue",
+    "category": {
+      "MECHANICAL": "Mechanical",
+      "ELECTRICAL": "Electrical"
+    },
+    "scheduleType": {
+      "MONTHLY": "Monthly",
+      "ANNUAL": "Annual"
+    },
+    "page": {
+      "title": "Preventive Maintenance",
+      "subtitle": "Define preventive programs and track due/overdue schedules.",
+      "tabPrograms": "Programs",
+      "tabSchedules": "Schedules",
+      "tabCategories": "Categories"
+    },
+    "categories": {
+      "title": "Preventive Categories",
+      "label": "Label"
+    },
+    "dashboard": {
+      "title": "Preventive Dashboard",
+      "subtitle": "Due and overdue preventive schedules, server-derived.",
+      "introLabel": "Due and overdue preventive schedules, server-derived. Overdue is always labeled.",
+      "plantScopeError": "Plant scope unavailable. Try again or contact your administrator.",
+      "noPlantsAssigned": "No plants assigned to your account. Contact your administrator.",
+      "loadFailed": "Failed to load the preventive dashboard.",
+      "emptyTitle": "No scheduled preventive tasks",
+      "emptyDescription": "No preventive schedules exist in the current plant scope. Due and overdue counts are both zero.",
+      "totalSchedules": "Total Schedules",
+      "upcomingTitle": "Upcoming schedules",
+      "upcomingDescription": "All schedules within scope, ordered by due date. Overdue items are marked.",
+      "noSchedules": "No schedules.",
+      "overdueAria": "Overdue schedule. Past due date."
+    },
+    "programs": {
+      "newProgram": "New preventive program",
+      "newProgramDescription": "Create a recurring maintenance program for a machine.",
+      "loadingMachines": "Loading machines...",
+      "selectMachine": "Select machine",
+      "title": "Title",
+      "titlePlaceholder": "e.g. Monthly lube check",
+      "category": "Category",
+      "scheduleType": "Schedule type",
+      "dayOfMonth": "Day of month",
+      "monthOfYear": "Month of year",
+      "descriptionOptional": "Description (optional)",
+      "descriptionPlaceholder": "Optional description",
+      "autoWorkorderLabel": "Auto-create workorder on approval",
+      "autoWorkorderHint": "When a schedule is approved, an internal preventive workorder is created.",
+      "creating": "Creating…",
+      "createProgram": "Create program",
+      "loadFailed": "Failed to load preventive programs.",
+      "empty": "No preventive programs yet. Create one above.",
+      "day": "day {day}",
+      "month": " / month {month}",
+      "active": "active",
+      "inactive": "inactive",
+      "autoWorkorder": "auto-workorder",
+      "noAutoWorkorder": "no auto-workorder"
+    },
+    "schedules": {
+      "loadFailed": "Failed to load preventive schedules.",
+      "empty": "No preventive schedules in your scope yet.",
+      "shiftWithSource": " · shift: {source}",
+      "shiftNone": " · shift: none"
+    },
+    "detail": {
+      "title": "Schedule Detail",
+      "checklistLoadFailed": "Failed to load checklist.",
+      "report": "Report",
+      "checklistItems": "Checklist Items",
+      "itemLabel": "Label",
+      "itemValue": "Value",
+      "lsl": "LSL",
+      "usl": "USL",
+      "addItem": "Add Item",
+      "optionalNotes": "Optional notes",
+      "submitChecklist": "Submit Checklist",
+      "amendChecklist": "Amend Checklist",
+      "evidence": "Evidence",
+      "evidenceLoadFailed": "Failed to load evidence.",
+      "uploadEvidence": "Upload Evidence",
+      "leaderApproval": "Leader Approval",
+      "signatureFileLabel": "Signature image (uploaded as evidence, key auto-filled)",
+      "signatureKeyLabel": "Signature object key (from Garage)",
+      "signatureKeyPlaceholder": "Signature object key (auto-filled on upload)",
+      "signerPlaceholder": "Signer identity (defaults to your name)",
+      "assessmentPlaceholder": "Assessment (optional)",
+      "approve": "Approve",
+      "skip": "Skip",
+      "submittedChecklist": "Submitted Checklist",
+      "notesPrefix": "Notes:",
+      "approvedByLine": "Approved by {name} at {at}"
+    },
+    "report": {
+      "title": "Preventive Report",
+      "loadFailed": "Failed to load report.",
+      "print": "Print",
+      "categoryLabel": "Category:",
+      "scheduleLabel": "Schedule:",
+      "dueLabel": "Due:",
+      "statusLabel": "Status:",
+      "workorderLabel": "Workorder:",
+      "checklistResults": "Checklist Results",
+      "item": "Item",
+      "value": "Value",
+      "lsl": "LSL",
+      "usl": "USL",
+      "note": "Note",
+      "notesLabel": "Notes:",
+      "evidence": "Evidence",
+      "approval": "Approval",
+      "signedBy": "Signed by:",
+      "assessment": "Assessment:",
+      "approvedAt": "Approved at:",
+      "logoAlt": "Company logo",
+      "signatureAlt": "Signature",
+      "noChecklist": "No checklist has been submitted for this schedule."
+    },
+    "messages": {
+      "programCreated": "Preventive program created",
+      "programCreateFailed": "Failed to create preventive program",
+      "programDeleted": "Preventive program deleted",
+      "programDeleteFailed": "Failed to delete preventive program",
+      "checklistSubmitted": "Checklist submitted",
+      "checklistSubmitFailed": "Failed to submit checklist",
+      "scheduleApproved": "Schedule approved",
+      "scheduleApproveFailed": "Failed to approve schedule",
+      "scheduleSkipped": "Schedule skipped",
+      "scheduleSkipFailed": "Failed to skip schedule",
+      "evidenceUploaded": "Evidence uploaded",
+      "evidenceUploadFailed": "Failed to upload evidence",
+      "evidenceDeleted": "Evidence deleted",
+      "evidenceDeleteFailed": "Failed to delete evidence"
+    }
+  },
+  "organization": {
+    "readOnly": "Read-only",
+    "unassigned": "Unassigned",
+    "role": "Role",
+    "jobTitle": "Job title",
+    "selectJobTitle": "Select job title",
+    "tabs": {
+      "departments": "Departments",
+      "users": "Users",
+      "roles": "Roles",
+      "sections": "Sections",
+      "teams": "Teams",
+      "responsibility": "Responsibility",
+      "plants": "Plants"
+    },
+    "page": {
+      "title": "Organization",
+      "loading": "Loading organization..."
+    },
+    "departments": {
+      "title": "Departments",
+      "description": "Organization-maintenance departments (people units) per plant, with SPV/MG leaders and member technicians. Departments are soft-inactivated, never deleted.",
+      "createDepartment": "Create department",
+      "editDepartment": "Edit department",
+      "dialogHint": "SPV/MG must be enabled users with access to the same plant. Names must be unique per plant.",
+      "noPlantAssignmentTitle": "No plant assignment",
+      "noPlantAssignmentDesc": "Your account has no assigned plant scope.",
+      "selectPlantTitle": "Select a plant",
+      "selectPlantDesc": "Pick a specific plant in the plant switcher to manage its departments.",
+      "loadFailedTitle": "Departments could not be loaded",
+      "loadFailedDesc": "Refresh page or contact administrator if access should be available.",
+      "emptyTitle": "No departments yet",
+      "emptyDesc": "Create the first department for this plant.",
+      "showInactive": "Show inactive",
+      "spv": "SPV",
+      "mg": "MG",
+      "members": "Members",
+      "viewOnly": "View only",
+      "selectPlant": "Select plant",
+      "selectSpv": "Select SPV",
+      "selectMg": "Select MG",
+      "saveDepartment": "Save department",
+      "manageMembers": "Manage members — {name}",
+      "membersHint": "Assign staff to this department. Members can belong to multiple departments; saving replaces the member set.",
+      "noEnabledUsers": "No enabled users available.",
+      "saveAssignments": "Save assignments",
+      "created": "Department created.",
+      "updated": "Department updated.",
+      "deactivated": "Department deactivated.",
+      "membersUpdated": "Department members updated.",
+      "requestFailed": "Department request failed.",
+      "deactivationFailed": "Department deactivation failed.",
+      "memberUpdateFailed": "Member update failed."
+    },
+    "roles": {
+      "title": "Role Mapping",
+      "loadFailedDesc": "Refresh page or contact administrator.",
+      "description": "Assign job titles and system roles to users. Each user gets exactly one job title and any number of system roles (their effective permission set is the application role + job title default + role bindings).",
+      "systemRoles": "System roles",
+      "systemRolesTitle": "System Roles",
+      "jobTitlePanel": "Job Title",
+      "bindRoles": "Bind roles",
+      "binding": "Binding: {name}",
+      "applicationRole": "Application role:",
+      "loadingBindings": "Loading bindings…",
+      "bindingsLoadFailed": "Bindings could not be loaded.",
+      "clearJobTitle": "Clear (no job title)",
+      "noSystemRoles": "No system roles assigned.",
+      "addSystemRolePlaceholder": "Add system role",
+      "override": "Override",
+      "overrideSuffix": " (override)",
+      "add": "Add",
+      "removeRoleAria": "Remove {name}",
+      "jobUpdated": "Job title binding updated.",
+      "jobUpdateFailed": "Failed to update job binding.",
+      "roleAdded": "Role binding added.",
+      "roleAddFailed": "Failed to add role.",
+      "roleRemoved": "Role binding removed.",
+      "roleRemoveFailed": "Failed to remove role."
+    },
+    "users": {
+      "title": "Users",
+      "description": "User master: display name, NIK, phone, job title, and department. NIK and phone are unique when set; empty values are cleared. Roles are managed at bootstrap — only master fields are editable here.",
+      "couldNotLoadTitle": "Users could not be loaded",
+      "couldNotLoadDesc": "Refresh page or contact administrator if access should be available.",
+      "noUsersTitle": "No users yet",
+      "noUsersDesc": "Users are bootstrapped by the local admin.",
+      "login": "Login",
+      "nik": "NIK",
+      "phone": "Phone",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "editUser": "Edit user",
+      "editUserHint": "{login} — update master fields. Leave NIK/phone empty to clear.",
+      "displayName": "Display name",
+      "phoneNumber": "Phone number",
+      "saveUser": "Save user",
+      "updated": "User updated.",
+      "updateFailed": "User update failed."
+    },
+    "shared": {
+      "setupChecklist": {
+        "title": "Setup Completeness",
+        "readOnly": "Read-only",
+        "stepAria": "{label} {status}",
+        "description": "{eligible} of {total} machines in scope are ready for telemetry and alerts.",
+        "overallComplete": "Complete",
+        "overallIncomplete": "Incomplete",
+        "status": {
+          "COMPLETE": "COMPLETE",
+          "INCOMPLETE": "INCOMPLETE",
+          "BLOCKED": "BLOCKED"
+        }
+      }
+    }
+  },
+  "auditLog": {
+    "title": "Audit Log",
+    "description": "Immutable history of master data changes. Entries can not be edited or deleted.",
+    "decisionTitle": "Decision Log",
+    "decisionDescription": "Persisted OPA enforcement decisions with their policy revision for audit tracing.",
+    "tabs": {
+      "audit": "Audit Log",
+      "decision": "Decision Log"
+    },
+    "dash": "-",
+    "filters": {
+      "entityType": "Entity type",
+      "allEntityTypes": "All entity types",
+      "actor": "Actor",
+      "actorPlaceholder": "Actor name",
+      "allPlants": "All plants",
+      "from": "From",
+      "to": "To",
+      "reset": "Reset filters"
+    },
+    "loadError": {
+      "title": "Audit log could not be loaded",
+      "description": "The change history could not be fetched. Retry to load it again."
+    },
+    "empty": {
+      "noMatch": "No matching entries",
+      "noMatchDescription": "No changes match the current filters.",
+      "none": "No audit entries yet",
+      "description": "Master data changes will appear here once they are created or modified."
+    },
+    "entityTypes": {
+      "PLANT": "Plant",
+      "MACHINE_GROUP": "Machine group",
+      "MACHINE": "Machine",
+      "SPAREPART_TAXONOMY": "Sparepart taxonomy",
+      "SPAREPART": "Sparepart",
+      "INSTALLATION": "Installation",
+      "RESPONSIBILITY": "Responsibility",
+      "ALERT": "ALERT",
+      "SPAREPART_PRICE_ENTRY": "SPAREPART_PRICE_ENTRY"
+    },
+    "decision": {
+      "loadError": {
+        "title": "Decision log could not be loaded",
+        "description": "Persisted authorization decisions could not be fetched. Retry to load them again."
+      },
+      "empty": {
+        "title": "No decisions recorded yet",
+        "description": "OPA enforcement decisions will appear here once enforced endpoints are evaluated."
+      },
+      "table": {
+        "decidedAt": "Decided at",
+        "action": "Action",
+        "allowed": "Allowed",
+        "mode": "Mode",
+        "decisionId": "Decision ID",
+        "policyRevision": "Policy revision"
+      },
+      "allow": "ALLOW",
+      "deny": "DENY",
+      "degraded": "degraded",
+      "normal": "normal",
+      "decisionLine": "decision {id}",
+      "revisionLine": "rev {id}"
+    },
+    "shared": {
+      "table": {
+        "record": "Record",
+        "plant": "Plant",
+        "decision": "Decision",
+        "field": "Field",
+        "before": "Before",
+        "after": "After",
+        "global": "Global",
+        "timestamp": "Timestamp",
+        "actor": "Actor",
+        "action": "Action",
+        "entity": "Entity",
+        "toggleChange": "Toggle change detail",
+        "recordCreated": "Record created.",
+        "recordDeleted": "Record deleted.",
+        "noFieldChanges": "No field changes recorded.",
+        "machineGroup": "Machine group",
+        "sparepartTaxonomy": "Sparepart taxonomy",
+        "unknownDate": "Unknown date",
+        "entities": {
+          "PLANT": "Plant",
+          "MACHINE_GROUP": "Machine group",
+          "MACHINE": "Machine",
+          "SPAREPART_TAXONOMY": "Sparepart taxonomy",
+          "SPAREPART": "Sparepart",
+          "INSTALLATION": "Installation",
+          "RESPONSIBILITY": "Responsibility"
+        },
+        "decisionLine": "decision {id}",
+        "decisionWord": "Decision",
+        "actionLabels": {
+          "CREATE": "CREATE",
+          "UPDATE": "UPDATE",
+          "DELETE": "DELETE"
+        }
+      }
+    }
+  },
+  "stock": {
+    "title": "Stock",
+    "description": "Per-plant stock levels, reorder points and quantity recommendations.",
+    "selectPlant": "Select plant",
+    "loadError": "Failed to load stock data.",
+    "empty": "No stock rows for this plant.",
+    "table": {
+      "materialCode": "Material code",
+      "onHand": "On hand",
+      "orderPoint": "Order point",
+      "orderQty": "Order qty"
+    },
+    "reorder": "Reorder",
+    "ok": "OK",
+    "ratioTooltip": "{onHand} / {orderPoint} OP",
+    "adjust": {
+      "trigger": "Adjust",
+      "title": "Adjust stock — {code}",
+      "description": "Current on-hand: {onHand}. Use a positive delta to restock, negative to withdraw.",
+      "deltaLabel": "Delta (signed adjustment)",
+      "deltaPlaceholder": "e.g. -5 or +10",
+      "confirm": "Confirm adjustment"
+    },
+    "toast": {
+      "created": "Stock row created",
+      "createFailed": "Failed to create stock row",
+      "adjusted": "Stock adjusted",
+      "adjustFailed": "Failed to adjust stock"
+    }
+  },
+  "sparepartRequests": {
+    "title": "Sparepart Requests",
+    "description": "Track sparepart, consumable, and external-service requests.",
+    "loadError": "Failed to load requests.",
+    "empty": "No requests match this filter.",
+    "dash": "-",
+    "type": "Type",
+    "qty": "Qty",
+    "table": {
+      "workorder": "Workorder",
+      "part": "Part",
+      "requested": "Requested"
+    },
+    "types": {
+      "SPAREPART": "Sparepart",
+      "CONSUMABLE": "Consumable",
+      "SERVICE_EXTERNAL": "External service"
+    },
+    "status": {
+      "REQUESTED": "Requested",
+      "PENDING_COMPLETION": "Pending completion",
+      "ACKED": "Acknowledged",
+      "PROCESSING": "Processing",
+      "READY": "Ready",
+      "PURCHASE_REQUESTED": "Purchase requested",
+      "PART_RECEIVED": "Part received",
+      "PICKED_UP": "Picked up",
+      "CLOSED": "Closed"
+    },
+    "actions": {
+      "acknowledge": "Acknowledge",
+      "process": "Process",
+      "markReady": "Mark Ready",
+      "markPurchased": "Mark Purchased",
+      "partReceived": "Part Received",
+      "pickUp": "Pick Up",
+      "close": "Close"
+    },
+    "pendingRole": "Pending: {role}",
+    "pendingApproval": "Pending approval",
+    "approved": "Approved",
+    "priceSuffix": " · {price}",
+    "mre": {
+      "trigger": "Record MRE",
+      "title": "Record MRE Code",
+      "description": "Enter the manual MRE (material request) code for this purchase.",
+      "codeLabel": "MRE Code",
+      "codePlaceholder": "e.g. MRE26023xxxx",
+      "record": "Record",
+      "invalidTransition": "MRE can only be recorded for a purchase-requested part."
+    },
+    "approve": {
+      "trigger": "Approve",
+      "title": "Approve request",
+      "description": "Approving moves the request to Acknowledged so inventory can process it.",
+      "noteLabel": "Note (optional)",
+      "notePlaceholder": "e.g. Approved for procurement",
+      "invalidTransition": "This request is no longer pending approval.",
+      "forbidden": "You do not have the required role or scope to approve this request."
+    },
+    "complete": {
+      "trigger": "Complete",
+      "title": "Complete new part",
+      "description": "Register the material code for this new part. The request moves to Acknowledged once complete.",
+      "materialCodeLabel": "Material code",
+      "materialCodePlaceholder": "e.g. MC-0001",
+      "imageLabel": "Image object key (optional)",
+      "imagePlaceholder": "e.g. spareparts/abc/image.jpg",
+      "submit": "Complete request",
+      "invalidTransition": "This request is no longer pending completion."
+    },
+    "transition": {
+      "invalid": "This transition is not allowed in the current state."
+    },
+    "toast": {
+      "created": "Sparepart request created",
+      "createFailed": "Failed to create sparepart request",
+      "statusUpdated": "Request status updated",
+      "statusFailed": "Failed to update request status",
+      "approved": "Request approved",
+      "approveFailed": "Failed to approve request",
+      "mreRecorded": "MRE code recorded",
+      "mreFailed": "Failed to record MRE code",
+      "completed": "Request completed",
+      "completeFailed": "Failed to complete request"
+    },
+    "requestPart": {
+      "trigger": "Request part",
+      "title": "Request part",
+      "description": "Search existing spareparts or add a new material code. Items sit in a draft cart — submit to warehouse only when ready.",
+      "searchLabel": "Search existing sparepart (BOM, material code, name)",
+      "searchPlaceholder": "Type to search...",
+      "mcInResult": " · MC:{code}",
+      "selected": "Selected:",
+      "mcInSelected": " · MC: {code}",
+      "noBomHint": "No BOM selected — classify the new part so it is created with full taxonomy (machine is inherited from the work order).",
+      "materialCodeLabel": "Material code (or leave blank for new part)",
+      "materialCodePlaceholder": "e.g. MC-0001",
+      "priceLabel": "Est. unit price (optional)",
+      "urlLabel": "Purchase URL (optional)",
+      "urlPlaceholder": "https://...",
+      "notesLabel": "Notes (optional)",
+      "addToCart": "Add to cart",
+      "cart": "Cart",
+      "cartCount": "{count, plural, one {# item} other {# items}}",
+      "cartEmpty": "Add items above. They stay here locally until you submit.",
+      "newPart": "New part",
+      "qtyLine": "Qty: {qty}",
+      "submitting": "Submitting…",
+      "sendToWarehouse": "Send to warehouse ({count})"
+    },
+    "taxonomy": {
+      "category": "Category",
+      "kind": "Kind",
+      "brand": "Brand",
+      "type": "Type",
+      "categoryWord": "category",
+      "kindWord": "kind",
+      "brandWord": "brand",
+      "typeWord": "type",
+      "select": "Select {word}",
+      "search": "Search {word}",
+      "none": "No {word} found",
+      "create": "Create {word} “{name}”"
+    }
+  },
+  "workOrders": {
+    "dash": "-",
+    "category": "Category",
+    "machine": "Machine",
+    "status": {
+      "DRAFT": "Draft",
+      "OPEN": "Open",
+      "ASSIGNED": "Assigned",
+      "IN_PROGRESS": "In Progress",
+      "ON_PROCUREMENT": "On Procurement",
+      "PENDING_SPAREPART": "Pending Sparepart",
+      "PENDING_REVIEW": "Pending Review",
+      "DONE": "Done",
+      "CLOSED": "Closed",
+      "CANCELLED": "Cancelled"
+    },
+    "transition": {
+      "OPEN": "Open",
+      "IN_PROGRESS": "In Progress",
+      "PENDING_REVIEW": "Pending Review",
+      "CLOSED": "Close"
+    },
+    "stoppedReason": {
+      "WAITING_SPAREPART": "Waiting Sparepart",
+      "SHIFT_END": "Shift End",
+      "COMPLETED": "Completed",
+      "OTHER": "Other",
+      "NONE": "None"
+    },
+    "page": {
+      "title": "Work Orders",
+      "subtitle": "View, filter, and manage maintenance workorders.",
+      "tabTable": "Table",
+      "tabKanban": "Kanban",
+      "tabRatings": "Ratings",
+      "tabAckTaskList": "Ack Task List",
+      "tabCategories": "Categories"
+    },
+    "table": {
+      "woNo": "WO No",
+      "month": "Month",
+      "problem": "Problem",
+      "technician": "Technician",
+      "allStatuses": "All statuses",
+      "allCategories": "All categories",
+      "searchPlaceholder": "Search WO, machine, category...",
+      "searchAria": "Search workorders",
+      "refreshAria": "Refresh workorders",
+      "loadFailed": "Failed to load workorders.",
+      "empty": "No workorders match this filter."
+    },
+    "kanban": {
+      "loadFailed": "Failed to load the workorder board.",
+      "empty": "No workorders",
+      "columnAria": "{title} workorders"
+    },
+    "card": {
+      "noDescription": "No description",
+      "noTodos": "No todos",
+      "doneProgress": "{done}/{total} done",
+      "cancelledNote": " · {count} cancelled"
+    },
+    "actionsCell": {
+      "menu": {
+        "assignWork": "Assign & Work",
+        "requestPart": "Request Part",
+        "report": "Report",
+        "print": "Print"
+      },
+      "assignDialog": {
+        "title": "Assign & Work — {id}",
+        "loadingTechnicians": "Loading technicians...",
+        "technicians": "Technicians",
+        "noAssignable": "No assignable technicians.",
+        "selectAria": "Select {name}",
+        "workLog": "Work log",
+        "start": "Start",
+        "end": "End",
+        "stoppedReason": "Stopped reason",
+        "optional": "Optional",
+        "activityNote": "Activity note (required to save)",
+        "activityPlaceholder": "What was done in this session...",
+        "completionNote": "Completion note",
+        "pickDate": "Pick date",
+        "hourAria": "{label} hour",
+        "minuteAria": "{label} minute",
+        "backdateNote": "Work log backdate is clamped to the workorder creation time: {datetime}",
+        "save": "Save Assignments & Work",
+        "saved": "Assignments and work logs saved",
+        "errors": {
+          "activityNote": "Activity note is required to save this work log.",
+          "startRequired": "A start time is required to save this work log.",
+          "backdate": "Start cannot be before the workorder was created.",
+          "endBeforeStart": "End time must be after start time.",
+          "failed": "Failed to save. Check the values and try again."
+        }
+      },
+      "transitionDialog": {
+        "title": "Move to {status} — {id}",
+        "move": "Move to {status}",
+        "moved": "Workorder moved to {status}",
+        "reasonLabel": "Reason (optional)",
+        "reasonPlaceholder": "Reason for this status change...",
+        "updating": "Updating...",
+        "failed": "Failed to update workorder status"
+      },
+      "reportDialog": {
+        "title": "Work Order Report — {id}",
+        "loading": "Loading report...",
+        "chronological": "Chronological (what happened)",
+        "chronologicalPlaceholder": "Describe the sequence of events...",
+        "analyze": "Analyze (root cause)",
+        "analyzePlaceholder": "Root cause analysis...",
+        "corrective": "Corrective (what was done)",
+        "correctivePlaceholder": "Corrective actions taken...",
+        "preventive": "Preventive (future prevention)",
+        "preventivePlaceholder": "Preventive measures for the future...",
+        "save": "Save Report"
+      }
+    },
+    "ratings": {
+      "loadFailed": "Failed to load rateable workorders.",
+      "empty": "No closed workorders available to rate in your scope.",
+      "assignedTechnician": "Assigned technician:",
+      "starAria": "{label}: {count, plural, one {# star} other {# stars}}",
+      "panel": {
+        "noDimensions": "No rating dimensions configured yet.",
+        "noPermission": "You do not have permission to rate this workorder.",
+        "technicianRating": "Technician rating",
+        "workorderRating": "Workorder rating",
+        "submitted": "{label} (submitted)",
+        "technicianDimLabel": "Technician {label}",
+        "workorderDimLabel": "Workorder {label}",
+        "submittedTechnicianDim": "Technician rating {label}",
+        "submittedWorkorderDim": "Workorder rating {label}",
+        "rateTechnician": "Rate a technician",
+        "rateWorkorder": "Rate the workorder",
+        "technicianAria": "Technician to rate",
+        "loading": "Loading…",
+        "selectTechnician": "Select technician",
+        "submitting": "Submitting…",
+        "submitTechnician": "Submit technician rating",
+        "submitWorkorder": "Submit workorder rating",
+        "noExecutingTechnicians": "No executing technicians on this workorder."
+      }
+    },
+    "ackTaskList": {
+      "page": {
+        "title": "Ack Task List",
+        "subtitle": "Acknowledged vs pending acks and rated vs unrated closed workorders.",
+        "loading": "Loading ack task list…"
+      },
+      "list": {
+        "loadFailed": "Failed to load the ack task list.",
+        "noTasks": "No tasks",
+        "noTasksDesc": "No pending acks and no closed workorders to rate.",
+        "pendingTitle": "Pending acks",
+        "pendingDesc": "Workorders in progress past the ack deadline that still need acknowledgment.",
+        "nonePending": "No pending acknowledgments.",
+        "pendingBadge": "pending ack",
+        "acknowledge": "Acknowledge",
+        "acknowledgedTitle": "Acknowledged",
+        "acknowledgedDesc": "Workorders already acknowledged via the 4-hour escalation flow.",
+        "noneAcknowledged": "No acknowledged workorders yet.",
+        "ratedTitle": "Rated closed workorders",
+        "noneRated": "No rated closed workorders.",
+        "ratedBadge": "rated",
+        "unratedTitle": "Unrated closed workorders",
+        "noneUnrated": "No unrated closed workorders.",
+        "unratedBadge": "unrated"
+      }
+    },
+    "messages": {
+      "workorderAcknowledged": "Workorder acknowledged",
+      "ackFailed": "Failed to acknowledge workorder",
+      "todoCreated": "Todo created",
+      "todoCreateFailed": "Failed to create todo",
+      "todoAssigned": "Todo assigned",
+      "todoAssignFailed": "Failed to assign todo",
+      "todoCompleted": "Todo completed",
+      "todoCompleteFailed": "Failed to complete todo",
+      "todoReorderFailed": "Failed to reorder todo",
+      "todoDeleted": "Todo deleted",
+      "todoDeleteFailed": "Failed to delete todo",
+      "technicianRatingSubmitted": "Technician rating submitted",
+      "technicianRatingFailed": "Failed to submit technician rating",
+      "workorderRatingSubmitted": "Workorder rating submitted",
+      "workorderRatingFailed": "Failed to submit workorder rating",
+      "workorderApproved": "Workorder approved",
+      "approveFailed": "Failed to approve workorder",
+      "signatureUploadFailed": "Failed to upload signature image"
+    },
+    "dashboard": {
+      "title": "Workorder Dashboard",
+      "subtitle": "Workorder distribution by status and category.",
+      "computedNote": "Workorder distribution by status and category, computed on the server.",
+      "section": "Section",
+      "allSections": "All sections",
+      "allStatuses": "All statuses",
+      "allCategories": "All categories",
+      "plantScopeError": "Plant scope unavailable. Try again or contact your administrator.",
+      "noPlantsAssigned": "No plants assigned to your account. Contact your administrator.",
+      "loadFailed": "Failed to load the workorder dashboard.",
+      "emptyTitle": "No workorders in scope",
+      "emptyDescription": "No workorders match the current filters. Counts are zero, not missing.",
+      "totalWorkorders": "Total workorders",
+      "statusKpi": "Status · {status}",
+      "monthlyTitle": "Maintenance workorders",
+      "monthlyDescription": "Open vs closed workorders per month (Jan – Dec, current year).",
+      "open": "Open",
+      "close": "Close",
+      "noMonthlyCounts": "No monthly counts.",
+      "byStatusTitle": "By status",
+      "byStatusDescription": "Workorder count per lifecycle status.",
+      "noStatusCounts": "No status counts.",
+      "byCategoryTitle": "By category",
+      "byCategoryDescription": "Workorder count per category.",
+      "noCategoryCounts": "No category counts.",
+      "workorders": "Workorders",
+      "uncategorized": "Uncategorized"
+    },
+    "categoryManagement": {
+      "title": "Work Order Categories",
+      "label": "Label",
+      "targetResponseCol": "Target Response (min)",
+      "empty": "No categories configured.",
+      "minutes": "{count} min",
+      "add": "Add Category",
+      "dialogTitle": "Add Work Order Category",
+      "dialogDescription": "Create a new work order category (e.g. Breakdown, Preventive).",
+      "codePlaceholder": "e.g. 03",
+      "labelPlaceholder": "e.g. Emergency",
+      "targetResponseLabel": "Target response (minutes, optional)",
+      "targetResponsePlaceholder": "e.g. 60",
+      "createFailed": "Failed to create category. Code may already exist."
+    },
+    "print": {
+      "title": "Work Order Report",
+      "headerTitle": "Work Order Report — <mono>{id}</mono>",
+      "print": "Print",
+      "loadFailed": "Failed to load report.",
+      "logoAlt": "Company logo",
+      "signatureAlt": "Signature",
+      "statusLabel": "Status:",
+      "sourceLabel": "Source:",
+      "categoryLabel": "Category:",
+      "machineLabel": "Machine:",
+      "plantLabel": "Plant:",
+      "technicianLabel": "Technician:",
+      "descriptionLabel": "Description:",
+      "doneReasonLabel": "Done reason:",
+      "sessionsTitle": "Repair Sessions",
+      "colStart": "Start",
+      "colEnd": "End",
+      "colDuration": "Duration (min)",
+      "narrativeTitle": "Report Narrative",
+      "chronologicalLabel": "Chronological:",
+      "analyzeLabel": "Analyze:",
+      "correctiveLabel": "Corrective:",
+      "preventiveLabel": "Preventive:",
+      "cpkTitle": "Capability (CP/CPK)",
+      "cpLower": "CP lower:",
+      "cpUpper": "CP upper:",
+      "cpk": "CPK:",
+      "fmea": "FMEA:",
+      "stopReason": "Stop reason:",
+      "stopDetail": "Stop detail:",
+      "cpkPdf": "Capability PDF",
+      "evidenceTitle": "Evidence",
+      "partsTitle": "Sparepart Requests",
+      "colMaterial": "Material",
+      "colQty": "Qty",
+      "approvalTitle": "Approval",
+      "signedBy": "Signed by: {identity}",
+      "approvedAt": "Approved at: {time}",
+      "notYetSigned": "Not yet signed.",
+      "signApproveTitle": "Sign & Approve",
+      "signatureImageLabel": "Signature image (uploaded to Garage; key auto-filled)",
+      "objectKeyPlaceholder": "Signature object key (auto-filled on upload)",
+      "signerPlaceholder": "Signer identity (defaults to your name)",
+      "approving": "Approving...",
+      "approve": "Approve"
+    }
+  },
+  "analytics": {
+    "scopeUnavailable": "Plant scope unavailable. Try again or contact your administrator.",
+    "scopeEmpty": "No plants assigned to your account. Contact your administrator.",
+    "tabs": {
+      "mtbf": "MTBF / MTTR",
+      "kpi": "Technician KPI",
+      "monthly": "Monthly KPI"
+    },
+    "loadFailedMtbfMttr": "Failed to load the MTBF/MTTR analytics.",
+    "mtbfLabel": "MTBF",
+    "mttrLabel": "MTTR",
+    "breakdownCount": "{count} breakdowns",
+    "completedCount": "{count} completed",
+    "reliabilityTitle": "Reliability window",
+    "reliabilityDescription": "Monthly rolling window keyed on the derived workorder stop time.",
+    "windowLabel": "Window:",
+    "windowTo": "to",
+    "computedLabel": "Computed:",
+    "staleBadge": "Stale",
+    "staleBody": "Data may be out of date — refresh to recompute.",
+    "cacheServed": "Served from cache ({seconds}s old).",
+    "loadFailedTechnician": "Failed to load the technician KPI analytics.",
+    "noTechniciansTitle": "No technicians in scope",
+    "noTechniciansDescription": "No workorders with an assigned or session technician exist in the current scope.",
+    "technicianTableTitle": "Technician KPI",
+    "technicianTableDescription": "Objective KPIs from completed workorders plus per-dimension average ratings (1–5 stars).",
+    "table": {
+      "technician": "Technician",
+      "completed": "Completed",
+      "avgMttr": "Avg MTTR",
+      "onTimePct": "On-time %",
+      "ratings": "Ratings"
+    },
+    "noRatings": "No ratings",
+    "targetStatus": {
+      "ON_TARGET": "On target",
+      "BELOW_TARGET": "Below target",
+      "ABOVE_TARGET": "Above target",
+      "NO_TARGET": "No target",
+      "INSUFFICIENT_DATA": "Insufficient data"
+    },
+    "monthly": {
+      "monthLabel": "Month",
+      "actual": "Actual",
+      "target": "Target",
+      "entity": {
+        "machine": "Machine",
+        "plant": "Plant",
+        "technician": "Technician"
+      },
+      "mtbf": {
+        "title": "MTBF (days)",
+        "description": "Mean time between failures per machine, materialized monthly."
+      },
+      "mttr": {
+        "title": "MTTR (minutes)",
+        "description": "Mean time to repair per plant (actual-working when available, else wall-clock)."
+      },
+      "breakdown": {
+        "title": "Breakdown count",
+        "description": "Closed breakdown workorders per plant against the monthly target (lower is better)."
+      },
+      "mar": {
+        "title": "MAR (%)",
+        "description": "Machine availability ratio per plant from telemetry ingest state."
+      },
+      "pmCompletion": {
+        "title": "PM completion (%)",
+        "description": "Preventive maintenance completion rate per plant (completed / planned)."
+      },
+      "technician": {
+        "title": "Technician performance",
+        "description": "Monthly materialized technician performance (ratings 1–5, workorders, first-time-fix)."
+      }
+    },
+    "loadFailedSection": "Failed to load {title}.",
+    "refreshFailedBadge": "Refresh failed",
+    "refreshFailedBody": "Latest monthly refresh failed — the rows below may be stale.",
+    "insufficientBody": "No materialized {title} rows exist for this month yet — the monthly refresh has not produced data. Values are never fabricated.",
+    "shellBrand": "Syncro",
+    "shellTitle": "Analytics",
+    "shellSubtitle": "MTBF/MTTR reliability and technician KPIs, computed on the server.",
+    "targetDialog": {
+      "trigger": "Configure targets",
+      "title": "Configure KPI targets",
+      "description": "Targets for {month}. Values are validated server-side and every change is audit-logged. Leave a field empty to keep its current value.",
+      "loadError": "Failed to load the current targets — the fields below start empty. Saving still keeps any stored value for fields you leave empty.",
+      "selectPlant": "Select a plant",
+      "save": "Save target",
+      "saving": "Saving…",
+      "fields": {
+        "monthlyBreakdownTarget": {
+          "label": "Monthly breakdown target",
+          "hint": "Maximum breakdown workorders per month (lower is better)."
+        },
+        "mtbfTargetDays": {
+          "label": "MTBF target (days)",
+          "hint": "Higher is better."
+        },
+        "mttrTargetMinutes": {
+          "label": "MTTR target (minutes)",
+          "hint": "Lower is better."
+        },
+        "oeeQualityPercent": {
+          "label": "OEE quality (%)",
+          "hint": "0–100. OEE baseline factor."
+        },
+        "oeePerformancePercent": {
+          "label": "OEE performance (%)",
+          "hint": "0–100. OEE baseline factor."
+        }
+      },
+      "validation": {
+        "numberMinZero": "Must be a number of 0 or more.",
+        "numberRange": "Must be a number between 0 and {max}.",
+        "wholeNumber": "Must be a whole number."
+      }
+    },
+    "targetUpsert": {
+      "saved": "KPI target saved.",
+      "forbidden": "You do not have permission to configure KPI targets."
+    },
+    "shared": {
+      "machineSummary": {
+        "manualStatus": "Manual status: {status}",
+        "active": "Active",
+        "inactive": "Inactive",
+        "unknownMachine": "Unknown machine"
+      }
+    }
+  },
+  "machineHub": {
+    "alerts": {
+      "loadFailed": "Failed to load alerts.",
+      "emptyTitle": "No alerts",
+      "emptyDescription": "This machine has no active sparepart lifetime alerts.",
+      "colType": "Type",
+      "colNotification": "Notification",
+      "colSparepart": "Sparepart",
+      "colThreshold": "Threshold",
+      "colConsumed": "Consumed",
+      "viewAria": "View alert: {name}"
+    },
+    "header": {
+      "code": "Code: {code}",
+      "manual": "Manual: {status}",
+      "telemetryNoData": "Telemetry: No data",
+      "refreshAria": "Refresh machine data",
+      "plantLine": "Plant: {value}",
+      "groupLine": " • Group: {value}",
+      "brandLine": " • Brand: {value}"
+    },
+    "status": {
+      "ACTIVE": "ACTIVE",
+      "INACTIVE": "INACTIVE"
+    },
+    "shiftConfig": {
+      "removeShiftAria": "Remove shift {index}",
+      "startLabel": "Shift {index} start",
+      "endLabel": "Shift {index} end",
+      "removeAria": "Remove shift {index}",
+      "remove": "Remove",
+      "add": "Add shift",
+      "hint": "Up to {max} daily shifts; cross-midnight windows are allowed. Requires job scope LEADER or above."
+    },
+    "page": {
+      "notFoundTitle": "Machine not found",
+      "notFoundDescription": "No machine with code \"{code}\" exists or is visible to you.",
+      "accessDeniedTitle": "Access denied",
+      "accessDeniedDescription": "You have no plant assignment for this machine.",
+      "loadFailed": "Failed to load machine data.",
+      "refreshFailed": "Refresh failed",
+      "inactiveBanner": "This machine is currently INACTIVE. Telemetry messages are being rejected.",
+      "tabOverview": "Overview",
+      "tabTelemetry": "Telemetry",
+      "tabSpareparts": "Spareparts",
+      "tabAlerts": "Alerts",
+      "tabAudit": "Audit Log",
+      "title": "Machine Hub"
+    },
+    "overview": {
+      "detailsTitle": "Machine Details",
+      "detailsDescription": "Master data and lifecycle information",
+      "machineGroup": "Machine Group",
+      "brand": "Brand",
+      "installedAt": "Installed At",
+      "telemetryFields": "Telemetry Fields",
+      "alertStateTitle": "Sparepart Alert State",
+      "alertStateDescription": "Active sparepart lifetime alerts for this machine.",
+      "alertStateLoadFailed": "Failed to load alert state.",
+      "noOpenAlerts": "No open alerts. All spareparts within threshold.",
+      "alertAria": "Alert for {name}",
+      "viewAllAlerts": "View all {count, plural, one {# alert} other {# alerts}} →"
+    },
+    "audit": {
+      "title": "Audit Log",
+      "description": "Immutable history of changes to this machine",
+      "unavailableTitle": "Audit log unavailable",
+      "unavailableDescription": "Failed to load audit log entries.",
+      "emptyTitle": "No audit entries yet",
+      "emptyDescription": "There are no audit log entries for this machine.",
+      "timestamp": "Timestamp",
+      "actor": "Actor",
+      "action": "Action",
+      "toggleChangeAria": "Toggle change detail",
+      "show": "Show",
+      "hide": "Hide",
+      "before": "Before",
+      "after": "After"
+    },
+    "spareparts": {
+      "title": "Installed Spareparts",
+      "description": "Current installations and lifetime consumption",
+      "colSparepart": "Sparepart",
+      "colFunction": "Function",
+      "colInstalled": "Installed",
+      "colLifetime": "Lifetime Usage",
+      "unavailableTitle": "Spareparts unavailable",
+      "unavailableDescription": "Failed to load installed spareparts.",
+      "emptyTitle": "No spareparts installed",
+      "emptyDescription": "This machine currently has no spareparts installed."
+    },
+    "telemetryTab": {
+      "title": "Latest Telemetry",
+      "description": "Latest sensor readings (auto-refreshes every 30 seconds)",
+      "unavailableTitle": "Telemetry unavailable",
+      "unavailableDescription": "Failed to load telemetry data.",
+      "noDataTitle": "No telemetry available",
+      "noDataDescription": "This machine has not sent any telemetry data yet.",
+      "colField": "Field",
+      "colValue": "Value",
+      "running": "Running",
+      "yes": "Yes",
+      "no": "No",
+      "runtimeHours": "Runtime Hours",
+      "productionCount": "Production Count",
+      "lastReceived": "Last received: {time}"
+    },
+    "shift": {
+      "title": "Shift Schedule",
+      "description": "Resolved daily shift windows; the machine override wins over its group.",
+      "loadFailed": "Failed to load shift schedule.",
+      "noneConfigured": "No shift schedule configured for this machine or its group.",
+      "save": "Save shift override",
+      "clear": "Clear shift override",
+      "savedToast": "Shift override saved.",
+      "clearedToast": "Shift override cleared.",
+      "incompleteRows": "Each shift needs both a start and an end time.",
+      "requestFailed": "Shift override request failed."
+    },
+    "breadcrumb": {
+      "dashboard": "Dashboard",
+      "machines": "Machines",
+      "detail": "Machine detail"
+    },
+    "loadingMachines": "Loading machines..."
+  },
+  "spareparts": {
+    "shared": {
+      "priceHistory": {
+        "amount": "Amount",
+        "kurs": "Kurs",
+        "idrValue": "IDR Value",
+        "enteredBy": "Entered By",
+        "enteredAt": "Entered At",
+        "actions": "Actions",
+        "delete": "Delete",
+        "empty": "No price entries recorded yet.",
+        "reuse": "Reuse"
+      },
+      "currencyPrice": {
+        "amount": "Amount",
+        "kursToIdr": "Kurs to IDR",
+        "requiredForNonIdr": "Required for non-IDR currencies.",
+        "currency": "Currency",
+        "amountPlaceholder": "e.g. 1500000",
+        "kursPlaceholder": "e.g. 15500"
+      },
+      "leadTime": {
+        "label": "Lead time",
+        "optional": "Optional",
+        "unitAria": "Lead time unit",
+        "unitHours": "hours",
+        "unitDays": "days",
+        "daysHint": "{value} days",
+        "equivalent": "Equivalent to {hint}. ",
+        "description": "Used to project procurement timing before sparepart depletion."
+      },
+      "materialCode": {
+        "label": "Material code",
+        "optionalEg": "Optional, e.g. MC-001",
+        "description": "Optional global identifier shared by identical spareparts across machines."
+      },
+      "imageUpload": {
+        "label": "Image",
+        "previewAlt": "Sparepart preview",
+        "viewOnly": "View only.",
+        "replace": "Replace image",
+        "upload": "Upload image",
+        "empty": "No image uploaded yet.",
+        "remove": "Remove",
+        "hint": "JPEG, PNG, WebP, or GIF up to 5 MB. Backend limits are authoritative."
+      }
     }
   }
 }

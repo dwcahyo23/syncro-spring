@@ -54,10 +54,9 @@ export function useWorkorderDashboard(params: WorkorderDashboardParams = {}, ena
   return useQuery<WorkorderDashboardResponse>({
     queryKey: [url, params],
     queryFn: async () => {
-      const response = await syncroFetch<{ data: WorkorderDashboardResponse }>(
-        `${url}${qs ? `?${qs}` : ""}`,
-        { method: "GET" },
-      );
+      const response = await syncroFetch<{ data: WorkorderDashboardResponse }>(`${url}${qs ? `?${qs}` : ""}`, {
+        method: "GET",
+      });
       return response.data;
     },
     enabled: enabled ?? true,

@@ -59,10 +59,7 @@ describe("stale machines fetcher", () => {
   });
 
   it("rejects on 200 with a non-JSON body", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(new Response("<html>gateway error</html>", { status: 200 })),
-    );
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("<html>gateway error</html>", { status: 200 })));
     await expect(fetchStaleMachines()).rejects.toThrow("not valid JSON");
   });
 

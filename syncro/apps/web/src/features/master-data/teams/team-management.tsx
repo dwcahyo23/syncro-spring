@@ -4,6 +4,7 @@ import { type FormEvent, useMemo, useState } from "react";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, TriangleAlertIcon, UsersIcon, WrenchIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import {
@@ -32,6 +33,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { apiErrorMessage, errorResponse } from "@/lib/api/error-response";
 import type { CreateTeamRequest, TeamDetailResponse, TeamView } from "@/lib/api/generated/model";
 import {
   getGetTeamQueryKey,
@@ -49,14 +51,8 @@ import {
   useUnlinkTeamMachine,
   useUpdateTeam,
 } from "@/lib/api/generated/syncro";
-import { SyncroApiError } from "@/lib/api/orval-mutator";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
-
-type ErrorResponse = {
-  code: string;
-  message: string;
-  fieldErrors?: Record<string, string>;
-};
+import { useDateTimeFormatter } from "@/lib/i18n/format";
 
 type DialogMode = { type: "create" | "edit"; team?: TeamView };
 
@@ -85,6 +81,9 @@ function fromDatetimeLocal(value: string): string {
 }
 
 export function TeamManagement() {
+  const t = useTranslations("masterData");
+  const tc = useTranslations("common");
+  const te = useTranslations("errors");
   const user = useAuthUser();
   const queryClient = useQueryClient();
   const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGER_MAINTENANCE";
@@ -131,7 +130,7 @@ export function TeamManagement() {
     try {
       expiresAt = fromDatetimeLocal(form.expiresAt);
     } catch {
-      setFieldErrors({ expiresAt: "Invalid value." });
+      setFieldErrors({ expiresAt: t("team.invalidValue") });
       return;
     }
 
@@ -141,21 +140,22 @@ export function TeamManagement() {
           teamId: dialogMode.team.id,
           data: { name: form.name.trim(), expiresAt },
         });
-        toast.success("Team updated.");
+        toast.success(t("team.toast.updated"));
       } else {
         const payload: CreateTeamRequest = {
           name: form.name.trim(),
           expiresAt,
         };
         await createTeam.mutateAsync({ data: payload });
-        toast.success("Team created.");
+        toast.success(t("team.toast.created"));
       }
       setDialogMode(null);
     } catch (error) {
       const response = errorResponse(error);
       setFieldErrors(response?.fieldErrors ?? {});
-      setFormError(response?.message ?? "Team request failed.");
-      toast.error(response?.message ?? "Team request failed.");
+      const message = response ? apiErrorMessage(te, response) : t("team.toast.requestFailed");
+      setFormError(message);
+      toast.error(message);
     }
   }
 
@@ -165,11 +165,11 @@ export function TeamManagement() {
     }
     try {
       await deleteTeam.mutateAsync({ teamId: teamToDelete.id ?? "" });
-      toast.success("Team deleted.");
+      toast.success(t("team.toast.deleted"));
       setTeamToDelete(null);
     } catch (error) {
       const response = errorResponse(error);
-      toast.error(response?.message ?? "Team delete failed.");
+      toast.error(response ? apiErrorMessage(te, response) : t("team.toast.deleteFailed"));
       setTeamToDelete(null);
     }
   }
@@ -178,16 +178,13 @@ export function TeamManagement() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Cross-Plant Teams</CardTitle>
-          <CardDescription>
-            Expiry-dated groups of members and target machines. Members gain scoped access to the targeted machines
-            across plants while the team is active.
-          </CardDescription>
+          <CardTitle>{t("team.title")}</CardTitle>
+          <CardDescription>{t("team.description")}</CardDescription>
           <CardAction className="flex items-center gap-2">
             {canMutate ? (
-              <Button onClick={openCreateDialog}>Create team</Button>
+              <Button onClick={openCreateDialog}>{t("team.create")}</Button>
             ) : (
-              <Badge variant="secondary">Read-only</Badge>
+              <Badge variant="secondary">{t("team.readOnly")}</Badge>
             )}
           </CardAction>
         </CardHeader>
@@ -195,28 +192,28 @@ export function TeamManagement() {
           {teamsQuery.isLoading ? <TeamTableSkeleton /> : null}
           {teamsQuery.isError ? (
             <TeamState
-              title="Teams could not be loaded"
-              description="Refresh page or contact administrator if access should be available."
+              title={t("team.state.loadFailedTitle")}
+              description={t("team.state.loadFailedDesc")}
               action={
                 <Button variant="outline" onClick={() => teamsQuery.refetch()}>
-                  Retry
+                  {tc("retry")}
                 </Button>
               }
             />
           ) : null}
           {!teamsQuery.isLoading && !teamsQuery.isError && items.length === 0 ? (
-            <TeamState title="No teams yet" description="Create the first cross-plant team." />
+            <TeamState title={t("team.state.emptyTitle")} description={t("team.state.emptyDesc")} />
           ) : null}
           {items.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Members</TableHead>
-                  <TableHead>Machines</TableHead>
-                  <TableHead>Expires at</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{tc("name")}</TableHead>
+                  <TableHead>{t("team.members")}</TableHead>
+                  <TableHead>{t("team.machines")}</TableHead>
+                  <TableHead>{t("team.expiresAt")}</TableHead>
+                  <TableHead>{tc("status")}</TableHead>
+                  <TableHead className="text-right">{tc("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -225,12 +222,14 @@ export function TeamManagement() {
                     <TableCell className="font-medium">{team.name}</TableCell>
                     <TableCell>{team.memberCount}</TableCell>
                     <TableCell>{team.machineCount}</TableCell>
-                    <TableCell>{formatExpiry(team.expiresAt)}</TableCell>
+                    <TableCell>
+                      <ExpiryCell expiresAt={team.expiresAt} />
+                    </TableCell>
                     <TableCell>
                       {team.active ? (
-                        <Badge variant="outline">Active</Badge>
+                        <Badge variant="outline">{tc("active")}</Badge>
                       ) : (
-                        <Badge variant="secondary">Expired</Badge>
+                        <Badge variant="secondary">{t("team.expired")}</Badge>
                       )}
                     </TableCell>
                     <TableCell className="text-right">
@@ -242,7 +241,7 @@ export function TeamManagement() {
                             onClick={() => setManageDialog({ type: "members", team })}
                           >
                             <UsersIcon />
-                            Members
+                            {t("team.members")}
                           </Button>
                           <Button
                             variant="outline"
@@ -250,17 +249,17 @@ export function TeamManagement() {
                             onClick={() => setManageDialog({ type: "machines", team })}
                           >
                             <WrenchIcon />
-                            Machines
+                            {t("team.machines")}
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => openEditDialog(team)}>
-                            Edit
+                            {tc("edit")}
                           </Button>
                           <Button variant="destructive" size="sm" onClick={() => setTeamToDelete(team)}>
-                            Delete
+                            {tc("delete")}
                           </Button>
                         </div>
                       ) : (
-                        <Badge variant="secondary">View only</Badge>
+                        <Badge variant="secondary">{t("team.viewOnly")}</Badge>
                       )}
                     </TableCell>
                   </TableRow>
@@ -275,16 +274,16 @@ export function TeamManagement() {
         <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
           <form onSubmit={submitTeam} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>{dialogMode?.type === "edit" ? "Edit team" : "Create team"}</DialogTitle>
-              <DialogDescription>
-                Team names must be unique (case-insensitive). Expiry must be strictly in the future.
-              </DialogDescription>
+              <DialogTitle>
+                {dialogMode?.type === "edit" ? t("team.dialog.editTitle") : t("team.dialog.createTitle")}
+              </DialogTitle>
+              <DialogDescription>{t("team.dialog.description")}</DialogDescription>
             </DialogHeader>
             {formError ? (
               <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{formError}</p>
             ) : null}
             <div className="grid gap-2">
-              <Label htmlFor="team-name">Name</Label>
+              <Label htmlFor="team-name">{tc("name")}</Label>
               <Input
                 id="team-name"
                 value={form.name}
@@ -295,7 +294,7 @@ export function TeamManagement() {
               {fieldErrors.name ? <p className="text-destructive text-sm">{fieldErrors.name}</p> : null}
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="team-expiry">Expires at</Label>
+              <Label htmlFor="team-expiry">{t("team.expiresAt")}</Label>
               <Input
                 id="team-expiry"
                 type="datetime-local"
@@ -309,11 +308,11 @@ export function TeamManagement() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogMode(null)} disabled={isSaving}>
-                Cancel
+                {tc("cancel")}
               </Button>
               <Button type="submit" disabled={isSaving}>
                 {isSaving ? <Loader2Icon className="animate-spin" /> : null}
-                Save team
+                {t("team.dialog.save")}
               </Button>
             </DialogFooter>
           </form>
@@ -323,16 +322,14 @@ export function TeamManagement() {
       <AlertDialog open={teamToDelete !== null} onOpenChange={(open) => !open && setTeamToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete team "{teamToDelete?.name}"?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This permanently deletes the team and its member and machine links. This action cannot be undone.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t("team.delete.title", { name: teamToDelete?.name ?? "" })}</AlertDialogTitle>
+            <AlertDialogDescription>{t("team.delete.description")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>{tc("cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={() => void confirmDelete()} disabled={isDeleting}>
               {isDeleting ? <Loader2Icon className="animate-spin" /> : null}
-              Delete
+              {tc("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -351,6 +348,15 @@ export function TeamManagement() {
   );
 }
 
+function ExpiryCell({ expiresAt }: { expiresAt: string | undefined }) {
+  const dt = useDateTimeFormatter();
+  if (!expiresAt) {
+    return <>-</>;
+  }
+  const date = new Date(expiresAt);
+  return <>{Number.isNaN(date.getTime()) ? expiresAt : dt.dateTime(expiresAt)}</>;
+}
+
 function ManageDialog({
   team,
   type,
@@ -364,6 +370,7 @@ function ManageDialog({
   onClose: () => void;
   onChanged: () => void;
 }) {
+  const t = useTranslations("masterData");
   const queryClient = useQueryClient();
   const detail = useGetTeam(team.id);
   const detailEnvelope = detail.data?.data;
@@ -388,17 +395,19 @@ function ManageDialog({
       <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            {type === "members" ? "Team members" : "Target machines"} — {team.name}
+            {type === "members"
+              ? t("team.manage.membersTitle", { name: team.name })
+              : t("team.manage.machinesTitle", { name: team.name })}
           </DialogTitle>
           <DialogDescription>
-            {type === "members"
-              ? "Members gain scoped access to the team's machines across plants."
-              : "Target machines resolve to their machine groups for the member's operational scope."}
+            {type === "members" ? t("team.manage.membersDesc") : t("team.manage.machinesDesc")}
           </DialogDescription>
         </DialogHeader>
         {detail.isLoading ? <TeamTableSkeleton /> : null}
         {detail.isError ? (
-          <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">Team details could not be loaded.</p>
+          <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">
+            {t("team.manage.detailsLoadFailed")}
+          </p>
         ) : null}
         {manager}
       </DialogContent>
@@ -417,6 +426,8 @@ function MemberManager({
   canMutate: boolean;
   onChanged: () => void;
 }) {
+  const t = useTranslations("masterData");
+  const te = useTranslations("errors");
   const usersQuery = useListUsers({ query: { enabled: canMutate } });
   const users = usersQuery.data?.data ?? [];
   const [selectedUserId, setSelectedUserId] = useState("");
@@ -437,18 +448,20 @@ function MemberManager({
     try {
       await addMember.mutateAsync({ teamId, data: { userId: selectedUserId } });
       setSelectedUserId("");
-      toast.success("Member added.");
+      toast.success(t("team.toast.memberAdded"));
     } catch (error) {
-      toast.error(errorMessage(error) ?? "Member add failed.");
+      const response = errorResponse(error);
+      toast.error(response ? apiErrorMessage(te, response) : t("team.toast.memberAddFailed"));
     }
   }
 
   async function handleRemove(userId: string) {
     try {
       await removeMember.mutateAsync({ teamId, userId });
-      toast.success("Member removed.");
+      toast.success(t("team.toast.memberRemoved"));
     } catch (error) {
-      toast.error(errorMessage(error) ?? "Member remove failed.");
+      const response = errorResponse(error);
+      toast.error(response ? apiErrorMessage(te, response) : t("team.toast.memberRemoveFailed"));
     }
   }
 
@@ -456,14 +469,14 @@ function MemberManager({
     <div className="space-y-4">
       {canMutate ? (
         availableUsers.length === 0 ? (
-          <p className="text-muted-foreground text-sm">All users are already members of this team.</p>
+          <p className="text-muted-foreground text-sm">{t("team.manage.allMembersAdded")}</p>
         ) : (
           <div className="grid gap-2">
-            <Label htmlFor="team-member-select">Add member</Label>
+            <Label htmlFor="team-member-select">{t("team.manage.addMember")}</Label>
             <div className="flex gap-2">
               <Select value={selectedUserId} onValueChange={setSelectedUserId}>
                 <SelectTrigger id="team-member-select" className="w-full">
-                  <SelectValue placeholder="Select user" />
+                  <SelectValue placeholder={t("team.manage.selectUser")} />
                 </SelectTrigger>
                 <SelectContent>
                   {availableUsers.map((candidate) => (
@@ -474,7 +487,7 @@ function MemberManager({
                 </SelectContent>
               </Select>
               <Button type="button" variant="outline" onClick={() => void handleAdd()} disabled={!selectedUserId}>
-                Add
+                {t("team.manage.add")}
               </Button>
             </div>
           </div>
@@ -482,7 +495,7 @@ function MemberManager({
       ) : null}
       <div className="space-y-2">
         {detail.members.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No members yet.</p>
+          <p className="text-muted-foreground text-sm">{t("team.manage.noMembers")}</p>
         ) : (
           detail.members.map((member) => (
             <div key={member.userId} className="flex items-center justify-between rounded-md border p-2">
@@ -497,7 +510,7 @@ function MemberManager({
                   disabled={removeMember.isPending}
                   onClick={() => void handleRemove(member.userId)}
                 >
-                  Remove
+                  {t("team.manage.remove")}
                 </Button>
               ) : null}
             </div>
@@ -519,6 +532,8 @@ function MachineManager({
   canMutate: boolean;
   onChanged: () => void;
 }) {
+  const t = useTranslations("masterData");
+  const te = useTranslations("errors");
   const [plantFilter, setPlantFilter] = useState("all");
   const machineParams = useMemo(
     () => ({ plantId: plantFilter === "all" ? undefined : plantFilter, limit: 200 }),
@@ -558,18 +573,20 @@ function MachineManager({
     try {
       await linkMachine.mutateAsync({ teamId, data: { machineId: selectedMachineId } });
       setSelectedMachineId("");
-      toast.success("Machine linked.");
+      toast.success(t("team.toast.machineLinked"));
     } catch (error) {
-      toast.error(errorMessage(error) ?? "Machine link failed.");
+      const response = errorResponse(error);
+      toast.error(response ? apiErrorMessage(te, response) : t("team.toast.machineLinkFailed"));
     }
   }
 
   async function handleUnlink(machineId: string) {
     try {
       await unlinkMachine.mutateAsync({ teamId, machineId });
-      toast.success("Machine unlinked.");
+      toast.success(t("team.toast.machineUnlinked"));
     } catch (error) {
-      toast.error(errorMessage(error) ?? "Machine unlink failed.");
+      const response = errorResponse(error);
+      toast.error(response ? apiErrorMessage(te, response) : t("team.toast.machineUnlinkFailed"));
     }
   }
 
@@ -577,61 +594,63 @@ function MachineManager({
     <div className="space-y-4">
       {canMutate ? (
         availableMachines.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            No linkable machines in this view — every listed machine is already linked, or none exist yet.
-          </p>
+          <p className="text-muted-foreground text-sm">{t("team.manage.noLinkable")}</p>
         ) : (
           <>
-          {isTruncated ? (
-            <p role="status" className="text-muted-foreground text-xs" aria-live="polite">
-              Showing the first {machines.length} of {totalMachines} machines — refine the plant filter to
-              reach machines beyond this page.
-            </p>
-          ) : null}
-          <div className="space-y-2">
-            <div className="grid gap-2">
-              <Label htmlFor="team-machine-plant">Plant filter</Label>
-              <Select value={plantFilter} onValueChange={handlePlantFilterChange}>
-                <SelectTrigger id="team-machine-plant">
-                  <SelectValue placeholder="All plants" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All plants</SelectItem>
-                  {plantOptions.map((plant) => (
-                    <SelectItem key={plant.id} value={plant.id ?? ""}>
-                      {plant.code}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="team-machine-select">Link machine</Label>
-              <div className="flex gap-2">
-                <Select value={selectedMachineId} onValueChange={setSelectedMachineId}>
-                  <SelectTrigger id="team-machine-select" className="w-full">
-                    <SelectValue placeholder="Select machine" />
+            {isTruncated ? (
+              <p role="status" className="text-muted-foreground text-xs" aria-live="polite">
+                {t("team.manage.truncation", { shown: machines.length, total: totalMachines })}
+              </p>
+            ) : null}
+            <div className="space-y-2">
+              <div className="grid gap-2">
+                <Label htmlFor="team-machine-plant">{t("team.manage.plantFilter")}</Label>
+                <Select value={plantFilter} onValueChange={handlePlantFilterChange}>
+                  <SelectTrigger id="team-machine-plant">
+                    <SelectValue placeholder={t("team.manage.allPlants")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableMachines.map((candidate) => (
-                      <SelectItem key={candidate.id} value={candidate.id ?? ""}>
-                        {candidate.code} — {candidate.plantCode} / {candidate.machineGroupName}
+                    <SelectItem value="all">{t("team.manage.allPlants")}</SelectItem>
+                    {plantOptions.map((plant) => (
+                      <SelectItem key={plant.id} value={plant.id ?? ""}>
+                        {plant.code}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <Button type="button" variant="outline" onClick={() => void handleLink()} disabled={!selectedMachineId}>
-                  Link
-                </Button>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="team-machine-select">{t("team.manage.linkMachine")}</Label>
+                <div className="flex gap-2">
+                  <Select value={selectedMachineId} onValueChange={setSelectedMachineId}>
+                    <SelectTrigger id="team-machine-select" className="w-full">
+                      <SelectValue placeholder={t("team.manage.selectMachine")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableMachines.map((candidate) => (
+                        <SelectItem key={candidate.id} value={candidate.id ?? ""}>
+                          {candidate.code} — {candidate.plantCode} / {candidate.machineGroupName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void handleLink()}
+                    disabled={!selectedMachineId}
+                  >
+                    {t("team.manage.link")}
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
           </>
         )
       ) : null}
       <div className="space-y-2">
         {detail.machines.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No machines linked yet.</p>
+          <p className="text-muted-foreground text-sm">{t("team.manage.noMachinesLinked")}</p>
         ) : (
           detail.machines.map((machine) => (
             <div key={machine.machineId} className="flex items-center justify-between rounded-md border p-2">
@@ -650,7 +669,7 @@ function MachineManager({
                   disabled={unlinkMachine.isPending}
                   onClick={() => void handleUnlink(machine.machineId)}
                 >
-                  Unlink
+                  {t("team.manage.unlink")}
                 </Button>
               ) : null}
             </div>
@@ -682,24 +701,4 @@ function TeamTableSkeleton() {
       <Skeleton className="h-10 w-full" />
     </div>
   );
-}
-
-function formatExpiry(expiresAt: string | undefined): string {
-  if (!expiresAt) {
-    return "-";
-  }
-  const date = new Date(expiresAt);
-  return Number.isNaN(date.getTime()) ? expiresAt : date.toLocaleString();
-}
-
-function errorResponse(error: unknown): ErrorResponse | null {
-  if (!(error instanceof SyncroApiError) || !error.payload || typeof error.payload !== "object") {
-    return null;
-  }
-  const payload = error.payload as ErrorResponse;
-  return typeof payload.code === "string" && typeof payload.message === "string" ? payload : null;
-}
-
-function errorMessage(error: unknown): string | null {
-  return errorResponse(error)?.message ?? null;
 }

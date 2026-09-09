@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +25,7 @@ import { useCompleteRequest } from "@/features/sparepart-requests/hooks/use-spar
  * composes the request. Non-native shadcn controls only.
  */
 export function CompleteDialog({ requestId }: { requestId: string }) {
+  const t = useTranslations("sparepartRequests");
   const [open, setOpen] = useState(false);
   const [materialCode, setMaterialCode] = useState("");
   const [imageObjectKey, setImageObjectKey] = useState("");
@@ -53,32 +55,30 @@ export function CompleteDialog({ requestId }: { requestId: string }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          Complete
+          {t("complete.trigger")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Complete new part</DialogTitle>
-          <DialogDescription>
-            Register the material code for this new part. The request moves to Acknowledged once complete.
-          </DialogDescription>
+          <DialogTitle>{t("complete.title")}</DialogTitle>
+          <DialogDescription>{t("complete.description")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="materialCode">Material code</Label>
+            <Label htmlFor="materialCode">{t("complete.materialCodeLabel")}</Label>
             <Input
               id="materialCode"
-              placeholder="e.g. MC-0001"
+              placeholder={t("complete.materialCodePlaceholder")}
               value={materialCode}
               onChange={(e) => setMaterialCode(e.target.value)}
               maxLength={64}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="imageObjectKey">Image object key (optional)</Label>
+            <Label htmlFor="imageObjectKey">{t("complete.imageLabel")}</Label>
             <Input
               id="imageObjectKey"
-              placeholder="e.g. spareparts/abc/image.jpg"
+              placeholder={t("complete.imagePlaceholder")}
               value={imageObjectKey}
               onChange={(e) => setImageObjectKey(e.target.value)}
               maxLength={255}
@@ -86,7 +86,7 @@ export function CompleteDialog({ requestId }: { requestId: string }) {
           </div>
           <Button onClick={handleSubmit} disabled={complete.isPending || !materialCode.trim()}>
             {complete.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
-            Complete request
+            {t("complete.submit")}
           </Button>
         </div>
       </DialogContent>

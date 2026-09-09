@@ -1,7 +1,10 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
+
+import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { SparepartPriceEntryView } from "@/lib/api/generated/model";
+import { renderI18n } from "@/test/i18n-wrapper";
 
 import { PriceHistoryTable } from "./price-history-table";
 
@@ -32,7 +35,7 @@ const ENTRIES: SparepartPriceEntryView[] = [
 
 describe("PriceHistoryTable", () => {
   it("renders one row per entry with currency, kurs, IDR value, actor, and timestamp", () => {
-    render(<PriceHistoryTable entries={ENTRIES} />);
+    renderI18n(<PriceHistoryTable entries={ENTRIES} />);
 
     expect(screen.getByText("$1,000.00")).toBeInTheDocument();
     // The IDR row's amount and its IDR value are both 1,500,000.
@@ -45,13 +48,13 @@ describe("PriceHistoryTable", () => {
   });
 
   it("shows the empty-state text when there are no entries", () => {
-    render(<PriceHistoryTable entries={[]} />);
+    renderI18n(<PriceHistoryTable entries={[]} />);
 
     expect(screen.getByTestId("price-history-empty")).toHaveTextContent("No price entries recorded yet.");
   });
 
   it("shows a loading state while the history is being fetched", () => {
-    render(<PriceHistoryTable entries={[]} isLoading />);
+    renderI18n(<PriceHistoryTable entries={[]} isLoading />);
 
     expect(screen.getByTestId("price-history-loading")).toBeInTheDocument();
     expect(screen.queryByTestId("price-history-table")).not.toBeInTheDocument();
@@ -59,7 +62,7 @@ describe("PriceHistoryTable", () => {
 
   it("fires onReuse with the row entry and omits the actions column without onReuse", () => {
     const onReuse = vi.fn();
-    const { rerender } = render(<PriceHistoryTable entries={ENTRIES} onReuse={onReuse} />);
+    const { rerender } = renderI18n(<PriceHistoryTable entries={ENTRIES} onReuse={onReuse} />);
 
     fireEvent.click(screen.getAllByRole("button", { name: "Reuse" })[1]);
 

@@ -4,13 +4,19 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { I18nProvider } from "@/test/i18n-wrapper";
+
 import { WorkorderDashboardPageContent } from "./workorder-dashboard-page-content";
 
 // ---------------------------------------------------------------------------
 // Module-level mocks
 // ---------------------------------------------------------------------------
 
-let mockScope: { mode: string; availablePlants: Array<{ id: string; code: string; name: string }>; emptyReason: string | null } | null = {
+let mockScope: {
+  mode: string;
+  availablePlants: Array<{ id: string; code: string; name: string }>;
+  emptyReason: string | null;
+} | null = {
   mode: "ASSIGNED",
   availablePlants: [{ id: "p1", code: "P1", name: "Plant 1" }],
   emptyReason: null,
@@ -60,7 +66,9 @@ const queryClient = new QueryClient({
 });
 
 const Wrapper = ({ children }: { children: ReactNode }) => (
-  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  <QueryClientProvider client={queryClient}>
+    <I18nProvider>{children}</I18nProvider>
+  </QueryClientProvider>
 );
 
 function renderPage() {
@@ -120,7 +128,7 @@ describe("WorkorderDashboardPageContent", () => {
     };
     renderPage();
     expect(screen.getByText("5")).toBeTruthy();
-    expect(screen.getByText("Status · OPEN")).toBeTruthy();
+    expect(screen.getByText("Status · Open")).toBeTruthy();
     // "3" appears in the KPI card and the by-status chart.
     expect(screen.getAllByText("3").length).toBeGreaterThanOrEqual(1);
     // Chart ticks repeat labels (axis + tooltip), so a single match is not guaranteed.

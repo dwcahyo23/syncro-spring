@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { Printer, Upload } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,13 +23,10 @@ import { useWorkorderSignatureUpload } from "@/features/workorders/hooks/use-wor
  * approve (upload signature image → Garage key → POST /approve). Calls window.print() on
  * mount — the shared print stylesheet (styles/print.css) drives the @media print layout.
  */
-export function WorkorderPrintReportPage({
-  workOrderId,
-  onClose,
-}: {
-  workOrderId: string;
-  onClose: () => void;
-}) {
+export function WorkorderPrintReportPage({ workOrderId, onClose }: { workOrderId: string; onClose: () => void }) {
+  const t = useTranslations("workOrders");
+  const tc = useTranslations("common");
+  const format = useFormatter();
   const { data, isLoading, isError, refetch } = useWorkorderPrintReport(workOrderId);
   const { data: logo } = useCompanyLogo();
   const approve = useWorkorderApprove(workOrderId);
@@ -47,13 +45,22 @@ export function WorkorderPrintReportPage({
     }
   }, [data, isLoading]);
 
-  const canApprove = data?.header && (data.header.status === "DONE" || data.header.status === "CLOSED") && !data.signature;
+  const canApprove =
+    data?.header && (data.header.status === "DONE" || data.header.status === "CLOSED") && !data.signature;
+
+  const formatInstant = (iso: string) => {
+    try {
+      return format.dateTime(new Date(iso), { dateStyle: "medium", timeStyle: "short" });
+    } catch {
+      return iso;
+    }
+  };
 
   if (isLoading) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Work Order Report</CardTitle>
+          <CardTitle>{t("print.title")}</CardTitle>
         </CardHeader>
         <CardContent>
           <Skeleton className="h-40 w-full" />
@@ -66,16 +73,16 @@ export function WorkorderPrintReportPage({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Work Order Report</CardTitle>
+          <CardTitle>{t("print.title")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground text-sm">Failed to load report.</p>
+          <p className="text-muted-foreground text-sm">{t("print.loadFailed")}</p>
           <div className="mt-2 flex gap-2">
             <Button variant="outline" size="sm" onClick={() => void refetch()}>
-              Retry
+              {tc("retry")}
             </Button>
             <Button variant="ghost" size="sm" onClick={onClose}>
-              Close
+              {tc("close")}
             </Button>
           </div>
         </CardContent>
@@ -88,14 +95,14 @@ export function WorkorderPrintReportPage({
   return (
     <div className="space-y-4">
       <div className="no-print flex items-center justify-between">
-        <h1 className="font-semibold text-lg">Work Order Report</h1>
+        <h1 className="font-semibold text-lg">{t("print.title")}</h1>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => window.print()}>
             <Printer className="mr-1 h-3 w-3" />
-            Print
+            {t("print.print")}
           </Button>
           <Button variant="ghost" size="sm" onClick={onClose}>
-            Close
+            {tc("close")}
           </Button>
         </div>
       </div>
@@ -105,48 +112,61 @@ export function WorkorderPrintReportPage({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base">
-              Work Order Report — <span className="font-mono">{header.id}</span>
+              {t.rich("print.headerTitle", {
+                id: header.id,
+                mono: (chunks) => <span className="font-mono">{chunks}</span>,
+              })}
             </CardTitle>
             {logo?.presignedUrl && (
               // biome-ignore lint/performance/noImgElement: presigned URL from settings; short-TTL, dynamic
-              <img src={logo.presignedUrl} alt="Company logo" className="print-logo h-14 w-auto" />
+              <img src={logo.presignedUrl} alt={t("print.logoAlt")} className="print-logo h-14 w-auto" />
             )}
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-2 text-sm">
             <div>
-              Status: <Badge variant="outline">{header.status}</Badge>
+              {t("print.statusLabel")}{" "}
+              <Badge variant="outline">
+                {t.has(`status.${header.status}`) ? t(`status.${header.status}`) : header.status}
+              </Badge>
             </div>
             <div>
-              Source: <span className="font-mono">{header.source}</span>
+              {t("print.sourceLabel")} <span className="font-mono">{header.source}</span>
             </div>
             {header.categoryLabel && (
               <div>
-                Category: <span>{header.categoryCode} · {header.categoryLabel}</span>
+                {t("print.categoryLabel")}{" "}
+                <span>
+                  {header.categoryCode} · {header.categoryLabel}
+                </span>
               </div>
             )}
             {header.machineCode && (
               <div>
-                Machine: <span>{header.machineCode}{header.machineName ? ` · ${header.machineName}` : ""}</span>
+                {t("print.machineLabel")}{" "}
+                <span>
+                  {header.machineCode}
+                  {header.machineName ? ` · ${header.machineName}` : ""}
+                </span>
               </div>
             )}
             {header.plantCode && (
               <div>
-                Plant: <span className="font-mono">{header.plantCode}</span>
+                {t("print.plantLabel")} <span className="font-mono">{header.plantCode}</span>
               </div>
             )}
             {header.assignedTechnicianName && (
               <div>
-                Technician: <span>{header.assignedTechnicianName}</span>
+                {t("print.technicianLabel")} <span>{header.assignedTechnicianName}</span>
               </div>
             )}
             {header.description && (
               <div className="col-span-2">
-                Description: <span>{header.description}</span>
+                {t("print.descriptionLabel")} <span>{header.description}</span>
               </div>
             )}
             {header.doneReason && (
               <div className="col-span-2">
-                Done reason: <span>{header.doneReason}</span>
+                {t("print.doneReasonLabel")} <span>{header.doneReason}</span>
               </div>
             )}
           </CardContent>
@@ -156,16 +176,16 @@ export function WorkorderPrintReportPage({
         {data.sessions.length > 0 && (
           <Card className="print-section">
             <CardHeader>
-              <CardTitle className="text-sm">Repair Sessions</CardTitle>
+              <CardTitle className="text-sm">{t("print.sessionsTitle")}</CardTitle>
             </CardHeader>
             <CardContent>
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b text-left">
-                    <th className="p-1">Start</th>
-                    <th className="p-1">End</th>
-                    <th className="p-1">Duration (min)</th>
-                    <th className="p-1">Description</th>
+                    <th className="p-1">{t("print.colStart")}</th>
+                    <th className="p-1">{t("print.colEnd")}</th>
+                    <th className="p-1">{t("print.colDuration")}</th>
+                    <th className="p-1">{tc("description")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -186,13 +206,13 @@ export function WorkorderPrintReportPage({
         {/* Narrative */}
         <Card className="print-section">
           <CardHeader>
-            <CardTitle className="text-sm">Report Narrative</CardTitle>
+            <CardTitle className="text-sm">{t("print.narrativeTitle")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <NarrativeField label="Chronological" value={data.narrative.reportChronological} />
-            <NarrativeField label="Analyze" value={data.narrative.reportAnalyze} />
-            <NarrativeField label="Corrective" value={data.narrative.reportCorrective} />
-            <NarrativeField label="Preventive" value={data.narrative.reportPreventive} />
+            <NarrativeField label={t("print.chronologicalLabel")} value={data.narrative.reportChronological} />
+            <NarrativeField label={t("print.analyzeLabel")} value={data.narrative.reportAnalyze} />
+            <NarrativeField label={t("print.correctiveLabel")} value={data.narrative.reportCorrective} />
+            <NarrativeField label={t("print.preventiveLabel")} value={data.narrative.reportPreventive} />
           </CardContent>
         </Card>
 
@@ -200,18 +220,41 @@ export function WorkorderPrintReportPage({
         {data.cpk && (data.cpk.cpCkLower || data.cpk.cpCkUpper || data.cpk.cpk || data.cpk.cpkPdfPresignedUrl) && (
           <Card className="print-section">
             <CardHeader>
-              <CardTitle className="text-sm">Capability (CP/CPK)</CardTitle>
+              <CardTitle className="text-sm">{t("print.cpkTitle")}</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-2 text-sm">
-              <div>CP lower: {data.cpk.cpCkLower ?? "—"}</div>
-              <div>CP upper: {data.cpk.cpCkUpper ?? "—"}</div>
-              <div>CPK: {data.cpk.cpk ?? "—"}</div>
-              {data.cpk.fmeaFailureType && <div>FMEA: {data.cpk.fmeaFailureType}</div>}
-              {data.cpk.stopTimeReason && <div>Stop reason: {data.cpk.stopTimeReason}</div>}
-              {data.cpk.stopTimeDetail && <div className="col-span-2">Stop detail: {data.cpk.stopTimeDetail}</div>}
+              <div>
+                {t("print.cpLower")} {data.cpk.cpCkLower ?? "—"}
+              </div>
+              <div>
+                {t("print.cpUpper")} {data.cpk.cpCkUpper ?? "—"}
+              </div>
+              <div>
+                {t("print.cpk")} {data.cpk.cpk ?? "—"}
+              </div>
+              {data.cpk.fmeaFailureType && (
+                <div>
+                  {t("print.fmea")} {data.cpk.fmeaFailureType}
+                </div>
+              )}
+              {data.cpk.stopTimeReason && (
+                <div>
+                  {t("print.stopReason")} {data.cpk.stopTimeReason}
+                </div>
+              )}
+              {data.cpk.stopTimeDetail && (
+                <div className="col-span-2">
+                  {t("print.stopDetail")} {data.cpk.stopTimeDetail}
+                </div>
+              )}
               {data.cpk.cpkPdfPresignedUrl && (
-                <a href={data.cpk.cpkPdfPresignedUrl} target="_blank" rel="noopener noreferrer" className="text-xs underline">
-                  Capability PDF
+                <a
+                  href={data.cpk.cpkPdfPresignedUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs underline"
+                >
+                  {t("print.cpkPdf")}
                 </a>
               )}
             </CardContent>
@@ -222,7 +265,7 @@ export function WorkorderPrintReportPage({
         {data.evidence.length > 0 && (
           <Card className="print-section">
             <CardHeader>
-              <CardTitle className="text-sm">Evidence</CardTitle>
+              <CardTitle className="text-sm">{t("print.evidenceTitle")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
@@ -246,16 +289,16 @@ export function WorkorderPrintReportPage({
         {data.parts.length > 0 && (
           <Card className="print-section">
             <CardHeader>
-              <CardTitle className="text-sm">Sparepart Requests</CardTitle>
+              <CardTitle className="text-sm">{t("print.partsTitle")}</CardTitle>
             </CardHeader>
             <CardContent>
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b text-left">
-                    <th className="p-1">Material</th>
-                    <th className="p-1">Qty</th>
-                    <th className="p-1">Status</th>
-                    <th className="p-1">Notes</th>
+                    <th className="p-1">{t("print.colMaterial")}</th>
+                    <th className="p-1">{t("print.colQty")}</th>
+                    <th className="p-1">{tc("status")}</th>
+                    <th className="p-1">{tc("notes")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -277,24 +320,28 @@ export function WorkorderPrintReportPage({
         {data.signature ? (
           <Card className="print-section">
             <CardHeader>
-              <CardTitle className="text-sm">Approval</CardTitle>
+              <CardTitle className="text-sm">{t("print.approvalTitle")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-1 text-sm">
-              <p>Signed by: {data.signature.signerIdentity}</p>
-              <p>Approved at: {formatInstant(data.signature.signedAt)}</p>
+              <p>{t("print.signedBy", { identity: data.signature.signerIdentity })}</p>
+              <p>{t("print.approvedAt", { time: formatInstant(data.signature.signedAt) })}</p>
               {data.signature.signaturePresignedUrl && (
                 // biome-ignore lint/performance/noImgElement: presigned URL from Garage; short-TTL, dynamic
-                <img src={data.signature.signaturePresignedUrl} alt="Signature" className="print-signature mt-2 max-h-20 border" />
+                <img
+                  src={data.signature.signaturePresignedUrl}
+                  alt={t("print.signatureAlt")}
+                  className="print-signature mt-2 max-h-20 border"
+                />
               )}
             </CardContent>
           </Card>
         ) : (
           <Card className="print-section">
             <CardHeader>
-              <CardTitle className="text-sm">Approval</CardTitle>
+              <CardTitle className="text-sm">{t("print.approvalTitle")}</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground text-sm">Not yet signed.</p>
+              <p className="text-muted-foreground text-sm">{t("print.notYetSigned")}</p>
             </CardContent>
           </Card>
         )}
@@ -303,12 +350,12 @@ export function WorkorderPrintReportPage({
         {canApprove && (
           <Card className="no-print">
             <CardHeader>
-              <CardTitle className="text-sm">Sign &amp; Approve</CardTitle>
+              <CardTitle className="text-sm">{t("print.signApproveTitle")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="space-y-1">
                 <Label htmlFor="signature-file" className="text-xs">
-                  Signature image (uploaded to Garage; key auto-filled)
+                  {t("print.signatureImageLabel")}
                 </Label>
                 <Input
                   id="signature-file"
@@ -325,21 +372,23 @@ export function WorkorderPrintReportPage({
                 />
               </div>
               <Input
-                placeholder="Signature object key (auto-filled on upload)"
+                placeholder={t("print.objectKeyPlaceholder")}
                 value={signatureKey}
                 onChange={(e) => setSignatureKey(e.target.value)}
               />
               <Input
-                placeholder="Signer identity (defaults to your name)"
+                placeholder={t("print.signerPlaceholder")}
                 value={signerIdentity}
                 onChange={(e) => setSignerIdentity(e.target.value)}
               />
               <Button
-                onClick={() => approve.mutate({ signatureObjectKey: signatureKey.trim(), signerIdentity: signerIdentity || null })}
+                onClick={() =>
+                  approve.mutate({ signatureObjectKey: signatureKey.trim(), signerIdentity: signerIdentity || null })
+                }
                 disabled={approve.isPending || uploadSignature.isPending || !signatureKey.trim()}
               >
                 <Upload className="mr-1 h-3 w-3" />
-                {approve.isPending ? "Approving..." : "Approve"}
+                {approve.isPending ? t("print.approving") : t("print.approve")}
               </Button>
             </CardContent>
           </Card>
@@ -352,15 +401,7 @@ export function WorkorderPrintReportPage({
 function NarrativeField({ label, value }: { label: string; value: string | null }) {
   return (
     <div>
-      <span className="font-medium">{label}:</span> <span>{value ?? "—"}</span>
+      <span className="font-medium">{label}</span> <span>{value ?? "—"}</span>
     </div>
   );
-}
-
-function formatInstant(iso: string) {
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return iso;
-  }
 }

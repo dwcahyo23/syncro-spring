@@ -1,11 +1,14 @@
+import { getTranslations } from "next-intl/server";
+
 import { AlertListPageContent } from "@/features/alerts/alert-list-page-content";
 
-export default function Page() {
+export default async function Page() {
+  const t = await getTranslations("alerts");
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-semibold">Alerts</h1>
-        <p className="text-sm text-muted-foreground">Sparepart lifetime threshold alerts across all machines.</p>
+        <h1 className="text-xl font-semibold">{t("listPage.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("listPage.subtitle")}</p>
       </div>
       <AlertListPageContent />
     </div>

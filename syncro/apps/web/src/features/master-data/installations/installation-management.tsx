@@ -4,6 +4,7 @@ import React, { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, Trash2, TriangleAlertIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import {
@@ -35,6 +36,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
+import { apiErrorMessage, errorResponse } from "@/lib/api/error-response";
 import type {
   InstallationRequest,
   InstallationUpdateRequest,
@@ -62,11 +64,10 @@ import {
   useListSparepartTaxonomies,
   useUpdateMachineSparepartInstallation,
 } from "@/lib/api/generated/syncro";
-import { SyncroApiError } from "@/lib/api/orval-mutator";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
+import { useDateTimeFormatter, useNumberFormatter } from "@/lib/i18n/format";
 
 type DialogMode = { type: "create"; installation?: never } | { type: "edit"; installation: InstallationView };
-type ErrorResponse = { code: string; message: string; fieldErrors?: Record<string, string> };
 type Filters = { plantId?: string; machineId?: string; sparepartId?: string };
 type InstallationForm = {
   machineId: string;
@@ -78,6 +79,7 @@ type InstallationForm = {
 };
 type TaxonomyDimension = SparepartTaxonomyView["dimension"];
 type SparepartFormState = Omit<SparepartRequest, "code" | "name">;
+type FilterOptionKey = "PLANT" | "MACHINE" | "SPAREPART";
 
 const ALL = "__all__";
 const ALL_PLANTS = "all";
@@ -98,6 +100,9 @@ const EMPTY_SPAREPART_FORM: SparepartFormState = {
 };
 
 export function InstallationManagement() {
+  const t = useTranslations("masterData");
+  const tc = useTranslations("common");
+  const te = useTranslations("errors");
   const user = useAuthUser();
   const plantScope = usePlantScope();
   const scope = plantScope.scope;
@@ -298,12 +303,13 @@ export function InstallationManagement() {
       }
       await queryClient.invalidateQueries({ queryKey: getListSparepartsQueryKey() });
       setInlineSparepartOpen(false);
-      toast.success("Sparepart created and selected.");
+      toast.success(t("installation.toast.sparepartCreatedSelected"));
     } catch (error) {
       const response = errorResponse(error);
       setInlineSparepartErrors(response?.fieldErrors ?? {});
-      setInlineSparepartError(response?.message ?? "Sparepart request failed.");
-      toast.error(response?.message ?? "Sparepart request failed.");
+      const message = response ? apiErrorMessage(te, response) : t("installation.toast.sparepartRequestFailed");
+      setInlineSparepartError(message);
+      toast.error(message);
     }
   }
 
@@ -313,7 +319,7 @@ export function InstallationManagement() {
     setFormError(null);
 
     try {
-      const parsed = parseLifetimeFields(form);
+      const parsed = parseLifetimeFields(form, t);
       if (!parsed.ok) {
         setFieldErrors(parsed.fieldErrors);
         return;
@@ -321,18 +327,19 @@ export function InstallationManagement() {
       if (dialogMode?.type === "edit") {
         const payload = updatePayload(form, parsed.values);
         await updateInstallation.mutateAsync({ installationId: dialogMode.installation.id ?? "", data: payload });
-        toast.success("Installation updated.");
+        toast.success(t("installation.toast.updated"));
       } else {
         const payload = createPayload(form, parsed.values);
         await createInstallation.mutateAsync({ data: payload });
-        toast.success("Installation created.");
+        toast.success(t("installation.toast.created"));
       }
       setDialogMode(null);
     } catch (error) {
       const response = errorResponse(error);
       setFieldErrors(response?.fieldErrors ?? {});
-      setFormError(response?.message ?? "Installation request failed.");
-      toast.error(response?.message ?? "Installation request failed.");
+      const message = response ? apiErrorMessage(te, response) : t("installation.toast.requestFailed");
+      setFormError(message);
+      toast.error(message);
     }
   }
 
@@ -344,10 +351,11 @@ export function InstallationManagement() {
 
     try {
       await deleteInstallation.mutateAsync({ installationId: deleteTarget.id ?? "" });
-      toast.success("Installation deleted.");
+      toast.success(t("installation.toast.deleted"));
       setDeleteTarget(null);
     } catch (error) {
-      const message = errorResponse(error)?.message ?? "Installation delete failed.";
+      const response = errorResponse(error);
+      const message = response ? apiErrorMessage(te, response) : t("installation.toast.deleteFailed");
       setDeleteError(message);
       toast.error(message);
     }
@@ -358,14 +366,14 @@ export function InstallationManagement() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Machine sparepart installations</CardTitle>
-        <CardDescription>Capture lifetime baseline counters for installed spareparts on machines.</CardDescription>
+        <CardTitle>{t("installation.title")}</CardTitle>
+        <CardDescription>{t("installation.description")}</CardDescription>
         <CardAction>
           <div className="flex flex-wrap items-center gap-2">
-            {!canMutate ? <Badge variant="secondary">Read-only</Badge> : null}
+            {!canMutate ? <Badge variant="secondary">{t("installation.readOnly")}</Badge> : null}
             {canMutate ? (
               <Button onClick={openCreateDialog} disabled={!canCreate || isLoading}>
-                Create installation
+                {t("installation.create")}
               </Button>
             ) : null}
           </div>
@@ -373,13 +381,16 @@ export function InstallationManagement() {
       </CardHeader>
       <CardContent className="space-y-4">
         {isAssignedEmpty ? (
-          <InstallationState title="No plant assignment" description="Your account has no assigned plant scope." />
+          <InstallationState
+            title={t("installation.state.noAssignmentTitle")}
+            description={t("installation.state.noAssignmentDesc")}
+          />
         ) : null}
         {isLoading ? <InstallationSkeleton /> : null}
         {plants.isError || machines.isError || filterSpareparts.isError || taxonomy.isError || installations.isError ? (
           <InstallationState
-            title={loadError ? "Installations access is forbidden" : "Installations could not be loaded"}
-            description={loadError?.message ?? "Refresh data or contact administrator if access should be available."}
+            title={loadError ? t("installation.state.accessForbidden") : t("installation.state.loadFailedTitle")}
+            description={loadError ? apiErrorMessage(te, loadError) : t("installation.state.loadFailedDesc")}
             action={
               <Button
                 variant="outline"
@@ -392,15 +403,15 @@ export function InstallationManagement() {
                   ])
                 }
               >
-                Retry
+                {tc("retry")}
               </Button>
             }
           />
         ) : null}
         {!isLoading && !isAssignedEmpty && availablePlants.length === 0 ? (
           <InstallationState
-            title="No plants available"
-            description="Create or assign a plant before installing spareparts."
+            title={t("installation.state.noPlantsTitle")}
+            description={t("installation.state.noPlantsDesc")}
           />
         ) : null}
         {!isLoading && availablePlants.length > 0 ? (
@@ -414,14 +425,14 @@ export function InstallationManagement() {
         ) : null}
         {!isLoading && !isAssignedEmpty && availablePlants.length > 0 && machineItems.length === 0 ? (
           <InstallationState
-            title="No machines available"
-            description="Create a machine before installing spareparts."
+            title={t("installation.state.noMachinesTitle")}
+            description={t("installation.state.noMachinesDesc")}
           />
         ) : null}
         {!isLoading && !filterSpareparts.isError && filterSparepartItems.length === 0 ? (
           <InstallationState
-            title="No spareparts available"
-            description="Create spareparts before installing them on machines."
+            title={t("installation.state.noSparepartsTitle")}
+            description={t("installation.state.noSparepartsDesc")}
           />
         ) : null}
         {!isLoading &&
@@ -430,8 +441,8 @@ export function InstallationManagement() {
         machineItems.length > 0 &&
         filterSparepartItems.length > 0 ? (
           <InstallationState
-            title="No installations yet"
-            description="Create the first baseline installation or adjust filters."
+            title={t("installation.state.noInstallationsTitle")}
+            description={t("installation.state.noInstallationsDesc")}
           />
         ) : null}
         {!isLoading && !installations.isError && installationItems.length > 0 ? (
@@ -465,10 +476,12 @@ export function InstallationManagement() {
         <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
           <form onSubmit={submitInstallation} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>{dialogMode?.type === "edit" ? "Edit installation" : "Create installation"}</DialogTitle>
-              <DialogDescription>
-                Lifetime consumption is counter-based from current counter minus baseline counter.
-              </DialogDescription>
+              <DialogTitle>
+                {dialogMode?.type === "edit"
+                  ? t("installation.dialog.editTitle")
+                  : t("installation.dialog.createTitle")}
+              </DialogTitle>
+              <DialogDescription>{t("installation.dialog.description")}</DialogDescription>
             </DialogHeader>
             {formError ? (
               <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{formError}</p>
@@ -479,14 +492,18 @@ export function InstallationManagement() {
               >
                 1
               </div>
-              <span className={step >= 1 ? "font-medium" : "text-muted-foreground"}>Identity</span>
+              <span className={step >= 1 ? "font-medium" : "text-muted-foreground"}>
+                {t("installation.step.identity")}
+              </span>
               <div className="h-px flex-1 bg-border" />
               <div
                 className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${step >= 2 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
               >
                 2
               </div>
-              <span className={step >= 2 ? "font-medium" : "text-muted-foreground"}>Counters</span>
+              <span className={step >= 2 ? "font-medium" : "text-muted-foreground"}>
+                {t("installation.step.counters")}
+              </span>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               {step === 1 ? (
@@ -527,7 +544,7 @@ export function InstallationManagement() {
                   />
                   <TextField
                     id="installation-function-name"
-                    label="Function / usage"
+                    label={t("installation.labels.functionUsage")}
                     value={form.functionName}
                     error={fieldErrors.functionName}
                     disabled={isSaving}
@@ -539,7 +556,7 @@ export function InstallationManagement() {
                 <>
                   <NumberField
                     id="installation-expected-count"
-                    label="Expected production count"
+                    label={t("installation.labels.expected")}
                     value={form.expectedProductionCount}
                     error={fieldErrors.expectedProductionCount}
                     disabled={isSaving}
@@ -550,7 +567,7 @@ export function InstallationManagement() {
                   />
                   <NumberField
                     id="installation-baseline-counter"
-                    label="Baseline counter"
+                    label={t("installation.labels.baseline")}
                     value={form.baselineCounter}
                     error={fieldErrors.baselineCounter}
                     disabled={isSaving}
@@ -559,7 +576,7 @@ export function InstallationManagement() {
                   />
                   <NumberField
                     id="installation-threshold"
-                    label="Threshold percentage"
+                    label={t("installation.labels.threshold")}
                     value={form.thresholdPercentage}
                     error={fieldErrors.thresholdPercentage}
                     disabled={isSaving}
@@ -573,11 +590,11 @@ export function InstallationManagement() {
             <DialogFooter>
               {step === 2 ? (
                 <Button type="button" variant="outline" onClick={() => setStep(1)} disabled={isSaving}>
-                  Back
+                  {tc("back")}
                 </Button>
               ) : (
                 <Button type="button" variant="outline" onClick={() => setDialogMode(null)} disabled={isSaving}>
-                  Cancel
+                  {tc("cancel")}
                 </Button>
               )}
               {step === 1 ? (
@@ -589,7 +606,7 @@ export function InstallationManagement() {
                   }}
                   disabled={!form.machineId || !form.sparepartId || !form.functionName.trim()}
                 >
-                  Next
+                  {tc("next")}
                 </Button>
               ) : (
                 <Button
@@ -599,7 +616,7 @@ export function InstallationManagement() {
                   }
                 >
                   {isSaving ? <Loader2Icon className="animate-spin" /> : null}
-                  Save installation
+                  {t("installation.dialog.save")}
                 </Button>
               )}
             </DialogFooter>
@@ -610,20 +627,22 @@ export function InstallationManagement() {
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete installation?</AlertDialogTitle>
+            <AlertDialogTitle>{t("installation.delete.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes the baseline for {deleteTarget?.machineCode} · {deleteTarget?.sparepartCode}. Future alert or
-              audit records may block deletion.
+              {t("installation.delete.description", {
+                machineCode: deleteTarget?.machineCode ?? "",
+                sparepartCode: deleteTarget?.sparepartCode ?? "",
+              })}
             </AlertDialogDescription>
             {deleteError ? (
               <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{deleteError}</p>
             ) : null}
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteInstallation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteInstallation.isPending}>{tc("cancel")}</AlertDialogCancel>
             <Button variant="destructive" onClick={confirmDelete} disabled={deleteInstallation.isPending}>
               {deleteInstallation.isPending ? <Loader2Icon className="animate-spin" /> : null}
-              Delete installation
+              {t("installation.delete.action")}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -645,10 +664,13 @@ function InstallationFilters({
   filters: Filters;
   onChange: (filters: Filters) => void;
 }) {
+  const t = useTranslations("masterData");
+  const unknownIdentity = t("installation.unknownIdentity");
   return (
     <div className="grid gap-3 rounded-lg border p-3 sm:grid-cols-[repeat(auto-fill,minmax(14rem,14rem))] sm:justify-start">
       <SearchableSelect
-        label="Plant"
+        optionKey="PLANT"
+        label={t("installation.labels.plant")}
         value={filters.plantId}
         options={plants.filter((p) => p.id).map((p) => ({ id: p.id ?? "", label: `${p.code} · ${p.name}` }))}
         onValueChange={(plantId) =>
@@ -660,21 +682,26 @@ function InstallationFilters({
         }
       />
       <SearchableSelect
-        label="Machine"
+        optionKey="MACHINE"
+        label={t("installation.labels.machine")}
         value={filters.machineId}
         disabled={machines.length === 0}
         options={machines
           .filter((m) => m.id)
-          .map((m) => ({ id: m.id ?? "", label: `${m.code} · ${m.name || "Unnamed"} · ${m.plantCode}` }))}
+          .map((m) => ({
+            id: m.id ?? "",
+            label: `${m.code} · ${m.name || t("installation.unnamed")} · ${m.plantCode}`,
+          }))}
         onValueChange={(machineId) => onChange({ ...filters, machineId: machineId === ALL ? undefined : machineId })}
       />
       <SearchableSelect
-        label="Sparepart"
+        optionKey="SPAREPART"
+        label={t("installation.labels.sparepart")}
         value={filters.sparepartId}
         disabled={spareparts.length === 0}
         options={spareparts
           .filter((s) => s.id)
-          .map((s) => ({ id: s.id ?? "", label: `${s.code} · ${sparepartIdentity(s)}` }))}
+          .map((s) => ({ id: s.id ?? "", label: `${s.code} · ${sparepartIdentity(s, unknownIdentity)}` }))}
         onValueChange={(sparepartId) =>
           onChange({ ...filters, sparepartId: sparepartId === ALL ? undefined : sparepartId })
         }
@@ -698,33 +725,67 @@ function InstallationTable({
   sort: string;
   onSortChange: (sort: string) => void;
 }) {
+  const t = useTranslations("masterData");
+  const tc = useTranslations("common");
+  const dt = useDateTimeFormatter();
+  const nf = useNumberFormatter();
+  const unknownIdentity = t("installation.unknownIdentity");
+
+  function formatNumber(value: number | undefined) {
+    return typeof value === "number" ? nf.number(value) : "-";
+  }
+
+  function formatNullableNumber(value: number | undefined) {
+    return typeof value === "number" ? formatNumber(value) : t("installation.notAvailable");
+  }
+
+  function formatConsumed(installation: InstallationView) {
+    if (
+      typeof installation.consumedProductionCount !== "number" ||
+      typeof installation.consumedPercentage !== "number"
+    ) {
+      return t("installation.notAvailable");
+    }
+    return `${formatNumber(installation.consumedProductionCount)} (${installation.consumedPercentage.toFixed(2)}%)`;
+  }
+
   return (
     <div className="overflow-x-auto rounded-lg border">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Plant</TableHead>
-            <TableHead>Group</TableHead>
+            <TableHead>{t("installation.labels.plant")}</TableHead>
+            <TableHead>{t("installation.colGroup")}</TableHead>
             <TableHead>
-              <DataTableSortHeader title="Machine" field="machineCode" sort={sort} onSortChange={onSortChange} />
+              <DataTableSortHeader
+                title={t("installation.colMachine")}
+                field="machineCode"
+                sort={sort}
+                onSortChange={onSortChange}
+              />
             </TableHead>
             <TableHead>
-              <DataTableSortHeader title="Sparepart" field="sparepartCode" sort={sort} onSortChange={onSortChange} />
+              <DataTableSortHeader
+                title={t("installation.colSparepart")}
+                field="sparepartCode"
+                sort={sort}
+                onSortChange={onSortChange}
+              />
             </TableHead>
-            <TableHead>Function</TableHead>
-            <TableHead>Expected</TableHead>
-            <TableHead>Baseline</TableHead>
-            <TableHead>Current</TableHead>
-            <TableHead>Consumed</TableHead>
-            <TableHead>Threshold</TableHead>
-            <TableHead>Basis</TableHead>
+            <TableHead>{t("installation.colFunction")}</TableHead>
+            <TableHead>{t("installation.colExpected")}</TableHead>
+            <TableHead>{t("installation.colBaseline")}</TableHead>
+            <TableHead>{t("installation.colCurrent")}</TableHead>
+            <TableHead>{t("installation.colConsumed")}</TableHead>
+            <TableHead>{t("installation.colThreshold")}</TableHead>
+            <TableHead>{t("installation.colBasis")}</TableHead>
             <TableHead>
-              <DataTableSortHeader title="Created" field="createdAt" sort={sort} onSortChange={onSortChange} />
+              <DataTableSortHeader title={tc("createdAt")} field="createdAt" sort={sort} onSortChange={onSortChange} />
             </TableHead>
             <TableHead>
-              <DataTableSortHeader title="Updated" field="updatedAt" sort={sort} onSortChange={onSortChange} />
+              <DataTableSortHeader title={tc("updatedAt")} field="updatedAt" sort={sort} onSortChange={onSortChange} />
             </TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead className="text-right">{tc("actions")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -736,11 +797,15 @@ function InstallationTable({
               <TableCell>{installation.machineGroupName ?? "-"}</TableCell>
               <TableCell>
                 <div className="font-medium">{installation.machineCode}</div>
-                <div className="text-muted-foreground text-xs">{installation.machineName || "Unnamed"}</div>
+                <div className="text-muted-foreground text-xs">
+                  {installation.machineName || t("installation.unnamed")}
+                </div>
               </TableCell>
               <TableCell>
                 <div className="font-medium">{installation.sparepartCode}</div>
-                <div className="text-muted-foreground text-xs">{installationSparepartIdentity(installation)}</div>
+                <div className="text-muted-foreground text-xs">
+                  {installationSparepartIdentity(installation, unknownIdentity)}
+                </div>
               </TableCell>
               <TableCell>{installation.functionName ?? "-"}</TableCell>
               <TableCell>{formatNumber(installation.expectedProductionCount)}</TableCell>
@@ -751,21 +816,21 @@ function InstallationTable({
               <TableCell>
                 <Badge variant="secondary">{installation.calculationBasis ?? "COUNTER_BASED"}</Badge>
               </TableCell>
-              <TableCell>{installation.createdAt ? formatDateTime(installation.createdAt) : "-"}</TableCell>
-              <TableCell>{installation.updatedAt ? formatDateTime(installation.updatedAt) : "-"}</TableCell>
+              <TableCell>{installation.createdAt ? dt.dateTime(installation.createdAt) : "-"}</TableCell>
+              <TableCell>{installation.updatedAt ? dt.dateTime(installation.updatedAt) : "-"}</TableCell>
               <TableCell className="text-right">
                 {canMutate ? (
                   <div className="flex justify-end gap-2">
                     <Button variant="outline" size="sm" onClick={() => onEdit(installation)}>
-                      Edit
+                      {tc("edit")}
                     </Button>
                     <Button variant="destructive" size="sm" onClick={() => onDelete(installation)}>
                       <Trash2 />
-                      Delete
+                      {tc("delete")}
                     </Button>
                   </div>
                 ) : (
-                  <Badge variant="secondary">View only</Badge>
+                  <Badge variant="secondary">{t("installation.viewOnly")}</Badge>
                 )}
               </TableCell>
             </TableRow>
@@ -793,28 +858,29 @@ function MachineSelect({
   onSearchChange: (value: string) => void;
   onChange: (value: string) => void;
 }) {
+  const t = useTranslations("masterData");
   return (
     <div className="grid gap-2">
-      <Label>Machine</Label>
+      <Label>{t("installation.labels.machine")}</Label>
       <Select value={value} onValueChange={onChange} disabled={disabled ?? false}>
         <SelectTrigger className="w-full min-w-0" aria-invalid={Boolean(error)}>
-          <SelectValue placeholder="Select machine" />
+          <SelectValue placeholder={t("installation.selectMachine")} />
         </SelectTrigger>
         <SelectContent>
           <div className="p-2">
             <Input
               value={search}
-              placeholder="Search machine code, name, or plant"
+              placeholder={t("installation.searchMachine")}
               onChange={(event) => onSearchChange(event.target.value)}
               onKeyDown={(event) => event.stopPropagation()}
             />
           </div>
           {items.length === 0 ? (
-            <div className="px-2 py-1.5 text-muted-foreground text-sm">No machines found</div>
+            <div className="px-2 py-1.5 text-muted-foreground text-sm">{t("installation.noMachinesFound")}</div>
           ) : null}
           {items.map((machine) => (
             <SelectItem key={machine.id ?? machine.code} value={machine.id ?? ""}>
-              {machine.code} · {machine.name || "Unnamed"} · {machine.plantCode}
+              {machine.code} · {machine.name || t("installation.unnamed")} · {machine.plantCode}
             </SelectItem>
           ))}
         </SelectContent>
@@ -841,24 +907,26 @@ function SparepartSelect({
   onCreateInline: () => void;
   onChange: (value: string) => void;
 }) {
+  const t = useTranslations("masterData");
+  const unknownIdentity = t("installation.unknownIdentity");
   return (
     <div className="grid gap-2">
       <div className="flex items-center justify-between gap-2">
-        <Label>Sparepart</Label>
+        <Label>{t("installation.labels.sparepart")}</Label>
         {canCreateInline ? (
           <Button type="button" variant="link" className="h-auto p-0" onClick={onCreateInline} disabled={disabled}>
-            Create inline
+            {t("installation.createInline")}
           </Button>
         ) : null}
       </div>
       <Select value={value} onValueChange={onChange} disabled={disabled ?? items.length === 0}>
         <SelectTrigger className="w-full min-w-0" aria-invalid={Boolean(error)}>
-          <SelectValue placeholder="Select sparepart" />
+          <SelectValue placeholder={t("installation.selectSparepart")} />
         </SelectTrigger>
         <SelectContent>
           {items.map((sparepart) => (
             <SelectItem key={sparepart.id ?? sparepart.code} value={sparepart.id ?? ""}>
-              {sparepart.code} · {sparepartIdentity(sparepart)}
+              {sparepart.code} · {sparepartIdentity(sparepart, unknownIdentity)}
             </SelectItem>
           ))}
         </SelectContent>
@@ -889,19 +957,18 @@ function InlineSparepartForm({
   onCancel: () => void;
   onSubmit: () => void;
 }) {
+  const t = useTranslations("masterData");
   return (
     <div className="space-y-3 rounded-lg border bg-muted/30 p-3 md:col-span-2">
       <div>
-        <h3 className="font-medium text-sm">Create sparepart inline</h3>
-        <p className="text-muted-foreground text-xs">
-          Create the missing sparepart without losing this installation draft.
-        </p>
+        <h3 className="font-medium text-sm">{t("installation.inline.title")}</h3>
+        <p className="text-muted-foreground text-xs">{t("installation.inline.description")}</p>
       </div>
       {formError ? <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{formError}</p> : null}
       <div className="grid gap-3 md:grid-cols-2">
         <GeneratedCodeHint />
         <TaxonomySelect
-          label="Category"
+          dimension="CATEGORY"
           value={form.categoryId}
           error={fieldErrors.categoryId}
           disabled={disabled}
@@ -911,7 +978,7 @@ function InlineSparepartForm({
           onChange={(categoryId) => onChange({ ...form, categoryId, brandId: "", kindId: "", typeId: "" })}
         />
         <TaxonomySelect
-          label="Kind"
+          dimension="KIND"
           value={form.kindId}
           error={fieldErrors.kindId}
           disabled={disabled}
@@ -921,7 +988,7 @@ function InlineSparepartForm({
           onChange={(kindId) => onChange({ ...form, kindId })}
         />
         <TaxonomySelect
-          label="Brand"
+          dimension="BRAND"
           value={form.brandId}
           error={fieldErrors.brandId}
           disabled={disabled}
@@ -931,7 +998,7 @@ function InlineSparepartForm({
           onChange={(brandId) => onChange({ ...form, brandId })}
         />
         <TaxonomySelect
-          label="Type"
+          dimension="TYPE"
           value={form.typeId}
           error={fieldErrors.typeId}
           disabled={disabled}
@@ -943,11 +1010,11 @@ function InlineSparepartForm({
       </div>
       <div className="flex flex-wrap justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel} disabled={disabled}>
-          Cancel sparepart
+          {t("installation.inline.cancel")}
         </Button>
         <Button type="button" onClick={onSubmit} disabled={disabled}>
           {disabled ? <Loader2Icon className="animate-spin" /> : null}
-          Create and select
+          {t("installation.inline.submit")}
         </Button>
       </div>
     </div>
@@ -985,16 +1052,17 @@ function TextField({
 }
 
 function GeneratedCodeHint() {
+  const t = useTranslations("masterData");
   return (
     <div className="grid gap-2 rounded-md border border-dashed p-3 text-sm md:min-h-[4.5rem]">
-      <span className="font-medium">Generated code</span>
-      <span className="text-muted-foreground">BOM code is assigned after save.</span>
+      <span className="font-medium">{t("installation.generatedCode.title")}</span>
+      <span className="text-muted-foreground">{t("installation.generatedCode.hint")}</span>
     </div>
   );
 }
 
 function TaxonomySelect({
-  label,
+  dimension,
   value,
   error,
   disabled,
@@ -1003,7 +1071,7 @@ function TaxonomySelect({
   onCreate,
   onChange,
 }: {
-  label: string;
+  dimension: TaxonomyDimension;
   value?: string;
   error?: string;
   disabled?: boolean;
@@ -1012,6 +1080,8 @@ function TaxonomySelect({
   onCreate?: (name: string) => Promise<void>;
   onChange: (value: string) => void;
 }) {
+  const t = useTranslations("masterData");
+  const label = t(`installation.dimension.${dimension}`);
   const options = items.map((item) => ({ value: item.id ?? "", label: `${item.name} (${item.code})` }));
   const selectedOption = options.find((option) => option.value === value) ?? null;
 
@@ -1028,13 +1098,13 @@ function TaxonomySelect({
       <CreatableSelect
         value={selectedOption}
         options={options}
-        placeholder={`Select ${label.toLowerCase()}`}
+        placeholder={t(`installation.select.${dimension}`)}
         invalid={Boolean(error)}
         isDisabled={Boolean(disabled) || (!creatable && items.length === 0)}
         isClearable={false}
         isSearchable
-        formatCreateLabel={(inputValue) => `Create ${label.toLowerCase()} “${inputValue.trim()}”`}
-        noOptionsMessage={() => `No ${label.toLowerCase()} found`}
+        formatCreateLabel={(inputValue) => t(`installation.createLabel.${dimension}`, { input: inputValue.trim() })}
+        noOptionsMessage={() => t(`installation.noFound.${dimension}`)}
         onCreateOption={creatable ? submitCreate : undefined}
         onChange={(option) => onChange((option as CreatableSelectOption | null)?.value ?? "")}
       />
@@ -1132,19 +1202,19 @@ function permittedPlants(plants: PlantView[], scope: ReturnType<typeof usePlantS
   return plants.filter((plant) => plant.id && assignedIds.has(plant.id));
 }
 
-function sparepartIdentity(sparepart: SparepartView) {
+function sparepartIdentity(sparepart: SparepartView, unknownIdentity: string) {
   return (
     [sparepart.category?.name, sparepart.kind?.name, sparepart.brand?.name, sparepart.type?.name]
       .filter(Boolean)
-      .join(" · ") || "Unknown identity"
+      .join(" · ") || unknownIdentity
   );
 }
 
-function installationSparepartIdentity(installation: InstallationView) {
+function installationSparepartIdentity(installation: InstallationView, unknownIdentity: string) {
   return (
     [installation.category?.name, installation.kind?.name, installation.brand?.name, installation.type?.name]
       .filter(Boolean)
-      .join(" · ") || "Unknown identity"
+      .join(" · ") || unknownIdentity
   );
 }
 
@@ -1194,6 +1264,8 @@ type ParsedLifetimeFields = {
 
 type ParseResult = { ok: true; values: ParsedLifetimeFields } | { ok: false; fieldErrors: Record<string, string> };
 
+type Translator = (key: string) => string;
+
 function createPayload(form: InstallationForm, values: ParsedLifetimeFields): InstallationRequest {
   return {
     machineId: form.machineId,
@@ -1207,23 +1279,23 @@ function updatePayload(form: InstallationForm, values: ParsedLifetimeFields): In
   return { functionName: form.functionName.trim(), ...values };
 }
 
-function parseLifetimeFields(form: InstallationForm): ParseResult {
+function parseLifetimeFields(form: InstallationForm, t: Translator): ParseResult {
   const fieldErrors: Record<string, string> = {};
   const expectedProductionCount = parseRequiredNumber(form.expectedProductionCount);
   const baselineCounter = parseRequiredNumber(form.baselineCounter);
   const thresholdPercentage = parseRequiredNumber(form.thresholdPercentage);
 
   if (!form.functionName.trim()) {
-    fieldErrors.functionName = "Function / usage is required.";
+    fieldErrors.functionName = t("installation.validation.functionName");
   }
   if (expectedProductionCount === null || expectedProductionCount < 1) {
-    fieldErrors.expectedProductionCount = "Expected production count is required and must be positive.";
+    fieldErrors.expectedProductionCount = t("installation.validation.expected");
   }
   if (baselineCounter === null || baselineCounter < 0) {
-    fieldErrors.baselineCounter = "Baseline counter is required and cannot be negative.";
+    fieldErrors.baselineCounter = t("installation.validation.baseline");
   }
   if (thresholdPercentage === null || thresholdPercentage < 1 || thresholdPercentage > 100) {
-    fieldErrors.thresholdPercentage = "Threshold percentage is required and must be between 1 and 100.";
+    fieldErrors.thresholdPercentage = t("installation.validation.threshold");
   }
 
   if (
@@ -1245,51 +1317,28 @@ function parseRequiredNumber(value: string) {
   return Number(value);
 }
 
-function errorResponse(error: unknown): ErrorResponse | null {
-  if (!(error instanceof SyncroApiError) || !error.payload || typeof error.payload !== "object") {
-    return null;
-  }
-  const payload = error.payload as ErrorResponse;
-  return typeof payload.code === "string" && typeof payload.message === "string" ? payload : null;
-}
-
-function formatNumber(value: number | undefined) {
-  return typeof value === "number" ? new Intl.NumberFormat("en").format(value) : "-";
-}
-
-function formatNullableNumber(value: number | undefined) {
-  return typeof value === "number" ? formatNumber(value) : "Not available";
-}
-
-function formatConsumed(installation: InstallationView) {
-  if (typeof installation.consumedProductionCount !== "number" || typeof installation.consumedPercentage !== "number") {
-    return "Not available";
-  }
-  return `${formatNumber(installation.consumedProductionCount)} (${installation.consumedPercentage.toFixed(2)}%)`;
-}
-
-function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
-}
-
 function SearchableSelect({
+  optionKey,
   label,
   value,
   options,
   onValueChange,
   disabled,
 }: {
+  optionKey: FilterOptionKey;
   label: string;
   value?: string;
   options: { id: string; label: string }[];
   onValueChange: (value: string) => void;
   disabled?: boolean;
 }) {
+  const t = useTranslations("masterData");
   const [search, setSearch] = React.useState("");
   const filtered = search.trim()
     ? options.filter((o) => o.label.toLowerCase().includes(search.trim().toLowerCase()))
     : options;
   const selected = options.find((o) => o.id === value);
+  const allLabel = t(`installation.filter.all.${optionKey}`);
 
   return (
     <Select
@@ -1301,26 +1350,26 @@ function SearchableSelect({
       disabled={disabled}
     >
       <SelectTrigger className="w-full min-w-0">
-        <SelectValue placeholder={`All ${label}`}>{selected ? selected.label : `All ${label}`}</SelectValue>
+        <SelectValue placeholder={allLabel}>{selected ? selected.label : allLabel}</SelectValue>
       </SelectTrigger>
       <SelectContent>
         <div className="p-2">
           <Input
-            placeholder={`Search ${label.toLowerCase()}...`}
+            placeholder={t(`installation.filter.search.${optionKey}`)}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           />
         </div>
-        <SelectItem value={ALL}>All {label}</SelectItem>
+        <SelectItem value={ALL}>{allLabel}</SelectItem>
         {filtered.map((o) => (
           <SelectItem key={o.id} value={o.id}>
             {o.label}
           </SelectItem>
         ))}
         {filtered.length === 0 ? (
-          <p className="px-2 py-3 text-center text-sm text-muted-foreground">No results</p>
+          <p className="px-2 py-3 text-center text-sm text-muted-foreground">{t("installation.noResults")}</p>
         ) : null}
       </SelectContent>
     </Select>

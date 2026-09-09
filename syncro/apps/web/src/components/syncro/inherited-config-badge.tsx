@@ -1,3 +1,7 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+
 import { Badge } from "@/components/ui/badge";
 
 export interface InheritedConfigBadgeProps {
@@ -6,8 +10,9 @@ export interface InheritedConfigBadgeProps {
 
 /** States group inheritance for machine-level config resolved by the backend. */
 export function InheritedConfigBadge({ source }: InheritedConfigBadgeProps) {
+  const t = useTranslations("common");
   if (source !== "MACHINE_GROUP") {
     return null;
   }
-  return <Badge variant="secondary">Inherited from group</Badge>;
+  return <Badge variant="secondary">{t("inheritedFromGroup")}</Badge>;
 }

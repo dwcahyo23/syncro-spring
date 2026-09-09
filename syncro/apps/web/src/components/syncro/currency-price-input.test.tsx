@@ -1,5 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
+
+import { fireEvent, screen } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+
+import { renderI18n } from "@/test/i18n-wrapper";
 
 import { CurrencyPriceInput } from "./currency-price-input";
 
@@ -21,7 +25,7 @@ beforeAll(() => {
 describe("CurrencyPriceInput", () => {
   it("defaults to IDR and hides the kurs field", () => {
     const onChange = vi.fn();
-    render(<CurrencyPriceInput value={{ amount: "", currency: "IDR", kursToIdr: "" }} onChange={onChange} />);
+    renderI18n(<CurrencyPriceInput value={{ amount: "", currency: "IDR", kursToIdr: "" }} onChange={onChange} />);
 
     expect(screen.getByTestId("price-amount-input")).toHaveValue("");
     expect(screen.getByTestId("price-currency-select")).toHaveTextContent("IDR");
@@ -30,7 +34,7 @@ describe("CurrencyPriceInput", () => {
 
   it("shows the kurs field only for non-IDR currencies", () => {
     const onChange = vi.fn();
-    const { rerender } = render(
+    const { rerender } = renderI18n(
       <CurrencyPriceInput value={{ amount: "1000", currency: "USD", kursToIdr: "" }} onChange={onChange} />,
     );
 
@@ -43,7 +47,7 @@ describe("CurrencyPriceInput", () => {
 
   it("emits the updated value object when the amount changes", () => {
     const onChange = vi.fn();
-    render(<CurrencyPriceInput value={{ amount: "", currency: "USD", kursToIdr: "15500" }} onChange={onChange} />);
+    renderI18n(<CurrencyPriceInput value={{ amount: "", currency: "USD", kursToIdr: "15500" }} onChange={onChange} />);
 
     fireEvent.change(screen.getByTestId("price-amount-input"), { target: { value: "1500000" } });
 
@@ -52,7 +56,7 @@ describe("CurrencyPriceInput", () => {
 
   it("emits the updated value object when the currency changes", async () => {
     const onChange = vi.fn();
-    render(<CurrencyPriceInput value={{ amount: "1000", currency: "IDR", kursToIdr: "" }} onChange={onChange} />);
+    renderI18n(<CurrencyPriceInput value={{ amount: "1000", currency: "IDR", kursToIdr: "" }} onChange={onChange} />);
 
     const trigger = screen.getByTestId("price-currency-select");
     trigger.focus();
@@ -63,7 +67,7 @@ describe("CurrencyPriceInput", () => {
   });
 
   it("shows field errors with alert roles", () => {
-    render(
+    renderI18n(
       <CurrencyPriceInput
         value={{ amount: "-5", currency: "usd", kursToIdr: "" }}
         onChange={() => undefined}
@@ -80,7 +84,7 @@ describe("CurrencyPriceInput", () => {
   });
 
   it("disables inputs in read-only mode including a shown kurs field", () => {
-    render(
+    renderI18n(
       <CurrencyPriceInput
         value={{ amount: "1000", currency: "USD", kursToIdr: "15500" }}
         onChange={() => undefined}
@@ -94,7 +98,7 @@ describe("CurrencyPriceInput", () => {
   });
 
   it("shows kurs errors next to the kurs field when provided", () => {
-    render(
+    renderI18n(
       <CurrencyPriceInput
         value={{ amount: "1000", currency: "EUR", kursToIdr: "" }}
         onChange={() => undefined}

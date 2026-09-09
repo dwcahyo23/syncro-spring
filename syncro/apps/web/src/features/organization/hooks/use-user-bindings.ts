@@ -8,8 +8,7 @@ import type {
 } from "@/features/organization/types";
 import { syncroFetch } from "@/lib/api/orval-mutator";
 
-export const userBindingsQueryKey = (userId?: string) =>
-  ["/api/v1/user-bindings", userId] as const;
+export const userBindingsQueryKey = (userId?: string) => ["/api/v1/user-bindings", userId] as const;
 
 export function useGetUserBindings(userId?: string) {
   return useQuery({
@@ -51,10 +50,7 @@ export function useRemoveUserRole() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ userId, bindingId }: { userId: string; bindingId: string }) =>
-      syncroFetch<{ data: undefined }>(
-        `/api/v1/user-bindings/${userId}/roles/${bindingId}`,
-        { method: "DELETE" },
-      ),
+      syncroFetch<{ data: undefined }>(`/api/v1/user-bindings/${userId}/roles/${bindingId}`, { method: "DELETE" }),
     onSuccess: (_data, vars) => {
       queryClient.invalidateQueries({ queryKey: userBindingsQueryKey(vars.userId) });
     },

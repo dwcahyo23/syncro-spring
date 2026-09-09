@@ -1,11 +1,14 @@
+import { getTranslations } from "next-intl/server";
+
 import { ModulePlaceholder } from "@/components/syncro/module-placeholder";
 
-export default function Page() {
+export default async function Page() {
+  const t = await getTranslations("settings.page");
   return (
     <ModulePlaceholder
-      title="Settings"
-      description="Application preference and account settings shell."
-      sections={["Profile placeholder", "Theme controls remain in header", "Future auth settings"]}
+      title={t("title")}
+      description={t("description")}
+      sections={[t("sections.profile"), t("sections.theme"), t("sections.auth")]}
     />
   );
 }

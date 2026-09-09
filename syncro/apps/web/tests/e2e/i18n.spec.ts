@@ -44,8 +44,22 @@ test.describe("i18n locale routing", () => {
 
   test("unsupported locale prefixes return 404, not the default locale", async ({ page }) => {
     // The branded not-found UI hydrates client-side from the streamed 404 shell.
+    // Story 23-2 P4: the [locale] not-found boundary renders from the active
+    // catalog (middleware normalizes /fr/... under the default locale `id`),
+    // so the shell copy is Indonesian here; the status code is the contract.
     const response = await page.goto("/fr/alerts");
     expect(response?.status()).toBe(404);
-    await expect(page.locator("h1")).toContainText("Page not found.");
+    await expect(page.locator("h1")).toContainText("Halaman tidak ditemukan.");
+  });
+
+  // Story 23-2 AC1: the unauthenticated login surface renders localized copy.
+  test("/id login page renders Indonesian sign-in copy", async ({ page }) => {
+    await page.goto("/id/auth/v2/login");
+    await expect(page.getByRole("button", { name: "Masuk" })).toBeVisible();
+  });
+
+  test("/en login page renders English sign-in copy", async ({ page }) => {
+    await page.goto("/en/auth/v2/login");
+    await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
   });
 });

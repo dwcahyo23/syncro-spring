@@ -1,11 +1,15 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
+
+import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+
+import { renderI18n } from "@/test/i18n-wrapper";
 
 import { ShiftConfigEditor } from "./shift-config-editor";
 
 describe("ShiftConfigEditor", () => {
   it("renders one row per configured window with time inputs", () => {
-    render(
+    renderI18n(
       <ShiftConfigEditor
         value={[
           { startTime: "07:00", endTime: "15:00" },
@@ -23,7 +27,9 @@ describe("ShiftConfigEditor", () => {
 
   it("emits an added empty row on Add shift and caps the editor at three rows", () => {
     const onChange = vi.fn();
-    const single = render(<ShiftConfigEditor value={[{ startTime: "07:00", endTime: "15:00" }]} onChange={onChange} />);
+    const single = renderI18n(
+      <ShiftConfigEditor value={[{ startTime: "07:00", endTime: "15:00" }]} onChange={onChange} />,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: /add shift/i }));
     expect(onChange).toHaveBeenCalledTimes(1);
@@ -33,7 +39,7 @@ describe("ShiftConfigEditor", () => {
     ]);
     single.unmount();
 
-    render(
+    renderI18n(
       <ShiftConfigEditor
         value={[
           { startTime: "07:00", endTime: "15:00" },
@@ -48,7 +54,7 @@ describe("ShiftConfigEditor", () => {
 
   it("emits the remaining rows after Remove", () => {
     const onChange = vi.fn();
-    render(
+    renderI18n(
       <ShiftConfigEditor
         value={[
           { startTime: "07:00", endTime: "15:00" },
@@ -64,7 +70,7 @@ describe("ShiftConfigEditor", () => {
 
   it("edits a single field without touching sibling rows", () => {
     const onChange = vi.fn();
-    render(
+    renderI18n(
       <ShiftConfigEditor
         value={[
           { startTime: "07:00", endTime: "15:00" },
@@ -82,7 +88,7 @@ describe("ShiftConfigEditor", () => {
   });
 
   it("renders read-only inputs with the LEADER hint when readOnly and no disabledReason", () => {
-    render(<ShiftConfigEditor value={[{ startTime: "07:00", endTime: "15:00" }]} onChange={vi.fn()} readOnly />);
+    renderI18n(<ShiftConfigEditor value={[{ startTime: "07:00", endTime: "15:00" }]} onChange={vi.fn()} readOnly />);
 
     expect(screen.getByLabelText("Shift 1 start")).toHaveAttribute("disabled");
     expect(screen.getByLabelText("Shift 1 end")).toHaveAttribute("disabled");
@@ -92,14 +98,14 @@ describe("ShiftConfigEditor", () => {
   });
 
   it("shows the disabledReason instead of the default hint in read-only mode", () => {
-    render(<ShiftConfigEditor value={[]} onChange={vi.fn()} readOnly disabledReason="Read-only for your role." />);
+    renderI18n(<ShiftConfigEditor value={[]} onChange={vi.fn()} readOnly disabledReason="Read-only for your role." />);
 
     expect(screen.getByText("Read-only for your role.")).toBeTruthy();
     expect(screen.queryByText(/requires job scope leader or above/i)).toBeNull();
   });
 
   it("exposes validation errors via role=alert and aria-invalid", () => {
-    render(
+    renderI18n(
       <ShiftConfigEditor
         value={[{ startTime: "", endTime: "" }]}
         onChange={vi.fn()}

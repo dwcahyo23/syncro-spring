@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import type { AckTaskList, AckView } from "@/features/workorders/types";
@@ -28,6 +29,7 @@ export function useAckTaskList(enabled = true) {
 /** Acknowledges a workorder's 4-hour escalation (stops further escalation). */
 export function useAcknowledge() {
   const queryClient = useQueryClient();
+  const tm = useTranslations("workOrders");
   return useMutation({
     mutationFn: async (workOrderId: string) => {
       const response = await syncroFetch<{ data: AckView }>(`/api/v1/workorders/${workOrderId}/acknowledge`, {
@@ -37,10 +39,10 @@ export function useAcknowledge() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [ACK_TASK_LIST_KEY] });
-      toast.success("Workorder acknowledged");
+      toast.success(tm("messages.workorderAcknowledged"));
     },
     onError: () => {
-      toast.error("Failed to acknowledge workorder");
+      toast.error(tm("messages.ackFailed"));
     },
   });
 }

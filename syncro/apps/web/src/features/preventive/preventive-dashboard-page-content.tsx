@@ -1,6 +1,7 @@
 "use client";
 
 import { CalendarCheck } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,13 +18,15 @@ import { usePreventiveDashboard } from "@/features/preventive/hooks/use-preventi
  * machine name/code and program title (no truncated UUIDs). UX-DR-019 states.
  */
 export function PreventiveDashboardPageContent() {
+  const t = useTranslations("preventive");
+  const tc = useTranslations("common");
   const { scope, activePlantId, loadError } = usePlantScope();
   const plantId = activePlantId && activePlantId !== "all" ? activePlantId : undefined;
   const isEnabled = Boolean(scope);
   const query = usePreventiveDashboard(plantId, isEnabled);
 
   if (loadError) {
-    return <PreventiveDashboardShell>Plant scope unavailable. Try again or contact your administrator.</PreventiveDashboardShell>;
+    return <PreventiveDashboardShell>{t("dashboard.plantScopeError")}</PreventiveDashboardShell>;
   }
 
   if (!isEnabled) {
@@ -35,7 +38,7 @@ export function PreventiveDashboardPageContent() {
   }
 
   if (scope?.mode === "EMPTY") {
-    return <PreventiveDashboardShell>No plants assigned to your account. Contact your administrator.</PreventiveDashboardShell>;
+    return <PreventiveDashboardShell>{t("dashboard.noPlantsAssigned")}</PreventiveDashboardShell>;
   }
 
   const data = query.data;
@@ -43,12 +46,10 @@ export function PreventiveDashboardPageContent() {
   return (
     <PreventiveDashboardShell>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-muted-foreground text-sm">
-          Due and overdue preventive schedules, server-derived. Overdue is always labeled.
-        </p>
+        <p className="text-muted-foreground text-sm">{t("dashboard.introLabel")}</p>
         <Button variant="outline" size="sm" onClick={() => void query.refetch()} disabled={query.isLoading}>
           <CalendarCheck aria-hidden="true" className={query.isFetching ? "animate-spin" : undefined} />
-          Refresh
+          {tc("refresh")}
         </Button>
       </div>
 
@@ -63,9 +64,9 @@ export function PreventiveDashboardPageContent() {
       {query.isError && (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-8">
-            <p className="text-muted-foreground text-sm">Failed to load the preventive dashboard.</p>
+            <p className="text-muted-foreground text-sm">{t("dashboard.loadFailed")}</p>
             <Button variant="outline" size="sm" onClick={() => void query.refetch()}>
-              Retry
+              {tc("retry")}
             </Button>
           </CardContent>
         </Card>
@@ -76,29 +77,27 @@ export function PreventiveDashboardPageContent() {
           <EmptyMedia variant="icon">
             <CalendarCheck aria-hidden="true" />
           </EmptyMedia>
-          <EmptyTitle>No scheduled preventive tasks</EmptyTitle>
-          <EmptyDescription>
-            No preventive schedules exist in the current plant scope. Due and overdue counts are both zero.
-          </EmptyDescription>
+          <EmptyTitle>{t("dashboard.emptyTitle")}</EmptyTitle>
+          <EmptyDescription>{t("dashboard.emptyDescription")}</EmptyDescription>
         </Empty>
       )}
 
       {!query.isLoading && !query.isError && data && data.upcoming.length > 0 && (
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <KpiCard label="Due" value={data.dueCount} tone="status-icon-info" />
-            <KpiCard label="Overdue" value={data.overdueCount} tone="status-icon-critical" />
-            <KpiCard label="Total Schedules" value={data.upcoming.length} tone="status-icon-neutral" />
+            <KpiCard label={t("due")} value={data.dueCount} tone="status-icon-info" />
+            <KpiCard label={t("overdue")} value={data.overdueCount} tone="status-icon-critical" />
+            <KpiCard label={t("dashboard.totalSchedules")} value={data.upcoming.length} tone="status-icon-neutral" />
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>Upcoming schedules</CardTitle>
-              <CardDescription>All schedules within scope, ordered by due date. Overdue items are marked.</CardDescription>
+              <CardTitle>{t("dashboard.upcomingTitle")}</CardTitle>
+              <CardDescription>{t("dashboard.upcomingDescription")}</CardDescription>
             </CardHeader>
             <CardContent>
               {data.upcoming.length === 0 ? (
-                <p className="text-muted-foreground text-sm">No schedules.</p>
+                <p className="text-muted-foreground text-sm">{t("dashboard.noSchedules")}</p>
               ) : (
                 <ul className="divide-y">
                   {data.upcoming.map((schedule) => {
@@ -125,11 +124,11 @@ export function PreventiveDashboardPageContent() {
                         </div>
                         <div className="flex items-center gap-2">
                           {isOverdue ? (
-                            <Badge variant="destructive" aria-label="Overdue schedule. Past due date.">
-                              Overdue
+                            <Badge variant="destructive" aria-label={t("dashboard.overdueAria")}>
+                              {t("overdue")}
                             </Badge>
                           ) : schedule.derivedStatus === "SCHEDULED" ? (
-                            <Badge className="status-badge-warning">Due</Badge>
+                            <Badge className="status-badge-warning">{t("due")}</Badge>
                           ) : (
                             <Badge variant="outline">{schedule.derivedStatus}</Badge>
                           )}
@@ -164,12 +163,13 @@ function KpiCard({ label, value, tone = "status-icon-neutral" }: { label: string
 }
 
 function PreventiveDashboardShell({ children }: { children: React.ReactNode }) {
+  const t = useTranslations("preventive");
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <header className="space-y-1">
         <p className="font-medium text-muted-foreground text-sm">Syncro</p>
-        <h1 className="font-semibold text-3xl tracking-tight">Preventive Dashboard</h1>
-        <p className="text-muted-foreground">Due and overdue preventive schedules, server-derived.</p>
+        <h1 className="font-semibold text-3xl tracking-tight">{t("dashboard.title")}</h1>
+        <p className="text-muted-foreground">{t("dashboard.subtitle")}</p>
       </header>
       {children}
     </main>

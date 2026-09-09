@@ -1,6 +1,7 @@
 "use client";
 
 import { Ellipsis, Folder, Forward, type LucideIcon, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import {
   DropdownMenu,
@@ -28,11 +29,12 @@ export function NavDocuments({
     readonly icon: LucideIcon;
   }[];
 }) {
+  const t = useTranslations("navigation.navDocuments");
   const { isMobile } = useSidebar();
 
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel>Documents</SidebarGroupLabel>
+      <SidebarGroupLabel>{t("groupLabel")}</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => (
           <SidebarMenuItem key={item.name}>
@@ -46,7 +48,7 @@ export function NavDocuments({
               <DropdownMenuTrigger asChild>
                 <SidebarMenuAction showOnHover className="rounded-sm data-[state=open]:bg-accent">
                   <Ellipsis />
-                  <span className="sr-only">More</span>
+                  <span className="sr-only">{t("more")}</span>
                 </SidebarMenuAction>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -56,16 +58,16 @@ export function NavDocuments({
               >
                 <DropdownMenuItem>
                   <Folder />
-                  <span>Open</span>
+                  <span>{t("open")}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <Forward />
-                  <span>Share</span>
+                  <span>{t("share")}</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive">
                   <Trash2 />
-                  <span>Delete</span>
+                  <span>{t("delete")}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -74,7 +76,7 @@ export function NavDocuments({
         <SidebarMenuItem>
           <SidebarMenuButton className="text-sidebar-foreground/70">
             <Ellipsis className="text-sidebar-foreground/70" />
-            <span>More</span>
+            <span>{t("more")}</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>

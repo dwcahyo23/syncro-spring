@@ -2,6 +2,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { I18nProvider } from "@/test/i18n-wrapper";
+
 import { ResponsibilityManagement } from "./responsibility-management";
 
 vi.mock("@/lib/api/generated/syncro", () => ({
@@ -34,7 +36,9 @@ vi.mock("@/features/plant-scope/plant-scope-store", () => ({
 const queryClient = new QueryClient();
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  <I18nProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  </I18nProvider>
 );
 
 describe("Responsibility Management Feature (ATDD)", () => {

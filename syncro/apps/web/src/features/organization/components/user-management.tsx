@@ -3,6 +3,7 @@
 import { type FormEvent, useState } from "react";
 
 import { Loader2Icon, TriangleAlertIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -23,14 +24,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useListJobTitles, useListUsersMaster, useUpdateUserMaster } from "@/features/organization/hooks/use-users";
 import type { UserMasterView } from "@/features/organization/types";
-import { SyncroApiError } from "@/lib/api/orval-mutator";
+import { apiErrorMessage, errorResponse } from "@/lib/api/error-response";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
-
-type ErrorResponse = {
-  code: string;
-  message: string;
-  fieldErrors?: Record<string, string>;
-};
 
 interface UserFormState {
   displayName: string;
@@ -44,6 +39,9 @@ const EMPTY_FORM: UserFormState = { displayName: "", nik: "", phoneNumber: "", j
 const NONE = "__none__";
 
 export function UserManagement() {
+  const t = useTranslations("organization");
+  const tc = useTranslations("common");
+  const te = useTranslations("errors");
   const user = useAuthUser();
   const usersQuery = useListUsersMaster();
   const jobTitlesQuery = useListJobTitles();
@@ -89,16 +87,17 @@ export function UserManagement() {
           departmentId: form.departmentId === NONE || form.departmentId === "" ? null : form.departmentId,
         },
       });
-      toast.success("User updated.");
+      toast.success(t("users.updated"));
       setEditingUser(null);
     } catch (error) {
       const response = errorResponse(error);
       if (response?.code === "DUPLICATE_IDENTIFIER") {
-        toast.error("The NIK or phone number is already in use by another user.");
+        toast.error(te("DUPLICATE_IDENTIFIER"));
       } else {
         setFieldErrors(response?.fieldErrors ?? {});
-        setFormError(response?.message ?? "User update failed.");
-        toast.error(response?.message ?? "User update failed.");
+        const message = response ? apiErrorMessage(te, response) : t("users.updateFailed");
+        setFormError(message);
+        toast.error(message);
       }
     }
   }
@@ -107,41 +106,38 @@ export function UserManagement() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Users</CardTitle>
-          <CardDescription>
-            User master: display name, NIK, phone, job title, and department. NIK and phone are unique when set; empty
-            values are cleared. Roles are managed at bootstrap — only master fields are editable here.
-          </CardDescription>
-          <CardAction>{canMutate ? null : <Badge variant="secondary">Read-only</Badge>}</CardAction>
+          <CardTitle>{t("users.title")}</CardTitle>
+          <CardDescription>{t("users.description")}</CardDescription>
+          <CardAction>{canMutate ? null : <Badge variant="secondary">{t("readOnly")}</Badge>}</CardAction>
         </CardHeader>
         <CardContent>
           {usersQuery.isLoading ? <UserTableSkeleton /> : null}
           {usersQuery.isError ? (
             <UserState
-              title="Users could not be loaded"
-              description="Refresh page or contact administrator if access should be available."
+              title={t("users.couldNotLoadTitle")}
+              description={t("users.couldNotLoadDesc")}
               action={
                 <Button variant="outline" onClick={() => usersQuery.refetch()}>
-                  Retry
+                  {tc("retry")}
                 </Button>
               }
             />
           ) : null}
           {!usersQuery.isLoading && !usersQuery.isError && items.length === 0 ? (
-            <UserState title="No users yet" description="Users are bootstrapped by the local admin." />
+            <UserState title={t("users.noUsersTitle")} description={t("users.noUsersDesc")} />
           ) : null}
           {items.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Login</TableHead>
-                  <TableHead>NIK</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Job title</TableHead>
-                  <TableHead>Status</TableHead>
-                  {canMutate ? <TableHead className="text-right">Actions</TableHead> : null}
+                  <TableHead>{tc("name")}</TableHead>
+                  <TableHead>{t("users.login")}</TableHead>
+                  <TableHead>{t("users.nik")}</TableHead>
+                  <TableHead>{t("users.phone")}</TableHead>
+                  <TableHead>{t("role")}</TableHead>
+                  <TableHead>{t("jobTitle")}</TableHead>
+                  <TableHead>{tc("status")}</TableHead>
+                  {canMutate ? <TableHead className="text-right">{tc("actions")}</TableHead> : null}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -149,21 +145,21 @@ export function UserManagement() {
                   <TableRow key={u.id}>
                     <TableCell className="font-medium">{u.displayName ?? u.loginIdentifier}</TableCell>
                     <TableCell>{u.loginIdentifier}</TableCell>
-                    <TableCell>{u.nik ?? "—"}</TableCell>
-                    <TableCell>{u.phoneNumber ?? "—"}</TableCell>
+                    <TableCell>{u.nik ?? tc("notAvailable")}</TableCell>
+                    <TableCell>{u.phoneNumber ?? tc("notAvailable")}</TableCell>
                     <TableCell>{u.applicationRole}</TableCell>
-                    <TableCell>{jobTitleLabel(jobTitles, u.jobTitleId)}</TableCell>
+                    <TableCell>{jobTitleLabel(jobTitles, u.jobTitleId, tc("notAvailable"))}</TableCell>
                     <TableCell>
                       {u.enabled ? (
-                        <Badge variant="outline">Enabled</Badge>
+                        <Badge variant="outline">{t("users.enabled")}</Badge>
                       ) : (
-                        <Badge variant="secondary">Disabled</Badge>
+                        <Badge variant="secondary">{t("users.disabled")}</Badge>
                       )}
                     </TableCell>
                     {canMutate ? (
                       <TableCell className="text-right">
                         <Button variant="outline" size="sm" onClick={() => openEditDialog(u)}>
-                          Edit
+                          {tc("edit")}
                         </Button>
                       </TableCell>
                     ) : null}
@@ -179,16 +175,16 @@ export function UserManagement() {
         <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
           <form onSubmit={submitUser} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>Edit user</DialogTitle>
+              <DialogTitle>{t("users.editUser")}</DialogTitle>
               <DialogDescription>
-                {editingUser?.loginIdentifier} — update master fields. Leave NIK/phone empty to clear.
+                {t("users.editUserHint", { login: editingUser?.loginIdentifier ?? "" })}
               </DialogDescription>
             </DialogHeader>
             {formError ? (
               <p className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">{formError}</p>
             ) : null}
             <div className="grid gap-2">
-              <Label htmlFor="user-display-name">Display name</Label>
+              <Label htmlFor="user-display-name">{t("users.displayName")}</Label>
               <Input
                 id="user-display-name"
                 value={form.displayName}
@@ -198,7 +194,7 @@ export function UserManagement() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="user-nik">NIK</Label>
+              <Label htmlFor="user-nik">{t("users.nik")}</Label>
               <Input
                 id="user-nik"
                 value={form.nik}
@@ -209,7 +205,7 @@ export function UserManagement() {
               {fieldErrors.nik ? <p className="text-destructive text-sm">{fieldErrors.nik}</p> : null}
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="user-phone">Phone number</Label>
+              <Label htmlFor="user-phone">{t("users.phoneNumber")}</Label>
               <Input
                 id="user-phone"
                 value={form.phoneNumber}
@@ -220,17 +216,17 @@ export function UserManagement() {
               {fieldErrors.phoneNumber ? <p className="text-destructive text-sm">{fieldErrors.phoneNumber}</p> : null}
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="user-job-title">Job title</Label>
+              <Label htmlFor="user-job-title">{t("jobTitle")}</Label>
               <Select
                 value={form.jobTitleId || NONE}
                 onValueChange={(value) => setForm((c) => ({ ...c, jobTitleId: value }))}
               >
                 <SelectTrigger id="user-job-title" disabled={updateUser.isPending}>
-                  <SelectValue placeholder="Select job title" />
+                  <SelectValue placeholder={t("selectJobTitle")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE} className="italic text-muted-foreground">
-                    None
+                    {tc("none")}
                   </SelectItem>
                   {jobTitles.map((title) => (
                     <SelectItem key={title.id} value={title.id}>
@@ -247,11 +243,11 @@ export function UserManagement() {
                 onClick={() => setEditingUser(null)}
                 disabled={updateUser.isPending}
               >
-                Cancel
+                {tc("cancel")}
               </Button>
               <Button type="submit" disabled={updateUser.isPending}>
                 {updateUser.isPending ? <Loader2Icon className="animate-spin" /> : null}
-                Save user
+                {t("users.saveUser")}
               </Button>
             </DialogFooter>
           </form>
@@ -261,9 +257,13 @@ export function UserManagement() {
   );
 }
 
-function jobTitleLabel(jobTitles: Array<{ id: string; name: string }>, jobTitleId: string | null): string {
+function jobTitleLabel(
+  jobTitles: Array<{ id: string; name: string }>,
+  jobTitleId: string | null,
+  notAvailable: string,
+): string {
   if (!jobTitleId) {
-    return "—";
+    return notAvailable;
   }
   const found = jobTitles.find((title) => title.id === jobTitleId);
   return found ? found.name : jobTitleId;
@@ -290,12 +290,4 @@ function UserTableSkeleton() {
       <Skeleton className="h-10 w-full" />
     </div>
   );
-}
-
-function errorResponse(error: unknown): ErrorResponse | null {
-  if (!(error instanceof SyncroApiError) || !error.payload || typeof error.payload !== "object") {
-    return null;
-  }
-  const payload = error.payload as ErrorResponse;
-  return typeof payload.code === "string" && typeof payload.message === "string" ? payload : null;
 }

@@ -4,6 +4,7 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2Icon, Trash2, TriangleAlertIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import {
@@ -38,6 +39,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
+import { apiErrorMessage, errorResponse } from "@/lib/api/error-response";
 import type {
   ListMachineGroupsParams,
   ListMachinesParams,
@@ -58,13 +60,14 @@ import {
   useListPlants,
   useUpdateMachine,
 } from "@/lib/api/generated/syncro";
-import { SyncroApiError } from "@/lib/api/orval-mutator";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
+import { useCalendarLocale, useDateTimeFormatter } from "@/lib/i18n/format";
 
 type MachineFormState = MachineRequest;
 type DialogMode = { type: "create"; machine?: never } | { type: "edit"; machine: MachineView };
-type ErrorResponse = { code: string; message: string; fieldErrors?: Record<string, string> };
 type StatusFilter = "ALL" | MachineViewStatus;
+
+const STATUS_CODES: MachineViewStatus[] = ["ACTIVE", "INACTIVE"];
 
 const EMPTY_FORM: MachineFormState = {
   plantId: "",
@@ -78,6 +81,9 @@ const EMPTY_FORM: MachineFormState = {
 };
 
 export function MachineManagement() {
+  const t = useTranslations("masterData");
+  const tc = useTranslations("common");
+  const te = useTranslations("errors");
   const user = useAuthUser();
   const plantScope = usePlantScope();
   const scope = plantScope.scope;
@@ -204,17 +210,18 @@ export function MachineManagement() {
     try {
       if (dialogMode?.type === "edit") {
         await updateMachine.mutateAsync({ machineId: dialogMode.machine.id ?? "", data: payload });
-        toast.success("Machine updated.");
+        toast.success(t("machine.toast.updated"));
       } else {
         await createMachine.mutateAsync({ data: payload });
-        toast.success("Machine created.");
+        toast.success(t("machine.toast.created"));
       }
       setDialogMode(null);
     } catch (error) {
       const response = errorResponse(error);
       setFieldErrors(response?.fieldErrors ?? {});
-      setFormError(response?.message ?? "Machine request failed.");
-      toast.error(response?.message ?? "Machine request failed.");
+      const message = response ? apiErrorMessage(te, response) : t("machine.toast.requestFailed");
+      setFormError(message);
+      toast.error(message);
     }
   }
 
@@ -225,10 +232,11 @@ export function MachineManagement() {
 
     try {
       await deleteMachine.mutateAsync({ machineId: deleteTarget.id ?? "" });
-      toast.success("Machine deleted.");
+      toast.success(t("machine.toast.deleted"));
       setDeleteTarget(null);
     } catch (error) {
-      toast.error(errorResponse(error)?.message ?? "Machine delete failed.");
+      const response = errorResponse(error);
+      toast.error(response ? apiErrorMessage(te, response) : t("machine.toast.deleteFailed"));
     }
   }
 
@@ -238,15 +246,15 @@ export function MachineManagement() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Machines</CardTitle>
-          <CardDescription>Manage registered machine master data and manual ACTIVE/INACTIVE status.</CardDescription>
+          <CardTitle>{t("machine.title")}</CardTitle>
+          <CardDescription>{t("machine.description")}</CardDescription>
           <CardAction>
             {canMutate ? (
               <Button onClick={openCreateDialog} disabled={!canCreate}>
-                Create machine
+                {t("machine.create")}
               </Button>
             ) : (
-              <Badge variant="secondary">Read-only</Badge>
+              <Badge variant="secondary">{t("machine.readOnly")}</Badge>
             )}
           </CardAction>
         </CardHeader>
@@ -262,7 +270,7 @@ export function MachineManagement() {
             <Input
               value={machineSearch}
               onChange={(event) => setMachineSearch(event.target.value)}
-              placeholder="Search machines"
+              placeholder={t("machine.searchPlaceholder")}
               disabled={!effectivePlantId || isAssignedEmpty}
             />
 
@@ -284,32 +292,32 @@ export function MachineManagement() {
             />
           </div>
           {isAssignedEmpty ? (
-            <MachineState title="No plant assignment" description="Your account has no assigned plant scope." />
+            <MachineState
+              title={t("machine.state.noAssignmentTitle")}
+              description={t("machine.state.noAssignmentDesc")}
+            />
           ) : null}
           {!isAssignedEmpty && !plants.isLoading && availablePlants.length === 0 ? (
-            <MachineState title="No plants available" description="Create or assign a plant before adding machines." />
+            <MachineState title={t("machine.state.noPlantsTitle")} description={t("machine.state.noPlantsDesc")} />
           ) : null}
           {!isAssignedEmpty &&
           effectivePlantId &&
           !machineGroups.isLoading &&
           groupItems.length === 0 &&
           !groupSearch.trim() ? (
-            <MachineState
-              title="No machine groups available"
-              description="Create a machine group for selected plant before adding machines."
-            />
+            <MachineState title={t("machine.state.noGroupsTitle")} description={t("machine.state.noGroupsDesc")} />
           ) : null}
           {plants.isLoading || machineGroups.isLoading || machines.isLoading ? <MachineTableSkeleton /> : null}
           {plants.isError || machineGroups.isError || machines.isError ? (
             <MachineState
-              title="Machines could not be loaded"
-              description="Refresh page or contact administrator if access should be available."
+              title={t("machine.state.loadFailedTitle")}
+              description={t("machine.state.loadFailedDesc")}
               action={
                 <Button
                   variant="outline"
                   onClick={() => void Promise.all([plants.refetch(), machineGroups.refetch(), machines.refetch()])}
                 >
-                  Retry
+                  {tc("retry")}
                 </Button>
               }
             />
@@ -320,11 +328,15 @@ export function MachineManagement() {
           machineItems.length === 0 &&
           (groupItems.length > 0 || groupSearch.trim()) ? (
             <MachineState
-              title={machineSearch || selectedGroupId !== "ALL" ? "No machines found" : "No machines yet"}
+              title={
+                machineSearch || selectedGroupId !== "ALL"
+                  ? t("machine.state.noMachinesFound")
+                  : t("machine.state.noMachinesYet")
+              }
               description={
                 machineSearch || selectedGroupId !== "ALL"
-                  ? "Adjust your filters."
-                  : "Create first registered machine for selected plant and group."
+                  ? t("machine.state.adjustFilters")
+                  : t("machine.state.emptyDesc")
               }
             />
           ) : null}
@@ -333,22 +345,27 @@ export function MachineManagement() {
               <TableHeader>
                 <TableRow>
                   <TableHead>
-                    <DataTableSortHeader title="Code" field="code" sort={sort} onSortChange={setSort} />
+                    <DataTableSortHeader title={tc("code")} field="code" sort={sort} onSortChange={setSort} />
                   </TableHead>
                   <TableHead>
-                    <DataTableSortHeader title="Name" field="name" sort={sort} onSortChange={setSort} />
+                    <DataTableSortHeader title={tc("name")} field="name" sort={sort} onSortChange={setSort} />
                   </TableHead>
-                  <TableHead>Plant</TableHead>
-                  <TableHead>Group</TableHead>
-                  <TableHead>Manual status</TableHead>
-                  <TableHead>Brand</TableHead>
+                  <TableHead>{tc("plant")}</TableHead>
+                  <TableHead>{t("machine.colGroup")}</TableHead>
+                  <TableHead>{t("machine.manualStatus")}</TableHead>
+                  <TableHead>{t("machine.brand")}</TableHead>
                   <TableHead>
-                    <DataTableSortHeader title="Installed" field="installedAt" sort={sort} onSortChange={setSort} />
+                    <DataTableSortHeader
+                      title={t("machine.colInstalled")}
+                      field="installedAt"
+                      sort={sort}
+                      onSortChange={setSort}
+                    />
                   </TableHead>
                   <TableHead>
-                    <DataTableSortHeader title="Updated" field="updatedAt" sort={sort} onSortChange={setSort} />
+                    <DataTableSortHeader title={tc("updatedAt")} field="updatedAt" sort={sort} onSortChange={setSort} />
                   </TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right">{tc("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -364,21 +381,21 @@ export function MachineManagement() {
                       <StatusBadge status={machine.status ?? "INACTIVE"} />
                     </TableCell>
                     <TableCell>{machine.brand || "-"}</TableCell>
-                    <TableCell>{machine.installedAt ? formatDateOnly(machine.installedAt) : "-"}</TableCell>
-                    <TableCell>{machine.updatedAt ? formatDateTime(machine.updatedAt) : "-"}</TableCell>
+                    <TableCell>{machine.installedAt ? <InstalledDate value={machine.installedAt} /> : "-"}</TableCell>
+                    <TableCell>{machine.updatedAt ? <FormattedDateTime value={machine.updatedAt} /> : "-"}</TableCell>
                     <TableCell className="text-right">
                       {canMutate ? (
                         <div className="flex justify-end gap-2">
                           <Button variant="outline" size="sm" onClick={() => openEditDialog(machine)}>
-                            Edit
+                            {tc("edit")}
                           </Button>
                           <Button variant="destructive" size="sm" onClick={() => setDeleteTarget(machine)}>
                             <Trash2 />
-                            Delete
+                            {tc("delete")}
                           </Button>
                         </div>
                       ) : (
-                        <Badge variant="secondary">View only</Badge>
+                        <Badge variant="secondary">{t("machine.viewOnly")}</Badge>
                       )}
                     </TableCell>
                   </TableRow>
@@ -405,10 +422,10 @@ export function MachineManagement() {
         <DialogContent className="top-4 max-h-[calc(100svh-2rem)] translate-y-0 overflow-y-auto sm:max-w-2xl">
           <form onSubmit={submitMachine} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>{dialogMode?.type === "edit" ? "Edit machine" : "Create machine"}</DialogTitle>
-              <DialogDescription>
-                Manual status is master data and does not reflect MQTT telemetry freshness.
-              </DialogDescription>
+              <DialogTitle>
+                {dialogMode?.type === "edit" ? t("machine.dialog.editTitle") : t("machine.dialog.createTitle")}
+              </DialogTitle>
+              <DialogDescription>{t("machine.dialog.description")}</DialogDescription>
             </DialogHeader>
             {formError ? (
               <p role="alert" className="rounded-md bg-destructive/10 p-2 text-destructive text-sm">
@@ -422,7 +439,7 @@ export function MachineManagement() {
             ) : null}
             <div className="grid gap-4 md:grid-cols-2">
               <div className="grid min-w-0 gap-2">
-                <Label htmlFor="machine-plant">Plant</Label>
+                <Label htmlFor="machine-plant">{tc("plant")}</Label>
                 <PlantSelect
                   plants={availablePlants}
                   value={form.plantId ?? ""}
@@ -435,7 +452,7 @@ export function MachineManagement() {
                 {fieldErrors.plantId ? <p className="text-destructive text-sm">{fieldErrors.plantId}</p> : null}
               </div>
               <div className="grid min-w-0 gap-2">
-                <Label htmlFor="machine-group">Machine group</Label>
+                <Label htmlFor="machine-group">{t("machine.labelMachineGroup")}</Label>
                 <MachineGroupSelect
                   groups={groupItems}
                   value={form.machineGroupId ?? ""}
@@ -450,7 +467,7 @@ export function MachineManagement() {
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="grid min-w-0 gap-2">
-                <Label htmlFor="machine-code">Code</Label>
+                <Label htmlFor="machine-code">{tc("code")}</Label>
                 <Input
                   id="machine-code"
                   value={form.code}
@@ -461,7 +478,7 @@ export function MachineManagement() {
                 {fieldErrors.code ? <p className="text-destructive text-sm">{fieldErrors.code}</p> : null}
               </div>
               <div className="grid min-w-0 gap-2">
-                <Label htmlFor="machine-status">Manual status</Label>
+                <Label htmlFor="machine-status">{t("machine.manualStatus")}</Label>
                 <StatusSelect
                   value={form.status ?? "ACTIVE"}
                   onChange={(status) =>
@@ -475,7 +492,7 @@ export function MachineManagement() {
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="grid min-w-0 gap-2">
-                <Label htmlFor="machine-name">Name</Label>
+                <Label htmlFor="machine-name">{tc("name")}</Label>
                 <Input
                   id="machine-name"
                   value={form.name ?? ""}
@@ -484,7 +501,7 @@ export function MachineManagement() {
                 />
               </div>
               <div className="grid min-w-0 gap-2">
-                <Label htmlFor="machine-brand">Brand</Label>
+                <Label htmlFor="machine-brand">{t("machine.brand")}</Label>
                 <Input
                   id="machine-brand"
                   value={form.brand ?? ""}
@@ -495,13 +512,13 @@ export function MachineManagement() {
             </div>
             <DatePickerField
               id="machine-installed"
-              label="Installed date"
+              label={t("machine.installedDate")}
               value={form.installedAt ?? ""}
               onChange={(installedAt) => setForm((current) => ({ ...current, installedAt }))}
               disabled={isSaving}
             />
             <div className="grid gap-2">
-              <Label htmlFor="machine-notes">Notes</Label>
+              <Label htmlFor="machine-notes">{tc("notes")}</Label>
               <Textarea
                 id="machine-notes"
                 value={form.notes ?? ""}
@@ -511,11 +528,11 @@ export function MachineManagement() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogMode(null)} disabled={isSaving}>
-                Cancel
+                {tc("cancel")}
               </Button>
               <Button type="submit" disabled={isSaving || !form.plantId || !form.machineGroupId}>
                 {isSaving ? <Loader2Icon className="animate-spin" /> : null}
-                Save machine
+                {t("machine.dialog.save")}
               </Button>
             </DialogFooter>
           </form>
@@ -525,22 +542,31 @@ export function MachineManagement() {
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete machine?</AlertDialogTitle>
+            <AlertDialogTitle>{t("machine.delete.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes {deleteTarget?.code}. Future sparepart, telemetry, responsibility, alert, or audit records
-              may block deletion.
+              {t("machine.delete.description", { code: deleteTarget?.code ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteMachine.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteMachine.isPending}>{tc("cancel")}</AlertDialogCancel>
             <AlertDialogAction variant="destructive" onClick={confirmDelete} disabled={deleteMachine.isPending}>
-              Delete machine
+              {t("machine.delete.action")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
   );
+}
+
+function InstalledDate({ value }: { value: string }) {
+  const dt = useDateTimeFormatter();
+  return <>{dt.date(`${value}T00:00:00Z`)}</>;
+}
+
+function FormattedDateTime({ value }: { value: string }) {
+  const dt = useDateTimeFormatter();
+  return <>{dt.dateTime(value)}</>;
 }
 
 function PlantSelect({
@@ -558,10 +584,11 @@ function PlantSelect({
   triggerId?: string;
   compact?: boolean;
 }) {
+  const t = useTranslations("masterData");
   return (
     <Select value={value} onValueChange={onChange} disabled={disabled}>
       <SelectTrigger id={triggerId} className={compact ? "w-full min-w-0" : "w-full min-w-0 sm:min-w-52"}>
-        <SelectValue placeholder="Select plant" />
+        <SelectValue placeholder={t("machine.selectPlant")} />
       </SelectTrigger>
       <SelectContent>
         {plants.map((plant) => (
@@ -595,11 +622,13 @@ function MachineGroupSelect({
   onSearchChange?: (value: string) => void;
   search?: string;
 }) {
+  const t = useTranslations("masterData");
   return (
     <Select value={value} onValueChange={onChange} disabled={disabled}>
       <SelectTrigger id={triggerId} className={compact ? "w-full min-w-0" : "w-full min-w-0 sm:min-w-52"}>
-        <SelectValue placeholder="Select machine group">
-          {groups.find((g) => g.id === value)?.name ?? (value === "ALL" ? "All groups" : "Select machine group")}
+        <SelectValue placeholder={t("machine.selectMachineGroup")}>
+          {groups.find((g) => g.id === value)?.name ??
+            (value === "ALL" ? t("machine.allGroups") : t("machine.selectMachineGroup"))}
         </SelectValue>
       </SelectTrigger>
       <SelectContent>
@@ -607,21 +636,21 @@ function MachineGroupSelect({
           <div className="p-2">
             <Input
               value={search}
-              placeholder="Search groups..."
+              placeholder={t("machine.searchGroups")}
               onChange={(e) => onSearchChange(e.target.value)}
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
             />
           </div>
         ) : null}
-        {includeAll ? <SelectItem value="ALL">All groups</SelectItem> : null}
+        {includeAll ? <SelectItem value="ALL">{t("machine.allGroups")}</SelectItem> : null}
         {groups.map((group) => (
           <SelectItem key={group.id ?? group.name} value={group.id ?? ""}>
             {group.name}
           </SelectItem>
         ))}
         {groups.length === 0 ? (
-          <p className="px-2 py-3 text-center text-sm text-muted-foreground">No groups found</p>
+          <p className="px-2 py-3 text-center text-sm text-muted-foreground">{t("machine.noGroupsFound")}</p>
         ) : null}
       </SelectContent>
     </Select>
@@ -643,15 +672,20 @@ function StatusSelect({
   includeAll?: boolean;
   compact?: boolean;
 }) {
+  const t = useTranslations("masterData");
+  const tc = useTranslations("common");
   return (
     <Select value={value} onValueChange={onChange} disabled={disabled}>
       <SelectTrigger id={triggerId} className={compact ? "w-full min-w-0" : "w-full min-w-0 sm:min-w-40"}>
-        <SelectValue placeholder="Status" />
+        <SelectValue placeholder={tc("status")} />
       </SelectTrigger>
       <SelectContent>
-        {includeAll ? <SelectItem value="ALL">All statuses</SelectItem> : null}
-        <SelectItem value="ACTIVE">ACTIVE</SelectItem>
-        <SelectItem value="INACTIVE">INACTIVE</SelectItem>
+        {includeAll ? <SelectItem value="ALL">{t("machine.allStatuses")}</SelectItem> : null}
+        {STATUS_CODES.map((code) => (
+          <SelectItem key={code} value={code}>
+            {t(`machine.status.${code}`)}
+          </SelectItem>
+        ))}
       </SelectContent>
     </Select>
   );
@@ -670,6 +704,9 @@ function DatePickerField({
   onChange: (value: string) => void;
   disabled?: boolean;
 }) {
+  const t = useTranslations("masterData");
+  const dt = useDateTimeFormatter();
+  const calendarLocale = useCalendarLocale();
   const selected = value ? new Date(`${value}T00:00:00Z`) : undefined;
 
   return (
@@ -678,7 +715,7 @@ function DatePickerField({
       <Popover>
         <PopoverTrigger asChild>
           <Button id={id} type="button" variant="outline" className="justify-start font-normal" disabled={disabled}>
-            {value ? formatDateOnly(value) : "Select date"}
+            {value ? dt.date(`${value}T00:00:00Z`) : t("machine.selectDate")}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
@@ -687,6 +724,7 @@ function DatePickerField({
             selected={selected}
             onSelect={(date) => onChange(date ? date.toISOString().slice(0, 10) : "")}
             defaultMonth={selected}
+            locale={calendarLocale}
           />
         </PopoverContent>
       </Popover>
@@ -695,7 +733,12 @@ function DatePickerField({
 }
 
 function StatusBadge({ status }: { status: MachineViewStatus }) {
-  return <Badge variant={status === "ACTIVE" ? "default" : "secondary"}>Manual {status}</Badge>;
+  const t = useTranslations("masterData");
+  return (
+    <Badge variant={status === "ACTIVE" ? "default" : "secondary"}>
+      {t("machine.statusBadge", { status: t(`machine.status.${status}`) })}
+    </Badge>
+  );
 }
 
 function MachineState({
@@ -759,20 +802,4 @@ function normalizeForm(form: MachineFormState): MachineRequest {
 
 function emptyToUndefined(value: string | undefined) {
   return value?.trim() ? value : undefined;
-}
-
-function errorResponse(error: unknown): ErrorResponse | null {
-  if (!(error instanceof SyncroApiError) || !error.payload || typeof error.payload !== "object") {
-    return null;
-  }
-  const payload = error.payload as ErrorResponse;
-  return typeof payload.code === "string" && typeof payload.message === "string" ? payload : null;
-}
-
-function formatDateOnly(value: string) {
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(`${value}T00:00:00Z`));
-}
-
-function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }

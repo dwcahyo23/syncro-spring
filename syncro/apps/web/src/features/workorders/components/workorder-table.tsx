@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
 import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
-import { format } from "date-fns";
 import { RefreshCwIcon, SearchIcon, TriangleAlertIcon } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
 
 import { MonthPicker } from "@/components/month-picker";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +65,9 @@ function endOfMonth(d: Date): Date {
  * {@code from}/{@code to} month boundaries. Loading/empty/error states are handled to spec.
  */
 export function WorkorderTable() {
+  const t = useTranslations("workOrders");
+  const tc = useTranslations("common");
+  const format = useFormatter();
   const [month, setMonth] = useState(() => {
     const d = new Date();
     return { month: d.getMonth(), year: d.getFullYear() };
@@ -144,59 +147,71 @@ export function WorkorderTable() {
     setPage(0);
   }, []);
 
+  const formatDate = (iso: string) => {
+    try {
+      return format.dateTime(new Date(iso), { day: "numeric", month: "short", year: "numeric" });
+    } catch {
+      return iso;
+    }
+  };
+
   const columns = useMemo<ColumnDef<WorkOrderListRow>[]>(
     () => [
       {
         accessorKey: "id",
-        header: "WO No",
+        header: t("table.woNo"),
         cell: ({ row }) => <span className="font-medium font-mono text-xs">{row.original.id}</span>,
       },
       {
         accessorKey: "status",
-        header: "Status",
+        header: tc("status"),
         cell: ({ row }) => <StatusBadge status={row.original.status} />,
       },
       {
         id: "machine",
-        header: "Machine",
+        header: t("machine"),
         cell: ({ row }) => {
           const item = row.original;
           const label = [item.machineCode, item.machineName].filter(Boolean).join(" · ");
-          return <span className="text-xs">{label || "-"}</span>;
+          return <span className="text-xs">{label || t("dash")}</span>;
         },
       },
       {
         id: "category",
-        header: "Category",
+        header: t("category"),
         cell: ({ row }) => (
           <span className="text-xs">
-            {row.original.categoryCode ? `${row.original.categoryCode} · ${row.original.categoryLabel ?? ""}` : "-"}
+            {row.original.categoryCode
+              ? `${row.original.categoryCode} · ${row.original.categoryLabel ?? ""}`
+              : t("dash")}
           </span>
         ),
       },
       {
         accessorKey: "description",
-        header: "Problem",
-        cell: ({ row }) => <span className="line-clamp-2 max-w-56 text-xs">{row.original.description || "-"}</span>,
+        header: t("table.problem"),
+        cell: ({ row }) => (
+          <span className="line-clamp-2 max-w-56 text-xs">{row.original.description || t("dash")}</span>
+        ),
       },
       {
         accessorKey: "plantCode",
-        header: "Plant",
-        cell: ({ row }) => <span className="text-xs">{row.original.plantCode || "-"}</span>,
+        header: tc("plant"),
+        cell: ({ row }) => <span className="text-xs">{row.original.plantCode || t("dash")}</span>,
       },
       {
         id: "technician",
-        header: "Technician",
-        cell: ({ row }) => <span className="text-xs">{row.original.assignedTechnicianName || "-"}</span>,
+        header: t("table.technician"),
+        cell: ({ row }) => <span className="text-xs">{row.original.assignedTechnicianName || t("dash")}</span>,
       },
       {
         accessorKey: "createdAt",
-        header: "Created",
+        header: tc("createdAt"),
         cell: ({ row }) => <span className="text-muted-foreground text-xs">{formatDate(row.original.createdAt)}</span>,
       },
       {
         id: "actions",
-        header: "Actions",
+        header: tc("actions"),
         cell: ({ row }) => (
           <WorkorderActionsCell
             workOrderId={row.original.id}
@@ -209,7 +224,9 @@ export function WorkorderTable() {
         ),
       },
     ],
-    [],
+    // formatDate closes over the formatter; headers over the translator — both
+    // stable per locale change, so include them to rebuild columns on switch.
+    [t, tc, formatDate],
   );
 
   const table = useReactTable({
@@ -230,21 +247,21 @@ export function WorkorderTable() {
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1">
-          <span className="font-medium text-muted-foreground text-xs">Month</span>
+          <span className="font-medium text-muted-foreground text-xs">{t("table.month")}</span>
           <MonthPicker value={month} onChange={handleMonthChange} />
         </div>
 
         <div className="space-y-1">
-          <span className="font-medium text-muted-foreground text-xs">Status</span>
+          <span className="font-medium text-muted-foreground text-xs">{tc("status")}</span>
           <Select value={status || "all-statuses"} onValueChange={handleStatusChange}>
-            <SelectTrigger className="w-36" aria-label="Status">
-              <SelectValue placeholder="All statuses" />
+            <SelectTrigger className="w-36" aria-label={tc("status")}>
+              <SelectValue placeholder={t("table.allStatuses")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all-statuses">All statuses</SelectItem>
+              <SelectItem value="all-statuses">{t("table.allStatuses")}</SelectItem>
               {WORKORDER_STATUSES.map((s) => (
                 <SelectItem key={s} value={s}>
-                  {s}
+                  {t.has(`status.${s}`) ? t(`status.${s}`) : s}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -252,13 +269,13 @@ export function WorkorderTable() {
         </div>
 
         <div className="space-y-1">
-          <span className="font-medium text-muted-foreground text-xs">Category</span>
+          <span className="font-medium text-muted-foreground text-xs">{t("category")}</span>
           <Select value={categoryCode || "all-categories"} onValueChange={handleCategoryChange}>
-            <SelectTrigger className="w-44" aria-label="Category">
-              <SelectValue placeholder="All categories" />
+            <SelectTrigger className="w-44" aria-label={t("category")}>
+              <SelectValue placeholder={t("table.allCategories")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all-categories">All categories</SelectItem>
+              <SelectItem value="all-categories">{t("table.allCategories")}</SelectItem>
               {(categoriesRes ?? []).map((category) => (
                 <SelectItem key={category.code} value={category.code}>
                   {category.code} · {category.label}
@@ -269,15 +286,15 @@ export function WorkorderTable() {
         </div>
 
         <div className="space-y-1">
-          <span className="font-medium text-muted-foreground text-xs">Search</span>
+          <span className="font-medium text-muted-foreground text-xs">{tc("search")}</span>
           <div className="relative">
             <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
               onChange={(event) => handleSearchChange(event.target.value)}
-              placeholder="Search WO, machine, category..."
+              placeholder={t("table.searchPlaceholder")}
               className="w-56 pl-8"
-              aria-label="Search workorders"
+              aria-label={t("table.searchAria")}
             />
           </div>
         </div>
@@ -287,8 +304,8 @@ export function WorkorderTable() {
           variant="outline"
           size="sm"
           onClick={() => void refetch()}
-          aria-label="Refresh workorders"
-          title="Refresh"
+          aria-label={t("table.refreshAria")}
+          title={tc("refresh")}
           disabled={isFetching}
         >
           <RefreshCwIcon className={isFetching ? "size-4 animate-spin" : "size-4"} />
@@ -308,9 +325,9 @@ export function WorkorderTable() {
       {isError ? (
         <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed p-8 text-center">
           <TriangleAlertIcon className="size-8 text-muted-foreground" />
-          <p className="text-muted-foreground text-sm">Failed to load workorders.</p>
+          <p className="text-muted-foreground text-sm">{t("table.loadFailed")}</p>
           <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>
-            Retry
+            {tc("retry")}
           </Button>
         </div>
       ) : null}
@@ -354,7 +371,7 @@ export function WorkorderTable() {
       {/* Empty state */}
       {!isLoading && !isError && data && data.items.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed p-8 text-center">
-          <p className="text-muted-foreground text-sm">No workorders match this filter.</p>
+          <p className="text-muted-foreground text-sm">{t("table.empty")}</p>
         </div>
       ) : null}
     </div>
@@ -363,7 +380,8 @@ export function WorkorderTable() {
 
 /** Renders a workorder status as a coloured badge (Open = red, in-flight = amber, procurement = blue, done = green). */
 function StatusBadge({ status }: { status: string }) {
-  return <Badge className={statusClass(status)}>{status}</Badge>;
+  const t = useTranslations("workOrders");
+  return <Badge className={statusClass(status)}>{t.has(`status.${status}`) ? t(`status.${status}`) : status}</Badge>;
 }
 
 function statusClass(status: string): string {
@@ -382,13 +400,5 @@ function statusClass(status: string): string {
       return "status-badge-neutral";
     default:
       return "status-badge-neutral";
-  }
-}
-
-function formatDate(iso: string) {
-  try {
-    return format(new Date(iso), "d MMM yyyy");
-  } catch {
-    return iso;
   }
 }

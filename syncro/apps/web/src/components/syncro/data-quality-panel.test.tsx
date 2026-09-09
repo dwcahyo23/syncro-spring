@@ -1,13 +1,14 @@
-import { render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
+
+import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import type { TelemetryDataQualityStatus } from "@/features/system-health/types";
+import { renderI18n } from "@/test/i18n-wrapper";
 
 import { DataQualityPanel, formatWindowLabel } from "./data-quality-panel";
 
-function healthyStatus(
-  overrides: Partial<TelemetryDataQualityStatus> = {},
-): TelemetryDataQualityStatus {
+function healthyStatus(overrides: Partial<TelemetryDataQualityStatus> = {}): TelemetryDataQualityStatus {
   return {
     status: "GOOD",
     statusLabel: "Good",
@@ -45,7 +46,7 @@ describe("formatWindowLabel", () => {
 
 describe("DataQualityPanel", () => {
   it("renders all metric rows with text badges and the window", () => {
-    render(<DataQualityPanel status={healthyStatus()} isLoading={false} isError={false} />);
+    renderI18n(<DataQualityPanel status={healthyStatus()} isLoading={false} isError={false} />);
 
     expect(screen.getByText("Quarantined")).toBeInTheDocument();
     expect(screen.getByText("Rejection rate")).toBeInTheDocument();
@@ -58,7 +59,7 @@ describe("DataQualityPanel", () => {
   });
 
   it("renders the all-zero state without error text", () => {
-    render(
+    renderI18n(
       <DataQualityPanel
         status={healthyStatus({
           quarantinedCount: 0,
@@ -79,14 +80,14 @@ describe("DataQualityPanel", () => {
   });
 
   it("keeps last known metrics visible with a notice when a refresh fails", () => {
-    render(<DataQualityPanel status={healthyStatus()} isLoading={false} isError={true} />);
+    renderI18n(<DataQualityPanel status={healthyStatus()} isLoading={false} isError={true} />);
 
     expect(screen.getByText("Unable to refresh data quality. Showing last known metrics.")).toBeInTheDocument();
     expect(screen.getByText("Quarantined")).toBeInTheDocument();
   });
 
   it("renders 'Unable to load data quality.' when the first load fails", () => {
-    render(<DataQualityPanel status={undefined} isLoading={false} isError={true} />);
+    renderI18n(<DataQualityPanel status={undefined} isLoading={false} isError={true} />);
 
     expect(screen.getByText("Unable to load data quality.")).toBeInTheDocument();
   });
@@ -94,7 +95,7 @@ describe("DataQualityPanel", () => {
   it("falls back to the Neutral badge for an unexpected severity without crashing", () => {
     // Defense in depth behind the fetcher guard: a proto-key or unknown severity string
     // must render a text-labeled Neutral badge, never an undefined icon/label crash.
-    render(
+    renderI18n(
       <DataQualityPanel
         status={healthyStatus({ quarantinedSeverity: "toString" })}
         isLoading={false}

@@ -5,6 +5,7 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { I18nProvider } from "@/test/i18n-wrapper";
 
 import { MachineDashboardPageContent } from "./machine-dashboard-page-content";
 
@@ -12,7 +13,11 @@ import { MachineDashboardPageContent } from "./machine-dashboard-page-content";
 // Module-level mocks
 // ---------------------------------------------------------------------------
 
-let mockScope: { mode: string; availablePlants: Array<{ id: string; code: string; name: string }>; emptyReason: string | null } | null = {
+let mockScope: {
+  mode: string;
+  availablePlants: Array<{ id: string; code: string; name: string }>;
+  emptyReason: string | null;
+} | null = {
   mode: "ASSIGNED",
   availablePlants: [{ id: "p1", code: "P1", name: "Plant 1" }],
   emptyReason: null,
@@ -28,13 +33,27 @@ vi.mock("@/features/plant-scope/plant-scope-store", () => ({
   }),
 }));
 
-let mockQueryData: { items: Array<{
-  machineId: string; code: string; name: string | null; status: string;
-  machineGroupName: string | null; plantCode: string; plantName: string;
-  openWorkOrderCount: number; openAlertCount: number;
-  telemetryFreshness: { freshnessState: string; running: boolean; runtimeHours: number | null; counting: number | null; lastReceivedAt: string | null } | null;
-  lifetimeRisk: { maxConsumedPercentage: string | null; thresholdPercentage: string | null; status: string };
-}> } | null = {
+let mockQueryData: {
+  items: Array<{
+    machineId: string;
+    code: string;
+    name: string | null;
+    status: string;
+    machineGroupName: string | null;
+    plantCode: string;
+    plantName: string;
+    openWorkOrderCount: number;
+    openAlertCount: number;
+    telemetryFreshness: {
+      freshnessState: string;
+      running: boolean;
+      runtimeHours: number | null;
+      counting: number | null;
+      lastReceivedAt: string | null;
+    } | null;
+    lifetimeRisk: { maxConsumedPercentage: string | null; thresholdPercentage: string | null; status: string };
+  }>;
+} | null = {
   items: [],
 };
 let mockIsLoading = false;
@@ -61,9 +80,11 @@ const queryClient = new QueryClient({
 });
 
 const Wrapper = ({ children }: { children: ReactNode }) => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>{children}</TooltipProvider>
-  </QueryClientProvider>
+  <I18nProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>{children}</TooltipProvider>
+    </QueryClientProvider>
+  </I18nProvider>
 );
 
 function renderPage() {

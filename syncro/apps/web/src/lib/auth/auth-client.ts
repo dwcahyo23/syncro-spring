@@ -1,8 +1,8 @@
 "use client";
 
+import { isLocale, routing } from "@/i18n/routing";
 import { AUTH_TOKEN_COOKIE, AUTH_USER_COOKIE, type AuthUser } from "@/lib/auth/auth-session";
 import { notifyAuthSessionChanged } from "@/lib/auth/use-auth-user";
-import { isLocale, routing } from "@/i18n/routing";
 import { deleteClientCookie, getClientCookie, setClientCookie } from "@/lib/cookie.client";
 
 export function saveAuthSession(accessToken: string, expiresInSeconds: number, user: AuthUser) {

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useFormatter, useTranslations } from "next-intl";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -31,32 +32,8 @@ import { useAuthUser } from "@/lib/auth/use-auth-user";
  * Zod ranges mirror the backend DTO validation (@PositiveOrZero / 0..100 percents);
  * an empty field sends null, which the 20-1 partial-update semantics keep as the
  * stored value. Non-native shadcn/Radix controls per the project UI rule.
+ * Validation copy is locale-aware: the schema is built per render (rule 23-2-9).
  */
-
-const optionalNumber = (max: number | null) =>
-  z
-    .string()
-    .trim()
-    .transform((value) => (value === "" ? null : Number(value)))
-    .refine((value) => value === null || (Number.isFinite(value) && value >= 0 && (max === null || value <= max)), {
-      message: max === null ? "Must be a number of 0 or more." : `Must be a number between 0 and ${max}.`,
-    });
-
-const targetFormSchema = z
-  .object({
-    monthlyBreakdownTarget: optionalNumber(null),
-    mtbfTargetDays: optionalNumber(null),
-    mttrTargetMinutes: optionalNumber(null),
-    oeeQualityPercent: optionalNumber(100),
-    oeePerformancePercent: optionalNumber(100),
-  })
-  // Backend column is Integer — reject fractions with the error pinned to the field
-  // (a field-level .refine() lands at the root path and never reaches fieldState).
-  .superRefine((values, ctx) => {
-    if (values.monthlyBreakdownTarget !== null && !Number.isInteger(values.monthlyBreakdownTarget)) {
-      ctx.addIssue({ code: "custom", path: ["monthlyBreakdownTarget"], message: "Must be a whole number." });
-    }
-  });
 
 type TargetFormInput = {
   monthlyBreakdownTarget: string;
@@ -67,35 +44,17 @@ type TargetFormInput = {
 };
 
 const NUMBER_FIELDS = [
-  {
-    name: "monthlyBreakdownTarget",
-    label: "Monthly breakdown target",
-    hint: "Maximum breakdown workorders per month (lower is better).",
-    step: "1",
-  },
-  { name: "mtbfTargetDays", label: "MTBF target (days)", hint: "Higher is better.", step: "0.01" },
-  { name: "mttrTargetMinutes", label: "MTTR target (minutes)", hint: "Lower is better.", step: "0.01" },
-  { name: "oeeQualityPercent", label: "OEE quality (%)", hint: "0–100. OEE baseline factor.", step: "0.01" },
-  {
-    name: "oeePerformancePercent",
-    label: "OEE performance (%)",
-    hint: "0–100. OEE baseline factor.",
-    step: "0.01",
-  },
-] as const satisfies ReadonlyArray<{
-  name: keyof TargetFormInput;
-  label: string;
-  hint: string;
-  step: string;
-}>;
-
-function formatMonthLabel(monthKey: string): string {
-  const [year, month] = monthKey.split("-");
-  const date = new Date(Number(year), Number(month) - 1, 1);
-  return date.toLocaleString(undefined, { month: "long", year: "numeric" });
-}
+  { name: "monthlyBreakdownTarget", step: "1" },
+  { name: "mtbfTargetDays", step: "0.01" },
+  { name: "mttrTargetMinutes", step: "0.01" },
+  { name: "oeeQualityPercent", step: "0.01" },
+  { name: "oeePerformancePercent", step: "0.01" },
+] as const satisfies ReadonlyArray<{ name: keyof TargetFormInput; step: string }>;
 
 export function KpiTargetDialog({ month }: { month: string }) {
+  const t = useTranslations("analytics");
+  const tc = useTranslations("common");
+  const format = useFormatter();
   const user = useAuthUser();
   const canConfigure = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGER_MAINTENANCE";
 
@@ -103,6 +62,51 @@ export function KpiTargetDialog({ month }: { month: string }) {
   const plants = scope?.availablePlants ?? [];
   const [open, setOpen] = useState(false);
   const [plantId, setPlantId] = useState<string>("");
+
+  // Zod messages depend on the active locale — rebuild the schema when `t` changes.
+  const targetFormSchema = useMemo(() => {
+    const optionalNumber = (max: number | null) =>
+      z
+        .string()
+        .trim()
+        .transform((value) => (value === "" ? null : Number(value)))
+        .refine((value) => value === null || (Number.isFinite(value) && value >= 0 && (max === null || value <= max)), {
+          message:
+            max === null
+              ? t("targetDialog.validation.numberMinZero")
+              : t("targetDialog.validation.numberRange", { max }),
+        });
+
+    return (
+      z
+        .object({
+          monthlyBreakdownTarget: optionalNumber(null),
+          mtbfTargetDays: optionalNumber(null),
+          mttrTargetMinutes: optionalNumber(null),
+          oeeQualityPercent: optionalNumber(100),
+          oeePerformancePercent: optionalNumber(100),
+        })
+        // Backend column is Integer — reject fractions with the error pinned to the field
+        // (a field-level .refine() lands at the root path and never reaches fieldState).
+        .superRefine((values, ctx) => {
+          if (values.monthlyBreakdownTarget !== null && !Number.isInteger(values.monthlyBreakdownTarget)) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["monthlyBreakdownTarget"],
+              message: t("targetDialog.validation.wholeNumber"),
+            });
+          }
+        })
+    );
+  }, [t]);
+
+  // Same Intl options as the previous toLocaleString call — en output stays
+  // byte-identical ("September 2026"); id renders "September 2026" in the id-ID locale.
+  function formatMonthLabel(monthKey: string): string {
+    const [year, monthPart] = monthKey.split("-");
+    const date = new Date(Number(year), Number(monthPart) - 1, 1);
+    return format.dateTime(date, { month: "long", year: "numeric" });
+  }
 
   useEffect(() => {
     if (!plantId && plants.length > 0) {
@@ -113,7 +117,10 @@ export function KpiTargetDialog({ month }: { month: string }) {
   const targetsQuery = useKpiTargets(plantId, canConfigure && open);
   const upsert = useUpsertKpiTarget();
 
-  const existing = useMemo(() => targetsQuery.data?.find((t) => t.month === month) ?? null, [targetsQuery.data, month]);
+  const existing = useMemo(
+    () => targetsQuery.data?.find((target) => target.month === month) ?? null,
+    [targetsQuery.data, month],
+  );
 
   const form = useForm<TargetFormInput, unknown, z.output<typeof targetFormSchema>>({
     resolver: zodResolver(targetFormSchema),
@@ -178,31 +185,27 @@ export function KpiTargetDialog({ month }: { month: string }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          Configure targets
+          {t("targetDialog.trigger")}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Configure KPI targets</DialogTitle>
-          <DialogDescription>
-            Targets for {formatMonthLabel(month)}. Values are validated server-side and every change is audit-logged.
-            Leave a field empty to keep its current value.
-          </DialogDescription>
+          <DialogTitle>{t("targetDialog.title")}</DialogTitle>
+          <DialogDescription>{t("targetDialog.description", { month: formatMonthLabel(month) })}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={onSubmit} noValidate className="space-y-4">
           {targetsQuery.isError && (
             <p className="status-icon-warning text-destructive text-sm" role="alert">
-              Failed to load the current targets — the fields below start empty. Saving still keeps any stored value for
-              fields you leave empty.
+              {t("targetDialog.loadError")}
             </p>
           )}
 
           <div className="space-y-1.5">
-            <Label htmlFor="kpi-target-plant">Plant</Label>
+            <Label htmlFor="kpi-target-plant">{tc("plant")}</Label>
             <Select value={plantId} onValueChange={setPlantId}>
               <SelectTrigger id="kpi-target-plant" className="w-full">
-                <SelectValue placeholder="Select a plant" />
+                <SelectValue placeholder={t("targetDialog.selectPlant")} />
               </SelectTrigger>
               <SelectContent>
                 {plants.map((plant) => (
@@ -216,7 +219,7 @@ export function KpiTargetDialog({ month }: { month: string }) {
 
           {NUMBER_FIELDS.map((field) => (
             <div key={field.name} className="space-y-1.5">
-              <Label htmlFor={`kpi-target-${field.name}`}>{field.label}</Label>
+              <Label htmlFor={`kpi-target-${field.name}`}>{t(`targetDialog.fields.${field.name}.label`)}</Label>
               <Controller
                 control={form.control}
                 name={field.name}
@@ -236,7 +239,7 @@ export function KpiTargetDialog({ month }: { month: string }) {
                       aria-describedby={`kpi-target-${field.name}-hint`}
                     />
                     <p id={`kpi-target-${field.name}-hint`} className="text-muted-foreground text-xs">
-                      {fieldState.error?.message ?? field.hint}
+                      {fieldState.error?.message ?? t(`targetDialog.fields.${field.name}.hint`)}
                     </p>
                   </>
                 )}
@@ -246,10 +249,10 @@ export function KpiTargetDialog({ month }: { month: string }) {
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button type="submit" disabled={upsert.isPending}>
-              {upsert.isPending ? "Saving…" : "Save target"}
+              {upsert.isPending ? t("targetDialog.saving") : t("targetDialog.save")}
             </Button>
           </DialogFooter>
         </form>

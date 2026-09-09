@@ -3,6 +3,21 @@ import type { LoginResult } from "@/lib/auth/auth-session";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
 
+/**
+ * Story 23-2: typed auth failure. `message` stays the English developer-facing
+ * text; UI copy is resolved from `code` via the `errors` catalog at the catch
+ * site (never by matching translated text).
+ */
+export class SyncroAuthError extends Error {
+  readonly code: string;
+
+  constructor(message: string, code: string) {
+    super(message);
+    this.name = "SyncroAuthError";
+    this.code = code;
+  }
+}
+
 type LoginInput = {
   loginIdentifier: string;
   password: string;
@@ -86,10 +101,10 @@ export async function loginToSyncro(input: LoginInput): Promise<LoginResult> {
 
   const payload: unknown = await response.json().catch(() => undefined);
   if (!response.ok) {
-    throw new Error("Invalid login credentials.");
+    throw new SyncroAuthError("Invalid login credentials.", "INVALID_CREDENTIALS");
   }
   if (!isLoginResult(payload)) {
-    throw new Error("Authentication response could not be verified.");
+    throw new SyncroAuthError("Authentication response could not be verified.", "AUTH_UNVERIFIED");
   }
   return payload;
 }
@@ -101,10 +116,10 @@ export async function fetchCurrentUser(token: string): Promise<LoginResult["user
   const payload: unknown = await response.json().catch(() => undefined);
   if (response.status === 401) {
     expireAuthSession();
-    throw new Error("Authentication is required.");
+    throw new SyncroAuthError("Authentication is required.", "AUTH_REQUIRED");
   }
   if (!response.ok || !isAuthUser(payload)) {
-    throw new Error("Authentication is required.");
+    throw new SyncroAuthError("Authentication is required.", "AUTH_REQUIRED");
   }
   return payload;
 }
@@ -116,10 +131,10 @@ export async function fetchPlantScope(token: string): Promise<PlantScopeResponse
   const payload: unknown = await response.json().catch(() => undefined);
   if (response.status === 401) {
     expireAuthSession();
-    throw new Error("Authentication is required.");
+    throw new SyncroAuthError("Authentication is required.", "AUTH_REQUIRED");
   }
   if (!response.ok || !isPlantScopeResponse(payload)) {
-    throw new Error("Plant scope could not be loaded.");
+    throw new SyncroAuthError("Plant scope could not be loaded.", "PLANT_SCOPE_UNAVAILABLE");
   }
   return payload;
 }

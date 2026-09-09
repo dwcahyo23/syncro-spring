@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { AlertTriangle, Bell } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,17 +12,24 @@ import { NotificationStatePill } from "@/features/alerts/notification-state-pill
 import { usePlantScope } from "@/features/plant-scope/plant-scope-store";
 import { useListAlerts } from "@/lib/api/generated/syncro";
 
-function timeAgo(dateStr?: string): string {
-  if (!dateStr) return "-";
-  const diffMs = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diffMs / 60_000);
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
+/** Short "Xm/Xh/Xd ago" buckets in the active locale; keys live in `operationsOverview`. */
+function useTimeAgo() {
+  const t = useTranslations("operationsOverview");
+  return (dateStr?: string): string => {
+    if (!dateStr) return t("noDate");
+    const diffMs = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diffMs / 60_000);
+    if (mins < 60) return t("minutesAgo", { count: mins });
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return t("hoursAgo", { count: hours });
+    return t("daysAgo", { count: Math.floor(hours / 24) });
+  };
 }
 
 export function OperationsOverviewPageContent() {
+  const t = useTranslations("operationsOverview");
+  const tc = useTranslations("common");
+  const timeAgo = useTimeAgo();
   const { scope, activePlantId, loadError } = usePlantScope();
 
   const plantId = activePlantId && activePlantId !== "all" ? activePlantId : undefined;
@@ -38,16 +46,14 @@ export function OperationsOverviewPageContent() {
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <header className="space-y-1">
           <p className="font-medium text-muted-foreground text-sm">Syncro</p>
-          <h1 className="font-semibold text-3xl tracking-tight">Operations Overview</h1>
+          <h1 className="font-semibold text-3xl tracking-tight">{t("title")}</h1>
         </header>
         <Card>
           <CardHeader>
-            <CardTitle>Plant scope unavailable</CardTitle>
+            <CardTitle>{t("plantScopeTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground text-sm">
-              Plant scope could not be loaded. Try again or contact your administrator.
-            </p>
+            <p className="text-muted-foreground text-sm">{t("plantScopeDescription")}</p>
           </CardContent>
         </Card>
       </main>
@@ -59,7 +65,7 @@ export function OperationsOverviewPageContent() {
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <header className="space-y-1">
           <p className="font-medium text-muted-foreground text-sm">Syncro</p>
-          <h1 className="font-semibold text-3xl tracking-tight">Operations Overview</h1>
+          <h1 className="font-semibold text-3xl tracking-tight">{t("title")}</h1>
         </header>
         <Skeleton className="h-32 w-full" />
       </main>
@@ -71,16 +77,14 @@ export function OperationsOverviewPageContent() {
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <header className="space-y-1">
           <p className="font-medium text-muted-foreground text-sm">Syncro</p>
-          <h1 className="font-semibold text-3xl tracking-tight">Operations Overview</h1>
+          <h1 className="font-semibold text-3xl tracking-tight">{t("title")}</h1>
         </header>
         <Card>
           <CardHeader>
-            <CardTitle>No plants assigned</CardTitle>
+            <CardTitle>{t("noPlantsTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground text-sm">
-              No plants assigned to your account. Contact your administrator.
-            </p>
+            <p className="text-muted-foreground text-sm">{t("noPlantsDescription")}</p>
           </CardContent>
         </Card>
       </main>
@@ -97,8 +101,8 @@ export function OperationsOverviewPageContent() {
       {/* Page header */}
       <header className="space-y-1">
         <p className="font-medium text-muted-foreground text-sm">Syncro</p>
-        <h1 className="font-semibold text-3xl tracking-tight">Operations Overview</h1>
-        <p className="text-muted-foreground">What needs attention now.</p>
+        <h1 className="font-semibold text-3xl tracking-tight">{t("title")}</h1>
+        <p className="text-muted-foreground">{t("subtitle")}</p>
       </header>
 
       {/* Summary metric bar */}
@@ -106,7 +110,7 @@ export function OperationsOverviewPageContent() {
         <Link href="/alerts?status=OPEN" className="block">
           <Card className="transition-colors hover:border-foreground/20">
             <CardHeader className="pb-2">
-              <CardTitle className="font-medium text-muted-foreground text-sm">Open Alerts</CardTitle>
+              <CardTitle className="font-medium text-muted-foreground text-sm">{t("openAlerts")}</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoadingAlerts ? (
@@ -120,7 +124,7 @@ export function OperationsOverviewPageContent() {
         {/* Placeholder metrics — Epic 5+ will fill these */}
         <Card className="opacity-50">
           <CardHeader className="pb-2">
-            <CardTitle className="font-medium text-muted-foreground text-sm">Active Machines</CardTitle>
+            <CardTitle className="font-medium text-muted-foreground text-sm">{t("activeMachines")}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="font-bold text-2xl text-muted-foreground">—</p>
@@ -128,7 +132,7 @@ export function OperationsOverviewPageContent() {
         </Card>
         <Card className="opacity-50">
           <CardHeader className="pb-2">
-            <CardTitle className="font-medium text-muted-foreground text-sm">Stale Telemetry</CardTitle>
+            <CardTitle className="font-medium text-muted-foreground text-sm">{t("staleTelemetry")}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="font-bold text-2xl text-muted-foreground">—</p>
@@ -136,7 +140,7 @@ export function OperationsOverviewPageContent() {
         </Card>
         <Card className="opacity-50">
           <CardHeader className="pb-2">
-            <CardTitle className="font-medium text-muted-foreground text-sm">Health Status</CardTitle>
+            <CardTitle className="font-medium text-muted-foreground text-sm">{t("healthStatus")}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="font-bold text-2xl text-muted-foreground">—</p>
@@ -149,10 +153,10 @@ export function OperationsOverviewPageContent() {
         <div className="mb-3 flex items-center justify-between">
           <h2 id="alerts-section-heading" className="flex items-center gap-2 font-semibold text-base">
             <AlertTriangle className="h-4 w-4 text-destructive" aria-hidden="true" />
-            Alerts Requiring Action
+            {t("alertsSection")}
           </h2>
           <Link href="/alerts" className="text-muted-foreground text-sm hover:text-foreground">
-            View all alerts →
+            {t("viewAllAlerts")}
           </Link>
         </div>
 
@@ -167,13 +171,13 @@ export function OperationsOverviewPageContent() {
         {isErrorAlerts && (
           <Card>
             <CardContent className="flex flex-col items-center gap-3 py-6">
-              <p className="text-muted-foreground text-sm">Failed to load alerts.</p>
+              <p className="text-muted-foreground text-sm">{t("loadFailed")}</p>
               <button
                 type="button"
                 className="rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground text-sm hover:bg-primary/90"
                 onClick={() => void openAlertsQuery.refetch()}
               >
-                Retry
+                {tc("retry")}
               </button>
             </CardContent>
           </Card>
@@ -183,8 +187,8 @@ export function OperationsOverviewPageContent() {
           <Card>
             <CardContent className="py-8 text-center">
               <Bell className="mx-auto mb-2 h-6 w-6 text-muted-foreground" aria-hidden="true" />
-              <p className="font-medium text-sm">No open alerts</p>
-              <p className="mt-1 text-muted-foreground text-xs">No open sparepart alerts.</p>
+              <p className="font-medium text-sm">{t("emptyTitle")}</p>
+              <p className="mt-1 text-muted-foreground text-xs">{t("emptyDescription")}</p>
             </CardContent>
           </Card>
         )}
@@ -198,7 +202,10 @@ export function OperationsOverviewPageContent() {
                     <Link
                       href={`/alerts/${item.id}`}
                       className="flex flex-col gap-1 py-3 pr-4 pl-3 hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
-                      aria-label={`Alert for ${item.sparepartName ?? item.sparepartCode} on ${item.machineCode}`}
+                      aria-label={t("rowAria", {
+                        sparepart: item.sparepartName ?? item.sparepartCode ?? "",
+                        machine: item.machineCode ?? "",
+                      })}
                     >
                       <div className="flex items-center gap-3">
                         <AlertStatusBadge status={item.status} />
@@ -216,12 +223,12 @@ export function OperationsOverviewPageContent() {
                       <div className="flex items-center gap-4 pl-9 text-muted-foreground text-xs sm:pl-0">
                         <span className="tabular-nums">
                           {item.consumedPercentageSnapshot != null
-                            ? `${Number(item.consumedPercentageSnapshot).toFixed(1)}% consumed`
-                            : "No consumed snapshot"}
+                            ? t("consumed", { percent: Number(item.consumedPercentageSnapshot).toFixed(1) })
+                            : t("noSnapshot")}
                           {item.thresholdPercentage != null ? (
                             <>
                               <span className="mx-1">·</span>
-                              threshold {item.thresholdPercentage}%
+                              {t("threshold", { percent: item.thresholdPercentage })}
                             </>
                           ) : null}
                         </span>
@@ -234,7 +241,7 @@ export function OperationsOverviewPageContent() {
               {openAlertsTotal > 5 && (
                 <div className="border-t px-4 py-3 text-center">
                   <Link href="/alerts?status=OPEN" className="text-muted-foreground text-sm hover:text-foreground">
-                    +{openAlertsTotal - 5} more open alerts — view all
+                    {t("moreAlerts", { count: openAlertsTotal - 5 })}
                   </Link>
                 </div>
               )}

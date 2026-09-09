@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import type { UseQueryResult } from "@tanstack/react-query";
 import { CircleCheck, CircleX, RefreshCw, TriangleAlert } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 
 import { DataQualityPanel } from "@/components/syncro/data-quality-panel";
 import {
@@ -44,21 +45,7 @@ const DEPENDENCY_KEYS = ["db", "influxdb", "redis", "mqtt", "wahaCircuitBreaker"
 
 type DependencyKey = (typeof DEPENDENCY_KEYS)[number];
 
-// Suggested next diagnostic action per dependency, shown only on warning/critical cards.
-// Product-generic by design: pgAdmin and other local/dev tooling stay in local docs only.
-const DEPENDENCY_NEXT_STEP_HINTS: Record<DependencyKey, string> = {
-  db: "Verify the PostgreSQL service is running and check backend logs for connection errors.",
-  influxdb: "Verify the InfluxDB service is reachable; telemetry history writes fail while it is down.",
-  redis: "Verify the Redis service is reachable; latest telemetry state cannot be read while it is down.",
-  mqtt: "Verify the EMQX broker is reachable; telemetry ingest stops while the MQTT connection is down.",
-  wahaCircuitBreaker: "Verify the WAHA service is reachable; notification sends pause while the circuit is open.",
-};
-
-const INGEST_WORKER_NEXT_STEP_HINT =
-  "Check the ingest worker logs and MQTT subscription state; review the quarantine log below for rejected messages.";
-
-const NOTIFICATION_WORKER_NEXT_STEP_HINT =
-  "Check the notification worker logs and pending jobs; open the failing alert's notification history for attempt details.";
+type PageTranslator = ReturnType<typeof useTranslations<"systemHealth">>;
 
 function useNow(intervalMs: number) {
   const [now, setNow] = useState(() => Date.now());
@@ -70,6 +57,9 @@ function useNow(intervalMs: number) {
 }
 
 export function SystemHealthPage() {
+  const t = useTranslations("systemHealth");
+  const tc = useTranslations("common");
+  const locale = useLocale();
   const actuatorHealth = useActuatorHealthQuery();
   const ingestWorker = useIngestWorkerStatus();
   const notificationWorker = useNotificationWorkerStatus();
@@ -88,7 +78,7 @@ export function SystemHealthPage() {
     staleMachines.dataUpdatedAt,
     dataQuality.dataUpdatedAt,
     quarantineLog.dataUpdatedAt,
-  ].filter((t): t is number => typeof t === "number" && t > 0);
+  ].filter((v): v is number => typeof v === "number" && v > 0);
   const lastUpdated = dataUpdatedAts.length > 0 ? Math.min(...dataUpdatedAts) : 0;
   const isDataStale = lastUpdated > 0 && now - lastUpdated >= STALE_BANNER_THRESHOLD_MS;
 
@@ -135,13 +125,16 @@ export function SystemHealthPage() {
   // Evidence deep links live outside HealthCard (read-only by design) and only appear on
   // failure-severity cards with a concrete evidence target.
   const lastFailedAlertId = notificationWorker.data?.lastFailedAlertId ?? null;
+  const viewHistoryLabel = t("page.viewNotificationHistory");
   const wahaEvidenceLink = evidenceLink({
     alertId: lastFailedAlertId,
     severity: resolvedDependencySeverity(actuatorHealth.data?.components?.wahaCircuitBreaker),
+    label: viewHistoryLabel,
   });
   const notifEvidenceLink = evidenceLink({
     alertId: lastFailedAlertId,
     severity: resolvedWorkerSeverity(notificationWorker.data),
+    label: viewHistoryLabel,
   });
 
   return (
@@ -150,7 +143,7 @@ export function SystemHealthPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="font-semibold text-2xl tracking-tight">System Health</h1>
+            <h1 className="font-semibold text-2xl tracking-tight">{t("page.title")}</h1>
             <LatencyIndicator
               latencyState={dataQuality.data?.latencyState}
               lastLatencyMs={dataQuality.data?.lastLatencyMs}
@@ -158,13 +151,11 @@ export function SystemHealthPage() {
               isError={dataQuality.isError}
             />
           </div>
-          <p className="text-muted-foreground text-sm">
-            Dependency and worker diagnostics. Refreshes automatically every 30 seconds.
-          </p>
+          <p className="text-muted-foreground text-sm">{t("page.subtitle")}</p>
         </div>
         <Button variant="outline" onClick={handleRefresh} disabled={isLoading}>
           <RefreshCw aria-hidden="true" className={isFetching ? "animate-spin" : undefined} />
-          Refresh
+          {tc("refresh")}
         </Button>
       </div>
 
@@ -174,58 +165,56 @@ export function SystemHealthPage() {
           aria-live="polite"
           className="status-banner-warning flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2"
         >
-          <p className="text-sm">
-            Last updated {formatMinutesAgo(now - lastUpdated)} ago. Automatic refresh may be delayed.
-          </p>
+          <p className="text-sm">{formatStaleBanner(t, now - lastUpdated)}</p>
           <Button size="sm" variant="outline" onClick={handleRefresh}>
-            Refresh now
+            {t("page.refreshNow")}
           </Button>
         </div>
       ) : null}
 
       {/* Overall status banner */}
-      {banner ? <OverallStatusBanner state={banner} /> : null}
+      {banner ? <OverallStatusBanner state={banner} t={t} /> : null}
 
       {/* Dependency cards */}
-      <section aria-label="Dependency health">
-        <h2 className="mb-3 font-medium text-muted-foreground text-sm">Dependencies</h2>
+      <section aria-label={t("page.sectionAriaDependencies")}>
+        <h2 className="mb-3 font-medium text-muted-foreground text-sm">{t("page.headingDependencies")}</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <HealthCard
-            title="PostgreSQL"
-            description="Primary relational store"
-            {...dependencyCardProps(actuatorHealth, "db")}
+            title={t("cardTitles.postgres")}
+            description={t("cardTitles.postgresDescription")}
+            {...dependencyCardProps(t, actuatorHealth, "db")}
           >
-            <DependencyNextStepRow health={actuatorHealth} hintKey="db" />
+            <DependencyNextStepRow health={actuatorHealth} hintKey="db" t={t} />
           </HealthCard>
           <HealthCard
-            title="InfluxDB"
-            description="Telemetry history store"
-            {...dependencyCardProps(actuatorHealth, "influxdb")}
+            title={t("cardTitles.influxdb")}
+            description={t("cardTitles.influxdbDescription")}
+            {...dependencyCardProps(t, actuatorHealth, "influxdb")}
           >
-            <DependencyNextStepRow health={actuatorHealth} hintKey="influxdb" />
+            <DependencyNextStepRow health={actuatorHealth} hintKey="influxdb" t={t} />
           </HealthCard>
           <HealthCard
-            title="Redis"
-            description="Latest telemetry state cache"
-            {...dependencyCardProps(actuatorHealth, "redis")}
+            title={t("cardTitles.redis")}
+            description={t("cardTitles.redisDescription")}
+            {...dependencyCardProps(t, actuatorHealth, "redis")}
           >
-            <DependencyNextStepRow health={actuatorHealth} hintKey="redis" />
+            <DependencyNextStepRow health={actuatorHealth} hintKey="redis" t={t} />
           </HealthCard>
           <HealthCard
-            title="MQTT / EMQX"
-            description="Telemetry ingest transport"
-            {...dependencyCardProps(actuatorHealth, "mqtt")}
+            title={t("cardTitles.mqtt")}
+            description={t("cardTitles.mqttDescription")}
+            {...dependencyCardProps(t, actuatorHealth, "mqtt")}
           >
-            <DependencyNextStepRow health={actuatorHealth} hintKey="mqtt" />
+            <DependencyNextStepRow health={actuatorHealth} hintKey="mqtt" t={t} />
           </HealthCard>
           <div className="flex flex-col gap-1">
             <HealthCard
-              title="WAHA"
-              description="WhatsApp notification provider"
-              {...dependencyCardProps(actuatorHealth, "wahaCircuitBreaker")}
+              title={t("cardTitles.waha")}
+              description={t("cardTitles.wahaDescription")}
+              {...dependencyCardProps(t, actuatorHealth, "wahaCircuitBreaker")}
             >
-              <WahaMetricRows component={actuatorHealth.data?.components?.wahaCircuitBreaker} />
-              <DependencyNextStepRow health={actuatorHealth} hintKey="wahaCircuitBreaker" />
+              <WahaMetricRows component={actuatorHealth.data?.components?.wahaCircuitBreaker} t={t} />
+              <DependencyNextStepRow health={actuatorHealth} hintKey="wahaCircuitBreaker" t={t} />
             </HealthCard>
             {wahaEvidenceLink}
           </div>
@@ -233,12 +222,12 @@ export function SystemHealthPage() {
       </section>
 
       {/* Worker cards */}
-      <section aria-label="Worker health">
-        <h2 className="mb-3 font-medium text-muted-foreground text-sm">Workers</h2>
+      <section aria-label={t("page.sectionAriaWorkers")}>
+        <h2 className="mb-3 font-medium text-muted-foreground text-sm">{t("page.headingWorkers")}</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <HealthCard
-            title="Telemetry Ingest Worker"
-            description="MQTT telemetry ingest subscriber"
+            title={t("cardTitles.ingestWorker")}
+            description={t("cardTitles.ingestWorkerDescription")}
             statusLabel={ingestWorker.data?.statusLabel}
             statusSeverity={resolvedToHealthSeverity(resolvedWorkerSeverity(ingestWorker.data))}
             statusReason={ingestWorker.data?.statusReason ?? null}
@@ -247,23 +236,37 @@ export function SystemHealthPage() {
             error={ingestWorker.isError}
             empty={!ingestWorker.data}
           >
-            <HealthMetricRow label="MQTT state" value={metricString(ingestWorker.data?.mqttState)} />
-            <HealthMetricRow label="Queue depth" value={ingestQueueDepth(ingestWorker.data)} />
-            <HealthMetricRow label="Accepted count" value={metricString(ingestWorker.data?.acceptedCount)} />
             <HealthMetricRow
-              label="Last accepted"
-              value={ingestWorker.data?.lastAcceptedAt ? formatDateTimeUtc(ingestWorker.data.lastAcceptedAt) : "—"}
+              label={t("page.metricLabels.mqttState")}
+              value={metricString(ingestWorker.data?.mqttState)}
+            />
+            <HealthMetricRow label={t("page.metricLabels.queueDepth")} value={ingestQueueDepth(ingestWorker.data)} />
+            <HealthMetricRow
+              label={t("page.metricLabels.acceptedCount")}
+              value={metricString(ingestWorker.data?.acceptedCount)}
             />
             <HealthMetricRow
-              label="Stale since"
-              value={ingestWorker.data?.staleSince ? formatDateTimeUtc(ingestWorker.data.staleSince) : "—"}
+              label={t("page.metricLabels.lastAccepted")}
+              value={
+                ingestWorker.data?.lastAcceptedAt
+                  ? formatDateTimeUtc(ingestWorker.data.lastAcceptedAt, locale)
+                  : t("page.freshness.dash")
+              }
             />
-            {nextStepRow(resolvedWorkerSeverity(ingestWorker.data), INGEST_WORKER_NEXT_STEP_HINT)}
+            <HealthMetricRow
+              label={t("page.metricLabels.staleSince")}
+              value={
+                ingestWorker.data?.staleSince
+                  ? formatDateTimeUtc(ingestWorker.data.staleSince, locale)
+                  : t("page.freshness.dash")
+              }
+            />
+            {nextStepRow(t, resolvedWorkerSeverity(ingestWorker.data), "ingestWorker")}
           </HealthCard>
           <div className="flex flex-col gap-1">
             <HealthCard
-              title="Notification Worker"
-              description="WAHA notification dispatch worker"
+              title={t("cardTitles.notificationWorker")}
+              description={t("cardTitles.notificationWorkerDescription")}
               statusLabel={notificationWorker.data?.statusLabel}
               statusSeverity={resolvedToHealthSeverity(resolvedWorkerSeverity(notificationWorker.data))}
               statusReason={notificationWorker.data?.statusReason ?? null}
@@ -272,25 +275,31 @@ export function SystemHealthPage() {
               error={notificationWorker.isError}
               empty={!notificationWorker.data}
             >
-              <HealthMetricRow label="Pending jobs" value={metricString(notificationWorker.data?.pendingJobCount)} />
-              <HealthMetricRow label="Recent failed" value={metricString(notificationWorker.data?.recentFailedCount)} />
               <HealthMetricRow
-                label="Last failure reason"
+                label={t("page.metricLabels.pendingJobs")}
+                value={metricString(notificationWorker.data?.pendingJobCount)}
+              />
+              <HealthMetricRow
+                label={t("page.metricLabels.recentFailed")}
+                value={metricString(notificationWorker.data?.recentFailedCount)}
+              />
+              <HealthMetricRow
+                label={t("page.metricLabels.lastFailureReason")}
                 value={metricString(notificationWorker.data?.lastFailureReason)}
               />
               <HealthMetricRow
-                label="Last successful send"
+                label={t("page.metricLabels.lastSuccessfulSend")}
                 value={
                   notificationWorker.data?.lastSuccessfulSendAt
-                    ? formatDateTimeUtc(notificationWorker.data.lastSuccessfulSendAt)
-                    : "—"
+                    ? formatDateTimeUtc(notificationWorker.data.lastSuccessfulSendAt, locale)
+                    : t("page.freshness.dash")
                 }
               />
               <HealthMetricRow
-                label="Circuit state"
+                label={t("page.metricLabels.circuitState")}
                 value={metricString(notificationWorker.data?.circuitBreakerState)}
               />
-              {nextStepRow(resolvedWorkerSeverity(notificationWorker.data), NOTIFICATION_WORKER_NEXT_STEP_HINT)}
+              {nextStepRow(t, resolvedWorkerSeverity(notificationWorker.data), "notificationWorker")}
             </HealthCard>
             {notifEvidenceLink}
           </div>
@@ -298,21 +307,21 @@ export function SystemHealthPage() {
       </section>
 
       {/* Data quality */}
-      <section aria-label="Data Quality">
-        <h2 className="mb-3 font-medium text-muted-foreground text-sm">Data Quality</h2>
+      <section aria-label={t("page.sectionAriaDataQuality")}>
+        <h2 className="mb-3 font-medium text-muted-foreground text-sm">{t("page.headingDataQuality")}</h2>
         <div className="max-w-2xl">
           <DataQualityPanel status={dataQuality.data} isLoading={dataQuality.isLoading} isError={dataQuality.isError} />
         </div>
       </section>
 
       {/* Telemetry freshness */}
-      <section aria-label="Telemetry Freshness">
-        <h2 className="mb-3 font-medium text-muted-foreground text-sm">Telemetry Freshness</h2>
+      <section aria-label={t("page.sectionAriaFreshness")}>
+        <h2 className="mb-3 font-medium text-muted-foreground text-sm">{t("page.headingFreshness")}</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="flex flex-col gap-1">
             <HealthCard
-              title="Telemetry Freshness"
-              description="Latest accepted telemetry from the ingest path"
+              title={t("cardTitles.telemetryFreshness")}
+              description={t("cardTitles.telemetryFreshnessDescription")}
               statusLabel={freshness.data?.statusLabel}
               statusSeverity={resolvedToHealthSeverity(resolvedFreshnessSeverity(freshness.data))}
               statusReason={freshness.data?.statusReason ?? null}
@@ -322,35 +331,39 @@ export function SystemHealthPage() {
               empty={!freshness.data}
             >
               <HealthMetricRow
-                label="Latest received"
+                label={t("page.metricLabels.latestReceived")}
                 value={
                   freshness.data?.lastAcceptedAt
-                    ? `${formatDateTimeUtc(freshness.data.lastAcceptedAt)} (${formatRelativeFreshness(freshness.data.lastAcceptedAt, now)})`
-                    : "—"
+                    ? `${formatDateTimeUtc(freshness.data.lastAcceptedAt, locale)} (${formatRelativeFreshness(t, freshness.data.lastAcceptedAt, now)})`
+                    : t("page.freshness.dash")
                 }
               />
               <HealthMetricRow
-                label="Stale since"
-                value={freshness.data?.staleSince ? formatDateTimeUtc(freshness.data.staleSince) : "—"}
+                label={t("page.metricLabels.staleSince")}
+                value={
+                  freshness.data?.staleSince
+                    ? formatDateTimeUtc(freshness.data.staleSince, locale)
+                    : t("page.freshness.dash")
+                }
               />
               <HealthMetricRow
-                label="Machines with stale telemetry"
+                label={t("page.metricLabels.staleTelemetryMachines")}
                 value={metricString(staleMachines.data?.staleMachineCount)}
               />
             </HealthCard>
             {staleMachines.data && staleMachines.data.items.length > 0 ? (
-              <StaleMachineEvidenceList items={staleMachines.data.items} now={now} />
+              <StaleMachineEvidenceList items={staleMachines.data.items} now={now} t={t} />
             ) : null}
             {staleMachines.isError ? (
-              <p className="text-destructive text-xs">Unable to load stale machine evidence.</p>
+              <p className="text-destructive text-xs">{t("page.staleMachineLoadError")}</p>
             ) : null}
           </div>
         </div>
       </section>
 
       {/* Telemetry quarantine log */}
-      <section aria-label="Telemetry quarantine log" id="telemetry-quarantine-log" className="scroll-mt-24">
-        <h2 className="mb-3 font-medium text-muted-foreground text-sm">Telemetry Quarantine Log</h2>
+      <section aria-label={t("page.sectionAriaQuarantine")} id="telemetry-quarantine-log" className="scroll-mt-24">
+        <h2 className="mb-3 font-medium text-muted-foreground text-sm">{t("page.headingQuarantine")}</h2>
         <QuarantineLogTable
           entries={quarantineLog.data?.content ?? []}
           isLoading={quarantineLog.isLoading}
@@ -396,12 +409,37 @@ function resolvedToHealthSeverity(severity: ResolvedSeverity): HealthSeverity {
   return "NEUTRAL";
 }
 
+// English canonical labels for severity derivation ONLY (spec: deriveSeverity reads
+// English label text — key off the raw code, never the translated string).
+const ACTUATOR_STATUS_LABELS_EN: Record<string, string> = {
+  UP: "Up",
+  DOWN: "Down",
+  OUT_OF_SERVICE: "Out of service",
+  UNKNOWN: "Unknown",
+};
+
+/** English/canonical status label fed to deriveSeverity — locale-independent. */
+function canonicalStatusLabel(component: ActuatorHealthComponent): string {
+  // biome-ignore lint/nursery/useNullishCoalescing: intentionally use || to catch empty string from details
+  const code = component.status || "UNKNOWN";
+  return detailString(component, "statusLabel") || (ACTUATOR_STATUS_LABELS_EN[code] ?? code);
+}
+
+/** Localized display label for the card badge — code-keyed via the actuatorStatus catalog. */
+function dependencyStatusLabel(t: PageTranslator, component: ActuatorHealthComponent): string {
+  // biome-ignore lint/nursery/useNullishCoalescing: intentionally use || to catch empty string from details
+  const code = component.status ?? "UNKNOWN";
+  const backend = detailString(component, "statusLabel");
+  if (backend) return backend;
+  return t.has(`page.actuatorStatus.${code}`) ? t(`page.actuatorStatus.${code}`) : code;
+}
+
 /** Resolves a dependency card's effective severity from the enriched details, mirroring exactly what the card renders. */
 function resolvedDependencySeverity(component: ActuatorHealthComponent | undefined): ResolvedSeverity {
   if (!component) {
     return "unknown";
   }
-  return resolveSeverity(detailString(component, "statusSeverity"), dependencyStatusLabel(component));
+  return resolveSeverity(detailString(component, "statusSeverity"), canonicalStatusLabel(component));
 }
 
 /** Resolves a worker card's effective severity from its payload, mirroring exactly what the card renders. */
@@ -422,6 +460,8 @@ function resolvedFreshnessSeverity(data: TelemetryFreshnessStatus | undefined): 
 
 /** Single severity-resolution pipeline shared by every health card: explicit severity first, label fallback. */
 function resolveSeverity(statusSeverity: string | undefined, statusLabel: string | undefined): ResolvedSeverity {
+  // deriveSeverity consumes the RAW backend statusLabel (contract data, never
+  // translated text) — the sweep keeps severity logic keyed on raw values.
   const severity = normalizeSeverity(statusSeverity) ?? deriveSeverity(statusLabel);
   return healthSeverityToResolved(severity);
 }
@@ -508,7 +548,7 @@ export function computeOverallBanner(args: {
   return "healthy";
 }
 
-function OverallStatusBanner({ state }: { readonly state: BannerState }) {
+function OverallStatusBanner({ state, t }: { readonly state: BannerState; readonly t: PageTranslator }) {
   if (state === "healthy") {
     return (
       <div
@@ -516,7 +556,7 @@ function OverallStatusBanner({ state }: { readonly state: BannerState }) {
         className="status-banner-healthy flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
       >
         <CircleCheck aria-hidden="true" className="status-icon-healthy shrink-0" />
-        All systems operational.
+        {t("page.bannerHealthy")}
       </div>
     );
   }
@@ -527,7 +567,7 @@ function OverallStatusBanner({ state }: { readonly state: BannerState }) {
         className="status-banner-warning flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
       >
         <TriangleAlert aria-hidden="true" className="status-icon-warning shrink-0" />
-        One or more dependencies or workers are degraded or could not be verified. See cards below for details.
+        {t("page.bannerDegraded")}
       </div>
     );
   }
@@ -537,7 +577,7 @@ function OverallStatusBanner({ state }: { readonly state: BannerState }) {
       className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm"
     >
       <CircleX aria-hidden="true" className="shrink-0 text-destructive" />
-      One or more dependencies or workers are unhealthy. See cards below for details.
+      {t("page.bannerUnhealthy")}
     </div>
   );
 }
@@ -554,19 +594,11 @@ type DependencyCardProps = {
   readonly timestamp?: string | null;
 };
 
-const STATUS_LABELS: Record<ActuatorStatus, string> = {
-  UP: "Up",
-  DOWN: "Down",
-  OUT_OF_SERVICE: "Out of service",
-  UNKNOWN: "Unknown",
-};
-
-function dependencyStatusLabel(component: ActuatorHealthComponent): string {
-  // biome-ignore lint/nursery/useNullishCoalescing: intentionally use || to catch empty string from details
-  return detailString(component, "statusLabel") || (STATUS_LABELS[component.status] ?? component.status ?? "Unknown");
-}
-
-function dependencyCardProps(health: UseQueryResult<ActuatorHealthResponse>, key: DependencyKey): DependencyCardProps {
+function dependencyCardProps(
+  t: PageTranslator,
+  health: UseQueryResult<ActuatorHealthResponse>,
+  key: DependencyKey,
+): DependencyCardProps {
   if (health.isLoading) {
     return { loading: true, error: false, empty: false };
   }
@@ -581,21 +613,33 @@ function dependencyCardProps(health: UseQueryResult<ActuatorHealthResponse>, key
     loading: false,
     error: false,
     empty: false,
-    statusLabel: dependencyStatusLabel(component),
+    statusLabel: dependencyStatusLabel(t, component),
     statusSeverity: resolvedToHealthSeverity(resolvedDependencySeverity(component)),
     statusReason: detailString(component, "statusReason") ?? null,
     timestamp: detailString(component, "timestamp") ?? null,
   };
 }
 
-function WahaMetricRows({ component }: { readonly component: ActuatorHealthComponent | undefined }) {
+function WahaMetricRows({
+  component,
+  t,
+}: {
+  readonly component: ActuatorHealthComponent | undefined;
+  readonly t: PageTranslator;
+}) {
   if (!component) {
     return null;
   }
   return (
     <>
-      <HealthMetricRow label="Circuit state" value={metricString(detailString(component, "state"))} />
-      <HealthMetricRow label="Failure rate" value={metricString(detailNumber(component, "failureRate"))} />
+      <HealthMetricRow
+        label={t("page.metricLabels.circuitState")}
+        value={metricString(detailString(component, "state"))}
+      />
+      <HealthMetricRow
+        label={t("page.metricLabels.failureRate")}
+        value={metricString(detailNumber(component, "failureRate"))}
+      />
     </>
   );
 }
@@ -631,67 +675,87 @@ function ingestQueueDepth(data: IngestWorkerStatus | undefined): string {
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 
-function formatMinutesAgo(ageMs: number) {
+function formatStaleBanner(t: PageTranslator, ageMs: number) {
   const minutes = Math.floor(ageMs / 60_000);
   if (minutes < 1) {
-    return "less than a minute";
+    return t("page.staleBannerUnderMinute");
   }
-  return `${minutes} min`;
+  return t("page.staleBannerMinutes", { count: minutes });
 }
 
+/** English fallback strings for the 2-arg (locale-agnostic, test/programmatic) call form. */
+const FRESHNESS_EN: PageTranslator = ((_key: string, values?: Record<string, string | number | Date>) => {
+  const count = Number(values?.count ?? 0);
+  if (_key.endsWith("justNow")) return "just now";
+  if (_key.endsWith("dash")) return "—";
+  if (_key.endsWith("seconds")) return `${count}s ago`;
+  if (_key.endsWith("minutes")) return `${count}m ago`;
+  if (_key.endsWith("hours")) return `${count}h ago`;
+  return `${count}d ago`;
+}) as PageTranslator;
+FRESHNESS_EN.has = () => true;
+
 /** Formats a backend-provided ISO timestamp as a relative "Xs ago" freshness string, display only. */
-export function formatRelativeFreshness(iso: string, now: number): string {
+export function formatRelativeFreshness(t: PageTranslator, iso: string, now: number): string;
+export function formatRelativeFreshness(iso: string, now: number): string;
+export function formatRelativeFreshness(
+  tOrIso: PageTranslator | string,
+  isoOrNow: string | number,
+  nowMaybe?: number,
+): string {
+  const t = typeof tOrIso === "function" ? tOrIso : FRESHNESS_EN;
+  const iso = typeof tOrIso === "function" ? (isoOrNow as string) : tOrIso;
+  const now = typeof tOrIso === "function" ? (nowMaybe as number) : (isoOrNow as number);
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) {
-    return "—";
+    return t("page.freshness.dash");
   }
   const diffMs = now - then;
   if (diffMs < 0) {
     // Clock skew: backend timestamp in the future relative to the client clock.
     // Never report a negative age; the absolute UTC row still shows the value.
-    return "just now";
+    return t("page.freshness.justNow");
   }
   const seconds = Math.floor(diffMs / 1000);
   if (seconds < 1) {
     // Sub-second freshness reads as "just now", matching the clock-skew string above.
-    return "just now";
+    return t("page.freshness.justNow");
   }
   if (seconds < 60) {
-    return `${seconds}s ago`;
+    return t("page.freshness.seconds", { count: seconds });
   }
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) {
-    return `${minutes}m ago`;
+    return t("page.freshness.minutes", { count: minutes });
   }
   const hours = Math.floor(minutes / 60);
   if (hours < 24) {
-    return `${hours}h ago`;
+    return t("page.freshness.hours", { count: hours });
   }
-  return `${Math.floor(hours / 24)}d ago`;
+  return t("page.freshness.days", { count: Math.floor(hours / 24) });
 }
 
 // ─── Failure evidence (Story 6.6) ─────────────────────────────────────────────
 
 /** Static next-action hint rendered inside a card only on warning/critical severity. */
-function nextStepRow(severity: ResolvedSeverity, hint: string) {
+function nextStepRow(t: PageTranslator, severity: ResolvedSeverity, hintKey: string) {
   if (severity !== "warning" && severity !== "critical") {
     return null;
   }
-  return <HealthMetricRow label="Next step" value={hint} />;
+  return <HealthMetricRow label={t("page.metricLabels.nextStep")} value={t(`page.nextSteps.${hintKey}`)} />;
 }
 
 /** Dependency-card variant resolving severity from the actuator component itself. */
 function DependencyNextStepRow({
   health,
   hintKey,
+  t,
 }: {
   readonly health: UseQueryResult<ActuatorHealthResponse>;
   readonly hintKey: DependencyKey;
+  readonly t: PageTranslator;
 }) {
-  return nextStepRow(
-    resolvedDependencySeverity(health.data?.components?.[hintKey]),
-    DEPENDENCY_NEXT_STEP_HINTS[hintKey],
-  );
+  return nextStepRow(t, resolvedDependencySeverity(health.data?.components?.[hintKey]), hintKey);
 }
 
 /**
@@ -699,21 +763,32 @@ function DependencyNextStepRow({
  * Present only when the card is at failure severity AND the alert id is a well-formed UUID
  * (defense-in-depth: the worker-status fetcher does not shape-guard this field).
  */
-function evidenceLink({ alertId, severity }: { readonly alertId: string | null; readonly severity: ResolvedSeverity }) {
+function evidenceLink({
+  alertId,
+  severity,
+  label,
+}: {
+  readonly alertId: string | null;
+  readonly severity: ResolvedSeverity;
+  readonly label: string;
+}) {
   if (!alertId || !ALERT_ID_PATTERN.test(alertId) || (severity !== "warning" && severity !== "critical")) {
     return null;
   }
-  return <HealthEvidenceLink href={`/dashboard/alerts/${alertId}`}>View notification history</HealthEvidenceLink>;
+  return <HealthEvidenceLink href={`/dashboard/alerts/${alertId}`}>{label}</HealthEvidenceLink>;
 }
 
 /** Expandable per-machine stale-telemetry evidence list linking to each machine hub. */
 function StaleMachineEvidenceList({
   items,
   now,
+  t,
 }: {
   readonly items: readonly StaleMachineItem[];
   readonly now: number;
+  readonly t: PageTranslator;
 }) {
+  const locale = useLocale();
   const [expanded, setExpanded] = useState(false);
   const listId = useId();
   return (
@@ -727,10 +802,10 @@ function StaleMachineEvidenceList({
         aria-controls={listId}
         onClick={() => setExpanded((value) => !value)}
       >
-        {expanded ? "Hide stale machines" : `Show stale machines (${items.length})`}
+        {expanded ? t("page.hideStaleMachines") : t("page.showStaleMachines", { count: items.length })}
       </Button>
       {/* Always mounted so aria-controls resolves; hidden removes it from the a11y tree. */}
-      <ul id={listId} aria-label="Machines with stale telemetry" hidden={!expanded} className="space-y-1">
+      <ul id={listId} aria-label={t("page.staleMachinesAria")} hidden={!expanded} className="space-y-1">
         {items.map((item) => (
           <li key={item.machineId} className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 text-xs">
             <Link
@@ -744,8 +819,8 @@ function StaleMachineEvidenceList({
             </span>
             <span className="min-w-0 break-words text-right">
               {item.lastReceivedAt
-                ? `${formatDateTimeUtc(item.lastReceivedAt)} (${formatRelativeFreshness(item.lastReceivedAt, now)})`
-                : "No telemetry received"}
+                ? `${formatDateTimeUtc(item.lastReceivedAt, locale)} (${formatRelativeFreshness(t, item.lastReceivedAt, now)})`
+                : t("page.noTelemetryReceived")}
             </span>
           </li>
         ))}

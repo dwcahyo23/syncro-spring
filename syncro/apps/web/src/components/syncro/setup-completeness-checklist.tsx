@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { Circle, CircleCheckIcon, type LucideIcon, OctagonXIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,32 +24,34 @@ const STEP_BADGE_VARIANT: Record<StepStatus, "default" | "secondary" | "destruct
 };
 
 export function SetupCompletenessChecklist({ data, readOnly }: { data: SetupCompletenessResponse; readOnly: boolean }) {
+  const t = useTranslations("organization.shared.setupChecklist");
   const steps = data.steps ?? [];
   const overallStatus = data.overallStatus ?? "INCOMPLETE";
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Setup Completeness</CardTitle>
+        <CardTitle>{t("title")}</CardTitle>
         <CardDescription>
-          {data.machinesEligibleCount ?? 0} of {data.machineCount ?? 0} machines in scope are ready for telemetry and
-          alerts.
+          {t("description", { eligible: data.machinesEligibleCount ?? 0, total: data.machineCount ?? 0 })}
         </CardDescription>
         <div className="flex flex-wrap items-center gap-2 pt-2">
           <Badge
             variant={overallStatus === "COMPLETE" ? "default" : "secondary"}
             data-status={overallStatus.toLowerCase()}
           >
-            {overallStatus === "COMPLETE" ? "Complete" : "Incomplete"}
+            {overallStatus === "COMPLETE" ? t("overallComplete") : t("overallIncomplete")}
           </Badge>
-          {readOnly ? <Badge variant="secondary">Read-only</Badge> : null}
+          {readOnly ? <Badge variant="secondary">{t("readOnly")}</Badge> : null}
         </div>
       </CardHeader>
       <CardContent>
         <ul className="divide-y">
           {steps.map((step) => {
             const status = (step.status ?? "INCOMPLETE") as StepStatus;
-            const StepIcon = STEP_ICONS[status];
+            // Server data is cast to StepStatus — unknown values must not crash the row.
+            const StepIcon = STEP_ICONS[status] ?? STEP_ICONS.INCOMPLETE;
+            const statusLabel = t.has(`status.${status}`) ? t(`status.${status}`) : status.replaceAll("_", " ");
             return (
               <li key={step.key} className="flex flex-wrap items-center justify-between gap-3 py-3">
                 <div className="flex min-w-0 items-center gap-3">
@@ -69,8 +72,11 @@ export function SetupCompletenessChecklist({ data, readOnly }: { data: SetupComp
                     ) : null}
                   </div>
                 </div>
-                <Badge variant={STEP_BADGE_VARIANT[status]} aria-label={`${step.label} ${status}`}>
-                  {status.replaceAll("_", " ")}
+                <Badge
+                  variant={STEP_BADGE_VARIANT[status] ?? "secondary"}
+                  aria-label={t("stepAria", { label: step.label ?? "", status })}
+                >
+                  {statusLabel}
                 </Badge>
               </li>
             );

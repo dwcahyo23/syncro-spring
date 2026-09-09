@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RatingPanel } from "@/features/workorders/components/rating-panel";
@@ -15,6 +17,7 @@ export interface RateableWorkorderCardProps {
  * the panel only renders the actions the current role can submit.
  */
 export function RateableWorkorderCard({ workorder }: RateableWorkorderCardProps) {
+  const t = useTranslations("workOrders");
   return (
     <Card className="shadow-sm">
       <CardHeader className="space-y-1 p-4">
@@ -22,10 +25,10 @@ export function RateableWorkorderCard({ workorder }: RateableWorkorderCardProps)
           <CardTitle className="font-medium text-sm leading-tight">{workorder.id}</CardTitle>
           {workorder.categoryCode ? <Badge variant="outline">{workorder.categoryCode}</Badge> : null}
         </div>
-        <p className="line-clamp-2 text-muted-foreground text-xs">{workorder.description ?? "No description"}</p>
+        <p className="line-clamp-2 text-muted-foreground text-xs">{workorder.description ?? t("card.noDescription")}</p>
         {workorder.assignedTechnicianId ? (
           <p className="text-muted-foreground text-xs">
-            Assigned technician: <span className="font-mono">{workorder.assignedTechnicianId}</span>
+            {t("ratings.assignedTechnician")} <span className="font-mono">{workorder.assignedTechnicianId}</span>
           </p>
         ) : null}
       </CardHeader>

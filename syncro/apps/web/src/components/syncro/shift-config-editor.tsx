@@ -1,6 +1,6 @@
 "use client";
 
-import type React from "react";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,8 @@ export function ShiftConfigEditor({
   readOnly = false,
   disabledReason,
 }: ShiftConfigEditorProps) {
+  const t = useTranslations("machineHub.shiftConfig");
+
   function updateWindow(index: number, field: "startTime" | "endTime", next: string) {
     onChange(value.map((window, i) => (i === index ? { ...window, [field]: next } : window)));
   }
@@ -51,7 +53,7 @@ export function ShiftConfigEditor({
         // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional by contract (shift numbers are list order) and inputs are fully controlled
         <div key={index} className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
           <div className="grid gap-1">
-            <Label htmlFor={`shift-${index + 1}-start`}>Shift {index + 1} start</Label>
+            <Label htmlFor={`shift-${index + 1}-start`}>{t("startLabel", { index: index + 1 })}</Label>
             <Input
               id={`shift-${index + 1}-start`}
               type="time"
@@ -64,7 +66,7 @@ export function ShiftConfigEditor({
             />
           </div>
           <div className="grid gap-1">
-            <Label htmlFor={`shift-${index + 1}-end`}>Shift {index + 1} end</Label>
+            <Label htmlFor={`shift-${index + 1}-end`}>{t("endLabel", { index: index + 1 })}</Label>
             <Input
               id={`shift-${index + 1}-end`}
               type="time"
@@ -81,10 +83,10 @@ export function ShiftConfigEditor({
               type="button"
               variant="outline"
               size="sm"
-              aria-label={`Remove shift ${index + 1}`}
+              aria-label={t("removeAria", { index: index + 1 })}
               onClick={() => onChange(value.filter((_, i) => i !== index))}
             >
-              Remove
+              {t("remove")}
             </Button>
           ) : null}
         </div>
@@ -97,13 +99,11 @@ export function ShiftConfigEditor({
           className="w-fit"
           onClick={() => onChange([...value, { startTime: "", endTime: "" }])}
         >
-          Add shift
+          {t("add")}
         </Button>
       ) : null}
       <p className="text-muted-foreground text-xs">
-        {readOnly && disabledReason
-          ? disabledReason
-          : `Up to ${MAX_SHIFTS} daily shifts; cross-midnight windows are allowed. Requires job scope LEADER or above.`}
+        {readOnly && disabledReason ? disabledReason : t("hint", { max: MAX_SHIFTS })}
       </p>
       {error ? (
         <p role="alert" className="text-destructive text-sm">

@@ -5,8 +5,8 @@ import { useState } from "react";
 import Link from "next/link";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
 import { CalendarIcon, ChevronDownIcon, FileTextIcon, PrinterIcon, UserCheckIcon, WrenchIcon } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ import type { UserMasterView } from "@/features/organization/types";
 import { RequestPartDialog } from "@/features/sparepart-requests/components/request-part-dialog";
 import type { WorkLogStoppedReason } from "@/features/workorders/types";
 import { syncroFetch } from "@/lib/api/orval-mutator";
+import { useCalendarLocale } from "@/lib/i18n/format";
 
 interface WorkOrderReport {
   workOrderId: string;
@@ -45,6 +46,7 @@ interface WorkAssignment {
   technicianId: string;
 }
 
+// Transition map (code→codes) stays keyed on raw statuses — never translated text.
 const NEXT_STATUSES: Record<string, string[]> = {
   DRAFT: ["OPEN"],
   OPEN: [],
@@ -53,18 +55,6 @@ const NEXT_STATUSES: Record<string, string[]> = {
   PENDING_SPAREPART: ["IN_PROGRESS"],
   PENDING_REVIEW: ["CLOSED"],
   DONE: ["CLOSED"],
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  OPEN: "Open",
-  ASSIGNED: "Assign",
-  IN_PROGRESS: "In Progress",
-  ON_PROCUREMENT: "On Procurement",
-  PENDING_SPAREPART: "Pending Sparepart",
-  PENDING_REVIEW: "Pending Review",
-  DONE: "Done",
-  CLOSED: "Close",
-  CANCELLED: "Cancel",
 };
 
 const STOPPED_REASONS: WorkLogStoppedReason[] = ["WAITING_SPAREPART", "SHIFT_END", "COMPLETED", "OTHER"];
@@ -117,6 +107,8 @@ export function WorkorderActionsCell({
   isLoadingUsers: boolean;
   createdAt?: string | null;
 }) {
+  const t = useTranslations("workOrders");
+  const tc = useTranslations("common");
   const [assignOpen, setAssignOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [requestPartOpen, setRequestPartOpen] = useState(false);
@@ -124,6 +116,8 @@ export function WorkorderActionsCell({
   const [transitionTo, setTransitionTo] = useState("");
 
   const nextStatuses = NEXT_STATUSES[status] ?? [];
+  const statusLabel = (s: string) => (t.has(`status.${s}`) ? t(`status.${s}`) : s);
+  const transitionLabel = (s: string) => (t.has(`transition.${s}`) ? t(`transition.${s}`) : statusLabel(s));
 
   const handleTransition = (toStatus: string) => {
     setTransitionTo(toStatus);
@@ -135,40 +129,40 @@ export function WorkorderActionsCell({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs">
-            Actions
+            {tc("actions")}
             <ChevronDownIcon className="ml-1 size-3" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-44">
           <DropdownMenuLabel className="font-normal text-muted-foreground text-xs">
-            {status}
+            {statusLabel(status)}
             {assignedTechnicianName ? ` · ${assignedTechnicianName}` : ""}
           </DropdownMenuLabel>
           {(status === "OPEN" || status === "IN_PROGRESS") && (
             <DropdownMenuItem onSelect={() => setAssignOpen(true)}>
               <UserCheckIcon className="size-3.5" />
-              Assign &amp; Work
+              {t("actionsCell.menu.assignWork")}
             </DropdownMenuItem>
           )}
           {nextStatuses.map((next) => (
             <DropdownMenuItem key={next} onSelect={() => handleTransition(next)}>
               <WrenchIcon className="size-3.5" />
-              {STATUS_LABELS[next] ?? next}
+              {transitionLabel(next)}
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => setRequestPartOpen(true)}>
             <WrenchIcon className="size-3.5" />
-            Request Part
+            {t("actionsCell.menu.requestPart")}
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setReportOpen(true)}>
             <FileTextIcon className="size-3.5" />
-            Report
+            {t("actionsCell.menu.report")}
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href={`/dashboard/workorders/${workOrderId}/print`}>
               <PrinterIcon className="size-3.5" />
-              Print
+              {t("actionsCell.menu.print")}
             </Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -222,6 +216,9 @@ function AssignWorkDialog({
   assignableUsers: UserMasterView[];
   isLoadingUsers: boolean;
 }) {
+  const t = useTranslations("workOrders");
+  const tc = useTranslations("common");
+  const format = useFormatter();
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<Record<string, WorkLogDraft>>({});
   const [listError, setListError] = useState<string | null>(null);
@@ -262,6 +259,7 @@ function AssignWorkDialog({
   const submitMutation = useMutation({
     mutationFn: async () => {
       // Validate rows with any data: an activity note + start date are required to post a work log.
+      // The "CODE:userId" Error messages below are control-flow sentinels — keep them raw.
       for (const userId of selectedIds) {
         const draft = selected[userId];
         const hasData =
@@ -328,7 +326,7 @@ function AssignWorkDialog({
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["/api/v1/workorders"] });
       void queryClient.invalidateQueries({ queryKey: ["/api/v1/workorders/kanban"] });
-      toast.success("Assignments and work logs saved");
+      toast.success(t("actionsCell.assignDialog.saved"));
       onOpenChange(false);
       setSelected({});
       setListError(null);
@@ -344,25 +342,25 @@ function AssignWorkDialog({
       });
       if (error.message.startsWith("ACTIVITY_NOTE:")) {
         const userId = error.message.slice("ACTIVITY_NOTE:".length);
-        updateDraft(userId, { error: "Activity note is required to save this work log." });
+        updateDraft(userId, { error: t("actionsCell.assignDialog.errors.activityNote") });
         return;
       }
       if (error.message.startsWith("START_REQUIRED:")) {
         const userId = error.message.slice("START_REQUIRED:".length);
-        updateDraft(userId, { error: "A start time is required to save this work log." });
+        updateDraft(userId, { error: t("actionsCell.assignDialog.errors.startRequired") });
         return;
       }
       if (error.message.startsWith("BACKDATE:")) {
         const userId = error.message.slice("BACKDATE:".length);
-        updateDraft(userId, { error: "Start cannot be before the workorder was created." });
+        updateDraft(userId, { error: t("actionsCell.assignDialog.errors.backdate") });
         return;
       }
       if (error.message.startsWith("END_BEFORE_START:")) {
         const userId = error.message.slice("END_BEFORE_START:".length);
-        updateDraft(userId, { error: "End time must be after start time." });
+        updateDraft(userId, { error: t("actionsCell.assignDialog.errors.endBeforeStart") });
         return;
       }
-      setListError("Failed to save. Check the values and try again.");
+      setListError(t("actionsCell.assignDialog.errors.failed"));
     },
   });
 
@@ -374,18 +372,18 @@ function AssignWorkDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserCheckIcon className="size-4" />
-            Assign &amp; Work — {workOrderId}
+            {t("actionsCell.assignDialog.title", { id: workOrderId })}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           {isLoadingUsers ? (
-            <p className="text-muted-foreground text-sm">Loading technicians...</p>
+            <p className="text-muted-foreground text-sm">{t("actionsCell.assignDialog.loadingTechnicians")}</p>
           ) : (
             <div className="space-y-2">
-              <Label>Technicians</Label>
+              <Label>{t("actionsCell.assignDialog.technicians")}</Label>
               <div className="max-h-48 space-y-1 overflow-y-auto rounded-md border p-2">
                 {assignableUsers.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">No assignable technicians.</p>
+                  <p className="text-muted-foreground text-sm">{t("actionsCell.assignDialog.noAssignable")}</p>
                 ) : (
                   assignableUsers.map((u) => {
                     const checked = u.id in selected;
@@ -397,7 +395,9 @@ function AssignWorkDialog({
                         <Checkbox
                           checked={checked}
                           onCheckedChange={() => toggleTechnician(u.id)}
-                          aria-label={`Select ${u.displayName ?? u.loginIdentifier}`}
+                          aria-label={t("actionsCell.assignDialog.selectAria", {
+                            name: u.displayName ?? u.loginIdentifier ?? "",
+                          })}
                         />
                         <span>
                           {u.displayName ?? u.loginIdentifier}{" "}
@@ -419,11 +419,11 @@ function AssignWorkDialog({
               <div key={userId} className="space-y-2 rounded-md border p-3">
                 <div className="flex items-center justify-between">
                   <Label className="font-medium">{label}</Label>
-                  <span className="text-muted-foreground text-xs">Work log</span>
+                  <span className="text-muted-foreground text-xs">{t("actionsCell.assignDialog.workLog")}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <DateTimePicker
-                    label="Start"
+                    label={t("actionsCell.assignDialog.start")}
                     date={draft.startDate}
                     hour={draft.startHour}
                     minute={draft.startMinute}
@@ -433,7 +433,7 @@ function AssignWorkDialog({
                     onMinuteChange={(m) => updateDraft(userId, { startMinute: m })}
                   />
                   <DateTimePicker
-                    label="End"
+                    label={t("actionsCell.assignDialog.end")}
                     date={draft.endDate}
                     hour={draft.endHour}
                     minute={draft.endMinute}
@@ -444,39 +444,39 @@ function AssignWorkDialog({
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label>Stopped reason</Label>
+                  <Label>{t("actionsCell.assignDialog.stoppedReason")}</Label>
                   <Select
                     value={draft.stoppedReason || "none"}
                     onValueChange={(v) =>
                       updateDraft(userId, { stoppedReason: v === "none" ? "" : (v as WorkLogStoppedReason) })
                     }
                   >
-                    <SelectTrigger aria-label="Stopped reason">
-                      <SelectValue placeholder="Optional" />
+                    <SelectTrigger aria-label={t("actionsCell.assignDialog.stoppedReason")}>
+                      <SelectValue placeholder={t("actionsCell.assignDialog.optional")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="none">{t("stoppedReason.NONE")}</SelectItem>
                       {STOPPED_REASONS.map((r) => (
                         <SelectItem key={r} value={r}>
-                          {r}
+                          {t.has(`stoppedReason.${r}`) ? t(`stoppedReason.${r}`) : r}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label>Activity note (required to save)</Label>
+                  <Label>{t("actionsCell.assignDialog.activityNote")}</Label>
                   <Textarea
-                    placeholder="What was done in this session..."
+                    placeholder={t("actionsCell.assignDialog.activityPlaceholder")}
                     value={draft.activityNote}
                     onChange={(e) => updateDraft(userId, { activityNote: e.target.value })}
                     rows={2}
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label>Completion note</Label>
+                  <Label>{t("actionsCell.assignDialog.completionNote")}</Label>
                   <Input
-                    placeholder="Optional"
+                    placeholder={t("actionsCell.assignDialog.optional")}
                     value={draft.completionNote}
                     onChange={(e) => updateDraft(userId, { completionNote: e.target.value })}
                   />
@@ -489,17 +489,26 @@ function AssignWorkDialog({
           {listError ? <p className="text-destructive text-sm">{listError}</p> : null}
           {minDate ? (
             <p className="text-muted-foreground text-xs">
-              Work log backdate is clamped to the workorder creation time: {format(minDate, "d MMM yyyy HH:mm")}
+              {t("actionsCell.assignDialog.backdateNote", {
+                datetime: format.dateTime(minDate, {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: false,
+                }),
+              })}
             </p>
           ) : null}
 
           <div className="flex justify-end gap-2">
             <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button size="sm" disabled={!canSubmit} onClick={() => submitMutation.mutate()}>
               <UserCheckIcon className="mr-1 size-3" />
-              {submitMutation.isPending ? "Saving..." : "Save Assignments & Work"}
+              {submitMutation.isPending ? tc("saving") : t("actionsCell.assignDialog.save")}
             </Button>
           </div>
         </div>
@@ -528,6 +537,9 @@ function DateTimePicker({
   onHourChange: (h: string) => void;
   onMinuteChange: (m: string) => void;
 }) {
+  const t = useTranslations("workOrders");
+  const format = useFormatter();
+  const calendarLocale = useCalendarLocale();
   return (
     <div className="space-y-1">
       <Label>{label}</Label>
@@ -535,7 +547,9 @@ function DateTimePicker({
         <PopoverTrigger asChild>
           <Button type="button" variant="outline" size="sm" className="w-full justify-start text-left font-normal">
             <CalendarIcon className="size-3.5" />
-            {date ? format(date, "d MMM yyyy") : "Pick date"}
+            {date
+              ? format.dateTime(date, { day: "numeric", month: "short", year: "numeric" })
+              : t("actionsCell.assignDialog.pickDate")}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
@@ -544,12 +558,13 @@ function DateTimePicker({
             selected={date}
             onSelect={(d) => onDateChange(d)}
             disabled={minDate ? { before: minDate } : undefined}
+            locale={calendarLocale}
           />
         </PopoverContent>
       </Popover>
       <div className="flex gap-1">
         <Select value={hour} onValueChange={onHourChange}>
-          <SelectTrigger className="w-16" aria-label={`${label} hour`}>
+          <SelectTrigger className="w-16" aria-label={t("actionsCell.assignDialog.hourAria", { label })}>
             <SelectValue>{hour}</SelectValue>
           </SelectTrigger>
           <SelectContent className="max-h-48">
@@ -562,7 +577,7 @@ function DateTimePicker({
         </Select>
         <span className="self-center text-muted-foreground text-xs">:</span>
         <Select value={minute} onValueChange={onMinuteChange}>
-          <SelectTrigger className="w-16" aria-label={`${label} minute`}>
+          <SelectTrigger className="w-16" aria-label={t("actionsCell.assignDialog.minuteAria", { label })}>
             <SelectValue>{minute}</SelectValue>
           </SelectTrigger>
           <SelectContent className="max-h-48">
@@ -595,8 +610,11 @@ function TransitionDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const t = useTranslations("workOrders");
+  const tc = useTranslations("common");
   const queryClient = useQueryClient();
   const [reason, setReason] = useState("");
+  const label = t.has(`transition.${toStatus}`) ? t(`transition.${toStatus}`) : toStatus;
 
   const transitionMutation = useMutation({
     mutationFn: async () => {
@@ -609,12 +627,12 @@ function TransitionDialog({
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["/api/v1/workorders"] });
       void queryClient.invalidateQueries({ queryKey: ["/api/v1/workorders/kanban"] });
-      toast.success(`Workorder moved to ${STATUS_LABELS[toStatus] ?? toStatus}`);
+      toast.success(t("actionsCell.transitionDialog.moved", { status: label }));
       onOpenChange(false);
       setReason("");
     },
     onError: () => {
-      toast.error("Failed to update workorder status");
+      toast.error(t("actionsCell.transitionDialog.failed"));
     },
   });
 
@@ -624,14 +642,14 @@ function TransitionDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <WrenchIcon className="size-4" />
-            Move to {STATUS_LABELS[toStatus] ?? toStatus} — {workOrderId}
+            {t("actionsCell.transitionDialog.title", { status: label, id: workOrderId })}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1">
-            <Label>Reason (optional)</Label>
+            <Label>{t("actionsCell.transitionDialog.reasonLabel")}</Label>
             <Textarea
-              placeholder="Reason for this status change..."
+              placeholder={t("actionsCell.transitionDialog.reasonPlaceholder")}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={3}
@@ -639,11 +657,13 @@ function TransitionDialog({
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button size="sm" disabled={transitionMutation.isPending} onClick={() => transitionMutation.mutate()}>
               <WrenchIcon className="mr-1 size-3" />
-              {transitionMutation.isPending ? "Updating..." : `Move to ${STATUS_LABELS[toStatus] ?? toStatus}`}
+              {transitionMutation.isPending
+                ? t("actionsCell.transitionDialog.updating")
+                : t("actionsCell.transitionDialog.move", { status: label })}
             </Button>
           </div>
         </div>
@@ -661,6 +681,8 @@ function ReportDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const t = useTranslations("workOrders");
+  const tc = useTranslations("common");
   const { data, isLoading } = useQuery<WorkOrderReport>({
     queryKey: ["/api/v1/workorders", workOrderId, "report"],
     queryFn: async () => {
@@ -711,44 +733,44 @@ function ReportDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <WrenchIcon className="size-4" />
-            Work Order Report — {workOrderId}
+            {t("actionsCell.reportDialog.title", { id: workOrderId })}
           </DialogTitle>
         </DialogHeader>
         {isLoading ? (
-          <p className="text-muted-foreground text-sm">Loading report...</p>
+          <p className="text-muted-foreground text-sm">{t("actionsCell.reportDialog.loading")}</p>
         ) : (
           <div className="space-y-4">
             <div className="space-y-1">
-              <Label>Chronological (what happened)</Label>
+              <Label>{t("actionsCell.reportDialog.chronological")}</Label>
               <Textarea
-                placeholder="Describe the sequence of events..."
+                placeholder={t("actionsCell.reportDialog.chronologicalPlaceholder")}
                 value={chronological}
                 onChange={(e) => setChronological(e.target.value)}
                 rows={3}
               />
             </div>
             <div className="space-y-1">
-              <Label>Analyze (root cause)</Label>
+              <Label>{t("actionsCell.reportDialog.analyze")}</Label>
               <Textarea
-                placeholder="Root cause analysis..."
+                placeholder={t("actionsCell.reportDialog.analyzePlaceholder")}
                 value={analyze}
                 onChange={(e) => setAnalyze(e.target.value)}
                 rows={3}
               />
             </div>
             <div className="space-y-1">
-              <Label>Corrective (what was done)</Label>
+              <Label>{t("actionsCell.reportDialog.corrective")}</Label>
               <Textarea
-                placeholder="Corrective actions taken..."
+                placeholder={t("actionsCell.reportDialog.correctivePlaceholder")}
                 value={corrective}
                 onChange={(e) => setCorrective(e.target.value)}
                 rows={3}
               />
             </div>
             <div className="space-y-1">
-              <Label>Preventive (future prevention)</Label>
+              <Label>{t("actionsCell.reportDialog.preventive")}</Label>
               <Textarea
-                placeholder="Preventive measures for the future..."
+                placeholder={t("actionsCell.reportDialog.preventivePlaceholder")}
                 value={preventive}
                 onChange={(e) => setPreventive(e.target.value)}
                 rows={3}
@@ -756,10 +778,10 @@ function ReportDialog({
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
-                Cancel
+                {tc("cancel")}
               </Button>
               <Button size="sm" onClick={handleSave} disabled={saving}>
-                {saving ? "Saving..." : "Save Report"}
+                {saving ? tc("saving") : t("actionsCell.reportDialog.save")}
               </Button>
             </div>
           </div>

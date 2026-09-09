@@ -1,6 +1,9 @@
+"use client";
+
 import type { ReactNode } from "react";
 
 import { CircleCheck, CircleX, Minus, TriangleAlert } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,13 +43,6 @@ const SEVERITY_CONFIG: Record<HealthSeverity, { className: string; Icon: typeof 
   },
 };
 
-const SEVERITY_LABELS: Record<HealthSeverity, string> = {
-  SUCCESS: "Success",
-  WARNING: "Warning",
-  CRITICAL: "Critical",
-  NEUTRAL: "Neutral",
-};
-
 /** Derives a display severity from a status label when no explicit severity is available. */
 export function deriveSeverity(statusLabel: string | undefined): HealthSeverity {
   const value = (statusLabel ?? "").toLowerCase();
@@ -72,13 +68,18 @@ export function deriveSeverity(statusLabel: string | undefined): HealthSeverity 
   return "NEUTRAL";
 }
 
-/** Formats an ISO timestamp as an absolute UTC string for display, or returns the raw value when unparseable. */
-export function formatDateTimeUtc(value: string): string {
+/**
+ * Formats an ISO timestamp as an absolute UTC string for display, or returns the raw value
+ * when unparseable. Locale defaults to "en" so direct (non-component) callers keep the
+ * pre-23-2 output; components pass `useLocale()` to localize the calendar fields while the
+ * timeZone:"UTC" semantics stay data-accurate (AC3).
+ */
+export function formatDateTimeUtc(value: string, locale = "en"): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return value || "—";
   }
-  const formatted = new Intl.DateTimeFormat("en", {
+  const formatted = new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: "UTC",
@@ -112,6 +113,8 @@ export function HealthCard({
   empty = false,
   children,
 }: HealthCardProps) {
+  const t = useTranslations("systemHealth.healthCard");
+  const locale = useLocale();
   const severity: HealthSeverity = normalizeSeverity(statusSeverity) ?? deriveSeverity(statusLabel);
   // biome-ignore lint/nursery/useNullishCoalescing: intentionally use || so empty-string labels do not count as known data
   const hasKnownData = Boolean(statusLabel || statusReason || timestamp);
@@ -124,7 +127,7 @@ export function HealthCard({
           {loading ? (
             <Skeleton className="h-5 w-20" />
           ) : (
-            <HealthStatusBadge label={statusLabel ?? "Unknown"} severity={severity} />
+            <HealthStatusBadge label={statusLabel ?? t("unknownStatus")} severity={severity} />
           )}
         </div>
         {description ? <CardDescription className="text-xs">{description}</CardDescription> : null}
@@ -133,15 +136,20 @@ export function HealthCard({
         {loading ? <Skeleton className="h-16 w-full" /> : null}
         {!loading && error ? (
           <p className="text-destructive text-xs">
-            {hasKnownData ? `Unable to refresh ${title}. Showing last known status.` : `Unable to check ${title}.`}
+            {hasKnownData ? t("unableRefresh", { title }) : t("unableCheck", { title })}
           </p>
         ) : null}
-        {!loading && !error && empty ? <p className="text-muted-foreground text-xs">No health data reported.</p> : null}
+        {!loading && !error && empty ? <p className="text-muted-foreground text-xs">{t("noData")}</p> : null}
         {!loading && (hasKnownData || (!error && !empty)) ? (
           <>
-            <HealthMetricRow label="Severity" value={SEVERITY_LABELS[severity]} />
-            {statusReason ? <HealthMetricRow label="Reason" value={statusReason} /> : null}
-            {timestamp ? <HealthMetricRow label="Reported at" value={formatDateTimeUtc(timestamp)} /> : null}
+            <HealthMetricRow
+              label={t("severityLabel")}
+              value={t.has(`severity.${severity}`) ? t(`severity.${severity}`) : severity}
+            />
+            {statusReason ? <HealthMetricRow label={t("reasonLabel")} value={statusReason} /> : null}
+            {timestamp ? (
+              <HealthMetricRow label={t("reportedAt")} value={formatDateTimeUtc(timestamp, locale)} />
+            ) : null}
             {children}
           </>
         ) : null}
@@ -151,9 +159,10 @@ export function HealthCard({
 }
 
 function HealthStatusBadge({ label, severity }: { readonly label: string; readonly severity: HealthSeverity }) {
+  const t = useTranslations("systemHealth.healthCard");
   const config = SEVERITY_CONFIG[severity] ?? SEVERITY_CONFIG.NEUTRAL;
   return (
-    <Badge aria-label={`Status: ${label}`} className={config.className} variant="outline">
+    <Badge aria-label={t("statusAria", { label })} className={config.className} variant="outline">
       <config.Icon aria-hidden="true" className="shrink-0" />
       {label}
     </Badge>

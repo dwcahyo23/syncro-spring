@@ -4,6 +4,7 @@ import type React from "react";
 import { useRef } from "react";
 
 import { Loader2Icon, Trash2Icon, UploadIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -35,6 +36,7 @@ export function SparepartImageUpload({
   readOnly = false,
   disabledReason,
 }: SparepartImageUploadProps) {
+  const t = useTranslations("spareparts.shared.imageUpload");
   const fileInputRef = useRef<HTMLInputElement>(null);
   // biome-ignore lint/nursery/useNullishCoalescing: boolean OR of two flags; ?? would treat false as a value to skip
   const busy = isUploading || isRemoving;
@@ -49,24 +51,24 @@ export function SparepartImageUpload({
 
   return (
     <div className="grid gap-2">
-      <Label>Image</Label>
+      <Label>{t("label")}</Label>
       {value ? (
         // Presigned URLs are minted per upload and expire, so next/image cannot
         // be configured with a static remote host; a plain <img> is required.
         // biome-ignore lint/performance/noImgElement: dynamic short-TTL presigned URL
         <img
           src={value}
-          alt="Sparepart preview"
+          alt={t("previewAlt")}
           className="max-h-48 w-full rounded-md border object-contain"
           data-testid="sparepart-image-preview"
         />
       ) : (
         <p className="py-2 text-muted-foreground text-sm" data-testid="sparepart-image-empty">
-          No image uploaded yet.
+          {t("empty")}
         </p>
       )}
       {readOnly ? (
-        <p className="text-muted-foreground text-xs">{disabledReason ?? "View only."}</p>
+        <p className="text-muted-foreground text-xs">{disabledReason ?? t("viewOnly")}</p>
       ) : (
         <>
           <div className="flex items-center gap-2">
@@ -87,18 +89,16 @@ export function SparepartImageUpload({
               onClick={() => fileInputRef.current?.click()}
             >
               {isUploading ? <Loader2Icon className="animate-spin" /> : <UploadIcon />}
-              {value ? "Replace image" : "Upload image"}
+              {value ? t("replace") : t("upload")}
             </Button>
             {value ? (
               <Button type="button" variant="destructive" size="sm" disabled={busy} onClick={onRemove}>
                 {isRemoving ? <Loader2Icon className="animate-spin" /> : <Trash2Icon />}
-                Remove
+                {t("remove")}
               </Button>
             ) : null}
           </div>
-          <p className="text-muted-foreground text-xs">
-            JPEG, PNG, WebP, or GIF up to 5 MB. Backend limits are authoritative.
-          </p>
+          <p className="text-muted-foreground text-xs">{t("hint")}</p>
         </>
       )}
       {error ? (

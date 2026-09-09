@@ -2,6 +2,8 @@
 
 import { type ReactNode, useState } from "react";
 
+import { useTranslations } from "next-intl";
+
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,6 +18,8 @@ import type { RatingDimensionView, RatingView } from "@/features/workorders/type
 import { useListUsers } from "@/lib/api/generated/syncro";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
 
+type Translator = ReturnType<typeof useTranslations>;
+
 export interface RatingPanelProps {
   workorderId: string;
   /** Executor pool (assigned technician + session technicians) for the technician rating. */
@@ -28,6 +32,7 @@ export interface RatingPanelProps {
  * on their role. Already-submitted ratings render read-only (immutable, FR-121/FR-124).
  */
 export function RatingPanel({ workorderId, executorPool }: RatingPanelProps) {
+  const t = useTranslations("workOrders");
   const { data: dimensions, isLoading: loadingDimensions } = useRatingDimensions();
   const { data: existingRatings, isLoading: loadingRatings } = useWorkorderRatings(workorderId);
   const rateTechnician = useRateTechnician(workorderId);
@@ -62,10 +67,11 @@ export function RatingPanel({ workorderId, executorPool }: RatingPanelProps) {
   return (
     <div className="space-y-4">
       {dimensionList.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No rating dimensions configured yet.</p>
+        <p className="text-muted-foreground text-sm">{t("ratings.panel.noDimensions")}</p>
       ) : (
         <>
           {technicianSection(
+            t,
             dimensionList,
             canRateTechnician,
             submittedTechnician,
@@ -80,6 +86,7 @@ export function RatingPanel({ workorderId, executorPool }: RatingPanelProps) {
             () => rateTechnician.mutate({ ratedUserId: technicianId, scores: technicianScores }),
           )}
           {workorderSection(
+            t,
             dimensionList,
             canRateWorkorder,
             submittedWorkorder,
@@ -89,7 +96,7 @@ export function RatingPanel({ workorderId, executorPool }: RatingPanelProps) {
             () => rateWorkorder.mutate({ scores: workorderScores }),
           )}
           {!canRateTechnician && !canRateWorkorder && (
-            <p className="text-muted-foreground text-sm">You do not have permission to rate this workorder.</p>
+            <p className="text-muted-foreground text-sm">{t("ratings.panel.noPermission")}</p>
           )}
         </>
       )}
@@ -98,16 +105,22 @@ export function RatingPanel({ workorderId, executorPool }: RatingPanelProps) {
 }
 
 /** Read-only list of the submitted rating's per-dimension scores. */
-function submittedScores(dimensionList: RatingDimensionView[], rating: RatingView, label: string) {
+function submittedScores(
+  t: Translator,
+  dimensionList: RatingDimensionView[],
+  rating: RatingView,
+  dimLabelKey: "submittedTechnicianDim" | "submittedWorkorderDim",
+  heading: string,
+) {
   return (
     <div className="space-y-2 rounded-lg border p-3">
-      <h4 className="font-medium text-sm">{label} (submitted)</h4>
+      <h4 className="font-medium text-sm">{t("ratings.panel.submitted", { label: heading })}</h4>
       {dimensionList.map((dimension) => {
         const score = rating.scores.find((s) => s.dimensionCode === dimension.code)?.score ?? 0;
         return (
           <div key={dimension.id} className="flex items-center justify-between gap-2">
             <span className="text-sm">{dimension.label}</span>
-            <StarRating value={score} readOnly label={`${label} ${dimension.label}`} />
+            <StarRating value={score} readOnly label={t(`ratings.panel.${dimLabelKey}`, { label: dimension.label })} />
           </div>
         );
       })}
@@ -116,6 +129,7 @@ function submittedScores(dimensionList: RatingDimensionView[], rating: RatingVie
 }
 
 function technicianSection(
+  t: Translator,
   dimensionList: RatingDimensionView[],
   canRate: boolean,
   submitted: RatingView | undefined,
@@ -130,19 +144,21 @@ function technicianSection(
   submit: () => void,
 ): ReactNode {
   if (submitted != null) {
-    return submittedScores(dimensionList, submitted, "Technician rating");
+    return submittedScores(t, dimensionList, submitted, "submittedTechnicianDim", t("ratings.panel.technicianRating"));
   }
   if (!canRate) {
     return null;
   }
   return (
     <div className="space-y-3 rounded-lg border p-3">
-      <h4 className="font-medium text-sm">Rate a technician</h4>
+      <h4 className="font-medium text-sm">{t("ratings.panel.rateTechnician")}</h4>
       {executorPool.length > 0 ? (
         <>
           <Select value={technicianId} onValueChange={setTechnicianId}>
-            <SelectTrigger aria-label="Technician to rate" disabled={isLoadingUsers}>
-              <SelectValue placeholder={isLoadingUsers ? "Loading…" : "Select technician"} />
+            <SelectTrigger aria-label={t("ratings.panel.technicianAria")} disabled={isLoadingUsers}>
+              <SelectValue
+                placeholder={isLoadingUsers ? t("ratings.panel.loading") : t("ratings.panel.selectTechnician")}
+              />
             </SelectTrigger>
             <SelectContent>
               {executorPool.map((id) => (
@@ -159,23 +175,24 @@ function technicianSection(
                 <StarRating
                   value={scores[dimension.code] ?? 0}
                   onChange={(value) => setScores((prev) => ({ ...prev, [dimension.code]: value }))}
-                  label={`Technician ${dimension.label}`}
+                  label={t("ratings.panel.technicianDimLabel", { label: dimension.label })}
                 />
               </div>
             ))}
           </div>
           <Button type="button" size="sm" disabled={submitting || Object.keys(scores).length === 0} onClick={submit}>
-            {submitting ? "Submitting…" : "Submit technician rating"}
+            {submitting ? t("ratings.panel.submitting") : t("ratings.panel.submitTechnician")}
           </Button>
         </>
       ) : (
-        <p className="text-muted-foreground text-sm">No executing technicians on this workorder.</p>
+        <p className="text-muted-foreground text-sm">{t("ratings.panel.noExecutingTechnicians")}</p>
       )}
     </div>
   );
 }
 
 function workorderSection(
+  t: Translator,
   dimensionList: RatingDimensionView[],
   canRate: boolean,
   submitted: RatingView | undefined,
@@ -185,14 +202,14 @@ function workorderSection(
   submit: () => void,
 ): ReactNode {
   if (submitted != null) {
-    return submittedScores(dimensionList, submitted, "Workorder rating");
+    return submittedScores(t, dimensionList, submitted, "submittedWorkorderDim", t("ratings.panel.workorderRating"));
   }
   if (!canRate) {
     return null;
   }
   return (
     <div className="space-y-3 rounded-lg border p-3">
-      <h4 className="font-medium text-sm">Rate the workorder</h4>
+      <h4 className="font-medium text-sm">{t("ratings.panel.rateWorkorder")}</h4>
       <div className="space-y-2">
         {dimensionList.map((dimension) => (
           <div key={dimension.id} className="flex items-center justify-between gap-2">
@@ -200,13 +217,13 @@ function workorderSection(
             <StarRating
               value={scores[dimension.code] ?? 0}
               onChange={(value) => setScores((prev) => ({ ...prev, [dimension.code]: value }))}
-              label={`Workorder ${dimension.label}`}
+              label={t("ratings.panel.workorderDimLabel", { label: dimension.label })}
             />
           </div>
         ))}
       </div>
       <Button type="button" size="sm" disabled={submitting || Object.keys(scores).length === 0} onClick={submit}>
-        {submitting ? "Submitting…" : "Submit workorder rating"}
+        {submitting ? t("ratings.panel.submitting") : t("ratings.panel.submitWorkorder")}
       </Button>
     </div>
   );

@@ -1,4 +1,7 @@
+"use client";
+
 import { Activity, Clock, Gauge, Hash } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
 
 import type { LatestTelemetry } from "@/features/telemetry/types";
 
@@ -7,29 +10,35 @@ type TelemetryCardProps = {
 };
 
 export function TelemetryCard({ telemetry }: TelemetryCardProps) {
-  const runningLabel = telemetry.running ? "Running" : "Stopped";
+  const t = useTranslations("telemetry.card");
+  const format = useFormatter();
+  const runningLabel = telemetry.running ? t("running") : t("stopped");
   return (
-    <dl aria-label="Latest telemetry values" className="grid grid-cols-2 gap-2">
+    <dl aria-label={t("latestValues")} className="grid grid-cols-2 gap-2">
       <TelemetryMetric
         icon={<Activity aria-hidden="true" />}
-        label="Running state"
+        label={t("runningState")}
         value={runningLabel}
         valueClassName={telemetry.running ? "status-icon-healthy" : undefined}
       />
       <TelemetryMetric
         icon={<Gauge aria-hidden="true" />}
-        label="Runtime hours"
-        value={telemetry.runtimeHours == null ? "No data received" : formatRuntime(telemetry.runtimeHours)}
+        label={t("runtimeHours")}
+        value={telemetry.runtimeHours == null ? t("noDataReceived") : formatRuntime(format, telemetry.runtimeHours)}
       />
       <TelemetryMetric
         icon={<Hash aria-hidden="true" />}
-        label="Production count"
-        value={telemetry.counting == null ? "No data received" : telemetry.counting.toLocaleString("en")}
+        label={t("productionCount")}
+        value={telemetry.counting == null ? t("noDataReceived") : format.number(telemetry.counting)}
       />
       <TelemetryMetric
         icon={<Clock aria-hidden="true" />}
-        label="Last received"
-        value={telemetry.lastReceivedAt ? formatDateTime(telemetry.lastReceivedAt) : "No data received"}
+        label={t("lastReceived")}
+        value={
+          telemetry.lastReceivedAt
+            ? format.dateTime(new Date(telemetry.lastReceivedAt), { dateStyle: "medium", timeStyle: "short" })
+            : t("noDataReceived")
+        }
       />
     </dl>
   );
@@ -57,10 +66,6 @@ function TelemetryMetric({
   );
 }
 
-function formatRuntime(hours: number) {
-  return `${hours.toLocaleString("en", { maximumFractionDigits: 1 })} h`;
-}
-
-function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+function formatRuntime(format: ReturnType<typeof useFormatter>, hours: number) {
+  return `${format.number(hours, { maximumFractionDigits: 1 })} h`;
 }

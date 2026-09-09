@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { syncroFetch } from "@/lib/api/orval-mutator";
@@ -24,6 +25,7 @@ interface WorkorderAttachmentView {
  * sign step, matching the preventive 11-2 pattern.
  */
 export function useWorkorderSignatureUpload(workOrderId: string) {
+  const tm = useTranslations("workOrders");
   return useMutation({
     mutationFn: async (file: File) => {
       const formData = new FormData();
@@ -37,7 +39,7 @@ export function useWorkorderSignatureUpload(workOrderId: string) {
       return response.data;
     },
     onError: () => {
-      toast.error("Failed to upload signature image");
+      toast.error(tm("messages.signatureUploadFailed"));
     },
   });
 }

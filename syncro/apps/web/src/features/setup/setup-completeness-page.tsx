@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import { SetupCompletenessChecklist } from "@/components/syncro/setup-completeness-checklist";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +11,8 @@ import { useGetSetupCompleteness } from "@/lib/api/generated/syncro";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
 
 export function SetupCompletenessPage() {
+  const t = useTranslations("setup");
+  const tc = useTranslations("common");
   const user = useAuthUser();
   const { scope } = usePlantScope();
   const canMutate = user?.applicationRole === "SUPER_ADMIN" || user?.applicationRole === "MANAGER_MAINTENANCE";
@@ -23,12 +27,12 @@ export function SetupCompletenessPage() {
       {setupCompleteness.isError ? (
         <Card>
           <CardHeader>
-            <CardTitle>Setup completeness could not be loaded</CardTitle>
-            <CardDescription>The setup status could not be fetched. Retry to load it again.</CardDescription>
+            <CardTitle>{t("errorTitle")}</CardTitle>
+            <CardDescription>{t("errorDescription")}</CardDescription>
           </CardHeader>
           <CardContent>
             <Button variant="outline" onClick={() => void setupCompleteness.refetch()}>
-              Retry
+              {tc("retry")}
             </Button>
           </CardContent>
         </Card>
@@ -39,10 +43,8 @@ export function SetupCompletenessPage() {
       {!setupCompleteness.isLoading && !setupCompleteness.isError && data && (data.steps ?? []).length === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>No setup steps</CardTitle>
-            <CardDescription>
-              The setup completeness checklist is empty. Configure master data to see setup status.
-            </CardDescription>
+            <CardTitle>{t("emptyTitle")}</CardTitle>
+            <CardDescription>{t("emptyDescription")}</CardDescription>
           </CardHeader>
         </Card>
       ) : null}
@@ -51,10 +53,11 @@ export function SetupCompletenessPage() {
 }
 
 function SetupCompletenessSkeleton() {
+  const t = useTranslations("setup");
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Setup Completeness</CardTitle>
+        <CardTitle>{t("title")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <Skeleton className="h-6 w-1/3" />

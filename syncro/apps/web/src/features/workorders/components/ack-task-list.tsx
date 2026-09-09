@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle2, Clock, Star } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,9 @@ import { useAcknowledge, useAckTaskList } from "@/features/workorders/hooks/use-
  * Loading / empty / error states required (project rule).
  */
 export function AckTaskList() {
+  const t = useTranslations("workOrders");
+  const tc = useTranslations("common");
+  const format = useFormatter();
   const { data, isLoading, isError, refetch } = useAckTaskList();
   const acknowledge = useAcknowledge();
 
@@ -37,9 +41,9 @@ export function AckTaskList() {
     return (
       <Card>
         <CardContent className="flex flex-col items-center gap-3 py-8">
-          <p className="text-muted-foreground text-sm">Failed to load the ack task list.</p>
+          <p className="text-muted-foreground text-sm">{t("ackTaskList.list.loadFailed")}</p>
           <Button type="button" variant="outline" size="sm" onClick={() => void refetch()}>
-            Retry
+            {tc("retry")}
           </Button>
         </CardContent>
       </Card>
@@ -56,8 +60,8 @@ export function AckTaskList() {
       <Card>
         <CardContent className="flex flex-col items-center gap-2 py-8">
           <Empty className="min-h-32">
-            <EmptyTitle>No tasks</EmptyTitle>
-            <EmptyDescription>No pending acks and no closed workorders to rate.</EmptyDescription>
+            <EmptyTitle>{t("ackTaskList.list.noTasks")}</EmptyTitle>
+            <EmptyDescription>{t("ackTaskList.list.noTasksDesc")}</EmptyDescription>
           </Empty>
         </CardContent>
       </Card>
@@ -70,22 +74,20 @@ export function AckTaskList() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock aria-hidden="true" className="size-4" />
-            Pending acks
+            {t("ackTaskList.list.pendingTitle")}
           </CardTitle>
-          <CardDescription>
-            Workorders in progress past the ack deadline that still need acknowledgment.
-          </CardDescription>
+          <CardDescription>{t("ackTaskList.list.pendingDesc")}</CardDescription>
         </CardHeader>
         <CardContent>
           {list && list.pending.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No pending acknowledgments.</p>
+            <p className="text-muted-foreground text-sm">{t("ackTaskList.list.nonePending")}</p>
           ) : (
             <ul className="divide-y">
               {(list?.pending ?? []).map((entry) => (
                 <li key={entry.workOrderId} className="flex items-center justify-between gap-3 py-2">
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary">{entry.workOrderId}</Badge>
-                    <span className="text-muted-foreground text-sm">pending ack</span>
+                    <span className="text-muted-foreground text-sm">{t("ackTaskList.list.pendingBadge")}</span>
                   </div>
                   <Button
                     type="button"
@@ -93,7 +95,7 @@ export function AckTaskList() {
                     onClick={() => acknowledge.mutate(entry.workOrderId)}
                     disabled={acknowledge.isPending}
                   >
-                    Acknowledge
+                    {t("ackTaskList.list.acknowledge")}
                   </Button>
                 </li>
               ))}
@@ -106,20 +108,22 @@ export function AckTaskList() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CheckCircle2 aria-hidden="true" className="size-4" />
-            Acknowledged
+            {t("ackTaskList.list.acknowledgedTitle")}
           </CardTitle>
-          <CardDescription>Workorders already acknowledged via the 4-hour escalation flow.</CardDescription>
+          <CardDescription>{t("ackTaskList.list.acknowledgedDesc")}</CardDescription>
         </CardHeader>
         <CardContent>
           {list && list.acknowledged.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No acknowledged workorders yet.</p>
+            <p className="text-muted-foreground text-sm">{t("ackTaskList.list.noneAcknowledged")}</p>
           ) : (
             <ul className="divide-y">
               {(list?.acknowledged ?? []).map((entry) => (
                 <li key={entry.workOrderId} className="flex items-center justify-between gap-3 py-2">
                   <Badge variant="outline">{entry.workOrderId}</Badge>
                   <span className="text-muted-foreground text-xs">
-                    {entry.acknowledgedAt ? new Date(entry.acknowledgedAt).toLocaleString() : ""}
+                    {entry.acknowledgedAt
+                      ? format.dateTime(new Date(entry.acknowledgedAt), { dateStyle: "medium", timeStyle: "short" })
+                      : ""}
                   </span>
                 </li>
               ))}
@@ -133,18 +137,18 @@ export function AckTaskList() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Star aria-hidden="true" className="size-4" />
-              Rated closed workorders
+              {t("ackTaskList.list.ratedTitle")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {list && list.rated.length === 0 ? (
-              <p className="text-muted-foreground text-sm">No rated closed workorders.</p>
+              <p className="text-muted-foreground text-sm">{t("ackTaskList.list.noneRated")}</p>
             ) : (
               <ul className="divide-y">
                 {(list?.rated ?? []).map((entry) => (
                   <li key={entry.id} className="flex items-center justify-between gap-3 py-2">
                     <Badge variant="outline">{entry.id}</Badge>
-                    <Badge variant="secondary">rated</Badge>
+                    <Badge variant="secondary">{t("ackTaskList.list.ratedBadge")}</Badge>
                   </li>
                 ))}
               </ul>
@@ -156,18 +160,18 @@ export function AckTaskList() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Star aria-hidden="true" className="size-4" />
-              Unrated closed workorders
+              {t("ackTaskList.list.unratedTitle")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {list && list.unrated.length === 0 ? (
-              <p className="text-muted-foreground text-sm">No unrated closed workorders.</p>
+              <p className="text-muted-foreground text-sm">{t("ackTaskList.list.noneUnrated")}</p>
             ) : (
               <ul className="divide-y">
                 {(list?.unrated ?? []).map((entry) => (
                   <li key={entry.id} className="flex items-center justify-between gap-3 py-2">
                     <Badge variant="outline">{entry.id}</Badge>
-                    <Badge variant="secondary">unrated</Badge>
+                    <Badge variant="secondary">{t("ackTaskList.list.unratedBadge")}</Badge>
                   </li>
                 ))}
               </ul>

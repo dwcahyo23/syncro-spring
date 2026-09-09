@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import type {
@@ -65,6 +66,7 @@ function invalidateRatingQueries(queryClient: ReturnType<typeof useQueryClient>,
 /** Rates a technician who executed a closed workorder (in-scope section leader, FR-121). */
 export function useRateTechnician(workorderId: string) {
   const queryClient = useQueryClient();
+  const tm = useTranslations("workOrders");
   return useMutation({
     mutationFn: async (data: RateTechnicianRequest) => {
       const response = await syncroFetch<{ data: RatingView }>(`/api/v1/workorders/${workorderId}/ratings/technician`, {
@@ -75,10 +77,10 @@ export function useRateTechnician(workorderId: string) {
     },
     onSuccess: () => {
       invalidateRatingQueries(queryClient, workorderId);
-      toast.success("Technician rating submitted");
+      toast.success(tm("messages.technicianRatingSubmitted"));
     },
     onError: () => {
-      toast.error("Failed to submit technician rating");
+      toast.error(tm("messages.technicianRatingFailed"));
     },
   });
 }
@@ -86,6 +88,7 @@ export function useRateTechnician(workorderId: string) {
 /** Rates a closed maintenance workorder (PRODUCTION_LEADER with plant access, FR-124). */
 export function useRateWorkorder(workorderId: string) {
   const queryClient = useQueryClient();
+  const tm = useTranslations("workOrders");
   return useMutation({
     mutationFn: async (data: RateWorkorderRequest) => {
       const response = await syncroFetch<{ data: RatingView }>(`/api/v1/workorders/${workorderId}/ratings/workorder`, {
@@ -96,10 +99,10 @@ export function useRateWorkorder(workorderId: string) {
     },
     onSuccess: () => {
       invalidateRatingQueries(queryClient, workorderId);
-      toast.success("Workorder rating submitted");
+      toast.success(tm("messages.workorderRatingSubmitted"));
     },
     onError: () => {
-      toast.error("Failed to submit workorder rating");
+      toast.error(tm("messages.workorderRatingFailed"));
     },
   });
 }

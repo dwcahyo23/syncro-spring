@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { I18nProvider } from "@/test/i18n-wrapper";
 
 import { AlertListPageContent } from "./alert-list-page-content";
 
@@ -31,7 +32,9 @@ const queryClient = new QueryClient();
 
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>{children}</TooltipProvider>
+    <I18nProvider>
+      <TooltipProvider>{children}</TooltipProvider>
+    </I18nProvider>
   </QueryClientProvider>
 );
 

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { useTranslations } from "next-intl";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,6 +16,8 @@ import { syncroFetch } from "@/lib/api/orval-mutator";
  * for other roles. Shows the current logo preview and a file upload to replace it.
  */
 export default function LogoPage() {
+  const t = useTranslations("settings.logo");
+  const tc = useTranslations("common");
   const { data: logo, isLoading: logoLoading, refetch } = useCompanyLogo();
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -36,7 +40,8 @@ export default function LogoPage() {
       await refetch();
       setFile(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
+      // Backend messages are contract data (rendered as-is); the fallback is translated.
+      setError(err instanceof Error ? err.message : t("uploadFailed"));
     } finally {
       setUploading(false);
     }
@@ -44,31 +49,29 @@ export default function LogoPage() {
 
   return (
     <div className="space-y-4 p-6">
-      <h1 className="font-semibold text-xl">Company Logo</h1>
-      <p className="text-muted-foreground text-sm">
-        Upload a company logo that appears on printed reports (SUPER_ADMIN only).
-      </p>
+      <h1 className="font-semibold text-xl">{t("title")}</h1>
+      <p className="text-muted-foreground text-sm">{t("subtitle")}</p>
 
       <Card className="max-w-md">
         <CardHeader>
-          <CardTitle className="text-sm">Current Logo</CardTitle>
+          <CardTitle className="text-sm">{t("currentTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           {logoLoading ? (
-            <p className="text-muted-foreground text-xs">Loading...</p>
+            <p className="text-muted-foreground text-xs">{tc("loading")}</p>
           ) : (
-            <LogoPreview presignedUrl={logo?.presignedUrl ?? null} />
+            <LogoPreview presignedUrl={logo?.presignedUrl ?? null} alt={t("alt")} empty={t("noLogo")} />
           )}
         </CardContent>
       </Card>
 
       <Card className="max-w-md">
         <CardHeader>
-          <CardTitle className="text-sm">Replace Logo</CardTitle>
+          <CardTitle className="text-sm">{t("replaceTitle")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-1">
-            <Label htmlFor="logo-file">Logo image (JPEG, PNG, or WebP, max 5 MB)</Label>
+            <Label htmlFor="logo-file">{t("fileLabel")}</Label>
             <Input
               id="logo-file"
               type="file"
@@ -78,7 +81,7 @@ export default function LogoPage() {
           </div>
           {error && <p className="text-destructive text-xs">{error}</p>}
           <Button onClick={handleUpload} disabled={!file || uploading}>
-            {uploading ? "Uploading..." : "Upload Logo"}
+            {uploading ? t("uploading") : t("upload")}
           </Button>
         </CardContent>
       </Card>
@@ -86,12 +89,12 @@ export default function LogoPage() {
   );
 }
 
-function LogoPreview({ presignedUrl }: { presignedUrl: string | null }) {
+function LogoPreview({ presignedUrl, alt, empty }: { presignedUrl: string | null; alt: string; empty: string }) {
   if (presignedUrl) {
     return (
       // biome-ignore lint/performance/noImgElement: presigned URL from settings; short-TTL, dynamic
-      <img src={presignedUrl} alt="Company logo" className="max-h-24 w-auto" />
+      <img src={presignedUrl} alt={alt} className="max-h-24 w-auto" />
     );
   }
-  return <p className="text-muted-foreground text-xs">No logo configured.</p>;
+  return <p className="text-muted-foreground text-xs">{empty}</p>;
 }

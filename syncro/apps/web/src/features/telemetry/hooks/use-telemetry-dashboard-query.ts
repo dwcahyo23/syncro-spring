@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 
+import type { TelemetryMachineView } from "@/features/telemetry/types";
 import type { ListMachinesParams } from "@/lib/api/generated/model";
 import { useListMachines } from "@/lib/api/generated/syncro";
-import type { TelemetryMachineView } from "@/features/telemetry/types";
 
 export const TELEMETRY_REFRESH_INTERVAL_MS = 30_000;
 
