@@ -1,5 +1,6 @@
 # generated: 2026-05-25
 # last_updated: 2026-09-10
+# updated: 2026-09-10 Epic 23 DONE — 23-4 Translation Completeness & Quality done (pure runChecks + check:i18n CLI: key asymmetry, unresolved static t()/t.has()/t.rich()/t.raw()/te() via ns-binding resolution, id-only ICU leaks, empty/non-string leaves; 3 warning kinds incl. ambiguous-binding; CLI exit-code + request-config wiring pins; build-auto review 9 patched / 3 deferred; unit 419 + check:i18n 0-fail green; followup review recommended)
 # updated: 2026-09-10 Epic 23 in-progress — 23-3 Language Switcher & Persistence done (Radix ID/EN dropdown in dashboard header, client-side locale swap preserving path+query+hash, 365-day NEXT_LOCALE cookie honored by proxy root redirect; localeCookie:false pins the cookie to one writer; build-auto review 5 patched / 1 deferred; unit 390 + e2e i18n 19 green; followup review recommended)
 # updated: 2026-09-09 Epic 23 in-progress — 23-2 Localize all frontend UI strings done (~187 files, ~2000 keys en+id parity-enforced, code-keyed enum labels, useFormatter display edge, errorResponse 14x collapsed; build-auto review 10 patched / 12 deferred; unit 385 + e2e 14 green; followup review recommended)
 # updated: 2026-09-09 Epic 23 started — 23-1 Setup next-intl foundation done (next-intl 4.14.2, /id+/en routing, proxy auth guard locale-stripped, catalogs seeded, sidebar t(); build-auto review 12 patched / 10 deferred; e2e 11 green; followup review recommended)
@@ -305,9 +306,9 @@ development_status:
   epic-22-retrospective: optional
 
   # Epic 23: Multi-Language (i18n)
-  epic-23: in-progress
+  epic-23: done
   23-1-setup-next-intl-foundation: done
   23-2-localize-frontend-ui: done
   23-3-language-switcher-persistence: done
-  23-4-translation-completeness-quality: backlog
+  23-4-translation-completeness-quality: done
   epic-23-retrospective: optional
