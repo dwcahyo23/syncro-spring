@@ -17,6 +17,7 @@
     "test:api": "playwright test --config=playwright.api.config.ts",
     "test:api:check": "node tests/support/check-api-collection.mjs",
     "test:unit": "vitest run",
+    "check:i18n": "node scripts/check-translations.mjs",
     "prepare": "husky",
     "generate:snapshot": "node scripts/fetch-openapi.mjs",
     "generate:api": "orval --config orval.config.ts",

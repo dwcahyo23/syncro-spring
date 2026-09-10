@@ -16,10 +16,13 @@ interface Messages {
 // English is the fallback catalog: keys missing from `id` resolve to the English
 // string instead of rendering raw keys (Epic 23 constraint; full en-complete
 // auditing is 23.4's job).
-// ponytail: mergeMessages ships BOTH catalogs to every non-en response — fine at
-// ~35 keys; if /id payloads measurably grow in 23.2, switch to next-intl
-// getMessageFallback or per-locale catalogs without the merge.
-function mergeMessages(fallback: Messages, messages: Messages): Messages {
+// ponytail: mergeMessages ships BOTH catalogs to every non-en response — the
+// trade-off is accepted at the measured 2,006 leaves per catalog (23.4 audit).
+// If /id RSC payloads measurably regress, switch to next-intl getMessageFallback
+// or per-locale catalogs without the merge.
+// Story 23.4: exported (behavior unchanged) so request.test.ts can pin the
+// fallback contract and the completeness tooling can reuse the merge semantics.
+export function mergeMessages(fallback: Messages, messages: Messages): Messages {
   const merged: Messages = { ...fallback };
   for (const [key, value] of Object.entries(messages)) {
     const existing = merged[key];

@@ -123,6 +123,15 @@ npx @biomejs/biome check --write
 ```
 > For more information on available rules, fixes, and CLI options, refer to the [Biome documentation](https://biomejs.dev/).
 
+### Translation completeness (Story 23-4)
+
+```bash
+npm run check:i18n
+npm run check:i18n -- --json
+```
+
+Scans the `src/messages/en.json` / `id.json` catalogs against the static `t("key")` / `t.has("key")` / `t.rich("key")` / `t.raw("key")` / `te("CODE")` call sites in `src/` and compares ICU arguments between locales. Hard failures (exit 1, same rule set enforced by `npm run test:unit`): en/id key asymmetry, an unresolved static key, an id string referencing an ICU argument absent from en, empty or non-string leaves. Three warning kinds are reported without failing: `identical-value` (an id leaf byte-identical to en — a terminology review list for copy triage), `en-arg-omitted` (an en argument dropped in id — usually intentional), and `ambiguous-binding` (a translator variable bound to two namespaces in one file — its key references cannot be resolved and are skipped). `--json` emits the full machine-readable report; the human report truncates long lists.
+
 ---
 
 > [!IMPORTANT]  
