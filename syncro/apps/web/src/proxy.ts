@@ -6,6 +6,7 @@ import createMiddleware from "next-intl/middleware";
 import { AUTH_TOKEN_COOKIE } from "@/lib/auth/auth-session";
 
 import { isLocale, routing, stripLocale } from "./i18n/routing";
+import { NEXT_LOCALE, rootLocaleFromCookie } from "./i18n/switch-locale";
 
 const handleI18nRouting = createMiddleware(routing);
 
@@ -22,13 +23,28 @@ const protectedRoutes = [
 ];
 
 export default function proxy(request: NextRequest) {
+  // Story 23-3: the bare root honors the switcher's NEXT_LOCALE cookie.
+  // routing.ts disables localeDetection AND intl's localeCookie sync, so this
+  // branch is the cookie's only reader and the switcher its only writer.
+  // Absent/invalid cookie falls through to intl, which picks the default
+  // (23-1 behavior). Explicit prefixed URLs never take this branch: the URL
+  // owns the locale.
+  if (request.nextUrl.pathname === "/") {
+    const cookieLocale = rootLocaleFromCookie(request.cookies.get(NEXT_LOCALE)?.value);
+    if (cookieLocale !== routing.defaultLocale) {
+      const rootUrl = request.nextUrl.clone();
+      rootUrl.pathname = `/${cookieLocale}`;
+      return NextResponse.redirect(rootUrl, 307);
+    }
+  }
+
   // next-intl runs first so the locale is negotiated and applied to the URL
   // before the auth guard evaluates the path.
   const response = handleI18nRouting(request);
 
   // Locale redirects (e.g. `/alerts` -> `/id/alerts`) short-circuit here; the
-  // guard re-evaluates on the redirected request, preserving the intl response
-  // (it carries the NEXT_LOCALE cookie).
+  // guard re-evaluates on the redirected request. (The intl response no
+  // longer carries NEXT_LOCALE — intl's cookie sync is disabled in routing.ts.)
   if (response.status >= 300 && response.status < 400) {
     return response;
   }

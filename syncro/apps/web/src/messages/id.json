@@ -175,6 +175,14 @@
         "system": "Sistem"
       }
     },
+    "languageSwitcher": {
+      "label": "Bahasa",
+      "switchAria": "Bahasa: {current}. Buka menu bahasa",
+      "locales": {
+        "id": "Bahasa Indonesia",
+        "en": "English"
+      }
+    },
     "navUser": {
       "roles": {
         "SUPER_ADMIN": "Super Admin",

@@ -18,6 +18,13 @@ describe("i18n routing config", () => {
   it("does not negotiate from accept-language (URL owns the locale)", () => {
     expect(routing.localeDetection).toBe(false);
   });
+
+  // Story 23-3: the language switcher is the sole NEXT_LOCALE writer; next-intl's
+  // middleware syncCookie and client syncLocaleCookie must stay off (they would
+  // flip/downgrade the long-lived cookie to the last-visited URL's locale).
+  it("keeps next-intl from writing the locale cookie", () => {
+    expect(routing.localeCookie).toBe(false);
+  });
 });
 
 describe("isLocale", () => {
