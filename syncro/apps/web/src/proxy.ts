@@ -12,6 +12,7 @@ const handleI18nRouting = createMiddleware(routing);
 
 const protectedRoutes = [
   "/dashboard",
+  "/maintenance",
   "/operations-overview",
   "/telemetry",
   "/alerts",
@@ -85,11 +86,13 @@ export const config = {
     // URLs) and locale-prefixed. ponytail: `:locale` is unconstrained on
     // purpose; next-intl 404s unknown prefixes before the guard matters.
     "/dashboard/:path*",
+    "/maintenance/:path*",
     "/master-data/:path*",
     "/operations-overview/:path*",
     "/alerts/:path*",
     "/telemetry/:path*",
     "/:locale/dashboard/:path*",
+    "/:locale/maintenance/:path*",
     "/:locale/master-data/:path*",
     "/:locale/operations-overview/:path*",
     "/:locale/alerts/:path*",

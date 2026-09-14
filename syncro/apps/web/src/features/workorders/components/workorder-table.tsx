@@ -186,7 +186,7 @@ export function WorkorderTable() {
         header: t("table.woNo"),
         cell: ({ row }) => (
           <Link
-            href={`/dashboard/workorders/${row.original.id}`}
+            href={`/maintenance/workorders/${row.original.id}`}
             className="font-mono text-xs font-medium hover:underline"
           >
             {row.original.id}

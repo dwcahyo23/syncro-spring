@@ -10,8 +10,10 @@ import { AckTaskList } from "@/features/workorders/components/ack-task-list";
 import { ACK_AUTO_LOGIN_STORAGE_KEY } from "@/features/workorders/hooks/use-ack-task-list";
 
 /**
- * The 4-hour ack landing page (story 14-4, FR-181). Reached from the auto-login link in
- * the WAHA ack message: {@code /dashboard/workorders/ack-task-list?token=<auto-login JWT>}.
+ * The 4-hour ack landing page (story 14-4, FR-181). Canonical URL:
+ * {@code /maintenance/workorders/ack-task-list?token=<auto-login JWT>}. The WAHA ack
+ * message still carries the locale-unprefixed legacy {@code /dashboard/...} link —
+ * next-intl prefixes the locale, then the next.config redirect canonicalizes the path.
  * The JWT filter accepts AUTO_LOGIN tokens for this endpoint; syncroFetch prefers the
  * stored ack token on the ack-task-list path so the task list loads without a password
  * login. The token is single-use and short-lived — any mismatch falls back to normal login.

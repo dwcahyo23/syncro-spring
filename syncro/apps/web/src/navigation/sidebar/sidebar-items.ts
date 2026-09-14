@@ -154,22 +154,22 @@ export const sidebarItems: NavGroup[] = [
     items: [
       {
         titleKey: "items.workOrders",
-        url: "/dashboard/workorders",
+        url: "/maintenance/workorders",
         icon: Wrench,
       },
       {
         titleKey: "items.preventive",
-        url: "/dashboard/preventive",
+        url: "/maintenance/preventive",
         icon: CalendarCheck,
       },
       {
         titleKey: "items.sparepartRequests",
-        url: "/dashboard/sparepart-requests",
+        url: "/maintenance/sparepart-requests",
         icon: Package,
       },
       {
         titleKey: "items.stock",
-        url: "/dashboard/stock",
+        url: "/maintenance/stock",
         icon: Package,
       },
     ],

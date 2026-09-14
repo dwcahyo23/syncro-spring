@@ -1,7 +1,7 @@
 import { redirect } from "@/i18n/navigation";
 
-/** Superseded by the dashboard-shell route at /dashboard/preventive. */
+/** Legacy alias: superseded by the canonical /maintenance/preventive URL. */
 export default async function OldPreventivePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  redirect({ href: "/dashboard/preventive", locale });
+  redirect({ href: "/maintenance/preventive", locale });
 }

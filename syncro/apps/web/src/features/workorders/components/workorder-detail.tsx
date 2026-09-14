@@ -305,7 +305,7 @@ export function WorkorderDetailPageContent({ workOrderId }: { workOrderId: strin
                 <div className="flex flex-wrap items-center gap-2 text-sm">
                   <PackageIcon className="size-3.5 text-muted-foreground" />
                   <Link
-                    href={`/dashboard/sparepart-requests/${p.id}`}
+                    href={`/maintenance/sparepart-requests/${p.id}`}
                     className="font-mono hover:underline"
                     title={t("detail.openWarehouse")}
                   >
@@ -405,7 +405,7 @@ function BackLink() {
   const t = useTranslations("workOrders");
   return (
     <Button asChild variant="ghost" size="sm" className="-ml-2 text-muted-foreground">
-      <Link href="/dashboard/workorders">
+      <Link href="/maintenance/workorders">
         <ArrowLeftIcon className="mr-1 size-4" />
         {t("detail.back")}
       </Link>

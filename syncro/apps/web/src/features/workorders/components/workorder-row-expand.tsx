@@ -108,7 +108,7 @@ export function WorkorderRowExpand({ workOrderId }: { workOrderId: string }) {
               </ul>
             )}
             <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs">
-              <Link href={`/dashboard/workorders/${workOrderId}`}>
+              <Link href={`/maintenance/workorders/${workOrderId}`}>
                 {t("table.expandOpenDetail")}
                 <ArrowUpRightIcon className="ml-1 size-3" />
               </Link>

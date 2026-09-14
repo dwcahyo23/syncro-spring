@@ -1,7 +1,7 @@
 import { redirect } from "@/i18n/navigation";
 
-/** Superseded by the dashboard-shell route at /dashboard/workorders. */
+/** Legacy alias: superseded by the canonical /maintenance/workorders URL. */
 export default async function OldRatingsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  redirect({ href: "/dashboard/workorders", locale });
+  redirect({ href: "/maintenance/workorders", locale });
 }

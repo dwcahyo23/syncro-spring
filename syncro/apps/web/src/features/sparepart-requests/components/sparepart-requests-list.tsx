@@ -262,7 +262,7 @@ export function SparepartRequestsPageContent() {
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         <Button asChild variant="ghost" size="sm" className="text-xs">
-                          <Link href={`/dashboard/sparepart-requests/${request.id}`}>{t("detail.trigger")}</Link>
+                          <Link href={`/maintenance/sparepart-requests/${request.id}`}>{t("detail.trigger")}</Link>
                         </Button>
                         {actions.map((action) => (
                           <Button

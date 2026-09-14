@@ -1,7 +1,7 @@
 import { redirect } from "@/i18n/navigation";
 
-/** Superseded by the dashboard-shell route at /dashboard/sparepart-requests. */
+/** Legacy alias: superseded by the canonical /maintenance/sparepart-requests URL. */
 export default async function OldSparepartRequestsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  redirect({ href: "/dashboard/sparepart-requests", locale });
+  redirect({ href: "/maintenance/sparepart-requests", locale });
 }

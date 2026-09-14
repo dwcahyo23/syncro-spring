@@ -15,6 +15,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
+      // Next 16 ships no package `exports` map, so native node ESM cannot
+      // resolve the extensionless `next/server` that externalized deps import.
+      // Point it at the real CJS stub file (same module, just resolvable).
+      "next/server": path.resolve(__dirname, "node_modules/next/server.js"),
     },
   },
 });

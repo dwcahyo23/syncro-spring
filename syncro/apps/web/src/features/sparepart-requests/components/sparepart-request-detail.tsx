@@ -113,7 +113,7 @@ export function SparepartRequestDetailContent({ requestId }: { requestId: string
             <dt className="text-muted-foreground text-xs">{t("table.workorder")}</dt>
             <dd className="text-sm">
               {request.workOrderId ? (
-                <Link href={`/dashboard/workorders/${request.workOrderId}`} className="font-mono hover:underline">
+                <Link href={`/maintenance/workorders/${request.workOrderId}`} className="font-mono hover:underline">
                   {request.workOrderId}
                 </Link>
               ) : (
@@ -177,7 +177,7 @@ function BackLink() {
   const t = useTranslations("sparepartRequests");
   return (
     <Button asChild variant="ghost" size="sm" className="-ml-2 text-muted-foreground">
-      <Link href="/dashboard/sparepart-requests">
+      <Link href="/maintenance/sparepart-requests">
         <ArrowLeftIcon className="mr-1 size-4" />
         {t("detail.back")}
       </Link>

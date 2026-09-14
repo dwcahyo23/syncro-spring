@@ -193,7 +193,7 @@ export function WorkorderActionsCell({
           <DropdownMenuSeparator />
           {!hideDetail && (
             <DropdownMenuItem asChild>
-              <Link href={`/dashboard/workorders/${workOrderId}`}>
+              <Link href={`/maintenance/workorders/${workOrderId}`}>
                 <EyeIcon className="size-3.5" />
                 {t("actionsCell.menu.detail")}
               </Link>
@@ -208,7 +208,7 @@ export function WorkorderActionsCell({
             {t("actionsCell.menu.report")}
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href={`/dashboard/workorders/${workOrderId}/print`}>
+            <Link href={`/maintenance/workorders/${workOrderId}/print`}>
               <PrinterIcon className="size-3.5" />
               {t("actionsCell.menu.print")}
             </Link>

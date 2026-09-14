@@ -1307,3 +1307,13 @@ origin: code review of spec-20-2-kpi-targets-dashboard-consumption (verification
 location: syncro/apps/web/openapi.json
 reason: /api/v1/kpi/* endpoints are consumed via hand-written hooks (same precedent as the 14-2 dashboard endpoints), so the frontend TS interfaces are pinned only by human agreement with the backend records. A MockMvc jsonPath test now pins the verdict contract (20-2 patch), but snapshot regeneration for the kpi module remains a separate chore.
 status: open
+
+### DW-167: Upload bukti foto before/after pada workorder (split dari spec tri-goal)
+- source_spec: _bmad-output/implementation-artifacts/spec-wo-evidence-wysiwyg-nav.md
+- summary: Goal A di-split 2026-09-15: galeri bukti + upload gambar di halaman detail workorder via endpoint /{id}/attachments yang sudah ada (multipart, presignedUrl Garage), grouping before/after lewat konvensi prefix filename `before__`/`after__` tanpa perubahan backend; accept="image/*" gated client-side; tampil juga di print-report Evidence section.
+- evidence: Desain utuh (IO matrix, code map WorkOrderController.java:559-626, pola multipart use-workorder-signature-upload.ts, opsi upgrade evidence_kind DB column) ada di versi draft spec pra-split pada path source_spec — jadikan referensi saat diangkat.
+
+### DW-168: Rich-text WYSIWYG TipTap+DOMPurify untuk print workorder report (split dari spec tri-goal)
+- source_spec: _bmad-output/implementation-artifacts/spec-wo-evidence-wysiwyg-nav.md
+- summary: Goal B di-split 2026-09-15: ReportDialog 4 Textarea → editor TipTap (bold/italic/underline/lists) menulis HTML ke field report yang ada (@Size max=4000, hitung teks terlihat bukan markup); render di workorder-print-report.tsx + narrative detail via sanitizeHtml DOMPurify (allowlist p/br/b/strong/i/em/u/s/ul/ol/li/h2/h3, tanpa img/iframe/event attrs) dengan deteksi markup vs plain-text fallback; dependensi @tiptap/react, @tiptap/starter-kit, dompurify sudah di-setujui user 2026-09-14.
+- evidence: Rincian guard 4000-char, regex deteksi HTML, dan matriks kasus tepi (legacy plain-text, payload <img onerror>) tercatat di versi draft spec pra-split pada path source_spec.
