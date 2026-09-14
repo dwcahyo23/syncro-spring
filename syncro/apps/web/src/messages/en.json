@@ -64,11 +64,12 @@
     "permissionDeniedDescription": "You don't have permission to access this page.",
     "shellLabel": "Syncro shell",
     "modulePlaceholderTitle": "Module placeholder",
-    "modulePlaceholderDescription": "This route reserves the page composition shell. Backend-owned data, permissions, and domain rules arrive in later stories.",
+    "modulePlaceholderDescription": "This route reserves the page shell. Backend data, permissions, and domain rules arrive in later stories.",
     "telemetryDisplayFailed": "Telemetry display failed",
     "goToOperationsOverview": "Go to Operations Overview",
     "telemetryDisplayFailedFor": "Could not render telemetry for {machineCode}. Other machines are unaffected.",
-    "telemetryDisplayFailedPlain": "Could not render telemetry. Other machines are unaffected."
+    "telemetryDisplayFailedPlain": "Could not render telemetry. Other machines are unaffected.",
+    "qty": "Qty"
   },
   "navigation": {
     "groups": {
@@ -82,7 +83,7 @@
       "telemetry": "Telemetry",
       "alerts": "Alerts",
       "machineDashboard": "Machine Dashboard",
-      "workorderDashboard": "Workorder Dashboard",
+      "workorderDashboard": "Work Order Dashboard",
       "preventiveDashboard": "Preventive Dashboard",
       "analytics": "Analytics",
       "workOrders": "Work Orders",
@@ -316,8 +317,8 @@
       "whyTitle": "Why this alert fired",
       "whyProcurementDescription": "Projected depletion falls within the sparepart lead-time window.",
       "whyThresholdDescription": "Consumed lifetime reached the configured threshold at the time of detection.",
-      "procurementParagraph": "Projected depletion for sparepart <sparepart>{sparepartName}</sparepart> (function: {functionName}) on machine <machine>{machineCode}</machine> falls within its procurement lead-time window, so ordering should start before stock-out.",
-      "thresholdParagraph": "Consumed percentage <consumed>{consumedPct}</consumed> reached the configured threshold of <threshold>{thresholdPct}</threshold> for sparepart <sparepart>{sparepartName}</sparepart> (function: {functionName}) on machine <machine>{machineCode}</machine>.",
+      "procurementParagraph": "Projected depletion for <sparepart>{sparepartName}</sparepart> (function: {functionName}) on machine <machine>{machineCode}</machine> is within its lead-time window — order before stock-out.",
+      "thresholdParagraph": "Consumed <consumed>{consumedPct}</consumed> reached the configured threshold <threshold>{thresholdPct}</threshold> for sparepart <sparepart>{sparepartName}</sparepart> (function: {functionName}) on machine <machine>{machineCode}</machine>.",
       "statusReasonLabel": "Status reason:",
       "rateLabel": "Rate per operating hour",
       "rateValue": "{value} counters/op-hour",
@@ -355,7 +356,7 @@
       "timelineLoadFailed": "Failed to load escalation timeline.",
       "historyLoadFailed": "Failed to load notification history.",
       "auditLoadFailed": "Failed to load audit evidence.",
-      "emptyTimeline": "No notifications queued for this alert yet. A TECHNICIAN job is created when the alert opens; escalation follows every 15 minutes.",
+      "emptyTimeline": "No notifications yet. A TECHNICIAN job is created when the alert opens; escalation every 15 minutes.",
       "alertCreatedLine": "Alert created: {datetime}",
       "emptyHistory": "No notification jobs for this alert.",
       "emptyAudit": "No audit evidence yet.",
@@ -670,7 +671,7 @@
     "hero": {
       "eyebrow": "Syncro · Live Machine Channel",
       "title": "One channel for every machine that never sleeps.",
-      "subtitle": "Machine setup, live health, and spare-part alerts — command the factory floor from your pocket."
+      "subtitle": "Machine setup, live health, and sparepart alerts — command the factory floor from your pocket."
     }
   },
   "wahaTemplates": {
@@ -732,14 +733,14 @@
   },
   "machineDashboard": {
     "title": "Machine Dashboard",
-    "subtitle": "Machine state, telemetry freshness, open workorders and alerts.",
-    "hint": "Machine state, telemetry freshness, open workorders/alerts and lifetime risk within your scope.",
+    "subtitle": "Machine state, telemetry freshness, open work orders and alerts.",
+    "hint": "Machine state, telemetry freshness, open work orders/alerts and lifetime risk within your scope.",
     "plantScopeError": "Plant scope unavailable. Try again or contact your administrator.",
     "noPlantsAssigned": "No plants assigned to your account. Contact your administrator.",
     "loadFailed": "Failed to load the machine dashboard.",
     "emptyTitle": "No machines in scope",
     "emptyDescription": "No machines are available for the current plant scope.",
-    "openWorkorders": "Open workorders",
+    "openWorkorders": "Open work orders",
     "openAlerts": "Open alerts",
     "telemetry": "Telemetry",
     "status": {
@@ -758,7 +759,7 @@
     "title": "Telemetry",
     "subtitle": "Latest machine state refreshed automatically every 30 seconds.",
     "latestTitle": "Latest telemetry",
-    "latestDescription": "Telemetry freshness is separate from manual machine status. ONLINE means data within 5 minutes; STALE means no data for more than 15 minutes.",
+    "latestDescription": "Telemetry freshness is separate from manual machine status. ONLINE: data within 5 minutes; STALE: no data for more than 15 minutes.",
     "allPlants": "All plants",
     "loading": "Loading telemetry…",
     "activeMachines": "{count, plural, one {# active machine} other {# active machines}}",
@@ -823,7 +824,7 @@
     "emptyTitle": "No open alerts",
     "emptyDescription": "No open sparepart alerts.",
     "consumed": "{percent}% consumed",
-    "noSnapshot": "No consumed snapshot",
+    "noSnapshot": "No consumption snapshot",
     "threshold": "threshold {percent}%",
     "moreAlerts": "+{count} more open alerts — view all",
     "rowAria": "Alert for {sparepart} on {machine}",
@@ -872,7 +873,7 @@
       },
       "delete": {
         "title": "Delete plant?",
-        "description": "This removes {code} and existing plant assignments tied to it.",
+        "description": "This removes {code} and its plant assignments.",
         "action": "Delete plant"
       },
       "toast": {
@@ -930,7 +931,7 @@
       },
       "delete": {
         "title": "Delete machine?",
-        "description": "This removes {code}. Future sparepart, telemetry, responsibility, alert, or audit records may block deletion.",
+        "description": "This removes {code}. Dependent sparepart, telemetry, responsibility, alert, or audit records may block deletion.",
         "action": "Delete machine"
       },
       "toast": {
@@ -977,13 +978,13 @@
       },
       "assign": {
         "title": "Assign section",
-        "description": "{name} belongs to exactly one section. Reassignment to a different section is rejected — clear the current section first.",
+        "description": "{name} belongs to exactly one section. Clear the current section before reassigning.",
         "placeholder": "No section (unassigned)",
         "save": "Save assignment"
       },
       "delete": {
         "title": "Delete machine group?",
-        "description": "This removes {name}. Deletion succeeds while no dependent machines exist; future dependent machines may block it.",
+        "description": "This removes {name}. Deletion is blocked once dependent machines exist.",
         "action": "Delete machine group"
       },
       "toast": {
@@ -999,7 +1000,7 @@
     },
     "section": {
       "title": "Sections",
-      "description": "Org containers (MACHINERY / UTILITY / WORKSHOP) per plant. Machine groups are assigned to exactly one section.",
+      "description": "Organizational sections per plant (MACHINERY / UTILITY / WORKSHOP). Each machine group belongs to exactly one section.",
       "create": "Create section",
       "readOnly": "Read-only",
       "viewOnly": "View only",
@@ -1034,7 +1035,7 @@
       },
       "leaderDialog": {
         "title": "Assign leader — {name}",
-        "description": "Assigning a leader stores the section leader and auto-links the LEADER machine responsibility for every machine in the section's groups. Clearing removes both.",
+        "description": "Assigning a leader also auto-links the LEADER machine responsibility for every machine in the section's groups. Clearing removes both.",
         "selectPlaceholder": "Select leader by NIK or name",
         "clear": "Clear leader"
       },
@@ -1051,7 +1052,7 @@
     },
     "team": {
       "title": "Cross-Plant Teams",
-      "description": "Expiry-dated groups of members and target machines. Members gain scoped access to the targeted machines across plants while the team is active.",
+      "description": "Expiry-dated groups of members and target machines. Active teams grant members scoped machine access across plants.",
       "create": "Create team",
       "readOnly": "Read-only",
       "viewOnly": "View only",
@@ -1089,7 +1090,7 @@
         "remove": "Remove",
         "noMembers": "No members yet.",
         "noLinkable": "No linkable machines in this view — every listed machine is already linked, or none exist yet.",
-        "truncation": "Showing the first {shown} of {total} machines — refine the plant filter to reach machines beyond this page.",
+        "truncation": "Showing the first {shown} of {total} machines — narrow the plant filter to see the rest.",
         "plantFilter": "Plant filter",
         "allPlants": "All plants",
         "linkMachine": "Link machine",
@@ -1221,7 +1222,7 @@
       "notAvailable": "Not available",
       "delete": {
         "title": "Delete installation?",
-        "description": "This removes the baseline for {machineCode} · {sparepartCode}. Future alert or audit records may block deletion.",
+        "description": "This removes the baseline for {machineCode} · {sparepartCode}. Dependent alert or audit records may block deletion.",
         "action": "Delete installation"
       },
       "validation": {
@@ -1377,7 +1378,7 @@
     },
     "sparepartTaxonomy": {
       "title": "Category",
-      "description": "Manage controlled sparepart category values. Category determines which spareparts belong to which domain (e.g. Electric, Mechanic). Only approved categories are accepted by the system.",
+      "description": "Manage sparepart categories. A category assigns spareparts to a domain (e.g. Electric, Mechanic). Only approved categories are accepted.",
       "add": "Add category",
       "readOnly": "Read-only",
       "viewOnly": "View only",
@@ -1411,7 +1412,7 @@
     },
     "responsibility": {
       "title": "Assign Responsibility",
-      "description": "Assign a user responsibility for a specific machine. Note: The MANAGER_MAINTENANCE application role is distinct from the MANAGER machine responsibility level.",
+      "description": "Assign a user responsibility for a specific machine. MANAGER_MAINTENANCE (application role) differs from the MANAGER machine responsibility level.",
       "viewerNotice": "You do not have permission to assign responsibilities.",
       "machine": "Machine",
       "user": "User",
@@ -1517,8 +1518,8 @@
       "monthOfYear": "Month of year",
       "descriptionOptional": "Description (optional)",
       "descriptionPlaceholder": "Optional description",
-      "autoWorkorderLabel": "Auto-create workorder on approval",
-      "autoWorkorderHint": "When a schedule is approved, an internal preventive workorder is created.",
+      "autoWorkorderLabel": "Auto-create work order on approval",
+      "autoWorkorderHint": "When a schedule is approved, an internal preventive work order is created.",
       "creating": "Creating…",
       "createProgram": "Create program",
       "loadFailed": "Failed to load preventive programs.",
@@ -1527,8 +1528,8 @@
       "month": " / month {month}",
       "active": "active",
       "inactive": "inactive",
-      "autoWorkorder": "auto-workorder",
-      "noAutoWorkorder": "no auto-workorder"
+      "autoWorkorder": "auto-work order",
+      "noAutoWorkorder": "no auto-work order"
     },
     "schedules": {
       "loadFailed": "Failed to load preventive schedules.",
@@ -1572,7 +1573,7 @@
       "scheduleLabel": "Schedule:",
       "dueLabel": "Due:",
       "statusLabel": "Status:",
-      "workorderLabel": "Workorder:",
+      "workorderLabel": "Work Order:",
       "checklistResults": "Checklist Results",
       "item": "Item",
       "value": "Value",
@@ -1627,7 +1628,7 @@
     },
     "departments": {
       "title": "Departments",
-      "description": "Organization-maintenance departments (people units) per plant, with SPV/MG leaders and member technicians. Departments are soft-inactivated, never deleted.",
+      "description": "Staff departments per plant with SPV/MG leaders and member technicians. Departments are inactivated, never deleted.",
       "createDepartment": "Create department",
       "editDepartment": "Edit department",
       "dialogHint": "SPV/MG must be enabled users with access to the same plant. Names must be unique per plant.",
@@ -1649,7 +1650,7 @@
       "selectMg": "Select MG",
       "saveDepartment": "Save department",
       "manageMembers": "Manage members — {name}",
-      "membersHint": "Assign staff to this department. Members can belong to multiple departments; saving replaces the member set.",
+      "membersHint": "Assign staff here. Members can join multiple departments; saving replaces the whole member list.",
       "noEnabledUsers": "No enabled users available.",
       "saveAssignments": "Save assignments",
       "created": "Department created.",
@@ -1663,7 +1664,7 @@
     "roles": {
       "title": "Role Mapping",
       "loadFailedDesc": "Refresh page or contact administrator.",
-      "description": "Assign job titles and system roles to users. Each user gets exactly one job title and any number of system roles (their effective permission set is the application role + job title default + role bindings).",
+      "description": "Assign job titles and system roles to users. Each user gets exactly one job title; the effective permission set is application role + job title default + role bindings.",
       "systemRoles": "System roles",
       "systemRolesTitle": "System Roles",
       "jobTitlePanel": "Job Title",
@@ -1688,7 +1689,7 @@
     },
     "users": {
       "title": "Users",
-      "description": "User master: display name, NIK, phone, job title, and department. NIK and phone are unique when set; empty values are cleared. Roles are managed at bootstrap — only master fields are editable here.",
+      "description": "User master: display name, NIK, phone, job title, and department. NIK and phone are unique when set. Roles are managed at bootstrap.",
       "couldNotLoadTitle": "Users could not be loaded",
       "couldNotLoadDesc": "Refresh page or contact administrator if access should be available.",
       "noUsersTitle": "No users yet",
@@ -1865,7 +1866,7 @@
     "type": "Type",
     "qty": "Qty",
     "table": {
-      "workorder": "Workorder",
+      "workorder": "Work Order",
       "part": "Part",
       "requested": "Requested"
     },
@@ -1945,13 +1946,13 @@
     "requestPart": {
       "trigger": "Request part",
       "title": "Request part",
-      "description": "Search existing spareparts or add a new material code. Items sit in a draft cart — submit to warehouse only when ready.",
+      "description": "Search existing spareparts or add a new material code. Items stay in a draft cart until you submit to the warehouse.",
       "searchLabel": "Search existing sparepart (BOM, material code, name)",
       "searchPlaceholder": "Type to search...",
       "mcInResult": " · MC:{code}",
       "selected": "Selected:",
       "mcInSelected": " · MC: {code}",
-      "noBomHint": "No BOM selected — classify the new part so it is created with full taxonomy (machine is inherited from the work order).",
+      "noBomHint": "No BOM selected — classify the new part with full taxonomy (machine is inherited from the work order).",
       "materialCodeLabel": "Material code (or leave blank for new part)",
       "materialCodePlaceholder": "e.g. MC-0001",
       "priceLabel": "Est. unit price (optional)",
@@ -1980,6 +1981,18 @@
       "search": "Search {word}",
       "none": "No {word} found",
       "create": "Create {word} “{name}”"
+    },
+    "detail": {
+      "notFound": "Request not found.",
+      "newPart": "New part",
+      "requestedBy": "Requested by",
+      "requestedAt": "Requested at",
+      "updatedAt": "Updated at",
+      "notes": "Notes",
+      "statusFlow": "Status flow",
+      "terminal": "This request is closed — no further actions.",
+      "back": "Back to requests",
+      "trigger": "Detail"
     }
   },
   "workOrders": {
@@ -2000,9 +2013,12 @@
     },
     "transition": {
       "OPEN": "Open",
-      "IN_PROGRESS": "In Progress",
-      "PENDING_REVIEW": "Pending Review",
-      "CLOSED": "Close"
+      "IN_PROGRESS": "Start Work",
+      "RESUME": "Resume Work",
+      "PENDING_SPAREPART": "Wait for Sparepart",
+      "PENDING_REVIEW": "Submit for Review",
+      "CLOSED": "Close",
+      "CANCELLED": "Cancel"
     },
     "stoppedReason": {
       "WAITING_SPAREPART": "Waiting Sparepart",
@@ -2011,9 +2027,49 @@
       "OTHER": "Other",
       "NONE": "None"
     },
+    "createDialog": {
+      "trigger": "Create Work Order",
+      "title": "Create Work Order",
+      "description": "Pick a machine, a category, and describe the problem. The work order is created in Open status.",
+      "machinePlaceholder": "Select machine",
+      "categoryPlaceholder": "Select category",
+      "descriptionPlaceholder": "Describe the issue or work needed...",
+      "productionHint": "As a Production Leader, the category is limited to Breakdown.",
+      "save": "Create Work Order",
+      "created": "Work Order {id} created",
+      "failed": "Failed to create work order"
+    },
+    "detail": {
+      "title": "Work Order Detail",
+      "back": "Back to list",
+      "notFound": "Work Order not found (possibly outside the month filter range).",
+      "loadFailed": "Failed to load the work order.",
+      "info": "Information",
+      "technicians": "Technicians",
+      "noTechnicians": "No technicians assigned yet.",
+      "activeBadge": "Active",
+      "droppedBadge": "Dropped",
+      "timeline": "Work Timeline",
+      "noTimeline": "No work logs yet.",
+      "sessionBy": "by {name}",
+      "duration": "Duration {hours} h",
+      "openSession": "not finished",
+      "parts": "Sparepart Requests",
+      "noParts": "No sparepart requests yet.",
+      "partRequested": "Requested {date}",
+      "partUpdated": "Updated {date}",
+      "assignAction": "Assign & Work",
+      "report": "Report",
+      "fmea": "FMEA",
+      "cpk": "CPK",
+      "stopTime": "Stop time",
+      "cpkPdf": "CPK PDF",
+      "noReport": "No report filled in yet.",
+      "ratings": "Ratings"
+    },
     "page": {
       "title": "Work Orders",
-      "subtitle": "View, filter, and manage maintenance workorders.",
+      "subtitle": "View, filter, and manage maintenance work orders.",
       "tabTable": "Table",
       "tabKanban": "Kanban",
       "tabRatings": "Ratings",
@@ -2022,21 +2078,29 @@
     },
     "table": {
       "woNo": "WO No",
+      "trendTitle": "Work Order progress per month (opened vs closed)",
+      "expandAria": "View work detail",
+      "expandSessions": "Work sessions",
+      "expandNoSessions": "No work sessions yet.",
+      "expandParts": "Requested spareparts",
+      "expandNoParts": "No sparepart requests yet.",
+      "expandBy": "by",
+      "expandOpenDetail": "Open detail page",
       "month": "Month",
       "problem": "Problem",
       "technician": "Technician",
       "allStatuses": "All statuses",
       "allCategories": "All categories",
       "searchPlaceholder": "Search WO, machine, category...",
-      "searchAria": "Search workorders",
-      "refreshAria": "Refresh workorders",
-      "loadFailed": "Failed to load workorders.",
-      "empty": "No workorders match this filter."
+      "searchAria": "Search work orders",
+      "refreshAria": "Refresh work orders",
+      "loadFailed": "Failed to load work orders.",
+      "empty": "No work orders match this filter."
     },
     "kanban": {
-      "loadFailed": "Failed to load the workorder board.",
-      "empty": "No workorders",
-      "columnAria": "{title} workorders"
+      "loadFailed": "Failed to load the work order board.",
+      "empty": "No work orders",
+      "columnAria": "{title} work orders"
     },
     "card": {
       "noDescription": "No description",
@@ -2047,6 +2111,7 @@
     "actionsCell": {
       "menu": {
         "assignWork": "Assign & Work",
+        "detail": "Detail",
         "requestPart": "Request Part",
         "report": "Report",
         "print": "Print"
@@ -2058,6 +2123,12 @@
         "noAssignable": "No assignable technicians.",
         "selectAria": "Select {name}",
         "workLog": "Work log",
+        "pastSessions": "Already-logged sessions",
+        "newAssignment": "New assignment",
+        "assignedBadge": "Active",
+        "sessionN": "Session {n}",
+        "addSession": "Add work session",
+        "removeSession": "Remove session",
         "start": "Start",
         "end": "End",
         "stoppedReason": "Stopped reason",
@@ -2068,25 +2139,25 @@
         "pickDate": "Pick date",
         "hourAria": "{label} hour",
         "minuteAria": "{label} minute",
-        "backdateNote": "Work log backdate is clamped to the workorder creation time: {datetime}",
+        "backdateNote": "Work log backdate is clamped to the work order creation time: {datetime}",
         "save": "Save Assignments & Work",
         "saved": "Assignments and work logs saved",
         "errors": {
           "activityNote": "Activity note is required to save this work log.",
           "startRequired": "A start time is required to save this work log.",
-          "backdate": "Start cannot be before the workorder was created.",
+          "backdate": "Start cannot be before the work order was created.",
           "endBeforeStart": "End time must be after start time.",
           "failed": "Failed to save. Check the values and try again."
         }
       },
       "transitionDialog": {
-        "title": "Move to {status} — {id}",
-        "move": "Move to {status}",
-        "moved": "Workorder moved to {status}",
+        "title": "{status} — {id}",
+        "move": "{status}",
+        "moved": "Work Order status changed: {status}",
         "reasonLabel": "Reason (optional)",
         "reasonPlaceholder": "Reason for this status change...",
         "updating": "Updating...",
-        "failed": "Failed to update workorder status"
+        "failed": "Failed to update work order status"
       },
       "reportDialog": {
         "title": "Work Order Report — {id}",
@@ -2099,64 +2170,66 @@
         "correctivePlaceholder": "Corrective actions taken...",
         "preventive": "Preventive (future prevention)",
         "preventivePlaceholder": "Preventive measures for the future...",
-        "save": "Save Report"
+        "save": "Save Report",
+        "saved": "Work Order report saved",
+        "failed": "Failed to save the work order report"
       }
     },
     "ratings": {
-      "loadFailed": "Failed to load rateable workorders.",
-      "empty": "No closed workorders available to rate in your scope.",
+      "loadFailed": "Failed to load rateable work orders.",
+      "empty": "No closed work orders available to rate in your scope.",
       "assignedTechnician": "Assigned technician:",
       "starAria": "{label}: {count, plural, one {# star} other {# stars}}",
       "panel": {
         "noDimensions": "No rating dimensions configured yet.",
-        "noPermission": "You do not have permission to rate this workorder.",
+        "noPermission": "You do not have permission to rate this work order.",
         "technicianRating": "Technician rating",
-        "workorderRating": "Workorder rating",
+        "workorderRating": "Work Order rating",
         "submitted": "{label} (submitted)",
         "technicianDimLabel": "Technician {label}",
-        "workorderDimLabel": "Workorder {label}",
+        "workorderDimLabel": "Work Order {label}",
         "submittedTechnicianDim": "Technician rating {label}",
-        "submittedWorkorderDim": "Workorder rating {label}",
+        "submittedWorkorderDim": "Work Order rating {label}",
         "rateTechnician": "Rate a technician",
-        "rateWorkorder": "Rate the workorder",
+        "rateWorkorder": "Rate the work order",
         "technicianAria": "Technician to rate",
         "loading": "Loading…",
         "selectTechnician": "Select technician",
         "submitting": "Submitting…",
         "submitTechnician": "Submit technician rating",
-        "submitWorkorder": "Submit workorder rating",
-        "noExecutingTechnicians": "No executing technicians on this workorder."
+        "submitWorkorder": "Submit work order rating",
+        "noExecutingTechnicians": "No executing technicians on this work order."
       }
     },
     "ackTaskList": {
       "page": {
         "title": "Ack Task List",
-        "subtitle": "Acknowledged vs pending acks and rated vs unrated closed workorders.",
+        "subtitle": "Acknowledged vs pending acks and rated vs unrated closed work orders.",
         "loading": "Loading ack task list…"
       },
       "list": {
         "loadFailed": "Failed to load the ack task list.",
         "noTasks": "No tasks",
-        "noTasksDesc": "No pending acks and no closed workorders to rate.",
+        "noTasksDesc": "No pending acks and no closed work orders to rate.",
         "pendingTitle": "Pending acks",
-        "pendingDesc": "Workorders in progress past the ack deadline that still need acknowledgment.",
+        "pendingDesc": "Work Orders in progress past the ack deadline that still need acknowledgment.",
         "nonePending": "No pending acknowledgments.",
         "pendingBadge": "pending ack",
         "acknowledge": "Acknowledge",
         "acknowledgedTitle": "Acknowledged",
-        "acknowledgedDesc": "Workorders already acknowledged via the 4-hour escalation flow.",
-        "noneAcknowledged": "No acknowledged workorders yet.",
-        "ratedTitle": "Rated closed workorders",
-        "noneRated": "No rated closed workorders.",
+        "acknowledgedDesc": "Work Orders already acknowledged via the 4-hour escalation flow.",
+        "noneAcknowledged": "No acknowledged work orders yet.",
+        "ratedTitle": "Rated closed work orders",
+        "noneRated": "No rated closed work orders.",
         "ratedBadge": "rated",
-        "unratedTitle": "Unrated closed workorders",
-        "noneUnrated": "No unrated closed workorders.",
+        "unratedTitle": "Unrated closed work orders",
+        "noneUnrated": "No unrated closed work orders.",
         "unratedBadge": "unrated"
       }
     },
     "messages": {
-      "workorderAcknowledged": "Workorder acknowledged",
-      "ackFailed": "Failed to acknowledge workorder",
+      "workorderAcknowledged": "Work Order acknowledged",
+      "ackFailed": "Failed to acknowledge work order",
       "todoCreated": "Todo created",
       "todoCreateFailed": "Failed to create todo",
       "todoAssigned": "Todo assigned",
@@ -2168,39 +2241,39 @@
       "todoDeleteFailed": "Failed to delete todo",
       "technicianRatingSubmitted": "Technician rating submitted",
       "technicianRatingFailed": "Failed to submit technician rating",
-      "workorderRatingSubmitted": "Workorder rating submitted",
-      "workorderRatingFailed": "Failed to submit workorder rating",
-      "workorderApproved": "Workorder approved",
-      "approveFailed": "Failed to approve workorder",
+      "workorderRatingSubmitted": "Work Order rating submitted",
+      "workorderRatingFailed": "Failed to submit work order rating",
+      "workorderApproved": "Work Order approved",
+      "approveFailed": "Failed to approve work order",
       "signatureUploadFailed": "Failed to upload signature image"
     },
     "dashboard": {
-      "title": "Workorder Dashboard",
-      "subtitle": "Workorder distribution by status and category.",
-      "computedNote": "Workorder distribution by status and category, computed on the server.",
+      "title": "Work Order Dashboard",
+      "subtitle": "Work Order distribution by status and category.",
+      "computedNote": "Work Order distribution by status and category, computed on the server.",
       "section": "Section",
       "allSections": "All sections",
       "allStatuses": "All statuses",
       "allCategories": "All categories",
       "plantScopeError": "Plant scope unavailable. Try again or contact your administrator.",
       "noPlantsAssigned": "No plants assigned to your account. Contact your administrator.",
-      "loadFailed": "Failed to load the workorder dashboard.",
-      "emptyTitle": "No workorders in scope",
-      "emptyDescription": "No workorders match the current filters. Counts are zero, not missing.",
-      "totalWorkorders": "Total workorders",
+      "loadFailed": "Failed to load the work order dashboard.",
+      "emptyTitle": "No work orders in scope",
+      "emptyDescription": "No work orders match the current filters. Counts are zero, not missing.",
+      "totalWorkorders": "Total work orders",
       "statusKpi": "Status · {status}",
-      "monthlyTitle": "Maintenance workorders",
-      "monthlyDescription": "Open vs closed workorders per month (Jan – Dec, current year).",
+      "monthlyTitle": "Maintenance work orders",
+      "monthlyDescription": "Open vs closed work orders per month (Jan – Dec, current year).",
       "open": "Open",
       "close": "Close",
       "noMonthlyCounts": "No monthly counts.",
       "byStatusTitle": "By status",
-      "byStatusDescription": "Workorder count per lifecycle status.",
+      "byStatusDescription": "Work Order count per lifecycle status.",
       "noStatusCounts": "No status counts.",
       "byCategoryTitle": "By category",
-      "byCategoryDescription": "Workorder count per category.",
+      "byCategoryDescription": "Work Order count per category.",
       "noCategoryCounts": "No category counts.",
-      "workorders": "Workorders",
+      "workorders": "Work Orders",
       "uncategorized": "Uncategorized"
     },
     "categoryManagement": {
@@ -2280,7 +2353,7 @@
     "breakdownCount": "{count} breakdowns",
     "completedCount": "{count} completed",
     "reliabilityTitle": "Reliability window",
-    "reliabilityDescription": "Monthly rolling window keyed on the derived workorder stop time.",
+    "reliabilityDescription": "Monthly rolling window keyed on the derived work order stop time.",
     "windowLabel": "Window:",
     "windowTo": "to",
     "computedLabel": "Computed:",
@@ -2289,9 +2362,9 @@
     "cacheServed": "Served from cache ({seconds}s old).",
     "loadFailedTechnician": "Failed to load the technician KPI analytics.",
     "noTechniciansTitle": "No technicians in scope",
-    "noTechniciansDescription": "No workorders with an assigned or session technician exist in the current scope.",
+    "noTechniciansDescription": "No work orders with an assigned or session technician exist in the current scope.",
     "technicianTableTitle": "Technician KPI",
-    "technicianTableDescription": "Objective KPIs from completed workorders plus per-dimension average ratings (1–5 stars).",
+    "technicianTableDescription": "Objective KPIs from completed work orders plus per-dimension average ratings (1–5 stars).",
     "table": {
       "technician": "Technician",
       "completed": "Completed",
@@ -2318,7 +2391,7 @@
       },
       "mtbf": {
         "title": "MTBF (days)",
-        "description": "Mean time between failures per machine, materialized monthly."
+        "description": "Average time between failures per machine, materialized monthly."
       },
       "mttr": {
         "title": "MTTR (minutes)",
@@ -2326,7 +2399,7 @@
       },
       "breakdown": {
         "title": "Breakdown count",
-        "description": "Closed breakdown workorders per plant against the monthly target (lower is better)."
+        "description": "Closed breakdown work orders per plant against the monthly target (lower is better)."
       },
       "mar": {
         "title": "MAR (%)",
@@ -2338,28 +2411,28 @@
       },
       "technician": {
         "title": "Technician performance",
-        "description": "Monthly materialized technician performance (ratings 1–5, workorders, first-time-fix)."
+        "description": "Monthly materialized technician performance (ratings 1-5, workorders, first-time-fix)."
       }
     },
     "loadFailedSection": "Failed to load {title}.",
     "refreshFailedBadge": "Refresh failed",
     "refreshFailedBody": "Latest monthly refresh failed — the rows below may be stale.",
-    "insufficientBody": "No materialized {title} rows exist for this month yet — the monthly refresh has not produced data. Values are never fabricated.",
+    "insufficientBody": "No materialized {title} data for this month yet — the monthly refresh has not run. Values are never fabricated.",
     "shellBrand": "Syncro",
     "shellTitle": "Analytics",
     "shellSubtitle": "MTBF/MTTR reliability and technician KPIs, computed on the server.",
     "targetDialog": {
       "trigger": "Configure targets",
       "title": "Configure KPI targets",
-      "description": "Targets for {month}. Values are validated server-side and every change is audit-logged. Leave a field empty to keep its current value.",
-      "loadError": "Failed to load the current targets — the fields below start empty. Saving still keeps any stored value for fields you leave empty.",
+      "description": "Targets for {month}. Values are server-validated and audit-logged. Leave a field empty to keep its current value.",
+      "loadError": "Failed to load current targets — the fields below start empty. Leaving a field empty keeps its stored value.",
       "selectPlant": "Select a plant",
       "save": "Save target",
       "saving": "Saving…",
       "fields": {
         "monthlyBreakdownTarget": {
           "label": "Monthly breakdown target",
-          "hint": "Maximum breakdown workorders per month (lower is better)."
+          "hint": "Maximum breakdown work orders per month (lower is better)."
         },
         "mtbfTargetDays": {
           "label": "MTBF target (days)",
