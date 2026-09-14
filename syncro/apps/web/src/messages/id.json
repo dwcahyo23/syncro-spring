@@ -2065,7 +2065,9 @@
       "stopTime": "Waktu henti",
       "cpkPdf": "PDF CPK",
       "noReport": "Laporan belum diisi.",
-      "ratings": "Penilaian"
+      "ratings": "Penilaian",
+      "ratingsLocked": "Penilaian hanya dapat dilakukan setelah work order berstatus Ditutup.",
+      "openWarehouse": "Buka di cockpit gudang"
     },
     "page": {
       "title": "Work Order",

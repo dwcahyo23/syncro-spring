@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import Link from "next/link";
+
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, PackageSearchIcon } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
@@ -60,7 +62,9 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline" | "gho
 };
 
 /** Story 12-2: row actions available per current status (FR-141). Keys map to `sparepartRequests.actions.*`. */
-function availableActions(status: SparepartRequestStatus): { actionKey: string; toStatus: SparepartRequestStatus }[] {
+export function availableActions(
+  status: SparepartRequestStatus,
+): { actionKey: string; toStatus: SparepartRequestStatus }[] {
   switch (status) {
     case "REQUESTED":
     case "PENDING_COMPLETION":
@@ -85,7 +89,7 @@ function availableActions(status: SparepartRequestStatus): { actionKey: string; 
   }
 }
 
-function MreDialog({ requestId }: { requestId: string }) {
+export function MreDialog({ requestId }: { requestId: string }) {
   const t = useTranslations("sparepartRequests");
   const [open, setOpen] = useState(false);
   const [mreCode, setMreCode] = useState("");
@@ -257,6 +261,9 @@ export function SparepartRequestsPageContent() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
+                        <Button asChild variant="ghost" size="sm" className="text-xs">
+                          <Link href={`/dashboard/sparepart-requests/${request.id}`}>{t("detail.trigger")}</Link>
+                        </Button>
                         {actions.map((action) => (
                           <Button
                             key={action.toStatus}

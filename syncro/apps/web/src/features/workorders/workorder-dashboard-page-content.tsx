@@ -33,16 +33,7 @@ interface CategoryOption {
   label: string;
 }
 
-const STATUS_OPTIONS = [
-  "DRAFT",
-  "OPEN",
-  "ASSIGNED",
-  "IN_PROGRESS",
-  "ON_PROCUREMENT",
-  "DONE",
-  "CLOSED",
-  "CANCELLED",
-] as const;
+const STATUS_OPTIONS = ["OPEN", "IN_PROGRESS", "PENDING_SPAREPART", "PENDING_REVIEW", "CLOSED", "CANCELLED"] as const;
 
 /**
  * Workorder dashboard (story 14-1, FR-171): KPI cards (total, by status) + status and
@@ -337,16 +328,14 @@ function kpiTone(status: string): string {
   switch (status) {
     case "OPEN":
       return "status-icon-critical";
-    case "ASSIGNED":
     case "IN_PROGRESS":
+    case "PENDING_REVIEW":
       return "status-icon-warning";
-    case "ON_PROCUREMENT":
+    case "PENDING_SPAREPART":
       return "status-icon-info";
-    case "DONE":
     case "CLOSED":
       return "status-icon-healthy";
     case "CANCELLED":
-      return "status-icon-neutral";
     default:
       return "status-icon-neutral";
   }

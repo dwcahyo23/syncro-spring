@@ -18,11 +18,10 @@ import type { KanbanView } from "@/features/workorders/types";
  * status columns in v1).
  */
 const COLUMNS: { status: string }[] = [
-  { status: "DRAFT" },
   { status: "OPEN" },
-  { status: "ASSIGNED" },
   { status: "IN_PROGRESS" },
-  { status: "ON_PROCUREMENT" },
+  { status: "PENDING_SPAREPART" },
+  { status: "PENDING_REVIEW" },
 ];
 
 export function KanbanBoard() {

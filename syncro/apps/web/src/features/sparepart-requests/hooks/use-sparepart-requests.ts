@@ -19,6 +19,7 @@ const REQUESTS_KEY = "/api/v1/sparepart-requests";
 
 /** Creates a sparepart request (story 12-1). */
 export function useCreateSparepartRequest() {
+  const queryClient = useQueryClient();
   const t = useTranslations("sparepartRequests");
   const te = useTranslations("errors");
   return useMutation({
@@ -31,6 +32,11 @@ export function useCreateSparepartRequest() {
     },
     onSuccess: () => {
       toast.success(t("toast.created"));
+      // Keep the WO cockpit fresh: detail parts[] reads from print-report, and a new
+      // request can flip the workorder to PENDING_SPAREPART server-side — so refresh
+      // the whole workorders query family plus the requests list itself.
+      queryClient.invalidateQueries({ queryKey: ["/api/v1/workorders"] });
+      queryClient.invalidateQueries({ queryKey: [REQUESTS_KEY] });
     },
     onError: (error: unknown) => {
       const resp = errorResponse(error);

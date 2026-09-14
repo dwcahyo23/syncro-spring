@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import Link from "next/link";
 
 import { useQuery } from "@tanstack/react-query";
 import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
@@ -16,18 +18,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useListUsersMaster } from "@/features/organization/hooks/use-users";
+import { CreateWorkOrderButton } from "@/features/workorders/components/create-workorder-dialog";
 import { WorkorderActionsCell } from "@/features/workorders/components/workorder-actions-cell";
+import { ExpandToggle, WorkorderRowExpand } from "@/features/workorders/components/workorder-row-expand";
+import { WorkorderTrendStrip } from "@/features/workorders/components/workorder-trend-strip";
 import { useWorkorders } from "@/features/workorders/hooks/use-workorders";
 import type { WorkOrderListParams, WorkOrderListRow } from "@/features/workorders/types";
 import { syncroFetch } from "@/lib/api/orval-mutator";
 
 const WORKORDER_STATUSES = [
-  "DRAFT",
   "OPEN",
-  "ASSIGNED",
   "IN_PROGRESS",
-  "ON_PROCUREMENT",
-  "DONE",
+  "PENDING_SPAREPART",
+  "PENDING_REVIEW",
   "CLOSED",
   "CANCELLED",
 ] as const;
@@ -80,6 +83,16 @@ export function WorkorderTable() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [categoryCode, setCategoryCode] = useState("");
+  // Row ids whose inline work-detail (sessions + spareparts) is visible.
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
+  const toggleExpanded = useCallback((id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
   const { data: categoriesRes } = useQuery<CategoryOption[]>({
     queryKey: ["/api/v1/work-order-categories"],
@@ -147,20 +160,38 @@ export function WorkorderTable() {
     setPage(0);
   }, []);
 
-  const formatDate = (iso: string) => {
-    try {
-      return format.dateTime(new Date(iso), { day: "numeric", month: "short", year: "numeric" });
-    } catch {
-      return iso;
-    }
-  };
+  const formatDate = useCallback(
+    (iso: string) => {
+      try {
+        return format.dateTime(new Date(iso), { day: "numeric", month: "short", year: "numeric" });
+      } catch {
+        return iso;
+      }
+    },
+    [format],
+  );
 
   const columns = useMemo<ColumnDef<WorkOrderListRow>[]>(
     () => [
       {
+        id: "expand",
+        size: 36,
+        header: "",
+        cell: ({ row }) => (
+          <ExpandToggle expanded={expandedIds.has(row.original.id)} onToggle={() => toggleExpanded(row.original.id)} />
+        ),
+      },
+      {
         accessorKey: "id",
         header: t("table.woNo"),
-        cell: ({ row }) => <span className="font-medium font-mono text-xs">{row.original.id}</span>,
+        cell: ({ row }) => (
+          <Link
+            href={`/dashboard/workorders/${row.original.id}`}
+            className="font-mono text-xs font-medium hover:underline"
+          >
+            {row.original.id}
+          </Link>
+        ),
       },
       {
         accessorKey: "status",
@@ -226,7 +257,8 @@ export function WorkorderTable() {
     ],
     // formatDate closes over the formatter; headers over the translator — both
     // stable per locale change, so include them to rebuild columns on switch.
-    [t, tc, formatDate],
+    // assignableUsers/isLoadingUsers feed the actions cell's dialogs.
+    [t, tc, formatDate, assignableUsers, isLoadingUsers, expandedIds, toggleExpanded],
   );
 
   const table = useReactTable({
@@ -244,6 +276,9 @@ export function WorkorderTable() {
 
   return (
     <div className="space-y-4">
+      {/* Monthly progress at a glance (leader feedback 2026-09-14); follows the table's status/category filters */}
+      <WorkorderTrendStrip status={status} categoryCode={categoryCode} />
+
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1">
@@ -310,6 +345,8 @@ export function WorkorderTable() {
         >
           <RefreshCwIcon className={isFetching ? "size-4 animate-spin" : "size-4"} />
         </Button>
+
+        <CreateWorkOrderButton />
       </div>
 
       {/* Loading skeleton */}
@@ -348,13 +385,25 @@ export function WorkorderTable() {
               ))}
             </TableHeader>
             <TableBody>
-              {table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
-                  ))}
-                </TableRow>
-              ))}
+              {table.getRowModel().rows.map((row) => {
+                const expanded = expandedIds.has(row.original.id);
+                return (
+                  <Fragment key={row.id}>
+                    <TableRow>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                      ))}
+                    </TableRow>
+                    {expanded ? (
+                      <TableRow>
+                        <TableCell colSpan={row.getVisibleCells().length} className="bg-muted/20">
+                          <WorkorderRowExpand workOrderId={row.original.id} />
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
+                  </Fragment>
+                );
+              })}
             </TableBody>
           </Table>
           <DataTablePagination
@@ -388,16 +437,15 @@ function statusClass(status: string): string {
   switch (status) {
     case "OPEN":
       return "status-badge-critical";
-    case "ASSIGNED":
     case "IN_PROGRESS":
       return "status-badge-warning";
-    case "ON_PROCUREMENT":
+    case "PENDING_SPAREPART":
       return "status-badge-info";
-    case "DONE":
+    case "PENDING_REVIEW":
+      return "status-badge-warning";
     case "CLOSED":
       return "status-badge-healthy";
     case "CANCELLED":
-      return "status-badge-neutral";
     default:
       return "status-badge-neutral";
   }

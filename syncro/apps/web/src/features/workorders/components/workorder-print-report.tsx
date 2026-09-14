@@ -46,7 +46,7 @@ export function WorkorderPrintReportPage({ workOrderId, onClose }: { workOrderId
   }, [data, isLoading]);
 
   const canApprove =
-    data?.header && (data.header.status === "DONE" || data.header.status === "CLOSED") && !data.signature;
+    data?.header && (data.header.status === "PENDING_REVIEW" || data.header.status === "CLOSED") && !data.signature;
 
   const formatInstant = (iso: string) => {
     try {

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PackageSearchIcon, PlusIcon, ShoppingCartIcon, Trash2Icon } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 
@@ -68,6 +68,7 @@ export function RequestPartDialog({
   const t = useTranslations("sparepartRequests");
   const tc = useTranslations("common");
   const format = useFormatter();
+  const queryClient = useQueryClient();
   const createRequest = useCreateSparepartRequest();
   const createTaxonomy = useCreateSparepartTaxonomy();
   const [internalOpen, setInternalOpen] = useState(false);
@@ -173,8 +174,13 @@ export function RequestPartDialog({
     return groups;
   }, [taxonomyItems]);
 
-  const linkedOptions = (dimension: SparepartTaxonomyView["dimension"]) =>
-    (taxonomyByDimension.get(dimension ?? "") ?? []).filter((item) => !categoryId || item.categoryId === categoryId);
+  const linkedOptions = (dimension: SparepartTaxonomyView["dimension"]) => {
+    const group = taxonomyByDimension.get(dimension ?? "") ?? [];
+    // CATEGORY rows are top-level (categoryId null) — filtering them by the picked
+    // category always yields nothing and blanks the trigger. Only child dimensions link.
+    if (dimension === SparepartTaxonomyRequestDimension.CATEGORY) return group;
+    return group.filter((item) => !categoryId || item.categoryId === categoryId);
+  };
 
   const taxonomyCode = (name: string) =>
     name
@@ -193,6 +199,8 @@ export function RequestPartDialog({
       },
     });
     const createdId = res.data.id;
+    // The created row must land in the picker list — the orval hook never invalidates.
+    await queryClient.invalidateQueries({ queryKey: ["/api/v1/sparepart-taxonomies"] });
     if (createdId) {
       if (dimension === "BRAND") setBrandId(createdId);
       else if (dimension === "KIND") setKindId(createdId);
@@ -250,8 +258,9 @@ export function RequestPartDialog({
   const handleSubmitAll = async () => {
     if (cart.length === 0) return;
     setSubmitting(true);
-    // Fire all creates in parallel; failures are handled individually by the hook's toast.
-    await Promise.allSettled(
+    // Fire all creates in parallel; per-item toasts come from the hook. Only close and
+    // clear the cart when everything landed — a silent close on failure lost data (QA 2026-09-14).
+    const results = await Promise.allSettled(
       cart.map((item) =>
         createRequest.mutateAsync({
           requestType: item.requestType,
@@ -270,8 +279,10 @@ export function RequestPartDialog({
       ),
     );
     setSubmitting(false);
-    setOpen(false);
-    resetAll();
+    if (results.every((r) => r.status === "fulfilled")) {
+      setOpen(false);
+      resetAll();
+    }
   };
 
   return (
@@ -544,7 +555,7 @@ function TaxonomySelect({
   return (
     <div className="space-y-1">
       <Label>{label}</Label>
-      <Select value={value || undefined} onValueChange={onChange} disabled={!creatable && items.length === 0}>
+      <Select value={value} onValueChange={onChange} disabled={!creatable && items.length === 0}>
         <SelectTrigger className="w-full">
           <SelectValue placeholder={t("taxonomy.select", { word })} />
         </SelectTrigger>

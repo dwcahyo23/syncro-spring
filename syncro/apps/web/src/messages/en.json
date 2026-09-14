@@ -2065,7 +2065,9 @@
       "stopTime": "Stop time",
       "cpkPdf": "CPK PDF",
       "noReport": "No report filled in yet.",
-      "ratings": "Ratings"
+      "ratings": "Ratings",
+      "ratingsLocked": "Ratings can only be given once the workorder is closed.",
+      "openWarehouse": "Open in warehouse cockpit"
     },
     "page": {
       "title": "Work Orders",
