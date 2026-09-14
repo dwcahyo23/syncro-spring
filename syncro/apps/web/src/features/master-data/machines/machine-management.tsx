@@ -34,6 +34,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { EntitySelect } from "@/components/syncro/entity-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -265,7 +266,6 @@ export function MachineManagement() {
               value={effectivePlantId}
               disabled={!availablePlants.length || plants.isLoading || isAssignedEmpty}
               onChange={setSelectedPlantId}
-              compact
             />
             <Input
               value={machineSearch}
@@ -447,7 +447,6 @@ export function MachineManagement() {
                   onChange={(plantId) =>
                     setForm((current) => ({ ...current, plantId, machineGroupId: firstGroupId(groupItems) }))
                   }
-                  triggerId="machine-plant"
                 />
                 {fieldErrors.plantId ? <p className="text-destructive text-sm">{fieldErrors.plantId}</p> : null}
               </div>
@@ -574,30 +573,22 @@ function PlantSelect({
   value,
   disabled,
   onChange,
-  triggerId,
-  compact,
 }: {
   plants: PlantView[];
   value: string;
   disabled?: boolean;
   onChange: (value: string) => void;
-  triggerId?: string;
-  compact?: boolean;
 }) {
   const t = useTranslations("masterData");
   return (
-    <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger id={triggerId} className={compact ? "w-full min-w-0" : "w-full min-w-0 sm:min-w-52"}>
-        <SelectValue placeholder={t("machine.selectPlant")} />
-      </SelectTrigger>
-      <SelectContent>
-        {plants.map((plant) => (
-          <SelectItem key={plant.id ?? plant.code} value={plant.id ?? ""}>
-            {plant.code} · {plant.name}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <EntitySelect
+      label={t("machine.selectPlant")}
+      value={value}
+      disabled={disabled}
+      placeholder={t("machine.selectPlant")}
+      options={plants.map((plant) => ({ id: plant.id ?? "", label: `${plant.code} · ${plant.name}` }))}
+      onValueChange={onChange}
+    />
   );
 }
 

@@ -42,7 +42,7 @@ const nextConfig = {
       { source: "/:locale(id|en)/waha-templates", destination: "/:locale/dashboard/waha-templates" },
       { source: "/:locale(id|en)/audit-log", destination: "/:locale/dashboard/audit-log" },
       { source: "/:locale(id|en)/system-health", destination: "/:locale/dashboard/system-health" },
-      { source: "/:locale(id|en)/settings", destination: "/:locale/dashboard/settings" },
+      { source: "/:locale(id|en)/settings/:path*", destination: "/:locale/dashboard/settings/:path*" },
     ];
   },
 };

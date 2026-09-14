@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { EntitySelect } from "@/components/syncro/entity-select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiErrorMessage, errorResponse } from "@/lib/api/error-response";
@@ -474,18 +474,16 @@ function MemberManager({
           <div className="grid gap-2">
             <Label htmlFor="team-member-select">{t("team.manage.addMember")}</Label>
             <div className="flex gap-2">
-              <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                <SelectTrigger id="team-member-select" className="w-full">
-                  <SelectValue placeholder={t("team.manage.selectUser")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableUsers.map((candidate) => (
-                    <SelectItem key={candidate.id} value={candidate.id ?? ""}>
-                      {candidate.loginIdentifier} — {candidate.applicationRole}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <EntitySelect
+                label={t("team.manage.addMember")}
+                value={selectedUserId}
+                placeholder={t("team.manage.selectUser")}
+                options={availableUsers.map((candidate) => ({
+                  id: candidate.id ?? "",
+                  label: `${candidate.loginIdentifier} — ${candidate.applicationRole}`,
+                }))}
+                onValueChange={setSelectedUserId}
+              />
               <Button type="button" variant="outline" onClick={() => void handleAdd()} disabled={!selectedUserId}>
                 {t("team.manage.add")}
               </Button>
@@ -605,35 +603,30 @@ function MachineManager({
             <div className="space-y-2">
               <div className="grid gap-2">
                 <Label htmlFor="team-machine-plant">{t("team.manage.plantFilter")}</Label>
-                <Select value={plantFilter} onValueChange={handlePlantFilterChange}>
-                  <SelectTrigger id="team-machine-plant">
-                    <SelectValue placeholder={t("team.manage.allPlants")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t("team.manage.allPlants")}</SelectItem>
-                    {plantOptions.map((plant) => (
-                      <SelectItem key={plant.id} value={plant.id ?? ""}>
-                        {plant.code}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <EntitySelect
+                  label={t("team.manage.plantFilter")}
+                  value={plantFilter}
+                  placeholder={t("team.manage.allPlants")}
+                  options={[
+                    { id: "all", label: t("team.manage.allPlants") },
+                    ...plantOptions.map((plant) => ({ id: plant.id ?? "", label: `${plant.code ?? plant.id}` })),
+                  ]}
+                  onValueChange={handlePlantFilterChange}
+                />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="team-machine-select">{t("team.manage.linkMachine")}</Label>
                 <div className="flex gap-2">
-                  <Select value={selectedMachineId} onValueChange={setSelectedMachineId}>
-                    <SelectTrigger id="team-machine-select" className="w-full">
-                      <SelectValue placeholder={t("team.manage.selectMachine")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableMachines.map((candidate) => (
-                        <SelectItem key={candidate.id} value={candidate.id ?? ""}>
-                          {candidate.code} — {candidate.plantCode} / {candidate.machineGroupName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <EntitySelect
+                    label={t("team.manage.linkMachine")}
+                    value={selectedMachineId}
+                    placeholder={t("team.manage.selectMachine")}
+                    options={availableMachines.map((candidate) => ({
+                      id: candidate.id ?? "",
+                      label: `${candidate.code} — ${candidate.plantCode} / ${candidate.machineGroupName}`,
+                    }))}
+                    onValueChange={setSelectedMachineId}
+                  />
                   <Button
                     type="button"
                     variant="outline"

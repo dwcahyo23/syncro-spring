@@ -48,6 +48,11 @@ public class WorkOrderListService {
 
   private static final UUID NO_MACHINE = new UUID(0L, 0L);
 
+  // JDBC-safe date sentinels: java.sql.Timestamp.from throws ArithmeticException on
+  // Instant.MIN/MAX. 9999-01-01 stays convertible even after the +1-day exclusive bump.
+  private static final Instant EPOCH_MIN = Instant.EPOCH;
+  private static final Instant EPOCH_MAX = Instant.parse("9999-01-01T00:00:00Z");
+
   @Transactional(readOnly = true)
   public Page<WorkOrderListView> list(AuthenticatedUser user, String from, String to, WorkOrderStatus status,
       UUID machineId, String categoryCode, String search, int page, int size) {
@@ -59,9 +64,10 @@ public class WorkOrderListService {
     groupIds.addAll(scope.activeTeamIds());
 
     // Non-null sentinels: Postgres 42P18 when nullable params appear in `? is null or col = ?`.
-    // MIN/MAX for date bounds, "" for status/search/categoryCode, zero-UUID for machine filter.
-    var fromInstant = parseDate(from, "from", Instant.MIN);
-    var toInstant = parseDateExclusive(to, "to", Instant.MAX);
+    // JDBC-safe date bounds (java.sql.Timestamp.from overflows on Instant.MIN/MAX),
+    // "" for status/search/categoryCode, zero-UUID for machine filter.
+    var fromInstant = parseDate(from, "from", EPOCH_MIN);
+    var toInstant = parseDateExclusive(to, "to", EPOCH_MAX);
     var statusFilter = status == null ? "" : status.name();
     var machineFilter = machineId == null ? NO_MACHINE : machineId;
     var categoryFilter = categoryCode == null ? "" : categoryCode.trim();
@@ -172,7 +178,7 @@ public class WorkOrderListService {
   /** {@code to} is inclusive → the query uses an exclusive upper bound of {@code to+1 day}. */
   private static Instant parseDateExclusive(String value, String field, Instant absent) {
     var instant = parseDate(value, field, absent);
-    return instant == Instant.MAX ? Instant.MAX : instant.plusSeconds(86_400);
+    return instant.equals(absent) ? instant : instant.plusSeconds(86_400);
   }
 
   /** {@code %term%} with {@code _}, {@code %} and {@code \} escaped; blank → {@code ""} (non-null sentinel). */

@@ -67,6 +67,8 @@ public class SecurityConfig {
 
     var source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/api/v1/**", configuration);
+    // Story 23+ system-health page fetches /actuator/health straight from the browser.
+    source.registerCorsConfiguration("/actuator/health", configuration);
     return source;
   }
 
