@@ -22,8 +22,8 @@ describe("sanitizeHtml", () => {
     expect(clean).not.toContain("onerror");
     expect(clean).not.toContain("onclick");
     expect(clean).not.toContain("steal");
-    // img is outside the allowlist → removed; p text survives untouched.
-    expect(clean).not.toContain("<img");
+    // img is in the allowlist now (URL-based editor insert) — only the handler dies.
+    expect(clean).toContain("<img");
     expect(clean).toContain("kronologis {{nomor}}");
   });
 
@@ -32,6 +32,32 @@ describe("sanitizeHtml", () => {
     const clean = sanitizeHtml(dirty);
     expect(clean).not.toContain("iframe");
     expect(clean).not.toContain("javascript:");
+  });
+
+  it("keeps safe links and images with their href/src", () => {
+    const clean = sanitizeHtml(
+      '<a href="https://syncro.example.com/doc">dok</a><img src="https://cdn.example.com/a.png" alt="foto">',
+    );
+    expect(clean).toContain('href="https://syncro.example.com/doc"');
+    expect(clean).toContain('src="https://cdn.example.com/a.png"');
+    expect(clean).toContain("dok");
+  });
+
+  it("keeps the editor class palette (align/color/highlight/font/task) and strips data-*", () => {
+    const clean = sanitizeHtml(
+      '<p class="text-align-center"><span class="tx-color-2563eb ff-arial">a</span>' +
+        '<mark class="hl-fde047">b</mark></p>' +
+        '<ul class="task-list"><li class="task-item task-checked"><label><input type="checkbox" checked><span></span></label><div>c</div></li></ul>' +
+        '<table><tr><td class="cell-align-right" colspan="2" data-x="evil">d</td></tr></table>',
+    );
+    expect(clean).toContain('class="text-align-center"');
+    expect(clean).toContain("tx-color-2563eb");
+    expect(clean).toContain("hl-fde047");
+    expect(clean).toContain("task-item");
+    expect(clean).toContain('type="checkbox"');
+    expect(clean).toContain("checked");
+    expect(clean).toContain("cell-align-right");
+    expect(clean).not.toContain("data-x");
   });
 
   it("preserves the full table family and span attributes", () => {
@@ -55,8 +81,11 @@ describe("sanitizeHtml", () => {
   });
 
   it("keeps the text of stripped elements (KEEP_CONTENT)", () => {
-    const clean = sanitizeHtml("<div><span>isi</span><object>buang</object></div>");
+    const clean = sanitizeHtml("<section><span>isi</span><object>buang</object></section>");
     expect(clean).toContain("isi");
-    expect(clean).not.toContain("<div");
+    expect(clean).not.toContain("<section");
+    expect(clean).not.toContain("<object");
+    // KEEP_CONTENT: the removed element's tag dies, its text stays.
+    expect(clean).toContain("buang");
   });
 });

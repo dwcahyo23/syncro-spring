@@ -6,10 +6,15 @@ import DOMPurify from "dompurify";
  * malicious payload that slipped into the DB (script tag, inline event handler,
  * javascript: URL) is stripped before it can reach the DOM.
  *
- * Allowlist = the tags TipTap's StarterKit + table extensions produce, plus the
- * table family and `colspan`/`rowspan`/`class`. No `style` (table borders come
- * from CSS), no event attributes. The list replaces DOMPurify's defaults
- * entirely, so anything outside it (img, a, iframe, on*) is removed.
+ * Allowlist = the tags the editor's TipTap extensions produce, plus the table
+ * family. `style` stays OUT: all editor formatting (cell/block alignment, text
+ * color, highlight, font family) renders as CLASSES — the sanitizer allowlist is
+ * the trust boundary, and a fixed class palette is far easier to reason about
+ * and to restyle in print.css than filtered CSS text. DOMPurify still enforces
+ * URL safety for the newly allowed `a[href]`/`img[src]` (javascript: and
+ * data:text/html die here; its default URI checks apply).
+ * The list replaces DOMPurify's defaults entirely, so anything outside it
+ * (iframe, object, on*) is removed.
  */
 const ALLOWED_TAGS = [
   "p",
@@ -34,7 +39,15 @@ const ALLOWED_TAGS = [
   "ins",
   "u",
   "mark",
+  "sub",
+  "sup",
   "span",
+  "a",
+  "img",
+  "input",
+  "label",
+  // task-item content wrapper (see TaskItem class override in rich-text-editor)
+  "div",
   "table",
   "thead",
   "tbody",
@@ -45,7 +58,20 @@ const ALLOWED_TAGS = [
   "col",
 ];
 
-const ALLOWED_ATTR = ["colspan", "rowspan", "class"];
+const ALLOWED_ATTR = [
+  "colspan",
+  "rowspan",
+  "class",
+  "href",
+  "src",
+  "alt",
+  "title",
+  "target",
+  "rel",
+  // task-list checkbox (rendered read-only in print; see print.css)
+  "type",
+  "checked",
+];
 
 export function sanitizeHtml(dirty: string): string {
   // SSR guard: print pages only render templates client-side (the fetch resolves

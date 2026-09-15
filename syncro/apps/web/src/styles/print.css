@@ -33,10 +33,12 @@
     color: #000000 !important;
   }
 
-  /* Neutralize dark-mode/theme background so text is black on white. */
+  /* Neutralize dark-mode/theme background so text is black on white — except
+     editor text colors (`tx-color-*`) and highlights (`hl-*`), which print as
+     authored (print-color-adjust: exact is set on .print-surface below). */
   body,
   .print-surface,
-  .print-surface * {
+  .print-surface *:not([class*="tx-color-"]):not([class*="hl-"]):not(mark) {
     background: #ffffff !important;
     color: #000000 !important;
     box-shadow: none !important;
@@ -168,4 +170,201 @@
 /* Selected cells in the editor get a subtle highlight for usability. */
 .tiptap :where(th, td).selectedCell {
   background: color-mix(in oklab, currentColor 12%, transparent);
+}
+
+/* Cell alignment from the editor's class-based align attribute (`style` is
+   sanitized away, so the toolbar stores cell-align-* classes instead).
+   Specificity (0,2,0) deliberately beats the `.print-surface th/td { text-align:
+   left !important }` print default so aligned cells survive on paper. */
+.tiptap :where(th, td).cell-align-left,
+.print-template-body :where(th, td).cell-align-left {
+  text-align: left !important;
+}
+
+.tiptap :where(th, td).cell-align-center,
+.print-template-body :where(th, td).cell-align-center {
+  text-align: center !important;
+}
+
+.tiptap :where(th, td).cell-align-right,
+.print-template-body :where(th, td).cell-align-right {
+  text-align: right !important;
+}
+
+/* Block (heading/paragraph) alignment — TextAlign extension renders
+   `text-align-*` classes for the same sanitizer reason. */
+.tiptap :where(h1, h2, h3, h4, h5, h6, p, li).text-align-left,
+.print-template-body :where(h1, h2, h3, h4, h5, h6, p, li).text-align-left {
+  text-align: left;
+}
+
+.tiptap :where(h1, h2, h3, h4, h5, h6, p, li).text-align-center,
+.print-template-body :where(h1, h2, h3, h4, h5, h6, p, li).text-align-center {
+  text-align: center;
+}
+
+.tiptap :where(h1, h2, h3, h4, h5, h6, p, li).text-align-right,
+.print-template-body :where(h1, h2, h3, h4, h5, h6, p, li).text-align-right {
+  text-align: right;
+}
+
+.tiptap :where(h1, h2, h3, h4, h5, h6, p, li).text-align-justify,
+.print-template-body :where(h1, h2, h3, h4, h5, h6, p, li).text-align-justify {
+  text-align: justify;
+}
+
+/* Editor-only placeholder hint (Placeholder extension, empty first node). */
+.tiptap :where(p, h1, h2, h3, h4, h5, h6).is-empty::before {
+  content: attr(data-placeholder);
+  color: color-mix(in oklab, currentColor 40%, transparent);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Font families — class palette mirrors FONT_FAMILIES in rich-text-editor.tsx. */
+.tiptap :where(.ff-arial),
+.print-template-body :where(.ff-arial) {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.tiptap :where(.ff-georgia),
+.print-template-body :where(.ff-georgia) {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.tiptap :where(.ff-courier),
+.print-template-body :where(.ff-courier) {
+  font-family: "Courier New", monospace;
+}
+
+.tiptap :where(.ff-tahoma),
+.print-template-body :where(.ff-tahoma) {
+  font-family: Tahoma, Verdana, sans-serif;
+}
+
+/* Text color + highlight class palettes (TEXT_COLORS / HIGHLIGHT_COLORS in
+   rich-text-editor.tsx). Screen half here, print half in @media print below. */
+.tiptap :where(.tx-color-dc2626),
+.print-template-body :where(.tx-color-dc2626) {
+  color: #dc2626;
+}
+.tiptap :where(.tx-color-d97706),
+.print-template-body :where(.tx-color-d97706) {
+  color: #d97706;
+}
+.tiptap :where(.tx-color-16a34a),
+.print-template-body :where(.tx-color-16a34a) {
+  color: #16a34a;
+}
+.tiptap :where(.tx-color-2563eb),
+.print-template-body :where(.tx-color-2563eb) {
+  color: #2563eb;
+}
+.tiptap :where(.tx-color-7c3aed),
+.print-template-body :where(.tx-color-7c3aed) {
+  color: #7c3aed;
+}
+.tiptap :where(.tx-color-6b7280),
+.print-template-body :where(.tx-color-6b7280) {
+  color: #6b7280;
+}
+
+.tiptap mark.hl-fde047 {
+  background-color: #fde047;
+  color: inherit;
+}
+.tiptap mark.hl-86efac {
+  background-color: #86efac;
+  color: inherit;
+}
+.tiptap mark.hl-bfdbfe {
+  background-color: #bfdbfe;
+  color: inherit;
+}
+.tiptap mark.hl-f9a8d4 {
+  background-color: #f9a8d4;
+  color: inherit;
+}
+.tiptap mark.hl-fed7aa {
+  background-color: #fed7aa;
+  color: inherit;
+}
+.tiptap mark.hl-e5e7eb {
+  background-color: #e5e7eb;
+  color: inherit;
+}
+.print-template-body mark {
+  background-color: #fde047;
+  color: inherit;
+  padding: 0 0.1em;
+}
+.print-template-body mark.hl-fde047 {
+  background-color: #fde047;
+}
+.print-template-body mark.hl-86efac {
+  background-color: #86efac;
+}
+.print-template-body mark.hl-bfdbfe {
+  background-color: #bfdbfe;
+}
+.print-template-body mark.hl-f9a8d4 {
+  background-color: #f9a8d4;
+}
+.print-template-body mark.hl-fed7aa {
+  background-color: #fed7aa;
+}
+.print-template-body mark.hl-e5e7eb {
+  background-color: #e5e7eb;
+}
+
+/* Images (URL-based insert; Garage presigned URLs expire, see editor dialog). */
+.tiptap img.report-image {
+  outline: 1px dashed color-mix(in oklab, currentColor 30%, transparent);
+}
+.tiptap :where(img),
+.print-template-body :where(img) {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Links render black-on-white with underline on paper (the print neutralizer
+   below keeps color); underline stays so they are recognizable. */
+.tiptap :where(a),
+.print-template-body :where(a) {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+/* Task lists — checkbox + content, class-based (data-* is sanitized away).
+   In print the checkbox is inert: it only shows the checked state. */
+.tiptap .task-list,
+.print-template-body .task-list {
+  list-style: none;
+  padding-left: 0.25em;
+}
+
+/* Editor DOM comes from TaskItem's node view (plain li + label>input + div);
+   the serialized report body carries the task-item/task-checked classes. */
+.tiptap .task-list > li,
+.print-template-body :where(.task-list) > li.task-item {
+  display: flex;
+  gap: 0.4em;
+  align-items: flex-start;
+}
+
+.tiptap .task-list > li > div,
+.print-template-body li.task-item > div {
+  flex: 1;
+}
+
+/* Editor node view: hide the native checkbox chrome behind a simple box. */
+.tiptap .task-list input[type="checkbox"] {
+  accent-color: currentColor;
+  margin-top: 0.2em;
+}
+
+.print-template-body .task-list input[type="checkbox"] {
+  pointer-events: none;
+  margin-top: 0.2em;
 }
