@@ -10,6 +10,7 @@ import {
   type LucideIcon,
   MessageSquare,
   Package,
+  Printer,
   Radio,
   Settings,
   Wrench,
@@ -188,6 +189,12 @@ export const sidebarItems: NavGroup[] = [
           { titleKey: "items.organization", url: "/master-data/organization" },
           { titleKey: "items.spareparts", url: "/master-data/spareparts" },
         ],
+      },
+      {
+        titleKey: "items.reportTemplates",
+        url: "/report-templates",
+        icon: Printer,
+        roles: ["SUPER_ADMIN", "MANAGER_MAINTENANCE"],
       },
       {
         titleKey: "items.wahaTemplates",

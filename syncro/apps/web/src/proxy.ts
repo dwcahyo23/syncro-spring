@@ -18,6 +18,7 @@ const protectedRoutes = [
   "/alerts",
   "/master-data",
   "/waha-templates",
+  "/report-templates",
   "/audit-log",
   "/system-health",
   "/settings",

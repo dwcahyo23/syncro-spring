@@ -1317,3 +1317,13 @@ status: open
 - source_spec: _bmad-output/implementation-artifacts/spec-wo-evidence-wysiwyg-nav.md
 - summary: Goal B di-split 2026-09-15: ReportDialog 4 Textarea → editor TipTap (bold/italic/underline/lists) menulis HTML ke field report yang ada (@Size max=4000, hitung teks terlihat bukan markup); render di workorder-print-report.tsx + narrative detail via sanitizeHtml DOMPurify (allowlist p/br/b/strong/i/em/u/s/ul/ol/li/h2/h3, tanpa img/iframe/event attrs) dengan deteksi markup vs plain-text fallback; dependensi @tiptap/react, @tiptap/starter-kit, dompurify sudah di-setujui user 2026-09-14.
 - evidence: Rincian guard 4000-char, regex deteksi HTML, dan matriks kasus tepi (legacy plain-text, payload <img onerror>) tercatat di versi draft spec pra-split pada path source_spec.
+
+### DW-169: Report template PUT last-write-wins tanpa optimistic concurrency
+- source_spec: _bmad-output/implementation-artifacts/spec-report-print-templates.md
+- summary: Dua admin yang menyimpan jenis laporan sama secara paralel — yang terakhir menang diam-diam; tidak ada versi/kolom expected-updatedAt sehingga 409 konflik tak mungkin dideteksi.
+- evidence: Disengajakan mengikuti pola WahaTemplateService (satu baris per kunci, upsert atomik ON CONFLICT — atomisiti baris terjamin, konflik semantik tidak); temuan review edge-case-hunter 2026-09-15. Tambah expected-updatedAt + WHERE + 409 saat audit template jadi kebutuhan nyata.
+
+### DW-170: /report-templates tidak ada di client Orval / snapshot openapi.json
+- source_spec: _bmad-output/implementation-artifacts/spec-report-print-templates.md
+- summary: Hook web hand-written (preseden modul kpi 20-x), jadi tipe TS hanya dipinj oleh manusia vs record backend.
+- evidence: Regenerasi snapshot (GET /v3/api-docs → openapi.json → orval) akan menutup; sama klasnya dengan DW-141/148/166.

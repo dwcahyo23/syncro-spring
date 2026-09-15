@@ -94,6 +94,7 @@
       "machines": "Machines",
       "organization": "Organization",
       "spareparts": "Spareparts",
+      "reportTemplates": "Report Templates",
       "wahaTemplates": "WAHA Templates",
       "auditLog": "Audit Log",
       "systemHealth": "System Health",
@@ -672,6 +673,64 @@
       "eyebrow": "Syncro · Live Machine Channel",
       "title": "One channel for every machine that never sleeps.",
       "subtitle": "Machine setup, live health, and sparepart alerts — command the factory floor from your pocket."
+    }
+  },
+  "reportTemplates": {
+    "title": "Report Templates",
+    "heading": "Print Layout Templates",
+    "pageDescription": "Define the official print layout once per report type. Leave a tab blank to keep the built-in default.",
+    "tabLabels": {
+      "workOrder": "Work Order",
+      "preventive": "Preventive"
+    },
+    "saved": "Print template saved",
+    "saveFailed": "Failed to save print template.",
+    "saveForbidden": "You do not have permission to save print templates.",
+    "route": {
+      "title": "Report Templates",
+      "subtitle": "Global WYSIWYG print layouts for work order and preventive reports."
+    },
+    "tabs": {
+      "workOrder": {
+        "description": "Layout used when printing a work order report. Insert placeholders where live data should appear.",
+        "emptyHint": "No template saved yet — the built-in layout is used.",
+        "clear": "Clear template (use built-in layout)",
+        "reload": "Reload",
+        "loadFailed": "Failed to load the print template.",
+        "accessDenied": "You do not have permission to edit print templates."
+      },
+      "preventive": {
+        "description": "Layout used when printing a preventive schedule report. Insert placeholders where live data should appear.",
+        "emptyHint": "No template saved yet — the built-in layout is used.",
+        "clear": "Clear template (use built-in layout)",
+        "reload": "Reload",
+        "loadFailed": "Failed to load the print template.",
+        "accessDenied": "You do not have permission to edit print templates."
+      }
+    },
+    "editor": {
+      "save": "Save template",
+      "placeholderHelp": "Placeholders are replaced with report data at print time; empty fields print as \"—\".",
+      "readOnlyNotice": "You have read-only access to this template.",
+      "toolbar": {
+        "bold": "Bold",
+        "italic": "Italic",
+        "underline": "Underline",
+        "heading2": "Heading 2",
+        "heading3": "Heading 3",
+        "paragraph": "Paragraph",
+        "bulletList": "Bullet list",
+        "orderedList": "Numbered list",
+        "insertTable": "Insert table",
+        "addRow": "Insert row below",
+        "deleteRow": "Delete row",
+        "addColumn": "Insert column right",
+        "deleteColumn": "Delete column",
+        "toggleHeaderRow": "Toggle header row",
+        "deleteTable": "Delete table",
+        "insertPlaceholder": "Placeholder",
+        "placeholdersLabel": "Available placeholders"
+      }
     }
   },
   "wahaTemplates": {
@@ -1588,6 +1647,7 @@
       "approvedAt": "Approved at:",
       "logoAlt": "Company logo",
       "signatureAlt": "Signature",
+      "notYetSigned": "Not yet signed.",
       "noChecklist": "No checklist has been submitted for this schedule."
     },
     "messages": {

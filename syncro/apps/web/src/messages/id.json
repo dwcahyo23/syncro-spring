@@ -94,6 +94,7 @@
       "machines": "Mesin",
       "organization": "Organisasi",
       "spareparts": "Sparepart",
+      "reportTemplates": "Template Laporan",
       "wahaTemplates": "Template WAHA",
       "auditLog": "Log Audit",
       "systemHealth": "Kesehatan Sistem",
@@ -672,6 +673,64 @@
       "eyebrow": "Syncro · Saluran Mesin Live",
       "title": "Satu saluran untuk setiap mesin yang tidak pernah tidur.",
       "subtitle": "Setup mesin, kesehatan live, dan alert sparepart — kendalikan lantai produksi dari ponsel Anda."
+    }
+  },
+  "reportTemplates": {
+    "title": "Template Laporan",
+    "heading": "Template Layout Cetak",
+    "pageDescription": "Tentukan layout cetak resmi sekali per jenis laporan. Kosongkan tab untuk tetap memakai layout bawaan.",
+    "tabLabels": {
+      "workOrder": "Work Order",
+      "preventive": "Preventif"
+    },
+    "saved": "Template laporan tersimpan",
+    "saveFailed": "Gagal menyimpan template laporan.",
+    "saveForbidden": "Anda tidak punya izin menyimpan template laporan.",
+    "route": {
+      "title": "Template Laporan",
+      "subtitle": "Layout cetak WYSIWYG global untuk laporan work order dan preventif."
+    },
+    "tabs": {
+      "workOrder": {
+        "description": "Layout yang dipakai saat mencetak laporan work order. Sisipkan placeholder di tempat data laporan tampil.",
+        "emptyHint": "Belum ada template tersimpan — layout bawaan dipakai.",
+        "clear": "Hapus template (pakai layout bawaan)",
+        "reload": "Muat ulang",
+        "loadFailed": "Gagal memuat template laporan.",
+        "accessDenied": "Anda tidak punya izin mengubah template laporan."
+      },
+      "preventive": {
+        "description": "Layout yang dipakai saat mencetak laporan jadwal preventif. Sisipkan placeholder di tempat data laporan tampil.",
+        "emptyHint": "Belum ada template tersimpan — layout bawaan dipakai.",
+        "clear": "Hapus template (pakai layout bawaan)",
+        "reload": "Muat ulang",
+        "loadFailed": "Gagal memuat template laporan.",
+        "accessDenied": "Anda tidak punya izin mengubah template laporan."
+      }
+    },
+    "editor": {
+      "save": "Simpan template",
+      "placeholderHelp": "Placeholder diganti dengan data laporan saat mencetak; kolom kosong tercetak sebagai \"—\".",
+      "readOnlyNotice": "Anda memiliki akses hanya-baca ke template ini.",
+      "toolbar": {
+        "bold": "Tebal",
+        "italic": "Miring",
+        "underline": "Garis bawah",
+        "heading2": "Judul 2",
+        "heading3": "Judul 3",
+        "paragraph": "Paragraf",
+        "bulletList": "Daftar berpoin",
+        "orderedList": "Daftar bernomor",
+        "insertTable": "Sisip tabel",
+        "addRow": "Tambah baris di bawah",
+        "deleteRow": "Hapus baris",
+        "addColumn": "Tambah kolom di kanan",
+        "deleteColumn": "Hapus kolom",
+        "toggleHeaderRow": "Aktifkan/nonaktifkan baris judul",
+        "deleteTable": "Hapus tabel",
+        "insertPlaceholder": "Placeholder",
+        "placeholdersLabel": "Placeholder tersedia"
+      }
     }
   },
   "wahaTemplates": {
@@ -1588,6 +1647,7 @@
       "approvedAt": "Disetujui pada:",
       "logoAlt": "Logo perusahaan",
       "signatureAlt": "Tanda tangan",
+      "notYetSigned": "Belum ditandatangani.",
       "noChecklist": "Belum ada checklist yang dikirim untuk jadwal ini."
     },
     "messages": {

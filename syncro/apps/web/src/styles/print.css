@@ -108,3 +108,64 @@
   print-color-adjust: exact;
   -webkit-print-color-adjust: exact;
 }
+
+/* ==========================================================================
+   Print-template layout content (spec: Template Laporan Cetak).
+   Sanitization strips `style` attributes, so table ruling and list markers
+   come from CSS here — on-screen (the TipTap editor host `.tiptap` and the
+   rendered report body `.print-template-body`) and, via the print rules
+   above, on paper. Low-specificity `:where()` selectors keep future
+   class-based overrides possible.
+   ========================================================================== */
+
+.print-template-body :where(p),
+.tiptap :where(p) {
+  margin: 0.4em 0;
+}
+
+.print-template-body :where(table),
+.tiptap :where(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.6em 0;
+}
+
+.print-template-body :where(th, td),
+.tiptap :where(th, td) {
+  border: 1px solid currentColor;
+  padding: 4px 6px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.print-template-body :where(ul),
+.tiptap :where(ul) {
+  list-style: disc;
+  padding-left: 1.5em;
+  margin: 0.4em 0;
+}
+
+.print-template-body :where(ol),
+.tiptap :where(ol) {
+  list-style: decimal;
+  padding-left: 1.5em;
+  margin: 0.4em 0;
+}
+
+.print-template-body :where(h1, h2, h3, h4, h5, h6),
+.tiptap :where(h1, h2, h3, h4, h5, h6) {
+  font-weight: 600;
+  margin: 0.6em 0 0.3em;
+}
+
+.print-template-body :where(hr),
+.tiptap :where(hr) {
+  border: 0;
+  border-top: 1px solid currentColor;
+  margin: 0.8em 0;
+}
+
+/* Selected cells in the editor get a subtle highlight for usability. */
+.tiptap :where(th, td).selectedCell {
+  background: color-mix(in oklab, currentColor 12%, transparent);
+}
