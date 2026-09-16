@@ -71,6 +71,10 @@ class WorkorderPrintReportServiceTest {
   private SignatureUseRepository signatureRepository;
   @Mock
   private com.syncro.auth.infrastructure.UserSignatureRepository userSignatureRepository;
+  @Mock
+  private com.syncro.org.infrastructure.SectionRepository sections;
+  @Mock
+  private com.syncro.machine.infrastructure.MachineResponsibilityRepository responsibilities;
 
   private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
   private final UUID plantId = UUID.randomUUID();
@@ -78,6 +82,8 @@ class WorkorderPrintReportServiceTest {
   private final UUID machineId = UUID.randomUUID();
   private final UUID categoryId = UUID.randomUUID();
   private final UUID technicianId = UUID.randomUUID();
+  private final UUID sectionId = UUID.randomUUID();
+  private final UUID leaderId = UUID.randomUUID();
 
   private WorkorderPrintReportService service;
   private WorkorderSignatureService signatureService;
@@ -87,7 +93,8 @@ class WorkorderPrintReportServiceTest {
     signatureService = new WorkorderSignatureService(workOrders, machines, signatureRepository,
         userSignatureRepository, users, objectStorage, null, null, clock);
     service = new WorkorderPrintReportService(workOrders, categories, machines, sessions, attachments,
-        sparepartRequests, signatureService, objectStorage, users);
+        sparepartRequests, signatureService, objectStorage, users, sections, userSignatureRepository,
+        responsibilities);
     var plant = new com.syncro.auth.infrastructure.PlantEntity(plantId, "P01", "Plant", NOW, NOW);
     var group = new com.syncro.masterdata.infrastructure.MachineGroupEntity(groupId, plant, "Group", NOW, NOW);
     var machine = new MachineEntity(machineId, plant, group, "M-001", "Pump 1",
@@ -198,6 +205,115 @@ class WorkorderPrintReportServiceTest {
     var report = service.get(WORKORDER_ID);
 
     assertThat(report.signature()).isNull();
+  }
+
+  @Test
+  @DisplayName("LEAD-SIG-001 P0 CLOSED WO with section leader holding a signature stamps it")
+  void closedWoStampsSectionLeaderSignature() {
+    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity(WorkOrderStatus.CLOSED)));
+    when(sessions.findByWorkOrderIdOrderByStartedAtAsc(WORKORDER_ID)).thenReturn(List.of());
+    when(attachments.findByWorkOrderIdOrderByCreatedAtAsc(WORKORDER_ID)).thenReturn(List.of());
+    when(sparepartRequests.findByWorkOrderIdOrderByRequestedAtAsc(WORKORDER_ID)).thenReturn(List.of());
+    when(signatureRepository.findBySubjectTypeAndSubjectId("WORK_ORDER", WORKORDER_ID)).thenReturn(Optional.empty());
+    // Machine → group → section chain: group carries section_id.
+    var plant = new com.syncro.auth.infrastructure.PlantEntity(plantId, "P01", "Plant", NOW, NOW);
+    var group = new com.syncro.masterdata.infrastructure.MachineGroupEntity(groupId, plant, "Group", NOW, NOW);
+    group.assignSection(sectionId, NOW);
+    var machine = new MachineEntity(machineId, plant, group, "M-001", "Pump 1",
+        com.syncro.machine.domain.MachineStatus.ACTIVE, null, null, null, List.of(), NOW, NOW);
+    when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
+    var section = new com.syncro.org.infrastructure.SectionEntity(sectionId, plant, "MACHINERY", "Rolling", true, NOW, NOW);
+    section.assignLeader(leaderId, NOW);
+    when(sections.findById(sectionId)).thenReturn(Optional.of(section));
+    when(userSignatureRepository.findByUserId(leaderId)).thenReturn(Optional.of(
+        new com.syncro.auth.infrastructure.UserSignatureEntity(UUID.randomUUID(), leaderId, "syncro-test",
+            "user-signatures/" + leaderId + "/s.png", "image/png", "h", 0, null, NOW, NOW)));
+    when(objectStorage.presignGetUrl("user-signatures/" + leaderId + "/s.png")).thenReturn("https://garage/leader-sig");
+    when(users.findById(leaderId)).thenReturn(Optional.of(
+        new AuthUserEntity(leaderId, "leader@syncro.dev", "hash",
+            com.syncro.auth.domain.ApplicationRole.SECTION_LEADER, true, NOW, NOW)));
+
+    var report = service.get(WORKORDER_ID);
+
+    assertThat(report.leaderSignature()).isNotNull();
+    assertThat(report.leaderSignature().userId()).isEqualTo(leaderId);
+    assertThat(report.leaderSignature().displayName()).isEqualTo("leader@syncro.dev");
+    assertThat(report.leaderSignature().signaturePresignedUrl()).isEqualTo("https://garage/leader-sig");
+  }
+
+  @Test
+  @DisplayName("LEAD-SIG-002 P0 no section leader falls back to earliest LEADER responsibility")
+  void leaderResponsibilityFallback() {
+    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity(WorkOrderStatus.PENDING_REVIEW)));
+    when(sessions.findByWorkOrderIdOrderByStartedAtAsc(WORKORDER_ID)).thenReturn(List.of());
+    when(attachments.findByWorkOrderIdOrderByCreatedAtAsc(WORKORDER_ID)).thenReturn(List.of());
+    when(sparepartRequests.findByWorkOrderIdOrderByRequestedAtAsc(WORKORDER_ID)).thenReturn(List.of());
+    when(signatureRepository.findBySubjectTypeAndSubjectId("WORK_ORDER", WORKORDER_ID)).thenReturn(Optional.empty());
+    // Group has no section at all.
+    when(responsibilities.findFirstByMachineIdAndResponsibilityLevelOrderByCreatedAtAsc(
+        machineId, com.syncro.machine.domain.ResponsibilityLevel.LEADER))
+        .thenReturn(Optional.of(new com.syncro.machine.infrastructure.MachineResponsibilityEntity(
+            UUID.randomUUID(), machineId, leaderId, com.syncro.machine.domain.ResponsibilityLevel.LEADER, NOW, NOW)));
+    when(userSignatureRepository.findByUserId(leaderId)).thenReturn(Optional.of(
+        new com.syncro.auth.infrastructure.UserSignatureEntity(UUID.randomUUID(), leaderId, "syncro-test",
+            "user-signatures/" + leaderId + "/s.png", "image/png", "h", 0, null, NOW, NOW)));
+    when(objectStorage.presignGetUrl("user-signatures/" + leaderId + "/s.png")).thenReturn("https://garage/leader-sig");
+    when(users.findById(leaderId)).thenReturn(Optional.of(
+        new AuthUserEntity(leaderId, "resp-leader@syncro.dev", "hash",
+            com.syncro.auth.domain.ApplicationRole.SECTION_LEADER, true, NOW, NOW)));
+
+    var report = service.get(WORKORDER_ID);
+
+    assertThat(report.leaderSignature()).isNotNull();
+    assertThat(report.leaderSignature().userId()).isEqualTo(leaderId);
+  }
+
+  @Test
+  @DisplayName("LEAD-SIG-003 P0 non-terminal WO never stamps a leader signature")
+  void nonTerminalStatusOmitsLeader() {
+    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity(WorkOrderStatus.IN_PROGRESS)));
+    when(sessions.findByWorkOrderIdOrderByStartedAtAsc(WORKORDER_ID)).thenReturn(List.of());
+    when(attachments.findByWorkOrderIdOrderByCreatedAtAsc(WORKORDER_ID)).thenReturn(List.of());
+    when(sparepartRequests.findByWorkOrderIdOrderByRequestedAtAsc(WORKORDER_ID)).thenReturn(List.of());
+    when(signatureRepository.findBySubjectTypeAndSubjectId("WORK_ORDER", WORKORDER_ID)).thenReturn(Optional.empty());
+    var plant = new com.syncro.auth.infrastructure.PlantEntity(plantId, "P01", "Plant", NOW, NOW);
+    var group = new com.syncro.masterdata.infrastructure.MachineGroupEntity(groupId, plant, "Group", NOW, NOW);
+    group.assignSection(sectionId, NOW);
+    var machine = new MachineEntity(machineId, plant, group, "M-001", "Pump 1",
+        com.syncro.machine.domain.MachineStatus.ACTIVE, null, null, null, List.of(), NOW, NOW);
+    when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
+    var section = new com.syncro.org.infrastructure.SectionEntity(sectionId, plant, "MACHINERY", "Rolling", true, NOW, NOW);
+    section.assignLeader(leaderId, NOW);
+    when(sections.findById(sectionId)).thenReturn(Optional.of(section));
+
+    var report = service.get(WORKORDER_ID);
+
+    assertThat(report.leaderSignature()).isNull();
+    // Gate short-circuits BEFORE any signature lookup.
+    org.mockito.Mockito.verifyNoInteractions(responsibilities);
+  }
+
+  @Test
+  @DisplayName("LEAD-SIG-004 P0 leader without a stored signature or failed presign stamps nothing")
+  void missingLeaderSignatureGraceful() {
+    when(workOrders.findById(WORKORDER_ID)).thenReturn(Optional.of(entity(WorkOrderStatus.CLOSED)));
+    when(sessions.findByWorkOrderIdOrderByStartedAtAsc(WORKORDER_ID)).thenReturn(List.of());
+    when(attachments.findByWorkOrderIdOrderByCreatedAtAsc(WORKORDER_ID)).thenReturn(List.of());
+    when(sparepartRequests.findByWorkOrderIdOrderByRequestedAtAsc(WORKORDER_ID)).thenReturn(List.of());
+    when(signatureRepository.findBySubjectTypeAndSubjectId("WORK_ORDER", WORKORDER_ID)).thenReturn(Optional.empty());
+    var plant = new com.syncro.auth.infrastructure.PlantEntity(plantId, "P01", "Plant", NOW, NOW);
+    var group = new com.syncro.masterdata.infrastructure.MachineGroupEntity(groupId, plant, "Group", NOW, NOW);
+    group.assignSection(sectionId, NOW);
+    var machine = new MachineEntity(machineId, plant, group, "M-001", "Pump 1",
+        com.syncro.machine.domain.MachineStatus.ACTIVE, null, null, null, List.of(), NOW, NOW);
+    when(machines.findByIdWithPlantAndGroup(machineId)).thenReturn(Optional.of(machine));
+    var section = new com.syncro.org.infrastructure.SectionEntity(sectionId, plant, "MACHINERY", "Rolling", true, NOW, NOW);
+    section.assignLeader(leaderId, NOW);
+    when(sections.findById(sectionId)).thenReturn(Optional.of(section));
+    // Leader exists but never stored a signature.
+    when(userSignatureRepository.findByUserId(leaderId)).thenReturn(Optional.empty());
+
+    assertThat(service.get(WORKORDER_ID).leaderSignature()).isNull();
   }
 
   @Test

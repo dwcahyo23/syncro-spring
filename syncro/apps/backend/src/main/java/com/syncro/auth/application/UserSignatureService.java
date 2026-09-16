@@ -7,6 +7,7 @@ import com.syncro.audit.domain.AuditEntityType;
 import com.syncro.auth.api.AuthDtos.UserSignatureView;
 import com.syncro.auth.application.JwtTokenService.AuthenticatedUser;
 import com.syncro.auth.domain.ApplicationRole;
+import com.syncro.auth.infrastructure.AuthUserRepository;
 import com.syncro.auth.infrastructure.UserSignatureEntity;
 import com.syncro.auth.infrastructure.UserSignatureRepository;
 import com.syncro.config.GarageProperties;
@@ -24,6 +25,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -48,19 +50,25 @@ public class UserSignatureService {
   private static final Logger log = LoggerFactory.getLogger(UserSignatureService.class);
   private static final String CONTENT_TYPE_PATTERN = "image/(jpeg|png|webp|gif)";
   private static final String KEY_PREFIX = "user-signatures/";
+  private static final java.time.Duration BLOCK_DURATION = java.time.Duration.ofMinutes(15);
 
   private final UserSignatureRepository signatures;
   private final ObjectStorageService objectStorage;
   private final GarageProperties garage;
   private final AuditLogWriter auditLog;
+  private final AuthUserRepository users;
+  private final PasswordEncoder passwordEncoder;
   private final Clock clock;
 
   public UserSignatureService(UserSignatureRepository signatures, ObjectStorageService objectStorage,
-      GarageProperties garage, AuditLogWriter auditLog, Clock clock) {
+      GarageProperties garage, AuditLogWriter auditLog, AuthUserRepository users,
+      PasswordEncoder passwordEncoder, Clock clock) {
     this.signatures = signatures;
     this.objectStorage = objectStorage;
     this.garage = garage;
     this.auditLog = auditLog;
+    this.users = users;
+    this.passwordEncoder = passwordEncoder;
     this.clock = clock;
   }
 
@@ -68,10 +76,54 @@ public class UserSignatureService {
   public record StoreResult(UserSignatureView view, boolean created) {
   }
 
+  /** Outcome of the signature-save password check — returned, never thrown, so the
+   * failed-attempt counter commit survives the caller's exception. */
+  public enum SignaturePasswordOutcome {
+    OK,
+    INVALID,
+    BLOCKED
+  }
+
+  /**
+   * Bcrypt-verify the owner's login password before a signature save, honoring the
+   * 3-attempt / 15-minute lockout stored on the USER row (auth_users V22 columns) — not
+   * the signature row — so first-time savers are counted too (frozen AC: three wrong
+   * passwords block saving even when no signature exists yet). A wrong password never
+   * reveals whether a signature exists (INVALID → 401 uniformly), and a disabled account
+   * cannot store one. Runs in its own REQUIRES_NEW transaction (the AuthLoginAuditService
+   * precedent) so the counter commit survives the controller's throw — otherwise the
+   * lockout would be dead code.
+   */
+  @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+  public SignaturePasswordOutcome checkSignaturePassword(UUID userId, String password) {
+    var now = Instant.now(clock);
+    var user = users.findById(userId).orElse(null);
+    if (user == null) {
+      return SignaturePasswordOutcome.INVALID;
+    }
+    if (user.getSignatureBlockedUntil() != null && user.getSignatureBlockedUntil().isAfter(now)) {
+      return SignaturePasswordOutcome.BLOCKED;
+    }
+    if (!user.isEnabled() || password == null || password.isBlank()
+        || !passwordEncoder.matches(password, user.getPasswordHash())) {
+      user.recordSignatureFailure(now.plus(BLOCK_DURATION));
+      users.save(user);
+      return SignaturePasswordOutcome.INVALID;
+    }
+    if (user.getSignatureFailedAttempts() > 0 || user.getSignatureBlockedUntil() != null) {
+      user.resetSignatureFailures();
+      users.save(user);
+    }
+    return SignaturePasswordOutcome.OK;
+  }
+
   /**
    * Uploads (or replaces) the signature image for {@code userId}. Gate: the actor is the
-   * owner or SUPER_ADMIN. Non-image content type → {@link UnsupportedContentTypeException}
-   * (415); empty bytes → {@link ValidationException} (400).
+   * owner or SUPER_ADMIN. The owner path additionally requires
+   * {@link #checkSignaturePassword} to have returned OK — the controller enforces that
+   * before calling this (Privy-analog: storing a signature is a credential-verified act).
+   * Non-image content type → {@link UnsupportedContentTypeException} (415); empty bytes →
+   * {@link ValidationException} (400).
    */
   @Transactional
   public StoreResult store(AuthenticatedUser actor, UUID userId, String contentType, byte[] data) {
@@ -152,6 +204,7 @@ public class UserSignatureService {
     }
     throw new SignatureForbiddenException();
   }
+
 
   private static void validate(String contentType, byte[] data) {
     var type = contentType == null ? "" : contentType.trim().toLowerCase(Locale.ROOT);
@@ -238,6 +291,14 @@ public class UserSignatureService {
   // -------------------------------------------------------------------------
 
   public static class SignatureNotFoundException extends RuntimeException {
+  }
+
+  /** Password does not match the owner's login password (401). */
+  public static class InvalidSignaturePasswordException extends RuntimeException {
+  }
+
+  /** 3 consecutive wrong passwords; saves blocked for 15 minutes (423). */
+  public static class SignatureBlockedException extends RuntimeException {
   }
 
   public static class SignatureForbiddenException extends RuntimeException {

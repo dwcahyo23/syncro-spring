@@ -17,6 +17,8 @@ import com.syncro.auth.application.PhoneVerificationService.InvalidOtpException;
 import com.syncro.auth.application.PhoneVerificationService.PhoneChallengeForbiddenException;
 import com.syncro.auth.application.PhoneVerificationService.ResendTooEarlyException;
 import com.syncro.auth.application.PlantScopeService.PlantAccessDeniedException;
+import com.syncro.auth.application.UserSignatureService.InvalidSignaturePasswordException;
+import com.syncro.auth.application.UserSignatureService.SignatureBlockedException;
 import com.syncro.auth.application.UserSignatureService.SignatureForbiddenException;
 import com.syncro.auth.application.UserSignatureService.SignatureNotFoundException;
 import com.syncro.auth.application.UserSignatureService.SignatureUploadConflictException;
@@ -170,6 +172,20 @@ public class AuthExceptionHandler {
   ResponseEntity<ErrorResponse> signatureUploadConflict() {
     return error(HttpStatus.CONFLICT, "SIGNATURE_UPLOAD_CONFLICT",
         "A concurrent signature upload won the race; retry the upload.");
+  }
+
+  // --- Leader signature spec: password gate ---------------------------------------
+
+  @ExceptionHandler(InvalidSignaturePasswordException.class)
+  ResponseEntity<ErrorResponse> invalidSignaturePassword() {
+    // Uniform message: never reveals whether a signature exists.
+    return error(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Invalid credentials.");
+  }
+
+  @ExceptionHandler(SignatureBlockedException.class)
+  ResponseEntity<ErrorResponse> signatureBlocked() {
+    return error(HttpStatus.LOCKED, "SIGNATURE_BLOCKED",
+        "Too many failed password attempts; signature saves are temporarily blocked.");
   }
 
   // Review 22-3 P8: multipart failure modes must answer with the house envelope,

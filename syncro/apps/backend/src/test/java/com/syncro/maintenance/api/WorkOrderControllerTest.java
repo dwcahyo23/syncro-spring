@@ -38,6 +38,7 @@ import com.syncro.maintenance.application.WorkOrderEvidenceService.WorkorderAtta
 import com.syncro.maintenance.api.WorkorderPrintReportDtos.PrintReportCpkView;
 import com.syncro.maintenance.api.WorkorderPrintReportDtos.PrintReportEvidenceView;
 import com.syncro.maintenance.api.WorkorderPrintReportDtos.PrintReportHeaderView;
+import com.syncro.maintenance.api.WorkorderPrintReportDtos.PrintReportLeaderSignatureView;
 import com.syncro.maintenance.api.WorkorderPrintReportDtos.PrintReportNarrativeView;
 import com.syncro.maintenance.api.WorkorderPrintReportDtos.PrintReportPartView;
 import com.syncro.maintenance.api.WorkorderPrintReportDtos.PrintReportSessionView;
@@ -1906,7 +1907,8 @@ class WorkOrderControllerTest {
         List.of(new PrintReportEvidenceView(UUID.randomUUID(), "photo.jpg", "image/jpeg", "https://presigned")),
         List.of(new PrintReportPartView(UUID.randomUUID(), "MRE-001", (short) 2, "READY", null)),
         new PrintReportSignatureView("https://presigned/sig", "Leader", ASSIGNEE_ID,
-            Instant.parse("2026-08-26T00:00:00Z")));
+            Instant.parse("2026-08-26T00:00:00Z")),
+        new PrintReportLeaderSignatureView(ASSIGNEE_ID, "Leader", "https://presigned/leader"));
     when(printReports.get("WO-240900001")).thenReturn(reportView);
 
     mockMvc.perform(get("/api/v1/workorders/{id}/print-report", "WO-240900001")
@@ -1917,7 +1919,8 @@ class WorkOrderControllerTest {
         .andExpect(jsonPath("$.sessions[0].description").value("diagnosis"))
         .andExpect(jsonPath("$.evidence[0].filename").value("photo.jpg"))
         .andExpect(jsonPath("$.parts[0].materialCode").value("MRE-001"))
-        .andExpect(jsonPath("$.signature.signerIdentity").value("Leader"));
+        .andExpect(jsonPath("$.signature.signerIdentity").value("Leader"))
+        .andExpect(jsonPath("$.leaderSignature.signaturePresignedUrl").value("https://presigned/leader"));
   }
 
   @Test

@@ -60,6 +60,10 @@ class UserSignatureServiceTest {
   private ObjectStorageService objectStorage;
   @Mock
   private AuditLogWriter auditLog;
+  @Mock
+  private com.syncro.auth.infrastructure.AuthUserRepository users;
+  @Mock
+  private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
   private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
   private final UUID userId = UUID.fromString("9d9e0f10-1111-2222-3333-444455556666");
@@ -69,7 +73,7 @@ class UserSignatureServiceTest {
 
   @BeforeEach
   void setUp() {
-    service = new UserSignatureService(signatures, objectStorage, garage, auditLog, clock);
+    service = new UserSignatureService(signatures, objectStorage, garage, auditLog, users, passwordEncoder, clock);
     when(objectStorage.store(anyString(), any(byte[].class), anyString()))
         .thenAnswer(invocation -> invocation.getArgument(0));
     when(objectStorage.presignGetUrl(anyString()))
@@ -226,5 +230,108 @@ class UserSignatureServiceTest {
     assertThat(result.created()).isTrue();
     assertThat(result.view().presignedUrl()).isNull();
     assertThat(result.view().sha256()).isEqualTo(sha256(PNG));
+  }
+
+  // --- Leader signature spec: checkSignaturePassword gate (auth_users counter, V22) --
+
+  private com.syncro.auth.infrastructure.AuthUserEntity ownerEntity() {
+    return new com.syncro.auth.infrastructure.AuthUserEntity(userId, "owner@syncro.dev", "hash",
+        ApplicationRole.SECTION_LEADER, true, NOW, NOW);
+  }
+
+  @Test
+  @DisplayName("LEAD-PW-001 P0 correct password returns OK and clears prior failures")
+  void correctPasswordOkAndResets() {
+    var user = ownerEntity();
+    when(users.findById(userId)).thenReturn(Optional.of(user));
+    user.recordSignatureFailure(NOW.plusSeconds(60)); // one failed attempt already
+    when(passwordEncoder.matches("right", "hash")).thenReturn(true);
+
+    assertThat(service.checkSignaturePassword(userId, "right"))
+        .isEqualTo(UserSignatureService.SignaturePasswordOutcome.OK);
+    assertThat(user.getSignatureFailedAttempts()).isZero();
+  }
+
+  @Test
+  @DisplayName("LEAD-PW-002 P0 wrong password returns INVALID and increments the user counter")
+  void wrongPasswordIncrementsCounter() {
+    var user = ownerEntity();
+    when(users.findById(userId)).thenReturn(Optional.of(user));
+    when(passwordEncoder.matches("wrong", "hash")).thenReturn(false);
+
+    assertThat(service.checkSignaturePassword(userId, "wrong"))
+        .isEqualTo(UserSignatureService.SignaturePasswordOutcome.INVALID);
+    assertThat(user.getSignatureFailedAttempts()).isEqualTo(1);
+    assertThat(user.getSignatureBlockedUntil()).isNull();
+  }
+
+  @Test
+  @DisplayName("LEAD-PW-003 P0 third consecutive wrong password starts the 15-minute block")
+  void thirdFailureBlocks() {
+    var user = ownerEntity();
+    user.recordSignatureFailure(NOW);
+    user.recordSignatureFailure(NOW); // 1,2 attempts; no block yet
+    assertThat(user.getSignatureBlockedUntil()).isNull();
+    when(users.findById(userId)).thenReturn(Optional.of(user));
+    when(passwordEncoder.matches("wrong", "hash")).thenReturn(false);
+
+    assertThat(service.checkSignaturePassword(userId, "wrong"))
+        .isEqualTo(UserSignatureService.SignaturePasswordOutcome.INVALID);
+    assertThat(user.getSignatureBlockedUntil()).isEqualTo(NOW.plusSeconds(15 * 60));
+  }
+
+  @Test
+  @DisplayName("LEAD-PW-004 P0 while blocked, saves are refused without password checks")
+  void blockedUntilFutureRejects() {
+    var user = ownerEntity();
+    user.recordSignatureFailure(NOW.plusSeconds(60));
+    user.recordSignatureFailure(NOW.plusSeconds(60));
+    user.recordSignatureFailure(NOW.plusSeconds(60)); // 3rd → blocked
+    assertThat(user.getSignatureBlockedUntil()).isNotNull();
+    when(users.findById(userId)).thenReturn(Optional.of(user));
+
+    assertThat(service.checkSignaturePassword(userId, "right"))
+        .isEqualTo(UserSignatureService.SignaturePasswordOutcome.BLOCKED);
+    verify(passwordEncoder, never()).matches(anyString(), anyString());
+  }
+
+  @Test
+  @DisplayName("LEAD-PW-005 P0 unknown user is INVALID without leaking existence")
+  void unknownUserIsInvalid() {
+    when(users.findById(userId)).thenReturn(Optional.empty());
+
+    assertThat(service.checkSignaturePassword(userId, "whatever"))
+        .isEqualTo(UserSignatureService.SignaturePasswordOutcome.INVALID);
+  }
+
+  @Test
+  @DisplayName("LEAD-PW-006 P0 first-time saver (no signature row) is still counted and blocked")
+  void firstTimeSaverCountsTowardBlock() {
+    var user = ownerEntity();
+    when(users.findById(userId)).thenReturn(Optional.of(user));
+    when(passwordEncoder.matches("wrong", "hash")).thenReturn(false);
+
+    // No user_signatures row exists — the counter lives on auth_users, so the frozen
+    // AC "3 wrong attempts block even before a signature exists" holds.
+    for (int i = 0; i < 2; i++) {
+      assertThat(service.checkSignaturePassword(userId, "wrong"))
+          .isEqualTo(UserSignatureService.SignaturePasswordOutcome.INVALID);
+    }
+    assertThat(service.checkSignaturePassword(userId, "wrong"))
+        .isEqualTo(UserSignatureService.SignaturePasswordOutcome.INVALID);
+    assertThat(service.checkSignaturePassword(userId, "wrong"))
+        .isEqualTo(UserSignatureService.SignaturePasswordOutcome.BLOCKED);
+  }
+
+  @Test
+  @DisplayName("LEAD-PW-007 P0 a disabled account cannot store a signature")
+  void disabledAccountIsInvalid() {
+    var user = new com.syncro.auth.infrastructure.AuthUserEntity(userId, "off@syncro.dev", "hash",
+        ApplicationRole.SECTION_LEADER, false, NOW, NOW);
+    when(users.findById(userId)).thenReturn(Optional.of(user));
+    when(passwordEncoder.matches("right", "hash")).thenReturn(true);
+
+    assertThat(service.checkSignaturePassword(userId, "right"))
+        .isEqualTo(UserSignatureService.SignaturePasswordOutcome.INVALID);
   }
 }

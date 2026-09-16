@@ -66,6 +66,7 @@ const woData: WorkorderPrintReportView = {
   evidence: [{ id: "e-1", filename: "foto.jpg", contentType: "image/jpeg", presignedUrl: "http://x/foto.jpg" }],
   parts: [{ id: "p-1", materialCode: "BRG-9", quantity: 2, status: "APPROVED", notes: null }],
   signature: null,
+  leaderSignature: null,
 };
 
 let mockWoQuery = { data: woData as WorkorderPrintReportView | null, isLoading: false, isError: false };
@@ -73,6 +74,7 @@ let mockTemplateState: { data: ReportPrintTemplateView | null; isPending: boolea
   data: null,
   isPending: false,
 };
+let mockLogo: { presignedUrl: string | null } | null = null;
 
 vi.mock("@/features/workorders/hooks/use-workorder-print-report", () => ({
   useWorkorderPrintReport: () => ({ ...mockWoQuery, refetch: vi.fn() }),
@@ -81,7 +83,7 @@ vi.mock("@/features/report-templates/hooks/use-report-print-template", () => ({
   useReportPrintTemplate: () => mockTemplateState,
 }));
 vi.mock("@/features/settings/hooks/use-company-logo", () => ({
-  useCompanyLogo: () => ({ data: null }),
+  useCompanyLogo: () => ({ data: mockLogo }),
 }));
 vi.mock("@/features/workorders/hooks/use-workorder-approve", () => ({
   useWorkorderApprove: () => ({ mutate: vi.fn(), isPending: false }),
@@ -111,6 +113,12 @@ beforeEach(() => {
   vi.useFakeTimers();
   mockWoQuery = { data: woData, isLoading: false, isError: false };
   mockTemplateState = { data: null, isPending: false };
+  mockLogo = null;
+  // jsdom lacks HTMLImageElement.decode; the auto-print effect waits on it whenever
+  // an <img> (logo / stamp token) is in the page.
+  if (!HTMLImageElement.prototype.decode) {
+    Object.defineProperty(HTMLImageElement.prototype, "decode", { value: () => Promise.resolve(), configurable: true });
+  }
   Object.defineProperty(window, "print", { value: vi.fn(), writable: true, configurable: true });
 });
 
@@ -205,5 +213,42 @@ describe("WorkorderPrintReportPage — template states (amended spec 2026-09-15)
     const bodyText = container.querySelector(".print-template-body")?.textContent ?? "";
     expect(bodyText).toContain("[BRK]");
     expect(bodyText).not.toContain("null");
+  });
+
+  // --- leader-signature spec: image tokens last hop (page map → rendered template) ---
+
+  it("{{logo}}/{{tandaTangan}} render as <img> with the right src/class at the token position", () => {
+    mockLogo = { presignedUrl: "http://garage/logo.png" };
+    mockWoQuery = {
+      data: {
+        ...woData,
+        leaderSignature: { userId: "l-1", displayName: "Budi", signaturePresignedUrl: "http://garage/sig.png" },
+      },
+      isLoading: false,
+      isError: false,
+    };
+    mockTemplateState = { data: templateWith("<p>KOP {{logo}} TTD {{tandaTangan}}</p>"), isPending: false };
+    const { container } = renderPage();
+    const body = container.querySelector(".print-template-body");
+    expect(body).not.toBeNull();
+    const imgs = body?.querySelectorAll("img") ?? [];
+    expect(imgs).toHaveLength(2);
+    expect(imgs[0].getAttribute("src")).toBe("http://garage/logo.png");
+    expect(imgs[0].getAttribute("class")).toBe("print-logo");
+    expect(imgs[1].getAttribute("src")).toBe("http://garage/sig.png");
+    expect(imgs[1].getAttribute("class")).toBe("print-signature");
+    // The tokens never leak raw or print "—" (they are images, not text).
+    expect(body?.textContent).not.toContain("{{");
+    expect(body?.textContent).not.toContain("—");
+  });
+
+  it("missing leader signature / unconfigured logo render nothing (no broken img, no dash)", () => {
+    mockLogo = null;
+    mockWoQuery = { data: { ...woData, leaderSignature: null }, isLoading: false, isError: false };
+    mockTemplateState = { data: templateWith("<p>[{{logo}}][{{tandaTangan}}]</p>"), isPending: false };
+    const { container } = renderPage();
+    const body = container.querySelector(".print-template-body");
+    expect(body?.querySelectorAll("img")).toHaveLength(0);
+    expect(body?.textContent).toBe("[][]");
   });
 });

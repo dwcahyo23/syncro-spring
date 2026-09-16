@@ -54,6 +54,12 @@ public class AuthUserEntity {
   @Column(name = "force_password_change", nullable = false)
   private boolean forcePasswordChange = false;
 
+  @Column(name = "signature_failed_attempts", nullable = false)
+  private int signatureFailedAttempts = 0;
+
+  @Column(name = "signature_blocked_until")
+  private Instant signatureBlockedUntil;
+
   @Column(name = "failed_login_attempts", nullable = false)
   private int failedLoginAttempts = 0;
 
@@ -107,6 +113,27 @@ public class AuthUserEntity {
     this.lockedAt = null;
     this.lockReason = null;
     this.updatedAt = Instant.now();
+  }
+
+  public int getSignatureFailedAttempts() {
+    return signatureFailedAttempts;
+  }
+
+  public Instant getSignatureBlockedUntil() {
+    return signatureBlockedUntil;
+  }
+
+  public void recordSignatureFailure(Instant blockedUntil) {
+    this.signatureFailedAttempts++;
+    if (this.signatureFailedAttempts >= 3) {
+      this.signatureFailedAttempts = 0;
+      this.signatureBlockedUntil = blockedUntil;
+    }
+  }
+
+  public void resetSignatureFailures() {
+    this.signatureFailedAttempts = 0;
+    this.signatureBlockedUntil = null;
   }
 
   public UUID getId() {

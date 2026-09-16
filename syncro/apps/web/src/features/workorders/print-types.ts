@@ -70,6 +70,13 @@ export interface PrintReportSignature {
   signedAt: string;
 }
 
+/** Leader signature resolved for template stamping (leader-signature spec). */
+export interface PrintReportLeaderSignature {
+  userId: string;
+  displayName: string | null;
+  signaturePresignedUrl: string | null;
+}
+
 export interface WorkorderPrintReportView {
   header: PrintReportHeader;
   sessions: PrintReportSession[];
@@ -78,6 +85,7 @@ export interface WorkorderPrintReportView {
   evidence: PrintReportEvidence[];
   parts: PrintReportPart[];
   signature: PrintReportSignature | null;
+  leaderSignature: PrintReportLeaderSignature | null;
 }
 
 export interface ApproveWorkorderRequest {

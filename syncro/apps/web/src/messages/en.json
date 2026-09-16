@@ -98,7 +98,8 @@
       "wahaTemplates": "WAHA Templates",
       "auditLog": "Audit Log",
       "systemHealth": "System Health",
-      "settings": "Settings"
+      "settings": "Settings",
+      "signature": "My Signature"
     },
     "layout": {
       "title": "Preferences",
@@ -834,6 +835,26 @@
       "uploadFailed": "Upload failed",
       "noLogo": "No logo configured.",
       "alt": "Company logo"
+    },
+    "signature": {
+      "title": "My Signature",
+      "subtitle": "Draw your signature once; completed reports stamp it at print time.",
+      "currentTitle": "Current signature",
+      "createTitle": "Create signature",
+      "replaceTitle": "Replace signature",
+      "canvasLabel": "Signature canvas",
+      "clear": "Clear",
+      "passwordLabel": "Your login password",
+      "passwordHelp": "Required to bind the signature to you. Three wrong attempts block saving for 15 minutes.",
+      "save": "Save signature",
+      "saving": "Saving...",
+      "passwordWrong": "Password does not match your account.",
+      "blocked": "Too many failed attempts; try again in 15 minutes.",
+      "saveFailed": "Could not save the signature.",
+      "nothingDrawn": "Draw your signature first.",
+      "loading": "Loading...",
+      "noneYet": "No signature stored yet.",
+      "alt": "My signature"
     }
   },
   "setup": {

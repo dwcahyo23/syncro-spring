@@ -328,6 +328,20 @@
   height: auto;
 }
 
+/* Screen sizing for the stamp tokens ({{logo}}/{{tandaTangan}}); the @media print
+   block below pins the paper sizes. Keeps print PREVIEW equal to what hits paper. */
+.tiptap img.print-logo,
+.print-template-body img.print-logo {
+  max-height: 56px;
+  width: auto;
+}
+
+.tiptap img.print-signature,
+.print-template-body img.print-signature {
+  max-height: 72px;
+  width: auto;
+}
+
 /* Links render black-on-white with underline on paper (the print neutralizer
    below keeps color); underline stays so they are recognizable. */
 .tiptap :where(a),

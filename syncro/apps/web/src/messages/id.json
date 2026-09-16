@@ -98,7 +98,8 @@
       "wahaTemplates": "Template WAHA",
       "auditLog": "Log Audit",
       "systemHealth": "Kesehatan Sistem",
-      "settings": "Pengaturan"
+      "settings": "Pengaturan",
+      "signature": "Tanda Tangan Saya"
     },
     "layout": {
       "title": "Preferensi",
@@ -834,6 +835,26 @@
       "uploadFailed": "Gagal mengunggah",
       "noLogo": "Belum ada logo yang dikonfigurasi.",
       "alt": "Logo perusahaan"
+    },
+    "signature": {
+      "title": "Tanda Tangan Saya",
+      "subtitle": "Gambar tanda tangan Anda sekali; laporan selesai menempelkannya saat cetak.",
+      "currentTitle": "Tanda tangan saat ini",
+      "createTitle": "Buat tanda tangan",
+      "replaceTitle": "Ganti tanda tangan",
+      "canvasLabel": "Kanvas tanda tangan",
+      "clear": "Bersihkan",
+      "passwordLabel": "Kata sandi login Anda",
+      "passwordHelp": "Diperlukan untuk mengikat tanda tangan ke akun Anda. Tiga kali salah menyimpan diblokir 15 menit.",
+      "save": "Simpan tanda tangan",
+      "saving": "Menyimpan...",
+      "passwordWrong": "Kata sandi tidak cocok dengan akun Anda.",
+      "blocked": "Terlalu banyak percobaan gagal; coba lagi dalam 15 menit.",
+      "saveFailed": "Gagal menyimpan tanda tangan.",
+      "nothingDrawn": "Gambar tanda tangan Anda terlebih dahulu.",
+      "loading": "Memuat...",
+      "noneYet": "Belum ada tanda tangan tersimpan.",
+      "alt": "Tanda tangan saya"
     }
   },
   "setup": {

@@ -3,6 +3,8 @@ package com.syncro.auth.api;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -20,6 +22,7 @@ import com.syncro.auth.application.PlantScopeService;
 import com.syncro.auth.application.UserSignatureService;
 import com.syncro.auth.application.UserSignatureService.SignatureForbiddenException;
 import com.syncro.auth.application.UserSignatureService.SignatureNotFoundException;
+import com.syncro.auth.application.UserSignatureService.SignaturePasswordOutcome;
 import com.syncro.auth.application.UserSignatureService.StorageException;
 import com.syncro.auth.application.UserSignatureService.StoreResult;
 import com.syncro.auth.application.UserSignatureService.UnsupportedContentTypeException;
@@ -90,12 +93,14 @@ class UserSignatureControllerTest {
 
   @Test
   void firstUploadReturns201WithReferenceAndNoImageBytes() throws Exception {
+    when(userSignatures.checkSignaturePassword(eq(USER_ID), any())).thenReturn(SignaturePasswordOutcome.OK);
     when(userSignatures.store(any(), eq(USER_ID), eq("image/png"), any()))
         .thenReturn(new StoreResult(view(), true));
 
     mockMvc.perform(multipart("/api/v1/auth/user-signatures")
             .file(new MockMultipartFile("data", "sig.png", "image/png", "bytes".getBytes(StandardCharsets.UTF_8)))
             .param("contentType", "image/png")
+            .param("password", "right-password")
             .with(SecurityMockMvcRequestPostProcessors.authentication(authenticationFor(ApplicationRole.TECHNICIAN))))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.id").value(SIG_ID.toString()))
@@ -106,24 +111,58 @@ class UserSignatureControllerTest {
 
   @Test
   void reUploadReturns200() throws Exception {
+    when(userSignatures.checkSignaturePassword(eq(USER_ID), any())).thenReturn(SignaturePasswordOutcome.OK);
     when(userSignatures.store(any(), eq(USER_ID), eq("image/png"), any()))
         .thenReturn(new StoreResult(view(), false));
 
     mockMvc.perform(multipart("/api/v1/auth/user-signatures")
             .file(new MockMultipartFile("data", "sig.png", "image/png", "bytes".getBytes(StandardCharsets.UTF_8)))
             .param("contentType", "image/png")
+            .param("password", "right-password")
             .with(SecurityMockMvcRequestPostProcessors.authentication(authenticationFor(ApplicationRole.TECHNICIAN))))
         .andExpect(status().isOk());
   }
 
   @Test
+  void wrongPasswordIsUnauthorized() throws Exception {
+    when(userSignatures.checkSignaturePassword(eq(USER_ID), any())).thenReturn(SignaturePasswordOutcome.INVALID);
+
+    mockMvc.perform(multipart("/api/v1/auth/user-signatures")
+            .file(new MockMultipartFile("data", "sig.png", "image/png", "bytes".getBytes(StandardCharsets.UTF_8)))
+            .param("contentType", "image/png")
+            .param("password", "wrong")
+            .with(SecurityMockMvcRequestPostProcessors.authentication(authenticationFor(ApplicationRole.TECHNICIAN))))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
+
+    verify(userSignatures, never()).store(any(), any(), any(), any());
+  }
+
+  @Test
+  void blockedSavesAre423() throws Exception {
+    when(userSignatures.checkSignaturePassword(eq(USER_ID), any())).thenReturn(SignaturePasswordOutcome.BLOCKED);
+
+    mockMvc.perform(multipart("/api/v1/auth/user-signatures")
+            .file(new MockMultipartFile("data", "sig.png", "image/png", "bytes".getBytes(StandardCharsets.UTF_8)))
+            .param("contentType", "image/png")
+            .param("password", "whatever")
+            .with(SecurityMockMvcRequestPostProcessors.authentication(authenticationFor(ApplicationRole.TECHNICIAN))))
+        .andExpect(status().isLocked())
+        .andExpect(jsonPath("$.code").value("SIGNATURE_BLOCKED"));
+
+    verify(userSignatures, never()).store(any(), any(), any(), any());
+  }
+
+  @Test
   void emptyImageIsValidationError() throws Exception {
+    when(userSignatures.checkSignaturePassword(eq(USER_ID), any())).thenReturn(SignaturePasswordOutcome.OK);
     when(userSignatures.store(any(), any(), any(), any()))
         .thenThrow(new ValidationException(Map.of("data", "Signature image must not be empty.")));
 
     mockMvc.perform(multipart("/api/v1/auth/user-signatures")
             .file(new MockMultipartFile("data", "sig.png", "image/png", new byte[0]))
             .param("contentType", "image/png")
+            .param("password", "right-password")
             .with(SecurityMockMvcRequestPostProcessors.authentication(authenticationFor(ApplicationRole.TECHNICIAN))))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
@@ -138,6 +177,7 @@ class UserSignatureControllerTest {
     // house envelope, not Spring's default 500.
     mockMvc.perform(multipart("/api/v1/auth/user-signatures")
             .param("contentType", "image/png")
+            .param("password", "right-password")
             .with(SecurityMockMvcRequestPostProcessors.authentication(authenticationFor(ApplicationRole.TECHNICIAN))))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
@@ -146,11 +186,13 @@ class UserSignatureControllerTest {
 
   @Test
   void nonImageContentTypeIs415() throws Exception {
+    when(userSignatures.checkSignaturePassword(eq(USER_ID), any())).thenReturn(SignaturePasswordOutcome.OK);
     when(userSignatures.store(any(), any(), any(), any())).thenThrow(new UnsupportedContentTypeException());
 
     mockMvc.perform(multipart("/api/v1/auth/user-signatures")
             .file(new MockMultipartFile("data", "doc.pdf", "application/pdf", "bytes".getBytes(StandardCharsets.UTF_8)))
             .param("contentType", "application/pdf")
+            .param("password", "right-password")
             .with(SecurityMockMvcRequestPostProcessors.authentication(authenticationFor(ApplicationRole.TECHNICIAN))))
         .andExpect(status().isUnsupportedMediaType())
         .andExpect(jsonPath("$.code").value("UNSUPPORTED_MEDIA_TYPE"));
@@ -158,12 +200,14 @@ class UserSignatureControllerTest {
 
   @Test
   void storageFailureIs502() throws Exception {
+    when(userSignatures.checkSignaturePassword(eq(USER_ID), any())).thenReturn(SignaturePasswordOutcome.OK);
     when(userSignatures.store(any(), any(), any(), any()))
         .thenThrow(new StorageException(new RuntimeException("garage down")));
 
     mockMvc.perform(multipart("/api/v1/auth/user-signatures")
             .file(new MockMultipartFile("data", "sig.png", "image/png", "bytes".getBytes(StandardCharsets.UTF_8)))
             .param("contentType", "image/png")
+            .param("password", "right-password")
             .with(SecurityMockMvcRequestPostProcessors.authentication(authenticationFor(ApplicationRole.TECHNICIAN))))
         .andExpect(status().isBadGateway())
         .andExpect(jsonPath("$.code").value("OBJECT_STORAGE_ERROR"));

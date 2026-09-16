@@ -90,6 +90,18 @@ public final class WorkorderPrintReportDtos {
   }
 
   /**
+   * The section leader's stored signature for template stamping (leader-signature spec).
+   * Resolved via machine → group → section → leader (responsibility fallback), null when
+   * the WO is not terminal, no leader is resolvable, or the leader never stored a
+   * signature / presign failed (null-tolerant, PmExecutionReportService precedent).
+   */
+  public record PrintReportLeaderSignatureView(
+      UUID userId,
+      String displayName,
+      String signaturePresignedUrl) {
+  }
+
+  /**
    * Aggregate print report response. Every section is optional (null/empty list) so the
    * frontend handles absent data gracefully. The company logo is a separate settings
    * read (GET /api/v1/settings/logo), not part of this aggregate.
@@ -101,6 +113,7 @@ public final class WorkorderPrintReportDtos {
       PrintReportCpkView cpk,
       List<PrintReportEvidenceView> evidence,
       List<PrintReportPartView> parts,
-      PrintReportSignatureView signature) {
+      PrintReportSignatureView signature,
+      PrintReportLeaderSignatureView leaderSignature) {
   }
 }

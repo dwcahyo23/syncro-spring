@@ -119,6 +119,14 @@ export function WorkorderPrintReportPage({ workOrderId, onClose }: { workOrderId
     cpk: data.cpk?.cpk ?? null,
     fmea: data.cpk?.fmeaFailureType ?? null,
     stopTime: [data.cpk?.stopTimeReason, data.cpk?.stopTimeDetail].filter(Boolean).join(" — ") || null,
+    // Image tokens (leader-signature spec): presigned at print time by our own
+    // services; null URL renders as nothing — never "—", never a broken image.
+    logo: { imageUrl: logo?.presignedUrl ?? null, alt: t("print.logoAlt"), className: "print-logo" },
+    tandaTangan: {
+      imageUrl: data.leaderSignature?.signaturePresignedUrl ?? null,
+      alt: t("print.signatureAlt"),
+      className: "print-signature",
+    },
   };
   const customLayout = template && !isLayoutEmpty(template.bodyHtml) ? template.bodyHtml : null;
 

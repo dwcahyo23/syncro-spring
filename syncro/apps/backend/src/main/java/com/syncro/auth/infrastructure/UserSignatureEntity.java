@@ -132,4 +132,7 @@ public class UserSignatureEntity {
     this.sha256 = sha256;
     this.updatedAt = updatedAt;
   }
+
+  // The user_signatures lockout columns (V1) are legacy: the password gate counts on
+  // auth_users instead (V22) so first-time savers are covered. Not read or written here.
 }
