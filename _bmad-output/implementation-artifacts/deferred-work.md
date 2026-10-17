@@ -1367,16 +1367,18 @@ resolution: snapshot regenerated and committed (d5c79ce) — /api/v1/kpi paths a
   summary: Logika label audit (guard code point + `offsetByCodePoints`) masih terduplikasi di `PmChecklistService` dan `PmExecutionService`, plus literal 255; DW-147 membuat kedua salinan identik tapi tidak menghapus duplikasinya.
   evidence: DW-147 sendiri lahir karena dua salinan ini melenceng. Selama masih dua salinan, edit berikutnya pada satu sisi akan membuka kelas bug yang sama. Ekstrak ke satu helper bersama (mis. `AuditLabels.truncateToCodePoints(String, int)`) saat ada perubahan lain yang menyentuh area ini.
 
-### DW-171: `main` cannot build from a fresh clone — 25 generated models the barrel imports are untracked
+### DW-171: `generated/` was gitignored while 110 of its files were force-added, breaking fresh clones
 
 - summary: `model/index.ts` yang tracked meng-`export *` dari 134 modul, tapi hanya 110 file model yang tracked. Checkout bersih dari `main` gagal di `tsc` dengan module-not-found. Aturan `.gitignore` (`**/src/lib/api/generated/`, seit commit 383a84b2 2026-08-10) meng-ignore seluruh direktori sementara 110 file di dalamnya pernah di-force-add — hasil tiap regen Orval adalah ratusan file yang diam-diam tidak bisa masuk commit.
-- evidence (2026-10-17, terukur): file model di disk 504, tracked 110, **orphan (ada di disk, tidak tracked, ter-ignore) 394**. `model/index.ts` di HEAD berisi 134 `export * from`, dan **25** di antaranya tidak punya file tracked: `addMemberRequest`, `alertViewAlertType`, `assignSectionRequest`, `authzDecisionView`, `createSectionRequest`, `createSparepartImageBody`, … Regen snapshot 220-path (commit d5c79ce) memperburuk: 505 file di disk, 394 ter-ignore.
-- keputusan (belum diambil): tiga opsi — (a) hapus aturan `.gitignore` dan track penuh 504 file, sehingga checkout self-contained dan setiap regen jadi diff yang bisa di-review; (b) tambah skrip regen yang melakukan `git add -f` setelah orval, mengorbankan self-containedness; (c) biarkan terbuka. Tidak ada kode yang diubah untuk opsi mana pun sampai keputusan diambil.
+- keputusan (2026-10-17, opsi A disetujui): aturan `.gitignore` untuk `**/src/lib/api/generated/` dihapus; klien hasil regen penuh dari `openapi.json` 220-path di-commit. Verifikasi: barrel `model/index.ts` meng-export 503 modul, tracked model files 504, **missing 0** — tidak ada lagi import yang menggantung.
+status: done 2026-10-17
+resolution: commit 2614399b — hapus aturan gitignore, `git clean` 394 file orphan lalu regen bersih, 394 file baru + 111 diperbarui masuk commit. Drift tipe yang muncul dari regen diperbaiki di call site (plantId wajib di 3 pemanggil `useListSections`, field team/member/machine opsional, `null` → `undefined` di fixture alert). `tsc --noEmit` bersih, 13 unit test hijau. Side effect: DX-172 ikut tertutup karena 27 error tipenya berakar dari klien yang sama.
 
 ### DW-172: 27 typecheck error setelah regenerasi klien Orval dari snapshot baru
 
 - source_spec: none (sweep OpenAPI snapshot 2026-10-17)
-- summary: `tsc --noEmit` gagal di 5 file setelah klien diregenerasi dari snapshot 220-path; sebagian besar karena field/parameter yang di kontrak lama wajib kini menjadi optional.
+status: done 2026-10-17
+resolution: closed with DW-171 (commit 2614399b) — keempat error di `generated/` dan 23 error call-site berasal dari klien yang sama; regenerasi bersih + 5 file fitur diperbaiki membuat `tsc --noEmit` bersih. Detail per-file ada di commit message.
 - evidence: `npx tsc --noEmit` → 27 error: `features/master-data/teams/team-management.tsx` (20, mayoritas `items` possibly undefined dan `string | undefined`), `features/alerts/alert-detail-page-content.test.tsx` (4, `null` vs `number | undefined`), `features/master-data/machine-groups/machine-group-management.tsx` (1, `ListSectionsParams.plantId` kini `string` wajib), `features/master-data/sections/section-management.tsx` (1, `plantId` undefined), `features/workorders/workorder-dashboard-page-content.tsx` (1). Tidak dikerjakan karena regen klien itu sendiri belum bisa di-commit (lihat DW-171).
 
 ### DW-173: No rego test pinned job-titles / machine-areas / plant-working-calendars / user-bindings mutations
