@@ -1174,12 +1174,14 @@ reason: Pre-existing pattern — code = prefix + serial existed before 18-1; the
 severity: medium
 status: open
 
-### DW-145: FR-161 allowed-actions *.write mirror not extended for inventory roles
-origin: code review of spec-18-2-inventory-locations (blind-hunter), 2026-09-02
-location: syncro/authz/policy/authz.rego (actions set, ~lines 955-975)
-reason: The actions set grants *.write only to MANAGER/SECTION_LEADER/MAINTENANCE_LEADER; INVENTORY_MAINTENANCE now mutates inventory-locations (and sparepart-stock) but has no mirror entry, so the menu/permission projection disagrees with enforcement. Pre-existing pattern (also true for sparepart-stock); needs one focused pass across all inventory roles.
-severity: medium
-status: open
+### DW-145: OPA `*.write` mirror does not cover the inventory roles that can mutate
+- source_spec: none (investigated 2026-10-17 while triaging the enforcement smoke test)
+- summary: Ditutup sebagai bukan defect setelah penelusuran. `actions` di rego hanya menghasilkan token `*.read` / `*.write` yang **tidak dibaca siapa pun** — satu-satunya consumer adalah `GET /api/v1/auth/allowed-actions` (`AuthzController.java:37`), dan tidak ada komponen web yang memanggilnya. Frontend menentukan read-only dengan hardcode `applicationRole` per layar, bukan lewat endpoint itu.
+- evidence: `grep` seluruh `apps/web/src` untuk `authz/allowed-actions|useAllowedActions|getAllowedActions` → 0 hasil. Pola yang dipakai FE ada di 10+ komponen,contohnya  `plant-management.tsx:82`, `machine-management.tsx:94`, `machine-group-management.tsx:84`, `section-management.tsx:89`, `shift-section.tsx:32`, `kpi-target-dialog.tsx:59`, `audit-log-page.tsx:32` — semuanya `SUPER_ADMIN || MANAGER_MAINTENANCE || MAINTENANCE_LEADER` atau `!= AUDITOR`. Di sisi server, `mutation_allowed` (bukan `actions`) yang meng-gate setiap request, dan itu sudah benar.
+- konsekuensi yang tersisa: ada **dua mekanisme read-only yang tidak sengaja bercabang** — OPA `mutation_allowed` (otoritatif, aktif) dan FE hardcode `applicationRole` (duplikat, tidak tidak konsisten). Menambal `*.write` hanya menambah branch mati. Perbaikannya adalah menyuruh FE membaca `/authz/allowed-actions`, atau mengekspos effective job scope — yang sudah tercatat sebagai entri "expose effective job scope from an auth endpoint" (source_spec spec-8-5) dan masih terbuka.
+status: done 2026-10-17
+resolution: closed by human decision — bukan defect; tidak ada perubahan kode. Akar masalah sebenarnya (FE menduplikasi logic authz secara hardcode) tetap tercatat di ledger sebagai entri 8-5 yang lebih besar.
+
 
 ### DW-146: N+1 view assembly in stock controllers
 origin: code review of spec-18-3-inventory-stock-balances (blind-hunter), 2026-09-02
