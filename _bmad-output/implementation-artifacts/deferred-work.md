@@ -1150,7 +1150,8 @@ resolution: resolved by commit c3bb741 — shared LikePattern.escape() consolida
 origin: code review pass 2 (acceptance-auditor), 2026-09-02
 location: syncro/apps/web/openapi.json
 reason: Project pattern — the committed snapshot was last refreshed at story 9-5; per-story regeneration is not the convention. The frontend story consuming approve/reject needs a contract-refresh chore.
-status: open
+status: done 2026-10-17
+resolution: snapshot regenerated and committed (d5c79ce) — 51 -> 220 paths against a live backend with all 22 migrations applied; the BOM review operations are now present. Orval client regeneration remains blocked by DW-171.
 
 ### DW-142: full mvn test suite deferred to end-of-epic gate
 origin: code review pass 2 (verification-gap), 2026-09-02
@@ -1192,7 +1193,8 @@ status: open
 origin: code review of spec-19-1-pm-frequencies-checksheets (blind-hunter), 2026-09-03
 location: syncro/apps/web/openapi.json
 reason: The checked-in OpenAPI contract has no /api/v1/pm-frequencies or /api/v1/pm-checksheets paths (and is already missing several prior-epic surfaces), so the Orval-generated client does not include this story's endpoints. Pre-existing staleness; regenerate as a dedicated contract-sync task rather than per-story.
-status: open
+status: done 2026-10-17
+resolution: snapshot regenerated and committed (d5c79ce) — both PM paths are now in the contract. Orval client regeneration remains blocked by DW-171.
 
 ### DW-149: N+1 + unbounded findAll in PmChecksheetService.list
 origin: code review of spec-19-1-pm-frequencies-checksheets (blind-hunter+verification-gap), 2026-09-03
@@ -1306,7 +1308,8 @@ status: open
 origin: code review of spec-20-2-kpi-targets-dashboard-consumption (verification-gap), 2026-09-04
 location: syncro/apps/web/openapi.json
 reason: /api/v1/kpi/* endpoints are consumed via hand-written hooks (same precedent as the 14-2 dashboard endpoints), so the frontend TS interfaces are pinned only by human agreement with the backend records. A MockMvc jsonPath test now pins the verdict contract (20-2 patch), but snapshot regeneration for the kpi module remains a separate chore.
-status: open
+status: done 2026-10-17
+resolution: snapshot regenerated and committed (d5c79ce) — /api/v1/kpi paths are now in the contract. The hand-written hooks can be migrated to the generated client once DW-171 unblocks regeneration.
 
 ### DW-167: Upload bukti foto before/after pada workorder (split dari spec tri-goal)
 - source_spec: _bmad-output/implementation-artifacts/spec-wo-evidence-wysiwyg-nav.md
@@ -1327,6 +1330,8 @@ status: open
 - source_spec: _bmad-output/implementation-artifacts/spec-report-print-templates.md
 - summary: Hook web hand-written (preseden modul kpi 20-x), jadi tipe TS hanya dipinj oleh manusia vs record backend.
 - evidence: Regenerasi snapshot (GET /v3/api-docs → openapi.json → orval) akan menutup; sama klasnya dengan DW-141/148/166.
+- status: done 2026-10-17
+- resolution: snapshot regenerated and committed (d5c79ce) — /api/v1/report-templates is now in the contract. The hand-written hooks can be migrated once DW-171 unblocks Orval regeneration.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-dw-147-pm-checklist-itemlabel-surrogate-pair.md`
   summary: `PmChecklistService.requireText` masih menghitung `trimmed.length()` (UTF-16 unit) sementara `itemLabel` kini menghitung code point, jadi panjang "500 karakter" didefinisikan dua cara berbeda dalam satu layanan.
@@ -1335,4 +1340,18 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-dw-147-pm-checklist-itemlabel-surrogate-pair.md`
   summary: Logika label audit (guard code point + `offsetByCodePoints`) masih terduplikasi di `PmChecklistService` dan `PmExecutionService`, plus literal 255; DW-147 membuat kedua salinan identik tapi tidak menghapus duplikasinya.
   evidence: DW-147 sendiri lahir karena dua salinan ini melenceng. Selama masih dua salinan, edit berikutnya pada satu sisi akan membuka kelas bug yang sama. Ekstrak ke satu helper bersama (mis. `AuditLabels.truncateToCodePoints(String, int)`) saat ada perubahan lain yang menyentuh area ini.
+
+### DW-171: `generated/` ter-ignore tapi sebagian di-force-add — regen Orval tidak bisa di-commit bersih
+
+- source_spec: none (sweep OpenAPI snapshot 2026-10-17)
+- summary: `.gitignore:176` (`**/src/lib/api/generated/`) meng-ignore seluruh direktori generated, tetapi 111 file di dalamnya di-force-add. Akibatnya setiap regenerasi Orval menghasilkan ratusan file baru yang tidak pernah bisa masuk commit, dan `syncro.ts` yang tracked mereferensikan model yang tidak ada di git.
+- evidence: Setelah regen 2026-10-17 (snapshot 220 paths): 505 file di disk, 111 tracked, **394 file baru ter-ignore**. Terbukti juga dari HEAD: `syncro.ts` di commit mereferensikan `SectionListResponse` sementara `model/sectionListResponse.ts` tidak ada di commit — jadi checkout bersih dari HEAD pun gagal typecheck. Ini kelas yang sama dengan entri review 8-2 yang sudah tercatat.
+- catatan: snapshot `openapi.json` sudah di-refresh dan di-commit (d5c79ce) sehingga DW-141/148/166/170 ditutup sebagai *contract-side*; sisa kerjanya adalah regenerasi klien Orval, yang baru bisa dieksekusi setelah policy ini dibereskan.
+
+### DW-172: 27 typecheck error setelah regenerasi klien Orval dari snapshot baru
+
+- source_spec: none (sweep OpenAPI snapshot 2026-10-17)
+- summary: `tsc --noEmit` gagal di 5 file setelah klien diregenerasi dari snapshot 220-path; sebagian besar karena field/parameter yang di kontrak lama wajib kini menjadi optional.
+- evidence: `npx tsc --noEmit` → 27 error: `features/master-data/teams/team-management.tsx` (20, mayoritas `items` possibly undefined dan `string | undefined`), `features/alerts/alert-detail-page-content.test.tsx` (4, `null` vs `number | undefined`), `features/master-data/machine-groups/machine-group-management.tsx` (1, `ListSectionsParams.plantId` kini `string` wajib), `features/master-data/sections/section-management.tsx` (1, `plantId` undefined), `features/workorders/workorder-dashboard-page-content.tsx` (1). Tidak dikerjakan karena regen klien itu sendiri belum bisa di-commit (lihat DW-171).
+
 
