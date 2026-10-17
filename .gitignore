@@ -171,10 +171,14 @@ syncro/**/.ruff_cache/
 syncro/**/.cache/
 syncro/**/*.tsbuildinfo
 
-# Generated OpenAPI client (backend -> web)
-syncro/apps/web/src/lib/api/generated/
-**/src/lib/api/generated/
+# Generated OpenAPI client (backend -> web) is TRACKED (DW-171). It used to be
+# ignored here while 110 files inside it were force-added, which left every
+# regenerated model untracked and broke `tsc` on a fresh clone: the tracked
+# model/index.ts re-exported modules that were never committed. Generation is
+# deterministic from the committed openapi.json, so the client is committed
+# output like a lockfile — review the diff, never hand-edit it.
 **/openapi-generated/
+**/api-generated/
 **/api-generated/
 
 # Syncro infrastructure runtime data

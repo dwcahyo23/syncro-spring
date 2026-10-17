@@ -64,7 +64,7 @@ export function SectionManagement() {
 
   const effectivePlantId = activePlantId !== "all" ? activePlantId : "";
   const sectionParams = {
-    plantId: effectivePlantId || undefined,
+    plantId: effectivePlantId,
     includeInactive,
   };
   const sectionsQuery = useListSections(sectionParams, {

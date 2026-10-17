@@ -114,7 +114,7 @@ export function MachineGroupManagement() {
     mutation: { onSuccess: () => invalidateMachineGroupData(effectivePlantId) },
   });
   const sections = useListSections(
-    { plantId: effectivePlantId || undefined, includeInactive: true },
+    { plantId: effectivePlantId, includeInactive: true },
     { query: { enabled: Boolean(effectivePlantId) && !isAssignedEmpty, queryKey: ["sections", effectivePlantId] } },
   );
   const sectionItems = sections.data?.data.items ?? [];

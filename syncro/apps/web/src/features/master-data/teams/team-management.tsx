@@ -103,7 +103,7 @@ export function TeamManagement() {
 
   const listEnvelope = teamsQuery.data?.data;
   // Error responses carry no body; only the 200 envelope has `items`.
-  const items = listEnvelope && "items" in listEnvelope ? listEnvelope.items : [];
+  const items = (listEnvelope && "items" in listEnvelope ? listEnvelope.items : []) ?? [];
   const isSaving = createTeam.isPending || updateTeam.isPending;
   const isDeleting = deleteTeam.isPending;
 
@@ -116,7 +116,7 @@ export function TeamManagement() {
 
   function openEditDialog(team: TeamView) {
     setDialogMode({ type: "edit", team });
-    setForm({ name: team.name, expiresAt: toDatetimeLocal(team.expiresAt) });
+    setForm({ name: team.name ?? "", expiresAt: team.expiresAt ? toDatetimeLocal(team.expiresAt) : "" });
     setFieldErrors({});
     setFormError(null);
   }
@@ -137,7 +137,7 @@ export function TeamManagement() {
     try {
       if (dialogMode?.type === "edit" && dialogMode.team) {
         await updateTeam.mutateAsync({
-          teamId: dialogMode.team.id,
+          teamId: dialogMode.team.id ?? "",
           data: { name: form.name.trim(), expiresAt },
         });
         toast.success(t("team.toast.updated"));
@@ -372,7 +372,7 @@ function ManageDialog({
 }) {
   const t = useTranslations("masterData");
   const queryClient = useQueryClient();
-  const detail = useGetTeam(team.id);
+  const detail = useGetTeam(team.id ?? "");
   const detailEnvelope = detail.data?.data;
   const detailData = detailEnvelope && "members" in detailEnvelope ? detailEnvelope : null;
 
@@ -380,14 +380,14 @@ function ManageDialog({
   // '/api/v1/teams/${teamId}'), so mutations must invalidate the detail explicitly.
   const refreshDialog = () => {
     onChanged();
-    queryClient.invalidateQueries({ queryKey: getGetTeamQueryKey(team.id) });
+    queryClient.invalidateQueries({ queryKey: getGetTeamQueryKey(team.id ?? "") });
   };
 
   let manager: React.ReactNode = null;
   if (detailData && type === "members") {
-    manager = <MemberManager teamId={team.id} detail={detailData} canMutate={canMutate} onChanged={refreshDialog} />;
+    manager = <MemberManager teamId={team.id ?? ""} detail={detailData} canMutate={canMutate} onChanged={refreshDialog} />;
   } else if (detailData && type === "machines") {
-    manager = <MachineManager teamId={team.id} detail={detailData} canMutate={canMutate} onChanged={refreshDialog} />;
+    manager = <MachineManager teamId={team.id ?? ""} detail={detailData} canMutate={canMutate} onChanged={refreshDialog} />;
   }
 
   return (
@@ -396,8 +396,8 @@ function ManageDialog({
         <DialogHeader>
           <DialogTitle>
             {type === "members"
-              ? t("team.manage.membersTitle", { name: team.name })
-              : t("team.manage.machinesTitle", { name: team.name })}
+              ? t("team.manage.membersTitle", { name: team.name ?? "" })
+              : t("team.manage.machinesTitle", { name: team.name ?? "" })}
           </DialogTitle>
           <DialogDescription>
             {type === "members" ? t("team.manage.membersDesc") : t("team.manage.machinesDesc")}
@@ -438,7 +438,7 @@ function MemberManager({
     mutation: { onSuccess: onChanged },
   });
 
-  const memberIds = new Set(detail.members.map((member) => member.userId));
+  const memberIds = new Set((detail.members ?? []).map((member) => member.userId));
   const availableUsers = users.filter((candidate) => candidate.id && !memberIds.has(candidate.id));
 
   async function handleAdd() {
@@ -492,10 +492,10 @@ function MemberManager({
         )
       ) : null}
       <div className="space-y-2">
-        {detail.members.length === 0 ? (
+        {(detail.members ?? []).length === 0 ? (
           <p className="text-muted-foreground text-sm">{t("team.manage.noMembers")}</p>
         ) : (
-          detail.members.map((member) => (
+          (detail.members ?? []).map((member) => (
             <div key={member.userId} className="flex items-center justify-between rounded-md border p-2">
               <div>
                 <p className="font-medium text-sm">{member.loginIdentifier}</p>
@@ -506,7 +506,7 @@ function MemberManager({
                   variant="outline"
                   size="sm"
                   disabled={removeMember.isPending}
-                  onClick={() => void handleRemove(member.userId)}
+                  onClick={() => void handleRemove(member.userId ?? "")}
                 >
                   {t("team.manage.remove")}
                 </Button>
@@ -555,7 +555,7 @@ function MachineManager({
     mutation: { onSuccess: onChanged },
   });
 
-  const machineIds = new Set(detail.machines.map((machine) => machine.machineId));
+  const machineIds = new Set((detail.machines ?? []).map((machine) => machine.machineId));
   const availableMachines = machines.filter((candidate) => candidate.id && !machineIds.has(candidate.id));
 
   function handlePlantFilterChange(value: string) {
@@ -642,10 +642,10 @@ function MachineManager({
         )
       ) : null}
       <div className="space-y-2">
-        {detail.machines.length === 0 ? (
+        {(detail.machines ?? []).length === 0 ? (
           <p className="text-muted-foreground text-sm">{t("team.manage.noMachinesLinked")}</p>
         ) : (
-          detail.machines.map((machine) => (
+          (detail.machines ?? []).map((machine) => (
             <div key={machine.machineId} className="flex items-center justify-between rounded-md border p-2">
               <div>
                 <p className="font-medium text-sm">
@@ -660,7 +660,7 @@ function MachineManager({
                   variant="outline"
                   size="sm"
                   disabled={unlinkMachine.isPending}
-                  onClick={() => void handleUnlink(machine.machineId)}
+                  onClick={() => void handleUnlink(machine.machineId ?? "")}
                 >
                   {t("team.manage.unlink")}
                 </Button>

@@ -113,10 +113,10 @@ describe("AlertDetailPageContent procurement risk", () => {
     alertData = {
       data: alert({
         alertType: "PROCUREMENT_RISK",
-        thresholdPercentage: null,
-        currentCounterSnapshot: null,
-        consumedProductionCountSnapshot: null,
-        consumedPercentageSnapshot: null,
+        thresholdPercentage: undefined,
+        currentCounterSnapshot: undefined,
+        consumedProductionCountSnapshot: undefined,
+        consumedPercentageSnapshot: undefined,
         leadTimeHours: 36.5,
         ratePerOperatingHour: 1200,
         calculationBasis: "ROLLING_30_DAY",

@@ -61,7 +61,7 @@ export function WorkorderDashboardPageContent() {
   };
   const query = useWorkorderDashboard(params, isEnabled);
 
-  const { data: sectionsRes } = useListSections(plantId ? { plantId } : undefined, {
+  const { data: sectionsRes } = useListSections(plantId ? { plantId } : { plantId: "" }, {
     query: { enabled: isEnabled && Boolean(plantId), staleTime: 60_000 },
   });
   const sections = sectionsRes?.data?.items ?? [];
