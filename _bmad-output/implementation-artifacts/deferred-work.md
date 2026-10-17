@@ -1327,3 +1327,12 @@ status: open
 - source_spec: _bmad-output/implementation-artifacts/spec-report-print-templates.md
 - summary: Hook web hand-written (preseden modul kpi 20-x), jadi tipe TS hanya dipinj oleh manusia vs record backend.
 - evidence: Regenerasi snapshot (GET /v3/api-docs → openapi.json → orval) akan menutup; sama klasnya dengan DW-141/148/166.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-dw-147-pm-checklist-itemlabel-surrogate-pair.md`
+  summary: `PmChecklistService.requireText` masih menghitung `trimmed.length()` (UTF-16 unit) sementara `itemLabel` kini menghitung code point, jadi panjang "500 karakter" didefinisikan dua cara berbeda dalam satu layanan.
+  evidence: `PmChecklistService.java:367` menolak `trimmed.length() > 500` dengan pesan "must be at most 500 characters"; teks 300 emoji (300 code point, 600 unit) ditolak padahal muat di `VARCHAR(500)`. Bukan regresi dari DW-147 — sudah ada sejak 19-2. Menyelaraskan ke `codePointCount` melonggarkan validasi input (perubahan perilaku yang user-facing), jadi perlu keputusan dulu; alternatifnya dokumentasikan asimetri ini secara eksplisit.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-dw-147-pm-checklist-itemlabel-surrogate-pair.md`
+  summary: Logika label audit (guard code point + `offsetByCodePoints`) masih terduplikasi di `PmChecklistService` dan `PmExecutionService`, plus literal 255; DW-147 membuat kedua salinan identik tapi tidak menghapus duplikasinya.
+  evidence: DW-147 sendiri lahir karena dua salinan ini melenceng. Selama masih dua salinan, edit berikutnya pada satu sisi akan membuka kelas bug yang sama. Ekstrak ke satu helper bersama (mis. `AuditLabels.truncateToCodePoints(String, int)`) saat ada perubahan lain yang menyentuh area ini.
+

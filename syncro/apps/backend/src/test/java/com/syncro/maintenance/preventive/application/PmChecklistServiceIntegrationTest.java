@@ -562,4 +562,58 @@ class PmChecklistServiceIntegrationTest extends AbstractPostgresIntegrationTest 
           assertThat(entry.getEntityLabel()).isEqualTo(longText.substring(0, 255));
         });
   }
+
+  @Test
+  @DisplayName("19.2-INT-018 DW-147 P0 surrogate-heavy parameterText: code-point guard keeps the label intact and never crashes")
+  void surrogateHeavyParameterTextIsCodePointSafe() {
+    // 130 code points of 🔧 occupy 260 UTF-16 units: String.length() > 255 while
+    // codePointCount <= 255, so the old length()-based guard did not fire and execution
+    // reached offsetByCodePoints(0, 255), which threw IndexOutOfBoundsException.
+    var emojiText = "🔧".repeat(130);
+    assertThat(emojiText.length()).isGreaterThan(255);
+    assertThat(emojiText.codePointCount(0, emojiText.length())).isEqualTo(130);
+
+    var item = checklist.createItem(staffUser, new CreateItemCommand(checksheetId, null, null,
+        emojiText, null, PmItemInputType.OK_NG, null, null, null, null, null, null, null));
+    assertThat(item.parameterText()).isEqualTo(emojiText);
+
+    assertThat(auditLogs.findByEntityIdOrderByCreatedAtAsc(item.id()))
+        .singleElement()
+        .satisfies(entry -> {
+          assertThat(entry.getAction()).isEqualTo(AuditAction.CREATE);
+          // Fits VARCHAR(255) untouched — no truncation, no crash.
+          assertThat(entry.getEntityLabel()).isEqualTo(emojiText);
+        });
+  }
+
+  @Test
+  @DisplayName("19.2-INT-019 DW-147 P0 label boundary: exactly 255 code points kept whole, 256 truncated to 255")
+  void itemLabelBoundaryIsCountedInCodePoints() {
+    // Both fixtures stay within requireText's 500-UTF-16-unit cap, so they reach the
+    // label path through createItem; a pure-emoji text cannot (256 supplementary code
+    // points need 512 units).
+    var atLimit = "🔧".repeat(244) + "a".repeat(11);   // 255 code points / 499 units
+    var overLimit = "🔧".repeat(244) + "a".repeat(12); // 256 code points / 500 units
+    assertThat(atLimit.codePointCount(0, atLimit.length())).isEqualTo(255);
+    assertThat(overLimit.codePointCount(0, overLimit.length())).isEqualTo(256);
+    assertThat(overLimit.length()).isEqualTo(500);
+
+    var atLimitItem = checklist.createItem(staffUser, new CreateItemCommand(checksheetId, null,
+        null, atLimit, null, PmItemInputType.OK_NG, null, null, null, null, null, null, null));
+    var overLimitItem = checklist.createItem(staffUser, new CreateItemCommand(checksheetId, null,
+        null, overLimit, null, PmItemInputType.OK_NG, null, null, null, null, null, null, null));
+
+    assertThat(auditLogs.findByEntityIdOrderByCreatedAtAsc(atLimitItem.id()))
+        .singleElement()
+        .satisfies(entry -> assertThat(entry.getEntityLabel()).isEqualTo(atLimit));
+    assertThat(auditLogs.findByEntityIdOrderByCreatedAtAsc(overLimitItem.id()))
+        .singleElement()
+        .satisfies(entry -> {
+          var label = entry.getEntityLabel();
+          // AssertJ hasSize counts UTF-16 units, so pin the code-point count explicitly.
+          assertThat(label.codePointCount(0, label.length())).isEqualTo(255);
+          assertThat(label.length()).isEqualTo(499);
+          assertThat(label).isEqualTo("🔧".repeat(244) + "a".repeat(11));
+        });
+  }
 }

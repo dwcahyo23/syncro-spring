@@ -258,8 +258,9 @@ class PmExecutionServiceIntegrationTest {
     // Label-truncation fixtures (19.5-INT-017): 300 chars > 255 label limit, and a
     // surrogate-heavy text whose UTF-16 length exceeds 255 while its code-point
     // count stays under it (the old length()-based guard crashed on this). The emoji
-    // row is seeded directly via the repository: PmChecklistService.itemLabel (19-2)
-    // carries the same latent bug and would crash on createItem — out of 19-5 scope.
+    // row is seeded directly via the repository because PmChecklistService.itemLabel
+    // (19-2) carried the same latent bug when this fixture was written; DW-147 has
+    // since fixed that site, so createItem would now work too.
     var longParameterItemId = checklist.createItem(staff, new CreateItemCommand(checksheetId,
         null, 4, "a".repeat(300), null, PmItemInputType.OK_NG, null, null, null, null, false,
         null, null)).id();

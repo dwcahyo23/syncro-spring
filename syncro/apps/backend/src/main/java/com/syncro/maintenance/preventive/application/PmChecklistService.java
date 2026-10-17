@@ -57,6 +57,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PmChecklistService {
 
+  /** entity_label is VARCHAR(255); VARCHAR counts code points, not UTF-16 units. */
+  private static final int MAX_ENTITY_LABEL_CODE_POINTS = 255;
+
   private final PmChecksheetRepository checksheets;
   private final PmChecklistCategoryRepository categories;
   private final PmChecklistItemRepository items;
@@ -478,13 +481,26 @@ public class PmChecklistService {
     return values;
   }
 
-  /** entity_label is VARCHAR(255) NOT NULL — parameterText (≤500) is truncated code-point-safe. */
+  /**
+   * entity_label is VARCHAR(255) NOT NULL. parameterText is at most 500 UTF-16 units
+   * ({@link #requireText}), so a label can need truncation.
+   *
+   * <p>VARCHAR counts characters (code points), so the guard must compare
+   * {@code codePointCount}, not {@code String.length()}: a surrogate-heavy text can
+   * exceed 255 UTF-16 units while staying at or under 255 code points, and
+   * {@code offsetByCodePoints(0, 255)} then throws {@link IndexOutOfBoundsException}
+   * because the requested code-point index exceeds the text's code-point count.
+   *
+   * <p>Truncation is code-point-safe but not grapheme-safe: a ZWJ sequence, a
+   * regional-indicator flag, or a combining mark straddling the boundary can be split.
+   * parameterText is never null (VARCHAR NOT NULL, and {@link #requireText} rejects null).
+   */
   private static String itemLabel(PmChecklistItemEntity entity) {
     var text = entity.getParameterText();
-    if (text.length() <= 255) {
+    if (text.codePointCount(0, text.length()) <= MAX_ENTITY_LABEL_CODE_POINTS) {
       return text;
     }
-    return text.substring(0, text.offsetByCodePoints(0, 255));
+    return text.substring(0, text.offsetByCodePoints(0, MAX_ENTITY_LABEL_CODE_POINTS));
   }
 
   private static CategoryView toCategoryView(PmChecklistCategoryEntity entity) {
