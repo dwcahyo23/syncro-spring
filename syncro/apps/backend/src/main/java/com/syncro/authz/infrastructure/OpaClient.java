@@ -11,6 +11,7 @@ import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatusCode;
+import java.util.Map;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -118,10 +119,14 @@ public class OpaClient {
    * throwing (deterministic — retry won't help).
    */
   private Result doPost(String rule, Object input) {
+    // OPA's data API reads the evaluation document from the request body's "input" key.
+    // Posting it unwrapped makes OPA answer with result=false and an "input key missing"
+    // warning — an unconditional default-deny that no unit test catches, because every
+    // OpaClient test stubs the HTTP exchange and never inspects the request body.
     ResponseEntity<String> response = restClient.post()
         .uri(RULE_URI_TEMPLATE.formatted(rule))
         .contentType(MediaType.APPLICATION_JSON)
-        .body(input)
+        .body(Map.of("input", input))
         .retrieve()
         .onStatus(HttpStatusCode::isError, (req, res) -> {
           // suppress default exception so we can throw our own typed one below

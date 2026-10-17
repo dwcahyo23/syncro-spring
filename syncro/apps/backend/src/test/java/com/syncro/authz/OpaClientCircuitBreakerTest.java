@@ -189,6 +189,31 @@ class OpaClientCircuitBreakerTest {
     return Map.of("ping", "pong");
   }
 
+  /**
+   * DW-183 regression: OPA's data API evaluates the request body's {@code input} key. When
+   * the client posted the payload unwrapped, OPA answered {@code result:false} with an
+   * "input key missing" warning, which the policy surfaces as an unconditional default-deny
+   * on every gated endpoint — while the 550-case rego suite and every OpaClient unit test
+   * stayed green, because the tests stub the HTTP exchange and never read the request body.
+   */
+  @Test
+  void post_wrapsPayloadUnderInputKeySoOpaCanEvaluateIt() throws IOException {
+    var captured = new AtomicReference<String>();
+    client = createClientWithHandler(exchange -> {
+      captured.set(new String(exchange.getRequestBody().readAllBytes()));
+      respond(exchange, "{\"decision_id\":\"d1\",\"result\":true}");
+    });
+
+    var result = client.post("allow", input());
+
+    assertThat(result.success()).isTrue();
+    assertThat(result.allowed()).isTrue();
+    assertThat(captured.get())
+        .as("OPA reads the evaluation document from the body's input key")
+        .contains("\"input\"")
+        .contains("\"ping\"");
+  }
+
   private static void respond(HttpExchange exchange, String body) throws IOException {
     var bytes = body.getBytes();
     exchange.getResponseHeaders().set("Content-Type", "application/json");
