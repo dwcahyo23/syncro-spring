@@ -1242,7 +1242,8 @@ status: open
 origin: code review of spec-19-2-pm-checklist-categories-items (verification-gap), 2026-09-03
 location: syncro/.env.example + syncro/apps/backend/src/test/java/com/syncro/AbstractPostgresIntegrationTest.java:50
 reason: Every backend test runs with SYNCRO_AUTHZ_ENFORCED_PATHS= empty, so a typo in the new PM patterns leaves the endpoints unenforced while all suites stay green. Matches the repo-wide pattern since 9.5; a parity test (extract rego path sets vs env list) would close it.
-status: open
+status: done 2026-10-17
+resolution: rescoped and closed — `PmAuthzEnforcementParityTest` (which pinned 14 hand-listed sets, one direction) replaced by `com.syncro.authz.AuthzEnforcementParityTest`, which parses **every** `*_paths` set from `authz.rego` and asserts both directions using `AntPathMatcher` (the interceptor's own matcher, so `/**` covers its base path). Reverse direction catches typo'd/stale env entries; a deliberate typo test proved both directions fail on it. The forward direction immediately found **17 genuinely unenforced paths** (inventory reservations, machine-areas, job-titles, plant-working-calendars, user-bindings) which were appended to `.env.example`; `/api/v1/audit-log/**` and `/api/v1/setup-completeness/**` are documented env-only surfaces. Rego suite 550/550 green; `authz/README.md` expected count corrected from the stale 38/38. Three policy questions surfaced and recorded as DW-173..175 rather than silently answered.
 
 ### DW-157: duplicate sequence under concurrent item creates tolerated by design
 origin: code review of spec-19-2-pm-checklist-categories-items (intent-alignment), 2026-09-03
@@ -1353,5 +1354,23 @@ resolution: snapshot regenerated and committed (d5c79ce) — /api/v1/kpi paths a
 - source_spec: none (sweep OpenAPI snapshot 2026-10-17)
 - summary: `tsc --noEmit` gagal di 5 file setelah klien diregenerasi dari snapshot 220-path; sebagian besar karena field/parameter yang di kontrak lama wajib kini menjadi optional.
 - evidence: `npx tsc --noEmit` → 27 error: `features/master-data/teams/team-management.tsx` (20, mayoritas `items` possibly undefined dan `string | undefined`), `features/alerts/alert-detail-page-content.test.tsx` (4, `null` vs `number | undefined`), `features/master-data/machine-groups/machine-group-management.tsx` (1, `ListSectionsParams.plantId` kini `string` wajib), `features/master-data/sections/section-management.tsx` (1, `plantId` undefined), `features/workorders/workorder-dashboard-page-content.tsx` (1). Tidak dikerjakan karena regen klien itu sendiri belum bisa di-commit (lihat DW-171).
+
+### DW-173: No rego test pins the mutation allow for job-titles / machine-areas / plant-working-calendars
+
+- source_spec: none (found while rescoping DW-156, 2026-10-17)
+- summary: Ketiga surface ini tercakup `department_paths` (authz.rego:554), sehingga aturan `mutation_allowed { MANAGER_MAINTENANCE; path_matches(department_paths) }` (authz.rego:1588-1592) memang berlaku untuk mereka — diverifikasi lewat OPA eval: `mutation_allowed` dan `allow` sama-sama `true` untuk `POST /api/v1/job-titles`, `/api/v1/machine-areas`, dan `/api/v1/plant-working-calendars`. Yang bermasalah adalah tidak ada test rego yang memegangnya.
+- evidence: grep `job-titles|machine-areas|plant-working-calendars` di `authz_test.rego` → 0 referensi, padahal `department_paths` punya 11 path dan ketiganya masuk ke situ. Controller ada (`JobTitleController.java:28`, `MachineAreaController.java:28`, `PlantWorkingCalendarController.java:30`). Bila suatu saat path itu dipindah keluar `department_paths` atau role-nya diubah, tidak ada test yang gagal — kelas regresi yang sama seperti DW-156, tapi di sisi rego bukan sisi env. Perbaikannya menambah 3 kasus test, bukan mengubah policy.
+
+### DW-174: `inventory_reservation_paths` punya tiga rule yang identik dengan rule transfer
+
+- source_spec: none (found while rescoping DW-156, 2026-10-17)
+- summary: Tiga aturan `mutation_allowed` untuk reservasi (authz.rego:828-844: INVENTORY_MAINTENANCE / STOREKEEPER / MANAGER_MAINTENANCE) identik role-per-role dengan tiga aturan transfer tepat di atasnya (authz.rego:805-821) — hanya berbeda set path. Set-nya sendiri berfungsi (path reservasi tidak tercakup set lain), jadi ini bukan dead policy; ini duplikasi bentuk yang membuat perbedaan siklus hidup kedua fitur sulit dilacak.
+- evidence: authz.rego:805-821 (transfer) dan :828-844 (reservation) punya struktur role+set yang sama persis; `authz_test.rego` punya 14 referensi `inventory-reservations` yang semuanya menguji jalur lewat aturan sendiri. Opt-in saat ada perubahan nyata pada salah satu fitur, atau tambahkan komentar rego yang menjelaskan mengapa role set-nya sengaja sama.
+
+### DW-175: Enforced-path rollout entries for `audit-log` and `setup-completeness` are env-only (no rego set)
+
+- source_spec: none (found while rescoping DW-156, 2026-10-17)
+- summary: `/api/v1/audit-log/**` dan `/api/v1/setup-completeness/**` ada di `SYNCRO_AUTHZ_ENFORCED_PATHS` tetapi tidak muncul di set rego mana pun (`0` hit di `authz.rego`); keduanya hanya lolos lewat `read_allowed` generik (semua user terautentikasi). Saat ini aman — enforcement hanya menambah jejak audit — tetapi parity test harus menandainya sebagai pengecualian eksplisit (`ENV_ONLY_SURFACES` di `AuthzEnforcementParityTest`), jadi bila nanti ada yang mengubahnya menjadi mutation surface, pengecualian itu perlu ditinjau ulang.
+- evidence: `grep /api/v1/audit-log syncro/authz/policy/authz.rego` → 0; `AuditLogController.java:22` dan `SetupCompletenessController.java:13` hanya punya mapping GET.
 
 

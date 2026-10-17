@@ -19,7 +19,8 @@ serves `allow` and `actions` from this directory.
 ```
 
 This mounts `syncro/authz/policy` read-only into the `openpolicyagent/opa:1.19.1` image
-and runs `opa test /policy`. Expected: `PASS: 38/38`.
+and runs `opa test /policy`. Expected: `PASS: 550/550` (the count grows with every story
+that adds a path set — read the total from the run, do not pin it here).
 
 ## CI wiring
 
