@@ -19,8 +19,10 @@ serves `allow` and `actions` from this directory.
 ```
 
 This mounts `syncro/authz/policy` read-only into the `openpolicyagent/opa:1.19.1` image
-and runs `opa test /policy`. Expected: `PASS: 550/550` (the count grows with every story
-that adds a path set — read the total from the run, do not pin it here).
+and runs `opa test /policy`. Read the expected total from the last line of the run
+(`PASS: N/N`) rather than pinning a number here — the suite grew from 38 to 561 over
+stories 9-3 to 18-5, and a stale count in this file is how the old `38/38` survived
+for months.
 
 ## CI wiring
 

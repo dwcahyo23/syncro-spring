@@ -1378,12 +1378,21 @@ resolution: snapshot regenerated and committed (d5c79ce) — /api/v1/kpi paths a
 - summary: `tsc --noEmit` gagal di 5 file setelah klien diregenerasi dari snapshot 220-path; sebagian besar karena field/parameter yang di kontrak lama wajib kini menjadi optional.
 - evidence: `npx tsc --noEmit` → 27 error: `features/master-data/teams/team-management.tsx` (20, mayoritas `items` possibly undefined dan `string | undefined`), `features/alerts/alert-detail-page-content.test.tsx` (4, `null` vs `number | undefined`), `features/master-data/machine-groups/machine-group-management.tsx` (1, `ListSectionsParams.plantId` kini `string` wajib), `features/master-data/sections/section-management.tsx` (1, `plantId` undefined), `features/workorders/workorder-dashboard-page-content.tsx` (1). Tidak dikerjakan karena regen klien itu sendiri belum bisa di-commit (lihat DW-171).
 
-### DW-173: No rego test pins the mutation allow for job-titles / machine-areas / plant-working-calendars
+### DW-173: No rego test pinned job-titles / machine-areas / plant-working-calendars / user-bindings mutations
 
 - source_spec: none (found while rescoping DW-156, 2026-10-17)
-- summary: Ketiga surface ini tercakup `department_paths` (authz.rego:554), sehingga aturan `mutation_allowed { MANAGER_MAINTENANCE; path_matches(department_paths) }` (authz.rego:1588-1592) memang berlaku untuk mereka — diverifikasi lewat OPA eval: `mutation_allowed` dan `allow` sama-sama `true` untuk `POST /api/v1/job-titles`, `/api/v1/machine-areas`, dan `/api/v1/plant-working-calendars`. Yang bermasalah adalah tidak ada test rego yang memegangnya.
-- evidence: grep `job-titles|machine-areas|plant-working-calendars` di `authz_test.rego` → 0 referensi, padahal `department_paths` punya 11 path dan ketiganya masuk ke situ. Controller ada (`JobTitleController.java:28`, `MachineAreaController.java:28`, `PlantWorkingCalendarController.java:30`). Bila suatu saat path itu dipindah keluar `department_paths` atau role-nya diubah, tidak ada test yang gagal — kelas regresi yang sama seperti DW-156, tapi di sisi rego bukan sisi env. Perbaikannya menambah 3 kasus test, bukan mengubah policy.
+- summary: Keempat surface ini tercakup `department_paths` (authz.rego:554) resp. `user_management_paths` (:572), sehingga aturan `mutation_allowed { MANAGER_MAINTENANCE; … }` memang berlaku — diverifikasi lewat OPA eval (`mutation_allowed` = `true` untuk ketiganya). Yang bermasalah adalah nol test rego yang memegangnya: moving satu path keluar set, atau mengubah role-nya, tidak akan membuat suite gagal.
+- evidence: grep `job-titles|machine-areas|plant-working-calendars|user-bindings` di `authz_test.rego` → 0 referensi, padahal keempatnya punya controller (`JobTitleController.java:28`, `MachineAreaController.java:28`, `PlantWorkingCalendarController.java:30`, `UserBindingController.java:20`) dan kini sudah masuk `SYNCRO_AUTHZ_ENFORCED_PATHS`.
+- status/evidence: 11 rego test baru (561 total, dari 550). Red check dua kali: menghapus `job-titles` dari `department_paths` → `test_manager_job_title_create_allowed` FAIL; menghapus `user-bindings` dari `user_management_paths` → `test_manager_user_binding_create_allowed` FAIL. Keduanya menangkap regresi yang sebelumnya lolos total.
+status: done 2026-10-17
+resolution: 11 test menutup keempat surface — allow untuk MANAGER_MAINTENANCE, deny untuk STAFF_MAINTENANCE, bypass SUPER_ADMIN, plus satu kasus kedalaman path di `plant-working-calendars/*/dates/*`. Tidak ada policy yang diubah, hanya test yang menahan perilaku yang sudah ada. `authz/README.md` diubah agar tidak lagi menyematkan jumlah test — itulah sebab `38/38` bisa basi berbulan-bulan.
 
+
+- source_spec: none (found while rescoping DW-156, 2026-10-17)
+- status/evidence: 11 rego test baru menambah cakupan (561 total, dari 550). Red check dilakukan dua kali: menghapus `job-titles` dari `department_paths` → `test_manager_job_title_create_allowed` FAIL; menghapus `user-bindings` dari `user_management_paths` → `test_manager_user_binding_create_allowed` FAIL. Keduanya menangkap regresi yang sebelumnya lolos total.
+
+status: done 2026-10-17
+resolution: 11 test menutup keempat surface (allow untuk MANAGER_MAINTENANCE, deny untuk STAFF_MAINTENANCE, bypass SUPER_ADMIN, dan satu kasus kedalaman path di `plant-working-calendars/*/dates/*`). Tidak ada policy yang diubah — hanya test yang menahan perilaku yang sudah ada. `authz/README.md` diubah agar tidak lagi menyematkan jumlah test (itulah sebab `38/38` bisa basi berbulan-bulan).
 ### DW-174: `inventory_reservation_paths` punya tiga rule yang identik dengan rule transfer
 
 - source_spec: none (found while rescoping DW-156, 2026-10-17)

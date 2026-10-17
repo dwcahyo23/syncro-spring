@@ -2395,3 +2395,59 @@ test_technician_whatsapp_message_logs_read_denied if {
 test_anonymous_whatsapp_message_logs_denied if {
   not authz.allow with input as {"subject": {"roles": [], "userId": null}, "action": "GET /api/v1/whatsapp-message-logs"}
 }
+
+# ---------------------------------------------------------------------------
+# department_paths siblings (DW-173): job-titles, machine-areas and
+# plant-working-calendars share department_paths with /api/v1/departments, so
+# MANAGER_MAINTENANCE mutations are allowed through the same rule. These three
+# surfaces had no rego coverage at all, which meant moving any of them out of
+# department_paths — or changing the role — would have failed nothing. Live OPA
+# eval confirmed the allow verdict before pinning it here.
+# ---------------------------------------------------------------------------
+
+test_manager_job_title_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/job-titles"}
+}
+
+test_staff_job_title_create_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/job-titles"}
+}
+
+test_auditor_job_title_delete_denied if {
+  not authz.allow with input as {"subject": {"roles": ["AUDITOR"], "userId": "u6"}, "action": "DELETE /api/v1/job-titles/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_manager_machine_area_update_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "PUT /api/v1/machine-areas/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_staff_machine_area_update_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "PUT /api/v1/machine-areas/7b7c6d5e-1111-2222-3333-444455556666"}
+}
+
+test_manager_plant_calendar_dates_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/plant-working-calendars/7b7c6d5e-1111-2222-3333-444455556666/dates"}
+}
+
+test_staff_plant_calendar_dates_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "POST /api/v1/plant-working-calendars/7b7c6d5e-1111-2222-3333-444455556666/dates"}
+}
+
+test_manager_plant_calendar_date_delete_denied_when_id_depth_exceeds_set if {
+  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "DELETE /api/v1/plant-working-calendars/7b7c6d5e-1111-2222-3333-444455556666/dates/11111111-2222-3333-4444-555555555555"}
+}
+
+test_super_admin_job_title_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["SUPER_ADMIN"], "userId": "u1"}, "action": "POST /api/v1/job-titles"}
+}
+
+# user_management_paths (also enforcement-gap added in the same pass): MANAGER_MAINTENANCE
+# mutates user-bindings; nothing pinned it either.
+
+test_manager_user_binding_create_allowed if {
+  authz.allow with input as {"subject": {"roles": ["MANAGER_MAINTENANCE"], "userId": "u2"}, "action": "POST /api/v1/user-bindings"}
+}
+
+test_staff_user_binding_roles_denied if {
+  not authz.allow with input as {"subject": {"roles": ["STAFF_MAINTENANCE"], "userId": "u3"}, "action": "PUT /api/v1/user-bindings/7b7c6d5e-1111-2222-3333-444455556666/roles/11111111-2222-3333-4444-555555555555"}
+}
