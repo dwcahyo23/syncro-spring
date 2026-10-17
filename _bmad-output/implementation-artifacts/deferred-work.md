@@ -1107,23 +1107,23 @@ resolution: resolved by commit c3bb741 — shared LikePattern.escape() consolida
   resolution: resolved by commit 2cbf704 — WorkOrderEvidenceServiceIntegrationTest exercises real Postgres + ObjectStorageService (key format, content-type, access gate, delete)
 
 
-### DW-123: Report save full-row UPDATE can clobber concurrent status transition fields
-- source_spec: \_bmad-output/implementation-artifacts/spec-10-6-reports-cp-cpk-fmea-and-stop-time.md\
+### DW-177: Report save full-row UPDATE can clobber concurrent status transition fields
+- source_spec: _bmad-output/implementation-artifacts/spec-10-6-reports-cp-cpk-fmea-and-stop-time.md (id was DW-123, reused by the bundle-14 entry)
   summary: WorkOrderReportService.saveReport uses findById (no lock) + saveAndFlush; a concurrent transition or report save can produce a stale full-row UPDATE that regresses status or clobbers report fields.
   evidence: WorkOrderService.transition takes findByIdForUpdate while the report service reads without a lock and writes the whole row; the same pattern exists in 10-5 evidence (attachments), so this is inherited, not new.
 
-### DW-124: Concurrent CPK PDF replace can orphan the earlier object
-- source_spec: \_bmad-output/implementation-artifacts/spec-10-6-reports-cp-cpk-fmea-and-stop-time.md\
+### DW-178: Concurrent CPK PDF replace can orphan the earlier object
+- source_spec: _bmad-output/implementation-artifacts/spec-10-6-reports-cp-cpk-fmea-and-stop-time.md (id was DW-124, reused by the bundle-14 entry)
   summary: Two concurrent CPK uploads both read a null/old key, each stores a distinct object, and the last writer wins while the earlier object stays orphaned in Garage.
   evidence: uploadCpkPdf reads previousKey before the delete/store without a row lock; identical to the 10-5 evidence replace race. Add findByIdForUpdate or an application-level per-workorder serialization if throughput matters.
 
-### DW-125: CP/CPK PDF content-type-only validation accepts non-PDF bytes
-- source_spec: \_bmad-output/implementation-artifacts/spec-10-6-reports-cp-cpk-fmea-and-stop-time.md\
+### DW-179: CP/CPK PDF content-type-only validation accepts non-PDF bytes
+- source_spec: _bmad-output/implementation-artifacts/spec-10-6-reports-cp-cpk-fmea-and-stop-time.md (id was DW-125, reused by the bundle-14 entry)
   summary: validateCpkPdf trusts the client-declared application/pdf content type and does not sniff the magic bytes, so arbitrary content can be stored and served as a CP/CPK capability sheet.
   evidence: validateCpkPdf checks contentType equality and size only; PDF magic-byte check (%%PDF) is defense-in-depth not required by the spec contract. Add when untrusted uploads matter.
 
-### DW-126: enforceBreakdownStopTimeGate reads category via findById without lock
-- source_spec: `_bmad-output/implementation-artifacts/spec-10-6-reports-cp-cpk-fmea-and-stop-time.md`
+### DW-180: enforceBreakdownStopTimeGate reads category via findById without lock
+- source_spec: _bmad-output/implementation-artifacts/spec-10-6-reports-cp-cpk-fmea-and-stop-time.md (id was DW-126, reused by the bundle-14 entry)
   summary: enforceBreakdownStopTimeGate uses categories.findById (plain, no lock) while the workorder entity is loaded with findByIdForUpdate. A concurrent category code change could produce a stale gate decision.
   evidence: WorkOrderService.enforceBreakdownStopTimeGate calls categories.findById(categoryId) without row-level locking, while the workorder row at line 226 is locked with findByIdForUpdate. Category is master data (rarely changed), so risk is low.
 
@@ -1157,30 +1157,35 @@ resolution: snapshot regenerated and committed (d5c79ce) — 51 -> 220 paths aga
 origin: code review pass 2 (verification-gap), 2026-09-02
 location: syncro/apps/backend
 reason: Each full run takes ~30 min (Testcontainers); 5 stories x 2 runs would dominate the loop. Targeted verification (155 tests) + the fixed WorkOrderControllerTest blocker cover the changed surface. Run once after 18-5.
+severity: medium
 status: open
 
 ### DW-143: INVALID_REVIEW_TRANSITION 409 carries no current reviewStatus
 origin: code review pass 2 (blind-hunter), 2026-09-02
 location: syncro/apps/backend/src/main/java/com/syncro/sparepart/api/SparepartExceptionHandler.java
 reason: The handler returns Map.of(); operators must GET the sparepart to learn whether it is ACTIVE or REJECTED. Cheap observability win for a follow-up.
+severity: low
 status: open
 
 ### DW-144: derived sparepart code can exceed ck_spareparts_code_length<=64
 origin: code review pass 2 (blind-hunter), 2026-09-02
 location: syncro/apps/backend/src/main/java/com/syncro/sparepart/application/SparepartService.java
 reason: Pre-existing pattern — code = prefix + serial existed before 18-1; the change only mirrors it into bom_code. A long-code machine surfaces as 409 SPAREPART_DATA_INTEGRITY_VIOLATION rather than a clean 400.
+severity: medium
 status: open
 
 ### DW-145: FR-161 allowed-actions *.write mirror not extended for inventory roles
 origin: code review of spec-18-2-inventory-locations (blind-hunter), 2026-09-02
 location: syncro/authz/policy/authz.rego (actions set, ~lines 955-975)
 reason: The actions set grants *.write only to MANAGER/SECTION_LEADER/MAINTENANCE_LEADER; INVENTORY_MAINTENANCE now mutates inventory-locations (and sparepart-stock) but has no mirror entry, so the menu/permission projection disagrees with enforcement. Pre-existing pattern (also true for sparepart-stock); needs one focused pass across all inventory roles.
+severity: medium
 status: open
 
 ### DW-146: N+1 view assembly in stock controllers
 origin: code review of spec-18-3-inventory-stock-balances (blind-hunter), 2026-09-02
 location: syncro/apps/backend/src/main/java/com/syncro/inventory/api/InventoryLocationStockController.java + com/syncro/sparepart/stock/api/SparepartStockController.java
 reason: Both controllers call spareparts.findById + locations.findById per row (N+1 on list responses), and toView is duplicated between them. Pre-existing pattern (legacy controller already did this); batch with findAllById + a shared mapper when list sizes demand it.
+severity: low
 status: open
 
 ### DW-147: OPA rego tests not wired into mvn test / CI
@@ -1201,42 +1206,49 @@ resolution: snapshot regenerated and committed (d5c79ce) — both PM paths are n
 origin: code review of spec-19-1-pm-frequencies-checksheets (blind-hunter+verification-gap), 2026-09-03
 location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecksheetService.java:121-135
 reason: The unfiltered list branch loads every checksheet then calls machines.findByIdWithPlantAndGroup per row for scope filtering. Matches the existing PreventiveProgramService.list idiom (same N+1); batch/join the scoped query when list sizes demand it. Related to DW-146.
+severity: medium
 status: open
 
 ### DW-150: frequency isActive=false can orphan active checksheets
 origin: code review of spec-19-1-pm-frequencies-checksheets (edge-case-hunter), 2026-09-03
 location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmFrequencyService.java:79-99
 reason: Deactivating a frequency does not check whether active checksheets still reference it; the create guard blocks new checksheets but existing active pointers remain on an inactive frequency. Spec is silent on the in-use guard; adding one is a behavior change that needs a product decision (reject vs cascade-deactivate).
+severity: medium
 status: open
 
 ### DW-151: MEASUREMENT item may be half-specified (one bound or no unit)
 origin: code review of spec-19-2-pm-checklist-categories-items (edge-case-hunter), 2026-09-03
 location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecklistService.java:368-374
 reason: requireBounds validates lsl≤usl only when BOTH are present; a MEASUREMENT item with one bound or no unit persists. The spec's "lsl≤usl when both bounds present" wording permits this; tightening to require unit+both bounds is a contract change for the frontend — decide with product before 19-5 execution renders half-specified rows.
+severity: medium
 status: open
 
 ### DW-152: nominal value outside the lsl..usl interval accepted
 origin: code review of spec-19-2-pm-checklist-categories-items (edge-case-hunter), 2026-09-03
 location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecklistService.java:368-374
 reason: A MEASUREMENT item can carry nominal outside [lsl, usl], producing contradictory bounds at execution time (19-5). Spec is silent; adding the check is a behavior change.
+severity: medium
 status: open
 
 ### DW-153: deleting an item referenced by future execution rows would orphan measurements
 origin: code review of spec-19-2-pm-checklist-categories-items (edge-case-hunter), 2026-09-03
 location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecklistService.java:248-257
 reason: pm_execution_items FK (ON DELETE SET NULL) arrives with story 19-5; deleting a checklist item after executions exist would silently null recorded measurements. Add the existsByChecklistItemId guard when the execution module ships.
+severity: medium
 status: open
 
 ### DW-154: concurrent createItem + deleteCategory orphan race
 origin: code review of spec-19-2-pm-checklist-categories-items (edge-case-hunter), 2026-09-03
 location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecklistService.java:142-149
 reason: An item created between findByCategoryId and the category delete commit is orphaned by the FK SET NULL without the audit UPDATE the design promises. Low probability; FK backstop prevents corruption.
+severity: low
 status: open
 
 ### DW-155: PUT cannot clear a category/calibration reference (omitted vs null indistinguishable)
 origin: code review of spec-19-2-pm-checklist-categories-items (edge-case-hunter), 2026-09-03
 location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecklistService.java:222-227
 reason: The PUT null-merge keeps the current value when the field is omitted, so a client can never detach an item from its category or calibration instrument via update. Documented limitation of the null-merge idiom; a sentinel/clear flag is a contract change.
+severity: low
 status: open
 
 ### DW-156: .env.example SYNCRO_AUTHZ_ENFORCED_PATHS typo would go unnoticed
@@ -1250,60 +1262,70 @@ resolution: rescoped and closed — `PmAuthzEnforcementParityTest` (which pinned
 origin: code review of spec-19-2-pm-checklist-categories-items (intent-alignment), 2026-09-03
 location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecklistService.java:173-174
 reason: V1 has no unique constraint on (checksheet_id, sequence); two concurrent creates can both compute max+1 and persist the same sequence. Ordering remains sequence-asc (stable enough for 19-5 rendering); a unique constraint or row lock is the fix if ordering integrity ever matters.
+severity: low
 status: open
 
 ### DW-158: submit does not verify the submitter is the schedule's creator
 origin: code review of spec-19-3-pm-schedules-dates (blind-hunter), 2026-09-03
 location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmScheduleService.java:submit
 reason: A SECTION_LEADER/MANAGER_MAINTENANCE can submit a DRAFT created by a STAFF member, stamping themselves as submitted_by. F5/spec never says submit is creator-only, so the mixed four-role create/submit gate plus per-role stamps makes submitted_by's meaning ambiguous. Needs a product decision (creator-only vs any-in-scope) before tightening.
+severity: medium
 status: open
 
 ### DW-159: date-transition error message omits legal from-states
 origin: code review of spec-19-3-pm-schedules-dates (blind-hunter), 2026-09-03
 location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/api/PreventiveExceptionHandler.java (InvalidScheduleDateTransitionException mapping)
 reason: All invalid date transitions map to one generic 409 message with no indication of the legal from-states for the requested target (four statuses, three legal edges). API-consistency gap shared with 19-1's INVALID_CHECKSHEET_TRANSITION; enriching the message is a contract change.
+severity: low
 status: open
 
-### DW-147: PmChecklistService.itemLabel has the same surrogate-pair crash as 19-5's fixed site
+### DW-181: PmChecklistService.itemLabel had the same surrogate-pair crash as 19-5's fixed site
 origin: code review of spec-19-5-pm-executions-items (implementer found while writing PATCH 9), 2026-09-04
 location: syncro/apps/backend/src/main/java/com/syncro/maintenance/preventive/application/PmChecklistService.java (itemLabel, ~line 487)
 reason: length()-vs-codePointCount bug identical to the one patched in PmExecutionService.itemLabel (19-5 PATCH 6). Creating a checklist item whose parameterText has surrogate-heavy text with UTF-16 length > 255 but code points <= 255 crashes with IndexOutOfBoundsException. Out of 19-5 scope; needs a small follow-up fix + test mirroring 19.5-INT-017.
-status: open
+status: done 2026-10-17
+resolution: fixed by commit 5906879 — guard swapped to `codePointCount` against a named `MAX_ENTITY_LABEL_CODE_POINTS` constant; `19.2-INT-018` (surrogate-heavy text) and `19.2-INT-019` (255 vs 256 code-point boundary) added against real Postgres, both red on the old guard; spec at `_bmad-output/implementation-artifacts/spec-dw-147-pm-checklist-itemlabel-surrogate-pair.md`. (id was DW-147, reused by the OPA-CI entry, since resolved as DW-181 to keep ids unique)
 
 ### DW-160: MAR telemetry availability source not wired (always INSUFFICIENT_DATA)
 origin: code review of spec-20-1-kpi-materialized-tables (acceptance-auditor), 2026-09-04
 location: syncro/apps/backend/src/main/java/com/syncro/maintenance/infrastructure/db/KpiSourceDataJpaAdapter.java:findMarInputs
 reason: No persisted per-plant telemetry availability source exists (AD-12 — machines may run without telemetry), so findMarInputs returns empty and every MAR refresh writes an explicit INSUFFICIENT_DATA row. Spec-compliant (never a fabricated value), but the mar_percent formula is unreachable in production until an availability source is designed (InfluxDB uptime derivation or plant-calendar planned minutes).
+severity: medium
 status: open
 
 ### DW-161: 14-2 dashboards still compute MTBF/MTTR/technician on-the-fly
 origin: code review of spec-20-1-kpi-materialized-tables (acceptance-auditor), 2026-09-04
 location: syncro/apps/backend/src/main/java/com/syncro/maintenance/application/DashboardAnalyticsService.java
 reason: Story 20-1 ships the materialized read API (GET /api/v1/kpi/materialized/{type}); rewiring the 14-2 rolling-30-day live endpoints to monthly materialized rows changes their contract semantics (fleet-hours vs per-machine-days) and is story 20-2's scope ("KPI Targets & Dashboard Consumption"). KEEP the 14-2 endpoint untouched until 20-2.
+severity: low
 status: open
 
 ### DW-162: KPI source reads unbounded (full-history scan per sweep)
 origin: code review of spec-20-1-kpi-materialized-tables (blind-hunter), 2026-09-04
 location: syncro/apps/backend/src/main/java/com/syncro/kpi/application/KpiMaterializationService.java:refreshMtbf/refreshMttr
 reason: findBreakdownStops(Instant.EPOCH, to) and findClosedBreakdownRepairLogs() load all history per pass (MTBF needs prior stops for gap continuity, but a bounded lookback window — e.g. 13 months — would cap the scan). Acceptable at pilot data volume; add date bounds when history grows.
+severity: low
 status: open
 
 ### DW-163: backdated sync corrections outside the lookback window never re-materialized
 origin: code review of spec-20-1-kpi-materialized-tables (edge-case-hunter), 2026-09-04
 location: syncro/apps/backend/src/main/java/com/syncro/kpi/scheduled/KpiRefreshScheduler.java:runSweep
 reason: The sync-invalidation sweep covers current month + lookbackMonths (default 3). A synced row stopped before that window is not re-materialized until a manual refresh. WorkorderSyncedEvent carries no woStopAt; deriving the affected month from the event would close it.
+severity: medium
 status: open
 
 ### DW-164: kpi module imports maintenance application event directly
 origin: code review of spec-20-1-kpi-materialized-tables (blind-hunter), 2026-09-04
 location: syncro/apps/backend/src/main/java/com/syncro/kpi/scheduled/KpiRefreshScheduler.java:5
 reason: KpiRefreshScheduler imports com.syncro.maintenance.application.WorkorderSyncedEvent, coupling kpi→maintenance's application package. Matches the existing cross-module event pattern (notification/alert modules do the same), so consistent; a shared events contract package would be the cleaner fix if more consumers appear.
+severity: low
 status: open
 
 ### DW-165: KPI target dialog cannot clear a stored target
 origin: code review of spec-20-2-kpi-targets-dashboard-consumption (acceptance-auditor), 2026-09-04
 location: syncro/apps/web/src/features/analytics/components/kpi-target-dialog.tsx
 reason: Empty field sends null, which the 20-1 partial-update keeps as the stored value — a mis-entered target can be overwritten but never removed. Spec never required a clear path; needs a product decision (explicit clear affordance vs null-means-clear semantics).
+severity: low
 status: open
 
 ### DW-166: KPI endpoints absent from the committed OpenAPI snapshot
@@ -1382,3 +1404,9 @@ resolution: snapshot regenerated and committed (d5c79ce) — /api/v1/kpi paths a
 - summary: `.github/workflows/authz.yml` now runs `syncro/authz/run-opa-test.ps1` on every change under `syncro/authz/`, closing DW-147. It is the only workflow in the repo: the Java (Maven/Testcontainers) and web (vitest/Playwright) suites still have no automated runner, so a backend or frontend regression is caught by nothing but a developer running it locally.
 - evidence: Repo-wide check found no `.github/`, `azure-pipelines.yml`, `.gitlab-ci.yml`, `Jenkinsfile`, `.circleci` or `.woodpecker.yml` before this change; `pom.xml` has only flyway/spring-boot/compiler/surefire plugins, no exec/antrun hook. Verified the workflow fails closed: sabotaging one rego assertion produced `FAIL: 4/550` and exit code 1.
 - catatan: runner is `ubuntu-latest` + `shell: pwsh`, so it needs Docker (present on GitHub-hosted runners). Java/web wiring is a separate decision — full `mvn test` takes ~30 min with Testcontainers, which is a real cost per push and probably wants a schedule or PR-only trigger rather than matching the rego job.
+
+## Ledger hygiene 2026-10-17
+
+- IDs are now unique. Five collisions resolved: the four spec-10-6 bullet entries that reused DW-123..126 became DW-177..180, and the checklist `itemLabel` entry that reused DW-147 became DW-181 (already resolved by 5906879). Each renamed line records its former id in `source_spec`.
+- Every open entry now carries a `severity:` line (21 of 21: 11 medium, 10 low). Until this, a severity-floor selector had nothing to match, which is why `/bmad-loop-sweep` never selected anything.
+- Open count is 21, down from 31 at the start of this sweep round.
