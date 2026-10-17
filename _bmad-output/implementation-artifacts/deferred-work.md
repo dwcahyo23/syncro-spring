@@ -1367,12 +1367,11 @@ resolution: snapshot regenerated and committed (d5c79ce) — /api/v1/kpi paths a
   summary: Logika label audit (guard code point + `offsetByCodePoints`) masih terduplikasi di `PmChecklistService` dan `PmExecutionService`, plus literal 255; DW-147 membuat kedua salinan identik tapi tidak menghapus duplikasinya.
   evidence: DW-147 sendiri lahir karena dua salinan ini melenceng. Selama masih dua salinan, edit berikutnya pada satu sisi akan membuka kelas bug yang sama. Ekstrak ke satu helper bersama (mis. `AuditLabels.truncateToCodePoints(String, int)`) saat ada perubahan lain yang menyentuh area ini.
 
-### DW-171: `generated/` ter-ignore tapi sebagian di-force-add — regen Orval tidak bisa di-commit bersih
+### DW-171: `main` cannot build from a fresh clone — 25 generated models the barrel imports are untracked
 
-- source_spec: none (sweep OpenAPI snapshot 2026-10-17)
-- summary: `.gitignore:176` (`**/src/lib/api/generated/`) meng-ignore seluruh direktori generated, tetapi 111 file di dalamnya di-force-add. Akibatnya setiap regenerasi Orval menghasilkan ratusan file baru yang tidak pernah bisa masuk commit, dan `syncro.ts` yang tracked mereferensikan model yang tidak ada di git.
-- evidence: Setelah regen 2026-10-17 (snapshot 220 paths): 505 file di disk, 111 tracked, **394 file baru ter-ignore**. Terbukti juga dari HEAD: `syncro.ts` di commit mereferensikan `SectionListResponse` sementara `model/sectionListResponse.ts` tidak ada di commit — jadi checkout bersih dari HEAD pun gagal typecheck. Ini kelas yang sama dengan entri review 8-2 yang sudah tercatat.
-- catatan: snapshot `openapi.json` sudah di-refresh dan di-commit (d5c79ce) sehingga DW-141/148/166/170 ditutup sebagai *contract-side*; sisa kerjanya adalah regenerasi klien Orval, yang baru bisa dieksekusi setelah policy ini dibereskan.
+- summary: `model/index.ts` yang tracked meng-`export *` dari 134 modul, tapi hanya 110 file model yang tracked. Checkout bersih dari `main` gagal di `tsc` dengan module-not-found. Aturan `.gitignore` (`**/src/lib/api/generated/`, seit commit 383a84b2 2026-08-10) meng-ignore seluruh direktori sementara 110 file di dalamnya pernah di-force-add — hasil tiap regen Orval adalah ratusan file yang diam-diam tidak bisa masuk commit.
+- evidence (2026-10-17, terukur): file model di disk 504, tracked 110, **orphan (ada di disk, tidak tracked, ter-ignore) 394**. `model/index.ts` di HEAD berisi 134 `export * from`, dan **25** di antaranya tidak punya file tracked: `addMemberRequest`, `alertViewAlertType`, `assignSectionRequest`, `authzDecisionView`, `createSectionRequest`, `createSparepartImageBody`, … Regen snapshot 220-path (commit d5c79ce) memperburuk: 505 file di disk, 394 ter-ignore.
+- keputusan (belum diambil): tiga opsi — (a) hapus aturan `.gitignore` dan track penuh 504 file, sehingga checkout self-contained dan setiap regen jadi diff yang bisa di-review; (b) tambah skrip regen yang melakukan `git add -f` setelah orval, mengorbankan self-containedness; (c) biarkan terbuka. Tidak ada kode yang diubah untuk opsi mana pun sampai keputusan diambil.
 
 ### DW-172: 27 typecheck error setelah regenerasi klien Orval dari snapshot baru
 
