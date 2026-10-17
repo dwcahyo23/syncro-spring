@@ -1,0 +1,33 @@
+name: Authz Policy Tests
+
+# DW-147: the OPA rego suite ran only through a manual
+# `syncro/authz/run-opa-test.ps1` invocation, so a rego regression reached
+# production enforcement silently. This workflow calls that same script — no
+# duplicated docker command to drift out of sync.
+#
+# Scope is deliberately the rego suite only. Java and web suites are not wired
+# here; see the deferred-work ledger entry on CI coverage.
+
+on:
+  push:
+    paths:
+      - 'syncro/authz/**'
+      - '.github/workflows/authz.yml'
+  pull_request:
+    paths:
+      - 'syncro/authz/**'
+      - '.github/workflows/authz.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  rego:
+    name: opa rego tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run OPA policy tests
+        shell: pwsh
+        run: ./syncro/authz/run-opa-test.ps1

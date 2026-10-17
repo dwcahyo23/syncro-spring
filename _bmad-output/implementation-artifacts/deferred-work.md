@@ -1187,7 +1187,8 @@ status: open
 origin: code review of spec-19-1-pm-frequencies-checksheets (verification-gap), 2026-09-03
 location: syncro/authz/policy/authz_test.rego + syncro/authz/run-opa-test.ps1 + syncro/authz/README.md
 reason: The 22 new PM rego cases (and all prior ones) execute only via the manual run-opa-test.ps1 Docker invocation; no Maven exec/antrun hook or CI job runs `opa test`, so a rego regression reaches production enforcement silently. README's "Expected: PASS: 38/38" count is stale. Pre-existing repo condition (also flagged in spec-17-1); needs one focused CI-wiring pass.
-status: open
+status: done 2026-10-17
+resolution: `.github/workflows/authz.yml` added — the first CI workflow in the repo, running `syncro/authz/run-opa-test.ps1` on every change under `syncro/authz/` (path-scoped, so unrelated pushes do not spend runner minutes). It calls the existing script rather than duplicating the docker command, so the local and CI invocations cannot drift. Fail-closed proof: sabotaging one rego assertion yields `FAIL: 4/550` and exit code 1. README expected count corrected to 550 earlier the same day. Java/web suites remain unwired — recorded as DW-176.
 
 ### DW-148: openapi.json not regenerated for new backend endpoints
 origin: code review of spec-19-1-pm-frequencies-checksheets (blind-hunter), 2026-09-03
@@ -1374,3 +1375,10 @@ resolution: snapshot regenerated and committed (d5c79ce) — /api/v1/kpi paths a
 - evidence: `grep /api/v1/audit-log syncro/authz/policy/authz.rego` → 0; `AuditLogController.java:22` dan `SetupCompletenessController.java:13` hanya punya mapping GET.
 
 
+
+### DW-176: CI runs the rego suite only — Java and web suites still run nowhere
+
+- source_spec: none (DW-147 OPA CI work, 2026-10-17)
+- summary: `.github/workflows/authz.yml` now runs `syncro/authz/run-opa-test.ps1` on every change under `syncro/authz/`, closing DW-147. It is the only workflow in the repo: the Java (Maven/Testcontainers) and web (vitest/Playwright) suites still have no automated runner, so a backend or frontend regression is caught by nothing but a developer running it locally.
+- evidence: Repo-wide check found no `.github/`, `azure-pipelines.yml`, `.gitlab-ci.yml`, `Jenkinsfile`, `.circleci` or `.woodpecker.yml` before this change; `pom.xml` has only flyway/spring-boot/compiler/surefire plugins, no exec/antrun hook. Verified the workflow fails closed: sabotaging one rego assertion produced `FAIL: 4/550` and exit code 1.
+- catatan: runner is `ubuntu-latest` + `shell: pwsh`, so it needs Docker (present on GitHub-hosted runners). Java/web wiring is a separate decision — full `mvn test` takes ~30 min with Testcontainers, which is a real cost per push and probably wants a schedule or PR-only trigger rather than matching the rego job.
